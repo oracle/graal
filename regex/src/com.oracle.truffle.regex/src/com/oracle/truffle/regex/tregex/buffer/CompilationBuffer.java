@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,9 @@
 package com.oracle.truffle.regex.tregex.buffer;
 
 import com.oracle.truffle.regex.RegexSource;
+import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.tregex.TRegexCompiler;
+import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 /**
  * This class is instantiated once per compilation of a regular expression in
@@ -58,31 +60,35 @@ import com.oracle.truffle.regex.tregex.TRegexCompiler;
  */
 public class CompilationBuffer {
 
-    private ObjectArrayBuffer objectBuffer1;
-    private ObjectArrayBuffer objectBuffer2;
+    private ObjectArrayBuffer<Object> objectBuffer1;
+    private ObjectArrayBuffer<Object> objectBuffer2;
     private ByteArrayBuffer byteArrayBuffer;
     private ShortArrayBuffer shortArrayBuffer;
     private CharRangesBuffer charRangesBuffer1;
     private CharRangesBuffer charRangesBuffer2;
-    private CharRangesBuffer charRangesBuffer3;
     private IntRangesBuffer intRangesBuffer1;
     private IntRangesBuffer intRangesBuffer2;
     private IntRangesBuffer intRangesBuffer3;
+    private CodePointSetAccumulator codePointSetAccumulator1;
+    private CodePointSetAccumulator codePointSetAccumulator2;
+    private CompilationFinalBitSet byteSizeBitSet;
 
-    public ObjectArrayBuffer getObjectBuffer1() {
+    @SuppressWarnings("unchecked")
+    public <T> ObjectArrayBuffer<T> getObjectBuffer1() {
         if (objectBuffer1 == null) {
-            objectBuffer1 = new ObjectArrayBuffer();
+            objectBuffer1 = new ObjectArrayBuffer<>();
         }
         objectBuffer1.clear();
-        return objectBuffer1;
+        return (ObjectArrayBuffer<T>) objectBuffer1;
     }
 
-    public ObjectArrayBuffer getObjectBuffer2() {
+    @SuppressWarnings("unchecked")
+    public <T> ObjectArrayBuffer<T> getObjectBuffer2() {
         if (objectBuffer2 == null) {
-            objectBuffer2 = new ObjectArrayBuffer();
+            objectBuffer2 = new ObjectArrayBuffer<>();
         }
         objectBuffer2.clear();
-        return objectBuffer2;
+        return (ObjectArrayBuffer<T>) objectBuffer2;
     }
 
     public ByteArrayBuffer getByteArrayBuffer() {
@@ -117,14 +123,6 @@ public class CompilationBuffer {
         return charRangesBuffer2;
     }
 
-    public CharRangesBuffer getCharRangesBuffer3() {
-        if (charRangesBuffer3 == null) {
-            charRangesBuffer3 = new CharRangesBuffer(64);
-        }
-        charRangesBuffer3.clear();
-        return charRangesBuffer3;
-    }
-
     public IntRangesBuffer getIntRangesBuffer1() {
         if (intRangesBuffer1 == null) {
             intRangesBuffer1 = new IntRangesBuffer(64);
@@ -147,5 +145,29 @@ public class CompilationBuffer {
         }
         intRangesBuffer3.clear();
         return intRangesBuffer3;
+    }
+
+    public CodePointSetAccumulator getCodePointSetAccumulator1() {
+        if (codePointSetAccumulator1 == null) {
+            codePointSetAccumulator1 = new CodePointSetAccumulator();
+        }
+        codePointSetAccumulator1.clear();
+        return codePointSetAccumulator1;
+    }
+
+    public CodePointSetAccumulator getCodePointSetAccumulator2() {
+        if (codePointSetAccumulator2 == null) {
+            codePointSetAccumulator2 = new CodePointSetAccumulator();
+        }
+        codePointSetAccumulator2.clear();
+        return codePointSetAccumulator2;
+    }
+
+    public CompilationFinalBitSet getByteSizeBitSet() {
+        if (byteSizeBitSet == null) {
+            byteSizeBitSet = new CompilationFinalBitSet(256);
+        }
+        byteSizeBitSet.clear();
+        return byteSizeBitSet;
     }
 }

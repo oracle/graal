@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -191,11 +191,6 @@ public class AllocationReporterPartialEvaluationTest extends TestWithSynchronous
             AllocationReporter reporter = env.lookup(AllocationReporter.class);
             env.exportSymbol(AllocationReporter.class.getSimpleName(), env.asGuestValue(reporter));
             return reporter;
-        }
-
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
         }
 
     }

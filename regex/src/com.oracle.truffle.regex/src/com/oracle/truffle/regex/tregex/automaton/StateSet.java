@@ -51,39 +51,33 @@ import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
-public interface StateSet<S> extends Set<S>, Iterable<S>, JsonConvertible {
+/**
+ * A specialized set for sequentially indexed objects. Uses an {@link StateIndex index} for mapping
+ * indices to actual objects.
+ */
+public interface StateSet<SI extends StateIndex<? super S>, S> extends Set<S>, Iterable<S>, JsonConvertible {
 
-    static <T> StateSet<T> create(StateIndex<? super T> stateIndex, StateSetBackingSetFactory backingSetFactory) {
-        return stateIndex.getNumberOfStates() > 64 ? new StateSetImpl<>(stateIndex, backingSetFactory) : new SmallStateSetImpl<>(stateIndex);
+    static <SI extends StateIndex<? super S>, S> StateSet<SI, S> create(SI stateIndex) {
+        return new StateSetImpl<>(stateIndex);
     }
 
-    static <T> StateSet<T> create(StateIndex<? super T> stateIndex) {
-        return create(stateIndex, StateSetBackingSetFactory.BIT_SET);
-    }
-
-    static <T> StateSet<T> create(StateIndex<? super T> stateIndex, T initial) {
-        StateSet<T> s = create(stateIndex);
+    static <SI extends StateIndex<? super S>, S> StateSet<SI, S> create(SI stateIndex, S initial) {
+        StateSet<SI, S> s = create(stateIndex);
         s.add(initial);
         return s;
     }
 
-    static <T> StateSet<T> create(StateIndex<? super T> stateIndex, Collection<T> initial) {
-        StateSet<T> s = create(stateIndex);
+    static <SI extends StateIndex<? super S>, S> StateSet<SI, S> create(SI stateIndex, Collection<S> initial) {
+        StateSet<SI, S> s = create(stateIndex);
         s.addAll(initial);
         return s;
     }
 
-    StateSet<S> copy();
+    StateSet<SI, S> copy();
 
-    StateIndex<? super S> getStateIndex();
+    SI getStateIndex();
 
-    void addBatch(S state);
-
-    void addBatchFinish();
-
-    void replace(S oldState, S newState);
-
-    boolean isDisjoint(StateSet<? extends S> other);
+    boolean isDisjoint(StateSet<SI, ? extends S> other);
 
     /**
      * Returns the hash code value for this set.

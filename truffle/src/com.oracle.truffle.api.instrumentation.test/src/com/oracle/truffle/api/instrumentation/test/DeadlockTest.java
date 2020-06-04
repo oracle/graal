@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,11 +46,15 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.Instrument;
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -61,7 +65,9 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.LoadSourceEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceListener;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.SourceFilter;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
@@ -70,10 +76,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
-
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.Instrument;
 
 /**
  * Test that instrumentation does not deadlock with language execution.
@@ -169,6 +171,8 @@ public class DeadlockTest {
                         sources.add(event.getSource());
                     }
                 }, true);
+                env.getInstrumenter().attachLoadSourceSectionListener(SourceSectionFilter.ANY, e -> {
+                }, true);
             } else {
                 env.getInstrumenter().attachExecuteSourceListener(SourceFilter.ANY, new ExecuteSourceListener() {
                     @Override
@@ -176,12 +180,14 @@ public class DeadlockTest {
                         sources.add(event.getSource());
                     }
                 }, true);
+                env.getInstrumenter().attachExecutionEventFactory(SourceSectionFilter.ANY, context -> null);
             }
         }
 
     }
 
     @TruffleLanguage.Registration(id = LockingLanguage.ID, name = "Locking Test Language", version = "1.0", contextPolicy = TruffleLanguage.ContextPolicy.SHARED)
+    @ProvidedTags(StandardTags.StatementTag.class)
     public static class LockingLanguage extends ProxyLanguage {
 
         static final String ID = "truffle-locking-test-language";
@@ -260,6 +266,11 @@ public class DeadlockTest {
             }
 
             public Object execute(@SuppressWarnings("unused") VirtualFrame frame, CharSequence code) {
+                return toUpper(code);
+            }
+
+            @TruffleBoundary
+            private static String toUpper(CharSequence code) {
                 return code.toString().toUpperCase();
             }
 

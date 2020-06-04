@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -71,8 +71,8 @@ public final class DFASimpleCGTransition implements JsonConvertible {
             return getEmptyInstance();
         }
         t.getGroupBoundaries().materializeArrays();
-        return new DFASimpleCGTransition(t.getGroupBoundaries().isEmpty() ? EMPTY_ARRAY : t.getGroupBoundaries().getUpdateIndicesArray(),
-                        fullClear ? FULL_CLEAR_ARRAY : t.getGroupBoundaries().getClearIndicesArray());
+        return new DFASimpleCGTransition(t.getGroupBoundaries().isEmpty() ? EMPTY_ARRAY : t.getGroupBoundaries().updatesToByteArray(),
+                        fullClear ? FULL_CLEAR_ARRAY : t.getGroupBoundaries().clearsToByteArray());
     }
 
     public static DFASimpleCGTransition getEmptyInstance() {
@@ -125,7 +125,7 @@ public final class DFASimpleCGTransition implements JsonConvertible {
     @TruffleBoundary
     @Override
     public JsonValue toJson() {
-        return Json.obj(DFACaptureGroupPartialTransition.indexManipulationToProp("indexUpdates", indexUpdates, false),
-                        DFACaptureGroupPartialTransition.indexManipulationToProp("indexClears", indexClears, false));
+        return Json.obj(Json.prop("indexUpdates", DFACaptureGroupPartialTransition.IndexOperation.groupBoundariesToJsonObject(indexUpdates)),
+                        Json.prop("indexClears", DFACaptureGroupPartialTransition.IndexOperation.groupBoundariesToJsonObject(indexClears)));
     }
 }

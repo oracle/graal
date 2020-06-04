@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,12 +37,10 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.Type;
@@ -51,9 +49,6 @@ public final class LLDBSupport {
 
     private final LLVMLanguage language;
     private final EconomicMap<Type, CallTarget> loadFunctionCache;
-
-    private LLVMDebugValue.Builder cachedDebugValueBuilder;
-    private LLVMDebugValue.Builder cachedDebugDeclarationBuilder;
 
     public LLDBSupport(LLVMLanguage language) {
         this.language = language;
@@ -93,51 +88,7 @@ public final class LLDBSupport {
 
         final LLVMManagedPointer managedPointer = LLVMManagedPointer.cast(pointer);
         final Object target = managedPointer.getObject();
-        return target instanceof DynamicObject && ((DynamicObject) target).getShape().getObjectType() instanceof LLVMObjectAccess;
-    }
-
-    private static final class BuilderRootNode extends RootNode {
-
-        @Child LLVMDebugValue.Builder builder;
-
-        BuilderRootNode(LLVMDebugValue.Builder builder, LLVMLanguage language) {
-            super(language);
-            this.builder = builder;
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            return builder.build(frame.getArguments()[0]);
-        }
-    }
-
-    private static final class WrappedBuilder implements LLVMDebugValue.Builder {
-
-        private final CallTarget callTarget;
-
-        WrappedBuilder(LLVMDebugValue.Builder inner, LLVMLanguage language) {
-            RootNode root = new BuilderRootNode(inner, language);
-            this.callTarget = Truffle.getRuntime().createCallTarget(root);
-        }
-
-        @Override
-        public LLVMDebugValue build(Object irValue) {
-            return (LLVMDebugValue) callTarget.call(irValue);
-        }
-    }
-
-    public LLVMDebugValue.Builder createDebugValueBuilder() {
-        if (cachedDebugValueBuilder == null) {
-            cachedDebugValueBuilder = new WrappedBuilder(CommonNodeFactory.createDebugValueBuilder(), language);
-        }
-        return cachedDebugValueBuilder;
-    }
-
-    public LLVMDebugValue.Builder createDebugDeclarationBuilder() {
-        if (cachedDebugDeclarationBuilder == null) {
-            cachedDebugDeclarationBuilder = new WrappedBuilder(CommonNodeFactory.createDebugDeclarationBuilder(), language);
-        }
-        return cachedDebugDeclarationBuilder;
+        return !LLVMAsForeignLibrary.getFactory().getUncached().isForeign(target);
     }
 
     private static boolean isByteAligned(long bits) {

@@ -40,11 +40,19 @@
  */
 package org.graalvm.wasm.exception;
 
-public class BinaryParserException extends RuntimeException {
+import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.nodes.Node;
+
+public class BinaryParserException extends RuntimeException implements TruffleException {
 
     private static final long serialVersionUID = -84137683950579647L;
 
     public BinaryParserException(String message) {
         super(message);
+    }
+
+    @Override
+    public Node getLocation() {
+        return null;
     }
 }

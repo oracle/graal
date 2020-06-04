@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -786,11 +786,13 @@ public class AMD64ControlFlow {
             masm.jmp(scratchReg);
 
             // Inserting padding so that jump the table address is aligned
+            int entrySize;
             if (defaultTarget != null) {
-                masm.align(8);
+                entrySize = 8;
             } else {
-                masm.align(4);
+                entrySize = 4;
             }
+            masm.align(entrySize);
 
             // Patch LEA instruction above now that we know the position of the jump table
             // this is ugly but there is no better way to do this given the assembler API
@@ -818,7 +820,7 @@ public class AMD64ControlFlow {
                 }
             }
 
-            JumpTable jt = new JumpTable(jumpTablePos, keys[0].asInt(), keys[keys.length - 1].asInt(), 4);
+            JumpTable jt = new JumpTable(jumpTablePos, keys[0].asInt(), keys[keys.length - 1].asInt(), entrySize);
             crb.compilationResult.addAnnotation(jt);
         }
     }

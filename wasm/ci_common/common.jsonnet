@@ -42,7 +42,7 @@
 
   eclipse: {
     downloads+: {
-      ECLIPSE: {name: 'eclipse', version: '4.5.2.1', platformspecific: true},
+      ECLIPSE: {name: 'eclipse', version: '4.14.0', platformspecific: true},
     },
     environment+: {
       ECLIPSE_EXE: '$ECLIPSE/eclipse',
@@ -51,7 +51,7 @@
 
   jdt: {
     downloads+: {
-      JDT: {name: 'ecj', version: '4.6.1', platformspecific: false},
+      JDT: {name: 'ecj', version: '4.14.0', platformspecific: false},
     },
   },
 
@@ -62,13 +62,16 @@
   },
 
   emsdk: {
+    docker: {
+      "image": "phx.ocir.io/oraclelabs2/c_graal/buildslave:b_ol7_2",
+      "mount_modules": true
+    },
     downloads+: {
-      EMSDK_DIR: {name: 'emsdk', version: '1.39.3', platformspecific: true},
+      EMSDK_DIR: {name: 'emsdk', version: '1.39.13', platformspecific: true},
     },
     environment+: {
-      EMCC_DIR: '$EMSDK_DIR/fastcomp/emscripten/',
-      NODE_DIR: '$EMSDK_DIR/node/12.9.1_64bit/',
-    },
+      EMCC_DIR: '$EMSDK_DIR/emscripten/master/'
+    }
   },
 
   local gate_cmd       = ['mx', '--strict-compliance', 'gate', '--strict-mode', '--tags', '${GATE_TAGS}'],
@@ -76,25 +79,16 @@
 
   setup_common: {
     setup+: [
-      ['cd', 'wasm'],
+      ['cd', '$SUITE'],
       ['mx', 'sversions'],
     ],
   },
 
-  setup_emsdk: {
+  setup_emsdk: self.setup_common + {
     setup+: [
       ['set-export', 'ROOT_DIR', ['pwd']],
       ['set-export', 'EM_CONFIG', '$ROOT_DIR/.emscripten-config'],
-      ['cd', '$SUITE'],
-      [
-        './generate_em_config',
-        '$EM_CONFIG',
-        '$EMSDK_DIR/myfastcomp/emscripten-fastcomp/bin/',
-        '$EMSDK_DIR/myfastcomp/old-binaryen/',
-        '$EMSDK_DIR/fastcomp/emscripten/',
-        ['which', 'node'],
-      ],
-      ['mx', 'sversions'],
+      ['./generate_em_config', '$EM_CONFIG', '$EMSDK_DIR']
     ],
   },
 

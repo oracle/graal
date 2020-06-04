@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -41,7 +41,7 @@ import java.util.List;
  */
 public final class DefaultLibraryLocator extends LibraryLocator {
 
-    public static DefaultLibraryLocator INSTANCE = new DefaultLibraryLocator();
+    public static final DefaultLibraryLocator INSTANCE = new DefaultLibraryLocator();
 
     private DefaultLibraryLocator() {
     }

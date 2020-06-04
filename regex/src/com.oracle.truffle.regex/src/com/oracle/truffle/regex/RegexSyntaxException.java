@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,41 +50,35 @@ public class RegexSyntaxException extends RuntimeException implements TruffleExc
     private static final String templateNoFlags = "Invalid regular expression: %s: %s";
     private static final String templatePosition = "Invalid regular expression: /%s/%s:%d: %s";
 
-    private String reason;
-    private RegexSource regexSrc;
-    private int position = -1;
+    private final String reason;
+    private final RegexSource regexSrc;
+    private final int position;
 
     public RegexSyntaxException(String msg) {
         super(msg);
+        reason = msg;
+        regexSrc = null;
+        position = -1;
     }
 
     @TruffleBoundary
     public RegexSyntaxException(String pattern, String msg) {
-        super(String.format(templateNoFlags, pattern, msg));
-        this.reason = msg;
-        this.regexSrc = new RegexSource(pattern);
+        this(String.format(templateNoFlags, pattern, msg), msg, new RegexSource(pattern));
     }
 
     @TruffleBoundary
     public RegexSyntaxException(RegexSource source, String msg) {
-        super(String.format(template, source.getPattern(), source.getFlags(), msg));
-        this.reason = msg;
-        this.regexSrc = source;
+        this(String.format(template, source.getPattern(), source.getFlags(), msg), msg, source);
     }
 
     @TruffleBoundary
     public RegexSyntaxException(String pattern, String flags, String msg) {
-        super(String.format(template, pattern, flags, msg));
-        this.reason = msg;
-        this.regexSrc = new RegexSource(pattern, flags);
+        this(String.format(template, pattern, flags, msg), msg, new RegexSource(pattern, flags));
     }
 
     @TruffleBoundary
     public RegexSyntaxException(String pattern, String flags, String msg, int position) {
-        super(String.format(templatePosition, pattern, flags, position, msg));
-        this.reason = msg;
-        this.regexSrc = new RegexSource(pattern, flags);
-        this.position = position;
+        this(String.format(templatePosition, pattern, flags, position, msg), msg, new RegexSource(pattern, flags), position);
     }
 
     @TruffleBoundary
@@ -92,6 +86,18 @@ public class RegexSyntaxException extends RuntimeException implements TruffleExc
         super(String.format(template, pattern, flags, msg), ex);
         this.reason = msg;
         this.regexSrc = new RegexSource(pattern, flags);
+        this.position = -1;
+    }
+
+    private RegexSyntaxException(String exceptionMsg, String reason, RegexSource regexSrc) {
+        this(exceptionMsg, reason, regexSrc, -1);
+    }
+
+    private RegexSyntaxException(String exceptionMsg, String reason, RegexSource regexSrc, int position) {
+        super(exceptionMsg);
+        this.reason = reason;
+        this.regexSrc = regexSrc;
+        this.position = position;
     }
 
     @Override

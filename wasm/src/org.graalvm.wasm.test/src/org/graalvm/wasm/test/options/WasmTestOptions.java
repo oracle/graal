@@ -45,4 +45,5 @@ public final class WasmTestOptions {
     public static final String TEST_SOURCE_PATH = System.getProperty("wasmtest.testSourcePath");
     public static final String TEST_FILTER = System.getProperty("wasmtest.testFilter");
     public static final String LOG_LEVEL = System.getProperty("wasmtest.logLevel");
+    public static final String STORE_CONSTANTS_POLICY = System.getProperty("wasmtest.storeConstantsPolicy");
 }

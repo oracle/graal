@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -64,14 +64,18 @@ final class TypeInfo {
     final String className;
     final String descriptionType;
     final boolean isObject;
+    final boolean isFunction;
+    final boolean isNull;
     final boolean isJS;
 
-    TypeInfo(String type, String subtype, String className, String descriptionType, boolean isObject, boolean isJS) {
+    TypeInfo(String type, String subtype, String className, String descriptionType, boolean isObject, boolean isFunction, boolean isNull, boolean isJS) {
         this.type = type;
         this.subtype = subtype;
         this.className = className;
         this.descriptionType = descriptionType;
         this.isObject = isObject;
+        this.isFunction = isFunction;
+        this.isNull = isNull;
         this.isJS = isJS;
     }
 
@@ -82,56 +86,39 @@ final class TypeInfo {
         String subtype = null;
         String className = null;
         boolean isJS = LanguageChecks.isJS(originalLanguage);
-        if (metaObject != null && isJS) {
-            // Get special JS properties:
-            try {
-                DebugValue property = metaObject.getProperty("type");
-                if (property != null) {
-                    type = property.as(String.class);
-                    property = metaObject.getProperty("subtype");
-                    if (property != null) {
-                        subtype = property.as(String.class);
-                    }
-                    property = metaObject.getProperty("className");
-                    if (property != null) {
-                        className = property.as(String.class);
-                    }
-                }
-            } catch (DebugException ex) {
-                if (err != null && ex.isInternalError()) {
-                    err.println("getProperties of meta object of (" + debugValue.getName() + ") has caused: " + ex);
-                    ex.printStackTrace(err);
-                }
-                throw ex;
-            }
-        }
         String descriptionType = null;
-        if (type == null) {
-            if (debugValue.isArray()) {
-                subtype = "array";
-            }
-            String metaType = null;
-            if (metaObject != null) {
-                metaType = RemoteObject.toString(metaObject, err);
-            }
-            if (debugValue.canExecute()) {
-                type = TYPE.FUNCTION.getId();
-                className = metaType;
-            } else if (isObject) {
-                type = TYPE.OBJECT.getId();
-                className = metaType;
-            } else {
-                type = getType(debugValue, metaType);
+        String metaType = null;
+        if (metaObject != null) {
+            metaType = RemoteObject.toMetaName(metaObject, err);
+        }
+        type = getType(debugValue, metaType, isObject);
+        if (debugValue.isArray()) {
+            subtype = "array";
+        }
+        boolean isFunction = debugValue.canExecute();
+        boolean isNull = false;
+        if (isFunction) {
+            type = TYPE.FUNCTION.getId();
+            className = metaType;
+        } else if (isObject || TYPE.OBJECT.getId().equals(type)) {
+            className = metaType;
+            isNull = debugValue.isNull();
+            if (isNull) {
+                subtype = "null";
                 className = null;
-                if (TYPE.OBJECT.getId().equals(type)) {
-                    descriptionType = metaType;
-                }
+            } else if (debugValue.isDate()) {
+                subtype = "date";
+            }
+        } else {
+            className = null;
+            if (TYPE.OBJECT.getId().equals(type)) {
+                descriptionType = metaType;
             }
         }
         if (descriptionType == null) {
             descriptionType = className;
         }
-        return new TypeInfo(type, subtype, className, descriptionType, isObject, isJS);
+        return new TypeInfo(type, subtype, className, descriptionType, isObject, isFunction, isNull, isJS);
     }
 
     static boolean isObject(DebugValue debugValue, PrintWriter err) {
@@ -151,24 +138,30 @@ final class TypeInfo {
     /**
      * The type must be one of {@link TYPE}.
      */
-    private static String getType(DebugValue value, String metaObject) {
-        if (metaObject == null) {
-            return TYPE.OBJECT.getId();
-        }
-        for (TYPE type : TYPE.values()) {
-            if (metaObject.equalsIgnoreCase(type.getId())) {
-                return type.getId();
+    private static String getType(DebugValue value, String metaObject, boolean isObject) {
+        if (metaObject != null) {
+            for (TYPE type : TYPE.values()) {
+                if (!TYPE.OBJECT.equals(type) && metaObject.equalsIgnoreCase(type.getId())) {
+                    return type.getId();
+                }
             }
         }
-        Number number = value.as(Number.class);
-        if (number != null) {
+        if (!isObject && value.isNumber()) {
             return TYPE.NUMBER.getId();
         }
-        Boolean bool = value.as(Boolean.class);
-        if (bool != null) {
+        if (!isObject && value.isBoolean()) {
             return TYPE.BOOLEAN.getId();
         }
         return TYPE.OBJECT.getId();
     }
 
+    static Number toNumber(DebugValue value) {
+        if (value.fitsInLong()) {
+            return value.asLong();
+        }
+        if (value.fitsInDouble()) {
+            return value.asDouble();
+        }
+        throw new IllegalArgumentException("Not a number: " + value.toDisplayString(false));
+    }
 }

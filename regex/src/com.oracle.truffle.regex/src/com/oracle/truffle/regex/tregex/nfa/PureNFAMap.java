@@ -42,29 +42,31 @@ package com.oracle.truffle.regex.tregex.nfa;
 
 import java.util.Arrays;
 
-import com.oracle.truffle.regex.tregex.automaton.SimpleStateIndex;
+import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 /**
  * Contains a full mapping of every {@link RegexASTSubtreeRootNode} in a {@link RegexAST} to a
  * {@link PureNFA}.
  */
-public class PureNFAMap {
+public final class PureNFAMap {
 
     private final RegexAST ast;
     private final PureNFA root;
-    private final SimpleStateIndex<PureNFA> lookAheads;
-    private final SimpleStateIndex<PureNFA> lookBehinds;
+    private final PureNFAIndex lookArounds;
     private int prefixLength = 0;
-    private StateSet<PureNFA>[] prefixLookbehindEntries;
+    private StateSet<PureNFAIndex, PureNFA>[] prefixLookbehindEntries;
 
-    public PureNFAMap(RegexAST ast, PureNFA root, SimpleStateIndex<PureNFA> lookAheads, SimpleStateIndex<PureNFA> lookBehinds) {
+    public PureNFAMap(RegexAST ast, PureNFA root, PureNFAIndex lookArounds) {
         this.ast = ast;
         this.root = root;
-        this.lookAheads = lookAheads;
-        this.lookBehinds = lookBehinds;
+        this.lookArounds = lookArounds;
     }
 
     public RegexAST getAst() {
@@ -75,16 +77,55 @@ public class PureNFAMap {
         return root;
     }
 
-    public SimpleStateIndex<PureNFA> getLookAheads() {
-        return lookAheads;
-    }
-
-    public SimpleStateIndex<PureNFA> getLookBehinds() {
-        return lookBehinds;
+    public PureNFAIndex getLookArounds() {
+        return lookArounds;
     }
 
     public int getPrefixLength() {
         return prefixLength;
+    }
+
+    public RegexASTSubtreeRootNode getASTSubtree(PureNFA nfa) {
+        return nfa == root ? ast.getRoot().getSubTreeParent() : ast.getLookArounds().get(nfa.getSubTreeId());
+    }
+
+    /**
+     * Creates a {@link CodePointSet} that matches the union of all code point sets of
+     * {@link PureNFAState#isCharacterClass() character class successor states} of the root NFA's
+     * {@link PureNFA#getUnAnchoredInitialState() unanchored initial state}. If this can not be
+     * calculated, e.g. because one of the successors is an {@link PureNFAState#isEmptyMatch() empty
+     * match state}, {@code null} is returned.
+     */
+    public CodePointSet getMergedInitialStateCharSet(CompilationBuffer compilationBuffer) {
+        CodePointSetAccumulator acc = compilationBuffer.getCodePointSetAccumulator1();
+        if (mergeInitialStateMatcher(root, acc)) {
+            return acc.toCodePointSet();
+        }
+        return null;
+    }
+
+    private boolean mergeInitialStateMatcher(PureNFA nfa, CodePointSetAccumulator acc) {
+        for (PureNFATransition t : nfa.getUnAnchoredInitialState().getSuccessors()) {
+            PureNFAState target = t.getTarget();
+            switch (target.getKind()) {
+                case PureNFAState.KIND_INITIAL_OR_FINAL_STATE:
+                    break;
+                case PureNFAState.KIND_BACK_REFERENCE:
+                case PureNFAState.KIND_EMPTY_MATCH:
+                    return false;
+                case PureNFAState.KIND_LOOK_AROUND:
+                    if (target.isLookAroundNegated() || target.isLookBehind(ast) || !mergeInitialStateMatcher(lookArounds.get(target.getLookAroundId()), acc)) {
+                        return false;
+                    }
+                    break;
+                case PureNFAState.KIND_CHARACTER_CLASS:
+                    acc.addSet(target.getCharSet());
+                    break;
+                default:
+                    throw new IllegalStateException();
+            }
+        }
+        return true;
     }
 
     /**
@@ -103,9 +144,14 @@ public class PureNFAMap {
         }
         int i = offset - 1;
         if (prefixLookbehindEntries[i] == null) {
-            prefixLookbehindEntries[i] = StateSet.create(lookBehinds);
+            prefixLookbehindEntries[i] = StateSet.create(lookArounds);
         }
         prefixLookbehindEntries[i].add(lookBehind);
         prefixLength = Math.max(prefixLength, offset);
+    }
+
+    public JsonValue toJson() {
+        return Json.obj(Json.prop("root", root.toJson(ast)),
+                        Json.prop("lookArounds", lookArounds.stream().map(x -> x.toJson(ast))));
     }
 }

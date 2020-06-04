@@ -42,6 +42,14 @@ import com.oracle.objectfile.LayoutDecisionMap;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.StringTable;
 import com.oracle.objectfile.SymbolTable;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider;
+import com.oracle.objectfile.elf.dwarf.DwarfARangesSectionImpl;
+import com.oracle.objectfile.elf.dwarf.DwarfAbbrevSectionImpl;
+import com.oracle.objectfile.elf.dwarf.DwarfFrameSectionImpl;
+import com.oracle.objectfile.elf.dwarf.DwarfInfoSectionImpl;
+import com.oracle.objectfile.elf.dwarf.DwarfLineSectionImpl;
+import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo;
+import com.oracle.objectfile.elf.dwarf.DwarfStrSectionImpl;
 import com.oracle.objectfile.io.AssemblyBuffer;
 import com.oracle.objectfile.io.OutputAssembler;
 
@@ -1155,5 +1163,41 @@ public class ELFObjectFile extends ObjectFile {
     @Override
     protected int getMinimumFileSize() {
         return 0;
+    }
+
+    @Override
+    public void installDebugInfo(DebugInfoProvider debugInfoProvider) {
+        DwarfDebugInfo dwarfSections = new DwarfDebugInfo(getMachine(), getByteOrder());
+        /* We need an implementation for each generated DWARF section. */
+        DwarfStrSectionImpl elfStrSectionImpl = dwarfSections.getStrSectionImpl();
+        DwarfAbbrevSectionImpl elfAbbrevSectionImpl = dwarfSections.getAbbrevSectionImpl();
+        DwarfFrameSectionImpl frameSectionImpl = dwarfSections.getFrameSectionImpl();
+        DwarfInfoSectionImpl elfInfoSectionImpl = dwarfSections.getInfoSectionImpl();
+        DwarfARangesSectionImpl elfARangesSectionImpl = dwarfSections.getARangesSectionImpl();
+        DwarfLineSectionImpl elfLineSectionImpl = dwarfSections.getLineSectionImpl();
+        /* Now we can create the section elements with empty content. */
+        newUserDefinedSection(elfStrSectionImpl.getSectionName(), elfStrSectionImpl);
+        newUserDefinedSection(elfAbbrevSectionImpl.getSectionName(), elfAbbrevSectionImpl);
+        newUserDefinedSection(frameSectionImpl.getSectionName(), frameSectionImpl);
+        newUserDefinedSection(elfInfoSectionImpl.getSectionName(), elfInfoSectionImpl);
+        newUserDefinedSection(elfARangesSectionImpl.getSectionName(), elfARangesSectionImpl);
+        newUserDefinedSection(elfLineSectionImpl.getSectionName(), elfLineSectionImpl);
+        /*
+         * The byte[] for each implementation's content are created and written under
+         * getOrDecideContent. Doing that ensures that all dependent sections are filled in and then
+         * sized according to the declared dependencies. However, if we leave it at that then
+         * associated reloc sections only get created when the first reloc is inserted during
+         * content write that's too late for them to have layout constraints included in the layout
+         * decision set and causes an NPE during reloc section write. So we need to create the
+         * relevant reloc sections here in advance.
+         */
+        elfStrSectionImpl.getOrCreateRelocationElement(false);
+        elfAbbrevSectionImpl.getOrCreateRelocationElement(false);
+        frameSectionImpl.getOrCreateRelocationElement(false);
+        elfInfoSectionImpl.getOrCreateRelocationElement(false);
+        elfARangesSectionImpl.getOrCreateRelocationElement(false);
+        elfLineSectionImpl.getOrCreateRelocationElement(false);
+        /* Ok now we can populate the debug info model. */
+        dwarfSections.installDebugInfo(debugInfoProvider);
     }
 }

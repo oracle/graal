@@ -1,11 +1,13 @@
-# overlay version
-overlay = 1e6a01bace1f1d635882bfa738d0596a67f19ef6
+specVersion = "2"
 
 # oraclejdk* are released OracleJDK binaries
 # oraclejdk* are JDKs based on OracleJDK binaries
 # openjdk8 JDKs on Linux are built by Oracle Labs
 # openjdk8 JDKs on macOS are based on AdoptOpenJDK binaries
 include "common.json"
+
+# overlay version
+overlay = ${ci.overlay}
 
 # This must always point to HEAD in the master branch but can be used to point
 # to another branch/commit in a Graal PR when mx changes are required for the PR.
@@ -106,7 +108,7 @@ LARGE_YOUNG_GEN_SIZE : "27G"
 
 eclipse : {
   downloads : {
-    ECLIPSE : {name: eclipse, version: "4.5.2", platformspecific: true}
+    ECLIPSE : {name: eclipse, version: "4.14.0", platformspecific: true}
   }
   environment : {
     ECLIPSE_EXE : "$ECLIPSE/eclipse"
@@ -115,7 +117,7 @@ eclipse : {
 
 jdt : {
   downloads : {
-    JDT : {name: ecj, version: "4.5.1", platformspecific: false}
+    JDT : {name: ecj, version: "4.14.0", platformspecific: false}
   }
 }
 
@@ -150,11 +152,14 @@ svm-common: ${mx} {
   }
   logs: [
     "../.native-image/*/*/*/*.log"
+    "../*/*/*.log"
+    "*/*.log"
     "*/svmbuild/*.log"
     "*/svmbuild/images/*.log"
     "*/*/stripped/*.map"
     "*/callgrind.*"
     "*.bgv"
+    "*.log"
   ]
 }
 

@@ -54,15 +54,20 @@ import java.io.InputStreamReader;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.io.Reader;
+import java.lang.reflect.Method;
 import java.nio.CharBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
 import java.util.function.Supplier;
 
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.PolyglotException;
@@ -75,10 +80,18 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleStackTrace;
+import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.frame.FrameInstanceVisitor;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.AllocationEvent;
@@ -91,10 +104,14 @@ import com.oracle.truffle.api.instrumentation.ExecuteSourceListener;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
+import com.oracle.truffle.api.instrumentation.LoadSourceEvent;
+import com.oracle.truffle.api.instrumentation.LoadSourceListener;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
@@ -103,12 +120,15 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.polyglot.ProxyInstrument;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 public class InstrumentationTest extends AbstractInstrumentationTest {
 
@@ -358,14 +378,17 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
             instrumenter.attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), new ExecutionEventListener() {
                 public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+                    CompilerDirectives.transferToInterpreter();
                     throw new AssertionError();
                 }
 
                 public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+                    CompilerDirectives.transferToInterpreter();
                     throw new AssertionError();
                 }
 
                 public void onEnter(EventContext context, VirtualFrame frame) {
+                    CompilerDirectives.transferToInterpreter();
                     throw new AssertionError();
                 }
             });
@@ -393,33 +416,22 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
             });
         }
 
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
-
     }
 
     @Test
     public void testInstrumentException1() {
         try {
-            assureEnabled(engine.getInstruments().get("testInstrumentException1"));
+            setupEnv(Context.create(), new OnCreateExcInstrument());
             Assert.fail();
         } catch (PolyglotException e) {
             Assert.assertTrue(e.getMessage().contains("MyLanguageException"));
         }
     }
 
-    @Registration(name = "", version = "", id = "testInstrumentException1", services = Object.class)
-    public static class TestInstrumentException1 extends TruffleInstrument {
-
+    private static final class OnCreateExcInstrument extends ProxyInstrument {
         @Override
         protected void onCreate(Env env) {
             throw new MyLanguageException();
-        }
-
-        @Override
-        protected void onDispose(Env env) {
         }
     }
 
@@ -429,48 +441,30 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
      */
     @Test
     public void testInstrumentException2() throws IOException {
-        TestInstrumentException2.returnedExceptional = 0;
-        TestInstrumentException2.returnedValue = 0;
-        assureEnabled(engine.getInstruments().get("testInstrumentException2"));
+        AtomicInteger returnedExceptional = new AtomicInteger();
+        AtomicInteger returnedValue = new AtomicInteger();
+        instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), new ExecutionEventListener() {
+
+            public void onReturnValue(EventContext ctx, VirtualFrame frame, Object result) {
+                returnedValue.incrementAndGet();
+            }
+
+            public void onReturnExceptional(EventContext ctx, VirtualFrame frame, Throwable exception) {
+                returnedExceptional.incrementAndGet();
+            }
+
+            public void onEnter(EventContext ctx, VirtualFrame frame) {
+                throw new MyLanguageException();
+            }
+        });
         try {
             run("ROOT(EXPRESSION)");
             Assert.fail("No exception was thrown.");
         } catch (PolyglotException ex) {
             Assert.assertTrue(ex.getMessage(), ex.getMessage().contains("MyLanguageException"));
         }
-        Assert.assertEquals(1, TestInstrumentException2.returnedExceptional);
-        Assert.assertEquals(0, TestInstrumentException2.returnedValue);
-    }
-
-    @Registration(name = "", version = "", id = "testInstrumentException2", services = Object.class)
-    public static class TestInstrumentException2 extends TruffleInstrument {
-
-        static int returnedExceptional = 0;
-        static int returnedValue = 0;
-
-        @Override
-        protected void onCreate(Env env) {
-            // Not to get error: declares service, but doesn't register it
-            env.registerService(new Object());
-            env.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), new ExecutionEventListener() {
-
-                public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
-                    returnedValue++;
-                }
-
-                public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
-                    returnedExceptional++;
-                }
-
-                public void onEnter(EventContext context, VirtualFrame frame) {
-                    throw new MyLanguageException();
-                }
-            });
-        }
-
-        @Override
-        protected void onDispose(Env env) {
-        }
+        Assert.assertEquals(1, returnedExceptional.get());
+        Assert.assertEquals(0, returnedValue.get());
     }
 
     /*
@@ -479,45 +473,78 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
      */
     @Test
     public void testInstrumentException3() throws IOException {
-        TestInstrumentException3.returnedExceptional = 0;
-        TestInstrumentException3.onEnter = 0;
-        assureEnabled(engine.getInstruments().get("testInstrumentException3"));
+        AtomicInteger returnedExceptional = new AtomicInteger();
+        AtomicInteger onEnter = new AtomicInteger();
+        instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), new ExecutionEventListener() {
+
+            public void onReturnValue(EventContext ctx, VirtualFrame frame, Object result) {
+                throw new MyLanguageException();
+            }
+
+            public void onReturnExceptional(EventContext ctx, VirtualFrame frame, Throwable exception) {
+                returnedExceptional.incrementAndGet();
+            }
+
+            public void onEnter(EventContext ctx, VirtualFrame frame) {
+                onEnter.incrementAndGet();
+            }
+        });
         try {
             run("ROOT(EXPRESSION)");
             Assert.fail("No exception was thrown.");
         } catch (PolyglotException ex) {
             Assert.assertTrue(ex.getMessage(), ex.getMessage().contains("MyLanguageException"));
         }
-        Assert.assertEquals(0, TestInstrumentException3.returnedExceptional);
-        Assert.assertEquals(1, TestInstrumentException3.onEnter);
+        Assert.assertEquals(0, returnedExceptional.get());
+        Assert.assertEquals(1, onEnter.get());
     }
 
-    @Registration(name = "", version = "", id = "testInstrumentException3", services = Object.class)
-    public static class TestInstrumentException3 extends TruffleInstrument {
-
-        static int returnedExceptional = 0;
-        static int onEnter = 0;
-
-        @Override
-        protected void onCreate(Env env) {
-            // Not to get error: declares service, but doesn't register it
-            env.registerService(new Object());
-            env.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.EXPRESSION).build(), new ExecutionEventListener() {
-
-                public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
-                    throw new MyLanguageException();
-                }
-
-                public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
-                    returnedExceptional++;
-                }
-
-                public void onEnter(EventContext context, VirtualFrame frame) {
-                    onEnter++;
-                }
-            });
+    /*
+     * Test that instrumentation exceptions in SourceFilter.Builder#sourceIs(Predicate) are attached
+     * as suppressed exceptions.
+     */
+    @Test
+    public void testInstrumentException4() throws IOException {
+        instrumentEnv.getInstrumenter().attachLoadSourceListener(SourceFilter.newBuilder().sourceIs((s) -> {
+            throw new MyLanguageException();
+        }).build(), new LoadSourceListener() {
+            @Override
+            public void onLoad(LoadSourceEvent event) {
+            }
+        }, true);
+        try {
+            run("ROOT(EXPRESSION)");
+            Assert.fail("No exception was thrown.");
+        } catch (PolyglotException ex) {
+            Assert.assertTrue(ex.getMessage(), ex.getMessage().contains("MyLanguageException"));
         }
+    }
 
+    /*
+     * Test that instrumentation exceptions in SourceSectionFilter.Builder#rootNameIs(Predicate) are
+     * attached as suppressed exceptions.
+     */
+    @Test
+    public void testInstrumentException5() throws IOException {
+        instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().rootNameIs((name) -> {
+            throw new MyLanguageException();
+        }).build(), new ExecutionEventListener() {
+
+            public void onReturnValue(EventContext ctx, VirtualFrame frame, Object result) {
+            }
+
+            public void onReturnExceptional(EventContext ctx, VirtualFrame frame, Throwable exception) {
+            }
+
+            public void onEnter(EventContext ctx, VirtualFrame frame) {
+            }
+        });
+        try {
+            run("ROOT(EXPRESSION)");
+            Assert.fail("No exception was thrown.");
+        } catch (PolyglotException ex) {
+            Assert.assertTrue(ex.getMessage(), ex.getMessage().contains("MyLanguageException"));
+        }
     }
 
     /*
@@ -525,57 +552,55 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
      */
     @Test
     public void testLazyProbe1() throws IOException {
-        TestLazyProbe1.createCalls = 0;
-        TestLazyProbe1.onEnter = 0;
-        TestLazyProbe1.onReturnValue = 0;
-        TestLazyProbe1.onReturnExceptional = 0;
+        engine.close();
+        engine = null;
+        TestLazyProbe1 instrument = new TestLazyProbe1();
+        setupEnv(newContext(), instrument);
 
-        assureEnabled(engine.getInstruments().get("testLazyProbe1"));
         run("ROOT(DEFINE(foo, EXPRESSION))");
         run("ROOT(DEFINE(bar, ROOT(EXPRESSION,EXPRESSION)))");
 
-        Assert.assertEquals(0, TestLazyProbe1.createCalls);
-        Assert.assertEquals(0, TestLazyProbe1.onEnter);
-        Assert.assertEquals(0, TestLazyProbe1.onReturnValue);
-        Assert.assertEquals(0, TestLazyProbe1.onReturnExceptional);
+        Assert.assertEquals(0, instrument.createCalls);
+        Assert.assertEquals(0, instrument.onEnter);
+        Assert.assertEquals(0, instrument.onReturnValue);
+        Assert.assertEquals(0, instrument.onReturnExceptional);
 
         run("ROOT(CALL(foo))");
 
-        Assert.assertEquals(1, TestLazyProbe1.createCalls);
-        Assert.assertEquals(1, TestLazyProbe1.onEnter);
-        Assert.assertEquals(1, TestLazyProbe1.onReturnValue);
-        Assert.assertEquals(0, TestLazyProbe1.onReturnExceptional);
+        Assert.assertEquals(1, instrument.createCalls);
+        Assert.assertEquals(1, instrument.onEnter);
+        Assert.assertEquals(1, instrument.onReturnValue);
+        Assert.assertEquals(0, instrument.onReturnExceptional);
 
         run("ROOT(CALL(bar))");
 
-        Assert.assertEquals(3, TestLazyProbe1.createCalls);
-        Assert.assertEquals(3, TestLazyProbe1.onEnter);
-        Assert.assertEquals(3, TestLazyProbe1.onReturnValue);
-        Assert.assertEquals(0, TestLazyProbe1.onReturnExceptional);
+        Assert.assertEquals(3, instrument.createCalls);
+        Assert.assertEquals(3, instrument.onEnter);
+        Assert.assertEquals(3, instrument.onReturnValue);
+        Assert.assertEquals(0, instrument.onReturnExceptional);
 
         run("ROOT(CALL(bar))");
 
-        Assert.assertEquals(3, TestLazyProbe1.createCalls);
-        Assert.assertEquals(5, TestLazyProbe1.onEnter);
-        Assert.assertEquals(5, TestLazyProbe1.onReturnValue);
-        Assert.assertEquals(0, TestLazyProbe1.onReturnExceptional);
+        Assert.assertEquals(3, instrument.createCalls);
+        Assert.assertEquals(5, instrument.onEnter);
+        Assert.assertEquals(5, instrument.onReturnValue);
+        Assert.assertEquals(0, instrument.onReturnExceptional);
 
         run("ROOT(CALL(foo))");
 
-        Assert.assertEquals(3, TestLazyProbe1.createCalls);
-        Assert.assertEquals(6, TestLazyProbe1.onEnter);
-        Assert.assertEquals(6, TestLazyProbe1.onReturnValue);
-        Assert.assertEquals(0, TestLazyProbe1.onReturnExceptional);
+        Assert.assertEquals(3, instrument.createCalls);
+        Assert.assertEquals(6, instrument.onEnter);
+        Assert.assertEquals(6, instrument.onReturnValue);
+        Assert.assertEquals(0, instrument.onReturnExceptional);
 
     }
 
-    @Registration(name = "", version = "", id = "testLazyProbe1", services = Object.class)
-    public static class TestLazyProbe1 extends TruffleInstrument {
+    private static final class TestLazyProbe1 extends ProxyInstrument {
 
-        static int createCalls = 0;
-        static int onEnter = 0;
-        static int onReturnValue = 0;
-        static int onReturnExceptional = 0;
+        int createCalls = 0;
+        int onEnter = 0;
+        int onReturnValue = 0;
+        int onReturnExceptional = 0;
 
         @Override
         protected void onCreate(Env env) {
@@ -610,26 +635,26 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
      */
     @Test
     public void testEnvParse1() throws IOException {
-        TestEnvParse1.onExpression = 0;
-        TestEnvParse1.onStatement = 0;
-
-        assureEnabled(engine.getInstruments().get("testEnvParse1"));
-        run("STATEMENT");
-
-        Assert.assertEquals(1, TestEnvParse1.onExpression);
-        Assert.assertEquals(1, TestEnvParse1.onStatement);
+        engine.close();
+        engine = null;
+        TestEnvParse1 instrument = new TestEnvParse1();
+        setupEnv(newContext(), instrument);
 
         run("STATEMENT");
 
-        Assert.assertEquals(2, TestEnvParse1.onExpression);
-        Assert.assertEquals(2, TestEnvParse1.onStatement);
+        Assert.assertEquals(1, instrument.onExpression);
+        Assert.assertEquals(1, instrument.onStatement);
+
+        run("STATEMENT");
+
+        Assert.assertEquals(2, instrument.onExpression);
+        Assert.assertEquals(2, instrument.onStatement);
     }
 
-    @Registration(name = "", version = "", id = "testEnvParse1", services = Object.class)
-    public static class TestEnvParse1 extends TruffleInstrument {
+    private static final class TestEnvParse1 extends ProxyInstrument {
 
-        static int onExpression = 0;
-        static int onStatement = 0;
+        int onExpression = 0;
+        int onStatement = 0;
 
         @Override
         protected void onCreate(final Env env) {
@@ -679,31 +704,31 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
      */
     @Test
     public void testEnvParseInline() throws IOException {
-        TestEnvParse1.onExpression = 0;
-        TestEnvParse1.onStatement = 0;
-
-        assureEnabled(engine.getInstruments().get("testEnvParseInline"));
-        run("STATEMENT");
-
-        Assert.assertEquals(1, TestEnvParseInline.onExpression);
-        Assert.assertEquals(1, TestEnvParseInline.onStatement);
+        engine.close();
+        engine = null;
+        TestEnvParseInline instrument = new TestEnvParseInline();
+        setupEnv(newContext(), instrument);
 
         run("STATEMENT");
 
-        Assert.assertEquals(2, TestEnvParseInline.onExpression);
-        Assert.assertEquals(2, TestEnvParseInline.onStatement);
+        Assert.assertEquals(1, instrument.onExpression);
+        Assert.assertEquals(1, instrument.onStatement);
+
+        run("STATEMENT");
+
+        Assert.assertEquals(2, instrument.onExpression);
+        Assert.assertEquals(2, instrument.onStatement);
     }
 
-    @Registration(name = "", version = "", id = "testEnvParseInline", services = Object.class)
-    public static class TestEnvParseInline extends TruffleInstrument {
+    private static final class TestEnvParseInline extends ProxyInstrument {
 
-        static int onExpression = 0;
-        static int onStatement = 0;
+        int onExpression = 0;
+        int onStatement = 0;
 
         @Override
         protected void onCreate(final Env env) {
             // Not to get error: declares service, but doesn't register it
-            env.registerService(new Object());
+            super.onCreate(env);
             env.getInstrumenter().attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), new ExecutionEventNodeFactory() {
                 @Override
                 public ExecutionEventNode create(EventContext context) {
@@ -743,8 +768,13 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
                     execOtherLang = new ExecutableNode(fakeOtherLanguage) {
                         @Override
                         public Object execute(VirtualFrame frame) {
-                            assertNotNull(getParent());
+                            doAssertions();
                             return "";
+                        }
+
+                        @TruffleBoundary
+                        private void doAssertions() {
+                            assertNotNull(getParent());
                         }
                     };
                     // Do the correct inline parsing finally:
@@ -810,8 +840,13 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
             return new ExecutableNode(this) {
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    assertNotNull(getParent());
+                    doAssertions();
                     return "Parsed by " + ID;
+                }
+
+                @TruffleBoundary
+                private void doAssertions() {
+                    assertNotNull(getParent());
                 }
             };
         }
@@ -833,45 +868,25 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
      */
     @Test
     public void testParseInlineDefault() throws IOException {
-        TestParseInlineDefault.executableNode = null;
-
-        assureEnabled(engine.getInstruments().get("testParseInlineDefault"));
         Source source = Source.create(TestLanguageNoParseInline.ID, "STATEMENT");
+        instrumentEnv.getInstrumenter().attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), new ExecutionEventNodeFactory() {
+            @Override
+            public ExecutionEventNode create(EventContext ctx) {
+
+                ExecutableNode parsedNode = instrumentEnv.parseInline(
+                                com.oracle.truffle.api.source.Source.newBuilder(TestLanguageNoParseInline.ID, "EXPRESSION", null).build(),
+                                ctx.getInstrumentedNode(), null);
+                assertNull(parsedNode);
+                return new ExecutionEventNode() {
+                };
+            }
+        });
         run(source);
-
-        assertNull(TestParseInlineDefault.executableNode);
-
         run(source);
-
-        assertNull(TestParseInlineDefault.executableNode);
-    }
-
-    @Registration(name = "", version = "", id = "testParseInlineDefault", services = Object.class)
-    public static class TestParseInlineDefault extends TruffleInstrument {
-
-        static ExecutableNode executableNode;
-
-        @Override
-        protected void onCreate(final Env env) {
-            // Not to get error: declares service, but doesn't register it
-            env.registerService(new Object());
-            env.getInstrumenter().attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT).build(), new ExecutionEventNodeFactory() {
-                @Override
-                public ExecutionEventNode create(EventContext context) {
-
-                    ExecutableNode parsedNode = env.parseInline(
-                                    com.oracle.truffle.api.source.Source.newBuilder(TestLanguageNoParseInline.ID, "EXPRESSION", null).build(),
-                                    context.getInstrumentedNode(), null);
-                    executableNode = parsedNode;
-                    assertNull(parsedNode);
-                    return new ExecutionEventNode() {
-                    };
-                }
-            });
-        }
     }
 
     @TruffleLanguage.Registration(id = TestLanguageNoParseInline.ID, name = "", version = "")
+    @ProvidedTags({StandardTags.StatementTag.class})
     public static class TestLanguageNoParseInline extends InstrumentationTestLanguage {
 
         static final String ID = "testNoParseInline-lang";
@@ -885,74 +900,70 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
     @Test
     public void testReceiver() throws IOException {
-        TestReceiver.Tester tester = engine.getInstruments().get("testReceiver").lookup(TestReceiver.Tester.class);
+        ReceiverTester tester = new ReceiverTester(instrumentEnv);
         Source source = Source.create(InstrumentationTestLanguage.ID,
                         "ROOT(DEFINE(foo1, ROOT(STATEMENT))," +
                                         "DEFINE(foo2, ROOT(CALL(foo1), STATEMENT))," +
                                         "CALL(foo1)," +
                                         "CALL_WITH(foo2, 42)," +
                                         "CALL_WITH(foo1, 43))");
+        instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).build(), tester);
         run(source);
         tester.assertReceivers(null, null, "42", "43");
     }
 
-    @Registration(name = "", version = "", id = "testReceiver", services = TestReceiver.Tester.class)
-    public static class TestReceiver extends TruffleInstrument {
+    private static final class ReceiverTester implements ExecutionEventListener {
 
-        @Override
-        protected void onCreate(final Env env) {
-            final Tester tester = new Tester(env);
-            env.registerService(tester);
-            env.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).build(), tester);
+        private TruffleInstrument.Env env;
+        private final List<String> receiverObjects = new ArrayList<>();
+
+        ReceiverTester(TruffleInstrument.Env env) {
+            this.env = env;
         }
 
-        final class Tester implements ExecutionEventListener {
+        @Override
+        public void onEnter(EventContext context, VirtualFrame frame) {
+            addReceiverObject(context, frame.materialize());
+        }
 
-            private Env env;
-            private final List<String> receiverObjects = new ArrayList<>();
-
-            Tester(Env env) {
-                this.env = env;
-            }
-
-            @Override
-            public void onEnter(EventContext context, VirtualFrame frame) {
-                addReceiverObject(context, frame.materialize());
-            }
-
-            @TruffleBoundary
-            private void addReceiverObject(EventContext context, MaterializedFrame frame) {
-                RootNode rootNode = context.getInstrumentedNode().getRootNode();
-                Scope frameScope = env.findLocalScopes(rootNode, frame).iterator().next();
-                Object receiver = frameScope.getReceiver();
-                if (receiver != null) {
-                    assertEquals("THIS", frameScope.getReceiverName());
-                    receiverObjects.add(env.toString(rootNode.getLanguageInfo(), receiver));
-                } else {
-                    receiverObjects.add(null);
+        @TruffleBoundary
+        private void addReceiverObject(EventContext context, MaterializedFrame frame) {
+            RootNode rootNode = context.getInstrumentedNode().getRootNode();
+            Scope frameScope = env.findLocalScopes(rootNode, frame).iterator().next();
+            Object receiver = frameScope.getReceiver();
+            if (receiver != null) {
+                assertEquals("THIS", frameScope.getReceiverName());
+                try {
+                    receiverObjects.add(InteropLibrary.getFactory().getUncached().asString(
+                                    InteropLibrary.getFactory().getUncached().toDisplayString(env.getLanguageView(rootNode.getLanguageInfo(), receiver))));
+                } catch (UnsupportedMessageException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new AssertionError(e);
                 }
+            } else {
+                receiverObjects.add(null);
             }
+        }
 
-            @Override
-            public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
-            }
+        @Override
+        public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
+        }
 
-            @Override
-            public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
-            }
+        @Override
+        public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
+        }
 
-            private void assertReceivers(String... objects) {
-                assertEquals(objects.length, receiverObjects.size());
-                for (int i = 0; i < objects.length; i++) {
-                    assertEquals(objects[i], receiverObjects.get(i));
-                }
+        private void assertReceivers(String... objects) {
+            assertEquals(objects.length, receiverObjects.size());
+            for (int i = 0; i < objects.length; i++) {
+                assertEquals(objects[i], receiverObjects.get(i));
             }
         }
     }
 
     @Test
     public void testNearestExecutionNode() throws IOException {
-        TestNearestExecutionNode.Tester tester = engine.getInstruments().get("testNearestExecutionNode").lookup(TestNearestExecutionNode.Tester.class);
+        NearestExecutionNodeTester tester = new NearestExecutionNodeTester();
         Source source = Source.create(InstrumentationTestLanguage.ID,
                         "ROOT(DEFINE(foo1, ROOT(STATEMENT, VARIABLE(a, 10), STATEMENT, EXPRESSION))," +
                                         "DEFINE(foo2, ROOT(EXPRESSION, CALL(foo1), STATEMENT, STATEMENT(EXPRESSION))))");
@@ -968,77 +979,67 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
                 return pos == 128;
             }
         });
+        instrumentEnv.getInstrumenter().attachExecuteSourceListener(SourceFilter.ANY, new ExecuteSourceListener() {
+            @Override
+            public void onExecute(ExecuteSourceEvent event) {
+                int length = event.getSource().getLength();
+                instrumentEnv.getInstrumenter().attachLoadSourceSectionListener(SourceSectionFilter.ANY, new LoadSourceSectionListener() {
+                    @Override
+                    public void onLoad(LoadSourceSectionEvent evt) {
+                        if (!(evt.getNode() instanceof InstrumentableNode)) {
+                            return;
+                        }
+                        InstrumentableNode node = (InstrumentableNode) evt.getNode();
+                        SourceSection ss = evt.getNode().getSourceSection();
+                        if (ss == null || ss.getCharacters().toString().startsWith("ROOT(DEFINE")) {
+                            // No SourceSection, or the outer function
+                            return;
+                        }
+                        Class<? extends Tag> tag = tester.getTag();
+                        Set<Class<? extends Tag>> tags = Collections.singleton(tag);
+                        for (int offset = 0; offset < length; offset++) {
+                            if (ss.getCharIndex() <= offset && offset < ss.getCharEndIndex()) {
+                                Node nearestNode = node.findNearestNodeAt(offset, tags);
+                                tester.checkNearest(offset, nearestNode);
+                            }
+                        }
+                    }
+                }, true);
+            }
+        }, true);
         run(source);
         assertNull(tester.getFailures());
     }
 
-    @Registration(name = "", version = "", id = "testNearestExecutionNode", services = TestNearestExecutionNode.Tester.class)
-    public static class TestNearestExecutionNode extends TruffleInstrument {
+    private static final class NearestExecutionNodeTester {
 
-        @Override
-        protected void onCreate(final Env env) {
-            final Tester tester = new Tester();
-            env.registerService(tester);
-            env.getInstrumenter().attachExecuteSourceListener(SourceFilter.ANY, new ExecuteSourceListener() {
-                @Override
-                public void onExecute(ExecuteSourceEvent event) {
-                    int length = event.getSource().getLength();
-                    env.getInstrumenter().attachLoadSourceSectionListener(SourceSectionFilter.ANY, new LoadSourceSectionListener() {
-                        @Override
-                        public void onLoad(LoadSourceSectionEvent evt) {
-                            if (!(evt.getNode() instanceof InstrumentableNode)) {
-                                return;
-                            }
-                            InstrumentableNode node = (InstrumentableNode) evt.getNode();
-                            SourceSection ss = evt.getNode().getSourceSection();
-                            if (ss == null || ss.getCharacters().toString().startsWith("ROOT(DEFINE")) {
-                                // No SourceSection, or the outer function
-                                return;
-                            }
-                            Class<? extends Tag> tag = tester.getTag();
-                            Set<Class<? extends Tag>> tags = Collections.singleton(tag);
-                            for (int offset = 0; offset < length; offset++) {
-                                if (ss.getCharIndex() <= offset && offset < ss.getCharEndIndex()) {
-                                    Node nearestNode = node.findNearestNodeAt(offset, tags);
-                                    tester.checkNearest(offset, nearestNode);
-                                }
-                            }
-                        }
-                    }, true);
-                }
-            }, true);
+        private BiFunction<Integer, Node, Boolean> nearestNodeChecker;
+        private Class<? extends Tag> tag;
+        private List<String> failures;
+
+        void set(Class<? extends Tag> tag, BiFunction<Integer, Node, Boolean> nearestNodeChecker) {
+            this.tag = tag;
+            this.nearestNodeChecker = nearestNodeChecker;
         }
 
-        static class Tester {
+        private Class<? extends Tag> getTag() {
+            return tag;
+        }
 
-            private BiFunction<Integer, Node, Boolean> nearestNodeChecker;
-            private Class<? extends Tag> tag;
-            private List<String> failures;
-
-            void set(Class<? extends Tag> tag, BiFunction<Integer, Node, Boolean> nearestNodeChecker) {
-                this.tag = tag;
-                this.nearestNodeChecker = nearestNodeChecker;
-            }
-
-            private Class<? extends Tag> getTag() {
-                return tag;
-            }
-
-            private void checkNearest(int offset, Node nearestNode) {
-                if (!nearestNodeChecker.apply(offset, nearestNode)) {
-                    if (failures == null) {
-                        failures = new ArrayList<>();
-                    }
-                    failures.add("Wrong nearest node for offset " + offset + ": " + nearestNode + " with section " + nearestNode.getSourceSection());
-                }
-            }
-
-            String getFailures() {
+        private void checkNearest(int offset, Node nearestNode) {
+            if (!nearestNodeChecker.apply(offset, nearestNode)) {
                 if (failures == null) {
-                    return null;
-                } else {
-                    return failures.toString();
+                    failures = new ArrayList<>();
                 }
+                failures.add("Wrong nearest node for offset " + offset + ": " + nearestNode + " with section " + nearestNode.getSourceSection());
+            }
+        }
+
+        String getFailures() {
+            if (failures == null) {
+                return null;
+            } else {
+                return failures.toString();
             }
         }
     }
@@ -1048,36 +1049,23 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
      */
     @Test
     public void testInstrumentAll() throws IOException {
-        TestInstrumentAll1.onStatement = 0;
+        AtomicInteger onStatement = new AtomicInteger();
+        instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
+            public void onEnter(EventContext ctx, VirtualFrame frame) {
+                onStatement.incrementAndGet();
+            }
 
-        assureEnabled(engine.getInstruments().get("testInstrumentAll"));
+            public void onReturnExceptional(EventContext ctx, VirtualFrame frame, Throwable exception) {
+            }
+
+            public void onReturnValue(EventContext ctx, VirtualFrame frame, Object result) {
+            }
+        });
+
         run("STATEMENT");
 
         // An implicit root node + statement
-        Assert.assertEquals(2, TestInstrumentAll1.onStatement);
-    }
-
-    @Registration(id = "testInstrumentAll", services = Object.class)
-    public static class TestInstrumentAll1 extends TruffleInstrument {
-
-        static int onStatement = 0;
-
-        @Override
-        protected void onCreate(final Env env) {
-            // Not to get error: declares service, but doesn't register it
-            env.registerService(new Object());
-            env.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
-                public void onEnter(EventContext context, VirtualFrame frame) {
-                    onStatement++;
-                }
-
-                public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
-                }
-
-                public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
-                }
-            });
-        }
+        Assert.assertEquals(2, onStatement.get());
     }
 
     /*
@@ -1085,34 +1073,23 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
      */
     @Test
     public void testInstrumentNonInstrumentable() throws IOException {
-        TestInstrumentNonInstrumentable1.onStatement = 0;
+        AtomicInteger onStatement = new AtomicInteger();
+        instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
+            public void onEnter(EventContext ctx, VirtualFrame frame) {
+                onStatement.incrementAndGet();
+            }
 
-        assureEnabled(engine.getInstruments().get("testInstrumentNonInstrumentable"));
+            public void onReturnExceptional(EventContext ctx, VirtualFrame frame, Throwable exception) {
+            }
+
+            public void onReturnValue(EventContext ctx, VirtualFrame frame, Object result) {
+            }
+        });
+
         run("DEFINE(foo, ROOT())");
 
         // DEFINE is not instrumentable, only ROOT is.
-        Assert.assertEquals(1, TestInstrumentNonInstrumentable1.onStatement);
-    }
-
-    @Registration(id = "testInstrumentNonInstrumentable", services = Object.class)
-    public static class TestInstrumentNonInstrumentable1 extends TruffleInstrument {
-
-        static int onStatement = 0;
-
-        @Override
-        protected void onCreate(final Env env) {
-            env.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
-                public void onEnter(EventContext context, VirtualFrame frame) {
-                    onStatement++;
-                }
-
-                public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
-                }
-
-                public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
-                }
-            });
-        }
+        Assert.assertEquals(1, onStatement.get());
     }
 
     @Test
@@ -1240,61 +1217,50 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
     @Test
     public void testKillExceptionOnEnter() throws IOException {
-        assureEnabled(engine.getInstruments().get("testKillQuitException"));
-        TestKillQuitException.exceptionOnEnter = new MyKillException();
-        TestKillQuitException.exceptionOnReturnValue = null;
-        TestKillQuitException.returnExceptionalCount = 0;
+        AtomicInteger returnExceptionalCount = new AtomicInteger();
+        instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
+            public void onEnter(EventContext ctx, VirtualFrame frame) {
+                throw new MyKillException();
+            }
+
+            public void onReturnValue(EventContext ctx, VirtualFrame frame, Object result) {
+            }
+
+            public void onReturnExceptional(EventContext ctx, VirtualFrame frame, Throwable exception) {
+                returnExceptionalCount.incrementAndGet();
+            }
+        });
         try {
             run("STATEMENT");
             Assert.fail("KillException in onEnter() cancels engine execution");
         } catch (PolyglotException ex) {
             assertTrue(ex.getMessage(), ex.getMessage().contains(MyKillException.class.getName()));
         }
-        Assert.assertEquals("KillException is not an execution event", 0, TestKillQuitException.returnExceptionalCount);
+        Assert.assertEquals("KillException is not an execution event", 0, returnExceptionalCount.get());
     }
 
     @Test
     public void testKillExceptionOnReturnValue() throws IOException {
-        assureEnabled(engine.getInstruments().get("testKillQuitException"));
-        TestKillQuitException.exceptionOnEnter = null;
-        TestKillQuitException.exceptionOnReturnValue = new MyKillException();
-        TestKillQuitException.returnExceptionalCount = 0;
+        AtomicInteger returnExceptionalCount = new AtomicInteger();
+        instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
+            public void onEnter(EventContext ctx, VirtualFrame frame) {
+            }
+
+            public void onReturnValue(EventContext ctx, VirtualFrame frame, Object result) {
+                throw new MyKillException();
+            }
+
+            public void onReturnExceptional(EventContext ctx, VirtualFrame frame, Throwable exception) {
+                returnExceptionalCount.incrementAndGet();
+            }
+        });
         try {
             run("STATEMENT");
             Assert.fail("KillException in onReturnValue() cancels engine execution");
         } catch (PolyglotException ex) {
             assertTrue(ex.getMessage(), ex.getMessage().contains(MyKillException.class.getName()));
         }
-        Assert.assertEquals("KillException is not an execution event", 0, TestKillQuitException.returnExceptionalCount);
-    }
-
-    @Registration(id = "testKillQuitException", services = Object.class)
-    public static class TestKillQuitException extends TruffleInstrument {
-
-        static Error exceptionOnEnter = null;
-        static Error exceptionOnReturnValue = null;
-        static int returnExceptionalCount = 0;
-
-        @Override
-        protected void onCreate(final Env env) {
-            env.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
-                public void onEnter(EventContext context, VirtualFrame frame) {
-                    if (exceptionOnEnter != null) {
-                        throw exceptionOnEnter;
-                    }
-                }
-
-                public void onReturnValue(EventContext context, VirtualFrame frame, Object result) {
-                    if (exceptionOnReturnValue != null) {
-                        throw exceptionOnReturnValue;
-                    }
-                }
-
-                public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
-                    returnExceptionalCount++;
-                }
-            });
-        }
+        Assert.assertEquals("KillException is not an execution event", 0, returnExceptionalCount.get());
     }
 
     /*
@@ -1303,12 +1269,8 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     @Test
     @Ignore // InstrumentClientInstrumenter.verifyFilter() is empty
     public void testUsedTagNotRequired1() throws IOException {
-        TestInstrumentNonInstrumentable1.onStatement = 0;
-
         assureEnabled(engine.getInstruments().get("testUsedTagNotRequired1"));
         run("ROOT()");
-
-        Assert.assertEquals(0, TestInstrumentNonInstrumentable1.onStatement);
     }
 
     @Registration(id = "testUsedTagNotRequired1", services = Object.class)
@@ -1473,11 +1435,6 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
             });
         }
 
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
-
     }
 
     @Registration(id = "testIsNodeTaggedWith1", services = {Instrumenter.class, TestIsNodeTaggedWith1.class, Object.class})
@@ -1522,122 +1479,96 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
 
     @Test
     public void testNullEventNode() throws IOException {
-        Instrument instrument = engine.getInstruments().get("testNullEventNode");
-        assureEnabled(instrument);
-        TestNullEventNode service = instrument.lookup(TestNullEventNode.class);
+        AtomicInteger onNodeCreateCalls = new AtomicInteger();
+        AtomicInteger onNodeEnterCalls = new AtomicInteger();
+        instrumentEnv.getInstrumenter().attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT, InstrumentationTestLanguage.EXPRESSION).build(),
+                        new ExecutionEventNodeFactory() {
 
-        assertEquals(0, service.onNodeCreateCalls);
-        assertEquals(0, service.onNodeEnterCalls);
+                            public ExecutionEventNode create(EventContext ctx) {
+                                onNodeCreateCalls.incrementAndGet();
+                                boolean isExpression = ctx.getInstrumentedSourceSection().getCharacters().toString().startsWith("EXPRESSION");
+                                if (isExpression) {
+                                    return null;
+                                } else {
+                                    return new ExecutionEventNode() {
+                                        @Override
+                                        protected void onEnter(VirtualFrame frame) {
+                                            onNodeEnterCalls.incrementAndGet();
+                                            super.onEnter(frame);
+                                        }
+                                    };
+                                }
+                            }
+                        });
+
+        assertEquals(0, onNodeCreateCalls.get());
+        assertEquals(0, onNodeEnterCalls.get());
 
         run("STATEMENT(EXPRESSION)");
 
-        assertTrue(Integer.toString(service.onNodeCreateCalls), service.onNodeCreateCalls >= 2);
-        assertEquals(1, service.onNodeEnterCalls);
-        service.onNodeCreateCalls = 0;
-        service.onNodeEnterCalls = 0;
+        assertTrue(Integer.toString(onNodeCreateCalls.get()), onNodeCreateCalls.get() >= 2);
+        assertEquals(1, onNodeEnterCalls.get());
+        onNodeCreateCalls.set(0);
+        onNodeEnterCalls.set(0);
 
         run("ROOT(STATEMENT(), EXPRESSION(), STATEMENT(), EXPRESSION())");
 
-        assertTrue(Integer.toString(service.onNodeCreateCalls), service.onNodeCreateCalls >= 4);
-        assertEquals(2, service.onNodeEnterCalls);
-    }
-
-    @Registration(id = "testNullEventNode", services = {Instrumenter.class, TestNullEventNode.class, Object.class})
-    public static class TestNullEventNode extends TruffleInstrument {
-
-        int onNodeCreateCalls = 0;
-        int onNodeEnterCalls = 0;
-
-        @Override
-        protected void onCreate(final Env env) {
-            env.registerService(this);
-            env.registerService(env.getInstrumenter());
-            env.getInstrumenter().attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(InstrumentationTestLanguage.STATEMENT, InstrumentationTestLanguage.EXPRESSION).build(),
-                            new ExecutionEventNodeFactory() {
-
-                                public ExecutionEventNode create(EventContext context) {
-                                    onNodeCreateCalls++;
-                                    boolean isExpression = context.getInstrumentedSourceSection().getCharacters().toString().startsWith("EXPRESSION");
-                                    if (isExpression) {
-                                        return null;
-                                    } else {
-                                        return new ExecutionEventNode() {
-                                            @Override
-                                            protected void onEnter(VirtualFrame frame) {
-                                                onNodeEnterCalls++;
-                                                super.onEnter(frame);
-                                            }
-                                        };
-                                    }
-                                }
-                            });
-        }
+        assertTrue(Integer.toString(onNodeCreateCalls.get()), onNodeCreateCalls.get() >= 4);
+        assertEquals(2, onNodeEnterCalls.get());
     }
 
     @Test
     public void testRootBodies() throws IOException {
-        Instrument instrument = engine.getInstruments().get("testRootBodies");
-        TestRootBodies service = instrument.lookup(TestRootBodies.class);
-        assertEquals("", service.tags.toString());
+        StringBuilder tags = new StringBuilder();
+        instrumentEnv.getInstrumenter().attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class, StandardTags.RootBodyTag.class).build(),
+                        new ExecutionEventNodeFactory() {
+
+                            @Override
+                            public ExecutionEventNode create(EventContext ctx) {
+                                boolean isRoot = ctx.hasTag(StandardTags.RootTag.class);
+                                boolean isBody = ctx.hasTag(StandardTags.RootBodyTag.class);
+                                return new ExecutionEventNode() {
+                                    @Override
+                                    protected void onEnter(VirtualFrame frame) {
+                                        tags.append("In");
+                                        if (isRoot) {
+                                            tags.append('R');
+                                        }
+                                        if (isBody) {
+                                            tags.append('B');
+                                        }
+                                    }
+
+                                    @Override
+                                    protected void onReturnValue(VirtualFrame frame, Object result) {
+                                        tags.append("Out");
+                                        if (isBody) {
+                                            tags.append('B');
+                                        }
+                                        if (isRoot) {
+                                            tags.append('R');
+                                        }
+                                    }
+                                };
+                            }
+                        });
+        assertEquals("", tags.toString());
 
         run("ROOT(STATEMENT())");
 
-        assertEquals("InRBOutBR", service.tags.toString());
-        service.tags.delete(0, service.tags.length());
+        assertEquals("InRBOutBR", tags.toString());
+        tags.delete(0, tags.length());
 
         run("ROOT(STATEMENT(), ROOT_BODY(EXPRESSION()), EXPRESSION())");
 
-        assertEquals("InRInBOutBOutR", service.tags.toString());
+        assertEquals("InRInBOutBOutR", tags.toString());
     }
 
-    @Registration(id = "testRootBodies", services = TestRootBodies.class)
-    public static class TestRootBodies extends TruffleInstrument {
-
-        final StringBuilder tags = new StringBuilder();
-
-        @Override
-        protected void onCreate(Env env) {
-            env.registerService(this);
-            env.getInstrumenter().attachExecutionEventFactory(SourceSectionFilter.newBuilder().tagIs(StandardTags.RootTag.class, StandardTags.RootBodyTag.class).build(),
-                            new ExecutionEventNodeFactory() {
-
-                                @Override
-                                public ExecutionEventNode create(EventContext context) {
-                                    boolean isRoot = context.hasTag(StandardTags.RootTag.class);
-                                    boolean isBody = context.hasTag(StandardTags.RootBodyTag.class);
-                                    return new ExecutionEventNode() {
-                                        @Override
-                                        protected void onEnter(VirtualFrame frame) {
-                                            tags.append("In");
-                                            if (isRoot) {
-                                                tags.append('R');
-                                            }
-                                            if (isBody) {
-                                                tags.append('B');
-                                            }
-                                        }
-
-                                        @Override
-                                        protected void onReturnValue(VirtualFrame frame, Object result) {
-                                            tags.append("Out");
-                                            if (isBody) {
-                                                tags.append('B');
-                                            }
-                                            if (isRoot) {
-                                                tags.append('R');
-                                            }
-                                        }
-                                    };
-                                }
-                            });
-        }
-    }
-
-    private void setupEngine(Source initSource, boolean runInitAfterExec) {
+    private void setupEngine(ProxyInstrument instrument, Source initSource, boolean runInitAfterExec) {
         teardown();
         InstrumentationTestLanguage.envConfig.put("initSource", initSource);
         InstrumentationTestLanguage.envConfig.put("runInitAfterExec", runInitAfterExec);
-        setup();
+        setupEnv(newContext(), instrument);
     }
 
     @Test
@@ -1821,71 +1752,65 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     @Test
     public void testLanguageInitializedOrNot() throws Exception {
         Source initSource = Source.create(InstrumentationTestLanguage.ID, "STATEMENT(EXPRESSION, EXPRESSION)");
-        setupEngine(initSource, false);
-
-        Instrument instrument = engine.getInstruments().get("testLangInitialized");
+        TestLangInitialized instrument = new TestLangInitialized();
+        setupEngine(instrument, initSource, false);
 
         // Events during language initialization phase are included:
-        TestLangInitialized.initializationEvents = true;
-        TestLangInitialized service = instrument.lookup(TestLangInitialized.class);
+        instrument.initializationEvents = true;
 
         run("LOOP(2, STATEMENT())");
         assertEquals("[FunctionRootNode, false, StatementNode, false, ExpressionNode, false, ExpressionNode, false, FunctionRootNode, true, WhileLoopNode, true, StatementNode, true, StatementNode, true]",
-                        service.getEnteredNodes());
+                        instrument.getEnteredNodes());
     }
 
     @Test
     public void testLanguageInitializedOnly() throws Exception {
         Source initSource = Source.create(InstrumentationTestLanguage.ID, "STATEMENT(EXPRESSION, EXPRESSION)");
-        setupEngine(initSource, false);
-        Instrument instrument = engine.getInstruments().get("testLangInitialized");
+        TestLangInitialized instrument = new TestLangInitialized();
+        setupEngine(instrument, initSource, false);
 
         // Events during language initialization phase are excluded:
-        TestLangInitialized.initializationEvents = false;
-        TestLangInitialized service = instrument.lookup(TestLangInitialized.class);
+        instrument.initializationEvents = false;
         run("LOOP(2, STATEMENT())");
-        assertEquals("[FunctionRootNode, true, WhileLoopNode, true, StatementNode, true, StatementNode, true]", service.getEnteredNodes());
+        assertEquals("[FunctionRootNode, true, WhileLoopNode, true, StatementNode, true, StatementNode, true]", instrument.getEnteredNodes());
     }
 
     @Test
     public void testLanguageInitializedOrNotAppend() throws Exception {
         Source initSource = Source.create(InstrumentationTestLanguage.ID, "STATEMENT(EXPRESSION, EXPRESSION)");
-        setupEngine(initSource, true);
-        Instrument instrument = engine.getInstruments().get("testLangInitialized");
+        TestLangInitialized instrument = new TestLangInitialized();
+        setupEngine(instrument, initSource, true);
 
         // Events during language initialization phase are prepended and appended:
-        TestLangInitialized.initializationEvents = true;
-        TestLangInitialized service = instrument.lookup(TestLangInitialized.class);
+        instrument.initializationEvents = true;
         run("LOOP(2, STATEMENT())");
         assertEquals("[FunctionRootNode, false, StatementNode, false, ExpressionNode, false, ExpressionNode, false, " +
                         "FunctionRootNode, true, WhileLoopNode, true, StatementNode, true, StatementNode, true, FunctionRootNode, true, StatementNode, true, ExpressionNode, true, ExpressionNode, true]",
-                        service.getEnteredNodes());
+                        instrument.getEnteredNodes());
     }
 
     @Test
     public void testLanguageInitializedOnlyAppend() throws Exception {
         Source initSource = Source.create(InstrumentationTestLanguage.ID, "STATEMENT(EXPRESSION, EXPRESSION)");
-        setupEngine(initSource, true);
-        Instrument instrument = engine.getInstruments().get("testLangInitialized");
+        TestLangInitialized instrument = new TestLangInitialized();
+        setupEngine(instrument, initSource, true);
 
         // Events during language initialization phase are excluded,
         // but events from the same nodes used for initialization are appended:
-        TestLangInitialized.initializationEvents = false;
-        TestLangInitialized service = instrument.lookup(TestLangInitialized.class);
+        instrument.initializationEvents = false;
         run("LOOP(2, STATEMENT())");
         assertEquals("[FunctionRootNode, true, WhileLoopNode, true, StatementNode, true, StatementNode, true, FunctionRootNode, true, StatementNode, true, ExpressionNode, true, ExpressionNode, true]",
-                        service.getEnteredNodes());
+                        instrument.getEnteredNodes());
     }
 
-    @Registration(id = "testLangInitialized", services = TestLangInitialized.class)
-    public static class TestLangInitialized extends TruffleInstrument implements ExecutionEventListener {
+    private static final class TestLangInitialized extends ProxyInstrument implements ExecutionEventListener {
 
-        static boolean initializationEvents;
+        boolean initializationEvents;
         private final List<String> enteredNodes = new ArrayList<>();
 
         @Override
         protected void onCreate(Env env) {
-            env.registerService(this);
+            super.onCreate(env);
             env.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, this);
         }
 
@@ -1935,7 +1860,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     @Test
     public void testErrorPropagationCreate() throws Exception {
         Source source = Source.create(InstrumentationTestLanguage.ID, "EXPRESSION");
-        accessInstrumenter().attachExecutionEventFactory(SourceSectionFilter.ANY, new ExecutionEventNodeFactory() {
+        instrumentEnv.getInstrumenter().attachExecutionEventFactory(SourceSectionFilter.ANY, new ExecutionEventNodeFactory() {
             public ExecutionEventNode create(EventContext c) {
                 throw c.createError(new TestException(c.getInstrumentedNode()));
             }
@@ -1955,7 +1880,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     @Test
     public void testErrorPropagationOnEnter() throws Exception {
         Source source = Source.create(InstrumentationTestLanguage.ID, "EXPRESSION");
-        EventBinding<?> b = accessInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
+        EventBinding<?> b = instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
             public void onReturnValue(EventContext c, VirtualFrame frame, Object result) {
             }
 
@@ -1980,7 +1905,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     @Test
     public void testErrorPropagationOnReturn() throws Exception {
         Source source = Source.create(InstrumentationTestLanguage.ID, "EXPRESSION");
-        EventBinding<?> b = accessInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
+        EventBinding<?> b = instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
             public void onReturnValue(EventContext c, VirtualFrame frame, Object result) {
                 throw c.createError(new TestException(c.getInstrumentedNode()));
             }
@@ -2005,7 +1930,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     @Test
     public void testErrorPropagationOnReturnExceptional() throws Exception {
         Source source = Source.create(InstrumentationTestLanguage.ID, "EXPRESSION(THROW(test, test))");
-        EventBinding<?> b = accessInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
+        EventBinding<?> b = instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
             public void onReturnValue(EventContext c, VirtualFrame frame, Object result) {
             }
 
@@ -2030,7 +1955,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     @Test
     public void testErrorPropagationOnInputValue() throws Exception {
         Source source = Source.create(InstrumentationTestLanguage.ID, "EXPRESSION(EXPRESSION)");
-        EventBinding<?> b = accessInstrumenter().attachExecutionEventFactory(SourceSectionFilter.ANY, SourceSectionFilter.ANY, (c) -> {
+        EventBinding<?> b = instrumentEnv.getInstrumenter().attachExecutionEventFactory(SourceSectionFilter.ANY, SourceSectionFilter.ANY, (c) -> {
             return new ExecutionEventNode() {
                 @Override
                 protected void onInputValue(VirtualFrame frame, EventContext inputContext, int inputIndex, Object inputValue) {
@@ -2052,7 +1977,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     @Test
     public void testErrorPropagationOnUnwind() throws Exception {
         Source source = Source.create(InstrumentationTestLanguage.ID, "EXPRESSION");
-        EventBinding<?> b = accessInstrumenter().attachExecutionEventFactory(SourceSectionFilter.ANY, (c) -> {
+        EventBinding<?> b = instrumentEnv.getInstrumenter().attachExecutionEventFactory(SourceSectionFilter.ANY, (c) -> {
             return new ExecutionEventNode() {
 
                 @Override
@@ -2082,7 +2007,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
     @Test
     public void testErrorPropagationOnReturnSuppressed() throws Exception {
         Source source = Source.create(InstrumentationTestLanguage.ID, "EXPRESSION");
-        EventBinding<?> b0 = accessInstrumenter().attachExecutionEventFactory(SourceSectionFilter.ANY, (c) -> {
+        EventBinding<?> b0 = instrumentEnv.getInstrumenter().attachExecutionEventFactory(SourceSectionFilter.ANY, (c) -> {
             return new ExecutionEventNode() {
 
                 @Override
@@ -2092,7 +2017,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
             };
         });
 
-        EventBinding<?> b1 = accessInstrumenter().attachExecutionEventFactory(SourceSectionFilter.ANY, (c) -> {
+        EventBinding<?> b1 = instrumentEnv.getInstrumenter().attachExecutionEventFactory(SourceSectionFilter.ANY, (c) -> {
             return new ExecutionEventNode() {
 
                 @Override
@@ -2114,45 +2039,22 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
         b1.dispose();
     }
 
-    private Instrumenter accessInstrumenter() {
-        return engine.getInstruments().get("accessInstrumenter").lookup(AccessInstrumenter.class).getLastEnv().getInstrumenter();
-    }
-
-    @Registration(id = "accessInstrumenter", services = {AccessInstrumenter.class})
-    public static class AccessInstrumenter extends TruffleInstrument {
-
-        private Env lastEnv;
-
-        @Override
-        protected void onCreate(Env env) {
-            this.lastEnv = env;
-            this.lastEnv.registerService(this);
-        }
-
-        public Env getLastEnv() {
-            return lastEnv;
-        }
-
-    }
-
     @Test
     public void testAllocation() throws Exception {
-        Instrument instrument = engine.getInstruments().get("testAllocation");
-        assureEnabled(instrument);
-        TestAllocation allocation = instrument.lookup(TestAllocation.class);
+        TestAllocation allocation = new TestAllocation();
+        setupEnv(Context.create(), allocation);
         run("LOOP(3, VARIABLE(a, 10))");
         assertEquals("[W 4 null, A 4 10, W 4 null, A 4 10, W 4 null, A 4 10]", allocation.getAllocations());
 
     }
 
-    @Registration(id = "testAllocation", services = {TestAllocation.class, Object.class})
-    public static class TestAllocation extends TruffleInstrument implements AllocationListener {
+    private static final class TestAllocation extends ProxyInstrument implements AllocationListener {
 
         private final List<String> allocations = new ArrayList<>();
 
         @Override
         protected void onCreate(Env env) {
-            env.registerService(this);
+            super.onCreate(env);
             LanguageInfo testLanguage = env.getLanguages().get(InstrumentationTestLanguage.ID);
             env.getInstrumenter().attachAllocationListener(AllocationEventFilter.newBuilder().languages(testLanguage).build(), this);
         }
@@ -2229,6 +2131,251 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
             });
         }
 
+    }
+
+    @Test
+    public void testAsynchronousStacks1() throws Exception {
+        // Do not store asynchronous stacks by default
+        Method getAsynchronousStackDepthMethod = TruffleLanguage.class.getDeclaredMethod("getAsynchronousStackDepth");
+        getAsynchronousStackDepthMethod.setAccessible(true);
+
+        assertEquals(0, getAsynchronousStackDepthMethod.invoke(language));
+        instrumentEnv.setAsynchronousStackDepth(2);
+        assertEquals(2, getAsynchronousStackDepthMethod.invoke(language));
+    }
+
+    @Test
+    public void testAsynchronousStacks2() {
+        RootNode root = new RootNode(language) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return 42;
+            }
+        };
+        Truffle.getRuntime().createCallTarget(root);
+        Frame frame = Truffle.getRuntime().createMaterializedFrame(new Object[]{}, root.getFrameDescriptor());
+        List<TruffleStackTraceElement> stack = TruffleStackTrace.getAsynchronousStackTrace(root.getCallTarget(), frame);
+        // No asynchronous stack by default
+        assertNull(stack);
+    }
+
+    @Test
+    public void testAsynchronousStacks3() {
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+            @Override
+            protected CallTarget parse(ParsingRequest request) throws Exception {
+                return Truffle.getRuntime().createCallTarget(new AsyncRootNode(language, 0));
+            }
+
+            class AsyncRootNode extends RootNode {
+
+                private final TruffleLanguage<?> language;
+                private final int level;
+                private final FrameSlot targetSlot;
+                @Node.Child private AsyncNode child;
+
+                AsyncRootNode(TruffleLanguage<?> language, int level) {
+                    super(language);
+                    this.language = language;
+                    this.level = level;
+                    this.targetSlot = getFrameDescriptor().findOrAddFrameSlot("target", FrameSlotKind.Object);
+                    this.child = new AsyncNode(level);
+                }
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    storeInvokedTarget(frame.materialize());
+                    child.execute(frame);
+                    return 42;
+                }
+
+                @TruffleBoundary
+                private void storeInvokedTarget(MaterializedFrame frame) {
+                    CallTarget callTarget = Truffle.getRuntime().getCurrentFrame().getCallTarget();
+                    frame.setObject(targetSlot, callTarget);
+                }
+
+                @Override
+                public SourceSection getSourceSection() {
+                    return com.oracle.truffle.api.source.Source.newBuilder(ID, Integer.toString(level), "level").build().createSection(1);
+                }
+
+                @Override
+                protected boolean isInstrumentable() {
+                    return true;
+                }
+
+                @Override
+                protected List<TruffleStackTraceElement> findAsynchronousFrames(Frame frame) {
+                    assertSame(this.getFrameDescriptor(), frame.getFrameDescriptor());
+                    AsyncRootNode invoker = new AsyncRootNode(language, level + 1);
+                    RootCallTarget invokerTarget = Truffle.getRuntime().createCallTarget(invoker);
+                    Frame invokerFrame = Truffle.getRuntime().createMaterializedFrame(new Object[]{level + 1}, invoker.getFrameDescriptor());
+                    TruffleStackTraceElement element = TruffleStackTraceElement.create(invoker.child, invokerTarget, invokerFrame);
+                    return Collections.singletonList(element);
+                }
+
+            }
+        });
+        AtomicReference<List<TruffleStackTraceElement>> asyncStack = new AtomicReference<>();
+        instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
+            @Override
+            public void onEnter(EventContext ctx, VirtualFrame frame) {
+                assertNull(asyncStack.get());
+                asyncStack.set(TruffleStackTrace.getAsynchronousStackTrace(ctx.getInstrumentedNode().getRootNode().getCallTarget(), frame));
+            }
+
+            @Override
+            public void onReturnValue(EventContext ctx, VirtualFrame frame, Object result) {
+            }
+
+            @Override
+            public void onReturnExceptional(EventContext ctx, VirtualFrame frame, Throwable exception) {
+            }
+        });
+        int ret = context.eval(ProxyLanguage.ID, "").asInt();
+        assertEquals(42, ret);
+        List<TruffleStackTraceElement> stack = asyncStack.get();
+        int numTestLevels = 10;
+        for (int i = 1; i < numTestLevels; i++) {
+            assertEquals(1, stack.size());
+            TruffleStackTraceElement element = stack.get(0);
+            assertEquals(i, ((AsyncNode) element.getLocation()).getLevel());
+            assertEquals(Integer.toString(i), element.getTarget().getRootNode().getSourceSection().getCharacters());
+            stack = TruffleStackTrace.getAsynchronousStackTrace(element.getTarget(), element.getFrame());
+        }
+    }
+
+    @GenerateWrapper
+    static class AsyncNode extends Node implements InstrumentableNode {
+
+        private final int level;
+
+        AsyncNode(int level) {
+            this.level = level;
+        }
+
+        AsyncNode(AsyncNode copy) {
+            this.level = copy.level;
+        }
+
+        int getLevel() {
+            return level;
+        }
+
+        @Override
+        public boolean isInstrumentable() {
+            return true;
+        }
+
+        @Override
+        public SourceSection getSourceSection() {
+            return com.oracle.truffle.api.source.Source.newBuilder(ProxyLanguage.ID, "", "").build().createSection(1);
+        }
+
+        public void execute(@SuppressWarnings("unused") VirtualFrame frame) {
+        }
+
+        @Override
+        public InstrumentableNode.WrapperNode createWrapper(ProbeNode probe) {
+            return new AsyncNodeWrapper(this, this, probe);
+        }
+
+    }
+
+    @Test
+    public void testAsynchronousStacks4() throws IOException, InterruptedException {
+        String code = "ROOT(DEFINE(af11, ROOT(STATEMENT))," +
+                        "DEFINE(af12, ROOT(CALL(af11)))," +
+                        "DEFINE(af13, ROOT(CALL(af12)))," +
+                        "DEFINE(af14, ROOT(CALL(af13)))," +
+                        "DEFINE(af21, ROOT(STATEMENT, SPAWN(af14)))," +
+                        "DEFINE(af22, ROOT(CALL(af21)))," +
+                        "DEFINE(af23, ROOT(CALL(af22)))," +
+                        "DEFINE(af24, ROOT(CALL(af23)))," +
+                        "DEFINE(f1, ROOT(STATEMENT, SPAWN(af24)))," +
+                        "DEFINE(f2, ROOT(CALL(f1)))," +
+                        "DEFINE(f3, ROOT(CALL(f2)))," +
+                        "DEFINE(f4, ROOT(CALL(f3)))," +
+                        "CALL(f4))";
+        Source source = Source.create(InstrumentationTestLanguage.ID, code);
+        teardown();
+        CountDownLatch instrumentationFinished = new CountDownLatch(1);
+        Context asyncContext = Context.newBuilder().engine(Engine.create()).allowCreateThread(true).build();
+        AsynchronousStacksInstrument testInstrument = new AsynchronousStacksInstrument();
+        testInstrument.instrumentationFinished = instrumentationFinished;
+        setupEnv(asyncContext, new ProxyLanguage() {
+            // Not to block the context's thread access
+            @Override
+            protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+                return true;
+            }
+        }, testInstrument);
+        run(source);
+        instrumentationFinished.await();
+        run(Source.create(InstrumentationTestLanguage.ID, "JOIN()"));
+    }
+
+    public static class AsynchronousStacksInstrument extends ProxyInstrument {
+
+        private final int testDepth = 2;
+        private final int prgDepth = 4;
+        CountDownLatch instrumentationFinished;
+
+        @Override
+        protected void onCreate(TruffleInstrument.Env env) {
+            env.setAsynchronousStackDepth(testDepth);
+            env.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.newBuilder().tagIs(StandardTags.StatementTag.class).build(), new ExecutionEventListener() {
+
+                private int count = 0;
+
+                @Override
+                public void onEnter(EventContext ctx, VirtualFrame frame) {
+                    CallTarget[] lastCallTarget = new CallTarget[]{null};
+                    Frame[] lastFrame = new Frame[]{null};
+                    Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Void>() {
+                        @Override
+                        public Void visitFrame(FrameInstance frameInstance) {
+                            lastCallTarget[0] = frameInstance.getCallTarget();
+                            lastFrame[0] = frameInstance.getFrame(FrameInstance.FrameAccess.MATERIALIZE);
+                            return null;
+                        }
+                    });
+                    List<TruffleStackTraceElement> asyncStack = TruffleStackTrace.getAsynchronousStackTrace(lastCallTarget[0], lastFrame[0]);
+                    switch (count) {
+                        case 0:
+                            assertNull(asyncStack);
+                            break;
+                        case 1:
+                            assertEquals(testDepth, asyncStack.size());
+                            TruffleStackTraceElement lastElement = asyncStack.get(testDepth - 1);
+                            assertNull(lastElement.getFrame());
+                            env.setAsynchronousStackDepth(Integer.MAX_VALUE);
+                            break;
+                        case 2:
+                            assertEquals(prgDepth, asyncStack.size());
+                            lastElement = asyncStack.get(prgDepth - 1);
+                            asyncStack = TruffleStackTrace.getAsynchronousStackTrace(lastElement.getTarget(), lastElement.getFrame());
+                            assertEquals(testDepth, asyncStack.size());
+                            lastElement = asyncStack.get(testDepth - 1);
+                            assertNull(lastElement.getFrame());
+                            instrumentationFinished.countDown();
+                            break;
+                        default:
+                            throw new IllegalStateException(Integer.toString(count));
+                    }
+                    count++;
+                }
+
+                @Override
+                public void onReturnValue(EventContext ctx, VirtualFrame frame, Object result) {
+                }
+
+                @Override
+                public void onReturnExceptional(EventContext ctx, VirtualFrame frame, Throwable exception) {
+                }
+            });
+        }
     }
 
     private static final class MyKillException extends ThreadDeath {

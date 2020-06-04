@@ -1,4 +1,5 @@
-block_produce_const_value
+block_produce_const_long
+block_produce_const_int
 nested_produce_const_values
 nested_produce_result
 nested_three_blocks

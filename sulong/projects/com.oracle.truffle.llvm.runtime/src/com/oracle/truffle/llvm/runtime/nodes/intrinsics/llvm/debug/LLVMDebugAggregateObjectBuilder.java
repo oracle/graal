@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -38,7 +38,7 @@ import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
-final class LLVMDebugAggregateObjectBuilder extends LLVMDebugObjectBuilder {
+public final class LLVMDebugAggregateObjectBuilder extends LLVMDebugObjectBuilder {
 
     @CompilationFinal(dimensions = 1) private final int[] offsets;
     @CompilationFinal(dimensions = 1) private final int[] lengths;
@@ -46,7 +46,7 @@ final class LLVMDebugAggregateObjectBuilder extends LLVMDebugObjectBuilder {
     private final LLVMDebugValue.Builder[] partBuilders;
     private final Object[] partValues;
 
-    LLVMDebugAggregateObjectBuilder(int[] offsets, int[] lengths) {
+    public LLVMDebugAggregateObjectBuilder(int[] offsets, int[] lengths) {
         super();
         this.offsets = offsets;
         this.lengths = lengths;
@@ -54,21 +54,23 @@ final class LLVMDebugAggregateObjectBuilder extends LLVMDebugObjectBuilder {
         this.partValues = new Object[offsets.length];
     }
 
-    void setPart(int partIndex, LLVMDebugValue.Builder builder, Object value) {
+    public void setPart(int partIndex, LLVMDebugValue.Builder builder, Object value) {
         partBuilders[partIndex] = builder;
         partValues[partIndex] = value;
     }
 
-    void clear(int partIndex) {
-        partValues[partIndex] = null;
-        partBuilders[partIndex] = null;
+    public void clear(int[] clearIndices) {
+        for (int partIndex : clearIndices) {
+            partValues[partIndex] = null;
+            partBuilders[partIndex] = null;
+        }
     }
 
     @Override
     @TruffleBoundary
     public LLVMDebugObject getValue(LLVMSourceType type, LLVMSourceLocation declaration) {
         final LLVMDebugValue provider = new FragmentValueProvider(offsets, lengths, partBuilders, partValues);
-        return LLVMDebugObject.instantiate(type, 0, provider, declaration);
+        return LLVMDebugObject.create(type, 0, provider, declaration);
     }
 
     private static final class FragmentValueProvider implements LLVMDebugValue {

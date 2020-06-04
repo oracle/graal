@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.runtime.pointer;
 
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -43,11 +45,12 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
-import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignWriteNode;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignGetIndexPointerNode;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignGetMemberPointerNode;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignReadNode;
+import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignWriteNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMAddressEqualsNode.LLVMPointerEqualsNode;
 import com.oracle.truffle.llvm.spi.ReferenceLibrary;
 
@@ -64,7 +67,7 @@ abstract class CommonPointerLibraries {
     @ExportMessage
     @SuppressWarnings("unused")
     static Object getMembers(LLVMPointerImpl receiver, boolean includeInternal,
-                    @Shared("isObject") @Cached("createBinaryProfile()") ConditionProfile isObject) throws UnsupportedMessageException {
+                    @Shared("isObject") @Cached ConditionProfile isObject) throws UnsupportedMessageException {
         if (isObject.profile(receiver.getExportType() instanceof LLVMInteropType.Struct)) {
             LLVMInteropType.Struct struct = (LLVMInteropType.Struct) receiver.getExportType();
             return new Keys(struct);
@@ -75,7 +78,7 @@ abstract class CommonPointerLibraries {
 
     @ExportMessage
     static boolean isMemberReadable(LLVMPointerImpl receiver, String ident,
-                    @Shared("isObject") @Cached("createBinaryProfile()") ConditionProfile isObject) {
+                    @Shared("isObject") @Cached ConditionProfile isObject) {
         if (isObject.profile(receiver.getExportType() instanceof LLVMInteropType.Struct)) {
             LLVMInteropType.Struct struct = (LLVMInteropType.Struct) receiver.getExportType();
             LLVMInteropType.StructMember member = struct.findMember(ident);
@@ -95,7 +98,7 @@ abstract class CommonPointerLibraries {
 
     @ExportMessage
     static boolean isMemberModifiable(LLVMPointerImpl receiver, String ident,
-                    @Shared("isObject") @Cached("createBinaryProfile()") ConditionProfile isObject) {
+                    @Shared("isObject") @Cached ConditionProfile isObject) {
         if (isObject.profile(receiver.getExportType() instanceof LLVMInteropType.Struct)) {
             LLVMInteropType.Struct struct = (LLVMInteropType.Struct) receiver.getExportType();
             LLVMInteropType.StructMember member = struct.findMember(ident);
@@ -131,7 +134,7 @@ abstract class CommonPointerLibraries {
 
     @ExportMessage
     static long getArraySize(LLVMPointerImpl receiver,
-                    @Shared("isArray") @Cached("createBinaryProfile()") ConditionProfile isArray) throws UnsupportedMessageException {
+                    @Shared("isArray") @Cached ConditionProfile isArray) throws UnsupportedMessageException {
         if (isArray.profile(receiver.getExportType() instanceof LLVMInteropType.Array)) {
             return ((LLVMInteropType.Array) receiver.getExportType()).getLength();
         } else {
@@ -141,7 +144,7 @@ abstract class CommonPointerLibraries {
 
     @ExportMessage
     static boolean isArrayElementReadable(LLVMPointerImpl receiver, long idx,
-                    @Shared("isArray") @Cached("createBinaryProfile()") ConditionProfile isArray) {
+                    @Shared("isArray") @Cached ConditionProfile isArray) {
         if (isArray.profile(receiver.getExportType() instanceof LLVMInteropType.Array)) {
             long length = ((LLVMInteropType.Array) receiver.getExportType()).getLength();
             return Long.compareUnsigned(idx, length) < 0;
@@ -160,7 +163,7 @@ abstract class CommonPointerLibraries {
 
     @ExportMessage
     static boolean isArrayElementModifiable(LLVMPointerImpl receiver, long idx,
-                    @Shared("isArray") @Cached("createBinaryProfile()") ConditionProfile isArray) {
+                    @Shared("isArray") @Cached ConditionProfile isArray) {
         if (isArray.profile(receiver.getExportType() instanceof LLVMInteropType.Array)) {
             LLVMInteropType.Array arrayType = (LLVMInteropType.Array) receiver.getExportType();
             if (arrayType.getElementType() instanceof LLVMInteropType.Value) {
@@ -241,4 +244,36 @@ abstract class CommonPointerLibraries {
             return false;
         }
     }
+
+    @ExportMessage
+    @SuppressWarnings("unused")
+    static boolean hasLanguage(LLVMPointerImpl receiver) {
+        return true;
+    }
+
+    @ExportMessage
+    static Class<? extends TruffleLanguage<?>> getLanguage(@SuppressWarnings("unused") LLVMPointerImpl receiver) {
+        return LLVMLanguage.class;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    static String toDisplayString(LLVMPointerImpl receiver, @SuppressWarnings("unused") boolean allowSideEffects) {
+        return receiver.toString();
+    }
+
+    @ExportMessage
+    static Object getMetaObject(LLVMPointerImpl receiver) throws UnsupportedMessageException {
+        Object type = receiver.getExportType();
+        if (type != null) {
+            return type;
+        }
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    static boolean hasMetaObject(LLVMPointerImpl receiver) {
+        return receiver.getExportType() != null;
+    }
+
 }

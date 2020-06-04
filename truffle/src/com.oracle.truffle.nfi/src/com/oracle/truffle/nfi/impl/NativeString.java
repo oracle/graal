@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.nfi.impl;
 
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -93,5 +94,21 @@ class NativeString implements TruffleObject {
     @ExportMessage(name = "putString")
     void putPointer(NativeArgumentBuffer buffer, int ptrSize) {
         buffer.putPointer(nativePointer, ptrSize);
+    }
+
+    @ExportMessage
+    boolean hasLanguage() {
+        return true;
+    }
+
+    @ExportMessage
+    Class<? extends TruffleLanguage<?>> getLanguage() {
+        return NFILanguageImpl.class;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        return "NativeString(" + asString() + ")";
     }
 }

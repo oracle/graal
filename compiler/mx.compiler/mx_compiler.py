@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -430,7 +430,7 @@ class UnitTestRun:
                     extra_args = ['--verbose', '--enable-timing']
                 else:
                     extra_args = []
-                if 'coverage' not in self.tags:
+                if Task.tags is None or 'coverage' not in Task.tags:
                     # If this is a coverage execution, we want maximal coverage
                     # and thus must not fail fast.
                     extra_args += ['--fail-fast']
@@ -486,7 +486,7 @@ def _gate_java_benchmark(args, successRe):
         if jvmErrorFile:
             jvmErrorFile = jvmErrorFile.group()
             mx.log('Dumping ' + jvmErrorFile)
-            with open(jvmErrorFile, 'rb') as fp:
+            with open(jvmErrorFile) as fp:
                 mx.log(fp.read())
             os.unlink(jvmErrorFile)
 
@@ -663,6 +663,10 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
     # ensure -Xcomp still works
     with Task(prefix + 'XCompMode:product', tasks, tags=GraalTags.test) as t:
         if t: run_vm(_remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xcomp', '-version'])
+
+    # ensure -XX:+PreserveFramePointer  still works
+    with Task(prefix + 'DaCapo_pmd:PreserveFramePointer', tasks, tags=GraalTags.test) as t:
+        if t: _gate_dacapo('pmd', 4, _remove_empty_entries(extraVMarguments) + ['-XX:+UseJVMCICompiler', '-Xmx256M', '-XX:+PreserveFramePointer'], threads=4, force_serial_gc=False, set_start_heap_size=False)
 
     if isJDK8:
         # temporarily isolate those test (GR-10990)
@@ -1066,7 +1070,11 @@ def java_base_unittest(args):
             extra_args = ['--verbose', '--enable-timing']
         else:
             extra_args = []
-        mx_unittest.unittest(['--suite', 'compiler', '--fail-fast'] + extra_args + args)
+        # the base JDK doesn't include jdwp
+        if _graaljdk_override.debug_args:
+            mx.warn('Ignoring Java debugger arguments because base JDK doesn\'t include jdwp')
+        with mx.DisableJavaDebugging():
+            mx_unittest.unittest(['--suite', 'compiler', '--fail-fast'] + extra_args + args)
     finally:
         _graaljdk_override = None
 
@@ -1279,7 +1287,9 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
             module_dists = _graal_config().dists
             _check_using_latest_jars(module_dists)
             vendor_info = {'vendor-version' : vm_name}
-            jlink_new_jdk(jdk, tmp_dst_jdk_dir, module_dists, root_module_names=root_module_names, vendor_info=vendor_info)
+            # Setting dedup_legal_notices=False avoids due to license files conflicting
+            # when switching JAVA_HOME from an OpenJDK to an OracleJDK or vice versa between executions.
+            jlink_new_jdk(jdk, tmp_dst_jdk_dir, module_dists, root_module_names=root_module_names, vendor_info=vendor_info, dedup_legal_notices=False)
             jre_dir = tmp_dst_jdk_dir
             jvmci_dir = mx.ensure_dir_exists(join(jre_dir, 'lib', 'jvmci'))
             if export_truffle:
@@ -1390,20 +1400,11 @@ def _graal_config():
     return __graal_config
 
 def _jvmci_jars():
-    if not isJDK8 and _is_jaotc_supported():
-        return [
-            'compiler:GRAAL',
-            'compiler:GRAAL_MANAGEMENT',
-            'compiler:GRAAL_TRUFFLE_JFR_IMPL',
-            'compiler:JAOTC',
-        ]
-    else:
-        # JAOTC is JDK 9+
-        return [
-            'compiler:GRAAL',
-            'compiler:GRAAL_MANAGEMENT',
-            'compiler:GRAAL_TRUFFLE_JFR_IMPL',
-        ]
+    return [
+        'compiler:GRAAL',
+        'compiler:GRAAL_MANAGEMENT',
+        'compiler:GRAAL_TRUFFLE_JFR_IMPL',
+    ] + (['compiler:JAOTC'] if not isJDK8 and _is_jaotc_supported() else [])
 
 # The community compiler component
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJvmciComponent(
@@ -1415,8 +1416,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJvmciComponent(
     third_party_license_files=[],
     dependencies=['Truffle'],
     jar_distributions=[  # Dev jars (annotation processors)
-        'compiler:GRAAL_PROCESSOR_COMMON',
-        'compiler:GRAAL_OPTIONS_PROCESSOR',
         'compiler:GRAAL_PROCESSOR',
     ],
     jvmci_jars=_jvmci_jars(),

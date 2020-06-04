@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,12 +29,10 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 /**
  * Value-object that contains additional information when requesting references.
  */
-public class ReferenceContext {
-
-    final JSONObject jsonData;
+public class ReferenceContext extends JSONBase {
 
     ReferenceContext(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -69,8 +67,8 @@ public class ReferenceContext {
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 53 * hash + Boolean.hashCode(this.isIncludeDeclaration());
+        int hash = 5;
+        hash = 41 * hash + Boolean.hashCode(this.isIncludeDeclaration());
         return hash;
     }
 

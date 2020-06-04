@@ -40,35 +40,35 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.automaton.AbstractTransition;
-import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
-import com.oracle.truffle.regex.tregex.parser.ast.LookAheadAssertion;
-import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
+import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
+import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 /**
  * Represents a transition of a {@link PureNFA}.
  */
-public class PureNFATransition implements AbstractTransition<PureNFAState, PureNFATransition> {
+public final class PureNFATransition implements AbstractTransition<PureNFAState, PureNFATransition> {
 
-    private final short id;
+    private final int id;
     private final PureNFAState source;
     private final PureNFAState target;
     private final GroupBoundaries groupBoundaries;
-    private final StateSet<LookAheadAssertion> traversedLookAheads;
-    private final StateSet<LookBehindAssertion> traversedLookBehinds;
-    private final QuantifierGuard[] quantifierGuards;
+    private final boolean caretGuard;
+    private final boolean dollarGuard;
+    @CompilationFinal(dimensions = 1) private final QuantifierGuard[] quantifierGuards;
 
-    public PureNFATransition(short id, PureNFAState source, PureNFAState target, GroupBoundaries groupBoundaries,
-                    StateSet<LookAheadAssertion> traversedLookAheads,
-                    StateSet<LookBehindAssertion> traversedLookBehinds,
-                    QuantifierGuard[] quantifierGuards) {
+    public PureNFATransition(int id, PureNFAState source, PureNFAState target, GroupBoundaries groupBoundaries, boolean caretGuard, boolean dollarGuard, QuantifierGuard[] quantifierGuards) {
         this.id = id;
         this.source = source;
         this.target = target;
+        this.caretGuard = caretGuard;
         this.groupBoundaries = groupBoundaries;
-        this.traversedLookAheads = traversedLookAheads;
-        this.traversedLookBehinds = traversedLookBehinds;
+        this.dollarGuard = dollarGuard;
         this.quantifierGuards = quantifierGuards;
     }
 
@@ -95,27 +95,33 @@ public class PureNFATransition implements AbstractTransition<PureNFAState, PureN
     }
 
     /**
-     * Set of {@link LookAheadAssertion}s traversed by this transition. All
-     * {@link LookAheadAssertion}s contained in this set must match in order for this transition to
-     * be valid.<br>
-     * Example: in the expression {@code /a(?=b)[a-z]/} , {@link #getTraversedLookAheads()} of the
-     * transition from {@code a} to {@code [a-z]} will contain the look-ahead assertion
-     * {@code (?=b)}, so the regex matcher must check {@code (?=b)} before continuing to
-     * {@code [a-z]}.
+     * Transition is guarded by the "^" - {@link PositionAssertion}.
      */
-    public StateSet<LookAheadAssertion> getTraversedLookAheads() {
-        return traversedLookAheads;
+    public boolean hasCaretGuard() {
+        return caretGuard;
     }
 
     /**
-     * Set of {@link LookBehindAssertion}s traversed by this transition, analoguous to
-     * {@link #getTraversedLookAheads()}.
+     * Transition is guarded by the "$" - {@link PositionAssertion}.
      */
-    public StateSet<LookBehindAssertion> getTraversedLookBehinds() {
-        return traversedLookBehinds;
+    public boolean hasDollarGuard() {
+        return dollarGuard;
     }
 
     public QuantifierGuard[] getQuantifierGuards() {
         return quantifierGuards;
+    }
+
+    public boolean hasAnyGuards() {
+        return caretGuard || dollarGuard || quantifierGuards.length > 0;
+    }
+
+    @TruffleBoundary
+    public JsonValue toJson(RegexAST ast) {
+        return Json.obj(Json.prop("id", id),
+                        Json.prop("source", source.getId()),
+                        Json.prop("target", target.getId()),
+                        Json.prop("groupBoundaries", groupBoundaries),
+                        Json.prop("sourceSections", groupBoundaries.indexUpdateSourceSectionsToJson(ast)));
     }
 }

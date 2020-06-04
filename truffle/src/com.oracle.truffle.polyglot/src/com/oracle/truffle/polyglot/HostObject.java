@@ -55,8 +55,10 @@ import java.util.Objects;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
@@ -71,6 +73,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValueNode;
 
 @ExportLibrary(InteropLibrary.class)
@@ -152,17 +155,11 @@ final class HostObject implements TruffleObject {
     }
 
     boolean isArrayClass() {
-        if (isClass() && asClass().isArray()) {
-            return true;
-        }
-        return false;
+        return isClass() && asClass().isArray();
     }
 
     boolean isDefaultClass() {
-        if (isClass() && !asClass().isArray()) {
-            return true;
-        }
-        return false;
+        return isClass() && !asClass().isArray();
     }
 
     @ExportMessage
@@ -340,7 +337,8 @@ final class HostObject implements TruffleObject {
             writeField.execute(f, this, value);
         } catch (ClassCastException | NullPointerException e) {
             // conversion failed by ToJavaNode
-            throw UnsupportedTypeException.create(new Object[]{value});
+            CompilerDirectives.transferToInterpreter();
+            throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
         }
     }
 
@@ -444,9 +442,9 @@ final class HostObject implements TruffleObject {
             Object javaValue;
             try {
                 javaValue = toHostNode.execute(value, obj.getClass().getComponentType(), null, receiver.languageContext, true);
-            } catch (ClassCastException | NullPointerException e) {
+            } catch (PolyglotEngineException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
+                throw UnsupportedTypeException.create(new Object[]{value}, e.e.getMessage());
             }
             try {
                 arraySet.execute(obj, (int) index, javaValue);
@@ -466,9 +464,9 @@ final class HostObject implements TruffleObject {
             Object javaValue;
             try {
                 javaValue = toHostNode.execute(value, Object.class, null, receiver.languageContext, true);
-            } catch (ClassCastException | NullPointerException e) {
+            } catch (PolyglotEngineException e) {
                 CompilerDirectives.transferToInterpreter();
-                throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
+                throw UnsupportedTypeException.create(new Object[]{value}, e.e.getMessage());
             }
             try {
                 List<Object> list = ((List<Object>) receiver.obj);
@@ -691,15 +689,12 @@ final class HostObject implements TruffleObject {
                         @Shared("lookupConstructor") @Cached LookupConstructorNode lookupConstructor,
                         @Shared("hostExecute") @Cached HostExecuteNode executeMethod) throws UnsupportedMessageException, UnsupportedTypeException, ArityException {
             assert !receiver.isArrayClass();
-            if (receiver.isClass()) {
-                HostMethodDesc constructor = lookupConstructor.execute(receiver, receiver.asClass());
-                if (constructor != null) {
-                    return executeMethod.execute(constructor, null, arguments, receiver.languageContext);
-                }
+            HostMethodDesc constructor = lookupConstructor.execute(receiver, receiver.asClass());
+            if (constructor != null) {
+                return executeMethod.execute(constructor, null, arguments, receiver.languageContext);
             }
             throw UnsupportedMessageException.create();
         }
-
     }
 
     @ExportMessage
@@ -960,6 +955,141 @@ final class HostObject implements TruffleObject {
         throw UnsupportedMessageException.create();
     }
 
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean hasLanguage() {
+        return true;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    Class<? extends TruffleLanguage<?>> getLanguage() {
+        return HostLanguage.class;
+    }
+
+    @ExportMessage
+    String toDisplayString(boolean allowSideEffects) {
+        return toStringImpl(languageContext, this.obj, 0, allowSideEffects);
+    }
+
+    @TruffleBoundary
+    static String toStringImpl(PolyglotLanguageContext context, Object javaObject, int level, boolean allowSideEffects) {
+        try {
+            if (javaObject == null) {
+                return "null";
+            } else if (javaObject.getClass().isArray()) {
+                return arrayToString(context, javaObject, level, allowSideEffects);
+            } else if (javaObject instanceof Class) {
+                return ((Class<?>) javaObject).getTypeName();
+            } else {
+                if (allowSideEffects) {
+                    return Objects.toString(javaObject);
+                } else {
+                    return javaObject.getClass().getTypeName() + "@" + Integer.toHexString(System.identityHashCode(javaObject));
+                }
+            }
+        } catch (Throwable t) {
+            throw PolyglotImpl.hostToGuestException(context, t);
+        }
+    }
+
+    private static String arrayToString(PolyglotLanguageContext context, Object array, int level, boolean allowSideEffects) {
+        if (array == null) {
+            return "null";
+        }
+        if (level > 0) {
+            // avoid recursions all together
+            return "[...]";
+        }
+        int iMax = Array.getLength(array) - 1;
+        if (iMax == -1) {
+            return "[]";
+        }
+
+        StringBuilder b = new StringBuilder();
+        b.append('[');
+        for (int i = 0;; i++) {
+            Object arrayValue = Array.get(array, i);
+            b.append(toStringImpl(context, arrayValue, level + 1, allowSideEffects));
+            if (i == iMax) {
+                return b.append(']').toString();
+            }
+            b.append(", ");
+        }
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean hasMetaObject() {
+        return true;
+    }
+
+    @ExportMessage
+    Object getMetaObject() throws UnsupportedMessageException {
+        Object javaObject = this.obj;
+        Class<?> javaType;
+        if (javaObject == null) {
+            javaType = Void.class;
+        } else {
+            javaType = javaObject.getClass();
+        }
+        return HostObject.forClass(javaType, languageContext);
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean isMetaObject() {
+        return isClass();
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    Object getMetaQualifiedName() throws UnsupportedMessageException {
+        if (isClass()) {
+            return asClass().getTypeName();
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    Object getMetaSimpleName() throws UnsupportedMessageException {
+        if (isClass()) {
+            return asClass().getSimpleName();
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    boolean isMetaInstance(Object other) throws UnsupportedMessageException {
+        if (isClass()) {
+            Class<?> c = asClass();
+            if (HostObject.isInstance(other)) {
+                HostObject otherHost = ((HostObject) other);
+                if (otherHost.isNull()) {
+                    return c == Void.class;
+                } else {
+                    return c.isInstance(otherHost.obj);
+                }
+            } else if (PolyglotProxy.isProxyGuestObject(other)) {
+                PolyglotProxy otherHost = (PolyglotProxy) other;
+                return c.isInstance(otherHost.proxy);
+            } else {
+                boolean canConvert = ToHostNode.canConvert(other, c, c,
+                                ToHostNode.allowsImplementation(languageContext, c),
+                                languageContext, ToHostNode.MAX,
+                                InteropLibrary.getFactory().getUncached(other),
+                                TargetMappingNode.getUncached());
+                return canConvert;
+            }
+        } else {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
     boolean isStaticClass() {
         return extraInfo instanceof Class<?>;
     }
@@ -1001,6 +1131,25 @@ final class HostObject implements TruffleObject {
 
     HostClassCache getHostClassCache() {
         return HostClassCache.forInstance(this);
+    }
+
+    @ExportMessage
+    static final class IsIdenticalOrUndefined {
+        @Specialization
+        static TriState doHostObject(HostObject receiver, HostObject other) {
+            return receiver.obj == other.obj ? TriState.TRUE : TriState.FALSE;
+        }
+
+        @Fallback
+        static TriState doOther(HostObject receiver, Object other) {
+            return TriState.UNDEFINED;
+        }
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    static int identityHashCode(HostObject receiver) {
+        return System.identityHashCode(receiver.obj);
     }
 
     @Override
@@ -1295,23 +1444,34 @@ final class HostObject implements TruffleObject {
         @Specialization(guards = {"field == cachedField"}, limit = "LIMIT")
         static void doCached(HostFieldDesc field, HostObject object, Object rawValue,
                         @Cached("field") HostFieldDesc cachedField,
-                        @Cached ToHostNode toHost) throws UnsupportedTypeException, UnknownIdentifierException {
-            Object value;
-            try {
-                value = toHost.execute(rawValue, cachedField.getType(), cachedField.getGenericType(), object.languageContext, true);
-            } catch (ClassCastException | NullPointerException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw UnsupportedTypeException.create(new Object[]{rawValue}, e.getMessage());
+                        @Cached ToHostNode toHost,
+                        @Cached BranchProfile errorBranch) throws UnsupportedTypeException, UnknownIdentifierException {
+            if (field.isFinal()) {
+                errorBranch.enter();
+                throw UnknownIdentifierException.create(field.getName());
             }
-            cachedField.set(object.obj, value);
+            try {
+                Object value = toHost.execute(rawValue, cachedField.getType(), cachedField.getGenericType(), object.languageContext, true);
+                cachedField.set(object.obj, value);
+            } catch (PolyglotEngineException e) {
+                errorBranch.enter();
+                throw HostInteropErrors.unsupportedTypeException(rawValue, e.e);
+            }
         }
 
         @Specialization(replaces = "doCached")
         @TruffleBoundary
         static void doUncached(HostFieldDesc field, HostObject object, Object rawValue,
                         @Cached ToHostNode toHost) throws UnsupportedTypeException, UnknownIdentifierException {
-            Object val = toHost.execute(rawValue, field.getType(), field.getGenericType(), object.languageContext, true);
-            field.set(object.obj, val);
+            if (field.isFinal()) {
+                throw UnknownIdentifierException.create(field.getName());
+            }
+            try {
+                Object val = toHost.execute(rawValue, field.getType(), field.getGenericType(), object.languageContext, true);
+                field.set(object.obj, val);
+            } catch (PolyglotEngineException e) {
+                throw HostInteropErrors.unsupportedTypeException(rawValue, e.e);
+            }
         }
     }
 

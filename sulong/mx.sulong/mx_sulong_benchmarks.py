@@ -30,7 +30,7 @@
 import re
 import shutil
 
-import mx, mx_benchmark, mx_sulong, mx_buildtools
+import mx, mx_benchmark, mx_sulong
 import os
 from os.path import join, exists
 
@@ -235,11 +235,10 @@ class ClangVm(GccLikeVm):
         return "clang"
 
     def compiler_name(self):
-        mx_sulong.ensureLLVMBinariesExist()
-        return mx_sulong.findLLVMProgram(mx_buildtools.ClangCompiler.CLANG)
+        return "clang"
 
     def c_compiler_exe(self):
-        return mx_buildtools.ClangCompiler.CLANG
+        return os.path.join(mx.distribution("LLVM_TOOLCHAIN").get_output(), "bin", "clang")
 
 
 class SulongVm(CExecutionEnvironmentMixin, GuestVm):
@@ -299,7 +298,7 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
         launcher_args = [
             '--experimental-options',
             '--engine.InliningNodeBudget=10000',
-            '--engine.CompilationExceptionsAreFatal',
+            '--engine.CompilationFailureAction=ExitVM',
         ]
         return launcher_args + args
 

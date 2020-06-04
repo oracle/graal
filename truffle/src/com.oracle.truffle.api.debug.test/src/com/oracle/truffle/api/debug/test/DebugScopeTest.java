@@ -84,13 +84,13 @@ public class DebugScopeTest extends AbstractDebugTest {
                 assertNotNull(topScope);
                 DebugValue function1 = topScope.getDeclaredValue("function1");
                 assertNotNull(function1);
-                assertTrue(function1.as(String.class).contains("Function"));
+                assertTrue(function1.toDisplayString().contains("Function"));
                 DebugValue functionType = function1.getMetaObject();
-                assertEquals("Function", functionType.as(String.class));
+                assertEquals("Function", functionType.toDisplayString());
                 assertEquals(function1.getOriginalLanguage(), functionType.getOriginalLanguage());
                 DebugValue g = topScope.getDeclaredValue("g");
                 assertNotNull(g);
-                assertTrue(g.as(String.class).contains("Function"));
+                assertTrue(g.toDisplayString().contains("Function"));
             });
 
             expectDone();
@@ -117,11 +117,11 @@ public class DebugScopeTest extends AbstractDebugTest {
             assertTrue(iterator.hasNext());
             DebugValue arg = iterator.next();
             assertEquals("0", arg.getName());
-            assertEquals("true", arg.as(String.class));
+            assertEquals("true", arg.toDisplayString());
             assertTrue(iterator.hasNext());
             arg = iterator.next();
             assertEquals("1", arg.getName());
-            assertEquals("10", arg.as(String.class));
+            assertEquals("10", arg.toDisplayString());
             assertFalse(iterator.hasNext());
             event.prepareContinue();
             suspended[0] = true;
@@ -164,7 +164,7 @@ public class DebugScopeTest extends AbstractDebugTest {
                 DebugStackFrame frame = event.getTopStackFrame();
                 DebugValue receiver = frame.getScope().getReceiver();
                 assertEquals("THIS", receiver.getName());
-                assertEquals(42, receiver.as(Number.class).intValue());
+                assertEquals(42, receiver.asInt());
             });
             expectDone();
         }

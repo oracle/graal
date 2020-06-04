@@ -25,15 +25,16 @@
 package com.oracle.svm.core.genscavenge;
 
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionType;
 
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 
-public class HeapOptions {
+public final class HeapOptions {
     @Option(help = "Print the shape of the heap before and after each collection, if +VerboseGC.")//
     public static final RuntimeOptionKey<Boolean> PrintHeapShape = new RuntimeOptionKey<>(false);
 
-    @Option(help = "Print summary GC information after main completion")//
+    @Option(help = "Print summary GC information after application main method returns.")//
     public static final RuntimeOptionKey<Boolean> PrintGCSummary = new RuntimeOptionKey<>(false);
 
     @Option(help = "Print a time stamp at each collection, if +PrintGC or +VerboseGC.")//
@@ -42,11 +43,10 @@ public class HeapOptions {
     @Option(help = "Print the time for each of the phases of each collection, if +VerboseGC.")//
     public static final RuntimeOptionKey<Boolean> PrintGCTimes = new RuntimeOptionKey<>(false);
 
-    /** This produces a lot of output: be prepared to stream the output to a post-processor. */
-    @Option(help = "Trace each object promotion.")//
+    @Option(help = "Trace each object promotion (generates significant amounts of output).")//
     public static final HostedOptionKey<Boolean> TraceObjectPromotion = new HostedOptionKey<>(false);
 
-    @Option(help = "Verify the heap before and after each collection.")//
+    @Option(help = "Failed verification of the heap (if enabled) causes termination.")//
     public static final RuntimeOptionKey<Boolean> HeapVerificationFailureIsFatal = new RuntimeOptionKey<>(true);
 
     @Option(help = "Verify the heap before each collection.")//
@@ -58,10 +58,10 @@ public class HeapOptions {
     @Option(help = "Trace heap verification.")//
     public static final HostedOptionKey<Boolean> TraceHeapVerification = new HostedOptionKey<>(false);
 
-    @Option(help = "Verify the stack before each collection.")//
+    @Option(help = "Verify stacks before each collection.")//
     public static final HostedOptionKey<Boolean> VerifyStackBeforeCollection = new HostedOptionKey<>(false);
 
-    @Option(help = "Verify the stack after each collection.")//
+    @Option(help = "Verify stacks after each collection.")//
     public static final HostedOptionKey<Boolean> VerifyStackAfterCollection = new HostedOptionKey<>(false);
 
     @Option(help = "Trace stack verification.")//
@@ -72,4 +72,11 @@ public class HeapOptions {
 
     @Option(help = "Verify dirty cards after each collection.") //
     public static final HostedOptionKey<Boolean> VerifyDirtyCardsAfterCollection = new HostedOptionKey<>(false);
+
+    @Option(help = "Soft references: this number of milliseconds multiplied by the free heap memory in MByte is the time span " +
+                    "for which a soft reference will keep its referent alive after its last access.", type = OptionType.Expert) //
+    public static final HostedOptionKey<Integer> SoftRefLRUPolicyMSPerMB = new HostedOptionKey<>(1000);
+
+    private HeapOptions() {
+    }
 }

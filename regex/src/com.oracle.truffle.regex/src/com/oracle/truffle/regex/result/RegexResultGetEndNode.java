@@ -64,7 +64,7 @@ abstract class RegexResultGetEndNode extends Node {
 
     @Specialization
     static int doSingleResult(SingleResult receiver, int groupNumber,
-                    @Cached("createBinaryProfile()") ConditionProfile boundsProfile) {
+                    @Cached ConditionProfile boundsProfile) {
         if (boundsProfile.profile(groupNumber == 0)) {
             return receiver.getEnd();
         } else {
@@ -74,7 +74,7 @@ abstract class RegexResultGetEndNode extends Node {
 
     @Specialization
     static int doSingleResultLazyStart(SingleResultLazyStart receiver, int groupNumber,
-                    @Cached("createBinaryProfile()") ConditionProfile boundsProfile) {
+                    @Cached ConditionProfile boundsProfile) {
         if (boundsProfile.profile(groupNumber == 0)) {
             return receiver.getEnd();
         } else {

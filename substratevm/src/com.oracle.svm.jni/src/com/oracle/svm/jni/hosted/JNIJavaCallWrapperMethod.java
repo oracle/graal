@@ -248,7 +248,9 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
                 returnValue = kit.boxObjectInLocalHandle(returnValue);
             }
         }
-        kit.append(new CEntryPointLeaveNode(LeaveAction.Leave));
+        kit.appendStateSplitProxy(state);
+        CEntryPointLeaveNode leave = new CEntryPointLeaveNode(LeaveAction.Leave);
+        kit.append(leave);
         kit.createReturn(returnValue, returnKind);
 
         return kit.finalizeGraph();
@@ -323,9 +325,9 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
         }
         javaIndex += metaAccess.lookupJavaType(JNIMethodId.class).getJavaKind().getSlotCount();
         int count = invokeSignature.getParameterCount(false);
-        // Windows CallVariant.VA_LIST is identical to CallVariant.ARRAY
+        // Windows and iOS CallVariant.VA_LIST is identical to CallVariant.ARRAY
         // iOS CallVariant.VARARGS stores values as an array on the stack
-        if ((OS.getCurrent() == OS.DARWIN && Platform.includedIn(Platform.AARCH64.class) && callVariant == CallVariant.VARARGS) ||
+        if ((OS.getCurrent() == OS.DARWIN && Platform.includedIn(Platform.AARCH64.class) && (callVariant == CallVariant.VARARGS || callVariant == CallVariant.VA_LIST)) ||
                         (OS.getCurrent() == OS.WINDOWS && callVariant == CallVariant.VA_LIST) || callVariant == CallVariant.ARRAY) {
             ResolvedJavaType elementType = metaAccess.lookupJavaType(JNIValue.class);
             int elementSize = SizeOf.get(JNIValue.class);
@@ -338,7 +340,7 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
             for (int i = 0; i < count; i++) {
                 ResolvedJavaType type = (ResolvedJavaType) invokeSignature.getParameterType(i, null);
                 JavaKind readKind = type.getJavaKind();
-                if (callVariant == CallVariant.VARARGS && readKind == JavaKind.Float) {
+                if (readKind == JavaKind.Float && (callVariant == CallVariant.VARARGS || callVariant == CallVariant.VA_LIST)) {
                     readKind = JavaKind.Double;
                 }
                 StructFieldInfo fieldInfo = getJNIValueOffsetOf(elementType, readKind);
@@ -352,7 +354,7 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
                 Stamp readStamp = getNarrowStamp(providers, readKind);
                 ValueNode value = kit.append(new CInterfaceReadNode(address, locationIdentity, readStamp, BarrierType.NONE, "args[" + i + "]"));
                 JavaKind stackKind = readKind.getStackKind();
-                if (callVariant == CallVariant.VARARGS && type.getJavaKind() == JavaKind.Float) {
+                if (type.getJavaKind() == JavaKind.Float && (callVariant == CallVariant.VARARGS || callVariant == CallVariant.VA_LIST)) {
                     value = kit.unique(new FloatConvertNode(FloatConvert.D2F, value));
                 } else if (readKind != stackKind) {
                     assert stackKind.getBitCount() > readKind.getBitCount() : "read kind must be narrower than stack kind";

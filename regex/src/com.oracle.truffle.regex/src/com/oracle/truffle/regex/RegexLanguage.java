@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -128,14 +128,9 @@ public final class RegexLanguage extends TruffleLanguage<RegexLanguage.RegexCont
         return Collections.emptySet();
     }
 
-    @Override
-    protected boolean isObjectOfLanguage(Object object) {
-        return object instanceof RegexLanguageObject;
-    }
-
     /**
      * {@link RegexLanguage} is thread-safe - it supports parallel parsing requests as well as
-     * parallel access to all {@link RegexLanguageObject}s. Parallel access to
+     * parallel access to all {@link AbstractRegexObject}s. Parallel access to
      * {@link com.oracle.truffle.regex.result.LazyCaptureGroupsResult} objects may lead to duplicate
      * execution of code, but no wrong results.
      *

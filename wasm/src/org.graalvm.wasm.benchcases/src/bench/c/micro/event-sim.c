@@ -570,7 +570,7 @@ int simulate() {
   return (int) checksum;
 }
 
-int benchmarkWarmupCount() {
+int benchmarkIterationsCount() {
   return 20;
 }
 
@@ -580,7 +580,7 @@ void benchmarkSetupOnce() {
 void benchmarkSetupEach() {
 }
 
-void benchmarkTeardownEach() {
+void benchmarkTeardownEach(char* outputFile) {
 }
 
 int benchmarkRun() {

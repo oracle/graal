@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -73,10 +73,14 @@ public class EventBinding<T> {
     private final AbstractInstrumenter instrumenter;
     private final T element;
 
+    volatile boolean disposing;
     /* language bindings needs special treatment. */
     private volatile boolean disposed;
 
     EventBinding(AbstractInstrumenter instrumenter, T element) {
+        if (element == null) {
+            throw new NullPointerException();
+        }
         this.instrumenter = instrumenter;
         this.element = element;
     }
@@ -108,9 +112,14 @@ public class EventBinding<T> {
     public synchronized void dispose() {
         CompilerAsserts.neverPartOfCompilation();
         if (!disposed) {
+            disposing = true;
             instrumenter.disposeBinding(this);
             disposed = true;
         }
+    }
+
+    synchronized void setDisposingBulk() {
+        this.disposing = true;
     }
 
     synchronized void disposeBulk() {
@@ -189,7 +198,7 @@ public class EventBinding<T> {
                 return false;
             }
 
-            if (isInstrumentedLeaf(providedTags, parent, parentSourceSection) && inputFilter.isInstrumentedNode(providedTags, current, currentSourceSection)) {
+            if (isInstrumentedLeaf(providedTags, parent, parentSourceSection) && isInstrumentedNodeWithInputFilter(providedTags, current, currentSourceSection)) {
                 return isInstrumentedRoot(providedTags, rootNode, rootNode.getSourceSection(), 0);
             }
             return false;
@@ -208,22 +217,68 @@ public class EventBinding<T> {
             } else if (!InstrumentationHandler.isInstrumentableNode(parent)) {
                 return false;
             }
-            if (isInstrumentedLeaf(providedTags, parent, parentSourceSection) && inputFilter.isInstrumentedNode(providedTags, current, currentSourceSection)) {
+            if (isInstrumentedLeaf(providedTags, parent, parentSourceSection) && isInstrumentedNodeWithInputFilter(providedTags, current, currentSourceSection)) {
                 return true;
             }
             return false;
         }
 
+        private boolean isInstrumentedNodeWithInputFilter(Set<Class<?>> providedTags, Node current, SourceSection currentSourceSection) {
+            try {
+                return inputFilter.isInstrumentedNode(providedTags, current, currentSourceSection);
+            } catch (Throwable t) {
+                if (isLanguageBinding()) {
+                    throw t;
+                } else {
+                    ProbeNode.exceptionEventForClientInstrument(this, inputFilter.toString(), t);
+                    return false;
+                }
+            }
+        }
+
         boolean isInstrumentedRoot(Set<Class<?>> providedTags, RootNode rootNode, SourceSection rootSourceSection, int rootNodeBits) {
-            return getInstrumenter().isInstrumentableRoot(rootNode) && getFilter().isInstrumentedRoot(providedTags, rootSourceSection, rootNode, rootNodeBits);
+            if (!getInstrumenter().isInstrumentableRoot(rootNode)) {
+                return false;
+            }
+            try {
+                return getFilter().isInstrumentedRoot(providedTags, rootSourceSection, rootNode, rootNodeBits);
+            } catch (Throwable t) {
+                if (isLanguageBinding()) {
+                    throw t;
+                } else {
+                    ProbeNode.exceptionEventForClientInstrument(this, getFilter().toString(), t);
+                    return false;
+                }
+            }
         }
 
         boolean isInstrumentedLeaf(Set<Class<?>> providedTags, Node instrumentedNode, SourceSection section) {
-            return getFilter().isInstrumentedNode(providedTags, instrumentedNode, section);
+            try {
+                return getFilter().isInstrumentedNode(providedTags, instrumentedNode, section);
+            } catch (Throwable t) {
+                if (isLanguageBinding()) {
+                    throw t;
+                } else {
+                    ProbeNode.exceptionEventForClientInstrument(this, getFilter().toString(), t);
+                    return false;
+                }
+            }
         }
 
         boolean isInstrumentedSource(com.oracle.truffle.api.source.Source source) {
-            return getInstrumenter().isInstrumentableSource(source) && getFilter().isInstrumentedSource(source);
+            if (!getInstrumenter().isInstrumentableSource(source)) {
+                return false;
+            }
+            try {
+                return getFilter().isInstrumentedSource(source);
+            } catch (Throwable t) {
+                if (isLanguageBinding()) {
+                    throw t;
+                } else {
+                    ProbeNode.exceptionEventForClientInstrument(this, getFilter().toString(), t);
+                    return false;
+                }
+            }
         }
 
         boolean isExecutionEvent() {

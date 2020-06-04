@@ -31,17 +31,21 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.graalvm.component.installer.DownloadURLIterable.DownloadURLParam;
 import org.graalvm.component.installer.jar.JarArchive;
+import org.graalvm.component.installer.model.CatalogContents;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.remote.FileDownloader;
 import org.graalvm.component.installer.persist.MetadataLoader;
 import org.graalvm.component.installer.persist.ProxyResource;
 import org.graalvm.component.installer.persist.test.Handler;
+import org.graalvm.component.installer.remote.RemoteCatalogDownloader;
 import org.junit.After;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -286,6 +290,101 @@ public class CatalogIterableTest extends CommandTestBase {
         exception.expectMessage("REMOTE_ErrorDownloadingNotExist");
 
         rubyComp.createFileLoader().getComponentInfo();
+    }
+
+    private static final String TEST_CATALOG_URL = "test://release/catalog.properties";
+    private RemoteCatalogDownloader downloader;
+
+    private void setupCatalog() throws Exception {
+        this.storage.graalInfo.put(BundleConstants.GRAAL_VERSION, "19.3-dev");
+        String relSpec = "commands/cataloginstallDeps.properties";
+        URL u = getClass().getResource(relSpec);
+        Handler.bind(TEST_CATALOG_URL, u);
+
+        downloader = new RemoteCatalogDownloader(this, this, new URL(TEST_CATALOG_URL));
+        this.registry = new CatalogContents(this, downloader.getStorage(), getLocalRegistry());
+    }
+
+    /**
+     * Checks that a parameter without wildcards will act as a literal.
+     */
+    @Test
+    public void testNoWildcards() throws Exception {
+        setupCatalog();
+        textParams.add("ruby");
+        CatalogIterable cit = new CatalogIterable(this, this);
+        Iterator<ComponentParam> comps = cit.iterator();
+        ComponentParam c;
+
+        c = comps.next();
+        assertFalse(comps.hasNext());
+        assertEquals("org.graalvm.ruby", c.createMetaLoader().getComponentInfo().getId());
+    }
+
+    @Test
+    public void testAllComponents() throws Exception {
+        setupCatalog();
+        textParams.add("*");
+        CatalogIterable cit = new CatalogIterable(this, this);
+        Iterator<ComponentParam> comps = cit.iterator();
+
+        List<String> fullIds = new ArrayList<>();
+        for (; comps.hasNext();) {
+            ComponentParam cp = comps.next();
+            fullIds.add(cp.createMetaLoader().getComponentInfo().getId());
+        }
+        assertEquals(5, fullIds.size());
+    }
+
+    @Test
+    public void testSelectSomeComponents() throws Exception {
+        setupCatalog();
+        textParams.add("*mage");
+        textParams.add("llvm*");
+        CatalogIterable cit = new CatalogIterable(this, this);
+        Iterator<ComponentParam> comps = cit.iterator();
+
+        List<String> fullIds = new ArrayList<>();
+        for (; comps.hasNext();) {
+            ComponentParam cp = comps.next();
+            fullIds.add(cp.createMetaLoader().getComponentInfo().getId());
+        }
+        assertEquals(2, fullIds.size());
+    }
+
+    @Test
+    public void testWildardSorted() throws Exception {
+        setupCatalog();
+        textParams.add("r*");
+        CatalogIterable cit = new CatalogIterable(this, this);
+        Iterator<ComponentParam> comps = cit.iterator();
+
+        List<String> fullIds = new ArrayList<>();
+        for (; comps.hasNext();) {
+            ComponentParam cp = comps.next();
+            fullIds.add(cp.createMetaLoader().getComponentInfo().getId());
+        }
+        assertEquals(2, fullIds.size());
+        assertEquals("org.graalvm.r", fullIds.get(0));
+        assertEquals("org.graalvm.ruby", fullIds.get(1));
+    }
+
+    @Test
+    public void testMixWildcardsAndLiterals() throws Exception {
+        setupCatalog();
+        textParams.add("r*");
+        textParams.add("ruby");
+        CatalogIterable cit = new CatalogIterable(this, this);
+        Iterator<ComponentParam> comps = cit.iterator();
+
+        List<String> fullIds = new ArrayList<>();
+        for (; comps.hasNext();) {
+            ComponentParam cp = comps.next();
+            fullIds.add(cp.createMetaLoader().getComponentInfo().getId());
+        }
+        assertEquals(3, fullIds.size());
+        assertEquals("org.graalvm.ruby", fullIds.get(1));
+        assertEquals("org.graalvm.ruby", fullIds.get(2));
     }
 
     @Override

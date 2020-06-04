@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -123,7 +123,7 @@ public final class NativeLibrarySupport {
             if (loadLibrary0(libpath, false)) {
                 return;
             }
-            File altpath = Target_java_lang_ClassLoaderHelper.mapAlternativeName(libpath);
+            File altpath = Target_jdk_internal_loader_ClassLoaderHelper.mapAlternativeName(libpath);
             if (altpath != null && loadLibrary0(libpath, false)) {
                 return;
             }
@@ -141,7 +141,7 @@ public final class NativeLibrarySupport {
         return addLibrary(asBuiltin, canonical, true);
     }
 
-    private boolean addLibrary(boolean asBuiltin, String canonical, boolean loadAndInitialize) {
+    private boolean addLibrary(boolean asBuiltin, String canonical, boolean initialize) {
         lock.lock();
         try {
             NativeLibrary lib = null;
@@ -171,19 +171,22 @@ public final class NativeLibrarySupport {
                 lib = PlatformNativeLibrarySupport.singleton().createLibrary(canonical, asBuiltin);
                 created = true;
             }
-            if (loadAndInitialize) {
-                currentLoadContext.push(lib);
-                try {
-                    if (!lib.load()) {
-                        return false;
-                    }
-                    if (libraryInitializer != null) {
-                        libraryInitializer.initialize(lib);
-                    }
-                } finally {
-                    NativeLibrary top = currentLoadContext.pop();
-                    assert top == lib;
+            currentLoadContext.push(lib);
+            try {
+                if (!lib.load()) {
+                    return false;
                 }
+                /*
+                 * Initialization of a library must be skipped if it can be initialized at most once
+                 * per process and another isolate has already initialized it. However, the library
+                 * must be (marked as) loaded above so it cannot be loaded and initialized later.
+                 */
+                if (initialize && libraryInitializer != null) {
+                    libraryInitializer.initialize(lib);
+                }
+            } finally {
+                NativeLibrary top = currentLoadContext.pop();
+                assert top == lib;
             }
             if (created) {
                 knownLibraries.add(lib);
@@ -210,6 +213,7 @@ public final class NativeLibrarySupport {
     }
 
     public void registerInitializedBuiltinLibrary(String name) {
-        addLibrary(true, name, false);
+        boolean success = addLibrary(true, name, false);
+        assert success;
     }
 }

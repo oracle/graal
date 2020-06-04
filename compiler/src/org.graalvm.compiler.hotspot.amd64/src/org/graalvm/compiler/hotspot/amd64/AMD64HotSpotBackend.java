@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -170,6 +170,9 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
                 } else {
                     asm.decrementq(rsp, frameSize);
                 }
+                if (config.MARKID_FRAME_COMPLETE != -1) {
+                    crb.recordMark(config.MARKID_FRAME_COMPLETE);
+                }
                 if (ZapStackOnMethodEntry.getValue(crb.getOptions())) {
                     final int intSize = 4;
                     for (int i = 0; i < frameSize / intSize; ++i) {
@@ -210,10 +213,11 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
         assert gen.getDeoptimizationRescueSlot() == null || frameMap.frameNeedsAllocating() : "method that can deoptimize must have a frame";
         OptionValues options = lir.getOptions();
         DebugContext debug = lir.getDebug();
-        boolean omitFrame = CanOmitFrame.getValue(options) && !frameMap.frameNeedsAllocating() && !lir.hasArgInCallerFrame() && !gen.hasForeignCall();
+        boolean omitFrame = CanOmitFrame.getValue(options) && !frameMap.frameNeedsAllocating() && !lir.hasArgInCallerFrame() && !gen.hasForeignCall() &&
+                        !((AMD64FrameMap) frameMap).useStandardFrameProlog();
 
         Stub stub = gen.getStub();
-        AMD64MacroAssembler masm = new AMD64MacroAssembler(getTarget(), options);
+        AMD64MacroAssembler masm = new AMD64MacroAssembler(getTarget(), options, config.CPU_HAS_INTEL_JCC_ERRATUM);
         masm.setCodePatchShifter(compilationResult::shiftCodePatch);
         HotSpotFrameContext frameContext = new HotSpotFrameContext(stub != null, omitFrame, config.preserveFramePointer);
         DataBuilder dataBuilder = new HotSpotDataBuilder(getCodeCache().getTarget());

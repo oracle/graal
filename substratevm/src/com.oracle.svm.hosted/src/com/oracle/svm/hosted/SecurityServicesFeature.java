@@ -109,6 +109,15 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
         ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(clazz(access, "sun.security.provider.SeedGenerator"), "for substitutions");
         ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(clazz(access, "sun.security.provider.SecureRandom$SeederHolder"), "for substitutions");
 
+        if (JavaVersionUtil.JAVA_SPEC >= 11) {
+            /*
+             * sun.security.provider.AbstractDrbg$SeederHolder has a static final EntropySource
+             * seeder field that needs to be re-initialized at run time because it captures the
+             * result of SeedGenerator.getSystemEntropy().
+             */
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(clazz(access, "sun.security.provider.AbstractDrbg$SeederHolder"), "for substitutions");
+        }
+
         if (JavaVersionUtil.JAVA_SPEC > 8) {
             ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(clazz(access, "sun.security.provider.FileInputStreamPool"), "for substitutions");
         }
@@ -242,10 +251,10 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
             /* and ensure native calls to sun_security_ec* will be resolved as builtIn. */
             PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security_ec");
 
-            nativeLibraries.addLibrary("sunec", true);
+            nativeLibraries.addStaticJniLibrary("sunec");
             if (isPosix()) {
                 /* Library sunec depends on stdc++ */
-                nativeLibraries.addLibrary("stdc++", false);
+                nativeLibraries.addDynamicNonJniLibrary("stdc++");
             }
         }
     }
@@ -259,7 +268,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
             NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary(JavaVersionUtil.JAVA_SPEC >= 11 ? "jaas" : "jaas_unix");
             /* Resolve calls to com_sun_security_auth_module_UnixSystem* as builtIn. */
             PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("com_sun_security_auth_module_UnixSystem");
-            nativeLibraries.addLibrary("jaas", true);
+            nativeLibraries.addStaticJniLibrary("jaas");
         }
     }
 

@@ -163,7 +163,9 @@ public final class JNIFieldAccessorMethod extends JNIGeneratedMethod {
                 returnValue = kit.boxObjectInLocalHandle(returnValue);
             }
         }
-        kit.append(new CEntryPointLeaveNode(LeaveAction.Leave));
+        kit.appendStateSplitProxy(state);
+        CEntryPointLeaveNode leave = new CEntryPointLeaveNode(LeaveAction.Leave);
+        kit.append(leave);
         JavaKind returnKind = isSetter ? JavaKind.Void : fieldKind;
         kit.createReturn(returnValue, returnKind);
 

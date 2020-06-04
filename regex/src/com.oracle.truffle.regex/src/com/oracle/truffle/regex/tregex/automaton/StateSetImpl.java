@@ -40,70 +40,50 @@
  */
 package com.oracle.truffle.regex.tregex.automaton;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.PrimitiveIterator;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.util.BitSets;
 
 /**
  * A specialized set for sequentially indexed objects. Up to a size of four, this set uses a list of
  * {@code short} values compressed into one {@code long} to store the indices. When the set grows
- * larger than four elements, the indices are stored in a {@link StateSetBackingSet}, which can be
- * set in the constructor.
+ * larger than four elements, the indices are stored in a bit set.
  */
-final class StateSetImpl<S> implements StateSet<S> {
+final class StateSetImpl<SI extends StateIndex<? super S>, S> implements StateSet<SI, S> {
 
-    private static final int SWITCH_TO_BACKING_SET_THRESHOLD = 4;
+    private static final int ELEMENT_SIZE = Integer.SIZE;
+    private static final int SWITCH_TO_BACKING_SET_THRESHOLD = 2;
+    private static final long ELEMENT_MASK = 0xffffffff;
 
-    private static final byte FLAG_HASH_COMPUTED = 1;
-    private static final byte FLAG_STATE_LIST_SORTED = 1 << 1;
-
-    private static final long SHORT_MASK = 0xffff;
-
-    private final StateIndex<? super S> stateIndex;
-    private final StateSetBackingSetFactory backingSetFactory;
-    private StateSetBackingSet backingSet;
-    private byte flags = 0;
+    private final SI stateIndex;
+    private long[] backingSet;
     private int size = 0;
     private long stateList = 0;
-    private int cachedHash;
 
-    StateSetImpl(StateIndex<? super S> stateIndex, StateSetBackingSetFactory backingSetFactory) {
+    StateSetImpl(SI stateIndex) {
         this.stateIndex = stateIndex;
-        this.backingSetFactory = backingSetFactory;
     }
 
-    protected StateSetImpl(StateSetImpl<S> copy) {
+    StateSetImpl(StateSetImpl<SI, S> copy) {
         this.stateIndex = copy.stateIndex;
-        this.flags = copy.flags;
         this.size = copy.size;
-        this.backingSetFactory = copy.backingSetFactory;
-        this.backingSet = copy.backingSet == null ? null : copy.backingSet.copy();
+        this.backingSet = copy.backingSet == null ? null : Arrays.copyOf(copy.backingSet, copy.backingSet.length);
         this.stateList = copy.stateList;
-        this.cachedHash = copy.cachedHash;
     }
 
     @Override
-    public StateSetImpl<S> copy() {
-        return new StateSetImpl<>(this);
-    }
-
-    @Override
-    public StateIndex<? super S> getStateIndex() {
+    public SI getStateIndex() {
         return stateIndex;
     }
 
-    private void checkSwitchToBitSet(int newSize) {
-        if (!useBackingSet() && newSize > SWITCH_TO_BACKING_SET_THRESHOLD) {
-            backingSet = backingSetFactory.create(stateIndex.getNumberOfStates());
-            for (int i = 0; i < size(); i++) {
-                backingSet.addBatch(stateListElement(stateList));
-                stateList >>>= Short.SIZE;
-            }
-            backingSet.addBatchFinish();
-        }
+    @Override
+    public StateSet<SI, S> copy() {
+        return new StateSetImpl<>(this);
     }
 
     @Override
@@ -117,83 +97,55 @@ final class StateSetImpl<S> implements StateSet<S> {
     }
 
     private boolean useBackingSet() {
-        return backingSet != null;
+        return size > SWITCH_TO_BACKING_SET_THRESHOLD;
     }
 
-    private void setFlag(byte flag, boolean value) {
-        if (value) {
-            flags |= flag;
-        } else {
-            flags &= ~flag;
-        }
+    private static int stateListElement(long stateList, int i) {
+        return stateListElement(stateList >>> (ELEMENT_SIZE * i));
     }
 
-    private boolean isFlagSet(byte flag) {
-        return (flags & flag) != 0;
-    }
-
-    private boolean isStateListSorted() {
-        return isFlagSet(FLAG_STATE_LIST_SORTED);
-    }
-
-    private void setStateListSorted(boolean stateListSorted) {
-        setFlag(FLAG_STATE_LIST_SORTED, stateListSorted);
-    }
-
-    private boolean isHashComputed() {
-        return isFlagSet(FLAG_HASH_COMPUTED);
-    }
-
-    private void setHashComputed(boolean hashComputed) {
-        setFlag(FLAG_HASH_COMPUTED, hashComputed);
-    }
-
-    private void increaseSize() {
-        size++;
-        setHashComputed(false);
-    }
-
-    private void decreaseSize() {
-        size--;
-        setHashComputed(false);
-    }
-
-    private static short stateListElement(long stateList, int i) {
-        return stateListElement(stateList >>> (Short.SIZE * i));
-    }
-
-    private static short stateListElement(long stateList) {
-        return (short) (stateList & SHORT_MASK);
-    }
-
-    private void setStateListElement(int index, int value) {
-        stateList = (stateList & ~(SHORT_MASK << (Short.SIZE * index))) | ((long) value << (Short.SIZE * index));
+    private static int stateListElement(long stateList) {
+        return (int) (stateList & ELEMENT_MASK);
     }
 
     @SuppressWarnings("unchecked")
     @Override
-    public boolean contains(Object state) {
-        return contains(stateIndex.getId((S) state));
+    public boolean contains(Object o) {
+        return contains(stateIndex.getId((S) o));
     }
 
-    private boolean contains(short id) {
+    @Override
+    public boolean add(S e) {
+        return add(stateIndex.getId(e));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public boolean remove(Object o) {
+        return remove(stateIndex.getId((S) o));
+    }
+
+    private boolean contains(int id) {
         if (useBackingSet()) {
-            return backingSet.contains(id);
+            return BitSets.get(backingSet, id);
         }
         long sl = stateList;
         for (int i = 0; i < size(); i++) {
             if (stateListElement(sl) == id) {
                 return true;
             }
-            sl >>>= Short.SIZE;
+            sl >>>= ELEMENT_SIZE;
         }
         return false;
     }
 
     @Override
     public boolean containsAll(Collection<?> c) {
-        if (useBackingSet() && c instanceof StateSetImpl<?> && ((StateSetImpl<?>) c).useBackingSet()) {
-            return backingSet.contains(((StateSetImpl<?>) c).backingSet);
+        if (c instanceof StateSetImpl) {
+            StateSetImpl<?, ?> o = (StateSetImpl<?, ?>) c;
+            if (useBackingSet() && o.useBackingSet()) {
+                return BitSets.contains(backingSet, o.backingSet);
+            }
         }
         for (Object o : c) {
             if (!contains(o)) {
@@ -203,30 +155,39 @@ final class StateSetImpl<S> implements StateSet<S> {
         return true;
     }
 
-    @Override
-    public boolean add(S state) {
-        return add(stateIndex.getId(state));
-    }
-
-    private boolean add(short id) {
+    private boolean add(int id) {
         if (useBackingSet()) {
-            if (backingSet.add(id)) {
-                increaseSize();
+            if (BitSets.add(backingSet, id)) {
+                size++;
                 return true;
             }
             return false;
         } else {
-            if (contains(id)) {
-                return false;
+            long sl = stateList;
+            int i;
+            for (i = 0; i < size(); i++) {
+                if (stateListElement(sl) == id) {
+                    return false;
+                }
+                if (stateListElement(sl) > id) {
+                    break;
+                }
+                sl >>>= ELEMENT_SIZE;
             }
-            checkSwitchToBitSet(size() + 1);
+            if (size() == SWITCH_TO_BACKING_SET_THRESHOLD) {
+                if (backingSet == null) {
+                    backingSet = BitSets.createBitSetArray(stateIndex.getNumberOfStates());
+                }
+                for (int j = 0; j < size(); j++) {
+                    BitSets.set(backingSet, stateListElement(stateList));
+                    stateList >>>= ELEMENT_SIZE;
+                }
+            }
+            size++;
             if (useBackingSet()) {
-                backingSet.add(id);
-                increaseSize();
+                BitSets.set(backingSet, id);
             } else {
-                stateList = (stateList << Short.SIZE) | id;
-                increaseSize();
-                setStateListSorted(false);
+                stateList = (((sl << ELEMENT_SIZE) | id) << (i * ELEMENT_SIZE)) | (stateList & ~((~0L) << i * ELEMENT_SIZE));
             }
             return true;
         }
@@ -234,7 +195,14 @@ final class StateSetImpl<S> implements StateSet<S> {
 
     @Override
     public boolean addAll(Collection<? extends S> c) {
-        checkSwitchToBitSet(size() + c.size());
+        if (c instanceof StateSetImpl) {
+            StateSetImpl<?, ?> o = (StateSetImpl<?, ?>) c;
+            if (useBackingSet() && o.useBackingSet()) {
+                int oldSize = size;
+                size = BitSets.addAll(backingSet, o.backingSet);
+                return size != oldSize;
+            }
+        }
         boolean ret = false;
         for (S s : c) {
             ret |= add(s);
@@ -242,46 +210,20 @@ final class StateSetImpl<S> implements StateSet<S> {
         return ret;
     }
 
-    @Override
-    public void addBatch(S state) {
-        assert !contains(state);
+    private boolean remove(int id) {
         if (useBackingSet()) {
-            backingSet.addBatch(stateIndex.getId(state));
-            increaseSize();
-        } else {
-            add(state);
-        }
-    }
-
-    @Override
-    public void addBatchFinish() {
-        if (useBackingSet()) {
-            backingSet.addBatchFinish();
-        }
-    }
-
-    @Override
-    public void replace(S oldState, S newState) {
-        assert contains(oldState) && !contains(newState);
-        if (useBackingSet()) {
-            backingSet.replace(stateIndex.getId(oldState), stateIndex.getId(newState));
-            setHashComputed(false);
-        } else {
-            remove(oldState);
-            add(newState);
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
-    public boolean remove(Object o) {
-        return remove(stateIndex.getId((S) o));
-    }
-
-    private boolean remove(short id) {
-        if (useBackingSet()) {
-            if (backingSet.remove(id)) {
-                decreaseSize();
+            if (BitSets.remove(backingSet, id)) {
+                size--;
+                if (size == SWITCH_TO_BACKING_SET_THRESHOLD) {
+                    assert stateList == 0;
+                    int shift = 0;
+                    PrimitiveIterator.OfInt it = BitSets.iterator(backingSet);
+                    while (it.hasNext()) {
+                        stateList |= (long) it.nextInt() << shift;
+                        shift += ELEMENT_SIZE;
+                    }
+                    BitSets.clear(backingSet);
+                }
                 return true;
             }
             return false;
@@ -290,36 +232,33 @@ final class StateSetImpl<S> implements StateSet<S> {
             for (int i = 0; i < size(); i++) {
                 if (stateListElement(sl) == id) {
                     removeStateListElement(i);
-                    decreaseSize();
+                    size--;
                     return true;
                 }
-                sl >>>= Short.SIZE;
+                sl >>>= ELEMENT_SIZE;
             }
             return false;
         }
     }
 
     private void removeStateListElement(int i) {
-        switch (i) {
-            case 0:
-                stateList >>>= Short.SIZE;
-                break;
-            case 1:
-                stateList = ((stateList >>> Short.SIZE) & 0xffff_ffff_0000L) | (stateList & 0xffffL);
-                break;
-            case 2:
-                stateList = ((stateList >>> Short.SIZE) & 0xffff_0000_0000L) | (stateList & 0xffff_ffffL);
-                break;
-            case 3:
-                stateList &= 0xffff_ffff_ffffL;
-                break;
-            default:
-                throw new IllegalArgumentException("stateList cannot be larger than 4 elements!");
-        }
+        // clears all elements < i
+        long maskClrLo = (~0L) << (i * ELEMENT_SIZE);
+        // clears all elements >= i;
+        long maskClrHi = ~maskClrLo;
+        stateList = ((stateList >>> ELEMENT_SIZE) & maskClrLo) | (stateList & maskClrHi);
     }
 
     @Override
     public boolean removeAll(Collection<?> c) {
+        if (c instanceof StateSetImpl) {
+            StateSetImpl<?, ?> o = (StateSetImpl<?, ?>) c;
+            if (useBackingSet() && o.useBackingSet()) {
+                int oldSize = size;
+                size = BitSets.removeAll(backingSet, o.backingSet);
+                return size != oldSize;
+            }
+        }
         boolean ret = false;
         for (Object s : c) {
             ret |= remove(s);
@@ -329,34 +268,46 @@ final class StateSetImpl<S> implements StateSet<S> {
 
     @Override
     public void clear() {
+        stateList = 0;
         if (useBackingSet()) {
-            backingSet.clear();
-        } else {
-            stateList = 0;
+            BitSets.clear(backingSet);
         }
         size = 0;
-        setHashComputed(false);
     }
 
     @Override
     public boolean retainAll(Collection<?> c) {
-        throw new UnsupportedOperationException();
+        if (c instanceof StateSetImpl) {
+            StateSetImpl<?, ?> o = (StateSetImpl<?, ?>) c;
+            if (useBackingSet() && o.useBackingSet()) {
+                int oldSize = size;
+                size = BitSets.retainAll(backingSet, o.backingSet);
+                return size != oldSize;
+            }
+        }
+        boolean ret = false;
+        for (S s : this) {
+            if (!c.contains(s)) {
+                ret |= remove(s);
+            }
+        }
+        return ret;
     }
 
     @SuppressWarnings("unchecked")
     @Override
-    public boolean isDisjoint(StateSet<? extends S> other) {
-        StateSetImpl<S> o = (StateSetImpl<S>) other;
+    public boolean isDisjoint(StateSet<SI, ? extends S> other) {
+        StateSetImpl<SI, S> o = (StateSetImpl<SI, S>) other;
         if (o.useBackingSet()) {
             if (useBackingSet()) {
-                return backingSet.isDisjoint(o.backingSet);
+                return BitSets.isDisjoint(backingSet, o.backingSet);
             }
             long sl = stateList;
             for (int i = 0; i < size(); i++) {
                 if (o.contains(stateListElement(sl))) {
                     return false;
                 }
-                sl >>>= Short.SIZE;
+                sl >>>= ELEMENT_SIZE;
             }
             return true;
         }
@@ -365,27 +316,25 @@ final class StateSetImpl<S> implements StateSet<S> {
             if (contains(stateListElement(sl))) {
                 return false;
             }
-            sl >>>= Short.SIZE;
+            sl >>>= ELEMENT_SIZE;
         }
         return true;
     }
 
-    private void requireStateListSorted() {
-        if (!isStateListSorted()) {
-            for (int i = 1; i < size(); i++) {
-                int sli = stateListElement(stateList, i);
-                int j;
-                for (j = i - 1; j >= 0; j--) {
-                    int slj = stateListElement(stateList, j);
-                    if (slj <= sli) {
-                        break;
-                    }
-                    setStateListElement(j + 1, slj);
-                }
-                setStateListElement(j + 1, sli);
+    private boolean stateListSorted() {
+        int last = -1;
+        for (int i = 0; i < size(); i++) {
+            if (stateListElement(stateList, i) <= last) {
+                return false;
             }
-            setStateListSorted(true);
+            last = stateListElement(stateList, i);
         }
+        for (int i = size(); i < SWITCH_TO_BACKING_SET_THRESHOLD; i++) {
+            if (stateListElement(stateList, i) != 0) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /**
@@ -398,34 +347,12 @@ final class StateSetImpl<S> implements StateSet<S> {
      */
     @Override
     public int hashCode() {
-        if (!isHashComputed()) {
-            if (useBackingSet()) {
-                if (size <= SWITCH_TO_BACKING_SET_THRESHOLD) {
-                    long hashStateList = 0;
-                    int shift = 0;
-                    for (int i : backingSet) {
-                        hashStateList |= (long) i << shift;
-                        shift += Short.SIZE;
-                    }
-                    cachedHash = Long.hashCode(hashStateList);
-                } else {
-                    cachedHash = backingSet.hashCode();
-                }
-            } else {
-                if (size == 0) {
-                    cachedHash = 0;
-                } else {
-                    requireStateListSorted();
-                    if (size < SWITCH_TO_BACKING_SET_THRESHOLD) {
-                        // clear unused slots in stateList
-                        stateList &= (~0L >>> (Short.SIZE * (SWITCH_TO_BACKING_SET_THRESHOLD - size)));
-                    }
-                    cachedHash = Long.hashCode(stateList);
-                }
-            }
-            setHashComputed(true);
+        if (useBackingSet()) {
+            return BitSets.hashCode(backingSet);
+        } else {
+            assert stateListSorted();
+            return Long.hashCode(stateList);
         }
-        return cachedHash;
     }
 
     @SuppressWarnings("unchecked")
@@ -435,26 +362,16 @@ final class StateSetImpl<S> implements StateSet<S> {
             return true;
         }
         if (obj instanceof StateSetImpl) {
-            StateSetImpl<S> o = (StateSetImpl<S>) obj;
+            StateSetImpl<SI, S> o = (StateSetImpl<SI, S>) obj;
             if (size() != o.size()) {
                 return false;
             }
-            if (useBackingSet() && o.useBackingSet()) {
-                return backingSet.equals(o.backingSet);
+            assert useBackingSet() == o.useBackingSet();
+            if (useBackingSet()) {
+                return BitSets.equals(backingSet, o.backingSet);
             }
-            if (useBackingSet() != o.useBackingSet()) {
-                PrimitiveIterator.OfInt thisIterator = intIterator();
-                PrimitiveIterator.OfInt otherIterator = o.intIterator();
-                while (thisIterator.hasNext()) {
-                    if (thisIterator.nextInt() != otherIterator.nextInt()) {
-                        return false;
-                    }
-                }
-                return true;
-            }
-            assert !useBackingSet() && !o.useBackingSet();
-            requireStateListSorted();
-            o.requireStateListSorted();
+            assert stateListSorted();
+            assert o.stateListSorted();
             return stateList == o.stateList;
         }
         if (!(obj instanceof Set)) {
@@ -470,17 +387,20 @@ final class StateSetImpl<S> implements StateSet<S> {
         return defaultToString();
     }
 
-    protected PrimitiveIterator.OfInt intIterator() {
+    private PrimitiveIterator.OfInt intIterator() {
         if (useBackingSet()) {
-            return backingSet.iterator();
+            return BitSets.iterator(backingSet);
         }
-        requireStateListSorted();
+        assert stateListSorted();
         return new StateListIterator();
     }
 
+    /**
+     * Yields all elements in this set, ordered by their {@link StateIndex#getId(Object) ID}.
+     */
     @Override
     public Iterator<S> iterator() {
-        return new StateSetIterator(stateIndex, intIterator());
+        return new StateSetIterator(intIterator());
     }
 
     private final class StateListIterator implements PrimitiveIterator.OfInt {
@@ -499,17 +419,15 @@ final class StateSetImpl<S> implements StateSet<S> {
 
         @Override
         public void remove() {
-            StateSetImpl.this.removeStateListElement(--i);
+            removeStateListElement(--i);
         }
     }
 
     private final class StateSetIterator implements Iterator<S> {
 
-        private final StateIndex<? super S> stateIndex;
         private final PrimitiveIterator.OfInt intIterator;
 
-        private StateSetIterator(StateIndex<? super S> stateIndex, PrimitiveIterator.OfInt intIterator) {
-            this.stateIndex = stateIndex;
+        private StateSetIterator(PrimitiveIterator.OfInt intIterator) {
             this.intIterator = intIterator;
         }
 
@@ -521,13 +439,13 @@ final class StateSetImpl<S> implements StateSet<S> {
         @SuppressWarnings("unchecked")
         @Override
         public S next() {
-            return (S) stateIndex.getState(intIterator.nextInt());
+            return (S) getStateIndex().getState(intIterator.nextInt());
         }
 
         @Override
         public void remove() {
             intIterator.remove();
-            decreaseSize();
+            size--;
         }
     }
 }

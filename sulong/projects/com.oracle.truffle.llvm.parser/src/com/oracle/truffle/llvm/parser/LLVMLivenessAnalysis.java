@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -78,6 +78,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstructio
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidInvokeInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
+import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 import com.oracle.truffle.llvm.runtime.types.symbols.SSAValue;
 
 public final class LLVMLivenessAnalysis {
@@ -202,8 +203,8 @@ public final class LLVMLivenessAnalysis {
         return processedBlocks;
     }
 
+    @SuppressWarnings("unchecked")
     private LLVMLivenessAnalysisResult computeLivenessAnalysisResult(List<InstructionBlock> blocks, BlockInfo[] blockInfos, ArrayList<InstructionBlock>[] predecessors) {
-        @SuppressWarnings("unchecked")
         ArrayList<NullerInformation>[] nullableWithinBlock = new ArrayList[blocks.size()];
         BitSet[] nullableBeforeBlock = new BitSet[blocks.size()];
         BitSet[] nullableAfterBlock = new BitSet[blocks.size()];
@@ -309,8 +310,8 @@ public final class LLVMLivenessAnalysis {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private static ArrayList<InstructionBlock>[] computePredecessors(List<InstructionBlock> blocks) {
-        @SuppressWarnings("unchecked")
         ArrayList<InstructionBlock>[] result = new ArrayList[blocks.size()];
         for (int i = 0; i < blocks.size(); i++) {
             result[i] = new ArrayList<>(2);
@@ -764,6 +765,13 @@ public final class LLVMLivenessAnalysis {
         logLivenessStream.println(builder.toString());
     }
 
+    private static void appendValue(StringBuilder str, SSAValue value) {
+        str.append(value.getFrameIdentifier());
+        if (value.getName() != null && !LLVMIdentifier.UNKNOWN.equals(value.getName())) {
+            str.append(" (").append(value.getName()).append(')');
+        }
+    }
+
     private String formatLocals(BitSet bitSet) {
         StringBuilder result = new StringBuilder();
         int bitIndex = -1;
@@ -771,7 +779,7 @@ public final class LLVMLivenessAnalysis {
             if (result.length() > 0) {
                 result.append(", ");
             }
-            result.append(frameSlots[bitIndex]);
+            appendValue(result, frameSlots[bitIndex]);
         }
         return result.toString();
     }
@@ -782,7 +790,7 @@ public final class LLVMLivenessAnalysis {
             if (result.length() > 0) {
                 result.append(", ");
             }
-            result.append(nuller.getIdentifier());
+            appendValue(result, nuller.getIdentifier());
         }
         return result.toString();
     }

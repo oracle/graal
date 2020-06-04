@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,7 +51,6 @@ public final class TRegexDFAExecutorProperties {
     @CompilationFinal private boolean simpleCG;
     @CompilationFinal private boolean simpleCGMustCopy;
     private final boolean regressionTestMode;
-    private final int numberOfCaptureGroups;
     private final int minResultLength;
 
     public TRegexDFAExecutorProperties(
@@ -60,14 +59,12 @@ public final class TRegexDFAExecutorProperties {
                     boolean genericCG,
                     boolean allowSimpleCG,
                     boolean regressionTestMode,
-                    int numberOfCaptureGroups,
                     int minResultLength) {
         this.forward = forward;
         this.searching = searching;
         this.genericCG = genericCG;
         this.allowSimpleCG = allowSimpleCG;
         this.regressionTestMode = regressionTestMode;
-        this.numberOfCaptureGroups = numberOfCaptureGroups;
         this.minResultLength = minResultLength;
     }
 
@@ -120,10 +117,6 @@ public final class TRegexDFAExecutorProperties {
 
     public boolean isRegressionTestMode() {
         return regressionTestMode;
-    }
-
-    public int getNumberOfCaptureGroups() {
-        return numberOfCaptureGroups;
     }
 
     public int getMinResultLength() {

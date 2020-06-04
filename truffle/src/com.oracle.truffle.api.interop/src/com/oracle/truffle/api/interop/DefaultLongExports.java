@@ -40,12 +40,12 @@
  */
 package com.oracle.truffle.api.interop;
 
-import static com.oracle.truffle.api.interop.NumberUtils.INT_MAX_SAFE_FLOAT;
-import static com.oracle.truffle.api.interop.NumberUtils.LONG_MAX_SAFE_DOUBLE;
-
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.source.SourceSection;
 
 @ExportLibrary(value = InteropLibrary.class, receiverType = Long.class)
 @SuppressWarnings("unused")
@@ -71,12 +71,13 @@ final class DefaultLongExports {
 
     @ExportMessage
     static boolean fitsInFloat(Long receiver) {
-        return receiver >= -INT_MAX_SAFE_FLOAT && receiver <= INT_MAX_SAFE_FLOAT;
+        float f = receiver;
+        return f == receiver;
     }
 
     @ExportMessage
     static boolean fitsInDouble(Long receiver) {
-        return receiver >= -LONG_MAX_SAFE_DOUBLE && receiver <= LONG_MAX_SAFE_DOUBLE;
+        return NumberUtils.inSafeDoubleRange(receiver);
     }
 
     @ExportMessage
@@ -115,8 +116,9 @@ final class DefaultLongExports {
     @ExportMessage
     static float asFloat(Long receiver) throws UnsupportedMessageException {
         long l = receiver;
-        if (NumberUtils.inSafeFloatRange(l)) {
-            return l;
+        float f = l;
+        if (f == l) {
+            return f;
         }
         CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
@@ -145,6 +147,46 @@ final class DefaultLongExports {
     @ExportMessage
     static long asLong(Long receiver) {
         return receiver;
+    }
+
+    /*
+     * We export these messages explicitly because the legacy default is very costly. Remove with
+     * the complicated legacy implementation in InteropLibrary.
+     */
+    @ExportMessage
+    static boolean hasLanguage(Long receiver) {
+        return false;
+    }
+
+    @ExportMessage
+    static Class<? extends TruffleLanguage<?>> getLanguage(Long receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    static boolean hasSourceLocation(Long receiver) {
+        return false;
+    }
+
+    @ExportMessage
+    static SourceSection getSourceLocation(Long receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    static boolean hasMetaObject(Long receiver) {
+        return false;
+    }
+
+    @ExportMessage
+    static Object getMetaObject(Long receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    static Object toDisplayString(Long receiver, boolean allowSideEffects) {
+        return receiver.toString();
     }
 
 }

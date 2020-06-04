@@ -52,9 +52,10 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.function.BiConsumer;
 
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.utils.Assert;
 import org.graalvm.wasm.utils.SystemProperties;
-import org.graalvm.wasm.utils.WasmInitialization;
 import org.graalvm.wasm.utils.WasmResource;
 import org.graalvm.polyglot.Value;
 
@@ -64,13 +65,11 @@ import org.graalvm.polyglot.Value;
 public abstract class WasmCase {
     private final String name;
     private final WasmCaseData data;
-    private final WasmInitialization initialization;
     private final Properties options;
 
-    public WasmCase(String name, WasmCaseData data, WasmInitialization initialization, Properties options) {
+    public WasmCase(String name, WasmCaseData data, Properties options) {
         this.name = name;
         this.data = data;
-        this.initialization = initialization;
         this.options = options;
     }
 
@@ -82,26 +81,32 @@ public abstract class WasmCase {
         return data;
     }
 
-    public WasmInitialization initialization() {
-        return initialization;
-    }
-
     public Properties options() {
         return options;
+    }
+
+    public ArrayList<Source> getSources() throws IOException, InterruptedException {
+        ArrayList<Source> sources = new ArrayList<>();
+        for (Map.Entry<String, byte[]> entry : createBinaries().entrySet()) {
+            Source.Builder sourceBuilder = Source.newBuilder("wasm", ByteSequence.create(entry.getValue()), entry.getKey());
+            Source source = sourceBuilder.build();
+            sources.add(source);
+        }
+        return sources;
     }
 
     public abstract Map<String, byte[]> createBinaries() throws IOException, InterruptedException;
 
     public static WasmStringCase create(String name, WasmCaseData data, String program) {
-        return new WasmStringCase(name, data, program, null, new Properties());
+        return new WasmStringCase(name, data, program, new Properties());
     }
 
-    public static WasmStringCase create(String name, WasmCaseData data, String program, WasmInitialization initializer, Properties options) {
-        return new WasmStringCase(name, data, program, initializer, options);
+    public static WasmStringCase create(String name, WasmCaseData data, String program, Properties options) {
+        return new WasmStringCase(name, data, program, options);
     }
 
-    public static WasmBinaryCase create(String name, WasmCaseData data, byte[] binary, WasmInitialization initializer, Properties options) {
-        return new WasmBinaryCase(name, data, binary, initializer, options);
+    public static WasmBinaryCase create(String name, WasmCaseData data, byte[] binary, Properties options) {
+        return new WasmBinaryCase(name, data, binary, options);
     }
 
     public static WasmCaseData expectedStdout(String expectedOutput) {
@@ -167,9 +172,7 @@ public abstract class WasmCase {
             caseName = caseSpec;
         }
         String resultContent = WasmResource.getResourceAsString(String.format("/%s/%s/%s.result", type, resource, caseName), true);
-        String initContent = WasmResource.getResourceAsString(String.format("/%s/%s/%s.init", type, resource, caseName), false);
         String optsContent = WasmResource.getResourceAsString(String.format("/%s/%s/%s.opts", type, resource, caseName), false);
-        WasmInitialization initializer = WasmInitialization.create(initContent);
         Properties options = SystemProperties.createFromOptions(optsContent);
 
         String[] resultTypeValue = resultContent.split("\\s+", 2);
@@ -206,17 +209,29 @@ public abstract class WasmCase {
         if (mainContents.size() == 1) {
             Object content = mainContents.values().iterator().next();
             if (content instanceof String) {
-                return WasmCase.create(caseName, caseData, (String) content, initializer, options);
+                return WasmCase.create(caseName, caseData, (String) content, options);
             } else if (content instanceof byte[]) {
-                return WasmCase.create(caseName, caseData, (byte[]) content, initializer, options);
+                return WasmCase.create(caseName, caseData, (byte[]) content, options);
             } else {
                 Assert.fail("Unknown content type: " + content.getClass());
             }
         } else if (mainContents.size() > 1) {
-            return new WasmMultiCase(caseName, caseData, mainContents, initializer, options);
+            return new WasmMultiCase(caseName, caseData, mainContents, options);
         }
 
         return null;
+    }
+
+    public static WasmCase loadBenchmarkCase(String resource) throws IOException {
+        final String name = SystemProperties.BENCHMARK_NAME;
+
+        Assert.assertNotNull("Please select a benchmark by setting -D" + SystemProperties.BENCHMARK_NAME_PROPERTY_NAME, name);
+        Assert.assertTrue("Benchmark name must not be empty", !name.trim().isEmpty());
+
+        final WasmCase result = WasmCase.collectFileCase("bench", resource, name);
+        Assert.assertNotNull(String.format("Benchmark %s.%s not found", name, name), result);
+
+        return result;
     }
 
     public static void validateResult(BiConsumer<Value, String> validator, Value result, OutputStream capturedStdout) {

@@ -95,7 +95,7 @@ public abstract class ConditionProfile extends Profile {
      */
     public static ConditionProfile createCountingProfile() {
         if (Profile.isProfilingEnabled()) {
-            return Counting.create();
+            return Counting.createLazyLoadClass();
         } else {
             return Disabled.INSTANCE;
         }
@@ -112,10 +112,21 @@ public abstract class ConditionProfile extends Profile {
      */
     public static ConditionProfile createBinaryProfile() {
         if (Profile.isProfilingEnabled()) {
-            return Binary.create();
+            return Binary.createLazyLoadClass();
         } else {
             return Disabled.INSTANCE;
         }
+    }
+
+    /**
+     * Creates a binary ConditionProfile using {@link #createBinaryProfile()}. This is a convenience
+     * method so it can be used as {@code @Cached ConditionProfile myProfile} instead of the much
+     * longer {@code @Cached("createBinaryProfile()") ConditionProfile myProfile}.
+     *
+     * @since 20.2
+     */
+    public static ConditionProfile create() {
+        return createBinaryProfile();
     }
 
     /**
@@ -223,7 +234,7 @@ public abstract class ConditionProfile extends Profile {
         }
 
         /* Needed for lazy class loading. */
-        static ConditionProfile create() {
+        static ConditionProfile createLazyLoadClass() {
             return new Counting();
         }
     }
@@ -273,7 +284,7 @@ public abstract class ConditionProfile extends Profile {
         }
 
         /* Needed for lazy class loading. */
-        static ConditionProfile create() {
+        static ConditionProfile createLazyLoadClass() {
             return new Binary();
         }
     }

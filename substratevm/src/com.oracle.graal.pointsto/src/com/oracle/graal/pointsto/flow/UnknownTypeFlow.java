@@ -40,6 +40,11 @@ public final class UnknownTypeFlow extends TypeFlow<AnalysisType> {
     }
 
     @Override
+    public boolean canSaturate() {
+        return false;
+    }
+
+    @Override
     public String toString() {
         return "Unknown" + super.toString();
     }

@@ -1,0 +1,136 @@
+#Signature file v4.1
+#Version 
+
+CLSS public abstract interface !annotation com.oracle.truffle.api.library.GenerateLibrary
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+innr public abstract interface static !annotation Abstract
+innr public abstract interface static !annotation DefaultExport
+intf java.lang.annotation.Annotation
+meth public abstract !hasdefault boolean defaultExportLookupEnabled()
+meth public abstract !hasdefault boolean dynamicDispatchEnabled()
+meth public abstract !hasdefault java.lang.Class<? extends com.oracle.truffle.api.library.Library> assertions()
+meth public abstract !hasdefault java.lang.Class<?> receiverType()
+
+CLSS public abstract interface static !annotation com.oracle.truffle.api.library.GenerateLibrary$DefaultExport
+ outer com.oracle.truffle.api.library.GenerateLibrary
+ anno 0 java.lang.annotation.Repeatable(java.lang.Class<? extends java.lang.annotation.Annotation> value=class com.oracle.truffle.api.library.GenerateLibrary$DefaultExport$Repeat)
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+innr public abstract interface static !annotation Repeat
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.Class<?> value()
+
+CLSS public abstract com.oracle.truffle.api.library.Library
+cons protected init()
+meth public abstract boolean accepts(java.lang.Object)
+supr com.oracle.truffle.api.nodes.Node
+
+CLSS public abstract com.oracle.truffle.api.nodes.Node
+cons protected init()
+innr public abstract interface static !annotation Child
+innr public abstract interface static !annotation Children
+intf com.oracle.truffle.api.nodes.NodeInterface
+intf java.lang.Cloneable
+meth protected final <%0 extends com.oracle.truffle.api.TruffleLanguage> com.oracle.truffle.api.TruffleLanguage$LanguageReference<{%%0}> lookupLanguageReference(java.lang.Class<{%%0}>)
+meth protected final <%0 extends com.oracle.truffle.api.nodes.Node> {%%0} insert({%%0})
+meth protected final <%0 extends com.oracle.truffle.api.nodes.Node> {%%0}[] insert({%%0}[])
+meth protected final <%0 extends java.lang.Object, %1 extends com.oracle.truffle.api.TruffleLanguage<{%%0}>> com.oracle.truffle.api.TruffleLanguage$ContextReference<{%%0}> lookupContextReference(java.lang.Class<{%%1}>)
+meth protected final java.util.concurrent.locks.Lock getLock()
+meth protected final void notifyInserted(com.oracle.truffle.api.nodes.Node)
+meth protected final void reportPolymorphicSpecialize()
+meth protected void onReplace(com.oracle.truffle.api.nodes.Node,java.lang.CharSequence)
+meth public boolean isAdoptable()
+meth public com.oracle.truffle.api.nodes.Node copy()
+meth public com.oracle.truffle.api.nodes.Node deepCopy()
+meth public com.oracle.truffle.api.nodes.NodeCost getCost()
+meth public com.oracle.truffle.api.source.SourceSection getEncapsulatingSourceSection()
+meth public com.oracle.truffle.api.source.SourceSection getSourceSection()
+meth public final <%0 extends com.oracle.truffle.api.nodes.Node> {%%0} replace({%%0})
+meth public final <%0 extends com.oracle.truffle.api.nodes.Node> {%%0} replace({%%0},java.lang.CharSequence)
+meth public final <%0 extends java.lang.Object> {%%0} atomic(java.util.concurrent.Callable<{%%0}>)
+meth public final boolean isSafelyReplaceableBy(com.oracle.truffle.api.nodes.Node)
+meth public final com.oracle.truffle.api.nodes.Node getParent()
+meth public final com.oracle.truffle.api.nodes.RootNode getRootNode()
+meth public final java.lang.Iterable<com.oracle.truffle.api.nodes.Node> getChildren()
+meth public final void accept(com.oracle.truffle.api.nodes.NodeVisitor)
+meth public final void adoptChildren()
+meth public final void atomic(java.lang.Runnable)
+meth public java.lang.String getDescription()
+meth public java.lang.String toString()
+meth public java.util.Map<java.lang.String,java.lang.Object> getDebugProperties()
+supr java.lang.Object
+hfds GIL_LOCK,UNCACHED_CONTEXT_REFERENCES,UNCACHED_LANGUAGE_REFERENCES,parent
+
+CLSS public abstract interface com.oracle.truffle.api.nodes.NodeInterface
+
+CLSS public abstract interface com.oracle.truffle.tools.agentscript.AgentScript
+fld public final static java.lang.String ID = "agentscript"
+fld public final static java.lang.String VERSION = "0.4"
+meth public void registerAgentScript(com.oracle.truffle.api.source.Source)
+
+CLSS public abstract com.oracle.truffle.tools.agentscript.FrameLibrary
+cons public init()
+innr public final static Query
+meth public java.lang.Object readMember(com.oracle.truffle.tools.agentscript.FrameLibrary$Query,java.lang.String) throws com.oracle.truffle.api.interop.UnknownIdentifierException
+meth public static com.oracle.truffle.tools.agentscript.FrameLibrary getUncached()
+meth public void collectNames(com.oracle.truffle.tools.agentscript.FrameLibrary$Query,java.util.Set<java.lang.String>) throws com.oracle.truffle.api.interop.InteropException
+supr com.oracle.truffle.api.library.Library
+hcls UncachedDefault
+
+CLSS public final static com.oracle.truffle.tools.agentscript.FrameLibrary$Query
+ outer com.oracle.truffle.tools.agentscript.FrameLibrary
+meth public com.oracle.truffle.api.frame.Frame frame()
+meth public java.lang.Iterable<com.oracle.truffle.api.Scope> findLocalScopes()
+supr java.lang.Object
+hfds env,frame,where
+
+CLSS public abstract interface java.lang.Cloneable
+
+CLSS public java.lang.Object
+cons public init()
+meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
+meth protected void finalize() throws java.lang.Throwable
+meth public boolean equals(java.lang.Object)
+meth public final java.lang.Class<?> getClass()
+meth public final void notify()
+meth public final void notifyAll()
+meth public final void wait() throws java.lang.InterruptedException
+meth public final void wait(long) throws java.lang.InterruptedException
+meth public final void wait(long,int) throws java.lang.InterruptedException
+meth public int hashCode()
+meth public java.lang.String toString()
+
+CLSS public abstract interface java.lang.annotation.Annotation
+meth public abstract boolean equals(java.lang.Object)
+meth public abstract int hashCode()
+meth public abstract java.lang.Class<? extends java.lang.annotation.Annotation> annotationType()
+meth public abstract java.lang.String toString()
+
+CLSS public abstract interface !annotation java.lang.annotation.Documented
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
+intf java.lang.annotation.Annotation
+
+CLSS public abstract interface !annotation java.lang.annotation.Repeatable
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.Class<? extends java.lang.annotation.Annotation> value()
+
+CLSS public abstract interface !annotation java.lang.annotation.Retention
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.annotation.RetentionPolicy value()
+
+CLSS public abstract interface !annotation java.lang.annotation.Target
+ anno 0 java.lang.annotation.Documented()
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[ANNOTATION_TYPE])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.annotation.ElementType[] value()
+

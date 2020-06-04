@@ -76,7 +76,7 @@ class JNIRegistrationSupport {
                          * library is in our list of static standard libraries, add the library to
                          * the linker command.
                          */
-                        nativeLibraries.addLibrary(libname, true);
+                        nativeLibraries.addStaticJniLibrary(libname);
                     }
                 }
                 /*

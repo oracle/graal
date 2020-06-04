@@ -6,72 +6,25 @@ labels: bug, native-image
 assignees: ''
 
 ---
-**Describe GraalVM and your environment :**
- - GraalVM version or commit id if built from source: **[e.g. 19.3]**
- - CE or EE: **[e.g.: CE]**
- - Build Time or run time failure: **[eg run-time]**
- - JDK version: **[e.g.: JDK8]**
- - Native compiler information:<details><summary>Run the following to capture compiler version</summary>
-   - In windows: `cl.exe`
-   - In macOS : `cc -v`
-   - In Linux: `gcc --version`
-</details>
-
-```
-**PASTE OUTPUT HERE**
-```
- - Native linker information:<details><summary>Run the following to capture linker version</summary>
-   - In windows: `cl.exe`
-   - In macOS : `cc -Wl,-v`
-   - In Linux: `gcc -Wl,--version`
-</details>
-
-```
-**PASTE OUTPUT HERE**
-```
- - OS and OS Version: **[e.g. macOS Catalina]**
- - Architecture: **[e.g.: AMD64]**
- - The output of `java -Xinternalversion`: 
-```
- **PASTE OUTPUT HERE**
-```
-
-**Have you verified this issue still happens when using the latest snapshot?**
-You can find snapshot builds here: https://github.com/graalvm/graalvm-ce-dev-builds/releases
-
 **Describe the issue**
-A clear and concise description of the issue.
-
-**Describe the full native-image command**
-<details><summary>Capture full native-image command by running with the `--verbose` flag e.g.:</summary>
-
-```
- native-image --verbose [... other args]
-```
-</details>
-
-```
-**PASTE OUTPUT HERE**
-```
-
-**Code snippet or code repository that reproduces the issue**
-```
-**PASTE CODE/REPO HERE**
-```
+A clear and concise description of the issue. We recommend using the [latest snapshot builds](https://github.com/graalvm/graalvm-ce-dev-builds/releases) to replicate the issue as  bugs are constantly being fixed in the master branch
 
 **Steps to reproduce the issue**
 Please include both build steps as well as run steps
-1. Step one [e.g.: git clone --depth 1 https://git.myrepo.com/projectone ]
-2. Step two [e.g.: mvn clean package]
+1. **[e.g.: git clone --depth 1 https://git.myrepo.com/projectone ]**
+2. **[e.g.: mvn clean package]**
 
-**Expected behavior**
-A clear and concise description of what you expected to happen.
+**Describe GraalVM and your environment:**
+ - GraalVM version (latest snapshot builds can be found [here](https://github.com/graalvm/graalvm-ce-dev-builds/releases)), or commit id if built from source: **[e.g. EE 19.3, CE 20.0, CE 20.1.0-dev-20200304_0848]**
+ - JDK major version: **[e.g.:8]**
+ - OS: **[e.g. macOS Catalina]**
+ - Architecture: **[e.g.: AMD64]**
 
-**Additional context**
-Add any other context about the problem here. Specially important are stack traces or log output. Feel free to link to gists or to screenshots if necesary
-<details><summary>Details</summary>
 
+**More details**
+Consider adding the `--native-image-info` and  `--verbose` flags when building your native image and paste output below.
+
+Add any other information about the problem here. Especially important are stack traces or log output. Feel free to link to gists or to screenshots if necessary.
 ```
     PASTE YOUR LOG/STACK TRACE HERE
 ```
-</details>

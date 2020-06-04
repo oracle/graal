@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,12 +56,15 @@ final class AMD64HotspotDirectVirtualCallOp extends DirectCallOp {
     }
 
     @Override
+    @SuppressWarnings("try")
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        // The mark for an invocation that uses an inline cache must be placed at the
-        // instruction that loads the Klass from the inline cache.
-        crb.recordMark(invokeKind == InvokeKind.Virtual ? config.MARKID_INVOKEVIRTUAL : config.MARKID_INVOKEINTERFACE);
-        // This must be emitted exactly like this to ensure it's patchable
-        masm.movq(AMD64.rax, config.nonOopBits);
-        super.emitCall(crb, masm);
+        try (CompilationResultBuilder.CallContext callContext = crb.openCallContext(invokeKind.isDirect())) {
+            // The mark for an invocation that uses an inline cache must be placed at the
+            // instruction that loads the Klass from the inline cache.
+            crb.recordMark(invokeKind == InvokeKind.Virtual ? config.MARKID_INVOKEVIRTUAL : config.MARKID_INVOKEINTERFACE);
+            // This must be emitted exactly like this to ensure it's patchable
+            masm.movq(AMD64.rax, config.nonOopBits);
+            super.emitCall(crb, masm);
+        }
     }
 }

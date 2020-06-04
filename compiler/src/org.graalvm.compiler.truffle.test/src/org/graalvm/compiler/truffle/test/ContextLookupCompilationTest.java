@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -560,11 +560,6 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
             return true;
         }
 
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
-
         public static LanguageContext getCurrentContext() {
             return getCurrentContext(Exclusive.class);
         }
@@ -598,11 +593,6 @@ public class ContextLookupCompilationTest extends PartialEvaluationTest {
         @Override
         protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
             return true;
-        }
-
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
         }
 
         @SuppressWarnings("deprecation")

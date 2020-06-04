@@ -29,8 +29,9 @@ import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
-import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
+import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
+import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.options.OptionValues;
@@ -67,9 +68,9 @@ public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfiguratio
     @Override
     protected Providers createProviders(CodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider, ForeignCallsProvider foreignCalls,
                     LoweringProvider lowerer, Replacements replacements, StampProvider stampProvider, SnippetReflectionProvider snippetReflection,
-                    PlatformConfigurationProvider platformConfigurationProvider) {
+                    PlatformConfigurationProvider platformConfigurationProvider, MetaAccessExtensionProvider metaAccessExtensionProvider) {
         return new HostedProviders(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, snippetReflection,
-                        wordTypes, platformConfigurationProvider);
+                        wordTypes, platformConfigurationProvider, metaAccessExtensionProvider);
     }
 
     @Override

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.nfi;
 
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.interop.ArityException;
@@ -120,7 +121,7 @@ final class NFISymbol implements TruffleObject {
     Object invokeMember(String member, Object[] args,
                     @Cached BindSignatureNode bind,
                     @CachedLibrary("this.nativeSymbol") NativeSymbolLibrary symbolLibrary,
-                    @Cached("createBinaryProfile()") ConditionProfile isCallable,
+                    @Cached ConditionProfile isCallable,
                     @Exclusive @Cached BranchProfile exception) throws ArityException, UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException {
         if (!"bind".equals(member)) {
             exception.enter();
@@ -159,4 +160,23 @@ final class NFISymbol implements TruffleObject {
     void toNative(@CachedLibrary("this.nativeSymbol") InteropLibrary library) {
         library.toNative(nativeSymbol);
     }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean hasLanguage() {
+        return true;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    Class<? extends TruffleLanguage<?>> getLanguage() {
+        return NFILanguage.class;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        return "Native Symbol";
+    }
+
 }

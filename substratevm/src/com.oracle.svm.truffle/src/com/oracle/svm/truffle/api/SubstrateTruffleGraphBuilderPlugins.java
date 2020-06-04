@@ -31,9 +31,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 
-import com.oracle.svm.core.heap.DiscoverableReference;
-
-import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -47,7 +44,7 @@ public class SubstrateTruffleGraphBuilderPlugins {
                 if (!canDelayIntrinsification && receiver.isConstant()) {
                     JavaConstant reference = (JavaConstant) receiver.get().asConstant();
                     if (reference.isNonNull()) {
-                        JavaConstant referent = readReferent(reference, b.getConstantReflection());
+                        JavaConstant referent = b.getConstantReflection().readFieldValue(types.referentField, reference);
                         b.addPush(JavaKind.Object, ConstantNode.forConstant(referent, b.getMetaAccess()));
                         return true;
                     }
@@ -55,30 +52,6 @@ public class SubstrateTruffleGraphBuilderPlugins {
                 return false;
             }
 
-            private JavaConstant readReferent(JavaConstant reference, ConstantReflectionProvider constantReflection) {
-                JavaConstant feebleReference = constantReflection.readFieldValue(types.referenceFieldFeeble, reference);
-                if (feebleReference.isNonNull()) {
-                    return constantReflection.readFieldValue(types.discoverableReferenceFieldRawReferent, feebleReference);
-                } else {
-                    return constantReflection.readFieldValue(types.referenceFieldBootImageStrongValue, reference);
-                }
-            }
-        });
-
-        InvocationPlugins.Registration r1 = new InvocationPlugins.Registration(plugins, DiscoverableReference.class);
-        r1.register1("getReferentObject", InvocationPlugin.Receiver.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                if (!canDelayIntrinsification && receiver.isConstant()) {
-                    JavaConstant constant = (JavaConstant) receiver.get().asConstant();
-                    if (constant.isNonNull()) {
-                        JavaConstant referent = b.getConstantReflection().readFieldValue(types.discoverableReferenceFieldRawReferent, constant);
-                        b.addPush(JavaKind.Object, ConstantNode.forConstant(referent, b.getMetaAccess()));
-                        return true;
-                    }
-                }
-                return false;
-            }
         });
     }
 }

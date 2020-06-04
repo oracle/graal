@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,14 +43,15 @@ package com.oracle.truffle.regex.util;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.regex.RegexLanguageObject;
+import com.oracle.truffle.regex.AbstractRegexObject;
 
 @ExportLibrary(InteropLibrary.class)
-public class TruffleReadOnlyKeysArray implements RegexLanguageObject {
+public class TruffleReadOnlyKeysArray extends AbstractRegexObject {
 
     @CompilationFinal(dimensions = 1) private final String[] keys;
 
@@ -59,6 +60,7 @@ public class TruffleReadOnlyKeysArray implements RegexLanguageObject {
         Arrays.sort(this.keys);
     }
 
+    @TruffleBoundary
     public boolean contains(String key) {
         return Arrays.binarySearch(keys, key) >= 0;
     }

@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 import org.graalvm.component.installer.BundleConstants;
+import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.MetadataException;
 import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.TestBase;
@@ -68,7 +69,7 @@ public class RemoteStorageTest extends TestBase {
         localRegistry = new ComponentRegistry(this, storage);
         remStorage = new RemotePropertiesStorage(this, localRegistry, catalogProps, TEST_GRAAL_FLAVOUR,
                         Version.fromString("0.33-dev"), new URL(TEST_BASE_URL));
-        try (InputStream is = getClass().getResourceAsStream("catalog")) {
+        try (InputStream is = getClass().getResourceAsStream("catalog.properties")) {
             catalogProps.load(is);
         }
     }
@@ -115,7 +116,7 @@ public class RemoteStorageTest extends TestBase {
 
     @Test
     public void testInvalidRemoteURL() throws Exception {
-        loadCatalog("catalog.bad1");
+        loadCatalog("catalog.bad1.properties");
         // load good compoennt:
         ComponentInfo rInfo = loadLastComponent("ruby");
         assertEquals("ruby", rInfo.getId());
@@ -127,7 +128,7 @@ public class RemoteStorageTest extends TestBase {
 
     @Test
     public void testLoadMetadataMalformed() throws Exception {
-        loadCatalog("catalog.bad2");
+        loadCatalog("catalog.bad2.properties");
         // load good compoennt:
         ComponentInfo rInfo = loadLastComponent("r");
         assertEquals("R", rInfo.getId());
@@ -193,7 +194,7 @@ public class RemoteStorageTest extends TestBase {
      */
     @Test
     public void loadMultipleVersions() throws Exception {
-        loadCatalog("catalogMultiVersions");
+        loadCatalog("catalogMultiVersions.properties");
         Set<String> ids = remStorage.listComponentIDs();
         assertEquals(3, ids.size());
         assertTrue(ids.contains("python"));
@@ -204,7 +205,7 @@ public class RemoteStorageTest extends TestBase {
      */
     @Test
     public void obsoleteVersionsNotIncluded() throws Exception {
-        loadCatalog("catalogMultiVersions");
+        loadCatalog("catalogMultiVersions.properties");
         remStorage = new RemotePropertiesStorage(this, localRegistry, catalogProps, TEST_GRAAL_FLAVOUR,
                         Version.fromString("1.0.0.0"), new URL(TEST_BASE_URL));
         Set<ComponentInfo> rubies = remStorage.loadComponentMetadata("ruby");
@@ -220,7 +221,7 @@ public class RemoteStorageTest extends TestBase {
 
     @Test
     public void checkMultipleGraalVMDependencies() throws Exception {
-        loadCatalog("catalogMultiVersions");
+        loadCatalog("catalogMultiVersions.properties");
 
         Set<ComponentInfo> rubies = remStorage.loadComponentMetadata("ruby");
         Set<Version> versions = new HashSet<>();
@@ -231,6 +232,43 @@ public class RemoteStorageTest extends TestBase {
             String gv = ci.getRequiredGraalValues().get(BundleConstants.GRAAL_VERSION);
             assertEquals(gv, compVersion.toString());
         }
+    }
+
+    @Test
+    public void loadMultipleComponentFlavours() throws Exception {
+        storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "1.0.0.0");
+        loadCatalog("catalogMultiFlavours.properties");
+        Set<String> ids = remStorage.listComponentIDs();
+        assertEquals(3, ids.size());
+        assertTrue(ids.contains("python"));
+        List<ComponentInfo> infos = new ArrayList<>(remStorage.loadComponentMetadata("ruby"));
+        assertEquals(4, infos.size());
+
+        Collections.sort(infos, (a, b) -> compare(
+                        a.getRequiredGraalValues().get(CommonConstants.CAP_JAVA_VERSION),
+                        b.getRequiredGraalValues().get(CommonConstants.CAP_JAVA_VERSION)));
+        ComponentInfo ci;
+
+        ci = infos.get(2);
+        assertEquals("ruby", ci.getId());
+        assertEquals("11", ci.getRequiredGraalValues().get(CommonConstants.CAP_JAVA_VERSION));
+
+        ci = infos.get(3);
+        assertEquals("ruby", ci.getId());
+        assertEquals("8", ci.getRequiredGraalValues().get(CommonConstants.CAP_JAVA_VERSION));
+
+    }
+
+    static int compare(String a, String b) {
+        if (a == b) {
+            return 0;
+        }
+        if (a == null) {
+            return -1;
+        } else if (b == null) {
+            return 1;
+        }
+        return a.compareTo(b);
     }
 
 }

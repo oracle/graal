@@ -77,7 +77,10 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.GCUtils;
 
@@ -92,7 +95,7 @@ public class LoggingTest {
     public void testDefaultLogging() {
         final TestHandler handler = new TestHandler();
         final Level defaultLevel = Level.INFO;
-        try (Context ctx = Context.newBuilder().logHandler(handler).build()) {
+        try (Context ctx = newContextBuilder().logHandler(handler).build()) {
             ctx.eval(LoggingLanguageFirst.ID, "");
             List<Map.Entry<Level, String>> expected = createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, Collections.emptyMap());
             Assert.assertEquals(expected, handler.getLog());
@@ -107,7 +110,7 @@ public class LoggingTest {
     public void testSingleLanguageAllLogging() {
         final Level defaultLevel = Level.INFO;
         TestHandler handler = new TestHandler();
-        try (Context ctx = Context.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINEST.toString())).logHandler(handler).build()) {
+        try (Context ctx = newContextBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINEST.toString())).logHandler(handler).build()) {
             ctx.eval(LoggingLanguageFirst.ID, "");
             ctx.eval(LoggingLanguageSecond.ID, "");
             List<Map.Entry<Level, String>> expected = new ArrayList<>();
@@ -117,7 +120,7 @@ public class LoggingTest {
             Assert.assertEquals(expected, handler.getLog());
         }
         handler = new TestHandler();
-        try (Context ctx = Context.newBuilder().options(createLoggingOptions(LoggingLanguageSecond.ID, null, Level.FINEST.toString())).logHandler(handler).build()) {
+        try (Context ctx = newContextBuilder().options(createLoggingOptions(LoggingLanguageSecond.ID, null, Level.FINEST.toString())).logHandler(handler).build()) {
             ctx.eval(LoggingLanguageFirst.ID, "");
             ctx.eval(LoggingLanguageSecond.ID, "");
             // All levels from log2 language and logs >= defaultLevel from log1 language
@@ -131,7 +134,7 @@ public class LoggingTest {
     @Test
     public void testAllLanguagesAllLogging() {
         TestHandler handler = new TestHandler();
-        try (Context ctx = Context.newBuilder().options(createLoggingOptions(null, null, Level.FINEST.toString())).logHandler(handler).build()) {
+        try (Context ctx = newContextBuilder().options(createLoggingOptions(null, null, Level.FINEST.toString())).logHandler(handler).build()) {
             ctx.eval(LoggingLanguageFirst.ID, "");
             ctx.eval(LoggingLanguageSecond.ID, "");
             List<Map.Entry<Level, String>> expected = new ArrayList<>();
@@ -144,7 +147,7 @@ public class LoggingTest {
     @Test
     public void testBothLanguagesAllLogging() {
         TestHandler handler = new TestHandler();
-        try (Context ctx = Context.newBuilder().options(
+        try (Context ctx = newContextBuilder().options(
                         createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINEST.toString(), LoggingLanguageSecond.ID, null, Level.FINEST.toString())).logHandler(handler).build()) {
             ctx.eval(LoggingLanguageFirst.ID, "");
             ctx.eval(LoggingLanguageSecond.ID, "");
@@ -159,7 +162,7 @@ public class LoggingTest {
     public void testFinestOnListLogger() {
         final Level defaultLevel = Level.INFO;
         TestHandler handler = new TestHandler();
-        try (Context ctx = Context.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, "a.b", Level.FINEST.toString())).logHandler(handler).build()) {
+        try (Context ctx = newContextBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, "a.b", Level.FINEST.toString())).logHandler(handler).build()) {
             ctx.eval(LoggingLanguageFirst.ID, "");
             ctx.eval(LoggingLanguageSecond.ID, "");
             List<Map.Entry<Level, String>> expected = new ArrayList<>();
@@ -173,7 +176,7 @@ public class LoggingTest {
     public void testFinestOnIntermediateLogger() {
         final Level defaultLevel = Level.INFO;
         TestHandler handler = new TestHandler();
-        try (Context ctx = Context.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, "a.a", Level.FINEST.toString())).logHandler(handler).build()) {
+        try (Context ctx = newContextBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, "a.a", Level.FINEST.toString())).logHandler(handler).build()) {
             ctx.eval(LoggingLanguageFirst.ID, "");
             ctx.eval(LoggingLanguageSecond.ID, "");
             List<Map.Entry<Level, String>> expected = new ArrayList<>();
@@ -187,7 +190,7 @@ public class LoggingTest {
     public void testFinestOnIntermediateNonExistentLogger() {
         final Level defaultLevel = Level.INFO;
         TestHandler handler = new TestHandler();
-        try (Context ctx = Context.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, "b.a.a", Level.FINEST.toString())).logHandler(handler).build()) {
+        try (Context ctx = newContextBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, "b.a.a", Level.FINEST.toString())).logHandler(handler).build()) {
             ctx.eval(LoggingLanguageFirst.ID, "");
             ctx.eval(LoggingLanguageSecond.ID, "");
             List<Map.Entry<Level, String>> expected = new ArrayList<>();
@@ -201,7 +204,7 @@ public class LoggingTest {
     public void testDifferentLogLevelOnChildAndParent() {
         final Level defaultLevel = Level.INFO;
         TestHandler handler = new TestHandler();
-        try (Context ctx = Context.newBuilder().options(createLoggingOptions(
+        try (Context ctx = newContextBuilder().options(createLoggingOptions(
                         LoggingLanguageFirst.ID, "a", Level.FINE.toString(),
                         LoggingLanguageFirst.ID, "a.a", Level.FINER.toString(),
                         LoggingLanguageFirst.ID, "a.a.a", Level.FINEST.toString())).logHandler(handler).build()) {
@@ -222,7 +225,7 @@ public class LoggingTest {
     public void testMultipleContextsExclusive() {
         final Level defaultLevel = Level.INFO;
         TestHandler handler = new TestHandler();
-        try (Context ctx = Context.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, "a.a", Level.FINEST.toString())).logHandler(handler).build()) {
+        try (Context ctx = newContextBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, "a.a", Level.FINEST.toString())).logHandler(handler).build()) {
             ctx.eval(LoggingLanguageFirst.ID, "");
             ctx.eval(LoggingLanguageSecond.ID, "");
             List<Map.Entry<Level, String>> expected = new ArrayList<>();
@@ -231,7 +234,7 @@ public class LoggingTest {
             Assert.assertEquals(expected, handler.getLog());
         }
         handler = new TestHandler();
-        try (Context ctx = Context.newBuilder().options(createLoggingOptions(LoggingLanguageSecond.ID, "a.a", Level.FINEST.toString())).logHandler(handler).build()) {
+        try (Context ctx = newContextBuilder().options(createLoggingOptions(LoggingLanguageSecond.ID, "a.a", Level.FINEST.toString())).logHandler(handler).build()) {
             ctx.eval(LoggingLanguageFirst.ID, "");
             ctx.eval(LoggingLanguageSecond.ID, "");
             List<Map.Entry<Level, String>> expected = new ArrayList<>();
@@ -240,7 +243,7 @@ public class LoggingTest {
             Assert.assertEquals(expected, handler.getLog());
         }
         handler = new TestHandler();
-        try (Context ctx = Context.newBuilder().logHandler(handler).build()) {
+        try (Context ctx = newContextBuilder().logHandler(handler).build()) {
             ctx.eval(LoggingLanguageFirst.ID, "");
             ctx.eval(LoggingLanguageSecond.ID, "");
             List<Map.Entry<Level, String>> expected = new ArrayList<>();
@@ -256,9 +259,9 @@ public class LoggingTest {
         final TestHandler handler1 = new TestHandler();
         final TestHandler handler2 = new TestHandler();
         final TestHandler handler3 = new TestHandler();
-        try (Context ctx1 = Context.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, "a.a", Level.FINEST.toString())).logHandler(handler1).build()) {
-            try (Context ctx2 = Context.newBuilder().options(createLoggingOptions(LoggingLanguageSecond.ID, "a.a", Level.FINEST.toString())).logHandler(handler2).build()) {
-                try (Context ctx3 = Context.newBuilder().logHandler(handler3).build()) {
+        try (Context ctx1 = newContextBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, "a.a", Level.FINEST.toString())).logHandler(handler1).build()) {
+            try (Context ctx2 = newContextBuilder().options(createLoggingOptions(LoggingLanguageSecond.ID, "a.a", Level.FINEST.toString())).logHandler(handler2).build()) {
+                try (Context ctx3 = newContextBuilder().logHandler(handler3).build()) {
                     ctx1.eval(LoggingLanguageFirst.ID, "");
                     ctx1.eval(LoggingLanguageSecond.ID, "");
                     ctx2.eval(LoggingLanguageFirst.ID, "");
@@ -287,8 +290,8 @@ public class LoggingTest {
         final Level defaultLevel = Level.INFO;
         final TestHandler handler1 = new TestHandler();
         final TestHandler handler2 = new TestHandler();
-        try (Context ctx1 = Context.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, "a", Level.FINER.toString())).logHandler(handler1).build()) {
-            try (Context ctx2 = Context.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, "a.a", Level.FINE.toString())).logHandler(handler2).build()) {
+        try (Context ctx1 = newContextBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, "a", Level.FINER.toString())).logHandler(handler1).build()) {
+            try (Context ctx2 = newContextBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, "a.a", Level.FINE.toString())).logHandler(handler2).build()) {
                 ctx1.eval(LoggingLanguageFirst.ID, "");
                 ctx2.eval(LoggingLanguageFirst.ID, "");
                 List<Map.Entry<Level, String>> expected = new ArrayList<>();
@@ -307,9 +310,9 @@ public class LoggingTest {
         final TestHandler handler1 = new TestHandler();
         final TestHandler handler2 = new TestHandler();
         final TestHandler handler3 = new TestHandler();
-        try (Context ctx1 = Context.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, "a", Level.FINE.toString())).logHandler(handler1).build()) {
-            Context ctx2 = Context.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, "a.a", Level.FINER.toString())).logHandler(handler2).build();
-            try (Context ctx3 = Context.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, "a.a.a", Level.FINER.toString())).logHandler(handler3).build()) {
+        try (Context ctx1 = newContextBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, "a", Level.FINE.toString())).logHandler(handler1).build()) {
+            Context ctx2 = newContextBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, "a.a", Level.FINER.toString())).logHandler(handler2).build();
+            try (Context ctx3 = newContextBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, "a.a.a", Level.FINER.toString())).logHandler(handler3).build()) {
                 ctx2.close();
                 ctx1.eval(LoggingLanguageFirst.ID, "");
                 ctx3.eval(LoggingLanguageFirst.ID, "");
@@ -329,9 +332,9 @@ public class LoggingTest {
         final TestHandler handler1 = new TestHandler();
         final TestHandler handler2 = new TestHandler();
         final TestHandler handler3 = new TestHandler();
-        try (Context ctx1 = Context.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, "a", Level.FINE.toString())).logHandler(handler1).build()) {
-            Context ctx2 = Context.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, "a.a", Level.FINER.toString())).logHandler(handler2).build();
-            try (Context ctx3 = Context.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, "a.a", Level.FINER.toString())).logHandler(handler3).build()) {
+        try (Context ctx1 = newContextBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, "a", Level.FINE.toString())).logHandler(handler1).build()) {
+            Context ctx2 = newContextBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, "a.a", Level.FINER.toString())).logHandler(handler2).build();
+            try (Context ctx3 = newContextBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, "a.a", Level.FINER.toString())).logHandler(handler3).build()) {
                 ctx2.close();
                 ctx1.eval(LoggingLanguageFirst.ID, "");
                 ctx3.eval(LoggingLanguageFirst.ID, "");
@@ -348,7 +351,7 @@ public class LoggingTest {
     @Test
     public void testLogRecordImmutable() {
         final TestHandler handler1 = new TestHandler();
-        try (Context ctx1 = Context.newBuilder().logHandler(handler1).build()) {
+        try (Context ctx1 = newContextBuilder().logHandler(handler1).build()) {
             ctx1.eval(LoggingLanguageFirst.ID, "");
             boolean logged = false;
             for (LogRecord r : handler1.getRawLog()) {
@@ -372,7 +375,7 @@ public class LoggingTest {
             }
         };
         final TestHandler handler1 = new TestHandler();
-        try (Context ctx1 = Context.newBuilder().logHandler(handler1).build()) {
+        try (Context ctx1 = newContextBuilder().logHandler(handler1).build()) {
             ctx1.eval(LoggingLanguageFirst.ID, "");
             boolean logged = false;
             for (LogRecord r : handler1.getRawLog()) {
@@ -396,7 +399,7 @@ public class LoggingTest {
             }
         };
         final TestHandler handler1 = new TestHandler();
-        try (Context ctx1 = Context.newBuilder().logHandler(handler1).build()) {
+        try (Context ctx1 = newContextBuilder().logHandler(handler1).build()) {
             ctx1.eval(LoggingLanguageFirst.ID, "");
             boolean logged = false;
             for (LogRecord r : handler1.getRawLog()) {
@@ -427,7 +430,7 @@ public class LoggingTest {
             }
         };
         TestHandler handler = new TestHandler();
-        try (Context ctx = Context.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINEST.toString())).logHandler(handler).build()) {
+        try (Context ctx = newContextBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINEST.toString())).logHandler(handler).build()) {
             ctx.eval(LoggingLanguageFirst.ID, "");
             List<Map.Entry<Level, String>> expected = new ArrayList<>();
             for (String loggerName : AbstractLoggingLanguage.LOGGER_NAMES) {
@@ -441,13 +444,13 @@ public class LoggingTest {
     @Test
     public void testPolyglotLogHandler() {
         CloseableByteArrayOutputStream err = new CloseableByteArrayOutputStream();
-        testLogToStream(Context.newBuilder().err(err), err, false);
+        testLogToStream(newContextBuilder().err(err), err, false);
     }
 
     @Test
     public void testGcedContext() {
         TestHandler handler = new TestHandler();
-        Context gcedContext = Context.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINEST.toString())).logHandler(handler).build();
+        Context gcedContext = newContextBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINEST.toString())).logHandler(handler).build();
         gcedContext.eval(LoggingLanguageFirst.ID, "");
         List<Map.Entry<Level, String>> expected = new ArrayList<>();
         expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, Level.FINEST, Collections.emptyMap()));
@@ -456,7 +459,7 @@ public class LoggingTest {
         gcedContext = null;
         GCUtils.assertGc("Cannot free context.", gcedContextRef);
         handler = new TestHandler();
-        Context newContext = Context.newBuilder().logHandler(handler).build();
+        Context newContext = newContextBuilder().logHandler(handler).build();
         newContext.eval(LoggingLanguageFirst.ID, "");
         expected = new ArrayList<>();
         expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, Level.INFO, Collections.emptyMap()));
@@ -466,9 +469,9 @@ public class LoggingTest {
     @Test
     public void testGcedContext2() {
         TestHandler gcedContextHandler = new TestHandler();
-        Context gcedContext = Context.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINEST.toString())).logHandler(gcedContextHandler).build();
+        Context gcedContext = newContextBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINEST.toString())).logHandler(gcedContextHandler).build();
         TestHandler contextHandler = new TestHandler();
-        Context context = Context.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINE.toString())).logHandler(contextHandler).build();
+        Context context = newContextBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINE.toString())).logHandler(contextHandler).build();
         gcedContext.eval(LoggingLanguageFirst.ID, "");
         List<Map.Entry<Level, String>> expected = new ArrayList<>();
         expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, Level.FINEST, Collections.emptyMap()));
@@ -490,16 +493,16 @@ public class LoggingTest {
     @Test
     public void testLogToStream() {
         CloseableByteArrayOutputStream stream = new CloseableByteArrayOutputStream();
-        testLogToStream(Context.newBuilder().logHandler(stream), stream, true);
+        testLogToStream(newContextBuilder().logHandler(stream), stream, true);
         stream = new CloseableByteArrayOutputStream();
-        try (Engine engine = Engine.newBuilder().logHandler(stream).build()) {
-            testLogToStream(Context.newBuilder().engine(engine), stream, false);
+        try (Engine engine = newEngineBuilder().logHandler(stream).build()) {
+            testLogToStream(newContextBuilder().engine(engine), stream, false);
             stream.clear();
             CloseableByteArrayOutputStream innerStream = new CloseableByteArrayOutputStream();
-            testLogToStream(Context.newBuilder().engine(engine).logHandler(innerStream), innerStream, true);
+            testLogToStream(newContextBuilder().engine(engine).logHandler(innerStream), innerStream, true);
             Assert.assertFalse(stream.isClosed());
             Assert.assertEquals(0, stream.toByteArray().length);
-            testLogToStream(Context.newBuilder().engine(engine), stream, false);
+            testLogToStream(newContextBuilder().engine(engine), stream, false);
         }
         Assert.assertTrue(stream.isClosed());
     }
@@ -510,7 +513,7 @@ public class LoggingTest {
         Map<String, Level> setLevelsMap = new HashMap<>();
         setLevelsMap.put("a", Level.FINEST);
         setLevelsMap.put("a.a", Level.INFO);
-        Context.Builder builder = Context.newBuilder();
+        Context.Builder builder = newContextBuilder();
         for (Map.Entry<String, Level> levelsMapEntry : setLevelsMap.entrySet()) {
             builder.options(createLoggingOptions(LoggingLanguageFirst.ID, levelsMapEntry.getKey(), levelsMapEntry.getValue().toString()));
         }
@@ -529,14 +532,14 @@ public class LoggingTest {
         Map<String, Level> setLevelsMap = new HashMap<>();
         setLevelsMap.put("a", Level.FINEST);
         setLevelsMap.put("a.a", Level.INFO);
-        Context.Builder builder = Context.newBuilder();
+        Context.Builder builder = newContextBuilder();
         for (Map.Entry<String, Level> levelsMapEntry : setLevelsMap.entrySet()) {
             builder.options(createLoggingOptions(LoggingLanguageFirst.ID, levelsMapEntry.getKey(), levelsMapEntry.getValue().toString()));
         }
         TestHandler handler = new TestHandler();
         try (Context ctx = builder.logHandler(handler).build()) {
             TestHandler handler2 = new TestHandler();
-            try (Context ctx2 = Context.newBuilder().logHandler(handler2).build()) {
+            try (Context ctx2 = newContextBuilder().logHandler(handler2).build()) {
                 ctx.eval(LoggingLanguageFirst.ID, "");
                 ctx2.eval(LoggingLanguageFirst.ID, "");
                 List<Map.Entry<Level, String>> expected = new ArrayList<>();
@@ -556,7 +559,7 @@ public class LoggingTest {
         setLevelsMap.put("a", Level.INFO);
         setLevelsMap.put("a.a", Level.FINE);
         TestHandler handler = new TestHandler();
-        Context.Builder builder = Context.newBuilder();
+        Context.Builder builder = newContextBuilder();
         for (Map.Entry<String, Level> levelsMapEntry : setLevelsMap.entrySet()) {
             builder.options(createLoggingOptions(LoggingLanguageFirst.ID, levelsMapEntry.getKey(), levelsMapEntry.getValue().toString()));
         }
@@ -575,14 +578,14 @@ public class LoggingTest {
         setLevelsMap.put(null, Level.FINEST);   // level on language root level
         setLevelsMap.put("a", Level.INFO);
         setLevelsMap.put("a.a", Level.FINE);
-        Context.Builder builder = Context.newBuilder();
+        Context.Builder builder = newContextBuilder();
         for (Map.Entry<String, Level> levelsMapEntry : setLevelsMap.entrySet()) {
             builder.options(createLoggingOptions(LoggingLanguageFirst.ID, levelsMapEntry.getKey(), levelsMapEntry.getValue().toString()));
         }
         TestHandler handler = new TestHandler();
         try (Context ctx = builder.logHandler(handler).build()) {
             TestHandler handler2 = new TestHandler();
-            try (Context ctx2 = Context.newBuilder().logHandler(handler2).build()) {
+            try (Context ctx2 = newContextBuilder().logHandler(handler2).build()) {
                 ctx.eval(LoggingLanguageFirst.ID, "");
                 ctx2.eval(LoggingLanguageFirst.ID, "");
                 List<Map.Entry<Level, String>> expected = new ArrayList<>();
@@ -600,7 +603,7 @@ public class LoggingTest {
         Map<String, Level> setLevelsMap = new HashMap<>();
         setLevelsMap.put(null, Level.FINEST);   // level on language root level
         setLevelsMap.put("a", Level.OFF);
-        Context.Builder builder = Context.newBuilder();
+        Context.Builder builder = newContextBuilder();
         for (Map.Entry<String, Level> levelsMapEntry : setLevelsMap.entrySet()) {
             builder.options(createLoggingOptions(LoggingLanguageFirst.ID, levelsMapEntry.getKey(), levelsMapEntry.getValue().toString()));
         }
@@ -619,14 +622,14 @@ public class LoggingTest {
         Map<String, Level> setLevelsMap = new HashMap<>();
         setLevelsMap.put(null, Level.FINEST);   // level on language root level
         setLevelsMap.put("a", Level.OFF);
-        Context.Builder builder = Context.newBuilder();
+        Context.Builder builder = newContextBuilder();
         for (Map.Entry<String, Level> levelsMapEntry : setLevelsMap.entrySet()) {
             builder.options(createLoggingOptions(LoggingLanguageFirst.ID, levelsMapEntry.getKey(), levelsMapEntry.getValue().toString()));
         }
         TestHandler handler = new TestHandler();
         try (Context ctx = builder.logHandler(handler).build()) {
             TestHandler handler2 = new TestHandler();
-            try (Context ctx2 = Context.newBuilder().logHandler(handler2).build()) {
+            try (Context ctx2 = newContextBuilder().logHandler(handler2).build()) {
                 ctx.eval(LoggingLanguageFirst.ID, "");
                 ctx2.eval(LoggingLanguageFirst.ID, "");
                 List<Map.Entry<Level, String>> expected = new ArrayList<>();
@@ -644,9 +647,9 @@ public class LoggingTest {
         // Engine handler overriden by context handler, logging from language with context
         final Level defaultLevel = Level.INFO;
         TestHandler engineHandler = new TestHandler();
-        try (Engine eng = Engine.newBuilder().logHandler(engineHandler).build()) {
+        try (Engine eng = newEngineBuilder().logHandler(engineHandler).build()) {
             TestHandler handler = new TestHandler();
-            try (Context ctx = Context.newBuilder().engine(eng).options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINEST.toString())).logHandler(handler).build()) {
+            try (Context ctx = newContextBuilder().engine(eng).options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINEST.toString())).logHandler(handler).build()) {
                 ctx.eval(LoggingLanguageFirst.ID, "");
                 ctx.eval(LoggingLanguageSecond.ID, "");
                 List<Map.Entry<Level, String>> expected = new ArrayList<>();
@@ -660,8 +663,8 @@ public class LoggingTest {
 
         // Engine handler as default, logging from language with context
         engineHandler = new TestHandler();
-        try (Engine eng = Engine.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINEST.toString())).logHandler(engineHandler).build()) {
-            try (Context ctx = Context.newBuilder().engine(eng).build()) {
+        try (Engine eng = newEngineBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINEST.toString())).logHandler(engineHandler).build()) {
+            try (Context ctx = newContextBuilder().engine(eng).build()) {
                 ctx.eval(LoggingLanguageFirst.ID, "");
                 ctx.eval(LoggingLanguageSecond.ID, "");
                 List<Map.Entry<Level, String>> expected = new ArrayList<>();
@@ -678,10 +681,10 @@ public class LoggingTest {
         ProxyInstrument delegate = new ProxyInstrument();
         delegate.setOnCreate(new InstrumentLogging(false));
         ProxyInstrument.setDelegate(delegate);
-        try (Engine eng = Engine.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINEST.toString(), ProxyInstrument.ID, null, Level.FINEST.toString())).logHandler(
+        try (Engine eng = newEngineBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINEST.toString(), ProxyInstrument.ID, null, Level.FINEST.toString())).logHandler(
                         engineHandler).build()) {
             LoggingLanguageFirst.action = new LookupInstrumentAction(true);
-            try (Context ctx = Context.newBuilder().engine(eng).build()) {
+            try (Context ctx = newContextBuilder().engine(eng).build()) {
                 ctx.eval(LoggingLanguageFirst.ID, "");
                 List<Map.Entry<Level, String>> expected = new ArrayList<>();
                 expected.addAll(createExpectedLog(ProxyInstrument.ID, Level.FINEST, Collections.emptyMap()));
@@ -696,10 +699,10 @@ public class LoggingTest {
         delegate = new ProxyInstrument();
         delegate.setOnCreate(new InstrumentLogging(true));
         ProxyInstrument.setDelegate(delegate);
-        try (Engine eng = Engine.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINEST.toString(), ProxyInstrument.ID, null, Level.FINEST.toString())).logHandler(
+        try (Engine eng = newEngineBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINEST.toString(), ProxyInstrument.ID, null, Level.FINEST.toString())).logHandler(
                         engineHandler).build()) {
             LoggingLanguageFirst.action = new LookupInstrumentAction(true);
-            try (Context ctx = Context.newBuilder().engine(eng).build()) {
+            try (Context ctx = newContextBuilder().engine(eng).build()) {
                 ctx.eval(LoggingLanguageFirst.ID, "");
                 List<Map.Entry<Level, String>> expected = new ArrayList<>();
                 expected.addAll(createExpectedLog(ProxyInstrument.ID, Level.FINEST, Collections.emptyMap()));
@@ -717,9 +720,9 @@ public class LoggingTest {
         ProxyInstrument delegate = new ProxyInstrument();
         delegate.setOnCreate(new InstrumentLogging(false));
         ProxyInstrument.setDelegate(delegate);
-        try (Engine eng = Engine.newBuilder().logHandler(engineHandler).build()) {
+        try (Engine eng = newEngineBuilder().logHandler(engineHandler).build()) {
             LoggingLanguageFirst.action = new LookupInstrumentAction(true);
-            try (Context ctx = Context.newBuilder().engine(eng).build()) {
+            try (Context ctx = newContextBuilder().engine(eng).build()) {
                 ctx.eval(LoggingLanguageFirst.ID, "");
                 List<Map.Entry<Level, String>> expected = new ArrayList<>();
                 expected.addAll(createExpectedLog(ProxyInstrument.ID, defaultLevel, Collections.emptyMap()));
@@ -733,9 +736,9 @@ public class LoggingTest {
         delegate = new ProxyInstrument();
         delegate.setOnCreate(new InstrumentLogging(true));
         ProxyInstrument.setDelegate(delegate);
-        try (Engine eng = Engine.newBuilder().logHandler(engineHandler).build()) {
+        try (Engine eng = newEngineBuilder().logHandler(engineHandler).build()) {
             LoggingLanguageFirst.action = new LookupInstrumentAction(true);
-            try (Context ctx = Context.newBuilder().engine(eng).build()) {
+            try (Context ctx = newContextBuilder().engine(eng).build()) {
                 ctx.eval(LoggingLanguageFirst.ID, "");
                 List<Map.Entry<Level, String>> expected = new ArrayList<>();
                 expected.addAll(createExpectedLog(ProxyInstrument.ID, defaultLevel, Collections.emptyMap()));
@@ -752,11 +755,11 @@ public class LoggingTest {
         ProxyInstrument delegate = new ProxyInstrument();
         delegate.setOnCreate(new InstrumentLogging(false));
         ProxyInstrument.setDelegate(delegate);
-        try (Engine eng = Engine.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINE.toString(), ProxyInstrument.ID, null, Level.FINE.toString())).logHandler(
+        try (Engine eng = newEngineBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINE.toString(), ProxyInstrument.ID, null, Level.FINE.toString())).logHandler(
                         engineHandler).build()) {
             LoggingLanguageFirst.action = new LookupInstrumentAction(true);
             TestHandler contextHandler = new TestHandler();
-            try (Context ctx = Context.newBuilder().engine(eng).options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINER.toString())).logHandler(contextHandler).build()) {
+            try (Context ctx = newContextBuilder().engine(eng).options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINER.toString())).logHandler(contextHandler).build()) {
                 ctx.eval(LoggingLanguageFirst.ID, "");
                 List<Map.Entry<Level, String>> expected = new ArrayList<>();
                 expected.addAll(createExpectedLog(ProxyInstrument.ID, Level.FINE, Collections.emptyMap()));
@@ -771,11 +774,11 @@ public class LoggingTest {
         delegate = new ProxyInstrument();
         delegate.setOnCreate(new InstrumentLogging(true));
         ProxyInstrument.setDelegate(delegate);
-        try (Engine eng = Engine.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINE.toString(), ProxyInstrument.ID, null, Level.FINE.toString())).logHandler(
+        try (Engine eng = newEngineBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINE.toString(), ProxyInstrument.ID, null, Level.FINE.toString())).logHandler(
                         engineHandler).build()) {
             LoggingLanguageFirst.action = new LookupInstrumentAction(true);
             TestHandler contextHandler = new TestHandler();
-            try (Context ctx = Context.newBuilder().engine(eng).options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINER.toString())).logHandler(contextHandler).build()) {
+            try (Context ctx = newContextBuilder().engine(eng).options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINER.toString())).logHandler(contextHandler).build()) {
                 ctx.eval(LoggingLanguageFirst.ID, "");
                 List<Map.Entry<Level, String>> expectedInEngine = new ArrayList<>();
                 expectedInEngine.addAll(createExpectedLog(ProxyInstrument.ID, Level.FINE, Collections.emptyMap()));
@@ -794,16 +797,16 @@ public class LoggingTest {
         ProxyInstrument delegate = new ProxyInstrument();
         delegate.setOnCreate(new InstrumentLogging(true));
         ProxyInstrument.setDelegate(delegate);
-        try (Engine eng1 = Engine.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINEST.toString(), ProxyInstrument.ID, null, Level.FINEST.toString())).logHandler(
+        try (Engine eng1 = newEngineBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINEST.toString(), ProxyInstrument.ID, null, Level.FINEST.toString())).logHandler(
                         engine1Handler).build()) {
-            try (Engine eng2 = Engine.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINE.toString(), ProxyInstrument.ID, null, Level.FINE.toString())).logHandler(
+            try (Engine eng2 = newEngineBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINE.toString(), ProxyInstrument.ID, null, Level.FINE.toString())).logHandler(
                             engine2Handler).build()) {
                 LoggingLanguageFirst.action = new LookupInstrumentAction(true);
-                try (Context ctx = Context.newBuilder().engine(eng1).build()) {
+                try (Context ctx = newContextBuilder().engine(eng1).build()) {
                     ctx.eval(LoggingLanguageFirst.ID, "");
                 }
                 LoggingLanguageFirst.action = new LookupInstrumentAction(true);
-                try (Context ctx = Context.newBuilder().engine(eng2).build()) {
+                try (Context ctx = newContextBuilder().engine(eng2).build()) {
                     ctx.eval(LoggingLanguageFirst.ID, "");
                 }
                 List<Map.Entry<Level, String>> expected = new ArrayList<>();
@@ -821,7 +824,7 @@ public class LoggingTest {
     @Test
     public void testNoContextLoggingDefaultTruffleLogger() {
         TestHandler engineHandler = new TestHandler();
-        try (Engine eng = Engine.newBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINE.toString(), ProxyInstrument.ID, null, Level.FINE.toString())).logHandler(
+        try (Engine eng = newEngineBuilder().options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINE.toString(), ProxyInstrument.ID, null, Level.FINE.toString())).logHandler(
                         engineHandler).build()) {
             AtomicReference<TruffleLogger> loggerRef = new AtomicReference<>();
             LoggingLanguageFirst.action = new BiPredicate<LoggingContext, Collection<TruffleLogger>>() {
@@ -831,7 +834,7 @@ public class LoggingTest {
                     return true;
                 }
             };
-            try (Context ctx = Context.newBuilder().engine(eng).build()) {
+            try (Context ctx = newContextBuilder().engine(eng).build()) {
                 ctx.eval(LoggingLanguageFirst.ID, "");
                 try {
                     loggerRef.get().log(Level.INFO, "Should not be logged.");
@@ -867,7 +870,7 @@ public class LoggingTest {
         ProxyInstrument.setDelegate(delegate);
         try (Engine eng = Engine.create()) {
             LoggingLanguageFirst.action = new LookupInstrumentAction(false);
-            try (Context ctx = Context.newBuilder().engine(eng).build()) {
+            try (Context ctx = newContextBuilder().engine(eng).build()) {
                 ctx.eval(LoggingLanguageFirst.ID, "");
             }
         }
@@ -885,7 +888,7 @@ public class LoggingTest {
         ProxyInstrument.setDelegate(delegate);
         try (Engine eng = Engine.create()) {
             LoggingLanguageFirst.action = new LookupInstrumentAction(false);
-            try (Context ctx = Context.newBuilder().engine(eng).build()) {
+            try (Context ctx = newContextBuilder().engine(eng).build()) {
                 ctx.eval(LoggingLanguageFirst.ID, "");
             }
         }
@@ -905,7 +908,7 @@ public class LoggingTest {
         ProxyInstrument.setDelegate(delegate);
         LoggingLanguageFirst.action = new LookupInstrumentAction(true);
         ByteArrayOutputStream err = new ByteArrayOutputStream();
-        try (Context ctx = Context.newBuilder().err(err).options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINE.toString(), ProxyInstrument.ID, null, Level.FINE.toString())).build()) {
+        try (Context ctx = newContextBuilder().err(err).options(createLoggingOptions(LoggingLanguageFirst.ID, null, Level.FINE.toString(), ProxyInstrument.ID, null, Level.FINE.toString())).build()) {
             ctx.eval(LoggingLanguageFirst.ID, "");
         }
         Assert.assertNotEquals(0, err.toByteArray().length);
@@ -914,7 +917,7 @@ public class LoggingTest {
 
     @Test
     public void testInvalidId() {
-        Context.Builder builder = Context.newBuilder();
+        Context.Builder builder = newContextBuilder();
         TestHandler handler = new TestHandler();
         LoggingLanguageFirst.action = new BiPredicate<LoggingContext, Collection<TruffleLogger>>() {
             @Override
@@ -1104,6 +1107,20 @@ public class LoggingTest {
         return root;
     }
 
+    /**
+     * Creates a Context builder with disabled compiler logging.
+     */
+    private static Context.Builder newContextBuilder() {
+        return Context.newBuilder().options(createLoggingOptions("engine", null, Level.OFF.toString()));
+    }
+
+    /**
+     * Creates an Engine builder with disabled compiler logging.
+     */
+    private static Engine.Builder newEngineBuilder() {
+        return Engine.newBuilder().options(createLoggingOptions("engine", null, Level.OFF.toString()));
+    }
+
     public static final class LoggingContext {
         private final TruffleLanguage.Env env;
 
@@ -1172,11 +1189,28 @@ public class LoggingTest {
         }
     }
 
-    private static final class LoggingLanguageObject implements TruffleObject {
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings("static-method")
+    static final class LoggingLanguageObject implements TruffleObject {
         final String stringValue;
 
         LoggingLanguageObject(final String stringValue) {
             this.stringValue = stringValue;
+        }
+
+        @ExportMessage
+        Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+            return stringValue;
+        }
+
+        @ExportMessage
+        boolean hasLanguage() {
+            return true;
+        }
+
+        @ExportMessage
+        Class<? extends TruffleLanguage<?>> getLanguage() {
+            return LoggingLanguageFirst.class;
         }
 
     }
@@ -1198,16 +1232,6 @@ public class LoggingTest {
         @Override
         protected LoggingContext createContext(Env env) {
             return new LoggingContext(env);
-        }
-
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return object instanceof LoggingLanguageObject;
-        }
-
-        @Override
-        protected String toString(LoggingContext context, Object value) {
-            return ((LoggingLanguageObject) value).stringValue;
         }
 
         @Override

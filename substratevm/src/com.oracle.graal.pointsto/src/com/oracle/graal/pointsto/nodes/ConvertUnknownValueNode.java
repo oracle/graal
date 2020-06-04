@@ -32,6 +32,8 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.Lowerable;
+import org.graalvm.compiler.nodes.spi.LoweringTool;
 
 /**
  * Node used to convert unknown value objects, e.g., objects that resulted from a low level memory
@@ -50,7 +52,7 @@ import org.graalvm.compiler.nodes.ValueNode;
  * is done.
  */
 @NodeInfo(size = SIZE_IGNORED, cycles = CYCLES_IGNORED)
-public final class ConvertUnknownValueNode extends FixedWithNextNode {
+public final class ConvertUnknownValueNode extends FixedWithNextNode implements Lowerable {
     public static final NodeClass<ConvertUnknownValueNode> TYPE = NodeClass.create(ConvertUnknownValueNode.class);
 
     @Input ValueNode object;
@@ -62,5 +64,10 @@ public final class ConvertUnknownValueNode extends FixedWithNextNode {
 
     public ValueNode getObject() {
         return object;
+    }
+
+    @Override
+    public void lower(LoweringTool tool) {
+        graph().replaceFixed(this, object);
     }
 }

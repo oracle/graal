@@ -29,6 +29,10 @@ import org.graalvm.compiler.nodes.ValueNode;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.graal.pointsto.util.AnalysisError;
+
+import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.meta.JavaConstant;
 
 /**
  * The all-instantiated type state is defined as the maximum state that is allowed. If our type was
@@ -53,7 +57,7 @@ import com.oracle.graal.pointsto.typestate.TypeState;
  * case that type can never be returned by this flow (and the only possible value is null, which is
  * set regardless of the type update).
  */
-public abstract class SourceTypeFlowBase extends TypeFlow<ValueNode> {
+public abstract class SourceTypeFlowBase extends TypeFlow<BytecodePosition> {
 
     /**
      * The source state is a temporary buffer for this flow's type state. The source state is added
@@ -62,13 +66,16 @@ public abstract class SourceTypeFlowBase extends TypeFlow<ValueNode> {
      */
     protected final TypeState sourceState;
 
+    private final JavaConstant constantValue;
+
     public SourceTypeFlowBase(ValueNode node, TypeState state) {
         this(node, state.exactType(), state);
     }
 
     public SourceTypeFlowBase(ValueNode node, AnalysisType declaredType, TypeState state) {
-        super(node, declaredType);
+        super(node.getNodeSourcePosition(), declaredType);
         this.sourceState = state;
+        this.constantValue = node.asJavaConstant();
     }
 
     public SourceTypeFlowBase(BigBang bb, SourceTypeFlowBase original, MethodFlowsGraph methodFlows) {
@@ -78,6 +85,14 @@ public abstract class SourceTypeFlowBase extends TypeFlow<ValueNode> {
     public SourceTypeFlowBase(@SuppressWarnings("unused") BigBang bb, SourceTypeFlowBase original, MethodFlowsGraph methodFlows, TypeState state) {
         super(original, methodFlows);
         this.sourceState = state;
+        this.constantValue = original.constantValue;
+    }
+
+    /**
+     * Returns the constant value if the type flow was created from a constant node, or null.
+     */
+    public JavaConstant getConstantValue() {
+        return constantValue;
     }
 
     @Override
@@ -106,6 +121,21 @@ public abstract class SourceTypeFlowBase extends TypeFlow<ValueNode> {
             /* Update the state and propagate it to uses. */
             addState(bb, sourceState);
         }
+    }
+
+    @Override
+    public void onObservedSaturated(BigBang bb, TypeFlow<?> observed) {
+        AnalysisError.shouldNotReachHere("NewInstanceTypeFlow cannot saturate.");
+    }
+
+    @Override
+    protected void onInputSaturated(BigBang bb, TypeFlow<?> input) {
+        AnalysisError.shouldNotReachHere("NewInstanceTypeFlow cannot saturate.");
+    }
+
+    @Override
+    protected void onSaturated(BigBang bb) {
+        AnalysisError.shouldNotReachHere("NewInstanceTypeFlow cannot saturate.");
     }
 
     @Override

@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api;
 
-import com.oracle.truffle.api.io.TruffleProcessBuilder;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -61,6 +60,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.ServiceLoader;
 import java.util.function.Supplier;
 
 import org.graalvm.options.OptionCategory;
@@ -71,6 +71,7 @@ import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Context.Builder;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.FileSystem;
@@ -85,14 +86,13 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.ReadOnlyArrayList;
+import com.oracle.truffle.api.io.TruffleProcessBuilder;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import java.util.ServiceLoader;
-import org.graalvm.polyglot.EnvironmentAccess;
 
 /**
  * A Truffle language implementation contains all the services a language should provide to make it
@@ -1037,8 +1037,14 @@ public abstract class TruffleLanguage<C> {
      * @param object the object to check
      * @return <code>true</code> if this language can deal with such object in native way
      * @since 0.8 or earlier
+     * @deprecated implement {@link #getLanguageView(Object, Object)} and export
+     *             {@link com.oracle.truffle.api.interop.InteropLibrary#getLanguage(Object)}
+     *             instead.
      */
-    protected abstract boolean isObjectOfLanguage(Object object);
+    @Deprecated
+    protected boolean isObjectOfLanguage(Object object) {
+        return false;
+    }
 
     /**
      * Find a hierarchy of local scopes enclosing the given {@link Node node}. Unless the node is in
@@ -1134,7 +1140,11 @@ public abstract class TruffleLanguage<C> {
      *            {@link com.oracle.truffle.api.interop.TruffleObject}
      * @return textual representation of the value in this language
      * @since 0.8 or earlier
+     * @deprecated implement {@link #getLanguageView(Object, Object)} and
+     *             {@link com.oracle.truffle.api.interop.InteropLibrary#toDisplayString(Object)}
+     *             instead.
      */
+    @Deprecated
     protected String toString(C context, Object value) {
         return Objects.toString(value);
     }
@@ -1147,8 +1157,7 @@ public abstract class TruffleLanguage<C> {
      * {@link org.graalvm.polyglot.Context#eval(org.graalvm.polyglot.Source)} - when evaluating an
      * {@link Source#isInteractive() interactive source} the result of the evaluation is tested for
      * {@link #isVisible(java.lang.Object, java.lang.Object) visibility} and if the value is found
-     * visible, it gets {@link TruffleLanguage#toString(java.lang.Object, java.lang.Object)
-     * converted to string} and printed to
+     * visible, it gets converted to string and printed to
      * {@link org.graalvm.polyglot.Context.Builder#out(OutputStream) standard output}.
      * <p>
      * A language can control whether a value is or isn't printed by overriding this method and
@@ -1173,45 +1182,211 @@ public abstract class TruffleLanguage<C> {
     }
 
     /**
-     * Find a meta-object of a value, if any. The meta-object represents a description of the
-     * object, reveals it's kind and it's features. Some information that a meta-object might define
-     * includes the base object's type, interface, class, methods, attributes, etc.
+     * Wraps the value to provide language-specific information for primitive and foreign values.
+     * Foreign values should be enhanced to look like the most generic object type of the language.
+     * The wrapper needs to introduce any "virtual" methods and properties that are commonly used in
+     * language constructs and in algorithms that are written to work on this generic object type.
+     * The wrapper may add or remove existing interop traits, but it is not allowed to change the
+     * {@link com.oracle.truffle.api.interop.InteropLibrary interop type}. For example, it is not
+     * allowed to change the type from number to string. If the behavior of an existing trait is
+     * modified then all writes on the mapper need to be forwarded to the underlying object, apart
+     * from the virtual members. Writes to the virtual members should be persisted in the wrapper if
+     * this is the behavior of the object type that is being mapped to.
+     * <p>
+     * Every language view wrapper must return the current language as their associated
+     * {@link com.oracle.truffle.api.interop.InteropLibrary#getLanguage(Object) language}. An
+     * {@link AssertionError} is thrown when a language view is requested if this contract is
+     * violated.
+     * <p>
+     * Example modifications language view wrappers may perform:
+     * <ul>
+     * <li>Provide a language specific
+     * {@link com.oracle.truffle.api.interop.InteropLibrary#toDisplayString(Object) display string}
+     * for primitive and foreign values.
+     * <li>Return a language specific
+     * {@link com.oracle.truffle.api.interop.InteropLibrary#getMetaObject(Object) metaobject} for
+     * primitive or foreign values.
+     * <li>Add virtual members to the object for the view. For example, any JavaScript object is
+     * expected to have an implicit __proto__ member. Foreign objects, even if they do not have such
+     * a member, are interpreted as if they have.
+     * <li>There are languages where all scalar values are also vectors. In such a case the array
+     * element trait may be added using the language wrapper to such values.
+     * </ul>
+     * <p>
+     * The default implementation returns <code>null</code>. If <code>null</code> is returned then
+     * the default language view will be used. The default language view wraps the value and returns
+     * the current language as their associated language. With the default view wrapper all interop
+     * library messages will be forwarded to the delegate value, except the messages for
+     * {@link com.oracle.truffle.api.interop.InteropLibrary#getMetaObject(Object) metaobjects} and
+     * {@link com.oracle.truffle.api.interop.InteropLibrary#toDisplayString(Object) display strings}
+     * .
+     * <p>
+     * This following example shows a simplified language view. For a full implementation including
+     * an example of metaobjects can be found in the Truffle examples language "SimpleLanguage".
+     *
+     * <pre>
+     * &#64;ExportLibrary(value = InteropLibrary.class, delegateTo = "delegate")
+     * final class ExampleLanguageView implements TruffleObject {
+     *
+     *     protected final Object delegate;
+     *
+     *     ExampleLanguageView(Object delegate) {
+     *         this.delegate = delegate;
+     *     }
+     *
+     *     &#64;ExportMessage
+     *     boolean hasLanguage() {
+     *         return true;
+     *     }
+     *
+     *     &#64;ExportMessage
+     *     Class&lt;? extends TruffleLanguage&lt;?&gt;&gt; getLanguage() {
+     *         return MyLanguage.class;
+     *     }
+     *
+     *     &#64;ExportMessage
+     *     Object toDisplayString(boolean allowSideEffects,
+     *                     &#64;CachedLibrary("this.delegate") InteropLibrary dLib) {
+     *         try {
+     *             if (dLib.isString(this.delegate)) {
+     *                 return dLib.asString(this.delegate);
+     *             } else if (dLib.isBoolean(this.delegate)) {
+     *                 return dLib.asBoolean(this.delegate) ? "TRUE" : "FALSE";
+     *             } else if (dLib.fitsInLong(this.delegate)) {
+     *                 return longToString(dLib.asLong(this.delegate));
+     *             } else {
+     *                 // full list truncated for this language
+     *                 return "Unsupported value";
+     *             }
+     *         } catch (UnsupportedMessageException e) {
+     *             CompilerDirectives.transferToInterpreter();
+     *             throw new AssertionError(e);
+     *         }
+     *     }
+     *
+     *     &#64;TruffleBoundary
+     *     private static String longToString(long value) {
+     *         return String.valueOf(value);
+     *     }
+     *
+     *     &#64;ExportMessage
+     *     boolean hasMetaObject(@CachedLibrary("this.delegate") InteropLibrary dLib) {
+     *         return dLib.isString(this.delegate)//
+     *                         || dLib.fitsInLong(this.delegate)//
+     *                         || dLib.isBoolean(this.delegate);
+     *     }
+     *
+     *     &#64;ExportMessage
+     *     Object getMetaObject(@CachedLibrary("this.delegate") InteropLibrary dLib)
+     *                     throws UnsupportedMessageException {
+     *         if (dLib.isString(this.delegate)) {
+     *             return MyMetaObject.PRIMITIVE_STRING;
+     *         } else if (dLib.isBoolean(this.delegate)) {
+     *             return MyMetaObject.PRIMITIVE_LONG;
+     *         } else if (dLib.fitsInLong(this.delegate)) {
+     *             return MyMetaObject.PRIMITIVE_BOOLEAN;
+     *         } else {
+     *             // no associable metaobject
+     *             throw UnsupportedMessageException.create();
+     *         }
+     *     }
+     * }
+     * </pre>
+     *
+     * @param context the current context.
+     * @param value the value
+     * @since 20.1
+     */
+    protected Object getLanguageView(C context, Object value) {
+        return null;
+    }
+
+    /**
+     * Wraps the value to filter or add scoping specific information for values associated with the
+     * current language and location in the code. Allows the language to augment the perspective
+     * tools have on values depending on location and frame. This may be useful to apply local
+     * specific visibility rules. By default this method does return the passed value, not applying
+     * any scope information to the value. If a language does not implement any scoping and/or has
+     * not concept of visibility then this method typically can stay without an implementation. A
+     * typical implementation of this method may do the following:
+     * <ul>
+     * <li>Apply visiblity and scoping rules to the value hiding or removing members from the
+     * object.
+     * <li>Add or remove implicit members that are only available within this source location.
+     * </ul>
+     * <p>
+     * This method is only invoked with values that are associated with the current
+     * {@link com.oracle.truffle.api.interop.InteropLibrary#getLanguage(Object) language}. For
+     * values without language the {@link #getLanguageView(Object, Object) language view} is
+     * requested first before the scoped view is requested. If this method needs an implementation
+     * then {@link #getLanguageView(Object, Object)} should be implemented as well.
+     * <p>
+     * Scoped views may be implemented in a very similar way to
+     * {@link #getLanguageView(Object, Object) language views}. Please refer to the examples from
+     * this method.
+     *
+     * @param context the current context.
+     * @param location the current source location. Guaranteed to be a node from a {@link RootNode}
+     *            associated with this language. Never <code>null</code>.
+     * @param frame the current active frame. Guaranteed to be a frame from a {@link RootNode}
+     *            associated with this language. Never <code>null</code>.
+     * @param value the value to provide scope information for. Never <code>null</code>. Always
+     *            associated with this language.
+     * @since 20.1
+     */
+    @SuppressWarnings("unused")
+    protected Object getScopedView(C context, Node location, Frame frame, Object value) {
+        return value;
+    }
+
+    /**
+     * Find a metaobject of a value, if any. The metaobject represents a description of the object,
+     * reveals it's kind and it's features. Some information that a metaobject might define includes
+     * the base object's type, interface, class, methods, attributes, etc.
      * <p>
      * A programmatic {@link #toString(java.lang.Object, java.lang.Object) textual representation}
-     * should be provided for meta-objects, when possible. The meta-object may have properties
+     * should be provided for metaobjects, when possible. The metaobject may have properties
      * describing their structure.
      * <p>
      * NOTE: Allocating the meta object must not be treated as or cause any
      * {@link com.oracle.truffle.api.instrumentation.AllocationListener reported guest language
      * value allocations}
      * <p>
-     * When no meta-object is known, return <code>null</code>. The default implementation returns
-     * <code>null</code>. The meta-object should be an interop value. An interop value can be either
+     * When no metaobject is known, return <code>null</code>. The default implementation returns
+     * <code>null</code>. The metaobject should be an interop value. An interop value can be either
      * a <code>TruffleObject</code> (e.g. a native object from the other language) to support
      * interoperability between languages or a {@link String}.
      * <p>
      * It can be beneficial for performance to return the same value for each guest type (i.e. cache
-     * the meta-objects per context).
+     * the metaobjects per context).
      *
      * @param context the execution context
-     * @param value a value to find the meta-object of
-     * @return the meta-object, or <code>null</code>
+     * @param value a value to find the metaobject of
+     * @return the metaobject, or <code>null</code>
      * @since 0.22
+     * @deprecated implement {@link #getLanguageView(Object, Object)} and export
+     *             {@link com.oracle.truffle.api.interop.InteropLibrary#getMetaObject(Object)}
+     *             instead.
      */
+    @Deprecated
     protected Object findMetaObject(C context, Object value) {
         return null;
     }
 
     /**
      * Find a source location where a value is declared, if any. This is often useful especially for
-     * retrieval of source locations of {@link #findMetaObject meta-objects}. The default
+     * retrieval of source locations of {@link #findMetaObject metaobjects}. The default
      * implementation returns <code>null</code>.
      *
      * @param context the execution context
      * @param value a value to get the source location for
      * @return a source location of the object, or <code>null</code>
      * @since 0.22
+     * @deprecated implement {@link #getLanguageView(Object, Object)} and export
+     *             {@link com.oracle.truffle.api.interop.InteropLibrary#getSourceLocation(Object)}
+     *             instead.
      */
+    @Deprecated
     protected SourceSection findSourceLocation(C context, Object value) {
         return null;
     }
@@ -1283,7 +1458,12 @@ public abstract class TruffleLanguage<C> {
      * @since 0.27
      */
     protected static <T extends TruffleLanguage<?>> T getCurrentLanguage(Class<T> languageClass) {
-        return LanguageAccessor.engineAccess().getCurrentLanguage(languageClass);
+        try {
+            return LanguageAccessor.engineAccess().getCurrentLanguage(languageClass);
+        } catch (Throwable t) {
+            CompilerDirectives.transferToInterpreter();
+            throw Env.engineToLanguageException(t);
+        }
     }
 
     /**
@@ -1301,7 +1481,12 @@ public abstract class TruffleLanguage<C> {
      * @since 0.27
      */
     protected static <C, T extends TruffleLanguage<C>> C getCurrentContext(Class<T> languageClass) {
-        return LanguageAccessor.engineAccess().getCurrentContext(languageClass);
+        try {
+            return LanguageAccessor.engineAccess().getCurrentContext(languageClass);
+        } catch (Throwable t) {
+            CompilerDirectives.transferToInterpreter();
+            throw Env.engineToLanguageException(t);
+        }
     }
 
     /**
@@ -1313,7 +1498,28 @@ public abstract class TruffleLanguage<C> {
      * @since 19.0
      */
     protected final String getLanguageHome() {
-        return LanguageAccessor.engineAccess().getLanguageHome(LanguageAccessor.nodesAccess().getPolyglotLanguage(languageInfo));
+        try {
+            return LanguageAccessor.engineAccess().getLanguageHome(LanguageAccessor.nodesAccess().getPolyglotLanguage(languageInfo));
+        } catch (Throwable t) {
+            throw Env.engineToLanguageException(t);
+        }
+    }
+
+    /**
+     * Get the depth of asynchronous stack. When zero, the language should not sacrifice performance
+     * to be able to provide asynchronous stack. When the depth is non-zero, the language should
+     * provide asynchronous stack up to that depth. The language may provide more asynchronous
+     * frames than this depth if it's of no performance penalty, or if requested by other (e.g.
+     * language-specific) options. The returned depth may change at any time.
+     * <p>
+     * Override {@link RootNode#findAsynchronousFrames(Frame)} to provide the asynchronous stack
+     * frames.
+     *
+     * @see RootNode#findAsynchronousFrames(Frame)
+     * @since 20.1.0
+     */
+    protected final int getAsynchronousStackDepth() {
+        return LanguageAccessor.engineAccess().getAsynchronousStackDepth(LanguageAccessor.nodesAccess().getPolyglotLanguage(languageInfo));
     }
 
     /**
@@ -1411,7 +1617,11 @@ public abstract class TruffleLanguage<C> {
          * @since 0.28
          */
         public boolean isCreateThreadAllowed() {
-            return LanguageAccessor.engineAccess().isCreateThreadAllowed(polyglotLanguageContext);
+            try {
+                return LanguageAccessor.engineAccess().isCreateThreadAllowed(polyglotLanguageContext);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
         }
 
         /**
@@ -1489,7 +1699,11 @@ public abstract class TruffleLanguage<C> {
          */
         @TruffleBoundary
         public Thread createThread(Runnable runnable, @SuppressWarnings("hiding") TruffleContext context, ThreadGroup group, long stackSize) {
-            return LanguageAccessor.engineAccess().createThread(polyglotLanguageContext, runnable, context != null ? context.polyglotContext : null, group, stackSize);
+            try {
+                return LanguageAccessor.engineAccess().createThread(polyglotLanguageContext, runnable, context != null ? context.polyglotContext : null, group, stackSize);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
         }
 
         /**
@@ -1516,10 +1730,14 @@ public abstract class TruffleLanguage<C> {
          */
         @TruffleBoundary
         public Object getPolyglotBindings() {
-            if (!isPolyglotBindingsAccessAllowed()) {
-                throw new SecurityException("Polyglot bindings are not accessible for this language. Use --polyglot or allowPolyglotAccess when building the context.");
+            try {
+                if (!isPolyglotBindingsAccessAllowed()) {
+                    throw new SecurityException("Polyglot bindings are not accessible for this language. Use --polyglot or allowPolyglotAccess when building the context.");
+                }
+                return LanguageAccessor.engineAccess().getPolyglotBindingsForLanguage(polyglotLanguageContext);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
             }
-            return LanguageAccessor.engineAccess().getPolyglotBindingsForLanguage(polyglotLanguageContext);
         }
 
         /**
@@ -1542,10 +1760,14 @@ public abstract class TruffleLanguage<C> {
          */
         @TruffleBoundary
         public Object importSymbol(String symbolName) {
-            if (!isPolyglotBindingsAccessAllowed()) {
-                throw new SecurityException("Polyglot bindings are not accessible for this language. Use --polyglot or allowPolyglotAccess when building the context.");
+            try {
+                if (!isPolyglotBindingsAccessAllowed()) {
+                    throw new SecurityException("Polyglot bindings are not accessible for this language. Use --polyglot or allowPolyglotAccess when building the context.");
+                }
+                return LanguageAccessor.engineAccess().importSymbol(polyglotLanguageContext, this, symbolName);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
             }
-            return LanguageAccessor.engineAccess().importSymbol(polyglotLanguageContext, this, symbolName);
         }
 
         /**
@@ -1570,10 +1792,14 @@ public abstract class TruffleLanguage<C> {
          */
         @TruffleBoundary
         public void exportSymbol(String symbolName, Object value) {
-            if (!isPolyglotBindingsAccessAllowed()) {
-                throw new SecurityException("Polyglot bindings are not accessible for this language. Use --polyglot or allowPolyglotAccess when building the context.");
+            try {
+                if (!isPolyglotBindingsAccessAllowed()) {
+                    throw new SecurityException("Polyglot bindings are not accessible for this language. Use --polyglot or allowPolyglotAccess when building the context.");
+                }
+                LanguageAccessor.engineAccess().exportSymbol(polyglotLanguageContext, symbolName, value);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
             }
-            LanguageAccessor.engineAccess().exportSymbol(polyglotLanguageContext, symbolName, value);
         }
 
         /**
@@ -1587,7 +1813,11 @@ public abstract class TruffleLanguage<C> {
          */
         @TruffleBoundary
         public boolean isHostLookupAllowed() {
-            return LanguageAccessor.engineAccess().isHostAccessAllowed(polyglotLanguageContext, this);
+            try {
+                return LanguageAccessor.engineAccess().isHostAccessAllowed(polyglotLanguageContext, this);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
         }
 
         /**
@@ -1601,8 +1831,12 @@ public abstract class TruffleLanguage<C> {
          */
         @TruffleBoundary
         public void addToHostClassPath(TruffleFile entry) {
-            Objects.requireNonNull(entry);
-            LanguageAccessor.engineAccess().addToHostClassPath(polyglotLanguageContext, entry);
+            try {
+                Objects.requireNonNull(entry);
+                LanguageAccessor.engineAccess().addToHostClassPath(polyglotLanguageContext, entry);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
         }
 
         /**
@@ -1617,7 +1851,11 @@ public abstract class TruffleLanguage<C> {
          */
         @TruffleBoundary
         public Object lookupHostSymbol(String symbolName) {
-            return LanguageAccessor.engineAccess().lookupHostSymbol(polyglotLanguageContext, this, symbolName);
+            try {
+                return LanguageAccessor.engineAccess().lookupHostSymbol(polyglotLanguageContext, this, symbolName);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
         }
 
         /**
@@ -1629,7 +1867,11 @@ public abstract class TruffleLanguage<C> {
          */
         @SuppressWarnings("static-method")
         public boolean isHostObject(Object value) {
-            return LanguageAccessor.engineAccess().isHostObject(value);
+            try {
+                return LanguageAccessor.engineAccess().isHostObject(value);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
         }
 
         /**
@@ -1644,7 +1886,11 @@ public abstract class TruffleLanguage<C> {
                 CompilerDirectives.transferToInterpreter();
                 throw new ClassCastException();
             }
-            return LanguageAccessor.engineAccess().asHostObject(value);
+            try {
+                return LanguageAccessor.engineAccess().asHostObject(value);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
         }
 
         /**
@@ -1664,7 +1910,11 @@ public abstract class TruffleLanguage<C> {
          * @since 19.0
          */
         public Object asGuestValue(Object hostObject) {
-            return LanguageAccessor.engineAccess().toGuestValue(hostObject, polyglotLanguageContext);
+            try {
+                return LanguageAccessor.engineAccess().toGuestValue(hostObject, polyglotLanguageContext);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
         }
 
         /**
@@ -1683,7 +1933,11 @@ public abstract class TruffleLanguage<C> {
          * @since 19.0
          */
         public Object asBoxedGuestValue(Object guestObject) {
-            return LanguageAccessor.engineAccess().asBoxedGuestValue(guestObject, polyglotLanguageContext);
+            try {
+                return LanguageAccessor.engineAccess().asBoxedGuestValue(guestObject, polyglotLanguageContext);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
         }
 
         /**
@@ -1694,15 +1948,19 @@ public abstract class TruffleLanguage<C> {
          */
         @SuppressWarnings("static-method")
         public boolean isHostFunction(Object value) {
-            return LanguageAccessor.engineAccess().isHostFunction(value);
+            try {
+                return LanguageAccessor.engineAccess().isHostFunction(value);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
         }
 
         /**
-         * Find a meta-object of a value, if any. The meta-object represents a description of the
-         * object, reveals it's kind and it's features. Some information that a meta-object might
+         * Find a metaobject of a value, if any. The metaobject represents a description of the
+         * object, reveals it's kind and it's features. Some information that a metaobject might
          * define includes the base object's type, interface, class, methods, attributes, etc.
          * <p>
-         * When no meta-object is known, returns <code>null</code>. The meta-object is an interop
+         * When no metaobject is known, returns <code>null</code>. The metaobject is an interop
          * value. An interop value can be either a <code>TruffleObject</code> (e.g. a native object
          * from the other language) to support interoperability between languages or a
          * {@link String}.
@@ -1711,7 +1969,11 @@ public abstract class TruffleLanguage<C> {
          * @since 19.0
          */
         public Object findMetaObject(Object value) {
-            return LanguageAccessor.engineAccess().findMetaObjectForLanguage(polyglotLanguageContext, value);
+            try {
+                return LanguageAccessor.engineAccess().findMetaObjectForLanguage(polyglotLanguageContext, value);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
         }
 
         /**
@@ -1729,7 +1991,11 @@ public abstract class TruffleLanguage<C> {
          */
         @SuppressWarnings("static-method")
         public boolean isHostException(Throwable exception) {
-            return LanguageAccessor.engineAccess().isHostException(exception);
+            try {
+                return LanguageAccessor.engineAccess().isHostException(exception);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
         }
 
         /**
@@ -1746,7 +2012,11 @@ public abstract class TruffleLanguage<C> {
          */
         @SuppressWarnings("static-method")
         public Throwable asHostException(Throwable exception) {
-            return LanguageAccessor.engineAccess().asHostException(exception);
+            try {
+                return LanguageAccessor.engineAccess().asHostException(exception);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
         }
 
         /**
@@ -1758,7 +2028,11 @@ public abstract class TruffleLanguage<C> {
          */
         @SuppressWarnings("static-method")
         public boolean isHostSymbol(Object guestObject) {
-            return LanguageAccessor.engineAccess().isHostSymbol(guestObject);
+            try {
+                return LanguageAccessor.engineAccess().isHostSymbol(guestObject);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
         }
 
         /**
@@ -1771,7 +2045,11 @@ public abstract class TruffleLanguage<C> {
          */
         @TruffleBoundary
         public Object asHostSymbol(Class<?> symbolClass) {
-            return LanguageAccessor.engineAccess().asHostSymbol(polyglotLanguageContext, symbolClass);
+            try {
+                return LanguageAccessor.engineAccess().asHostSymbol(polyglotLanguageContext, symbolClass);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
         }
 
         /**
@@ -1782,7 +2060,11 @@ public abstract class TruffleLanguage<C> {
          */
         @TruffleBoundary
         public boolean isNativeAccessAllowed() {
-            return LanguageAccessor.engineAccess().isNativeAccessAllowed(polyglotLanguageContext, this);
+            try {
+                return LanguageAccessor.engineAccess().isNativeAccessAllowed(polyglotLanguageContext, this);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
         }
 
         /**
@@ -1808,7 +2090,11 @@ public abstract class TruffleLanguage<C> {
          */
         @TruffleBoundary
         public boolean isPolyglotEvalAllowed() {
-            return LanguageAccessor.engineAccess().isPolyglotEvalAllowed(polyglotLanguageContext);
+            try {
+                return LanguageAccessor.engineAccess().isPolyglotEvalAllowed(polyglotLanguageContext);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
         }
 
         /**
@@ -1823,7 +2109,11 @@ public abstract class TruffleLanguage<C> {
          */
         @TruffleBoundary
         public boolean isPolyglotBindingsAccessAllowed() {
-            return LanguageAccessor.engineAccess().isPolyglotBindingsAccessAllowed(polyglotLanguageContext);
+            try {
+                return LanguageAccessor.engineAccess().isPolyglotBindingsAccessAllowed(polyglotLanguageContext);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
         }
 
         /**
@@ -1839,7 +2129,11 @@ public abstract class TruffleLanguage<C> {
         @TruffleBoundary
         public boolean isMimeTypeSupported(String mimeType) {
             checkDisposed();
-            return LanguageAccessor.engineAccess().isMimeTypeSupported(polyglotLanguageContext, mimeType);
+            try {
+                return LanguageAccessor.engineAccess().isMimeTypeSupported(polyglotLanguageContext, mimeType);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
         }
 
         /**
@@ -1852,7 +2146,11 @@ public abstract class TruffleLanguage<C> {
         public CallTarget parse(Source source, String... argumentNames) {
             CompilerAsserts.neverPartOfCompilation();
             checkDisposed();
-            return LanguageAccessor.engineAccess().parseForLanguage(polyglotLanguageContext, source, argumentNames, true);
+            try {
+                return LanguageAccessor.engineAccess().parseForLanguage(polyglotLanguageContext, source, argumentNames, true);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
         }
 
         /**
@@ -1888,7 +2186,11 @@ public abstract class TruffleLanguage<C> {
         public CallTarget parseInternal(Source source, String... argumentNames) {
             CompilerAsserts.neverPartOfCompilation();
             checkDisposed();
-            return LanguageAccessor.engineAccess().parseForLanguage(polyglotLanguageContext, source, argumentNames, true);
+            try {
+                return LanguageAccessor.engineAccess().parseForLanguage(polyglotLanguageContext, source, argumentNames, true);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
         }
 
         /**
@@ -1925,7 +2227,11 @@ public abstract class TruffleLanguage<C> {
         public CallTarget parsePublic(Source source, String... argumentNames) {
             CompilerAsserts.neverPartOfCompilation();
             checkDisposed();
-            return LanguageAccessor.engineAccess().parseForLanguage(polyglotLanguageContext, source, argumentNames, false);
+            try {
+                return LanguageAccessor.engineAccess().parseForLanguage(polyglotLanguageContext, source, argumentNames, false);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
         }
 
         /**
@@ -2009,7 +2315,14 @@ public abstract class TruffleLanguage<C> {
         @SuppressWarnings("static-method")
         @TruffleBoundary
         public <S> S lookup(InstrumentInfo instrument, Class<S> type) {
-            return LanguageAccessor.engineAccess().lookup(instrument, type);
+            if (isPreInitialization()) {
+                throw new IllegalStateException("Instrument lookup is not allowed during context pre-initialization.");
+            }
+            try {
+                return LanguageAccessor.engineAccess().lookup(instrument, type);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
         }
 
         /**
@@ -2031,8 +2344,31 @@ public abstract class TruffleLanguage<C> {
             if (this.getSpi().languageInfo == language) {
                 throw new IllegalArgumentException("Cannot request services from the current language.");
             }
-            Objects.requireNonNull(language);
-            return LanguageAccessor.engineAccess().lookupService(polyglotLanguageContext, language, this.getSpi().languageInfo, type);
+            try {
+                Objects.requireNonNull(language);
+                return LanguageAccessor.engineAccess().lookupService(polyglotLanguageContext, language, this.getSpi().languageInfo, type);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
+        }
+
+        /**
+         * Ensures that the target language is initialized. This method firstly verifies that the
+         * target language is accessible from this language. If not the {@link SecurityException} is
+         * thrown. Then the target language initialization is performed if not already done.
+         *
+         * @param targetLanguage the language to initialize
+         * @throws SecurityException if an access to {@code targetLanguage} is not permitted
+         * @since 20.1.0
+         */
+        @TruffleBoundary
+        public boolean initializeLanguage(LanguageInfo targetLanguage) {
+            Objects.requireNonNull(targetLanguage, "TargetLanguage must be non null.");
+            try {
+                return LanguageAccessor.engineAccess().initializeLanguage(polyglotLanguageContext, targetLanguage);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
         }
 
         /**
@@ -2042,7 +2378,11 @@ public abstract class TruffleLanguage<C> {
         @Deprecated
         @TruffleBoundary
         public Map<String, LanguageInfo> getLanguages() {
-            return LanguageAccessor.engineAccess().getInternalLanguages(polyglotLanguageContext);
+            try {
+                return LanguageAccessor.engineAccess().getInternalLanguages(polyglotLanguageContext);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
         }
 
         /**
@@ -2058,7 +2398,11 @@ public abstract class TruffleLanguage<C> {
          */
         @TruffleBoundary
         public Map<String, LanguageInfo> getInternalLanguages() {
-            return LanguageAccessor.engineAccess().getInternalLanguages(polyglotLanguageContext);
+            try {
+                return LanguageAccessor.engineAccess().getInternalLanguages(polyglotLanguageContext);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
         }
 
         /**
@@ -2073,7 +2417,11 @@ public abstract class TruffleLanguage<C> {
          */
         @TruffleBoundary
         public Map<String, LanguageInfo> getPublicLanguages() {
-            return LanguageAccessor.engineAccess().getPublicLanguages(polyglotLanguageContext);
+            try {
+                return LanguageAccessor.engineAccess().getPublicLanguages(polyglotLanguageContext);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
         }
 
         /**
@@ -2085,7 +2433,11 @@ public abstract class TruffleLanguage<C> {
          */
         @TruffleBoundary
         public Map<String, InstrumentInfo> getInstruments() {
-            return LanguageAccessor.engineAccess().getInstruments(polyglotLanguageContext);
+            try {
+                return LanguageAccessor.engineAccess().getInstruments(polyglotLanguageContext);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
         }
 
         /**
@@ -2098,7 +2450,11 @@ public abstract class TruffleLanguage<C> {
          */
         public ZoneId getTimeZone() {
             checkDisposed();
-            return LanguageAccessor.engineAccess().getTimeZone(polyglotLanguageContext);
+            try {
+                return LanguageAccessor.engineAccess().getTimeZone(polyglotLanguageContext);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
         }
 
         /**
@@ -2123,7 +2479,11 @@ public abstract class TruffleLanguage<C> {
          * @since 0.30
          */
         public TruffleContext getContext() {
-            return LanguageAccessor.engineAccess().getTruffleContext(polyglotLanguageContext);
+            try {
+                return LanguageAccessor.engineAccess().getTruffleContext(polyglotLanguageContext);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
         }
 
         /**
@@ -2137,7 +2497,11 @@ public abstract class TruffleLanguage<C> {
          */
         @TruffleBoundary
         public boolean isPreInitialization() {
-            return LanguageAccessor.engineAccess().inContextPreInitialization(polyglotLanguageContext);
+            try {
+                return LanguageAccessor.engineAccess().inContextPreInitialization(polyglotLanguageContext);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
         }
 
         /**
@@ -2389,7 +2753,11 @@ public abstract class TruffleLanguage<C> {
          * @since 19.1.0
          */
         public boolean isCreateProcessAllowed() {
-            return LanguageAccessor.engineAccess().isCreateProcessAllowed(polyglotLanguageContext);
+            try {
+                return LanguageAccessor.engineAccess().isCreateProcessAllowed(polyglotLanguageContext);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
         }
 
         /**
@@ -2421,7 +2789,11 @@ public abstract class TruffleLanguage<C> {
          */
         @TruffleBoundary
         public Map<String, String> getEnvironment() {
-            return LanguageAccessor.engineAccess().getProcessEnvironment(polyglotLanguageContext);
+            try {
+                return LanguageAccessor.engineAccess().getProcessEnvironment(polyglotLanguageContext);
+            } catch (Throwable t) {
+                throw engineToLanguageException(t);
+            }
         }
 
         /**
@@ -2597,6 +2969,15 @@ public abstract class TruffleLanguage<C> {
             }
         }
 
+        boolean isVisible(Object value) {
+            Object c = getLanguageContext();
+            if (c != UNSET_CONTEXT) {
+                return getSpi().isVisible(c, value);
+            } else {
+                return false;
+            }
+        }
+
         String toStringIfVisible(Object value, boolean checkVisibility) {
             Object c = getLanguageContext();
             if (c != UNSET_CONTEXT) {
@@ -2623,6 +3004,12 @@ public abstract class TruffleLanguage<C> {
             } else {
                 return this.context;
             }
+        }
+
+        @SuppressWarnings("unchecked")
+        @TruffleBoundary
+        static <T extends RuntimeException> RuntimeException engineToLanguageException(Throwable t) {
+            return LanguageAccessor.engineAccess().engineToLanguageException(t);
         }
     }
 

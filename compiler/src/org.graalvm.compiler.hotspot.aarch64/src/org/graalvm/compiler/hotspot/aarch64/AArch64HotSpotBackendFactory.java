@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2018, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -36,6 +36,7 @@ import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.aarch64.AArch64AddressLoweringByUse;
 import org.graalvm.compiler.core.aarch64.AArch64LIRKindTool;
 import org.graalvm.compiler.core.aarch64.AArch64SuitesCreator;
+import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotBackend;
 import org.graalvm.compiler.hotspot.HotSpotBackendFactory;
@@ -44,11 +45,12 @@ import org.graalvm.compiler.hotspot.HotSpotReplacementsImpl;
 import org.graalvm.compiler.hotspot.meta.AddressLoweringHotSpotSuitesProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotConstantFieldProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProvider;
-import org.graalvm.compiler.hotspot.meta.HotSpotPlatformConfigurationProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotGraalConstantFieldProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotGraphBuilderPlugins;
 import org.graalvm.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotLoweringProvider;
+import org.graalvm.compiler.hotspot.meta.HotSpotMetaAccessExtensionProvider;
+import org.graalvm.compiler.hotspot.meta.HotSpotPlatformConfigurationProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.meta.HotSpotRegisters;
 import org.graalvm.compiler.hotspot.meta.HotSpotRegistersProvider;
@@ -57,6 +59,7 @@ import org.graalvm.compiler.hotspot.meta.HotSpotStampProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotSuitesProvider;
 import org.graalvm.compiler.hotspot.word.HotSpotWordTypes;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.Phase;
@@ -115,6 +118,7 @@ public class AArch64HotSpotBackendFactory extends HotSpotBackendFactory {
         HotSpotLoweringProvider lowerer;
         HotSpotStampProvider stampProvider;
         HotSpotPlatformConfigurationProvider platformConfigurationProvider;
+        HotSpotMetaAccessExtensionProvider metaAccessExtensionProvider;
         HotSpotSnippetReflectionProvider snippetReflection;
         HotSpotReplacementsImpl replacements;
         HotSpotSuitesProvider suites;
@@ -134,17 +138,21 @@ public class AArch64HotSpotBackendFactory extends HotSpotBackendFactory {
             try (InitTimer rt = timer("create ForeignCalls provider")) {
                 foreignCalls = createForeignCalls(jvmciRuntime, graalRuntime, metaAccess, codeCache, wordTypes, nativeABICallerSaveRegisters);
             }
-            try (InitTimer rt = timer("create Lowerer provider")) {
-                lowerer = createLowerer(graalRuntime, metaAccess, foreignCalls, registers, constantReflection, target);
-            }
             try (InitTimer rt = timer("create stamp provider")) {
                 stampProvider = createStampProvider();
             }
-            try (InitTimer rt = timer("create GC provider")) {
+            try (InitTimer rt = timer("create platform configuration provider")) {
                 platformConfigurationProvider = createConfigInfoProvider(config, metaAccess);
             }
+            try (InitTimer rt = timer("create MetaAccessExtensionProvider")) {
+                metaAccessExtensionProvider = createMetaAccessExtensionProvider();
+            }
+            try (InitTimer rt = timer("create Lowerer provider")) {
+                lowerer = createLowerer(graalRuntime, metaAccess, foreignCalls, registers, constantReflection, platformConfigurationProvider, metaAccessExtensionProvider, target);
+            }
 
-            Providers p = new Providers(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, null, stampProvider, platformConfigurationProvider);
+            Providers p = new Providers(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, null, stampProvider, platformConfigurationProvider,
+                            metaAccessExtensionProvider);
 
             try (InitTimer rt = timer("create SnippetReflection provider")) {
                 snippetReflection = createSnippetReflection(graalRuntime, constantReflection, wordTypes);
@@ -164,7 +172,7 @@ public class AArch64HotSpotBackendFactory extends HotSpotBackendFactory {
                 suites = createSuites(config, graalRuntime, compilerConfiguration, plugins, replacements);
             }
             providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, suites, registers,
-                            snippetReflection, wordTypes, plugins, platformConfigurationProvider);
+                            snippetReflection, wordTypes, plugins, platformConfigurationProvider, metaAccessExtensionProvider);
             replacements.setProviders(providers);
             replacements.maybeInitializeEncoder(options);
         }
@@ -196,7 +204,7 @@ public class AArch64HotSpotBackendFactory extends HotSpotBackendFactory {
                         options,
                         target);
         AArch64GraphBuilderPlugins.register(plugins, replacements, false, //
-                        /* registerMathPlugins */true, /* emitJDK9StringSubstitutions */true, config.useFMAIntrinsics);
+                        /* registerForeignCallMath */true, /* emitJDK9StringSubstitutions */true, config.useFMAIntrinsics);
         return plugins;
     }
 
@@ -221,8 +229,10 @@ public class AArch64HotSpotBackendFactory extends HotSpotBackendFactory {
     }
 
     protected HotSpotLoweringProvider createLowerer(HotSpotGraalRuntimeProvider runtime, HotSpotMetaAccessProvider metaAccess, HotSpotForeignCallsProvider foreignCalls,
-                    HotSpotRegistersProvider registers, HotSpotConstantReflectionProvider constantReflection, TargetDescription target) {
-        return new AArch64HotSpotLoweringProvider(runtime, metaAccess, foreignCalls, registers, constantReflection, target);
+                    HotSpotRegistersProvider registers, HotSpotConstantReflectionProvider constantReflection, PlatformConfigurationProvider platformConfig,
+                    MetaAccessExtensionProvider metaAccessExtensionProvider,
+                    TargetDescription target) {
+        return new AArch64HotSpotLoweringProvider(runtime, metaAccess, foreignCalls, registers, constantReflection, platformConfig, metaAccessExtensionProvider, target);
     }
 
     protected static Value[] createNativeABICallerSaveRegisters(@SuppressWarnings("unused") GraalHotSpotVMConfig config, RegisterConfig regConfig) {

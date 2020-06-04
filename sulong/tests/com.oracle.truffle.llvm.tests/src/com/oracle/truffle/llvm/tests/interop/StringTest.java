@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -56,7 +56,7 @@ public class StringTest extends InteropTestBase {
 
     @BeforeClass
     public static void loadTestBitcode() {
-        testLibrary = InteropTestBase.loadTestBitcodeInternal("stringTest");
+        testLibrary = loadTestBitcodeInternal("stringTest.c");
     }
 
     public class TestStringSizeNode extends SulongTestNode {

@@ -235,13 +235,10 @@ public class NFILanguageImpl extends TruffleLanguage<NFIContext> {
 
             @Override
             public Object execute(VirtualFrame frame) {
+                CompilerDirectives.transferToInterpreter();
                 throw new UnsupportedOperationException("illegal access to internal language");
             }
         });
     }
 
-    @Override
-    protected boolean isObjectOfLanguage(Object object) {
-        return object instanceof LibFFILibrary || object instanceof NativePointer || object instanceof NativeString;
-    }
 }

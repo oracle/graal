@@ -49,66 +49,19 @@ import java.util.List;
 
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.Library;
-import com.oracle.truffle.api.library.LibraryFactory;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
+import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
 
 @RunWith(Parameterized.class)
-public abstract class InteropLibraryBaseTest extends AbstractPolyglotTest {
-
-    public enum TestRun {
-        CACHED,
-        UNCACHED,
-        DISPATCHED_CACHED,
-        DISPATCHED_UNCACHED,
-    }
+public abstract class InteropLibraryBaseTest extends AbstractParametrizedLibraryTest {
 
     @Parameters(name = "{0}")
     public static List<TestRun> data() {
         return Arrays.asList(TestRun.CACHED, TestRun.UNCACHED, TestRun.DISPATCHED_CACHED, TestRun.DISPATCHED_UNCACHED);
-    }
-
-    @Parameter // first data value (0) is default
-    public /* NOT private */ TestRun run;
-
-    protected final <T extends Library> T createLibrary(Class<T> library, Object receiver) {
-        LibraryFactory<T> lib = LibraryFactory.resolve(library);
-        switch (run) {
-            case CACHED:
-                return adopt(lib.create(receiver));
-            case UNCACHED:
-                return lib.getUncached(receiver);
-            case DISPATCHED_CACHED:
-                return adopt(lib.createDispatched(2));
-            case DISPATCHED_UNCACHED:
-                return lib.getUncached();
-        }
-
-        throw new AssertionError();
-    }
-
-    static <T extends Node> T adopt(T node) {
-        RootNode root = new RootNode(null) {
-            {
-                insert(node);
-            }
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                return null;
-            }
-        };
-        root.adoptChildren();
-        return node;
     }
 
     protected final void assertNotNull(Object value) {
@@ -156,6 +109,60 @@ public abstract class InteropLibraryBaseTest extends AbstractPolyglotTest {
         InteropLibrary lib = createLibrary(InteropLibrary.class, value);
         assertFalse(lib.isBoolean(value));
         assertUnsupported(() -> lib.asBoolean(value));
+    }
+
+    protected final void assertNoMetaObject(Object value) {
+        InteropLibrary lib = createLibrary(InteropLibrary.class, value);
+        assertFalse(lib.isMetaObject(value));
+        assertUnsupported(() -> lib.getMetaQualifiedName(value));
+        assertUnsupported(() -> lib.getMetaSimpleName(value));
+    }
+
+    protected final void assertNoDate(Object value) {
+        InteropLibrary lib = createLibrary(InteropLibrary.class, value);
+        assertFalse(lib.isDate(value));
+        assertUnsupported(() -> lib.asDate(value));
+    }
+
+    protected final void assertNoTime(Object value) {
+        InteropLibrary lib = createLibrary(InteropLibrary.class, value);
+        assertFalse(lib.isTime(value));
+        assertUnsupported(() -> lib.asTime(value));
+    }
+
+    protected final void assertNoTimeZone(Object value) {
+        InteropLibrary lib = createLibrary(InteropLibrary.class, value);
+        assertFalse(lib.isTimeZone(value));
+        assertUnsupported(() -> lib.asTimeZone(value));
+    }
+
+    protected final void assertNoDuration(Object value) {
+        InteropLibrary lib = createLibrary(InteropLibrary.class, value);
+        assertFalse(lib.isDuration(value));
+        assertUnsupported(() -> lib.asDuration(value));
+    }
+
+    protected final void assertNoSourceLocation(Object value) {
+        InteropLibrary lib = createLibrary(InteropLibrary.class, value);
+        assertFalse(lib.hasSourceLocation(value));
+        assertUnsupported(() -> lib.getSourceLocation(value));
+    }
+
+    protected final void assertNoLanguage(Object value) {
+        InteropLibrary lib = createLibrary(InteropLibrary.class, value);
+        assertFalse(lib.hasLanguage(value));
+        assertUnsupported(() -> lib.getLanguage(value));
+    }
+
+    protected final void assertNoIdentity(Object value) {
+        InteropLibrary lib = createLibrary(InteropLibrary.class, value);
+        assertFalse(lib.hasIdentity(value));
+    }
+
+    protected final void assertHasNoMetaObject(Object value) {
+        InteropLibrary lib = createLibrary(InteropLibrary.class, value);
+        assertFalse(lib.hasMetaObject(value));
+        assertUnsupported(() -> lib.getMetaObject(value));
     }
 
     protected final void assertNoString(Object value) {

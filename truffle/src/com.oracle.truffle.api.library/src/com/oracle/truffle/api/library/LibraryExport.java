@@ -104,7 +104,16 @@ public abstract class LibraryExport<T extends Library> {
      * @since 20.0
      */
     protected static <T extends Library> T createDelegate(LibraryFactory<T> factory, T delegate) {
-        return factory.createDelegate(delegate);
+        T parent = factory.createDelegate(delegate);
+        if (!delegate.isAdoptable()) {
+            /*
+             * We force adoption for the uncached case because we need the parent pointer to
+             * implement @CachedLibrary("this"), as this should point to the parent delgate library.
+             * With this we can use the same parent pointer approach for cached and uncached.
+             */
+            LibraryAccessor.nodeAccessor().forceAdoption(parent, delegate);
+        }
+        return parent;
     }
 
     /**

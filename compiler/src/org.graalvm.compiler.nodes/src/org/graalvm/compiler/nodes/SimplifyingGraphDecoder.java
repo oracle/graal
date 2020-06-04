@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,28 +30,28 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 
 import java.util.List;
 
-import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
+import org.graalvm.compiler.nodes.extended.AnchoringNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
+import org.graalvm.compiler.nodes.spi.CoreProvidersDelegate;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.Assumptions;
-import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
  * Graph decoder that simplifies nodes during decoding. The standard
@@ -65,12 +65,13 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
     protected final boolean canonicalizeReads;
     protected final CanonicalizerTool canonicalizerTool;
 
-    protected class PECanonicalizerTool implements CanonicalizerTool {
+    protected class PECanonicalizerTool extends CoreProvidersDelegate implements CanonicalizerTool {
 
         private final Assumptions assumptions;
         private final OptionValues options;
 
         public PECanonicalizerTool(Assumptions assumptions, OptionValues options) {
+            super(providers);
             this.assumptions = assumptions;
             this.options = options;
         }
@@ -78,21 +79,6 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
         @Override
         public OptionValues getOptions() {
             return options;
-        }
-
-        @Override
-        public MetaAccessProvider getMetaAccess() {
-            return providers.getMetaAccess();
-        }
-
-        @Override
-        public ConstantReflectionProvider getConstantReflection() {
-            return providers.getConstantReflection();
-        }
-
-        @Override
-        public ConstantFieldProvider getConstantFieldProvider() {
-            return providers.getConstantFieldProvider();
         }
 
         @Override
@@ -118,8 +104,8 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
         }
     }
 
-    @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED, allowedUsageTypes = {Guard})
-    static class CanonicalizeToNullNode extends FloatingNode implements Canonicalizable, GuardingNode {
+    @NodeInfo(cycles = CYCLES_IGNORED, size = SIZE_IGNORED, allowedUsageTypes = {Guard, InputType.Anchor})
+    static class CanonicalizeToNullNode extends FloatingNode implements Canonicalizable, GuardingNode, AnchoringNode {
         public static final NodeClass<CanonicalizeToNullNode> TYPE = NodeClass.create(CanonicalizeToNullNode.class);
 
         protected CanonicalizeToNullNode(Stamp stamp) {
@@ -150,7 +136,7 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
                 if (mergeNode.forwardEndCount() == 1) {
                     graph.reduceTrivialMerge(mergeNode);
                 }
-            } else if (node instanceof BeginNode || node instanceof KillingBeginNode) {
+            } else if (node instanceof BeginNode || node instanceof KillingBeginNode || node instanceof MultiKillingBeginNode) {
                 if (!(node.predecessor() instanceof ControlSplitNode) && node.hasNoUsages()) {
                     GraphUtil.unlinkFixedNode((AbstractBeginNode) node);
                     node.safeDelete();

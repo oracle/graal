@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,7 +53,7 @@ import com.oracle.truffle.regex.tregex.util.json.JsonObject;
  */
 public abstract class RegexASTSubtreeRootNode extends Term implements RegexASTVisitorIterable {
 
-    private short subTreeId = -1;
+    private int subTreeId = -1;
     private Group group;
     private PositionAssertion anchoredInitialState;
     private MatchFound unAnchoredInitialState;
@@ -76,11 +76,11 @@ public abstract class RegexASTSubtreeRootNode extends Term implements RegexASTVi
         return subTreeId >= 0;
     }
 
-    public short getSubTreeId() {
+    public int getSubTreeId() {
         return subTreeId;
     }
 
-    public void setSubTreeId(short subTreeId) {
+    public void setSubTreeId(int subTreeId) {
         this.subTreeId = subTreeId;
     }
 
@@ -123,7 +123,7 @@ public abstract class RegexASTSubtreeRootNode extends Term implements RegexASTVi
         matchFound.setParent(this);
     }
 
-    public RegexASTNode getAnchoredInitialState() {
+    public Term getAnchoredInitialState() {
         return anchoredInitialState;
     }
 
@@ -133,7 +133,7 @@ public abstract class RegexASTSubtreeRootNode extends Term implements RegexASTVi
         anchoredInitialState.setNext(group);
     }
 
-    public RegexASTNode getUnAnchoredInitialState() {
+    public Term getUnAnchoredInitialState() {
         return unAnchoredInitialState;
     }
 
@@ -143,7 +143,7 @@ public abstract class RegexASTSubtreeRootNode extends Term implements RegexASTVi
         unAnchoredInitialState.setNext(group);
     }
 
-    public RegexASTNode getAnchoredFinalState() {
+    public Term getAnchoredFinalState() {
         return anchoredFinalState;
     }
 

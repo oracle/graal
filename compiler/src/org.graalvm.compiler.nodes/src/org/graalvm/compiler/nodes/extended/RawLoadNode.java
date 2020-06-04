@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -104,9 +104,9 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
 
                 if (entryIndex != -1) {
                     ValueNode entry = tool.getEntry(virtual, entryIndex);
-                    JavaKind entryKind = virtual.entryKind(entryIndex);
+                    JavaKind entryKind = virtual.entryKind(tool.getMetaAccessExtensionProvider(), entryIndex);
 
-                    if (virtual.isVirtualByteArrayAccess(accessKind())) {
+                    if (virtual.isVirtualByteArrayAccess(tool.getMetaAccessExtensionProvider(), accessKind())) {
                         if (virtual.canVirtualizeLargeByteArrayUnsafeRead(entry, entryIndex, accessKind(), tool)) {
                             tool.replaceWith(VirtualArrayNode.virtualizeByteArrayRead(entry, accessKind(), stamp));
                         }
@@ -136,6 +136,11 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
                 }
             }
         }
+    }
+
+    @Override
+    public boolean isVolatile() {
+        return false;
     }
 
     @Override
@@ -171,7 +176,10 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
     }
 
     @Override
-    protected ValueNode cloneAsArrayAccess(ValueNode location, LocationIdentity identity) {
+    protected ValueNode cloneAsArrayAccess(ValueNode location, LocationIdentity identity, boolean volatileAccess) {
+        if (volatileAccess) {
+            return new RawVolatileLoadNode(object(), location, accessKind(), identity);
+        }
         return new RawLoadNode(object(), location, accessKind(), identity);
     }
 

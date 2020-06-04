@@ -35,6 +35,7 @@ import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
+import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.IntrinsicGraphBuilder;
@@ -64,6 +65,17 @@ public class SubstrateIntrinsicGraphBuilder extends IntrinsicGraphBuilder {
 
         FrameState stateAfter = getGraph().add(new FrameState(null, code, bci, values, arguments.length, stackSize, false, false, null, null));
         sideEffect.setStateAfter(stateAfter);
+        bci++;
+    }
+
+    @Override
+    protected void setExceptionState(ExceptionObjectNode exceptionObject) {
+        List<ValueNode> values = new ArrayList<>(Arrays.asList(arguments));
+        values.add(exceptionObject);
+        int stackSize = 1;
+
+        FrameState stateAfter = getGraph().add(new FrameState(null, code, bci, values, arguments.length, stackSize, true, false, null, null));
+        exceptionObject.setStateAfter(stateAfter);
         bci++;
     }
 

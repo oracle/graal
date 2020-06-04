@@ -43,7 +43,6 @@ package com.oracle.truffle.polyglot;
 import java.lang.management.ManagementFactory;
 import java.lang.ref.WeakReference;
 import java.time.Duration;
-import java.util.TimerTask;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.FutureTask;
@@ -124,7 +123,7 @@ final class PolyglotLimits {
         final EventContext eventContext;
         final PolyglotEngineImpl engine;
         final FrameSlot readContext;
-        final ConditionProfile needsLookup = ConditionProfile.createBinaryProfile();
+        final ConditionProfile needsLookup = ConditionProfile.create();
         final FrameDescriptor descriptor;
         @CompilationFinal private boolean seenInnerContext;
 
@@ -224,7 +223,7 @@ final class PolyglotLimits {
 
     }
 
-    static final class TimeLimitChecker extends TimerTask {
+    static final class TimeLimitChecker implements Runnable {
 
         private final WeakReference<PolyglotContextImpl> context;
         private final long timeLimitNS;
@@ -237,16 +236,20 @@ final class PolyglotLimits {
             this.limits = limits;
         }
 
+        private static void cancel() {
+            throw new RuntimeException("Time Limit Checker Task Cancelled!");
+        }
+
         @Override
         public void run() {
             PolyglotContextImpl c = this.context.get();
             if (cancelResult != null) {
                 if (cancelResult.isDone()) {
-                    cancel();
                     try {
                         cancelResult.get();
                     } catch (Exception e) {
                     }
+                    cancel();
                 }
                 return;
             } else if (c == null || c.closed) {
@@ -313,7 +316,7 @@ final class PolyglotLimits {
                 newPredicate = NO_PREDICATE;
             }
             if (this.statementLimitSourcePredicate != null && newPredicate != statementLimitSourcePredicate) {
-                throw new IllegalArgumentException("Using multiple source predicates per engine is not supported. " +
+                throw PolyglotEngineException.illegalArgument("Using multiple source predicates per engine is not supported. " +
                                 "The same statement limit source predicate must be used for all polyglot contexts that are assigned to the same engine. " +
                                 "Resolve this by using the same predicate instance when constructing the limits object with ResourceLimits.Builder.statementLimit(long, Predicate).");
             }
@@ -332,7 +335,7 @@ final class PolyglotLimits {
                     }
                 }
                 if (time == -1) {
-                    throw new UnsupportedOperationException("ThreadMXBean.getCurrentThreadCpuTime() is not supported or enabled by the host VM but required for time limits.", cause);
+                    throw PolyglotEngineException.unsupported("ThreadMXBean.getCurrentThreadCpuTime() is not supported or enabled by the host VM but required for time limits.", cause);
                 }
             }
         }
@@ -368,7 +371,7 @@ final class PolyglotLimits {
                                 try {
                                     return statementLimitSourcePredicate.test(engine.getImpl().getPolyglotSource(s));
                                 } catch (Throwable e) {
-                                    throw new HostException(e);
+                                    throw PolyglotImpl.hostToGuestException(context, e);
                                 }
                             }
                         });
@@ -409,7 +412,7 @@ final class PolyglotLimits {
             try {
                 onEvent.accept(engine.getImpl().getAPIAccess().newResourceLimitsEvent(context.creatorApi));
             } catch (Throwable t) {
-                return PolyglotImpl.wrapHostException(context, t);
+                return PolyglotImpl.hostToGuestException(context, t);
             }
             return null;
         }
@@ -422,7 +425,7 @@ final class PolyglotLimits {
                     if (executor == null) {
                         cancelExecutor = executor = (ThreadPoolExecutor) Executors.newCachedThreadPool(
                                         new HighPriorityThreadFactory("Polyglot Cancel Thread"));
-                        executor.setKeepAliveTime(1, TimeUnit.SECONDS);
+                        executor.setKeepAliveTime(10, TimeUnit.SECONDS);
                     }
                 }
             }
@@ -436,7 +439,7 @@ final class PolyglotLimits {
                     executor = limitExecutor;
                     if (executor == null) {
                         executor = new ScheduledThreadPoolExecutor(0, new HighPriorityThreadFactory("Polyglot Limit Timer"));
-                        executor.setKeepAliveTime(1, TimeUnit.SECONDS);
+                        executor.setKeepAliveTime(10, TimeUnit.SECONDS);
                         limitExecutor = executor;
                     }
                 }

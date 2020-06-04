@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -41,7 +41,7 @@ public abstract class LLVMX86_ComparisonNode {
     @NodeChild(value = "xmm2", type = LLVMExpressionNode.class)
     @NodeChild(value = "imm", type = LLVMExpressionNode.class)
     public abstract static class LLVMX86_Cmpss extends LLVMBuiltin {
-        private static float TRUEMASK = Float.intBitsToFloat(-1);
+        private static final float TRUEMASK = Float.intBitsToFloat(-1);
 
         @Specialization
         protected LLVMFloatVector doIntrinsic(LLVMFloatVector xmm1, LLVMFloatVector xmm2, byte imm) {
@@ -83,6 +83,7 @@ public abstract class LLVMX86_ComparisonNode {
                     rv[0] = (Float.isNaN(left) || Float.isNaN(right)) ? 0 : TRUEMASK;
                     break;
                 default:
+                    CompilerDirectives.transferToInterpreter();
                     throw new AssertionError("unsupported predicate (not in range 0-7)");
             }
             return LLVMFloatVector.create(rv);

@@ -58,10 +58,10 @@ import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.meta.MethodPointer;
 import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
-import com.oracle.svm.hosted.SVMHost;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -207,8 +207,8 @@ public class ClassInitializationFeature implements Feature {
      */
     @Override
     @SuppressWarnings("try")
-    public void beforeCompilation(BeforeCompilationAccess access) {
-        String imageName = ((FeatureImpl.BeforeCompilationAccessImpl) access).getUniverse().getBigBang().getHostVM().getImageName();
+    public void afterAnalysis(AfterAnalysisAccess access) {
+        String imageName = ((FeatureImpl.AfterAnalysisAccessImpl) access).getBigBang().getHostVM().getImageName();
         try (Timer.StopTimer ignored = new Timer(imageName, "(clinit)").start()) {
             classInitializationSupport.setUnsupportedFeatures(null);
 
@@ -307,6 +307,7 @@ public class ClassInitializationFeature implements Feature {
 
     private void buildClassInitializationInfo(FeatureImpl.DuringAnalysisAccessImpl access, AnalysisType type, DynamicHub hub) {
         ClassInitializationInfo info = null;
+        boolean shouldFindDefaultMethods = true;
         if (classInitializationSupport.shouldInitializeAtRuntime(type)) {
             assert !type.isInitialized();
             AnalysisMethod classInitializer = type.getClassInitializer();
@@ -317,6 +318,8 @@ public class ClassInitializationFeature implements Feature {
                 }
                 info = new ClassInitializationInfo(MethodPointer.factory(classInitializer));
             } else {
+                // Can't read methods from unlinked classes
+                shouldFindDefaultMethods = false;
                 try {
                     /*
                      * Workaround to force linking the type which is not provided by the JVMCI API.
@@ -325,11 +328,14 @@ public class ClassInitializationFeature implements Feature {
                      */
                     type.getDeclaredConstructors();
                     type.getDeclaredMethods();
+                    shouldFindDefaultMethods = true;
                 } catch (VerifyError e) {
                     /* Synthesize a VerifyError to be thrown at run time. */
                     AnalysisMethod throwVerifyError = access.getMetaAccess().lookupJavaMethod(ExceptionSynthesizer.throwVerifyErrorMethod);
                     access.registerAsCompiled(throwVerifyError);
                     info = new ClassInitializationInfo(MethodPointer.factory(throwVerifyError));
+                } catch (NoClassDefFoundError e) {
+                    info = ClassInitializationInfo.FAILED_INFO_SINGLETON;
                 } catch (Throwable t) {
                     // silently ignore other errors
                 }
@@ -348,7 +354,11 @@ public class ClassInitializationFeature implements Feature {
             info = ClassInitializationInfo.INITIALIZED_INFO_SINGLETON;
         }
 
-        hub.setClassInitializationInfo(info, hasDefaultMethods(type), declaresDefaultMethods(type));
+        if (shouldFindDefaultMethods) {
+            hub.setClassInitializationInfo(info, hasDefaultMethods(type), declaresDefaultMethods(type));
+        } else {
+            hub.setClassInitializationInfo(info, false, false);
+        }
     }
 
     private static boolean hasDefaultMethods(ResolvedJavaType type) {

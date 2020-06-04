@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,7 +55,18 @@ public final class TraceSplittingListener implements GraalTruffleRuntimeListener
             String label = String.format("split %3s-%-4s-%-4s ", splitCount++, Integer.toHexString(callNode.getCurrentCallTarget().hashCode()), callNode.getCallCount());
             final Map<String, Object> debugProperties = callTarget.getDebugProperties(null);
             debugProperties.put("SourceSection", extractSourceSection(callNode));
-            TruffleCompilerRuntime.getRuntime().logEvent(0, label, callTarget.toString(), debugProperties);
+            TruffleCompilerRuntime.getRuntime().logEvent(callTarget, 0, label, debugProperties);
+        }
+    }
+
+    @Override
+    public void onCompilationSplitFailed(OptimizedDirectCallNode callNode, CharSequence reason) {
+        OptimizedCallTarget callTarget = callNode.getCallTarget();
+        if (callTarget.getOptionValue(PolyglotCompilerOptions.TraceSplitting)) {
+            String label = String.format("split failed " + reason);
+            final Map<String, Object> debugProperties = callTarget.getDebugProperties(null);
+            debugProperties.put("SourceSection", extractSourceSection(callNode));
+            TruffleCompilerRuntime.getRuntime().logEvent(callTarget, 0, label, debugProperties);
         }
     }
 

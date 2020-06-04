@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,8 +45,10 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * A container class used to store per-node attributes used by the instrumentation framework.
@@ -64,8 +66,8 @@ public abstract class NodeObjectDescriptor implements TruffleObject {
         return new ReadDescriptor(name);
     }
 
-    public static NodeObjectDescriptor writeVariable(String name) {
-        return new WriteDescriptor(name);
+    public static NodeObjectDescriptor writeVariable(String name, SourceSection sourceSection) {
+        return new WriteDescriptor(name, sourceSection);
     }
 
     Object readMember(String member) throws UnknownIdentifierException {
@@ -118,8 +120,11 @@ public abstract class NodeObjectDescriptor implements TruffleObject {
 
         private static final TruffleObject KEYS_WRITE = new NodeObjectDescriptorKeys(StandardTags.WriteVariableTag.NAME);
 
-        WriteDescriptor(String name) {
+        private final Object nameSymbol;
+
+        WriteDescriptor(String name, SourceSection sourceSection) {
             super(name);
+            this.nameSymbol = new NameSymbol(name, sourceSection);
         }
 
         @ExportMessage
@@ -143,7 +148,46 @@ public abstract class NodeObjectDescriptor implements TruffleObject {
         @Override
         @ExportMessage
         Object readMember(String member) throws UnknownIdentifierException {
-            return super.readMember(member);
+            super.readMember(member); // To verify readability
+            return nameSymbol;
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class NameSymbol implements TruffleObject {
+
+        private final String name;
+        private final SourceSection sourceSection;
+
+        NameSymbol(String name, SourceSection sourceSection) {
+            this.name = name;
+            this.sourceSection = sourceSection;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        boolean isString() {
+            return true;
+        }
+
+        @ExportMessage
+        String asString() {
+            return name;
+        }
+
+        @ExportMessage
+        boolean hasSourceLocation() {
+            return sourceSection != null;
+        }
+
+        @ExportMessage
+        SourceSection getSourceLocation() throws UnsupportedMessageException {
+            if (sourceSection != null) {
+                return sourceSection;
+            } else {
+                CompilerDirectives.transferToInterpreter();
+                throw UnsupportedMessageException.create();
+            }
         }
     }
 }

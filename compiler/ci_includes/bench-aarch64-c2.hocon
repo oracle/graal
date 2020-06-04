@@ -1,0 +1,17 @@
+aarch64.c2 : ${linux-aarch64} {
+  capabilities: ${linux-aarch64.capabilities}
+  environment : {
+    JVM_CONFIG   : "default"
+    JVM          : "server"
+    MACHINE_NAME : "xgene3"
+  }
+}
+
+builds += [
+  ${aarch64.c2} ${bench-dacapo} ${aarch64-bench-notifications}                     ${labsjdk11} { targets: [bench, weekly], name: "bench-compiler-dacapo-11-linux-c2-aarch64" }
+  ${aarch64.c2} ${bench-scala-dacapo} ${aarch64-bench-notifications}               ${labsjdk11} { targets: [bench, weekly], name: "bench-compiler-scala-dacapo-11-linux-c2-aarch64" }
+  ${aarch64.c2} ${bench-renaissance-no-db-shootout} ${aarch64-bench-notifications} ${labsjdk11} { targets: [bench, weekly], name: "bench-compiler-renaissance-11-linux-c2-aarch64" }
+  ${aarch64.c2} ${bench-specjvm2008-Single} ${aarch64-bench-notifications}         ${labsjdk11} { targets: [bench, weekly], name: "bench-compiler-specjvm2008-Single-11-linux-c2-aarch64" }
+  ${aarch64.c2} ${bench-specjbb2005} ${aarch64-bench-notifications}                ${labsjdk11} { targets: [bench, weekly], name: "bench-compiler-specjbb2005-11-linux-c2-aarch64" }
+  ${aarch64.c2} ${bench-specjbb2015} ${aarch64-bench-notifications}                ${labsjdk11} { targets: [bench, weekly], name: "bench-compiler-specjbb2015-11-linux-c2-aarch64" }
+]

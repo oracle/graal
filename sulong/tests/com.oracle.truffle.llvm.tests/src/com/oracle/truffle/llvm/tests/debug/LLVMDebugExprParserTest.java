@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.tests.debug;
 
+import static com.oracle.truffle.llvm.tests.debug.LLVMDebugTestBase.TEST_FOLDER_EXT;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -44,9 +45,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Context.Builder;
 import org.graalvm.polyglot.Source;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -71,8 +72,6 @@ public final class LLVMDebugExprParserTest {
     private static final Path SRC_DIR_PATH = Paths.get(TestOptions.PROJECT_ROOT, "..", "tests", "com.oracle.truffle.llvm.tests.debugexpr.native", "debugexpr");
     private static final Path TRACE_DIR_PATH = Paths.get(TestOptions.PROJECT_ROOT, "..", "tests", "com.oracle.truffle.llvm.tests.debugexpr.native", "testExpr");
 
-    private static final String OPTION_ENABLE_LVI = "llvm.enableLVI";
-
     private static final String CONFIGURATION = "O1.bc";
 
     public LLVMDebugExprParserTest(String testName, String configuration) {
@@ -80,23 +79,25 @@ public final class LLVMDebugExprParserTest {
         this.configuration = configuration;
     }
 
-    static void setContextOptions(Builder contextBuilder) {
-        // contextBuilder.option(EXPERIMENTAL_OPTIONS, String.valueOf(true));
-        contextBuilder.option(OPTION_ENABLE_LVI, String.valueOf(true));
-    }
-
     @Parameters(name = "{0}")
     public static Collection<Object[]> getConfigurations() {
         try (Stream<Path> dirs = Files.walk(BC_DIR_PATH)) {
-            return dirs.filter(path -> path.endsWith(CONFIGURATION)).map(path -> new Object[]{path.getParent().getFileName().toString(), CONFIGURATION}).collect(Collectors.toSet());
+            return dirs.filter(path -> path.endsWith(CONFIGURATION)).map(path -> new Object[]{getTestSource(path), CONFIGURATION}).collect(Collectors.toSet());
         } catch (IOException e) {
             throw new AssertionError("Error while finding tests!", e);
         }
     }
 
+    private static String getTestSource(Path path) {
+        String filename = path.getParent().getFileName().toString();
+        if (filename.endsWith(TEST_FOLDER_EXT)) {
+            return filename.substring(0, filename.length() - TEST_FOLDER_EXT.length());
+        }
+        return filename;
+    }
+
     private static final String LANG_ID = LLVMLanguage.ID;
 
-    private static final String SOURCE_FILE_EXTENSIONS = ".c";
     private static final String TRACE_EXT = ".txt";
     private static final String OPTION_LAZY_PARSING = "llvm.lazyParsing";
 
@@ -114,7 +115,6 @@ public final class LLVMDebugExprParserTest {
         final Context.Builder contextBuilder = Context.newBuilder(LANG_ID);
         contextBuilder.allowAllAccess(true);
         contextBuilder.option(OPTION_LAZY_PARSING, String.valueOf(false));
-        setContextOptions(contextBuilder);
         tester = new DebuggerTester(contextBuilder);
     }
 
@@ -135,21 +135,33 @@ public final class LLVMDebugExprParserTest {
     }
 
     private Source loadOriginalSource() {
-        final File file = SRC_DIR_PATH.resolve(testName + SOURCE_FILE_EXTENSIONS).toFile();
-        if (file.exists()) {
-            return loadSource(file);
-        }
-        throw new AssertionError("Could not locate source for test: " + testName);
+        final File file = getSourcePath().resolve(testName).toFile();
+        Assert.assertTrue("Locate Source", file.exists());
+        return loadSource(file);
     }
 
     private Source loadBitcodeSource() {
-        final Path path = BC_DIR_PATH.resolve(Paths.get(testName, configuration));
-        return loadSource(path.toFile());
+        final File file = getBitcodePath().resolve(Paths.get(testName + ".dir", configuration)).toFile();
+        Assert.assertTrue("Locate Bitcode", file.exists());
+        return loadSource(file);
     }
 
     private TestExpressions fetchExpressions() {
-        final Path path = TRACE_DIR_PATH.resolve(testName + TRACE_EXT);
+        final Path path = getTracePath().resolve(testName + TRACE_EXT);
+        Assert.assertTrue("Locate Test Expression", path.toFile().exists());
         return TestExpressions.parse(path);
+    }
+
+    static Path getBitcodePath() {
+        return BC_DIR_PATH;
+    }
+
+    static Path getSourcePath() {
+        return SRC_DIR_PATH;
+    }
+
+    static Path getTracePath() {
+        return TRACE_DIR_PATH;
     }
 
     private static final class BreakInfo {
@@ -228,13 +240,13 @@ public final class LLVMDebugExprParserTest {
             for (Entry<String, String> kv : textExpressionMap.entrySet()) {
                 if (kv.getValue().startsWith("EXCEPTION ")) {
                     try {
-                        String actual = frame.eval(kv.getKey()).as(String.class);
+                        String actual = frame.eval(kv.getKey()).asString();
                         assertTrue("Evaluation of expression \"" + kv.getKey() + "\"  on line " + currentLine + "did evaluate to " + actual + " and did not throw expected " + kv.getValue(), false);
                     } catch (DebugException e) {
                         // OK since expected exception has been thrown
                     }
                 } else {
-                    String actual = frame.eval(kv.getKey()).as(String.class);
+                    String actual = frame.eval(kv.getKey()).toDisplayString();
                     String noNewLineActual = actual.replace("\n", "");
                     if (allowFailure) {
                         if (noNewLineActual.contains(kv.getValue())) {

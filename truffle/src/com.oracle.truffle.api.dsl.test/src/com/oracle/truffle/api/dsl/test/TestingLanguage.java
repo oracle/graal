@@ -57,11 +57,6 @@ public final class TestingLanguage extends TruffleLanguage<Object> {
     }
 
     @Override
-    protected boolean isObjectOfLanguage(Object object) {
-        return false;
-    }
-
-    @Override
     protected Object createContext(Env env) {
         return null;
     }

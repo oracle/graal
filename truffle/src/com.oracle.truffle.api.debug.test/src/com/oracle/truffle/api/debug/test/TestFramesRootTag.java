@@ -141,11 +141,6 @@ public class TestFramesRootTag extends AbstractDebugTest {
         }
 
         @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
-
-        @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             CharSequence code = request.getSource().getCharacters();
             int length = code.length();
@@ -195,7 +190,8 @@ public class TestFramesRootTag extends AbstractDebugTest {
                     ((TestTaggedRoot) child).setDescendant(descendant);
                 } else {
                     assert this.child == null;
-                    this.child = new Call(sourceSection, descendant);
+                    this.child = insert(new Call(sourceSection, descendant));
+                    notifyInserted(this.child);
                 }
             }
 

@@ -34,9 +34,7 @@ import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeFactory.LLVMDoubleDataEscapeNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeFactory.LLVMFloatDataEscapeNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeFactory.LLVMI16DataEscapeNodeGen;
@@ -48,9 +46,9 @@ import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeFactory.LLVMPoi
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeFactory.LLVMVoidDataEscapeNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMObjectAccess;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -204,10 +202,15 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
             return Double.doubleToRawLongBits(escapingValue);
         }
 
-        @Specialization(limit = "3", replaces = "escapingPrimitive")
-        static long escapingPointer(Object escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type,
-                        @CachedLibrary("escapingValue") LLVMNativeLibrary library) {
-            return library.toNativePointer(escapingValue).asNative();
+        @Specialization
+        static long escapingNativePointer(LLVMNativePointer escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+            return escapingValue.asNative();
+        }
+
+        @Specialization
+        static Object escapingPointer(LLVMManagedPointer escapingValue, LLVMInteropType.Structured type,
+                        @Cached LLVMPointerDataEscapeNode pointerDataEscapeNode) {
+            return pointerDataEscapeNode.executeWithType(escapingValue, type);
         }
     }
 
@@ -258,43 +261,20 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
             return escapingValue;
         }
 
-        @Specialization
-        static Object escapingForeign(LLVMTypedForeignObject escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
-            return escapingValue.getForeign();
+        static boolean isPrimitiveValue(Object object) {
+            return object instanceof Long || object instanceof Double;
         }
 
-        @Specialization
+        @Specialization(guards = {"!isPrimitiveValue(object)", "foreigns.isForeign(object)"})
+        static Object escapingForeignNonPointer(Object object, @SuppressWarnings("unused") LLVMInteropType.Structured type,
+                        @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns) {
+            return foreigns.asForeign(object);
+        }
+
+        @Specialization(guards = "!foreigns.isForeign(address)")
         static Object escapingManaged(LLVMPointer address, @SuppressWarnings("unused") LLVMInteropType.Structured type,
-                        @Cached("createClassProfile()") ValueProfile objectProfile,
-                        @Cached("createBinaryProfile()") ConditionProfile isManagedPointer,
-                        @Cached("createBinaryProfile()") ConditionProfile isTypedForeignObject,
-                        @Cached("createBinaryProfile()") ConditionProfile typedProfile) {
-
-            if (isManagedPointer.profile(LLVMManagedPointer.isInstance(address))) {
-                LLVMManagedPointer managed = LLVMManagedPointer.cast(address);
-                Object object = objectProfile.profile(managed.getObject());
-                if (managed.getOffset() == 0) {
-                    // pointer to the beginning of a managed object
-                    if (isTypedForeignObject.profile(object instanceof LLVMTypedForeignObject)) {
-                        // foreign object -- unpack it
-                        return escapingForeign((LLVMTypedForeignObject) object, type);
-                    } else {
-                        if (object instanceof LLVMObjectAccess) {
-                            // internal object -- fallthrough
-                        } else if (object instanceof DynamicObject && ((DynamicObject) object).getShape().getObjectType() instanceof LLVMObjectAccess) {
-                            // internal object -- fallthrough
-                        } else if (object instanceof LLVMInternalTruffleObject) {
-                            // internal object -- fallthrough
-                        } else if (LLVMPointer.isInstance(object)) {
-                            // internal object -- fallthrough
-                        } else {
-                            // foreign object -- unpack it
-                            return object;
-                        }
-                    }
-                }
-            }
-
+                        @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns,
+                        @Cached ConditionProfile typedProfile) {
             // fallthrough: the value escapes as LLVM pointer object
 
             if (typedProfile.profile(address.getExportType() != null)) {
@@ -321,9 +301,9 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
     public abstract static class LLVMVoidDataEscapeNode extends LLVMDataEscapeNode {
 
         @Specialization
-        public Object doVoid(Object escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
-            assert escapingValue == null;
-            return LLVMNativePointer.createNull();
+        public Object doVoid(LLVMPointer escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+            assert escapingValue.isNull();
+            return escapingValue;
         }
     }
 }

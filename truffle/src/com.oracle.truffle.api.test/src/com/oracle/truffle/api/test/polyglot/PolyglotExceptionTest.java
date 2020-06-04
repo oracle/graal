@@ -40,9 +40,15 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.function.Consumer;
 
 import org.graalvm.polyglot.Context;
@@ -226,4 +232,83 @@ public class PolyglotExceptionTest {
         }
     }
 
+    @SuppressWarnings("serial")
+    public static class TruncatedException extends RuntimeException {
+
+        private final int limit;
+
+        public TruncatedException(int limit) {
+            assert limit >= 0;
+            this.limit = limit;
+        }
+
+        @Override
+        public StackTraceElement[] getStackTrace() {
+            StackTraceElement[] stackTrace = super.getStackTrace();
+            return Arrays.copyOf(stackTrace, Math.min(limit, stackTrace.length));
+        }
+
+        @SuppressWarnings("unused")
+        public static TruncatedException newTruncatedException(int limit) {
+            return new TruncatedException(limit);
+        }
+
+        /**
+         * Only reflective Method calls trigger GR-22058, calling the constructor reflectively
+         * doesn't, but Constructor .newInstance frames could also be skipped and trigger GR-22058
+         * in the future.
+         */
+        public static TruncatedException createViaConstructorReflectively(int limit) {
+            try {
+                // Create an exception with truncated stack trace including reflective .newInstance
+                // frames.
+                Constructor<TruncatedException> init = TruncatedException.class.getConstructor(int.class);
+                return init.newInstance(limit);
+            } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException | InstantiationException e) {
+                throw new AssertionError(e);
+            }
+        }
+
+        public static TruncatedException createViaMethodReflectively(int limit) {
+            try {
+                // Create an exception with truncated stack trace including reflective .invoke*
+                // frames.
+                Method init = TruncatedException.class.getDeclaredMethod("newTruncatedException", int.class);
+                return (TruncatedException) init.invoke(null, limit);
+            } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+                throw new AssertionError(e);
+            }
+        }
+    }
+
+    @SuppressWarnings("unused")
+    @Test
+    public void testTruncatedStackTrace() {
+        // Regression test for GR-22058.
+        Context context = Context.create();
+        Value throwError = context.asValue(new ProxyExecutable() {
+            public Object execute(Value... arguments) {
+                throw arguments[0].<RuntimeException> asHostObject();
+            }
+        });
+        for (int limit = 0; limit < 16; ++limit) {
+            for (TruncatedException ex : Arrays.asList(
+                            TruncatedException.createViaMethodReflectively(limit),
+                            TruncatedException.createViaConstructorReflectively(limit))) {
+                try {
+                    throwError.execute(ex);
+                    fail();
+                } catch (PolyglotException e) {
+                    assertSame(ex, e.asHostException()); // GR-22058 throws here
+                    int frameCount = 0;
+                    for (PolyglotException.StackFrame unused : e.getPolyglotStackTrace()) {
+                        frameCount++;
+                    }
+                    // Sanity checks.
+                    assertTrue(ex.getStackTrace().length <= limit);
+                    assertEquals(ex.getStackTrace().length, frameCount);
+                }
+            }
+        }
+    }
 }

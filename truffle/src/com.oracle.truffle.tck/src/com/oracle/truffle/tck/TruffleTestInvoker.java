@@ -83,11 +83,6 @@ final class TruffleTestInvoker<C extends Closeable, T extends CallTarget> extend
         }
 
         @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return object instanceof TestStatement;
-        }
-
-        @Override
         protected void initializeContext(Env context) throws Exception {
             context.exportSymbol("env", context.asGuestValue(context));
         }

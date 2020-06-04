@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,13 +40,12 @@
  */
 package com.oracle.truffle.regex.tregex.matchers;
 
-import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.regex.charset.CharSet;
+import com.oracle.truffle.regex.charset.CP16BitMatchers;
 
 /**
  * Character range matcher using a sorted list of ranges.
@@ -57,7 +56,7 @@ public abstract class RangeListMatcher extends InvertibleCharMatcher {
 
     /**
      * Constructs a new {@link RangeListMatcher}.
-     * 
+     *
      * @param invert see {@link InvertibleCharMatcher}.
      * @param ranges a sorted array of character ranges in the form [lower inclusive bound of range
      *            0, higher inclusive bound of range 0, lower inclusive bound of range 1, higher
@@ -125,6 +124,6 @@ public abstract class RangeListMatcher extends InvertibleCharMatcher {
     @Override
     @TruffleBoundary
     public String toString() {
-        return "list " + modifiersToString() + "[" + CharSet.rangesToString(ranges) + "]";
+        return "list " + modifiersToString() + "[" + CP16BitMatchers.rangesToString(ranges) + "]";
     }
 }

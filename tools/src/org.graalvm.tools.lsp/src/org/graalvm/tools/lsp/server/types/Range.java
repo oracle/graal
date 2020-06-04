@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,12 +34,10 @@ import java.util.Objects;
  * use an end position denoting the start of the next line. For example: ```ts { start: { line: 5,
  * character: 23 } end : { line 6, character : 0 } } ```
  */
-public class Range {
-
-    final JSONObject jsonData;
+public class Range extends JSONBase {
 
     Range(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -89,9 +87,9 @@ public class Range {
 
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 71 * hash + Objects.hashCode(this.getStart());
-        hash = 71 * hash + Objects.hashCode(this.getEnd());
+        int hash = 7;
+        hash = 23 * hash + Objects.hashCode(this.getStart());
+        hash = 23 * hash + Objects.hashCode(this.getEnd());
         return hash;
     }
 

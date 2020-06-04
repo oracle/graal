@@ -43,6 +43,7 @@ import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.hosted.meta.HostedMethod;
 
 import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.code.StackLockValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.ValueUtil;
@@ -106,7 +107,13 @@ class Instance {
                      * Remove stack slot information for all slots which already have a
                      * representative in the bytecode frame.
                      */
-                    for (JavaValue value : frame.values) {
+                    for (JavaValue v : frame.values) {
+                        JavaValue value = v;
+                        if (value instanceof StackLockValue) {
+                            StackLockValue lock = (StackLockValue) value;
+                            assert ValueUtil.isIllegal(lock.getSlot());
+                            value = lock.getOwner();
+                        }
                         if (value instanceof StackSlot) {
                             StackSlot stackSlot = (StackSlot) value;
                             int offset = stackSlot.getOffset(frameMap.totalFrameSize());

@@ -48,12 +48,16 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.lang.ref.Reference;
+import java.lang.ref.WeakReference;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -65,7 +69,11 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.proxy.ProxyArray;
+import org.graalvm.polyglot.proxy.ProxyExecutable;
+import org.graalvm.polyglot.proxy.ProxyObject;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -87,12 +95,12 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.GCUtils;
 import com.oracle.truffle.api.test.option.OptionProcessorTest.OptionTestLang1;
 import com.oracle.truffle.api.test.polyglot.ContextAPITestLanguage.LanguageContext;
-import com.oracle.truffle.api.test.polyglot.ValueAssert.Trait;
-import java.lang.ref.Reference;
-import java.lang.ref.WeakReference;
-import java.util.HashSet;
-import java.util.Set;
-import org.graalvm.polyglot.PolyglotAccess;
+import com.oracle.truffle.tck.tests.ValueAssert;
+import com.oracle.truffle.tck.tests.ValueAssert.Trait;
+import java.net.URL;
+import java.net.URLClassLoader;
+import org.graalvm.polyglot.Source;
+import org.junit.Assume;
 
 public class ContextAPITest {
     private static HostAccess CONFIG;
@@ -245,7 +253,8 @@ public class ContextAPITest {
 
     @Test
     public void testExperimentalOptionException() {
-        ValueAssert.assertFails(() -> Context.newBuilder().option("optiontestlang1.StringOption2", "Hello").build(), IllegalArgumentException.class, e -> {
+        Assume.assumeFalse(Boolean.getBoolean("polyglot.engine.AllowExperimentalOptions"));
+        AbstractPolyglotTest.assertFails(() -> Context.newBuilder().option("optiontestlang1.StringOption2", "Hello").build(), IllegalArgumentException.class, e -> {
             assertEquals("Option 'optiontestlang1.StringOption2' is experimental and must be enabled with allowExperimentalOptions(). Do not use experimental options in production environments.",
                             e.getMessage());
         });
@@ -253,7 +262,7 @@ public class ContextAPITest {
 
     @Test
     public void testImageBuildTimeOptionAtRuntime() {
-        ValueAssert.assertFails(() -> Context.newBuilder().option("image-build-time.DisablePrivileges", "createProcess").build(), IllegalArgumentException.class, e -> {
+        AbstractPolyglotTest.assertFails(() -> Context.newBuilder().option("image-build-time.DisablePrivileges", "createProcess").build(), IllegalArgumentException.class, e -> {
             assertEquals("Image build-time option 'image-build-time.DisablePrivileges' cannot be set at runtime", e.getMessage());
         });
     }
@@ -628,7 +637,9 @@ public class ContextAPITest {
         try {
             r.run();
         } catch (Exception e) {
-            assertTrue(e.getClass().getName(), exceptionType.isInstance(e));
+            if (!exceptionType.isInstance(e)) {
+                throw new AssertionError(e);
+            }
         }
     }
 
@@ -744,4 +755,235 @@ public class ContextAPITest {
         context.close();
     }
 
+    @Test
+    public void testClose() {
+        Context context = Context.newBuilder().allowAllAccess(true).build();
+        context.enter();
+        Value bindings = context.getBindings(ContextAPITestLanguage.ID);
+        Value polyglotBindings = context.getPolyglotBindings();
+        Map<String, Object> fields = new HashMap<>();
+        fields.put("x", 1);
+        fields.put("y", 2);
+        Value object = context.asValue(ProxyObject.fromMap(fields));
+        Value array = context.asValue(ProxyArray.fromArray(1, 2));
+        Value fnc = context.asValue(new ProxyExecutable() {
+            @Override
+            public Object execute(Value... arguments) {
+                return true;
+            }
+        });
+        context.close();
+
+        assertFails(() -> context.asValue(1), IllegalStateException.class);
+        assertFails(() -> context.enter(), IllegalStateException.class);
+        assertFails(() -> context.eval(ContextAPITestLanguage.ID, ""), IllegalStateException.class);
+        assertFails(() -> context.initialize(ContextAPITestLanguage.ID), IllegalStateException.class);
+        assertFails(() -> context.getBindings(ContextAPITestLanguage.ID), IllegalStateException.class);
+        assertFails(() -> context.getPolyglotBindings(), IllegalStateException.class);
+
+        assertFails(() -> bindings.hasMembers(), IllegalStateException.class);
+        assertFails(() -> polyglotBindings.putMember("d", 1), IllegalStateException.class);
+        assertFails(() -> object.as(Map.class), IllegalStateException.class);
+        assertFails(() -> object.putMember("x", 0), IllegalStateException.class);
+        assertFails(() -> array.as(List.class), IllegalStateException.class);
+        assertFails(() -> array.setArrayElement(0, 3), IllegalStateException.class);
+        assertFails(() -> fnc.execute(), IllegalStateException.class);
+    }
+
+    @Test
+    public void testDefaultContextClassLoader() {
+        ClassLoader orig = Thread.currentThread().getContextClassLoader();
+        try {
+            ClassLoader cc = new URLClassLoader(new URL[0]);
+            Thread.currentThread().setContextClassLoader(cc);
+            try (Context context = Context.newBuilder().allowHostAccess(HostAccess.ALL).build()) {
+                testContextClassLoaderImpl(context, cc);
+                cc = new URLClassLoader(new URL[0]);
+                Thread.currentThread().setContextClassLoader(cc);
+                testContextClassLoaderImpl(context, cc);
+            }
+        } finally {
+            Thread.currentThread().setContextClassLoader(orig);
+        }
+    }
+
+    @Test
+    public void testExplicitContextClassLoader() {
+        ClassLoader orig = Thread.currentThread().getContextClassLoader();
+        try {
+            ClassLoader hostClassLoader = new URLClassLoader(new URL[0]);
+            try (Context context = Context.newBuilder().hostClassLoader(hostClassLoader).allowHostAccess(HostAccess.ALL).build()) {
+                testContextClassLoaderImpl(context, hostClassLoader);
+                ClassLoader contextClassLoader = new URLClassLoader(new URL[0]);
+                Thread.currentThread().setContextClassLoader(contextClassLoader);
+                testContextClassLoaderImpl(context, hostClassLoader);
+            }
+        } finally {
+            Thread.currentThread().setContextClassLoader(orig);
+        }
+    }
+
+    @Test
+    public void testExplicitContextClassLoaderMultipleContexts() {
+        ClassLoader orig = Thread.currentThread().getContextClassLoader();
+        try {
+            ClassLoader hostClassLoaderCtx1 = new URLClassLoader(new URL[0]);
+            ClassLoader hostClassLoaderCtx2 = new URLClassLoader(new URL[0]);
+            try (Context context1 = Context.newBuilder().hostClassLoader(hostClassLoaderCtx1).allowHostAccess(HostAccess.ALL).build()) {
+                try (Context context2 = Context.newBuilder().hostClassLoader(hostClassLoaderCtx2).allowHostAccess(HostAccess.ALL).build()) {
+                    try (Context context3 = Context.newBuilder().allowHostAccess(HostAccess.ALL).build()) {
+                        testContextClassLoaderImpl(context1, hostClassLoaderCtx1);
+                        testContextClassLoaderImpl(context2, hostClassLoaderCtx2);
+                        testContextClassLoaderImpl(context3, orig);
+                        ClassLoader contextClassLoader = new URLClassLoader(new URL[0]);
+                        Thread.currentThread().setContextClassLoader(contextClassLoader);
+                        testContextClassLoaderImpl(context1, hostClassLoaderCtx1);
+                        testContextClassLoaderImpl(context2, hostClassLoaderCtx2);
+                        testContextClassLoaderImpl(context3, contextClassLoader);
+                    }
+                }
+            }
+        } finally {
+            Thread.currentThread().setContextClassLoader(orig);
+        }
+    }
+
+    @Test
+    public void testExplicitContextClassLoaderNestedContexts() {
+        ClassLoader orig = Thread.currentThread().getContextClassLoader();
+        try {
+            ClassLoader hostClassLoaderCtx1 = new URLClassLoader(new URL[0]);
+            ClassLoader hostClassLoaderCtx2 = new URLClassLoader(new URL[0]);
+            try (Context context1 = Context.newBuilder().hostClassLoader(hostClassLoaderCtx1).allowHostAccess(HostAccess.ALL).build()) {
+                try (Context context2 = Context.newBuilder().hostClassLoader(hostClassLoaderCtx2).allowHostAccess(HostAccess.ALL).build()) {
+                    testContextClassLoaderImpl(context1, hostClassLoaderCtx1);
+                    testContextClassLoaderImpl(context2, hostClassLoaderCtx2);
+                    context1.enter();
+                    testContextClassLoaderImpl(context1, hostClassLoaderCtx1);
+                    testContextClassLoaderImpl(context2, hostClassLoaderCtx2);
+                    try {
+                        context2.enter();
+                        testContextClassLoaderImpl(context1, hostClassLoaderCtx1);
+                        testContextClassLoaderImpl(context2, hostClassLoaderCtx2);
+                        try {
+                            testContextClassLoaderImpl(context1, hostClassLoaderCtx1);
+                            testContextClassLoaderImpl(context2, hostClassLoaderCtx2);
+                        } finally {
+                            context2.leave();
+                        }
+                        testContextClassLoaderImpl(context1, hostClassLoaderCtx1);
+                        testContextClassLoaderImpl(context2, hostClassLoaderCtx2);
+                    } finally {
+                        context1.leave();
+                    }
+                    testContextClassLoaderImpl(context1, hostClassLoaderCtx1);
+                    testContextClassLoaderImpl(context2, hostClassLoaderCtx2);
+                }
+            }
+        } finally {
+            Thread.currentThread().setContextClassLoader(orig);
+        }
+    }
+
+    @Test
+    public void testExplicitContextClassLoaderNestedContexts2() {
+        ClassLoader orig = Thread.currentThread().getContextClassLoader();
+        try {
+            ClassLoader hostClassLoaderCtx1 = new URLClassLoader(new URL[0]);
+            ClassLoader hostClassLoaderCtx2 = new URLClassLoader(new URL[0]);
+            ClassLoader hostClassLoaderCtx3 = new URLClassLoader(new URL[0]);
+            try (Context context1 = Context.newBuilder().hostClassLoader(hostClassLoaderCtx1).allowHostAccess(HostAccess.ALL).build()) {
+                try (Context context2 = Context.newBuilder().hostClassLoader(hostClassLoaderCtx2).allowHostAccess(HostAccess.ALL).build()) {
+                    try (Context context3 = Context.newBuilder().hostClassLoader(hostClassLoaderCtx3).allowHostAccess(HostAccess.ALL).build()) {
+                        context1.enter();
+                        try {
+                            context2.enter();
+                            try {
+                                context3.enter();
+                                try {
+                                    testContextClassLoaderImpl(context1, hostClassLoaderCtx1);
+                                    testContextClassLoaderImpl(context2, hostClassLoaderCtx2);
+                                    testContextClassLoaderImpl(context3, hostClassLoaderCtx3);
+                                } finally {
+                                    context3.leave();
+                                }
+                                testContextClassLoaderImpl(context1, hostClassLoaderCtx1);
+                                testContextClassLoaderImpl(context2, hostClassLoaderCtx2);
+                                testContextClassLoaderImpl(context3, hostClassLoaderCtx3);
+                            } finally {
+                                context2.leave();
+                            }
+                            testContextClassLoaderImpl(context1, hostClassLoaderCtx1);
+                            testContextClassLoaderImpl(context2, hostClassLoaderCtx2);
+                            testContextClassLoaderImpl(context3, hostClassLoaderCtx3);
+                        } finally {
+                            context1.leave();
+                        }
+                        testContextClassLoaderImpl(context1, hostClassLoaderCtx1);
+                        testContextClassLoaderImpl(context2, hostClassLoaderCtx2);
+                        testContextClassLoaderImpl(context3, hostClassLoaderCtx3);
+                    }
+                }
+            }
+        } finally {
+            Thread.currentThread().setContextClassLoader(orig);
+        }
+    }
+
+    @Test
+    public void testExplicitContextClassLoaderNestedContexts3() {
+        ClassLoader orig = Thread.currentThread().getContextClassLoader();
+        try {
+            ClassLoader hostClassLoaderCtx1 = new URLClassLoader(new URL[0]);
+            ClassLoader hostClassLoaderCtx2 = new URLClassLoader(new URL[0]);
+            ClassLoader customClassLoader = new URLClassLoader(new URL[0]);
+            try (Context context1 = Context.newBuilder().hostClassLoader(hostClassLoaderCtx1).allowHostAccess(HostAccess.ALL).build()) {
+                try (Context context2 = Context.newBuilder().hostClassLoader(hostClassLoaderCtx2).allowHostAccess(HostAccess.ALL).build()) {
+                    context1.enter();
+                    try {
+                        testContextClassLoaderImpl(context1, hostClassLoaderCtx1);
+                        testContextClassLoaderImpl(context2, hostClassLoaderCtx2);
+                        ClassLoader prev = Thread.currentThread().getContextClassLoader();
+                        Thread.currentThread().setContextClassLoader(customClassLoader);
+                        try {
+                            context2.enter();
+                            try {
+                                testContextClassLoaderImpl(context1, hostClassLoaderCtx1);
+                                testContextClassLoaderImpl(context2, hostClassLoaderCtx2);
+                            } finally {
+                                context2.leave();
+                            }
+                            assertEquals(customClassLoader, Thread.currentThread().getContextClassLoader());
+                        } finally {
+                            Thread.currentThread().setContextClassLoader(prev);
+                        }
+                        testContextClassLoaderImpl(context1, hostClassLoaderCtx1);
+                        testContextClassLoaderImpl(context2, hostClassLoaderCtx2);
+                    } finally {
+                        context1.leave();
+                    }
+                    testContextClassLoaderImpl(context1, hostClassLoaderCtx1);
+                    testContextClassLoaderImpl(context2, hostClassLoaderCtx2);
+                }
+            }
+        } finally {
+            Thread.currentThread().setContextClassLoader(orig);
+        }
+    }
+
+    private static void testContextClassLoaderImpl(Context context, ClassLoader expectedContextClassLoader) {
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+            @Override
+            protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
+                return Truffle.getRuntime().createCallTarget(new RootNode(this.languageInstance) {
+                    @Override
+                    public Object execute(VirtualFrame frame) {
+                        assertEquals(expectedContextClassLoader, Thread.currentThread().getContextClassLoader());
+                        return true;
+                    }
+                });
+            }
+        });
+        context.eval(Source.newBuilder(ProxyLanguage.ID, "", "test").cached(false).buildLiteral());
+    }
 }

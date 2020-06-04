@@ -31,7 +31,8 @@ import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -65,21 +66,14 @@ public class MuslLibc implements LibCBase {
     }
 
     @Override
-    public List<String> getCCompilerOptions() {
-        List<String> command = new ArrayList<>();
-        command.add("-specs");
-        command.add(getSpecFilePath().toString());
+    public List<String> getAdditionalQueryCodeCompilerOptions() {
         /* Avoid the dependency to muslc for builds cross compiling to muslc. */
-        command.add("--static");
-        return command;
+        return Collections.singletonList("--static");
     }
 
     @Override
-    public List<String> getLinkerPreOptions() {
-        List<String> options = new ArrayList<>();
-        options.add("-specs");
-        options.add(getSpecFilePath().toString());
-        return options;
+    public List<String> getCCompilerOptions() {
+        return Arrays.asList("-specs", getSpecFilePath().toString());
     }
 
     public void setUpSpecFile(Path directory) {
@@ -102,5 +96,10 @@ public class MuslLibc implements LibCBase {
     public Path getSpecFilePath() {
         VMError.guarantee(specFilePath != null);
         return specFilePath.toAbsolutePath();
+    }
+
+    @Override
+    public boolean hasIsolatedNamespaces() {
+        return false;
     }
 }

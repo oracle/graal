@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,8 @@
  */
 package com.oracle.svm.agent.restrict;
 
-import static com.oracle.svm.agent.Support.fromJniString;
+import static com.oracle.svm.configure.trace.LazyValueUtils.lazyNull;
+import static com.oracle.svm.jvmtiagentbase.Support.fromJniString;
 
 import com.oracle.svm.configure.config.ResourceConfiguration;
 import com.oracle.svm.configure.trace.AccessAdvisor;
@@ -54,7 +55,7 @@ public class ResourceAccessVerifier extends AbstractAccessVerifier {
     }
 
     public boolean verifyGetBundle(JNIEnvironment env, JNIObjectHandle baseName, @SuppressWarnings("unused") JNIObjectHandle callerClass) {
-        if (shouldApproveWithoutChecks(env, callerClass)) {
+        if (shouldApproveWithoutChecks(lazyNull(), lazyClassNameOrNull(env, callerClass))) {
             return true;
         }
         String bundleName = fromJniString(env, baseName);

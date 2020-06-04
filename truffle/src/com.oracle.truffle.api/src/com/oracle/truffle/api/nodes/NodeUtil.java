@@ -54,8 +54,8 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
@@ -68,7 +68,7 @@ public final class NodeUtil {
     private NodeUtil() {
     }
 
-    static final ThreadLocal<Object> CURRENT_ENCAPSULATING_NODE = NodeAccessor.ACCESSOR.createFastThreadLocal();
+    static final ThreadLocal<Object> CURRENT_ENCAPSULATING_NODE = new ThreadLocal<>();
 
     static Iterator<Node> makeIterator(Node node) {
         return node.getNodeClass().makeIterator(node);

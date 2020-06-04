@@ -71,7 +71,7 @@ function setConfig(path: string) {
 		termArgs.push('--inspect.Suspend=false');
 		config.update('rterm.option', termArgs, true);
 	}
-	const startRLS = vscode.workspace.getConfiguration('graalvm').get('startRLanguageServer') as boolean;
+	const startRLS = vscode.workspace.getConfiguration('graalvm').get('languageServer.startRLanguageServer') as boolean;
 	if (startRLS) {
 		if (!isRPackageInstalled(R_LANGUAGE_SERVER_PACKAGE_NAME)) {
 			vscode.window.showInformationMessage('Language Server package is not installed in your GraalVM R.', INSTALL_R_LANGUAGE_SERVER).then(value => {

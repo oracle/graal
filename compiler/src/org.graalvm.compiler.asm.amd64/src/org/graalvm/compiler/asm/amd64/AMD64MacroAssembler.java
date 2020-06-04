@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -61,6 +61,10 @@ public class AMD64MacroAssembler extends AMD64Assembler {
 
     public AMD64MacroAssembler(TargetDescription target, OptionValues optionValues) {
         super(target, optionValues);
+    }
+
+    public AMD64MacroAssembler(TargetDescription target, OptionValues optionValues, boolean hasIntelJccErratum) {
+        super(target, optionValues, hasIntelJccErratum);
     }
 
     public final void decrementq(Register reg, int value) {

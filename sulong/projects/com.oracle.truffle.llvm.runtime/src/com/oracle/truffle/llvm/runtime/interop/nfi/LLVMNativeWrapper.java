@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.interop.nfi;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
@@ -43,6 +44,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMGetStackNode;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
@@ -59,11 +61,11 @@ import com.oracle.truffle.llvm.runtime.types.FunctionType;
 @SuppressWarnings("static-method")
 public final class LLVMNativeWrapper implements TruffleObject {
 
-    private final LLVMFunctionDescriptor function;
+    private final LLVMFunctionDescriptor descriptor;
 
-    public LLVMNativeWrapper(LLVMFunctionDescriptor function) {
-        assert function.isLLVMIRFunction() || function.isIntrinsicFunctionSlowPath();
-        this.function = function;
+    public LLVMNativeWrapper(LLVMFunctionDescriptor descriptor) {
+        assert descriptor.getFunctionCode().isLLVMIRFunction() || descriptor.getFunctionCode().isIntrinsicFunctionSlowPath();
+        this.descriptor = descriptor;
     }
 
     static boolean isInstance(TruffleObject obj) {
@@ -72,7 +74,7 @@ public final class LLVMNativeWrapper implements TruffleObject {
 
     @Override
     public String toString() {
-        return function.toString();
+        return descriptor.toString();
     }
 
     @ExportMessage
@@ -83,7 +85,7 @@ public final class LLVMNativeWrapper implements TruffleObject {
     @ExportMessage
     Object execute(Object[] args,
                     @Cached CallbackHelperNode callbackHelper) {
-        return callbackHelper.execute(function, args);
+        return callbackHelper.execute(descriptor, args);
     }
 
     @GenerateUncached
@@ -115,15 +117,17 @@ public final class LLVMNativeWrapper implements TruffleObject {
              * a separate CallTarget for every distinct callback object, so we should never see more
              * than one distinct LLVMFunctionDescriptor.
              */
+            CompilerDirectives.transferToInterpreter();
             throw new IllegalStateException("unexpected generic case in LLVMNativeCallback");
         }
 
         DirectCallNode createCallNode(LLVMFunctionDescriptor function) {
             CallTarget callTarget;
-            if (function.isLLVMIRFunction()) {
-                callTarget = function.getLLVMIRFunctionSlowPath();
-            } else if (function.isIntrinsicFunctionSlowPath()) {
-                callTarget = function.getIntrinsicSlowPath().cachedCallTarget(function.getLLVMFunction().getType());
+            LLVMFunctionCode functionCode = function.getFunctionCode();
+            if (functionCode.isLLVMIRFunction()) {
+                callTarget = functionCode.getLLVMIRFunctionSlowPath();
+            } else if (functionCode.isIntrinsicFunctionSlowPath()) {
+                callTarget = functionCode.getIntrinsicSlowPath().cachedCallTarget(function.getLLVMFunction().getType());
             } else {
                 throw new IllegalStateException("unexpected function: " + function.toString());
             }

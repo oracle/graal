@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -119,9 +119,10 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
     @Override
     protected void bangStackWithOffset(CompilationResultBuilder crb, int bangOffset) {
         AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
+        boolean allowOverwrite = false;
         try (ScratchRegister sc = masm.getScratchRegister()) {
             Register scratch = sc.getRegister();
-            AArch64Address address = masm.makeAddress(sp, -bangOffset, scratch, 8, /* allowOverwrite */false);
+            AArch64Address address = masm.makeAddress(sp, -bangOffset, scratch, 8, allowOverwrite);
             masm.str(64, zr, address);
         }
     }
@@ -201,6 +202,9 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
                         masm.sub(64, sp, sp, rscratch1);
                     }
                 }
+            }
+            if (config.MARKID_FRAME_COMPLETE != -1) {
+                crb.recordMark(config.MARKID_FRAME_COMPLETE);
             }
             if (ZapStackOnMethodEntry.getValue(crb.getOptions())) {
                 try (ScratchRegister sc = masm.getScratchRegister()) {

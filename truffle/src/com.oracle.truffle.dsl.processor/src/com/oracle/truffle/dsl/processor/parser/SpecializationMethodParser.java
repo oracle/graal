@@ -64,8 +64,11 @@ import com.oracle.truffle.dsl.processor.model.TemplateMethod;
 
 public class SpecializationMethodParser extends NodeMethodParser<SpecializationData> {
 
-    public SpecializationMethodParser(ProcessorContext context, NodeData operation) {
+    private final boolean ignoreUnexpectedResult;
+
+    public SpecializationMethodParser(ProcessorContext context, NodeData operation, boolean ignoreUnexpectedResult) {
         super(context, operation);
+        this.ignoreUnexpectedResult = ignoreUnexpectedResult;
     }
 
     @Override
@@ -91,6 +94,7 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
     private SpecializationData parseSpecialization(TemplateMethod method) {
         List<SpecializationThrowsData> exceptionData = new ArrayList<>();
         boolean unexpectedResultRewrite = false;
+        boolean annotated = false;
         if (method.getMethod() != null) {
             AnnotationValue rewriteValue = ElementUtils.getAnnotationValue(method.getMarkerAnnotation(), "rewriteOn");
             List<TypeMirror> exceptionTypes = ElementUtils.getAnnotationValueList(TypeMirror.class, method.getMarkerAnnotation(), "rewriteOn");
@@ -102,7 +106,7 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
                     method.addError("A rewriteOn checked exception was specified but not thrown in the method's throws clause. The @%s method must specify a throws clause with the exception type '%s'.",
                                     types.Specialization.asElement().getSimpleName().toString(), ElementUtils.getQualifiedName(exceptionType));
                 }
-                if (ElementUtils.typeEquals(exceptionType, types.UnexpectedResultException)) {
+                if (!ignoreUnexpectedResult && ElementUtils.typeEquals(exceptionType, types.UnexpectedResultException)) {
                     if (ElementUtils.typeEquals(method.getMethod().getReturnType(), getContext().getType(Object.class))) {
                         method.addError("A specialization with return type 'Object' cannot throw UnexpectedResultException.");
                     }
@@ -119,8 +123,9 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
                     return ElementUtils.compareByTypeHierarchy(o1.getJavaClass(), o2.getJavaClass());
                 }
             });
+            annotated = isAnnotatedWithReportPolymorphismExclude(method);
         }
-        SpecializationData specialization = new SpecializationData(getNode(), method, SpecializationKind.SPECIALIZED, exceptionData, unexpectedResultRewrite);
+        SpecializationData specialization = new SpecializationData(getNode(), method, SpecializationKind.SPECIALIZED, exceptionData, unexpectedResultRewrite, !annotated);
 
         if (method.getMethod() != null) {
             String insertBeforeName = ElementUtils.getAnnotationValue(String.class, method.getMarkerAnnotation(), "insertBefore");
@@ -147,5 +152,10 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
         }
 
         return specialization;
+    }
+
+    private boolean isAnnotatedWithReportPolymorphismExclude(TemplateMethod method) {
+        assert method.getMethod() != null;
+        return ElementUtils.findAnnotationMirror(method.getMethod(), types.ReportPolymorphism_Exclude) != null;
     }
 }

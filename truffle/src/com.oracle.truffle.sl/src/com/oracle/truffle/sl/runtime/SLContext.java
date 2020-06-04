@@ -71,6 +71,7 @@ import com.oracle.truffle.sl.builtins.SLHasSizeBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLHelloEqualsWorldBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLImportBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLIsExecutableBuiltinFactory;
+import com.oracle.truffle.sl.builtins.SLIsInstanceBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLIsNullBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLNanoTimeBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLNewObjectBuiltinFactory;
@@ -79,6 +80,7 @@ import com.oracle.truffle.sl.builtins.SLPrintlnBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLReadlnBuiltin;
 import com.oracle.truffle.sl.builtins.SLReadlnBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLStackTraceBuiltinFactory;
+import com.oracle.truffle.sl.builtins.SLTypeOfBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLWrapPrimitiveBuiltinFactory;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLRootNode;
@@ -174,6 +176,8 @@ public final class SLContext {
         installBuiltin(SLIsExecutableBuiltinFactory.getInstance());
         installBuiltin(SLIsNullBuiltinFactory.getInstance());
         installBuiltin(SLWrapPrimitiveBuiltinFactory.getInstance());
+        installBuiltin(SLTypeOfBuiltinFactory.getInstance());
+        installBuiltin(SLIsInstanceBuiltinFactory.getInstance());
     }
 
     public void installBuiltin(NodeFactory<? extends SLBuiltinNode> factory) {
@@ -254,7 +258,7 @@ public final class SLContext {
         if (a instanceof Long || a instanceof SLBigNumber || a instanceof String || a instanceof Boolean) {
             return a;
         } else if (a instanceof Character) {
-            return String.valueOf(a);
+            return fromForeignCharacter((Character) a);
         } else if (a instanceof Number) {
             return fromForeignNumber(a);
         } else if (a instanceof TruffleObject) {
@@ -269,6 +273,11 @@ public final class SLContext {
     @TruffleBoundary
     private static long fromForeignNumber(Object a) {
         return ((Number) a).longValue();
+    }
+
+    @TruffleBoundary
+    private static String fromForeignCharacter(char c) {
+        return String.valueOf(c);
     }
 
     public CallTarget parse(Source source) {

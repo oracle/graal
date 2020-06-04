@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -112,6 +112,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         StackIntrospection stackIntrospection;
 
         Lazy(AbstractHotSpotTruffleRuntime runtime) {
+            super(runtime);
             runtime.installDefaultListeners();
         }
     }
@@ -200,9 +201,6 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
                 localTask = initializationTask;
                 if (localTask == null && !truffleCompilerInitialized) {
                     rethrowTruffleCompilerInitializationException();
-                    EngineData engineData = firstCallTarget.engine;
-                    traceTransferToInterpreter = engineData.traceTransferToInterpreter;
-                    profilingEnabled = engineData.profilingEnabled;
                     initializationTask = localTask = getCompileQueue().submitTask(Priority.INITIALIZATION, firstCallTarget, new BackgroundCompileQueue.Request() {
                         @Override
                         protected void execute(TruffleCompilationTask task, WeakReference<OptimizedCallTarget> targetRef) {
@@ -239,9 +237,12 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         if (!truffleCompilerInitialized) {
             rethrowTruffleCompilerInitializationException();
             try {
+                EngineData engineData = callTarget.engine;
+                profilingEnabled = engineData.profilingEnabled;
                 TruffleCompiler compiler = newTruffleCompiler();
                 compiler.initialize(TruffleRuntimeOptions.getOptionsForCompiler(callTarget));
                 truffleCompiler = compiler;
+                traceTransferToInterpreter = engineData.traceTransferToInterpreter;
                 truffleCompilerInitialized = true;
             } catch (Throwable e) {
                 truffleCompilerInitializationException = e;
@@ -526,7 +527,8 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
             OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.getCurrentFrame().getCallTarget();
             final int limit = callTarget.getOptionValue(PolyglotCompilerOptions.TraceStackTraceLimit);
 
-            runtime.log("[truffle] transferToInterpreter at");
+            StringBuilder messageBuilder = new StringBuilder();
+            messageBuilder.append("transferToInterpreter at\n");
             runtime.iterateFrames(new FrameInstanceVisitor<Object>() {
                 int frameIndex = 0;
 
@@ -537,24 +539,24 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
                     if (frameIndex > 0) {
                         line.append("  ");
                     }
-                    line.append(formatStackFrame(frameInstance, target));
+                    line.append(formatStackFrame(frameInstance, target)).append("\n");
                     frameIndex++;
 
-                    runtime.log(line.toString());
+                    messageBuilder.append(line);
                     if (frameIndex < limit) {
                         return null;
                     } else {
-                        runtime.log("    ...");
+                        messageBuilder.append("    ...\n");
                         return frameInstance;
                     }
                 }
 
             });
             final int skip = 3;
-
             StackTraceElement[] stackTrace = new Throwable().getStackTrace();
             String suffix = stackTrace.length > skip + limit ? "\n    ..." : "";
-            runtime.log(Arrays.stream(stackTrace).skip(skip).limit(limit).map(StackTraceElement::toString).collect(Collectors.joining("\n    ", "  ", suffix)));
+            messageBuilder.append(Arrays.stream(stackTrace).skip(skip).limit(limit).map(StackTraceElement::toString).collect(Collectors.joining("\n    ", "  ", suffix)));
+            runtime.log(callTarget, messageBuilder.toString());
         }
     }
 }

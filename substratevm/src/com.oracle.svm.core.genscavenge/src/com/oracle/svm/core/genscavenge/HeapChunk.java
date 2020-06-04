@@ -27,6 +27,7 @@ package com.oracle.svm.core.genscavenge;
 import java.util.function.IntUnaryOperator;
 
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.RawField;
@@ -37,6 +38,8 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.MemoryWalker;
+import com.oracle.svm.core.annotate.AlwaysInline;
+import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.core.heap.ObjectVisitor;
@@ -45,11 +48,13 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionKey;
 
 /**
- * HeapChunk is a superclass for the memory that makes up the Heap. HeapChunks are aggregated into
- * Spaces.
+ * The common structure of the chunks of memory which make up the heap. HeapChunks are aggregated
+ * into {@linkplain Space spaces}. A specific "subtype" of chunk should be accessed via its own
+ * accessor class, such as {@link AlignedHeapChunk}, which provides methods that are specific to the
+ * type of chunk and its layout. (Such classes intentionally do not subclass {@link HeapChunk} so to
+ * not directly expose its methods.)
  * <p>
- * A HeapChunk is not a normal Object, so can't be allocated/constructed/initialized using new. A
- * HeapChunk is raw memory with a {@linkplain Header} on the beginning that keeps bookkeeping
+ * A HeapChunk is raw memory with a {@linkplain Header} on the beginning that stores bookkeeping
  * information about the HeapChunk. HeapChunks do not have any instance methods: instead they have
  * static methods that take the HeapChunk.Header as a parameter.
  * <p>
@@ -64,28 +69,16 @@ import com.oracle.svm.core.option.HostedOptionKey;
  * HeapChunk defines the generic (Pointer) "get" methods, and only the "sub-classes" define "set"
  * methods that store more-specifically-typed Pointers, for type safety.
  * <p>
- * Some things that seem like they should be field access instead just compute (rather than store)
- * Pointers. For example, the start of where Objects can be allocated within a HeapChunk depends on
- * the size of the Header for the HeapChunk, which depends on the layout of the various leaf
- * "sub-classes" of HeapChunk. If HeapChunk were a regular Java object, the method that returned the
- * Pointer to "start" might be declared as an abstract virtual method, but HeapChunk does not have
- * methods like that, so each leaf class declares a static method to return "start". Virtual method
- * access can be provided by, for example,
- * {@linkplain AlignedHeapChunk#getAlignedHeapChunkStart(AlignedHeapChunk.AlignedHeader)} and
- * {@linkplain UnalignedHeapChunk#getUnalignedStart(UnalignedHeapChunk.UnalignedHeader)}.
- * <p>
- * In addition to the declared fields of a HeapChunk.Header, for example, a
- * CardRememberedSetHeapChunk keeps a card table for the write barrier, but because they are
- * variable-sized, rather than declaring field in the Header, static methods are used to compute
- * Pointers to those "fields".
- * <p>
- * HeapChunk <em>could</em> have a private constructor to prevent instances from being created, but
- * that prevents sub-classing HeapChunk and the inheritance of the static methods defined here.
+ * In addition to the declared fields of a HeapChunk.Header, for example, a subtype keeps a card
+ * table for the write barrier, but because they are variable-sized, rather than declaring field in
+ * the Header, static methods are used to compute Pointers to those "fields".
  * <p>
  * HeapChunks are *not* examined for interior Object references by the collector, though the Objects
  * allocated within the HeapChunk are examined by the collector.
  */
-public class HeapChunk {
+final class HeapChunk {
+    private HeapChunk() { // all static
+    }
 
     static class Options {
         @Option(help = "Number of bytes at the beginning of each heap chunk that are not used for payload data, i.e., can be freely used as metadata by the heap chunk provider.") //
@@ -119,9 +112,7 @@ public class HeapChunk {
         @UniqueLocationIdentity
         void setTop(Pointer newTop);
 
-        /**
-         * Pointer to limit of the memory available for allocation, i.e., the end of the memory.
-         */
+        /** Pointer to limit of the memory available for allocation, i.e., the end of the memory. */
         @RawField
         @UniqueLocationIdentity
         Pointer getEnd();
@@ -146,9 +137,7 @@ public class HeapChunk {
         @PinnedObjectField
         void setSpace(Space newSpace);
 
-        /**
-         * The previous HeapChunk in the doubly-linked list maintained by the Space.
-         */
+        /** The previous HeapChunk in the doubly-linked list maintained by the Space. */
         @RawField
         @UniqueLocationIdentity
         T getPrevious();
@@ -157,9 +146,7 @@ public class HeapChunk {
         @UniqueLocationIdentity
         void setPrevious(T newPrevious);
 
-        /**
-         * The next HeapChunk in the doubly-linked list maintained by the Space.
-         */
+        /** The next HeapChunk in the doubly-linked list maintained by the Space. */
         @RawField
         @UniqueLocationIdentity
         T getNext();
@@ -169,72 +156,63 @@ public class HeapChunk {
         void setNext(T newNext);
     }
 
-    /** Apply an ObjectVisitor to all the Objects in the given HeapChunk. */
+    @NeverInline("Not performance critical")
     public static boolean walkObjectsFrom(Header<?> that, Pointer offset, ObjectVisitor visitor) {
-        final Log trace = Log.noopLog().string("[HeapChunk.walkObjectsFrom:");
-        trace.string("  that: ").hex(that).string("  offset: ").hex(offset).string("  getTop(): ").hex(that.getTop());
-        /* Get the Object at the offset, or null. */
-        Object obj = (offset.belowThan(that.getTop()) ? offset.toObject() : null);
-        while (obj != null) {
-            trace.newline().string("  o: ").object(obj).newline();
+        return walkObjectsFromInline(that, offset, visitor);
+    }
+
+    @AlwaysInline("GC performance")
+    public static boolean walkObjectsFromInline(Header<?> that, Pointer startOffset, ObjectVisitor visitor) {
+        Pointer offset = startOffset;
+        while (offset.belowThan(that.getTop())) {
+            Object obj = offset.toObject();
             if (!visitor.visitObjectInline(obj)) {
-                trace.string("  visitObject fails").string("  returns false").string("]").newline();
                 return false;
             }
-            /* Step by Object. */
-            obj = getNextObject(that, obj);
+            offset = offset.add(LayoutEncoding.getSizeFromObject(obj));
         }
-        trace.string("  returns true").string("]").newline();
         return true;
     }
 
-    /** Given an Object, return the next Object in this HeapChunk, or null. */
-    private static Object getNextObject(Header<?> that, Object obj) {
-        final Log trace = Log.noopLog().string("[HeapChunk.getNextObject:").newline();
-        final Pointer objEnd = LayoutEncoding.getObjectEnd(obj);
-        trace.string("  o: ").object(obj).string("  objEnd: ").hex(objEnd).string("  top: ").hex(that.getTop()).newline();
-        /* Check if top is below the proposed next object. */
-        if (that.getTop().belowOrEqual(objEnd)) {
-            trace.string("  returns null").string("]").newline();
-            return null;
-        }
-        final Object result = objEnd.toObject();
-        /* TODO: How do I assert that result is an Object? */
-        trace.string(" returns ").object(result).string("]").newline();
-        return result;
-    }
-
-    /** How much space is available for objects in a HeapChunk? */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord availableObjectMemory(Header<?> that) {
-        final Pointer top = that.getTop();
-        final Pointer end = that.getEnd();
-        return end.subtract(top);
+        return that.getEnd().subtract(that.getTop());
     }
 
-    /** Set top, being careful that it is between the current top and end. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected static void setTopCarefully(Header<?> that, Pointer newTop) {
+    static void setTopCarefully(Header<?> that, Pointer newTop) {
         assert that.getTop().belowOrEqual(newTop) : "newTop too low.";
         assert newTop.belowOrEqual(that.getEnd()) : "newTop too high.";
         that.setTop(newTop);
     }
 
-    /**
-     * Convenience method: Cast a {@link Header} to a {@link Pointer} to allow address arithmetic.
-     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected static Pointer asPointer(Header<?> that) {
+    static Pointer asPointer(Header<?> that) {
         return (Pointer) that;
     }
 
-    /** Shared methods for a MemoryWalker to access a heap chunk. */
-    public abstract static class MemoryWalkerAccessImpl<T extends HeapChunk.Header<?>> implements MemoryWalker.HeapChunkAccess<T> {
+    public static HeapChunk.Header<?> getEnclosingHeapChunk(Object obj) {
+        assert !HeapImpl.getHeapImpl().isInImageHeap(obj) : "Must be checked before calling this method";
+        assert !ObjectHeaderImpl.isPointerToForwardedObject(Word.objectToUntrackedPointer(obj)) : "Forwarded objects must be a pointer and not an object";
+        if (ObjectHeaderImpl.isAlignedObject(obj)) {
+            return AlignedHeapChunk.getEnclosingChunk(obj);
+        } else {
+            assert ObjectHeaderImpl.isUnalignedObject(obj);
+            return UnalignedHeapChunk.getEnclosingChunk(obj);
+        }
+    }
 
-        /** A constructor for subclasses. */
+    public static HeapChunk.Header<?> getEnclosingHeapChunk(Pointer ptrToObj, UnsignedWord header) {
+        if (ObjectHeaderImpl.isAlignedHeader(ptrToObj, header)) {
+            return AlignedHeapChunk.getEnclosingChunkFromPointer(ptrToObj);
+        } else {
+            return UnalignedHeapChunk.getEnclosingChunkFromObjectPointer(ptrToObj);
+        }
+    }
+
+    abstract static class MemoryWalkerAccessImpl<T extends HeapChunk.Header<?>> implements MemoryWalker.HeapChunkAccess<T> {
         @Platforms(Platform.HOSTED_ONLY.class)
-        protected MemoryWalkerAccessImpl() {
-            super();
+        MemoryWalkerAccessImpl() {
         }
 
         @Override
@@ -255,8 +233,8 @@ public class HeapChunk {
         @Override
         public String getRegion(T heapChunk) {
             /* This method knows too much about spaces, especially the "free" space. */
-            final Space space = heapChunk.getSpace();
-            final String result;
+            Space space = heapChunk.getSpace();
+            String result;
             if (space == null) {
                 result = "free";
             } else if (space.isYoungSpace()) {
@@ -269,19 +247,13 @@ public class HeapChunk {
 
     }
 
-    /*
-     * Verification.
-     */
-
-    /** Verify a chunk. */
-    static boolean verifyHeapChunk(Header<?> that, Pointer start) {
-        /* Verify all the objects in this chunk. */
-        final Log trace = HeapImpl.getHeapImpl().getHeapVerifierImpl().getTraceLog().string("[HeapChunk.verify:");
+    static boolean verifyObjects(Header<?> that, Pointer start) {
+        Log trace = HeapVerifier.getTraceLog().string("[HeapChunk.verify:");
         trace.string("  that:  ").hex(that).string("  start: ").hex(start).string("  top: ").hex(that.getTop()).string("  end: ").hex(that.getEnd());
         Pointer p = start;
         while (p.belowThan(that.getTop())) {
-            if (!HeapImpl.getHeapImpl().getHeapVerifierImpl().verifyObjectAt(p)) {
-                final Log witness = HeapImpl.getHeapImpl().getHeapVerifierImpl().getWitnessLog().string("[HeapChunk.verify:");
+            if (!HeapImpl.getHeapImpl().getHeapVerifier().verifyObjectAt(p)) {
+                Log witness = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[HeapChunk.verify:");
                 witness.string("  that:  ").hex(that).string("  start: ").hex(start).string("  top: ").hex(that.getTop()).string("  end: ").hex(that.getEnd());
                 witness.string("  space: ").string(that.getSpace().getName());
                 witness.string("  object at p: ").hex(p).string("  fails to verify").string("]").newline();
@@ -289,14 +261,11 @@ public class HeapChunk {
                 return false;
             }
             /* Step carefully over the object. */
-            final UnsignedWord header = ObjectHeaderImpl.readHeaderFromPointerCarefully(p);
-            final Object o;
-
-            if (ObjectHeaderImpl.getObjectHeaderImpl().isForwardedHeaderCarefully(header)) {
-                /* Use the forwarded object to get the size. */
-                o = ObjectHeaderImpl.getObjectHeaderImpl().getForwardedObject(p);
+            UnsignedWord header = ObjectHeaderImpl.readHeaderFromPointerCarefully(p);
+            Object o;
+            if (ObjectHeaderImpl.isForwardedHeaderCarefully(header)) {
+                o = ObjectHeaderImpl.getForwardedObject(p);
             } else {
-                /* Use the object to get the size. */
                 o = p.toObject();
             }
             p = p.add(LayoutEncoding.getSizeFromObject(o));

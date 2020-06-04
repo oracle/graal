@@ -2,7 +2,7 @@
 
 var previousCharacters;
 
-agent.on('enter', function(ctx, frame) {
+insight.on('enter', function(ctx, frame) {
 
     if (ctx.line !== ctx.startLine) {
         throw `Unexpected lines ${ctx.line} vs. ${ctx.startLine}`;
@@ -37,7 +37,7 @@ agent.on('enter', function(ctx, frame) {
     sourceFilter: (source) => source.name === 'fib.js'
 });
 
-agent.on('return', function(ctx, frame) {
+insight.on('return', function(ctx, frame) {
     console.log(`<- ${ctx.characters}`);
     if (previousCharacters && previousCharacters !== ctx.source.characters) {
         throw `Unexpected content in name ${ctx.source.name}: ${ctx.source.characters}`;

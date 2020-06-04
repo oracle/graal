@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.library.test;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
@@ -53,6 +54,7 @@ import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryFactory;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.test.AbstractLibraryTest;
 
 @SuppressWarnings({"unused", "static-method"})
 public class NodeAdoptionTest extends AbstractLibraryTest {
@@ -70,6 +72,7 @@ public class NodeAdoptionTest extends AbstractLibraryTest {
         @ExportMessage
         static class M0 {
             @Specialization(guards = "innerNode.execute(receiver)")
+            @CompilerDirectives.TruffleBoundary
             static String doM0(NodeAdoptionObject receiver,
                             @Cached(allowUncached = true) InnerNode innerNode,
                             @Cached(value = "0", uncached = "1") int cached) {
@@ -88,6 +91,7 @@ public class NodeAdoptionTest extends AbstractLibraryTest {
         abstract boolean execute(Object argument);
 
         @Specialization
+        @CompilerDirectives.TruffleBoundary
         boolean s0(Object argument) {
             assertNotNull(this.getRootNode());
             return true;
@@ -113,12 +117,12 @@ public class NodeAdoptionTest extends AbstractLibraryTest {
 
         NodeAdoptionLibrary cached = LibraryFactory.resolve(NodeAdoptionLibrary.class).create(new NodeAdoptionObject());
         assertAssertionError(() -> cached.m0(o));
-        adopt(cached);
+        adoptNode(cached);
         assertEquals("cached", cached.m0(o));
 
         NodeAdoptionLibrary dispatched = LibraryFactory.resolve(NodeAdoptionLibrary.class).createDispatched(3);
         assertAssertionError(() -> dispatched.m0(o));
-        adopt(dispatched);
+        adoptNode(dispatched);
         assertEquals("cached", dispatched.m0(o));
     }
 

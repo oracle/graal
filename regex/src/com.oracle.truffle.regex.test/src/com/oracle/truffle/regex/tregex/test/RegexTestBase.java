@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,9 +42,12 @@ package com.oracle.truffle.regex.tregex.test;
 
 import static org.junit.Assert.assertEquals;
 
+import java.util.Arrays;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 
 public abstract class RegexTestBase {
@@ -92,9 +95,23 @@ public abstract class RegexTestBase {
         if (isMatch) {
             assertEquals(captureGroupBounds.length / 2, compiledRegex.getMember("groupCount").asInt());
             for (int i = 0; i < captureGroupBounds.length / 2; i++) {
-                assertEquals(captureGroupBounds[i * 2], result.invokeMember("getStart", i).asInt());
-                assertEquals(captureGroupBounds[i * 2 + 1], result.invokeMember("getEnd", i).asInt());
+                if (captureGroupBounds[i * 2] != result.invokeMember("getStart", i).asInt() || captureGroupBounds[i * 2 + 1] != result.invokeMember("getEnd", i).asInt()) {
+                    fail(result, captureGroupBounds);
+                }
             }
         }
+    }
+
+    private static void fail(Value result, int... captureGroupBounds) {
+        StringBuilder sb = new StringBuilder("expected: ").append(Arrays.toString(captureGroupBounds)).append(", actual: [");
+        for (int i = 0; i < captureGroupBounds.length / 2; i++) {
+            if (i > 0) {
+                sb.append(", ");
+            }
+            sb.append(result.invokeMember("getStart", i).asInt());
+            sb.append(", ");
+            sb.append(result.invokeMember("getEnd", i).asInt());
+        }
+        Assert.fail(sb.append("]").toString());
     }
 }

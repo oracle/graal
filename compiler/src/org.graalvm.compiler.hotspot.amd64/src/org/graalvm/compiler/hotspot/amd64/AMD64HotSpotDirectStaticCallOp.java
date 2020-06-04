@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,8 +55,11 @@ final class AMD64HotSpotDirectStaticCallOp extends DirectCallOp {
     }
 
     @Override
+    @SuppressWarnings("try")
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        crb.recordMark(invokeKind == InvokeKind.Static ? config.MARKID_INVOKESTATIC : config.MARKID_INVOKESPECIAL);
-        super.emitCode(crb, masm);
+        try (CompilationResultBuilder.CallContext callContext = crb.openCallContext(invokeKind.isDirect())) {
+            crb.recordMark(invokeKind == InvokeKind.Static ? config.MARKID_INVOKESTATIC : config.MARKID_INVOKESPECIAL);
+            super.emitCode(crb, masm);
+        }
     }
 }

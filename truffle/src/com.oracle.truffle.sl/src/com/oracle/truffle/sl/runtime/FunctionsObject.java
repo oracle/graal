@@ -45,11 +45,13 @@ import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.sl.SLLanguage;
 
 @ExportLibrary(InteropLibrary.class)
 @SuppressWarnings("static-method")
@@ -58,6 +60,16 @@ final class FunctionsObject implements TruffleObject {
     final Map<String, SLFunction> functions = new HashMap<>();
 
     FunctionsObject() {
+    }
+
+    @ExportMessage
+    boolean hasLanguage() {
+        return true;
+    }
+
+    @ExportMessage
+    Class<? extends TruffleLanguage<?>> getLanguage() {
+        return SLLanguage.class;
     }
 
     @ExportMessage
@@ -81,6 +93,22 @@ final class FunctionsObject implements TruffleObject {
     @TruffleBoundary
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
         return new FunctionNamesObject(functions.keySet().toArray());
+    }
+
+    @ExportMessage
+    boolean hasMetaObject() {
+        return true;
+    }
+
+    @ExportMessage
+    Object getMetaObject() {
+        return SLType.OBJECT;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        return functions.toString();
     }
 
     public static boolean isInstance(TruffleObject obj) {

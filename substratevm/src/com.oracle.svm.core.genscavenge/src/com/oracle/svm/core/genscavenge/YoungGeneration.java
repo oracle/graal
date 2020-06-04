@@ -24,41 +24,29 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import com.oracle.svm.core.hub.LayoutEncoding;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
-
-import com.oracle.svm.core.MemoryWalker;
-import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.heap.ObjectVisitor;
-import com.oracle.svm.core.log.Log;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-/**
- * A Young Generation has one space, for ordinary objects.
- */
-public class YoungGeneration extends Generation {
+import com.oracle.svm.core.MemoryWalker;
+import com.oracle.svm.core.annotate.AlwaysInline;
+import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.heap.ObjectVisitor;
+import com.oracle.svm.core.log.Log;
 
-    // Final State.
+final class YoungGeneration extends Generation {
     private final Space eden;
     private final Space[] survivorFromSpaces;
     private final Space[] survivorToSpaces;
     private final GreyObjectsWalker[] survivorGreyObjectsWalkers;
     private final int maxSurvivorSpaces;
 
-    /* Constructors. */
-
     @Platforms(Platform.HOSTED_ONLY.class)
     YoungGeneration(String name) {
-        this(name, new Space("edenSpace", true, 0));
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    private YoungGeneration(String name, Space space) {
         super(name);
-        this.eden = space;
+        this.eden = new Space("edenSpace", true, 0);
         this.maxSurvivorSpaces = HeapPolicy.getMaxSurvivorSpaces();
         this.survivorFromSpaces = new Space[maxSurvivorSpaces];
         this.survivorToSpaces = new Space[maxSurvivorSpaces];
@@ -66,13 +54,12 @@ public class YoungGeneration extends Generation {
         for (int i = 0; i < maxSurvivorSpaces; i++) {
             this.survivorFromSpaces[i] = new Space("Survivor-" + (i + 1) + " From", true, (i + 1));
             this.survivorToSpaces[i] = new Space("Survivor-" + (i + 1) + " To", false, (i + 1));
-            this.survivorGreyObjectsWalkers[i] = GreyObjectsWalker.factory();
+            this.survivorGreyObjectsWalkers[i] = new GreyObjectsWalker();
         }
     }
 
-    /** Return all allocated virtual memory chunks to HeapChunkProvider. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public final void tearDown() {
+    void tearDown() {
         ThreadLocalAllocation.tearDown();
         eden.tearDown();
         for (int i = 0; i < maxSurvivorSpaces; i++) {
@@ -84,7 +71,8 @@ public class YoungGeneration extends Generation {
     @Override
     public boolean walkObjects(ObjectVisitor visitor) {
         /* Flush the thread-local allocation data. */
-        ThreadLocalAllocation.disableThreadLocalAllocation();
+        ThreadLocalAllocation.disableAndFlushForAllThreads();
+
         if (!getEden().walkObjects(visitor)) {
             return false;
         }
@@ -102,7 +90,6 @@ public class YoungGeneration extends Generation {
     @Override
     public Log report(Log log, boolean traceHeapChunks) {
         log.string("[Young generation: ").indent(true);
-
         log.string("[Eden: ").indent(true);
         getEden().report(log, traceHeapChunks);
         log.redent(false).string("]").newline();
@@ -118,12 +105,7 @@ public class YoungGeneration extends Generation {
         return log;
     }
 
-    /**
-     * Space access method.
-     *
-     * This method is final because it is called (transitively) from the allocation snippets.
-     */
-    public final Space getEden() {
+    Space getEden() {
         return eden;
     }
 
@@ -141,52 +123,38 @@ public class YoungGeneration extends Generation {
         return survivorGreyObjectsWalkers[index];
     }
 
-    /** Check if that space is the young space. */
-    boolean isYoungSpace(Space thatSpace) {
-        return thatSpace.isYoungSpace();
-    }
-
+    @AlwaysInline("GC performance")
     @Override
-    protected Object promoteObject(Object original) {
-        final Log trace = Log.noopLog().string("[YoungGeneration.promoteObject:").string("  original: ").object(original).newline();
-        /* Choose between object copying and chunk motion. */
-        Object result = null;
-        if (ObjectHeaderImpl.getObjectHeaderImpl().isAlignedObject(original)) {
-            trace.string("  aligned header: ").hex(ObjectHeaderImpl.readHeaderFromObject(original)).newline();
-            /* Promote by Object copying to the next age space. */
-            AlignedHeapChunk.AlignedHeader originalChunk = AlignedHeapChunk.getEnclosingAlignedHeapChunk(original);
-            final Space originalSpace = originalChunk.getSpace();
-            if (originalSpace.getAge() < maxSurvivorSpaces) {
-                result = promoteAlignedObject(original, originalSpace);
-            } else {
-                result = HeapImpl.getHeapImpl().getOldGeneration().promoteAlignedObject(original);
+    protected Object promoteObject(Object original, UnsignedWord header) {
+        if (ObjectHeaderImpl.isAlignedHeader(original, header)) {
+            AlignedHeapChunk.AlignedHeader originalChunk = AlignedHeapChunk.getEnclosingChunk(original);
+            Space originalSpace = originalChunk.getSpace();
+            if (originalSpace.isFromSpace()) {
+                return promoteAlignedObject(original, originalSpace);
             }
         } else {
-            trace.string("  unaligned header: ").hex(ObjectHeaderImpl.readHeaderFromObject(original)).newline();
-            UnalignedHeapChunk.UnalignedHeader originalUnalignedChunk = UnalignedHeapChunk.getEnclosingUnalignedHeapChunk(original);
-            final Space originalSpace = originalUnalignedChunk.getSpace();
-            if (originalSpace.getAge() < maxSurvivorSpaces) {
-                result = promoteUnalignedObject(original, originalSpace);
-            } else {
-                result = HeapImpl.getHeapImpl().getOldGeneration().promoteUnalignedObjectChunk(original);
+            assert ObjectHeaderImpl.isUnalignedHeader(original, header);
+            UnalignedHeapChunk.UnalignedHeader chunk = UnalignedHeapChunk.getEnclosingChunk(original);
+            Space originalSpace = chunk.getSpace();
+            if (originalSpace.isFromSpace()) {
+                promoteUnalignedObject(chunk, originalSpace);
             }
         }
-        trace.string("  OldGeneration.promoteObject returns: ").object(result).string("]").newline();
-        return result;
+        return original;
     }
 
     private void releaseSurvivorSpaces(boolean isFromSpace) {
         for (int i = 0; i < maxSurvivorSpaces; i++) {
             if (isFromSpace) {
-                getSurvivorFromSpaceAt(i).release();
+                getSurvivorFromSpaceAt(i).releaseChunks();
             } else {
-                getSurvivorToSpaceAt(i).release();
+                getSurvivorToSpaceAt(i).releaseChunks();
             }
         }
     }
 
     void releaseSpaces() {
-        getEden().release();
+        getEden().releaseChunks();
 
         releaseSurvivorSpaces(true);
         if (HeapImpl.getHeapImpl().getGCImpl().isCompleteCollection()) {
@@ -202,42 +170,30 @@ public class YoungGeneration extends Generation {
     }
 
     @Override
-    protected boolean isValidSpace(Space thatSpace) {
-        return isYoungSpace(thatSpace);
-    }
-
-    @Override
-    protected boolean verify(final HeapVerifierImpl.Occasion occasion) {
+    protected boolean verify(HeapVerifier.Occasion occasion) {
         boolean result = true;
-        final HeapImpl heap = HeapImpl.getHeapImpl();
-        final HeapVerifierImpl heapVerifier = heap.getHeapVerifierImpl();
-        final SpaceVerifierImpl spaceVerifier = heapVerifier.getSpaceVerifierImpl();
-        // Verify eden space
+        HeapImpl heap = HeapImpl.getHeapImpl();
+        HeapVerifier heapVerifier = heap.getHeapVerifier();
+        SpaceVerifier spaceVerifier = heapVerifier.getSpaceVerifier();
+
         spaceVerifier.initialize(getEden());
         if (occasion.equals(HeapVerifier.Occasion.AFTER_COLLECTION)) {
-            // After a collection the eden space should be empty.
             if (spaceVerifier.containsChunks()) {
                 result = false;
                 heapVerifier.getWitnessLog().string("[YoungGeneration.verify:").string("  eden space contains chunks after collection").string("]").newline();
             }
-        } else {
-            // Otherwise, verify the space.
-            if (!spaceVerifier.verify()) {
-                result = false;
-                heapVerifier.getWitnessLog().string("[YoungGeneration.verify:").string("  eden space fails to verify").string("]").newline();
-            }
+        } else if (!spaceVerifier.verify()) {
+            result = false;
+            heapVerifier.getWitnessLog().string("[YoungGeneration.verify:").string("  eden space fails to verify").string("]").newline();
         }
-        // Verify survivor spaces
+
         for (int i = 0; i < maxSurvivorSpaces; i++) {
-            // Verify survivor from space,
             spaceVerifier.initialize(survivorFromSpaces[i]);
             if (!spaceVerifier.verify()) {
                 result = false;
                 heapVerifier.getWitnessLog().string("[YoungGeneration.verify:").string("  survivor to space fails to verify").string("]").newline();
             }
-            /*
-             * The survivor to space, which should be empty except during a collection
-             */
+
             spaceVerifier.initialize(survivorToSpaces[i]);
             if (!spaceVerifier.verify()) {
                 result = false;
@@ -255,19 +211,17 @@ public class YoungGeneration extends Generation {
     }
 
     boolean slowlyFindPointer(Pointer p) {
-        if (HeapVerifierImpl.slowlyFindPointerInSpace(getEden(), p, HeapVerifierImpl.ChunkLimit.top)) {
+        if (HeapVerifier.slowlyFindPointerInSpace(getEden(), p)) {
             return true;
         }
-
         for (int i = 0; i < maxSurvivorSpaces; i++) {
-            if (HeapVerifierImpl.slowlyFindPointerInSpace(getSurvivorFromSpaceAt(i), p, HeapVerifierImpl.ChunkLimit.top)) {
+            if (HeapVerifier.slowlyFindPointerInSpace(getSurvivorFromSpaceAt(i), p)) {
                 return true;
             }
-            if (HeapVerifierImpl.slowlyFindPointerInSpace(getSurvivorToSpaceAt(i), p, HeapVerifierImpl.ChunkLimit.top)) {
+            if (HeapVerifier.slowlyFindPointerInSpace(getSurvivorToSpaceAt(i), p)) {
                 return true;
             }
         }
-
         return false;
     }
 
@@ -284,7 +238,6 @@ public class YoungGeneration extends Generation {
     }
 
     void prepareForPromotion() {
-        /* Prepare the Space walkers. */
         for (int i = 0; i < maxSurvivorSpaces; i++) {
             assert getSurvivorToSpaceAt(i).isEmpty() : "SurvivorToSpace should be empty.";
             getSurvivorGreyObjectsWalker(i).setScanStart(getSurvivorToSpaceAt(i));
@@ -292,27 +245,22 @@ public class YoungGeneration extends Generation {
     }
 
     boolean scanGreyObjects() {
-        final Log trace = Log.noopLog().string("[YoungGeneration.scanGreyObjects:");
-        final GCImpl gc = HeapImpl.getHeapImpl().getGCImpl();
+        Log trace = Log.noopLog().string("[YoungGeneration.scanGreyObjects:");
         boolean needScan = false;
-
         for (int i = 0; i < maxSurvivorSpaces; i++) {
             if (getSurvivorGreyObjectsWalker(i).haveGreyObjects()) {
                 needScan = true;
                 break;
             }
         }
-
         if (!needScan) {
             return false;
         }
-
         for (int i = 0; i < maxSurvivorSpaces; i++) {
             trace.string("[Scanning survivor-").signed(i).string("]").newline();
-            getSurvivorGreyObjectsWalker(i).walkGreyObjects(gc.getGreyToBlackObjectVisitor());
+            getSurvivorGreyObjectsWalker(i).walkGreyObjects();
         }
         trace.string("]").newline();
-
         return true;
     }
 
@@ -325,76 +273,53 @@ public class YoungGeneration extends Generation {
         return usedBytes;
     }
 
-    UnsignedWord getEdenChunkUsedBytes() {
-        return getEden().getChunkBytes();
-    }
-
     UnsignedWord getChunkUsedBytes() {
-        return getEdenChunkUsedBytes().add(getSurvivorChunkUsedBytes());
+        return getEden().getChunkBytes().add(getSurvivorChunkUsedBytes());
     }
 
     UnsignedWord getSurvivorObjectBytes() {
         UnsignedWord usedObjectBytes = WordFactory.zero();
         for (int i = 0; i < maxSurvivorSpaces; i++) {
-            usedObjectBytes = usedObjectBytes.add(this.survivorFromSpaces[i].getObjectBytes());
-            usedObjectBytes = usedObjectBytes.add(this.survivorToSpaces[i].getObjectBytes());
+            usedObjectBytes = usedObjectBytes.add(survivorFromSpaces[i].getObjectBytes());
+            usedObjectBytes = usedObjectBytes.add(survivorToSpaces[i].getObjectBytes());
         }
         return usedObjectBytes;
     }
 
-    UnsignedWord getEdenObjectBytes() {
-        return getEden().getObjectBytes();
-    }
-
     UnsignedWord getObjectBytes() {
-        return getEdenObjectBytes().add(getSurvivorObjectBytes());
+        return getEden().getObjectBytes().add(getSurvivorObjectBytes());
     }
 
+    @SuppressWarnings("static-method")
     boolean contains(Object object) {
-        final ObjectHeaderImpl ohi = ObjectHeaderImpl.getObjectHeaderImpl();
-        if (ohi.isAlignedObject(object)) {
-            return isYoungSpace(AlignedHeapChunk.getEnclosingAlignedHeapChunk(object).getSpace());
-        } else if (ohi.isUnalignedObject(object)) {
-            return isYoungSpace(UnalignedHeapChunk.getEnclosingUnalignedHeapChunk(object).getSpace());
-        }
-        return false;
+        return HeapChunk.getEnclosingHeapChunk(object).getSpace().isYoungSpace();
     }
 
-    private static boolean shouldPromoteFrom(Space originalSpace) {
-        return originalSpace.isFrom();
-    }
-
+    @AlwaysInline("GC performance")
     private Object promoteAlignedObject(Object original, Space originalSpace) {
+        assert ObjectHeaderImpl.isAlignedObject(original);
         assert originalSpace.isEdenSpace() || originalSpace.isSurvivorSpace() : "Should be Eden or survivor.";
-        if (!shouldPromoteFrom(originalSpace)) {
-            return original;
-        }
-        int age = originalSpace.getNextAgeForPromotion();
-        Space toSpace = getSurvivorToSpaceAt(age - 1);
-        return toSpace.promoteAlignedObject(original);
-    }
+        assert originalSpace.isFromSpace() : "must not be called for other objects";
 
-    private Object promoteUnalignedObject(Object original, Space originalSpace) {
-        final Log trace = Log.noopLog().string("[YoungGeneration.promoteUnalignedObjectChunk:").string("  original: ").object(original);
-        assert ObjectHeaderImpl.getObjectHeaderImpl().isUnalignedObject(original);
-        trace.string("  originalSpace: ").string(originalSpace.getName());
-        if (shouldPromoteFrom(originalSpace)) {
-            trace.string("  promoting");
-            final UnalignedHeapChunk.UnalignedHeader uChunk = UnalignedHeapChunk.getEnclosingUnalignedHeapChunk(original);
+        if (originalSpace.getAge() < maxSurvivorSpaces) {
             int age = originalSpace.getNextAgeForPromotion();
             Space toSpace = getSurvivorToSpaceAt(age - 1);
-            if (HeapOptions.TraceObjectPromotion.getValue()) {
-                final Log promotionTrace = Log.log().string("[YoungGeneration.promoteUnalignedObjectChunk:").string("  original: ").object(original);
-                final UnsignedWord size = LayoutEncoding.getSizeFromObject(original);
-                promotionTrace.string("  size: ").unsigned(size).string("]").newline();
-            }
-            toSpace.promoteUnalignedHeapChunk(uChunk);
+            return toSpace.promoteAlignedObject(original, originalSpace);
         } else {
-            trace.string("  not promoting");
+            return HeapImpl.getHeapImpl().getOldGeneration().promoteAlignedObject(original, originalSpace);
         }
-        trace.string("  returns: ").object(original);
-        trace.string("]").newline();
-        return original;
     }
 
+    @AlwaysInline("GC performance")
+    private void promoteUnalignedObject(UnalignedHeapChunk.UnalignedHeader originalChunk, Space originalSpace) {
+        assert originalSpace.isFromSpace() : "must not be called for other objects";
+
+        if (originalSpace.getAge() < maxSurvivorSpaces) {
+            int age = originalSpace.getNextAgeForPromotion();
+            Space toSpace = getSurvivorToSpaceAt(age - 1);
+            toSpace.promoteUnalignedHeapChunk(originalChunk, originalSpace);
+        } else {
+            HeapImpl.getHeapImpl().getOldGeneration().promoteUnalignedChunk(originalChunk, originalSpace);
+        }
+    }
 }

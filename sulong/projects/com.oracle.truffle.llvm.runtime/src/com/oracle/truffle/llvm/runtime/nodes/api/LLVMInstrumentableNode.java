@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,16 +30,16 @@
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 
+@NodeField(name = "sourceLocation", type = LLVMSourceLocation.class)
+@NodeField(name = "statement", type = boolean.class)
 public abstract class LLVMInstrumentableNode extends LLVMNode implements InstrumentableNode {
-
-    private LLVMSourceLocation sourceLocation;
-    private boolean hasStatementTag;
 
     /**
      * Get a {@link LLVMSourceLocation descriptor} for the source-level code location and scope
@@ -47,19 +47,19 @@ public abstract class LLVMInstrumentableNode extends LLVMNode implements Instrum
      *
      * @return the {@link LLVMSourceLocation} attached to this node
      */
-    public final LLVMSourceLocation getSourceLocation() {
-        return sourceLocation;
-    }
+    public abstract LLVMSourceLocation getSourceLocation();
 
-    public final void setSourceLocation(LLVMSourceLocation sourceLocation) {
-        CompilerAsserts.neverPartOfCompilation();
-        this.sourceLocation = sourceLocation;
-    }
+    public abstract void setSourceLocation(LLVMSourceLocation sourceLocation);
 
     @Override
     public final SourceSection getSourceSection() {
+        LLVMSourceLocation sourceLocation = getSourceLocation();
         return sourceLocation == null ? null : sourceLocation.getSourceSection();
     }
+
+    protected abstract boolean isStatement();
+
+    protected abstract void setStatement(boolean statementTag);
 
     /**
      * Describes whether this node has source-level debug information attached and should be
@@ -68,18 +68,18 @@ public abstract class LLVMInstrumentableNode extends LLVMNode implements Instrum
      * @return whether this node may provide the
      *         {@link com.oracle.truffle.api.instrumentation.StandardTags.StatementTag}
      */
-    public final boolean hasStatementTag() {
-        return hasStatementTag && sourceLocation != null;
+    public boolean hasStatementTag() {
+        return isStatement() && getSourceLocation() != null;
     }
 
-    public final void setHasStatementTag(boolean hasStatementTag) {
+    public void setHasStatementTag(boolean b) {
         CompilerAsserts.neverPartOfCompilation();
-        this.hasStatementTag = hasStatementTag;
+        setStatement(b);
     }
 
     @Override
     public final boolean isInstrumentable() {
-        return getSourceSection() != null;
+        return getSourceLocation() != null;
     }
 
     /**

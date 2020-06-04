@@ -24,18 +24,17 @@
  */
 package com.oracle.svm.core.windows.headers;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.struct.CStruct;
-import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.word.PointerBase;
+
+import com.oracle.svm.core.windows.headers.WinBase.HANDLE;
+import com.oracle.svm.core.windows.headers.WinBase.LPHANDLE;
 
 //Checkstyle: stop
 
@@ -43,32 +42,34 @@ import org.graalvm.word.PointerBase;
  * Definitions for Windows process.h
  */
 @CContext(WindowsDirectives.class)
-@Platforms(Platform.WINDOWS.class)
 public class Process {
 
-    public static final int TOKEN_QUERY = 0x08;
-
-    @CConstant
-    public static native int _P_WAIT();
-
-    @CFunction
-    public static native int _spawnv(int mode, CCharPointer cmdname, CCharPointerPointer argv);
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native HANDLE GetCurrentProcess();
 
     @CFunction(transition = Transition.NO_TRANSITION)
-    public static native WinBase.HANDLE GetCurrentProcess();
+    public static native HANDLE OpenProcess(int dwDesiredAccess, int bInheritHandle, int dwProcessId);
+
+    @CConstant
+    public static native int PROCESS_TERMINATE();
+
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native int TerminateProcess(HANDLE hProcess, int uExitCode);
 
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native int GetCurrentProcessId();
 
     @CFunction(transition = Transition.NO_TRANSITION)
-    public static native int GetProcessId(WinBase.HANDLE pHandle);
+    public static native int GetProcessId(HANDLE hProcess);
 
     @CFunction(transition = Transition.NO_TRANSITION)
-    public static native int OpenProcessToken(WinBase.HANDLE pHandle, int desiredAccess,
-                    WinBase.LPHANDLE tokenHandle);
+    public static native int OpenProcessToken(HANDLE processHandle, int desiredAccess, LPHANDLE tokenHandle);
+
+    @CConstant
+    public static native int TOKEN_QUERY();
 
     @CFunction
-    public static native WinBase.HANDLE _beginthreadex(PointerBase security, int stacksize, CFunctionPointer start_address,
+    public static native HANDLE _beginthreadex(PointerBase security, int stacksize, CFunctionPointer start_address,
                     PointerBase arglist, int initflag, CIntPointer thrdaddr);
 
     @CConstant
@@ -78,7 +79,10 @@ public class Process {
     public static native int STACK_SIZE_PARAM_IS_A_RESERVATION();
 
     @CFunction
-    public static native int ResumeThread(WinBase.HANDLE osThreadHandle);
+    public static native int ResumeThread(HANDLE hThread);
+
+    @CFunction(transition = Transition.NO_TRANSITION)
+    public static native int GetExitCodeThread(HANDLE hThread, CIntPointer lpExitCode);
 
     @CFunction
     public static native int SwitchToThread();
@@ -87,7 +91,7 @@ public class Process {
     public static native int GetCurrentThreadId();
 
     @CFunction(transition = Transition.NO_TRANSITION)
-    public static native WinBase.HANDLE GetCurrentThread();
+    public static native HANDLE GetCurrentThread();
 
     @CConstant
     public static native int SYNCHRONIZE();

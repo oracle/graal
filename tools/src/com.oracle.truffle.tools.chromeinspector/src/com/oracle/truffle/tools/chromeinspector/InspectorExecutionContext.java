@@ -64,6 +64,8 @@ public final class InspectorExecutionContext {
     private final boolean inspectInitialization;
     private final List<URI> sourceRoots;
     private final TruffleLogger log;
+    // Till the legacy TruffleLanguage.toString() is around, we must keep this as true
+    private final boolean allowToStringSideEffects = true;
 
     private volatile DebuggerSuspendedInfo suspendedInfo;
     private volatile SuspendedThreadExecutor suspendThreadExecutor;
@@ -92,6 +94,10 @@ public final class InspectorExecutionContext {
 
     public boolean isInspectInitialization() {
         return inspectInitialization;
+    }
+
+    public boolean areToStringSideEffectsAllowed() {
+        return allowToStringSideEffects;
     }
 
     public TruffleInstrument.Env getEnv() {
@@ -328,7 +334,8 @@ public final class InspectorExecutionContext {
         this.roh = null;
         assert scriptsHandler == null;
         synchronized (runPermission) {
-            runPermission[0] = false;
+            runPermission[0] = true;
+            runPermission.notifyAll();
         }
     }
 

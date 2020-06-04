@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,48 +24,75 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeCost;
-import com.oracle.truffle.api.nodes.NodeUtil;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.test.ReflectionUtils;
+import java.lang.reflect.Field;
+
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 
-import java.lang.reflect.Field;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.dsl.ReportPolymorphism;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeCost;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.ReflectionUtils;
 
 public class AbstractSplittingStrategyTest extends TestWithPolyglotOptions {
 
     protected static final GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
-
+    static final Object[] noArguments = {};
     protected SplitCountingListener listener;
 
-    @Before
-    public void addListener() {
-        setupContext("engine.CompileOnly", "DisableCompilationsForThisTest",
-                        "engine.SplittingGrowthLimit", "2.0",
-                        "engine.SplittingMaxNumberOfSplitNodes", "1000");
-        listener = new SplitCountingListener();
-        runtime.addListener(listener);
+    protected static void testSplitsDirectCallsHelper(OptimizedCallTarget callTarget, Object[] firstArgs, Object[] secondArgs) {
+        // two callers for a target are needed
+        runtime.createDirectCallNode(callTarget);
+        final DirectCallNode directCallNode = runtime.createDirectCallNode(callTarget);
+        directCallNode.call(firstArgs);
+        Assert.assertFalse("Target needs split before the node went polymorphic", getNeedsSplit(callTarget));
+        directCallNode.call(firstArgs);
+        Assert.assertFalse("Target needs split before the node went polymorphic", getNeedsSplit(callTarget));
+        directCallNode.call(secondArgs);
+        Assert.assertTrue("Target does not need split after the node went polymorphic", getNeedsSplit(callTarget));
+        directCallNode.call(secondArgs);
+        Assert.assertTrue("Target needs split but not split", directCallNode.isCallTargetCloned());
+
+        // Test new dirrectCallNode will split
+        final DirectCallNode newCallNode = runtime.createDirectCallNode(callTarget);
+        newCallNode.call(firstArgs);
+        Assert.assertTrue("new call node to \"needs split\" target is not split", newCallNode.isCallTargetCloned());
     }
 
-    @After
-    public void removeListener() {
-        runtime.removeListener(listener);
+    protected static void testDoesNotSplitDirectCallHelper(OptimizedCallTarget callTarget, Object[] firstArgs, Object[] secondArgs) {
+        // two callers for a target are needed
+        runtime.createDirectCallNode(callTarget);
+        final DirectCallNode directCallNode = runtime.createDirectCallNode(callTarget);
+        directCallNode.call(firstArgs);
+        Assert.assertFalse("Target needs split before the node went polymorphic", getNeedsSplit(callTarget));
+        directCallNode.call(firstArgs);
+        Assert.assertFalse("Target needs split before the node went polymorphic", getNeedsSplit(callTarget));
+        directCallNode.call(secondArgs);
+        Assert.assertFalse("Target needs split without reporting", getNeedsSplit(callTarget));
+        directCallNode.call(secondArgs);
+        Assert.assertFalse("Target does not need split but is split", directCallNode.isCallTargetCloned());
+
+        // Test new dirrectCallNode will split
+        final DirectCallNode newCallNode = runtime.createDirectCallNode(callTarget);
+        newCallNode.call(firstArgs);
+        Assert.assertFalse("new call node to non \"needs split\" target is split", newCallNode.isCallTargetCloned());
     }
 
-    static class SplitCountingListener implements GraalTruffleRuntimeListener {
-
-        int splitCount = 0;
-
-        @Override
-        public void onCompilationSplit(OptimizedDirectCallNode callNode) {
-            splitCount++;
+    protected static Boolean getNeedsSplit(OptimizedCallTarget callTarget) {
+        try {
+            return (Boolean) reflectivelyGetField(callTarget, "needsSplit");
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            Assert.assertTrue("Cannot read \"needsSplit\" field from OptimizedCallTarget", false);
+            return false;
         }
     }
 
@@ -105,15 +132,35 @@ public class AbstractSplittingStrategyTest extends TestWithPolyglotOptions {
         fallbackEngineDataField.set(o, value);
     }
 
-    static final Object[] noArguments = {};
-
     protected static void createDummyTargetsToBoostGrowingSplitLimit() {
         for (int i = 0; i < 10; i++) {
             runtime.createCallTarget(new DummyRootNode());
         }
     }
 
-    protected static int DUMMYROOTNODECOUNT = NodeUtil.countNodes(new DummyRootNode());
+    @Before
+    public void addListener() {
+        setupContext("engine.Compilation", "false",
+                        "engine.SplittingGrowthLimit", "2.0",
+                        "engine.SplittingMaxNumberOfSplitNodes", "1000");
+        listener = new SplitCountingListener();
+        runtime.addListener(listener);
+    }
+
+    @After
+    public void removeListener() {
+        runtime.removeListener(listener);
+    }
+
+    static class SplitCountingListener implements GraalTruffleRuntimeListener {
+
+        int splitCount = 0;
+
+        @Override
+        public void onCompilationSplit(OptimizedDirectCallNode callNode) {
+            splitCount++;
+        }
+    }
 
     static class DummyRootNode extends RootNode {
 
@@ -124,13 +171,13 @@ public class AbstractSplittingStrategyTest extends TestWithPolyglotOptions {
             }
         };
 
+        protected DummyRootNode() {
+            super(null);
+        }
+
         @Override
         public boolean isCloningAllowed() {
             return true;
-        }
-
-        protected DummyRootNode() {
-            super(null);
         }
 
         @Override
@@ -144,6 +191,26 @@ public class AbstractSplittingStrategyTest extends TestWithPolyglotOptions {
         }
     }
 
+    // Root node for all nodes in this test
+    @ReportPolymorphism
+    abstract static class SplittingTestNode extends Node {
+        public abstract Object execute(VirtualFrame frame);
+    }
+
+    static class ReturnsFirstArgumentNode extends SplittingTestNode {
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return frame.getArguments()[0];
+        }
+    }
+
+    static class ReturnsSecondArgumentNode extends SplittingTestNode {
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return frame.getArguments()[1];
+        }
+    }
+
     abstract class SplittableRootNode extends RootNode {
 
         protected SplittableRootNode() {
@@ -153,6 +220,20 @@ public class AbstractSplittingStrategyTest extends TestWithPolyglotOptions {
         @Override
         public boolean isCloningAllowed() {
             return true;
+        }
+    }
+
+    class SplittingTestRootNode extends SplittableRootNode {
+        @Child private SplittingTestNode bodyNode;
+
+        SplittingTestRootNode(SplittingTestNode bodyNode) {
+            super();
+            this.bodyNode = bodyNode;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return bodyNode.execute(frame);
         }
     }
 }

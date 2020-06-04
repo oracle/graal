@@ -157,10 +157,6 @@ public class InteractiveEvalTest {
             });
         }
 
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
     }
 
     @TruffleLanguage.Registration(id = SPECIAL_INTERACTIVE, name = "SpecialInteractive", characterMimeTypes = "application/x-test-specinteract", version = "1.0", interactive = false)
@@ -202,10 +198,6 @@ public class InteractiveEvalTest {
             return false;
         }
 
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
     }
 
 }

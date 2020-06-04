@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,12 +32,10 @@ import java.util.Objects;
  * point to code locations that cause or related to a diagnostics, e.g when duplicating a symbol in
  * a scope.
  */
-public class DiagnosticRelatedInformation {
-
-    final JSONObject jsonData;
+public class DiagnosticRelatedInformation extends JSONBase {
 
     DiagnosticRelatedInformation(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -87,9 +85,9 @@ public class DiagnosticRelatedInformation {
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 37 * hash + Objects.hashCode(this.getLocation());
-        hash = 37 * hash + Objects.hashCode(this.getMessage());
+        int hash = 2;
+        hash = 59 * hash + Objects.hashCode(this.getLocation());
+        hash = 59 * hash + Objects.hashCode(this.getMessage());
         return hash;
     }
 

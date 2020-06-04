@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,22 +29,24 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.control;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
+import com.oracle.truffle.llvm.runtime.nodes.control.LLVMIndirectBranchNodeFactory.LLVMIndirectBranchNodeImplNodeGen;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @GenerateWrapper
+@NodeChild(value = "branchAddress", type = LLVMExpressionNode.class)
 public abstract class LLVMIndirectBranchNode extends LLVMControlFlowNode {
 
-    public static LLVMIndirectBranchNode create(LLVMBranchAddressNode branchAddress, int[] indices, LLVMStatementNode[] phiWriteNodes) {
-        return new LLVMIndirectBranchNodeImpl(branchAddress, indices, phiWriteNodes);
+    public static LLVMIndirectBranchNode create(LLVMExpressionNode branchAddress, int[] indices, LLVMStatementNode[] phiWriteNodes) {
+        return LLVMIndirectBranchNodeImplNodeGen.create(indices, phiWriteNodes, branchAddress);
     }
 
     @Override
@@ -54,18 +56,28 @@ public abstract class LLVMIndirectBranchNode extends LLVMControlFlowNode {
 
     public abstract int executeCondition(VirtualFrame frame);
 
-    public abstract int[] getSuccessors();
+    /**
+     * Override to allow access from generated wrapper.
+     */
+    @Override
+    protected abstract boolean isStatement();
 
-    private static final class LLVMIndirectBranchNodeImpl extends LLVMIndirectBranchNode {
+    /**
+     * Override to allow access from generated wrapper.
+     */
+    @Override
+    protected abstract void setStatement(boolean statementTag);
 
-        @Child private LLVMBranchAddressNode branchAddress;
+    abstract static class LLVMIndirectBranchNodeImpl extends LLVMIndirectBranchNode {
+
         @Children private final LLVMStatementNode[] phiWriteNodes;
+
+        // can't use @NodeField since we need this to be @CompilationFinal
         @CompilationFinal(dimensions = 1) private final int[] successors;
 
-        private LLVMIndirectBranchNodeImpl(LLVMBranchAddressNode branchAddress, int[] indices, LLVMStatementNode[] phiWriteNodes) {
+        LLVMIndirectBranchNodeImpl(int[] indices, LLVMStatementNode[] phiWriteNodes) {
             assert indices.length > 1;
             this.successors = indices;
-            this.branchAddress = branchAddress;
             this.phiWriteNodes = phiWriteNodes;
         }
 
@@ -79,37 +91,14 @@ public abstract class LLVMIndirectBranchNode extends LLVMControlFlowNode {
             return phiWriteNodes[successorIndex];
         }
 
-        @Override
-        public int executeCondition(VirtualFrame frame) {
-            return branchAddress.branchAddress(frame);
+        @Specialization
+        public int doCondition(LLVMNativePointer branchAddress) {
+            return (int) branchAddress.asNative();
         }
 
         @Override
         public int[] getSuccessors() {
             return successors;
-        }
-    }
-
-    public abstract static class LLVMBranchAddressNode extends LLVMNode {
-        public abstract int branchAddress(VirtualFrame frame);
-    }
-
-    public static final class LLVMBasicBranchAddressNode extends LLVMBranchAddressNode {
-
-        @Child private LLVMExpressionNode address;
-
-        public LLVMBasicBranchAddressNode(LLVMExpressionNode address) {
-            this.address = address;
-        }
-
-        @Override
-        public int branchAddress(VirtualFrame frame) {
-            try {
-                return (int) address.executeLLVMNativePointer(frame).asNative();
-            } catch (UnexpectedResultException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException("should not reach here", e);
-            }
         }
     }
 }

@@ -68,6 +68,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.option.OptionProcessorTest.OptionTestInstrument1;
 import org.graalvm.polyglot.Value;
+import org.junit.Assume;
 
 public class EngineAPITest {
 
@@ -207,7 +208,8 @@ public class EngineAPITest {
 
     @Test
     public void testExperimentalOptionException() {
-        ValueAssert.assertFails(() -> Engine.newBuilder().option("optiontestinstr1.StringOption2", "Hello").build(), IllegalArgumentException.class, e -> {
+        Assume.assumeFalse(Boolean.getBoolean("polyglot.engine.AllowExperimentalOptions"));
+        AbstractPolyglotTest.assertFails(() -> Engine.newBuilder().option("optiontestinstr1.StringOption2", "Hello").build(), IllegalArgumentException.class, e -> {
             assertEquals("Option 'optiontestinstr1.StringOption2' is experimental and must be enabled with allowExperimentalOptions(). Do not use experimental options in production environments.",
                             e.getMessage());
         });

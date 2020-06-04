@@ -27,13 +27,13 @@ package com.oracle.truffle.tools.agentscript.test;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
-import com.oracle.truffle.tools.agentscript.AgentScript;
 import static com.oracle.truffle.tools.agentscript.test.AgentObjectFactory.createConfig;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.CountDownLatch;
@@ -45,6 +45,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
+import org.graalvm.tools.insight.Insight;
 import org.junit.Assert;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
@@ -66,10 +67,9 @@ public class AgentObjectTest {
     public void versionOfTheAgent() throws Exception {
         try (Context c = AgentObjectFactory.newContext()) {
             Value agent = AgentObjectFactory.createAgentObject(c);
-            AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
+            InsightAPI agentAPI = agent.as(InsightAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
-
-            assertEquals(AgentScript.VERSION, agentAPI.version());
+            assertEquals(Insight.VERSION, agentAPI.version());
         }
     }
 
@@ -78,13 +78,13 @@ public class AgentObjectTest {
         try (Context c = AgentObjectFactory.newContext()) {
             Value agent = AgentObjectFactory.createAgentObject(c);
             assertNotNull("agent created", agent);
-            assertNotNull("we have agent's truffle object", AgentObjectFactory.agentObject);
+            assertNotNull("we have agent's truffle object", AgentObjectFactory.insightObject);
 
             InteropLibrary iop = InteropLibrary.getFactory().getUncached();
 
-            assertTrue("Yes, it has members", iop.hasMembers(AgentObjectFactory.agentObject));
+            assertTrue("Yes, it has members", iop.hasMembers(AgentObjectFactory.insightObject));
 
-            Object members = iop.getMembers(AgentObjectFactory.agentObject);
+            Object members = iop.getMembers(AgentObjectFactory.insightObject);
             long membersCount = iop.getArraySize(members);
             assertEquals(2, membersCount);
 
@@ -97,15 +97,15 @@ public class AgentObjectTest {
     public void onErrorneousCallbackRegistration() throws Exception {
         try (Context c = AgentObjectFactory.newContext()) {
             Value agent = AgentObjectFactory.createAgentObject(c);
-            AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
+            InsightAPI agentAPI = agent.as(InsightAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
-            final AgentScriptAPI.OnSourceLoadedHandler listener = (ev) -> {
+            final InsightAPI.OnSourceLoadedHandler listener = (ev) -> {
             };
             agentAPI.on("enterOrLeave", listener);
             fail("Should have failed with PolyglotException");
         } catch (PolyglotException t) {
-            assertTrue(t.getMessage(), t.getMessage().startsWith("agentscript: Unknown event type"));
+            assertTrue(t.getMessage(), t.getMessage().startsWith("insight: Unknown event type"));
         }
     }
 
@@ -113,11 +113,11 @@ public class AgentObjectTest {
     public void onSourceCallback() throws Exception {
         try (Context c = AgentObjectFactory.newContext()) {
             Value agent = AgentObjectFactory.createAgentObject(c);
-            AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
+            InsightAPI agentAPI = agent.as(InsightAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
             String[] loadedScript = new String[5];
-            final AgentScriptAPI.OnSourceLoadedHandler listener = (ev) -> {
+            final InsightAPI.OnSourceLoadedHandler listener = (ev) -> {
                 loadedScript[0] = ev.name();
                 loadedScript[1] = ev.characters();
                 loadedScript[2] = ev.language();
@@ -150,7 +150,7 @@ public class AgentObjectTest {
     public void nullMimeType() throws Exception {
         try (Context c = AgentObjectFactory.newContext()) {
             Value agent = AgentObjectFactory.createAgentObject(c);
-            AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
+            InsightAPI agentAPI = agent.as(InsightAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
             String[] loadedScript = new String[5];
@@ -178,12 +178,12 @@ public class AgentObjectTest {
     public void onEnterCallback() throws Exception {
         try (Context c = AgentObjectFactory.newContext()) {
             Value agent = AgentObjectFactory.createAgentObject(c);
-            AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
+            InsightAPI agentAPI = agent.as(InsightAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
             boolean[] program = {false};
             String[] functionName = {null};
-            final AgentScriptAPI.OnEventHandler listener = (ctx, frame) -> {
+            final InsightAPI.OnEventHandler listener = (ctx, frame) -> {
                 if (ctx.name().length() == 0) {
                     assertFalse("Program root is entered just once", program[0]);
                     program[0] = true;
@@ -261,11 +261,11 @@ public class AgentObjectTest {
             c.eval(sampleScript);
 
             Value agent = AgentObjectFactory.createAgentObject(c);
-            AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
+            InsightAPI agentAPI = agent.as(InsightAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
             String[] functionName = {null};
-            final AgentScriptAPI.OnEventHandler listener = (ctx, frame) -> {
+            final InsightAPI.OnEventHandler listener = (ctx, frame) -> {
                 if (ctx.name().length() == 0) {
                     return;
                 }
@@ -317,14 +317,14 @@ public class AgentObjectTest {
         boolean[] finished = {false};
         try (Context c = AgentObjectFactory.newContext()) {
             Value agent = AgentObjectFactory.createAgentObject(c);
-            AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
+            InsightAPI agentAPI = agent.as(InsightAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
             String[] functionName = {null};
             agentAPI.on("enter", (ctx, frame) -> {
                 assertNull("No function entered yet", functionName[0]);
                 functionName[0] = ctx.name();
-            }, AgentObjectFactory.createConfig(false, false, true, (name) -> "foo".equals(name), null));
+            }, AgentObjectFactory.createConfig(false, false, true, "foo", null));
             agentAPI.on("close", () -> {
                 finished[0] = true;
             });
@@ -358,7 +358,7 @@ public class AgentObjectTest {
         boolean[] finished = {false};
         try (Context c = AgentObjectFactory.newContext()) {
             Value agent = AgentObjectFactory.createAgentObject(c);
-            AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
+            InsightAPI agentAPI = agent.as(InsightAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
             String[] functionName = {null};
@@ -408,7 +408,7 @@ public class AgentObjectTest {
     public void onStatementCallback() throws Exception {
         try (Context c = AgentObjectFactory.newContext()) {
             Value agent = AgentObjectFactory.createAgentObject(c);
-            AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
+            InsightAPI agentAPI = agent.as(InsightAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
             int[] loopIndexSum = {0};
@@ -439,7 +439,7 @@ public class AgentObjectTest {
     public void onExpressionCallback() throws Exception {
         try (Context c = AgentObjectFactory.newContext()) {
             Value agent = AgentObjectFactory.createAgentObject(c);
-            AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
+            InsightAPI agentAPI = agent.as(InsightAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
             int[] expressionCounter = {0};
@@ -474,7 +474,7 @@ public class AgentObjectTest {
         int[] closeCounter = {0};
         try (Context c = AgentObjectFactory.newContext()) {
             Value agent = AgentObjectFactory.createAgentObject(c);
-            AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
+            InsightAPI agentAPI = agent.as(InsightAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
             // @formatter:off
@@ -489,7 +489,7 @@ public class AgentObjectTest {
             ).internal(true).build();
             // @formatter:on
 
-            final AgentScriptAPI.OnSourceLoadedHandler listener = (ev) -> {
+            final InsightAPI.OnSourceLoadedHandler listener = (ev) -> {
                 if (ev.name().equals(sampleScript.getName())) {
                     Assert.fail("Don't load internal scripts: " + ev.uri());
                 }
@@ -519,12 +519,12 @@ public class AgentObjectTest {
     public void onEnterAndReturn() throws Exception {
         try (Context c = AgentObjectFactory.newContext()) {
             Value agent = AgentObjectFactory.createAgentObject(c);
-            AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
+            InsightAPI agentAPI = agent.as(InsightAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
             String[][] max = {new String[0]};
             LinkedList<String> stack = new LinkedList<>();
-            final AgentScriptAPI.OnConfig allRoots = AgentObjectFactory.createConfig(false, false, true, null, null);
+            final InsightAPI.OnConfig allRoots = AgentObjectFactory.createConfig(false, false, true, null, null);
             agentAPI.on("enter", (ev, frame) -> {
                 stack.push(ev.name());
                 if (stack.size() > max[0].length) {
@@ -565,7 +565,7 @@ public class AgentObjectTest {
     public void accessFrameVariables() throws Exception {
         try (Context c = AgentObjectFactory.newContext()) {
             Value agent = AgentObjectFactory.createAgentObject(c);
-            AgentScriptAPI agentAPI = agent.as(AgentScriptAPI.class);
+            InsightAPI agentAPI = agent.as(InsightAPI.class);
             Assert.assertNotNull("Agent API obtained", agentAPI);
 
             // @formatter:off
@@ -583,13 +583,36 @@ public class AgentObjectTest {
             // @formatter:on
 
             Set<String> names = new TreeSet<>();
-            agentAPI.on("enter", (ctx, frame) -> {
+            final InsightAPI.OnEventHandler captureNames = (ctx, frame) -> {
+                assertTrue(names.isEmpty());
                 names.addAll(frame.keySet());
-            }, createConfig(true, false, false, (name) -> "mul".equals(name), null));
-
+            };
+            agentAPI.on("enter", captureNames, createConfig(true, false, false, "mul.*", null));
             c.eval(sampleScript);
+            agentAPI.off("enter", captureNames);
 
             Assert.assertArrayEquals("THIS, a and b found", new Object[]{"THIS", "a", "b"}, names.toArray());
+
+            Object[] values = {0, 0};
+            agentAPI.on("enter", (ctx, frame) -> {
+                values[0] = frame.get("a");
+                values[1] = frame.get("b");
+            }, AgentObjectFactory.createConfig(true, false, false, "mul", null));
+
+            Value mul = c.getBindings(InstrumentationTestLanguage.ID).getMember("mul");
+            assertNotNull("mul function found", mul);
+            assertTrue("mul function found", mul.canExecute());
+
+            Random r = new Random();
+            for (int i = 1; i <= 100000; i++) {
+                int a = r.nextInt();
+                int b = r.nextInt();
+
+                mul.execute(a, b);
+
+                assertEquals(i + "th: a has been read", a, values[0]);
+                assertEquals(i + "th: b has been read", b, values[1]);
+            }
         }
     }
 

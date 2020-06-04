@@ -11,7 +11,12 @@ custom_vm_darwin: {}
 vm_profiles: []
 collect_profiles: []
 
+non-product-vm-components: "nju,nic"
+non-product-vm-components-windows: ${non-product-vm-components}",llp"
+non-product-native-launchers: "RMain"
+
 vm_setup: {
+  short_name: ce
   setup: [
     [set-export, VM_ENV, ce]
     [set-export, RELEASE_CATALOG, "https://www.graalvm.org/component-catalog/graal-updater-component-catalog-java${BASE_JDK_VERSION}.properties"]
@@ -76,6 +81,7 @@ builds += [
       ${maven_base_8_11.deploy_svm_plugin} ["lafo-maven"]
     ]
     name: deploy-vm-maven-linux-amd64
+    timelimit: "45:00"
   }
   ${deploy_vm_linux_aarch64} ${linux-deploy} ${maven_base_8_native} {
     downloads: {
@@ -111,7 +117,7 @@ builds += [
     ]
     name: deploy-vm-maven-darwin-amd64
   }
-  ${deploy_daily_vm_windows} ${maven_base_8_native} {
+  ${deploy_daily_vm_windows} ${svm-common-windows} ${maven_base_8_native} {
     run: [
       ${maven_base_8_native.build}
       ${maven_base_8_native.deploy} [--dry-run, "lafo-maven"]

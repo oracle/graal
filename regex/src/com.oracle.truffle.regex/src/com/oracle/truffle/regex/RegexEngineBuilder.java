@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -88,7 +88,7 @@ import com.oracle.truffle.regex.tregex.TRegexCompiler;
  * </ol>
  */
 @ExportLibrary(InteropLibrary.class)
-public class RegexEngineBuilder implements RegexLanguageObject {
+public final class RegexEngineBuilder extends AbstractRegexObject {
 
     private final RegexLanguage language;
 
@@ -101,6 +101,7 @@ public class RegexEngineBuilder implements RegexLanguageObject {
     }
 
     @ExportMessage
+    @SuppressWarnings("static-method")
     public boolean isExecutable() {
         return true;
     }
@@ -110,7 +111,7 @@ public class RegexEngineBuilder implements RegexLanguageObject {
                     @Cached ToStringNode expectOptionsNode,
                     @CachedLibrary(limit = "1") InteropLibrary fallbackCompilers) throws ArityException, UnsupportedTypeException {
         if (args.length > 2) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw ArityException.create(2, args.length);
         }
         RegexOptions options = RegexOptions.DEFAULT;
@@ -120,7 +121,7 @@ public class RegexEngineBuilder implements RegexLanguageObject {
         TruffleObject fallbackCompiler = null;
         if (args.length >= 2) {
             if (!(fallbackCompilers.isExecutable(args[1]))) {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw UnsupportedTypeException.create(args);
             }
             fallbackCompiler = (TruffleObject) args[1];
@@ -130,10 +131,16 @@ public class RegexEngineBuilder implements RegexLanguageObject {
 
     @TruffleBoundary
     private static RegexEngine createRegexEngine(RegexLanguage regexLanguage, RegexOptions options, TruffleObject fallbackCompiler) {
+        RegexCompiler compiler = createRegexCompiler(regexLanguage, options, fallbackCompiler);
+        return options.isRegressionTestMode() ? new RegexEngine(compiler, options) : new CachingRegexEngine(compiler, options);
+    }
+
+    private static RegexCompiler createRegexCompiler(RegexLanguage regexLanguage, RegexOptions options, TruffleObject fallbackCompiler) {
         if (fallbackCompiler != null) {
-            return new CachingRegexEngine(new RegexCompilerWithFallback(new TRegexCompiler(regexLanguage, options), fallbackCompiler), options);
+            return new RegexCompilerWithFallback(new TRegexCompiler(regexLanguage, options), fallbackCompiler);
         } else {
-            return new CachingRegexEngine(new TRegexCompiler(regexLanguage, options), options);
+            return new TRegexCompiler(regexLanguage, options);
         }
     }
+
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,24 +40,21 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
-import java.util.Objects;
-
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.regex.tregex.parser.Token;
+import com.oracle.truffle.regex.UnsupportedRegexException;
+import com.oracle.truffle.regex.tregex.TRegexOptions;
+import com.oracle.truffle.regex.tregex.automaton.AbstractState;
+import com.oracle.truffle.regex.tregex.nfa.ASTTransition;
 
 /**
  * A common supertype for all {@link RegexASTNode}s except {@link Sequence}s.
  * <p>
  * Roughly corresponds to the goal symbol <em>Term</em> in the ECMAScript RegExp syntax. A
  * <em>Term</em> ({@link Term}) can be either an <em>Assertion</em> ({@link PositionAssertion} or
- * {@link RegexASTSubtreeRootNode}) or an <em>Atom</em> ({@link CharacterClass},
- * {@link BackReference} or {@link Group}). <em>Quantifier</em>s are handled by the
- * {@link Group#isLoop()} flag of {@link Group}s.
+ * {@link LookAroundAssertion}) or an <em>Atom</em> ({@link QuantifiableTerm}.
  */
-public abstract class Term extends RegexASTNode {
+public abstract class Term extends RegexASTNode implements AbstractState<Term, ASTTransition> {
 
-    private short seqIndex = 0;
-    private Token.Quantifier quantifier;
+    private int seqIndex = 0;
 
     Term() {
     }
@@ -74,35 +71,10 @@ public abstract class Term extends RegexASTNode {
     }
 
     public void setSeqIndex(int seqIndex) {
-        this.seqIndex = (short) seqIndex;
-    }
-
-    public boolean hasQuantifier() {
-        return quantifier != null;
-    }
-
-    public Token.Quantifier getQuantifier() {
-        return quantifier;
-    }
-
-    public void setQuantifier(Token.Quantifier quantifier) {
-        this.quantifier = quantifier;
-    }
-
-    boolean quantifierEquals(Term o) {
-        return Objects.equals(quantifier, o.quantifier);
-    }
-
-    @Override
-    public boolean equalsSemantic(RegexASTNode obj) {
-        return equalsSemantic(obj, false);
-    }
-
-    public abstract boolean equalsSemantic(RegexASTNode obj, boolean ignoreQuantifier);
-
-    @TruffleBoundary
-    protected String quantifierToString() {
-        return hasQuantifier() ? quantifier.toString() : "";
+        this.seqIndex = seqIndex;
+        if (seqIndex > TRegexOptions.TRegexParserTreeMaxNumberOfTermsInSequence) {
+            throw new UnsupportedRegexException("too many terms in a single sequence");
+        }
     }
 
     @Override

@@ -52,8 +52,10 @@ public class VMFeature implements Feature {
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         if (SubstrateOptions.DumpTargetInfo.getValue()) {
             System.out.println("# Building image for target platform: " + ImageSingletons.lookup(Platform.class).getClass().getName());
-            System.out.println("# Using native toolchain:");
-            ImageSingletons.lookup(CCompilerInvoker.class).compilerInfo.dump(x -> System.out.println("#   " + x));
+            if (ImageSingletons.contains(CCompilerInvoker.class)) {
+                System.out.println("# Using native toolchain:");
+                ImageSingletons.lookup(CCompilerInvoker.class).compilerInfo.dump(x -> System.out.println("#   " + x));
+            }
             System.out.println("# Using CLibrary: " + ImageSingletons.lookup(LibCBase.class).getClass().getName());
         }
 
@@ -77,7 +79,9 @@ public class VMFeature implements Feature {
         addCGlobalDataString("Target.Libraries", String.join("|", nativeLibraries.getLibraries()));
         addCGlobalDataString("Target.StaticLibraries", nativeLibraries.getStaticLibraries().stream()
                         .map(Path::getFileName).map(Path::toString).collect(Collectors.joining("|")));
-        addCGlobalDataString("Target.CCompiler", ImageSingletons.lookup(CCompilerInvoker.class).compilerInfo.toString());
+        if (ImageSingletons.contains(CCompilerInvoker.class)) {
+            addCGlobalDataString("Target.CCompiler", ImageSingletons.lookup(CCompilerInvoker.class).compilerInfo.toString());
+        }
 
         if (SubstrateOptions.DumpTargetInfo.getValue()) {
             System.out.println("# Static libraries:");

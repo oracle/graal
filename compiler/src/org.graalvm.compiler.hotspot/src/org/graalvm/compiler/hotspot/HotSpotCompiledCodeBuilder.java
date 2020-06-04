@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,8 +37,6 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 
-import org.graalvm.compiler.api.replacements.MethodSubstitution;
-import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
 import org.graalvm.compiler.code.CompilationResult.CodeComment;
@@ -332,7 +330,7 @@ public class HotSpotCompiledCodeBuilder {
 
     private static boolean verifyTrim(NodeSourcePosition sourcePosition) {
         for (NodeSourcePosition sp = sourcePosition; sp != null; sp = sp.getCaller()) {
-            assert (sp.getMethod().getAnnotation(Snippet.class) == null && sp.getMethod().getAnnotation(MethodSubstitution.class) == null);
+            assert !sp.isSubstitution();
         }
         return true;
     }

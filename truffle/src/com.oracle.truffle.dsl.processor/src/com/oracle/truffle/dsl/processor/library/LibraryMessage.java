@@ -46,9 +46,7 @@ import java.util.Set;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
-import javax.lang.model.type.TypeMirror;
 
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 
 public final class LibraryMessage extends MessageContainer {
@@ -68,16 +66,6 @@ public final class LibraryMessage extends MessageContainer {
 
     public LibraryData getLibrary() {
         return library;
-    }
-
-    public boolean hasUnexpectedValue() {
-        TypeMirror unexpectedType = types.UnexpectedResultException;
-        for (TypeMirror thrownType : executable.getThrownTypes()) {
-            if (ElementUtils.typeEquals(thrownType, unexpectedType)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     public void setAbstract(boolean isAbstract) {

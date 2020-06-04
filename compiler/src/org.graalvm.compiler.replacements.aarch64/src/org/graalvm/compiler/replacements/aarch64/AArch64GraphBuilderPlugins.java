@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,7 @@ import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.Una
 
 import org.graalvm.compiler.lir.aarch64.AArch64ArithmeticLIRGeneratorTool.RoundingMode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.AbsNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
@@ -60,22 +61,20 @@ import sun.misc.Unsafe;
 
 public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
     @Override
-    public void register(Plugins plugins, Replacements replacements, Architecture arch, boolean explicitUnsafeNullChecks, boolean registerMathPlugins,
+    public void register(Plugins plugins, Replacements replacements, Architecture arch, boolean explicitUnsafeNullChecks, boolean registerForeignCallMath,
                     boolean emitJDK9StringSubstitutions, boolean useFMAIntrinsics) {
-        register(plugins, replacements, explicitUnsafeNullChecks, registerMathPlugins, emitJDK9StringSubstitutions, useFMAIntrinsics);
+        register(plugins, replacements, explicitUnsafeNullChecks, registerForeignCallMath, emitJDK9StringSubstitutions, useFMAIntrinsics);
     }
 
     public static void register(Plugins plugins, Replacements replacements, boolean explicitUnsafeNullChecks,
-                    boolean registerMathPlugins, boolean emitJDK9StringSubstitutions, boolean useFMAIntrinsics) {
+                    boolean registerForeignCallMath, boolean emitJDK9StringSubstitutions, boolean useFMAIntrinsics) {
         InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
         invocationPlugins.defer(new Runnable() {
             @Override
             public void run() {
                 registerIntegerLongPlugins(invocationPlugins, JavaKind.Int, replacements);
                 registerIntegerLongPlugins(invocationPlugins, JavaKind.Long, replacements);
-                if (registerMathPlugins) {
-                    registerMathPlugins(invocationPlugins, useFMAIntrinsics);
-                }
+                registerMathPlugins(invocationPlugins, registerForeignCallMath, useFMAIntrinsics);
                 if (emitJDK9StringSubstitutions) {
                     registerStringLatin1Plugins(invocationPlugins, replacements);
                     registerStringUTF16Plugins(invocationPlugins, replacements);
@@ -126,27 +125,30 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         });
     }
 
-    private static void registerMathPlugins(InvocationPlugins plugins, boolean useFMAIntrinsics) {
+    private static void registerMathPlugins(InvocationPlugins plugins, boolean registerForeignCallMath, boolean useFMAIntrinsics) {
         Registration r = new Registration(plugins, Math.class);
-        registerUnaryMath(r, "sin", SIN);
-        registerUnaryMath(r, "cos", COS);
-        registerUnaryMath(r, "tan", TAN);
-        registerUnaryMath(r, "exp", EXP);
-        registerUnaryMath(r, "log", LOG);
-        registerUnaryMath(r, "log10", LOG10);
-        r.register2("pow", Double.TYPE, Double.TYPE, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
-                b.push(JavaKind.Double, b.append(BinaryMathIntrinsicNode.create(x, y, BinaryMathIntrinsicNode.BinaryOperation.POW)));
-                return true;
-            }
-        });
+        if (registerForeignCallMath) {
+            registerUnaryMath(r, "sin", SIN);
+            registerUnaryMath(r, "cos", COS);
+            registerUnaryMath(r, "tan", TAN);
+            registerUnaryMath(r, "exp", EXP);
+            registerUnaryMath(r, "log", LOG);
+            registerUnaryMath(r, "log10", LOG10);
+            r.register2("pow", Double.TYPE, Double.TYPE, new InvocationPlugin() {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
+                    b.push(JavaKind.Double, b.append(BinaryMathIntrinsicNode.create(x, y, BinaryMathIntrinsicNode.BinaryOperation.POW)));
+                    return true;
+                }
+            });
+        }
         registerRound(r, "rint", RoundingMode.NEAREST);
         registerRound(r, "ceil", RoundingMode.UP);
         registerRound(r, "floor", RoundingMode.DOWN);
         if (useFMAIntrinsics && JavaVersionUtil.JAVA_SPEC > 8) {
             registerFMA(r);
         }
+        registerIntegerAbs(r);
     }
 
     private static void registerFMA(Registration r) {
@@ -171,6 +173,25 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                             ValueNode nb,
                             ValueNode nc) {
                 b.push(JavaKind.Float, b.append(new FusedMultiplyAddNode(na, nb, nc)));
+                return true;
+            }
+        });
+    }
+
+    private static void registerIntegerAbs(Registration r) {
+        r.register1("abs", Integer.TYPE, new InvocationPlugin() {
+
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                b.push(JavaKind.Int, b.append(new AbsNode(value).canonical(null)));
+                return true;
+            }
+        });
+        r.register1("abs", Long.TYPE, new InvocationPlugin() {
+
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                b.push(JavaKind.Long, b.append(new AbsNode(value).canonical(null)));
                 return true;
             }
         });

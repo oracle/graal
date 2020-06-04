@@ -139,7 +139,7 @@ public abstract class LoopConditionProfile extends ConditionProfile {
      */
     public static LoopConditionProfile createCountingProfile() {
         if (Profile.isProfilingEnabled()) {
-            return Enabled.create();
+            return Enabled.createLazyLoadClass();
         } else {
             return Disabled.INSTANCE;
         }
@@ -238,7 +238,7 @@ public abstract class LoopConditionProfile extends ConditionProfile {
         }
 
         /* Needed for lazy class loading. */
-        static LoopConditionProfile create() {
+        static LoopConditionProfile createLazyLoadClass() {
             return new Enabled();
         }
 

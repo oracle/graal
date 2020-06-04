@@ -44,9 +44,11 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.charset.CodePointSet;
-import com.oracle.truffle.regex.tregex.automaton.AbstractState;
+import com.oracle.truffle.regex.tregex.automaton.BasicState;
+import com.oracle.truffle.regex.tregex.automaton.TransitionSet;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.buffer.IntArrayBuffer;
+import com.oracle.truffle.regex.tregex.nfa.NFA;
 import com.oracle.truffle.regex.tregex.nfa.NFAState;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
 import com.oracle.truffle.regex.tregex.nodes.dfa.TraceFinderDFAStateNode;
@@ -55,30 +57,33 @@ import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
-public final class DFAStateNodeBuilder extends AbstractState<DFAStateNodeBuilder, DFAStateTransitionBuilder> implements JsonConvertible {
+public final class DFAStateNodeBuilder extends BasicState<DFAStateNodeBuilder, DFAStateTransitionBuilder> implements JsonConvertible {
 
     private static final byte FLAG_OVERRIDE_FINAL_STATE = 1 << (N_FLAGS + 0);
     private static final byte FLAG_FINAL_STATE_SUCCESSOR = 1 << (N_FLAGS + 1);
     private static final byte FLAG_BACKWARD_PREFIX_STATE = 1 << (N_FLAGS + 2);
+    private static final byte FLAG_FORWARD = (byte) (1 << (N_FLAGS + 3));
 
     private static final DFAStateTransitionBuilder[] EMPTY_TRANSITIONS = new DFAStateTransitionBuilder[0];
     private static final DFAStateTransitionBuilder[] NODE_SPLIT_TAINTED = new DFAStateTransitionBuilder[0];
     private static final String NODE_SPLIT_UNINITIALIZED_PRECEDING_TRANSITIONS_ERROR_MSG = "this state node builder was altered by the node splitter and does not have valid information about preceding transitions!";
 
-    private NFATransitionSet nfaTransitionSet;
+    private TransitionSet<NFA, NFAState, NFAStateTransition> nfaTransitionSet;
     private short backwardPrefixState = -1;
     private NFAStateTransition anchoredFinalStateTransition;
     private NFAStateTransition unAnchoredFinalStateTransition;
     private byte preCalculatedUnAnchoredResult = TraceFinderDFAStateNode.NO_PRE_CALC_RESULT;
     private byte preCalculatedAnchoredResult = TraceFinderDFAStateNode.NO_PRE_CALC_RESULT;
 
-    DFAStateNodeBuilder(short id, NFATransitionSet nfaStateSet, boolean isBackwardPrefixState, boolean isInitialState) {
+    DFAStateNodeBuilder(int id, TransitionSet<NFA, NFAState, NFAStateTransition> nfaStateSet, boolean isBackwardPrefixState, boolean isInitialState, boolean forward) {
         super(id, EMPTY_TRANSITIONS);
+        assert id <= Short.MAX_VALUE;
         this.nfaTransitionSet = nfaStateSet;
         setFlag(FLAG_BACKWARD_PREFIX_STATE, isBackwardPrefixState);
+        setFlag(FLAG_FORWARD, forward);
         setUnAnchoredInitialState(isInitialState);
         if (isBackwardPrefixState) {
-            this.backwardPrefixState = id;
+            this.backwardPrefixState = (short) id;
         }
     }
 
@@ -115,11 +120,11 @@ public final class DFAStateNodeBuilder extends AbstractState<DFAStateNodeBuilder
         }
     }
 
-    public void setNfaTransitionSet(NFATransitionSet nfaTransitionSet) {
+    public void setNfaTransitionSet(TransitionSet<NFA, NFAState, NFAStateTransition> nfaTransitionSet) {
         this.nfaTransitionSet = nfaTransitionSet;
     }
 
-    public NFATransitionSet getNfaTransitionSet() {
+    public TransitionSet<NFA, NFAState, NFAStateTransition> getNfaTransitionSet() {
         return nfaTransitionSet;
     }
 
@@ -157,6 +162,14 @@ public final class DFAStateNodeBuilder extends AbstractState<DFAStateNodeBuilder
         return getFlag((byte) (FLAG_OVERRIDE_FINAL_STATE | FLAG_ANY_FINAL_STATE));
     }
 
+    public boolean isForward() {
+        return getFlag(FLAG_FORWARD);
+    }
+
+    public boolean isPrioritySensitive() {
+        return getFlag(FLAG_FORWARD);
+    }
+
     public int getNumberOfSuccessors() {
         return getSuccessors().length + (hasBackwardPrefixState() ? 1 : 0);
     }
@@ -176,28 +189,28 @@ public final class DFAStateNodeBuilder extends AbstractState<DFAStateNodeBuilder
         indicesBuf.ensureCapacity(getSuccessors().length);
         int[] indices = indicesBuf.getBuffer();
         Arrays.fill(indices, 0, getSuccessors().length, 0);
-        int nextLo = Character.MIN_CODE_POINT;
+        int nextLo = CodePointSet.MIN_VALUE;
         while (true) {
             int i = findNextLo(indices, nextLo);
             if (i < 0) {
                 return false;
             }
-            CodePointSet mb = getSuccessors()[i].getMatcherBuilder();
-            if (mb.getHi(indices[i]) == Character.MAX_CODE_POINT) {
+            CodePointSet ranges = getSuccessors()[i].getMatcherBuilder();
+            if (ranges.getHi(indices[i]) == CodePointSet.MAX_VALUE) {
                 return true;
             }
-            nextLo = mb.getHi(indices[i]) + 1;
+            nextLo = ranges.getHi(indices[i]) + 1;
             indices[i]++;
         }
     }
 
     private int findNextLo(int[] indices, int findLo) {
         for (int i = 0; i < getSuccessors().length; i++) {
-            CodePointSet mb = getSuccessors()[i].getMatcherBuilder();
-            if (indices[i] == mb.size()) {
+            CodePointSet ranges = getSuccessors()[i].getMatcherBuilder();
+            if (indices[i] == ranges.size()) {
                 continue;
             }
-            if (mb.getLo(indices[i]) == findLo) {
+            if (ranges.getLo(indices[i]) == findLo) {
                 return i;
             }
         }
@@ -270,8 +283,8 @@ public final class DFAStateNodeBuilder extends AbstractState<DFAStateNodeBuilder
     }
 
     public void updateFinalStateData(DFAGenerator dfaGenerator) {
-        boolean forward = nfaTransitionSet.isForward();
-        for (NFAStateTransition t : nfaTransitionSet) {
+        boolean forward = dfaGenerator.isForward();
+        for (NFAStateTransition t : nfaTransitionSet.getTransitions()) {
             NFAState target = t.getTarget(forward);
             if (target.hasTransitionToAnchoredFinalState(forward)) {
                 if (anchoredFinalStateTransition == null) {
@@ -287,7 +300,7 @@ public final class DFAStateNodeBuilder extends AbstractState<DFAStateNodeBuilder
                 }
             }
             if (dfaGenerator.getNfa().isTraceFinderNFA()) {
-                for (NFAStateTransition t2 : target.getNext(forward)) {
+                for (NFAStateTransition t2 : target.getSuccessors(forward)) {
                     NFAState target2 = t2.getTarget(forward);
                     if (target2.isAnchoredFinalState(forward)) {
                         assert target2.hasPossibleResults() && target2.getPossibleResults().numberOfSetBits() == 1;
@@ -315,7 +328,15 @@ public final class DFAStateNodeBuilder extends AbstractState<DFAStateNodeBuilder
 
     @Override
     public int hashCode() {
-        int hashCode = nfaTransitionSet.hashCode();
+        int hashCode;
+        if (isPrioritySensitive()) {
+            hashCode = 1;
+            for (int i = 0; i < nfaTransitionSet.size(); i++) {
+                hashCode = 31 * hashCode + nfaTransitionSet.getTransition(i).getTarget().hashCode();
+            }
+        } else {
+            hashCode = nfaTransitionSet.getTargetStateSet().hashCode();
+        }
         if (isBackwardPrefixState()) {
             hashCode *= 31;
         }
@@ -331,7 +352,27 @@ public final class DFAStateNodeBuilder extends AbstractState<DFAStateNodeBuilder
             return false;
         }
         DFAStateNodeBuilder o = (DFAStateNodeBuilder) obj;
-        return nfaTransitionSet.equals(o.nfaTransitionSet) && isBackwardPrefixState() == o.isBackwardPrefixState();
+        if (isBackwardPrefixState() != o.isBackwardPrefixState()) {
+            return false;
+        }
+        if (isPrioritySensitive()) {
+            if (nfaTransitionSet.size() != o.nfaTransitionSet.size()) {
+                return false;
+            }
+            for (int i = 0; i < nfaTransitionSet.size(); i++) {
+                if (!nfaTransitionSet.getTransition(i).getTarget(isForward()).equals(o.nfaTransitionSet.getTransition(i).getTarget())) {
+                    return false;
+                }
+            }
+            return true;
+        } else {
+            return nfaTransitionSet.getTargetStateSet().equals(o.nfaTransitionSet.getTargetStateSet());
+        }
+    }
+
+    @Override
+    protected boolean hasTransitionToUnAnchoredFinalState(boolean forward) {
+        throw new UnsupportedOperationException();
     }
 
     @TruffleBoundary
@@ -345,7 +386,7 @@ public final class DFAStateNodeBuilder extends AbstractState<DFAStateNodeBuilder
     @Override
     public JsonValue toJson() {
         return Json.obj(Json.prop("id", getId()),
-                        Json.prop("stateSet", Json.array(nfaTransitionSet.stream().map(x -> Json.val(x.getTarget().getId())))),
+                        Json.prop("stateSet", Json.array(Arrays.stream(nfaTransitionSet.getTransitions()).map(x -> Json.val(x.getTarget().getId())))),
                         Json.prop("finalState", isUnAnchoredFinalState()),
                         Json.prop("anchoredFinalState", isAnchoredFinalState()),
                         Json.prop("transitions", Arrays.stream(getSuccessors()).map(x -> Json.val(x.getId()))));

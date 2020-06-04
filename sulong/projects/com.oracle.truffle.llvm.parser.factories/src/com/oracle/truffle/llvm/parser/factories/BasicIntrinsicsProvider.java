@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,28 +29,19 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
-import static com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType.POINTER;
-
-import java.util.AbstractList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.UnaryOperator;
-
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
-import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
+import com.oracle.truffle.llvm.runtime.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMArgNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.func.LLVMRaiseExceptionNode;
+import com.oracle.truffle.llvm.runtime.nodes.func.LLVMRaiseExceptionNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMAbortNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMCMathsIntrinsicsFactory.LLVMACosNodeGen;
@@ -121,7 +112,7 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMTruffleIsHan
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMTruffleManagedMallocNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMTruffleManagedToHandleNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMTruffleReleaseHandleNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMTruffleWriteManagedToGlobalNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMTruffleWriteManagedToSymbolNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMVirtualMallocNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.typed.LLVMArrayTypeIDNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.typed.LLVMPolyglotAsTyped;
@@ -134,21 +125,29 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemoryIntrinsic
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMReallocNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMComplex80BitFloatDivNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMComplex80BitFloatMulNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMComplexDoubleDiv;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMComplexDoubleMul;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMComplexFloatDiv;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMComplexFloatMul;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMComplexDoubleDivNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMComplexDoubleMulNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMComplexFloatDivNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMComplexFloatMulNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading.LLVMPThreadKeyIntrinsicsFactory;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading.LLVMPThreadThreadIntrinsicsFactory;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.rust.LLVMPanicNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.rust.LLVMStartFactory.LLVMLangStartInternalNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.rust.LLVMStartFactory.LLVMLangStartNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.sulong.LLVMPrintStackTraceNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.sulong.LLVMPrintToolchainPath;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.sulong.LLVMPrintToolchainPathNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.sulong.LLVMRunDestructorFunctionsNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.sulong.LLVMShouldPrintStackTraceOnAbortNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.sulong.LLVMToolchainNodeFactory;
 import com.oracle.truffle.llvm.runtime.types.Type;
+
+import java.util.AbstractList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.UnaryOperator;
+
+import static com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType.POINTER;
 
 /**
  * If an intrinsic is defined for a function, then the intrinsic is used instead of doing a call to
@@ -156,7 +155,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
  * library.
  */
 public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
-    private final ExternalLibrary library = ExternalLibrary.internal("SulongIntrinsics", false);
+    private final ExternalLibrary library = ExternalLibrary.internalFromName("SulongIntrinsics", false);
 
     @Override
     public ExternalLibrary getLibrary() {
@@ -343,6 +342,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
     static {
         // Initialize the list of intrinsics:
         registerTruffleIntrinsics();
+        registerToolchainIntrinsics();
         registerSulongIntrinsics();
         registerAbortIntrinsics();
         registerRustIntrinsics();
@@ -378,7 +378,12 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
         add("__sulong_destructor_functions", (args, nodeFactory) -> LLVMRunDestructorFunctionsNodeGen.create());
         add("__sulong_print_stacktrace", (args, nodeFactory) -> LLVMPrintStackTraceNodeGen.create());
         add("__sulong_should_print_stacktrace_on_abort", (args, nodeFactory) -> LLVMShouldPrintStackTraceOnAbortNodeGen.create());
-        add(LLVMPrintToolchainPath.NAME, (args, nodeFactory) -> LLVMPrintToolchainPathNodeGen.create());
+    }
+
+    private static void registerToolchainIntrinsics() {
+        add("toolchain_api_tool", (args, nodeFactory) -> LLVMToolchainNodeFactory.LLVMToolchainToolNodeGen.create(args.get(1)));
+        add("toolchain_api_paths", (args, nodeFactory) -> LLVMToolchainNodeFactory.LLVMToolchainPathNodeGen.create(args.get(1)));
+        add("toolchain_api_identifier", (args, nodeFactory) -> LLVMToolchainNodeFactory.LLVMToolchainIdentifierNodeGen.create());
     }
 
     private static void registerTruffleIntrinsics() {
@@ -460,7 +465,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
         add("truffle_managed_from_handle", (args, nodeFactory) -> LLVMTruffleHandleToManagedNodeGen.create(args.get(1)));
         add("truffle_is_handle_to_managed", (args, nodeFactory) -> LLVMTruffleIsHandleToManagedNodeGen.create(args.get(1)));
         add("truffle_cannot_be_handle", (args, nodeFactory) -> LLVMTruffleCannotBeHandleNodeGen.create(args.get(1)));
-        add("truffle_assign_managed", (args, nodeFactory) -> LLVMTruffleWriteManagedToGlobalNodeGen.create(args.get(1), args.get(2)));
+        add("truffle_assign_managed", (args, nodeFactory) -> LLVMTruffleWriteManagedToSymbolNodeGen.create(args.get(1), args.get(2)));
         add("truffle_virtual_malloc", (args, nodeFactory) -> LLVMVirtualMallocNodeGen.create(args.get(1)));
     }
 
@@ -532,18 +537,18 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
     }
 
     private static void registerExceptionIntrinsics() {
-        add("_Unwind_RaiseException", (args, nodeFactory) -> new LLVMRaiseExceptionNode(args.get(1)));
+        add("_Unwind_RaiseException", (args, nodeFactory) -> LLVMRaiseExceptionNodeGen.create(args.get(1)));
         add("__cxa_call_unexpected", (args, nodeFactory) -> LLVMAbortNodeGen.create());
     }
 
     private static void registerComplexNumberIntrinsics() {
         // float functions return a vector of <2x float>
-        add("__divsc3", (args, nodeFactory) -> new LLVMComplexFloatDiv(args.get(1), args.get(2), args.get(3), args.get(4)));
-        add("__mulsc3", (args, nodeFactory) -> new LLVMComplexFloatMul(args.get(1), args.get(2), args.get(3), args.get(4)));
+        add("__divsc3", (args, nodeFactory) -> LLVMComplexFloatDivNodeGen.create(args.get(1), args.get(2), args.get(3), args.get(4)));
+        add("__mulsc3", (args, nodeFactory) -> LLVMComplexFloatMulNodeGen.create(args.get(1), args.get(2), args.get(3), args.get(4)));
 
         // double functions store their double results in the structure that is passed as arg1
-        add("__divdc3", (args, nodeFactory) -> new LLVMComplexDoubleDiv(args.get(1), args.get(2), args.get(3), args.get(4), args.get(5)));
-        add("__muldc3", (args, nodeFactory) -> new LLVMComplexDoubleMul(args.get(1), args.get(2), args.get(3), args.get(4), args.get(5)));
+        add("__divdc3", (args, nodeFactory) -> LLVMComplexDoubleDivNodeGen.create(args.get(1), args.get(2), args.get(3), args.get(4), args.get(5)));
+        add("__muldc3", (args, nodeFactory) -> LLVMComplexDoubleMulNodeGen.create(args.get(1), args.get(2), args.get(3), args.get(4), args.get(5)));
 
         // 80-bit FP functions store their results in the structure that is passed as arg1
         add("__divxc3", (args, nodeFactory) -> LLVMComplex80BitFloatDivNodeGen.create(args.get(1), args.get(2), args.get(3), args.get(4), args.get(5)));

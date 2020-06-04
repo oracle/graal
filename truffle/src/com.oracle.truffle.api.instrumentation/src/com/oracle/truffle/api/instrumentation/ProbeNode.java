@@ -41,7 +41,9 @@
 package com.oracle.truffle.api.instrumentation;
 
 import java.io.PrintStream;
+import java.lang.ref.WeakReference;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Set;
@@ -128,7 +130,24 @@ public final class ProbeNode extends Node {
     // returned from chain nodes whose bindings ignore the unwind
     private static final Object UNWIND_ACTION_IGNORED = new Object();
 
+    static class RetiredNodeReference {
+        private final WeakReference<Node> node;
+        private final Set<Class<? extends Tag>> materializeTags;
+        final RetiredNodeReference next;
+
+        RetiredNodeReference(Node node, Set<Class<? extends Tag>> materializeTags, RetiredNodeReference next) {
+            this.node = new WeakReference<>(node);
+            this.materializeTags = materializeTags;
+            this.next = next;
+        }
+
+        Node getNode() {
+            return node.get();
+        }
+    }
+
     private final InstrumentationHandler handler;
+    private volatile RetiredNodeReference retiredNodeReference;
     @CompilationFinal private volatile EventContext context;
 
     @Child private volatile ProbeNode.EventChainNode chain;
@@ -144,6 +163,45 @@ public final class ProbeNode extends Node {
     ProbeNode(InstrumentationHandler handler, SourceSection sourceSection) {
         this.handler = handler;
         this.context = new EventContext(this, sourceSection);
+    }
+
+    RetiredNodeReference getRetiredNodeReference() {
+        return retiredNodeReference;
+    }
+
+    void clearRetiredNodeReference() {
+        retiredNodeReference = null;
+    }
+
+    private boolean hasNewTags(Node retiredNode, Set<Class<? extends Tag>> materializeTags) {
+        Set<Class<? extends Tag>> allSeenMaterializeTags = retiredNodeReference.next == null ? retiredNodeReference.materializeTags : new HashSet<>(retiredNodeReference.materializeTags);
+
+        RetiredNodeReference nodeRef = retiredNodeReference;
+        while (nodeRef != null) {
+            if (allSeenMaterializeTags != nodeRef.materializeTags) {
+                allSeenMaterializeTags.addAll(nodeRef.materializeTags);
+            }
+            Node nodeRefNode = nodeRef.getNode();
+            assert nodeRefNode == null || nodeRefNode != retiredNode : "The same retired node must not be set more than once!";
+            assert !nodeRef.materializeTags.equals(materializeTags) : "Retired node must be set at most once for the same set of tags!";
+            nodeRef = nodeRef.next;
+        }
+        return !allSeenMaterializeTags.containsAll(materializeTags);
+    }
+
+    void setRetiredNode(Node retiredNode, Set<Class<? extends Tag>> materializeTags) {
+        if (retiredNodeReference == null) {
+            retiredNodeReference = new RetiredNodeReference(retiredNode, materializeTags, null);
+        } else {
+            /*
+             * The following check does not check all illegal materializations, because seen
+             * materialize tags are not recorded before the AST is first executed.
+             */
+            assert hasNewTags(retiredNode, materializeTags) : "There should always be some new materialize tag!";
+            RetiredNodeReference previousRetiredNodeReference = retiredNodeReference;
+            RetiredNodeReference newRetiredNodeReference = new RetiredNodeReference(retiredNode, materializeTags, previousRetiredNodeReference);
+            retiredNodeReference = newRetiredNodeReference;
+        }
     }
 
     /**
@@ -313,17 +371,26 @@ public final class ProbeNode extends Node {
             if (localVersion != null && localVersion.isValid()) {
                 return this.chain;
             }
-            nextChain = handler.createBindings(frame, ProbeNode.this);
-            if (nextChain == null) {
-                // chain is null -> remove wrapper;
-                // Note: never set child nodes to null, can cause races
-                InstrumentationHandler.removeWrapper(ProbeNode.this);
-                return null;
-            }
-
-            oldChain = this.chain;
-            this.chain = insert(nextChain);
-            this.version = Truffle.getRuntime().createAssumption("Instruments unchanged");
+            EventBinding.Source<?>[] executionBindingsSnapshot;
+            do {
+                executionBindingsSnapshot = handler.getExecutionBindingsSnapshot();
+                nextChain = handler.createBindings(frame, ProbeNode.this, executionBindingsSnapshot);
+                if (nextChain == null) {
+                    // chain is null -> remove wrapper;
+                    // Note: never set child nodes to null, can cause races
+                    if (retiredNodeReference == null) {
+                        InstrumentationHandler.removeWrapper(ProbeNode.this);
+                        return null;
+                    } else {
+                        oldChain = this.chain;
+                        this.chain = null;
+                    }
+                } else {
+                    oldChain = this.chain;
+                    this.chain = insert(nextChain);
+                }
+                this.version = Truffle.getRuntime().createAssumption("Instruments unchanged");
+            } while (executionBindingsSnapshot != handler.getExecutionBindingsSnapshot());
         } finally {
             lock.unlock();
         }
@@ -1133,7 +1200,7 @@ public final class ProbeNode extends Node {
 
         static final Object[] EMPTY_ARRAY = new Object[0];
         @CompilationFinal(dimensions = 1) private volatile FrameSlot[] inputSlots;
-        private volatile FrameDescriptor sourceFrameDescriptor;
+        @CompilationFinal private volatile FrameDescriptor sourceFrameDescriptor;
         final int inputBaseIndex;
         final int inputCount;
         @CompilationFinal(dimensions = 1) volatile EventContext[] inputContexts;

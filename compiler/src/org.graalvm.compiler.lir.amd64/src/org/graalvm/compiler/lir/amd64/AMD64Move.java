@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -615,6 +615,9 @@ public class AMD64Move {
             case DOUBLE:
                 masm.movsd(dest, input);
                 break;
+            case V128_QWORD:
+                masm.movdqu(dest, input);
+                break;
             default:
                 throw GraalError.shouldNotReachHere("kind=" + kind + " input=" + input + " result=" + result);
         }
@@ -640,6 +643,9 @@ public class AMD64Move {
                 break;
             case DOUBLE:
                 masm.movdbl(result, src);
+                break;
+            case V128_QWORD:
+                masm.movdqu(result, src);
                 break;
             default:
                 throw GraalError.shouldNotReachHere("kind=" + kind + " input=" + input + " result=" + result);

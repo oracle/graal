@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -357,6 +357,29 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
         }
     }
 
+    @Test
+    public void testCompilation() {
+        testCompilationImpl(null, true);
+        testCompilationImpl(true, true);
+        testCompilationImpl(false, false);
+    }
+
+    private void testCompilationImpl(Boolean compileOptionValue, boolean expectedCompiled) {
+        String[] options = compileOptionValue == null ? new String[0] : new String[]{"engine.Compilation", compileOptionValue.toString()};
+        setupContext(options);
+        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new NamedRootNode("foobar"));
+        final int compilationThreshold = target.getOptionValue(PolyglotCompilerOptions.CompilationThreshold);
+        for (int i = 0; i < compilationThreshold; i++) {
+            assertNotCompiled(target);
+            target.call();
+        }
+        if (expectedCompiled) {
+            assertCompiled(target);
+        } else {
+            assertNotCompiled(target);
+        }
+    }
+
     private static OptimizedCallTarget findOSRTarget(Node loopNode) {
         if (loopNode instanceof OptimizedOSRLoopNode) {
             return ((OptimizedOSRLoopNode) loopNode).getCompiledOSRLoop();
@@ -507,8 +530,9 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
 
     @Test
     public void testNoArgumentTypeSpeculation() {
-        setupContext("engine.CompileImmediately", Boolean.TRUE.toString(), "engine.CompilationExceptionsAreThrown", Boolean.TRUE.toString(), "engine.ArgumentTypeSpeculation",
-                        Boolean.FALSE.toString());
+        setupContext("engine.CompileImmediately", Boolean.TRUE.toString(), "engine.CompilationFailureAction", "Throw",
+                        "engine.BackgroundCompilation", Boolean.FALSE.toString(),
+                        "engine.ArgumentTypeSpeculation", Boolean.FALSE.toString());
         CallTarget fortyTwo = runtime.createCallTarget(new RootTestNode(new FrameDescriptor(), "42", new ConstantTestNode(42)));
         OptimizedCallTarget ct = (OptimizedCallTarget) runtime.createCallTarget(new RootTestNode(new FrameDescriptor(), "caller", new CallTestNode(fortyTwo)));
         for (int i = 0; i < 3; i++) {

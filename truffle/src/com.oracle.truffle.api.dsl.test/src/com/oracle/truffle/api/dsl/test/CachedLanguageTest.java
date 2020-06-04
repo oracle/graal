@@ -62,10 +62,10 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
+import com.oracle.truffle.api.test.AbstractLibraryTest;
 
 @SuppressWarnings("unused")
-public class CachedLanguageTest extends AbstractPolyglotTest {
+public class CachedLanguageTest extends AbstractLibraryTest {
 
     @Test
     public void testCachedLanguage() {
@@ -123,11 +123,6 @@ public class CachedLanguageTest extends AbstractPolyglotTest {
         @Override
         protected Env createContext(Env env) {
             return env;
-        }
-
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
         }
 
         public static CachedLanguageTestLanguage getCurrentLanguage() {
@@ -190,10 +185,6 @@ public class CachedLanguageTest extends AbstractPolyglotTest {
             return env;
         }
 
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
     }
 
     abstract static class CachedLanguageError1Node extends Node {
@@ -270,9 +261,9 @@ public class CachedLanguageTest extends AbstractPolyglotTest {
     @GenerateLibrary
     public abstract static class CachedLanguageTestLibrary extends Library {
 
-        public abstract Object m0(Object receiver);
+        public abstract CachedLanguageTestLanguage m0(Object receiver);
 
-        public abstract Object m1(Object receiver);
+        public abstract CachedLanguageTestLanguage m1(Object receiver);
     }
 
     @ExportLibrary(CachedLanguageTestLibrary.class)
@@ -280,14 +271,31 @@ public class CachedLanguageTest extends AbstractPolyglotTest {
     static class CachedLanguageLibraryReceiver {
 
         @ExportMessage
-        final Object m0(@CachedLanguage CachedLanguageTestLanguage env) {
-            return "m0";
+        final CachedLanguageTestLanguage m0(@CachedLanguage CachedLanguageTestLanguage env) {
+            return env;
         }
 
         @ExportMessage
-        final Object m1(@CachedLanguage LanguageReference<CachedLanguageTestLanguage> env) {
-            return "m1";
+        final CachedLanguageTestLanguage m1(@CachedLanguage LanguageReference<CachedLanguageTestLanguage> env) {
+            return env.get();
         }
+    }
+
+    @Test
+    public void testCachedLanguageReceiver() {
+        setupEnv();
+        context.initialize(TEST_LANGUAGE);
+        CachedLanguageLibraryReceiver receiver = new CachedLanguageLibraryReceiver();
+
+        CachedLanguageTestLibrary cached = createCached(CachedLanguageTestLibrary.class, receiver);
+
+        assertSame(CachedLanguageTestLanguage.getCurrentLanguage(), cached.m0(receiver));
+        assertSame(CachedLanguageTestLanguage.getCurrentLanguage(), cached.m1(receiver));
+
+        CachedLanguageTestLibrary uncached = getUncached(CachedLanguageTestLibrary.class, receiver);
+
+        assertSame(CachedLanguageTestLanguage.getCurrentLanguage(), uncached.m0(receiver));
+        assertSame(CachedLanguageTestLanguage.getCurrentLanguage(), uncached.m1(receiver));
     }
 
 }

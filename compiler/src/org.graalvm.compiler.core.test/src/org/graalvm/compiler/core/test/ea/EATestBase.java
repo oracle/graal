@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -96,7 +96,8 @@ public class EATestBase extends GraalCompilerTest {
             try {
                 long localFieldOffset1 = UNSAFE.objectFieldOffset(EATestBase.TestClassInt.class.getField("x"));
                 // Make the fields 8 byte aligned (Required for testing setLong on Architectures
-                // which does not support unaligned memory access
+                // which does not support unaligned memory access. The code has to be extra careful
+                // because some JDKs do a better job of packing fields.
                 if (localFieldOffset1 % 8 == 0) {
                     fieldOffset1 = localFieldOffset1;
                     fieldOffset2 = UNSAFE.objectFieldOffset(EATestBase.TestClassInt.class.getField("y"));

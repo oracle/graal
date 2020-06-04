@@ -156,7 +156,13 @@ final class OptionValuesImpl implements OptionValues {
                 suffix = suffix.substring(1);
             }
         }
-        values.put(descriptor.getKey(), optionKey.getType().convert(previousValue, suffix, value));
+        Object convertedValue;
+        try {
+            convertedValue = optionKey.getType().convert(previousValue, suffix, value);
+        } catch (IllegalArgumentException e) {
+            throw PolyglotEngineException.illegalArgument(e);
+        }
+        values.put(descriptor.getKey(), convertedValue);
         if (unparsedValues != null) {
             unparsedValues.put(descriptor.getKey(), value);
         }
@@ -213,9 +219,7 @@ final class OptionValuesImpl implements OptionValues {
     @SuppressWarnings("deprecation")
     @Override
     public <T> void set(OptionKey<T> optionKey, T value) {
-        assert contains(optionKey);
-        optionKey.getType().validate(value);
-        values.put(optionKey, value);
+        throw new UnsupportedOperationException("OptionValues#set() is no longer supported");
     }
 
     @Override
@@ -244,7 +248,7 @@ final class OptionValuesImpl implements OptionValues {
     private static RuntimeException failExperimental(String key) {
         final String message = String.format("Option '%s' is experimental and must be enabled with allowExperimentalOptions(). ", key) +
                         "Do not use experimental options in production environments.";
-        return new IllegalArgumentException(message);
+        return PolyglotEngineException.illegalArgument(message);
     }
 
     private RuntimeException failNotFound(String key) {
@@ -276,7 +280,7 @@ final class OptionValuesImpl implements OptionValues {
                 msg.format("%n    %s=<%s>", match.getName(), match.getKey().getType().getName());
             }
         }
-        throw new IllegalArgumentException(msg.toString());
+        throw PolyglotEngineException.illegalArgument(msg.toString());
     }
 
     /**

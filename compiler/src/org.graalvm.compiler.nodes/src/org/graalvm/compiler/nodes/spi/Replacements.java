@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -72,6 +72,16 @@ public interface Replacements {
      */
     StructuredGraph getSnippet(ResolvedJavaMethod method, ResolvedJavaMethod recursiveEntry, Object[] args, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition,
                     OptionValues options);
+
+    /**
+     * Get the snippet metadata required to inline the snippet.
+     */
+    SnippetParameterInfo getSnippetParameterInfo(ResolvedJavaMethod method);
+
+    /**
+     * Return true if the method is a {@link org.graalvm.compiler.api.replacements.Snippet}.
+     */
+    boolean isSnippet(ResolvedJavaMethod method);
 
     /**
      * Registers a method as snippet.

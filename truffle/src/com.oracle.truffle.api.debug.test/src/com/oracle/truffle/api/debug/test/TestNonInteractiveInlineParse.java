@@ -85,11 +85,6 @@ public class TestNonInteractiveInlineParse extends AbstractDebugTest {
         }
 
         @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
-
-        @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             return Truffle.getRuntime().createCallTarget(new TestRootNode(this, request.getSource()));
         }
@@ -250,7 +245,7 @@ public class TestNonInteractiveInlineParse extends AbstractDebugTest {
             tester.startEval(source);
             tester.expectSuspended((SuspendedEvent event) -> {
                 DebugValue value = event.getTopStackFrame().eval("var+10");
-                assertEquals(42 + 10, value.as(Number.class));
+                assertEquals(42 + 10, value.asInt());
             });
             tester.expectDone();
         }

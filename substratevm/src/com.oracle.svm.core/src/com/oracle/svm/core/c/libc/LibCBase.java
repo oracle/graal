@@ -24,18 +24,86 @@
  */
 package com.oracle.svm.core.c.libc;
 
+// Checkstyle: stop
+
+import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Method;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.List;
+
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.util.GuardedAnnotationAccess;
+
+// Checkstyle: resume
 
 public interface LibCBase {
 
     String PATH_DEFAULT = "<default>";
 
+    static boolean containsLibCAnnotation(AnnotatedElement element) {
+        return GuardedAnnotationAccess.getAnnotation(element, Libc.class) != null;
+    }
+
+    static boolean isProvidedInCurrentLibc(AnnotatedElement element) {
+        LibCBase currentLibC = ImageSingletons.lookup(LibCBase.class);
+        Libc targetLibC = GuardedAnnotationAccess.getAnnotation(element, Libc.class);
+        return targetLibC != null && Arrays.asList(targetLibC.value()).contains(currentLibC.getClass());
+    }
+
+    @Fold
+    static boolean targetLibCIs(Class<? extends LibCBase> libCBase) {
+        LibCBase currentLibC = ImageSingletons.lookup(LibCBase.class);
+        return currentLibC.getClass() == libCBase;
+    }
+
+    /**
+     * Checks if the type is provided in the current libc implementation.
+     *
+     * A type is regarded a provided in the current libc implementation if it is annotated and the
+     * current libc implementation is listed in the annotation. If the type is not annotated, then
+     * the above check is successively applied to the enclosing types, if they exist. Finally, if
+     * the class is in a package, the above check is applied. If the package does not exist or is
+     * not annotated, the type is regarded as provided.
+     *
+     * @param clazz Type to check if contained in the current libc implementation.
+     * @return true if contained in the current libc implementation, false otherwise.
+     */
+    static boolean isTypeProvidedInCurrentLibc(Class<?> clazz) {
+        Class<?> currentClazz = clazz;
+        while (currentClazz != null) {
+            if (containsLibCAnnotation(currentClazz)) {
+                return isProvidedInCurrentLibc(currentClazz);
+            }
+            currentClazz = currentClazz.getEnclosingClass();
+        }
+        Package clazzPackage = clazz.getPackage();
+        if (clazzPackage != null) {
+            return !containsLibCAnnotation(clazz) || isProvidedInCurrentLibc(clazzPackage);
+        }
+        return true;
+    }
+
+    static boolean isMethodProvidedInCurrentLibc(Method method) {
+        if (containsLibCAnnotation(method) && !isProvidedInCurrentLibc(method)) {
+            return false;
+        }
+        Class<?> declaringClass = method.getDeclaringClass();
+        return isTypeProvidedInCurrentLibc(declaringClass);
+    }
+
     String getJDKStaticLibsPath();
 
     void prepare(Path directory);
 
+    List<String> getAdditionalQueryCodeCompilerOptions();
+
     List<String> getCCompilerOptions();
 
-    List<String> getLinkerPreOptions();
+    static LibCBase singleton() {
+        return ImageSingletons.lookup(LibCBase.class);
+    }
+
+    boolean hasIsolatedNamespaces();
 }

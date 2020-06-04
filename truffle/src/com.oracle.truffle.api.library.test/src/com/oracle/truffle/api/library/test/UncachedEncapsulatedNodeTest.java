@@ -55,6 +55,7 @@ import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.test.UncachedEncapsulatedNodeTestFactory.Test1NodeGen;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
+import com.oracle.truffle.api.test.AbstractLibraryTest;
 
 @SuppressWarnings("static-method")
 public class UncachedEncapsulatedNodeTest extends AbstractLibraryTest {
@@ -83,7 +84,7 @@ public class UncachedEncapsulatedNodeTest extends AbstractLibraryTest {
 
     @Test
     public void testDSLNode() {
-        Test1Node node = adopt(Test1NodeGen.create());
+        Test1Node node = adoptNode(Test1NodeGen.create()).get();
         assertNull(node.execute(new TestObject()));
         assertNull(node.execute(new TestObject()));
         assertSame(node, node.execute(new TestObject()));

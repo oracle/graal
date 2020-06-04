@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,24 +50,31 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 public abstract class RegexASTNode implements JsonConvertible {
 
-    static final short FLAG_PREFIX = 1;
-    static final short FLAG_DEAD = 1 << 1;
-    static final short FLAG_HAS_CARET = 1 << 2;
-    static final short FLAG_HAS_DOLLAR = 1 << 3;
-    static final short FLAG_STARTS_WITH_CARET = 1 << 4;
-    static final short FLAG_ENDS_WITH_DOLLAR = 1 << 5;
-    static final short FLAG_GROUP_LOOP = 1 << 6;
-    static final short FLAG_GROUP_EXPANDED_QUANTIFIER = 1 << 7;
-    static final short FLAG_LOOK_AROUND_NEGATED = 1 << 8;
-    static final short FLAG_EMPTY_GUARD = 1 << 9;
-    static final short FLAG_HAS_LOOPS = 1 << 10;
-    static final short FLAG_CHARACTER_CLASS_WAS_SINGLE_CHAR = 1 << 11;
+    static final int FLAG_PREFIX = 1;
+    static final int FLAG_DEAD = 1 << 1;
+    static final int FLAG_HAS_CARET = 1 << 2;
+    static final int FLAG_HAS_DOLLAR = 1 << 3;
+    static final int FLAG_STARTS_WITH_CARET = 1 << 4;
+    static final int FLAG_ENDS_WITH_DOLLAR = 1 << 5;
+    static final int FLAG_BACK_REFERENCE_IS_NESTED = 1 << 6;
+    static final int FLAG_BACK_REFERENCE_IS_FORWARD = 1 << 7;
+    static final int FLAG_GROUP_LOOP = 1 << 8;
+    static final int FLAG_GROUP_EXPANDED_QUANTIFIER = 1 << 9;
+    static final int FLAG_EMPTY_GUARD = 1 << 10;
+    static final int FLAG_LOOK_AROUND_NEGATED = 1 << 11;
+    static final int FLAG_HAS_LOOPS = 1 << 12;
+    static final int FLAG_HAS_CAPTURE_GROUPS = 1 << 13;
+    static final int FLAG_HAS_QUANTIFIERS = 1 << 14;
+    static final int FLAG_HAS_LOOK_BEHINDS = 1 << 15;
+    static final int FLAG_HAS_LOOK_AHEADS = 1 << 16;
+    static final int FLAG_HAS_BACK_REFERENCES = 1 << 17;
+    static final int FLAG_CHARACTER_CLASS_WAS_SINGLE_CHAR = 1 << 18;
 
-    private short id = -1;
+    private int id = -1;
     private RegexASTNode parent;
-    private short flags;
-    private short minPath = 0;
-    private short maxPath = 0;
+    private int flags;
+    private int minPath = 0;
+    private int maxPath = 0;
 
     protected RegexASTNode() {
     }
@@ -99,15 +106,15 @@ public abstract class RegexASTNode implements JsonConvertible {
         return id >= 0;
     }
 
-    public short getId() {
+    public final int getId() {
         assert idInitialized();
         return id;
     }
 
-    public void setId(int id) {
+    public final void setId(int id) {
         assert !idInitialized();
-        assert id <= TRegexOptions.TRegexMaxParseTreeSize;
-        this.id = (short) id;
+        assert id <= TRegexOptions.TRegexParserTreeMaxSize;
+        this.id = id;
     }
 
     /**
@@ -126,27 +133,27 @@ public abstract class RegexASTNode implements JsonConvertible {
         this.parent = parent;
     }
 
-    protected boolean isFlagSet(short flag) {
+    protected boolean isFlagSet(int flag) {
         return (flags & flag) != 0;
     }
 
-    protected void setFlag(short flag) {
+    protected void setFlag(int flag) {
         setFlag(flag, true);
     }
 
-    protected short getFlags(short mask) {
-        return (short) (flags & mask);
+    protected int getFlags(int mask) {
+        return flags & mask;
     }
 
     /**
      * Update all flags denoted by {@code mask} with the values from {@code newFlags}.
      */
-    protected void setFlags(short newFlags, short mask) {
+    protected void setFlags(int newFlags, int mask) {
         assert (newFlags & ~mask) == 0;
-        flags = (short) (flags & ~mask | newFlags);
+        flags = flags & ~mask | newFlags;
     }
 
-    protected void setFlag(short flag, boolean value) {
+    protected void setFlag(int flag, boolean value) {
         if (value) {
             flags |= flag;
         } else {
@@ -191,66 +198,6 @@ public abstract class RegexASTNode implements JsonConvertible {
         setFlag(FLAG_PREFIX);
     }
 
-    public boolean hasCaret() {
-        return isFlagSet(FLAG_HAS_CARET);
-    }
-
-    public void setHasCaret() {
-        setHasCaret(true);
-    }
-
-    public void setHasCaret(boolean hasCaret) {
-        setFlag(FLAG_HAS_CARET, hasCaret);
-    }
-
-    public boolean hasDollar() {
-        return isFlagSet(FLAG_HAS_DOLLAR);
-    }
-
-    public void setHasDollar() {
-        setHasDollar(true);
-    }
-
-    public void setHasDollar(boolean hasDollar) {
-        setFlag(FLAG_HAS_DOLLAR, hasDollar);
-    }
-
-    public boolean startsWithCaret() {
-        return isFlagSet(FLAG_STARTS_WITH_CARET);
-    }
-
-    public void setStartsWithCaret() {
-        setStartsWithCaret(true);
-    }
-
-    public void setStartsWithCaret(boolean startsWithCaret) {
-        setFlag(FLAG_STARTS_WITH_CARET, startsWithCaret);
-    }
-
-    public boolean endsWithDollar() {
-        return isFlagSet(FLAG_ENDS_WITH_DOLLAR);
-    }
-
-    public void setEndsWithDollar() {
-        setEndsWithDollar(true);
-    }
-
-    public void setEndsWithDollar(boolean endsWithDollar) {
-        setFlag(FLAG_ENDS_WITH_DOLLAR, endsWithDollar);
-    }
-
-    public void setHasLoops() {
-        setHasLoops(true);
-    }
-
-    public void setHasLoops(boolean hasLoops) {
-        setFlag(FLAG_HAS_LOOPS, hasLoops);
-    }
-
-    public boolean hasLoops() {
-        return isFlagSet(FLAG_HAS_LOOPS);
-    }
-
     /**
      * Indicates whether or not this node should be allowed to match the empty string.
      *
@@ -264,12 +211,176 @@ public abstract class RegexASTNode implements JsonConvertible {
         setFlag(FLAG_EMPTY_GUARD, emptyGuard);
     }
 
+    /**
+     * Subexpression contains {@link #isCaret() "^"}.
+     */
+    public boolean hasCaret() {
+        return isFlagSet(FLAG_HAS_CARET);
+    }
+
+    public void setHasCaret() {
+        setHasCaret(true);
+    }
+
+    public void setHasCaret(boolean hasCaret) {
+        setFlag(FLAG_HAS_CARET, hasCaret);
+    }
+
+    /**
+     * Subexpression contains {@link #isCaret() "$"}.
+     */
+    public boolean hasDollar() {
+        return isFlagSet(FLAG_HAS_DOLLAR);
+    }
+
+    public void setHasDollar() {
+        setHasDollar(true);
+    }
+
+    public void setHasDollar(boolean hasDollar) {
+        setFlag(FLAG_HAS_DOLLAR, hasDollar);
+    }
+
+    /**
+     * This subexpression is dominated by {@link #isCaret() "^"}.
+     */
+    public boolean startsWithCaret() {
+        return isFlagSet(FLAG_STARTS_WITH_CARET);
+    }
+
+    public void setStartsWithCaret() {
+        setStartsWithCaret(true);
+    }
+
+    public void setStartsWithCaret(boolean startsWithCaret) {
+        setFlag(FLAG_STARTS_WITH_CARET, startsWithCaret);
+    }
+
+    /**
+     * All paths out of this subexpression go through {@link #isCaret() "$"}.
+     */
+    public boolean endsWithDollar() {
+        return isFlagSet(FLAG_ENDS_WITH_DOLLAR);
+    }
+
+    public void setEndsWithDollar() {
+        setEndsWithDollar(true);
+    }
+
+    public void setEndsWithDollar(boolean endsWithDollar) {
+        setFlag(FLAG_ENDS_WITH_DOLLAR, endsWithDollar);
+    }
+
+    /**
+     * Subexpression contains {@link Group#isLoop() loops}.
+     */
+    public boolean hasLoops() {
+        return isFlagSet(FLAG_HAS_LOOPS);
+    }
+
+    public void setHasLoops() {
+        setHasLoops(true);
+    }
+
+    public void setHasLoops(boolean hasLoops) {
+        setFlag(FLAG_HAS_LOOPS, hasLoops);
+    }
+
+    /**
+     * Subexpression contains {@link QuantifiableTerm#hasNotUnrolledQuantifier() not unrolled
+     * quantifiers}.
+     */
+    public boolean hasQuantifiers() {
+        return isFlagSet(FLAG_HAS_QUANTIFIERS);
+    }
+
+    public void setHasQuantifiers() {
+        setFlag(FLAG_HAS_QUANTIFIERS, true);
+    }
+
+    /**
+     * Subexpression contains {@link Group#isCapturing() capturing groups}.
+     */
+    public boolean hasCaptureGroups() {
+        return isFlagSet(FLAG_HAS_CAPTURE_GROUPS);
+    }
+
+    public void setHasCaptureGroups() {
+        setFlag(FLAG_HAS_CAPTURE_GROUPS, true);
+    }
+
+    /**
+     * Subexpression contains {@link #isLookAheadAssertion() look-ahead assertions}.
+     */
+    public boolean hasLookAheads() {
+        return isFlagSet(FLAG_HAS_LOOK_AHEADS);
+    }
+
+    public void setHasLookAheads() {
+        setFlag(FLAG_HAS_LOOK_AHEADS, true);
+    }
+
+    /**
+     * Subexpression contains {@link #isLookBehindAssertion() look-behind assertions}.
+     */
+    public boolean hasLookBehinds() {
+        return isFlagSet(FLAG_HAS_LOOK_BEHINDS);
+    }
+
+    public void setHasLookBehinds() {
+        setFlag(FLAG_HAS_LOOK_BEHINDS, true);
+    }
+
+    /**
+     * Subexpression contains {@link #isBackReference() back-references}.
+     */
+    public boolean hasBackReferences() {
+        return isFlagSet(FLAG_HAS_BACK_REFERENCES);
+    }
+
+    public void setHasBackReferences() {
+        setFlag(FLAG_HAS_BACK_REFERENCES, true);
+    }
+
+    /**
+     * Indicates whether this {@link RegexASTNode} was inserted into the AST as the result of
+     * expanding quantifier syntax (*, +, ?, {n,m}).
+     *
+     * E.g., if A is some term, then:
+     * <ul>
+     * <li>A* is expanded as (A|)*
+     * <li>A*? is expanded as (|A)*
+     * <li>A+ is expanded as A(A|)*
+     * <li>A+? is expanded as A(|A)*
+     * <li>A? is expanded as (A|)
+     * <li>A?? is expanded as (|A)
+     * <li>A{2,4} is expanded as AA(A|)(A|)
+     * <li>A{2,4}? is expanded as AA(|A)(|A)
+     * </ul>
+     * where (X|Y) is a group with alternatives X and Y and (X|Y)* is a looping group with
+     * alternatives X and Y. In the examples above, all of the occurrences of A in the expansions as
+     * well as the additional empty {@link Sequence}s would be marked with this flag.
+     */
+    public boolean isExpandedQuantifier() {
+        return isFlagSet(FLAG_GROUP_EXPANDED_QUANTIFIER);
+    }
+
+    /**
+     * Marks this {@link RegexASTNode} as being inserted into the AST as part of expanding
+     * quantifier syntax (*, +, ?, {n,m}).
+     *
+     * @see #isExpandedQuantifier()
+     */
+    public void setExpandedQuantifier(boolean expandedQuantifier) {
+        setFlag(FLAG_GROUP_EXPANDED_QUANTIFIER, expandedQuantifier);
+    }
+
     public int getMinPath() {
         return minPath;
     }
 
     public void setMinPath(int n) {
-        minPath = (short) n;
+        minPath = n;
     }
 
     public void incMinPath() {
@@ -285,7 +396,7 @@ public abstract class RegexASTNode implements JsonConvertible {
     }
 
     public void setMaxPath(int n) {
-        maxPath = (short) n;
+        maxPath = n;
     }
 
     public void incMaxPath() {
@@ -320,6 +431,102 @@ public abstract class RegexASTNode implements JsonConvertible {
 
     protected static JsonValue astNodeId(RegexASTNode astNode) {
         return astNode == null ? Json.nullValue() : Json.val(astNode.id);
+    }
+
+    public boolean isBackReference() {
+        return this instanceof BackReference;
+    }
+
+    public boolean isCharacterClass() {
+        return this instanceof CharacterClass;
+    }
+
+    public boolean isGroup() {
+        return this instanceof Group;
+    }
+
+    public boolean isLookAroundAssertion() {
+        return this instanceof LookAroundAssertion;
+    }
+
+    public boolean isLookAheadAssertion() {
+        return this instanceof LookAheadAssertion;
+    }
+
+    public boolean isLookBehindAssertion() {
+        return this instanceof LookBehindAssertion;
+    }
+
+    public boolean isMatchFound() {
+        return this instanceof MatchFound;
+    }
+
+    public boolean isPositionAssertion() {
+        return this instanceof PositionAssertion;
+    }
+
+    public boolean isQuantifiableTerm() {
+        return this instanceof QuantifiableTerm;
+    }
+
+    public boolean isRoot() {
+        return this instanceof RegexASTRootNode;
+    }
+
+    public boolean isSubtreeRoot() {
+        return this instanceof RegexASTSubtreeRootNode;
+    }
+
+    public boolean isSequence() {
+        return this instanceof Sequence;
+    }
+
+    public boolean isCaret() {
+        return isPositionAssertion() && asPositionAssertion().isCaret();
+    }
+
+    public boolean isDollar() {
+        return isPositionAssertion() && asPositionAssertion().isDollar();
+    }
+
+    public BackReference asBackReference() {
+        return (BackReference) this;
+    }
+
+    public CharacterClass asCharacterClass() {
+        return (CharacterClass) this;
+    }
+
+    public Group asGroup() {
+        return (Group) this;
+    }
+
+    public LookAroundAssertion asLookAroundAssertion() {
+        return (LookAroundAssertion) this;
+    }
+
+    public LookAheadAssertion asLookAheadAssertion() {
+        return (LookAheadAssertion) this;
+    }
+
+    public LookBehindAssertion asLookBehindAssertion() {
+        return (LookBehindAssertion) this;
+    }
+
+    public MatchFound asMatchFound() {
+        return (MatchFound) this;
+    }
+
+    public PositionAssertion asPositionAssertion() {
+        return (PositionAssertion) this;
+    }
+
+    public QuantifiableTerm asQuantifiableTerm() {
+        return (QuantifiableTerm) this;
+    }
+
+    public Sequence asSequence() {
+        return (Sequence) this;
     }
 
     protected JsonObject toJson(String typeName) {

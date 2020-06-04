@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,7 +43,7 @@ import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValueNodeUtil;
 import org.graalvm.compiler.nodes.memory.MemoryAccess;
-import org.graalvm.compiler.nodes.memory.MemoryNode;
+import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
@@ -62,7 +62,7 @@ import jdk.vm.ci.meta.Value;
 /**
  * Compares two arrays with the same length.
  */
-@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_128)
+@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_128, allowedUsageTypes = {Memory})
 public final class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable, Virtualizable, MemoryAccess {
 
     public static final NodeClass<ArrayEqualsNode> TYPE = NodeClass.create(ArrayEqualsNode.class);
@@ -78,7 +78,7 @@ public final class ArrayEqualsNode extends FixedWithNextNode implements LIRLower
     /** Length of both arrays. */
     @Input ValueNode length;
 
-    @OptionalInput(Memory) MemoryNode lastLocationAccess;
+    @OptionalInput(Memory) MemoryKill lastLocationAccess;
 
     public ArrayEqualsNode(ValueNode array1, ValueNode array2, ValueNode length, @ConstantNodeParameter JavaKind kind) {
         super(TYPE, StampFactory.forKind(JavaKind.Boolean));
@@ -242,12 +242,12 @@ public final class ArrayEqualsNode extends FixedWithNextNode implements LIRLower
     }
 
     @Override
-    public MemoryNode getLastLocationAccess() {
+    public MemoryKill getLastLocationAccess() {
         return lastLocationAccess;
     }
 
     @Override
-    public void setLastLocationAccess(MemoryNode lla) {
+    public void setLastLocationAccess(MemoryKill lla) {
         updateUsages(ValueNodeUtil.asNode(lastLocationAccess), ValueNodeUtil.asNode(lla));
         lastLocationAccess = lla;
     }

@@ -42,7 +42,7 @@ package com.oracle.truffle.regex.tregex.nfa;
 
 import com.oracle.truffle.regex.tregex.automaton.SimpleStateIndex;
 
-public class PureNFAIndex extends SimpleStateIndex<PureNFA> {
+public final class PureNFAIndex extends SimpleStateIndex<PureNFA> {
 
     private static final PureNFAIndex EMPTY_INSTANCE = new PureNFAIndex(0);
 
@@ -55,11 +55,11 @@ public class PureNFAIndex extends SimpleStateIndex<PureNFA> {
     }
 
     @Override
-    protected short getStateId(PureNFA state) {
+    protected int getStateId(PureNFA state) {
         return state.getSubTreeId();
     }
 
     @Override
-    protected void setStateId(PureNFA state, short id) {
+    protected void setStateId(PureNFA state, int id) {
     }
 }

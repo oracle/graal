@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,6 +33,10 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.llvm.api.Toolchain;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
 public final class ToolchainImpl implements Toolchain {
 
     private final ToolchainConfig toolchainConfig;
@@ -53,7 +57,7 @@ public final class ToolchainImpl implements Toolchain {
             return null;
         }
 
-        final TruffleFile binPrefix = getRoot().resolve("bin");
+        final TruffleFile binPrefix = getWrappersRoot().resolve("bin");
         switch (tool) {
             case "PATH":
                 return binPrefix;
@@ -80,12 +84,43 @@ public final class ToolchainImpl implements Toolchain {
         }
     }
 
-    protected TruffleFile getRoot() {
+    @Override
+    public List<TruffleFile> getPaths(String pathName) {
+        if (toolchainConfig == null) {
+            return null;
+        }
+
+        switch (pathName) {
+            case "PATH":
+                return Collections.unmodifiableList(Arrays.asList(getWrappersRoot().resolve("bin")));
+            case "LD_LIBRARY_PATH":
+                return Collections.unmodifiableList(Arrays.asList(getSysroot().resolve("lib")));
+            default:
+                return null;
+        }
+    }
+
+    /**
+     * Returns the directory where the toolchain wrappers live.
+     *
+     * Usually this is the same as {@link #getSysroot}, but for the bootstrap toolchain the wrappers
+     * are in a different location.
+     */
+    private TruffleFile getWrappersRoot() {
         TruffleLanguage.Env env = LLVMLanguage.getContext().getEnv();
         String toolchainRoot = toolchainConfig.getToolchainRootOverride();
         return toolchainRoot != null //
                         ? env.getInternalTruffleFile(toolchainRoot)
-                        : env.getInternalTruffleFile(language.getLLVMLanguageHome()).resolve(toolchainConfig.getToolchainSubdir());
+                        : getSysroot();
+    }
+
+    /**
+     * Returns the "sysroot" of the toolchain. That is the directory where the toolchain specific
+     * header files an libraries are located.
+     */
+    private TruffleFile getSysroot() {
+        TruffleLanguage.Env env = LLVMLanguage.getContext().getEnv();
+        return env.getInternalTruffleFile(language.getLLVMLanguageHome()).resolve(toolchainConfig.getToolchainSubdir());
     }
 
     @Override

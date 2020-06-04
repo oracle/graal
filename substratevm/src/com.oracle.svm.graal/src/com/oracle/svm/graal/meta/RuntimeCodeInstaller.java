@@ -328,7 +328,7 @@ public class RuntimeCodeInstaller {
         assert !adjuster.isFinished() || codeInfoEncoder.verifyFrameInfo(runtimeMethodInfo);
 
         DeoptimizationSourcePositionEncoder sourcePositionEncoder = new DeoptimizationSourcePositionEncoder();
-        sourcePositionEncoder.encodeAndInstall(compilation.getDeoptimizationSourcePositions(), runtimeMethodInfo);
+        sourcePositionEncoder.encodeAndInstall(compilation.getDeoptimizationSourcePositions(), runtimeMethodInfo, adjuster);
     }
 
     private void patchData(Map<Integer, NativeImagePatcher> patcher, @SuppressWarnings("unused") ObjectConstantsHolder objectConstants) {

@@ -44,42 +44,38 @@ import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 
+/**
+ * Calculates possible entry points of look-behind assertions in their parent {@link PureNFA}. Work
+ * in progress.
+ */
 public class PureNFAMarkLookBehindEntries {
 
     private final PureNFAMap nfa;
-    private StateSet<LookBehindAssertion> allReferencedInState;
 
-    private StateSet<PureNFAState> markLiteralStatesCur;
-    private StateSet<PureNFAState> markLiteralStatesNext;
+    private StateSet<PureNFA, PureNFAState> markLiteralStatesCur;
+    private StateSet<PureNFA, PureNFAState> markLiteralStatesNext;
 
     public PureNFAMarkLookBehindEntries(PureNFAMap nfa) {
         this.nfa = nfa;
         markLiteralStatesCur = StateSet.create(nfa.getRoot());
         markLiteralStatesNext = StateSet.create(nfa.getRoot());
-        allReferencedInState = StateSet.create(nfa.getAst().getLookBehinds());
     }
 
     public void markEntries() {
-        for (PureNFA subTree : nfa.getLookAheads()) {
-            markEntriesInSubtree(subTree, false);
+        if (!nfa.getAst().getProperties().hasLookBehindAssertions()) {
+            return;
         }
-        for (PureNFA subTree : nfa.getLookBehinds()) {
+        for (PureNFA subTree : nfa.getLookArounds()) {
             markEntriesInSubtree(subTree, false);
         }
         markEntriesInSubtree(nfa.getRoot(), true);
     }
 
     private void markEntriesInSubtree(PureNFA subtree, boolean subtreeIsRoot) {
-        if (!subtree.hasLookBehinds()) {
-            return;
-        }
         for (PureNFAState s : subtree.getStates()) {
-            allReferencedInState.clear();
-            for (PureNFATransition t : s.getSuccessors()) {
-                allReferencedInState.addAll(t.getTraversedLookBehinds());
-            }
-            for (LookBehindAssertion lb : allReferencedInState) {
-                PureNFA lookBehindNFA = nfa.getLookBehinds().get(lb.getSubTreeId());
+            if (s.isLookBehind(nfa.getAst())) {
+                LookBehindAssertion lb = (LookBehindAssertion) s.getAstNode(nfa.getAst());
+                PureNFA lookBehindNFA = nfa.getLookArounds().get(lb.getSubTreeId());
                 if (subtreeIsRoot && lb.getGroup().isLiteral()) {
                     markLiteral(s, lookBehindNFA);
                 } else {
@@ -94,6 +90,7 @@ public class PureNFAMarkLookBehindEntries {
      * nodes.
      */
     private void markLiteral(PureNFAState parentState, PureNFA lb) {
+        // TODO: handle look-around and back-reference states
         PureNFAState lbChar = lb.getReverseUnAnchoredEntry().getSource();
         markLiteralStatesCur.clear();
         markLiteralStatesCur.add(parentState);
@@ -123,12 +120,12 @@ public class PureNFAMarkLookBehindEntries {
                     if (prevLBState.isAnchoredInitialState()) {
                         for (PureNFATransition curTransition : cur.getPredecessors()) {
                             if (curTransition.getSource().isInitialState()) {
-                                cur.addLookBehindEntry(nfa.getLookBehinds(), lb);
+                                addLookBehindEntry(cur, lb);
                                 break;
                             }
                         }
                     } else if (prevLBState.isUnAnchoredInitialState()) {
-                        cur.addLookBehindEntry(nfa.getLookBehinds(), lb);
+                        addLookBehindEntry(cur, lb);
                     } else {
                         for (PureNFATransition curTransition : cur.getPredecessors()) {
                             markLiteralStatesNext.add(curTransition.getSource());
@@ -136,7 +133,7 @@ public class PureNFAMarkLookBehindEntries {
                     }
                 }
             }
-            StateSet<PureNFAState> tmp = markLiteralStatesCur;
+            StateSet<PureNFA, PureNFAState> tmp = markLiteralStatesCur;
             markLiteralStatesCur = markLiteralStatesNext;
             markLiteralStatesNext = tmp;
         }
@@ -144,6 +141,11 @@ public class PureNFAMarkLookBehindEntries {
 
     @SuppressWarnings("unused")
     private void markGeneric(PureNFAState s, PureNFA lookBehindNFA) {
+        throw new UnsupportedRegexException("not implemented", nfa.getAst().getSource());
+    }
+
+    @SuppressWarnings("unused")
+    private void addLookBehindEntry(PureNFAState state, PureNFA lookBehind) {
         throw new UnsupportedRegexException("not implemented", nfa.getAst().getSource());
     }
 }

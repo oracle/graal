@@ -26,6 +26,7 @@ package com.oracle.truffle.tools.profiler;
 
 import java.io.Closeable;
 import java.lang.ref.ReferenceQueue;
+import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -38,21 +39,23 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import com.oracle.truffle.api.TruffleContext;
-import com.oracle.truffle.api.instrumentation.ContextsListener;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.instrumentation.AllocationEvent;
 import com.oracle.truffle.api.instrumentation.AllocationEventFilter;
 import com.oracle.truffle.api.instrumentation.AllocationListener;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
+import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.tools.profiler.impl.HeapMonitorInstrument;
-import java.lang.ref.WeakReference;
 
 /**
  * Implementation of a heap allocation monitor for
@@ -74,6 +77,7 @@ public final class HeapMonitor implements Closeable {
 
     private static final long CLEAN_INTERVAL = 200;
     private static final ThreadLocal<Boolean> RECURSIVE = ThreadLocal.withInitial(() -> Boolean.FALSE);
+    private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
     private final TruffleInstrument.Env env;
 
@@ -389,14 +393,18 @@ public final class HeapMonitor implements Closeable {
             if (!recursive) { // recursive objects should still be registered
                 RECURSIVE.set(Boolean.TRUE);
                 try {
-                    Object metaObject = env.findMetaObject(language, value);
-                    if (metaObject != null) {
-                        String toString = env.toString(language, metaObject);
-                        if (toString != null) {
-                            return toString;
+                    Object view = env.getLanguageView(language, value);
+                    InteropLibrary viewLib = InteropLibrary.getFactory().getUncached(view);
+                    String metaObjectString = "Unknown";
+                    if (viewLib.hasMetaObject(view)) {
+                        try {
+                            metaObjectString = INTEROP.asString(INTEROP.getMetaQualifiedName(viewLib.getMetaObject(view)));
+                        } catch (UnsupportedMessageException e) {
+                            CompilerDirectives.transferToInterpreter();
+                            throw new AssertionError(e);
                         }
                     }
-                    return "Unknown";
+                    return metaObjectString;
                 } finally {
                     RECURSIVE.set(Boolean.FALSE);
                 }

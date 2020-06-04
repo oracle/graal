@@ -46,6 +46,7 @@ import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.buffer.CharArrayBuffer;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
@@ -67,11 +68,11 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
  * by {@link RegexParser} into a more complex expression which matches the individual code units
  * that would make up the UTF-16 encoding of those characters.
  */
-public class CharacterClass extends Term {
+public class CharacterClass extends QuantifiableTerm {
 
     private CodePointSet charSet;
     // look-behind groups which might match the same character as this CharacterClass node
-    private StateSet<LookBehindAssertion> lookBehindEntries;
+    private StateSet<LookAroundIndex, LookBehindAssertion> lookBehindEntries;
 
     /**
      * Creates a new {@link CharacterClass} node which matches the set of characters specified by
@@ -120,9 +121,14 @@ public class CharacterClass extends Term {
         setFlag(FLAG_CHARACTER_CLASS_WAS_SINGLE_CHAR, value);
     }
 
+    @Override
+    public boolean isUnrollingCandidate() {
+        return hasQuantifier() && getQuantifier().isWithinThreshold(TRegexOptions.TRegexQuantifierUnrollThresholdSingleCC);
+    }
+
     public void addLookBehindEntry(RegexAST ast, LookBehindAssertion lookBehindEntry) {
         if (lookBehindEntries == null) {
-            lookBehindEntries = StateSet.create(ast.getLookBehinds());
+            lookBehindEntries = StateSet.create(ast.getLookArounds());
         }
         lookBehindEntries.add(lookBehindEntry);
     }
@@ -144,30 +150,34 @@ public class CharacterClass extends Term {
     }
 
     public void extractSingleChar(CharArrayBuffer literal, CharArrayBuffer mask) {
-        CodePointSet c = charSet;
-        char c1 = (char) c.getLo(0);
-        if (c.matches2CharsWith1BitDifference()) {
-            int c2 = c.size() == 1 ? c.getHi(0) : c.getLo(1);
+        if (charSet.matchesSingleChar()) {
+            int first = charSet.getMin();
+            assert first <= Character.MAX_VALUE;
+            literal.add((char) first);
+            mask.add((char) 0);
+        } else {
+            assert charSet.matches2CharsWith1BitDifference();
+            int c1 = charSet.getMin();
+            int c2 = charSet.getMax();
+            assert c2 <= Character.MAX_VALUE;
             literal.add((char) (c1 | c2));
             mask.add((char) (c1 ^ c2));
-        } else {
-            assert c.matchesSingleChar();
-            literal.add(c1);
-            mask.add((char) 0);
         }
     }
 
     public void extractSingleChar(char[] literal, char[] mask, int i) {
-        CodePointSet c = charSet;
-        char c1 = (char) c.getLo(0);
-        if (c.matches2CharsWith1BitDifference()) {
-            int c2 = c.size() == 1 ? c.getHi(0) : c.getLo(1);
+        if (charSet.matchesSingleChar()) {
+            int first = charSet.getMin();
+            assert first <= Character.MAX_VALUE;
+            literal[i] = (char) first;
+            mask[i] = (char) 0;
+        } else {
+            assert charSet.matches2CharsWith1BitDifference();
+            int c1 = charSet.getMin();
+            int c2 = charSet.getMax();
+            assert c2 <= Character.MAX_VALUE;
             literal[i] = (char) (c1 | c2);
             mask[i] = (char) (c1 ^ c2);
-        } else {
-            assert c.matchesSingleChar();
-            literal[i] = c1;
-            mask[i] = (char) 0;
         }
     }
 

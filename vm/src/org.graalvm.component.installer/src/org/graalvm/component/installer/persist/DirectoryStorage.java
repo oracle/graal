@@ -29,6 +29,7 @@ import java.io.FileFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.StringWriter;
 import java.io.UncheckedIOException;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -264,16 +265,29 @@ public class DirectoryStorage implements ManagementStorage {
         }
     }
 
+    private static String computeTag(Properties data) throws IOException {
+        try (StringWriter wr = new StringWriter()) {
+            data.store(wr, "");
+            // properties store date/time into the stream as a comment. Cannot be disabled
+            // programmatically,
+            // must filter out.
+            return SystemUtils.digestString(wr.toString().replaceAll("#.*\n", ""), false); // NOI18N
+        }
+    }
+
     ComponentInfo loadMetadataFrom(InputStream fileStream) throws IOException {
-        // XX clear 'loaded' field once the loading is over
         loaded = new Properties();
         loaded.load(fileStream);
 
+        String serial = loaded.getProperty(BundleConstants.BUNDLE_SERIAL);
+        if (serial == null) {
+            serial = computeTag(loaded);
+        }
         String id = getRequiredProperty(BundleConstants.BUNDLE_ID);
         String name = getRequiredProperty(BundleConstants.BUNDLE_NAME);
         String version = getRequiredProperty(BundleConstants.BUNDLE_VERSION);
 
-        return propertiesToMeta(loaded, new ComponentInfo(id, name, version), feedback);
+        return propertiesToMeta(loaded, new ComponentInfo(id, name, version, serial), feedback);
     }
 
     public static ComponentInfo propertiesToMeta(Properties loaded, ComponentInfo ci, Feedback fb) {
@@ -525,6 +539,10 @@ public class DirectoryStorage implements ManagementStorage {
         p.setProperty(BundleConstants.BUNDLE_ID, info.getId());
         p.setProperty(BundleConstants.BUNDLE_NAME, info.getName());
         p.setProperty(BundleConstants.BUNDLE_VERSION, info.getVersionString());
+        String s = info.getTag();
+        if (s != null && !s.isEmpty()) {
+            p.setProperty(BundleConstants.BUNDLE_SERIAL, s);
+        }
         if (info.getLicensePath() != null) {
             p.setProperty(BundleConstants.BUNDLE_LICENSE_PATH, info.getLicensePath());
         }

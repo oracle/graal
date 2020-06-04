@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,10 +30,13 @@
 package com.oracle.truffle.llvm.runtime.nodes.memory.store;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDerefHandleGetReceiverNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -55,14 +58,17 @@ public abstract class LLVMStructStoreNode extends LLVMStoreNodeCommon {
         // nothing to do
     }
 
-    @Specialization(guards = {"getStructSize() > 0", "!isAutoDerefHandle(address)", "!isAutoDerefHandle(value)"})
-    protected void doOp(LLVMNativePointer address, LLVMNativePointer value) {
+    @Specialization(guards = {"getStructSize() > 0", "!isAutoDerefHandle(language, address)", "!isAutoDerefHandle(language, value)"})
+    protected void doOp(LLVMNativePointer address, LLVMNativePointer value,
+                    @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language) {
         memMove.executeWithTarget(address, value, getStructSize());
     }
 
-    @Specialization(guards = {"getStructSize() > 0", "isAutoDerefHandle(addr)", "isAutoDerefHandle(value)"})
-    protected void doOpDerefHandle(LLVMNativePointer addr, LLVMNativePointer value) {
-        doManaged(getDerefHandleGetReceiverNode().execute(addr), getDerefHandleGetReceiverNode().execute(value));
+    @Specialization(guards = {"getStructSize() > 0", "isAutoDerefHandle(language, addr)", "isAutoDerefHandle(language, value)"})
+    protected void doOpDerefHandle(LLVMNativePointer addr, LLVMNativePointer value,
+                    @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
+                    @Cached LLVMDerefHandleGetReceiverNode getReceiver) {
+        doManaged(getReceiver.execute(addr), getReceiver.execute(value));
     }
 
     @Specialization(guards = "getStructSize() > 0")
@@ -70,8 +76,9 @@ public abstract class LLVMStructStoreNode extends LLVMStoreNodeCommon {
         memMove.executeWithTarget(address, value, getStructSize());
     }
 
-    @Specialization(guards = {"getStructSize() > 0", "!isAutoDerefHandle(address)"}, replaces = "doOp")
+    @Specialization(guards = {"getStructSize() > 0", "!isAutoDerefHandle(language, address)"}, replaces = "doOp")
     protected void doConvert(LLVMNativePointer address, LLVMPointer value,
+                    @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative) {
         memMove.executeWithTarget(address, toNative.executeWithTarget(value), getStructSize());
     }

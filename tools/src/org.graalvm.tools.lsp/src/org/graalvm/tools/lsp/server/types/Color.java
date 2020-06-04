@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,12 +29,10 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 /**
  * Represents a color in RGBA space.
  */
-public class Color {
-
-    final JSONObject jsonData;
+public class Color extends JSONBase {
 
     Color(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -95,10 +93,10 @@ public class Color {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 79 * hash + Double.hashCode(this.getRed());
-        hash = 79 * hash + Double.hashCode(this.getGreen());
-        hash = 79 * hash + Double.hashCode(this.getBlue());
-        hash = 79 * hash + Double.hashCode(this.getAlpha());
+        hash = 23 * hash + Double.hashCode(this.getRed());
+        hash = 23 * hash + Double.hashCode(this.getGreen());
+        hash = 23 * hash + Double.hashCode(this.getBlue());
+        hash = 23 * hash + Double.hashCode(this.getAlpha());
         return hash;
     }
 

@@ -65,6 +65,7 @@ import javax.lang.model.util.Types;
 
 import com.oracle.truffle.dsl.processor.AnnotationProcessor;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.GeneratorMode;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
@@ -277,7 +278,7 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
             return Arrays.asList(type);
         }
 
-        type = new FlatNodeGenFactory(context, node, libraryConstants).create(type);
+        type = new FlatNodeGenFactory(context, GeneratorMode.DEFAULT, node, libraryConstants).create(type);
 
         return Arrays.asList(type);
     }

@@ -62,6 +62,7 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
     private volatile OptionValuesImpl optionValues;
     private volatile boolean initialized;
     private volatile boolean created;
+    int requestedAsyncStackDepth = 0;
 
     PolyglotInstrument(PolyglotEngineImpl engine, InstrumentCache cache) {
         super(engine.impl);
@@ -168,7 +169,7 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
                 ensureCreated();
             } catch (Throwable t) {
                 if (wrapExceptions) {
-                    throw PolyglotImpl.wrapGuestException(engine, t);
+                    throw PolyglotImpl.guestToHostException(engine, t);
                 } else {
                     throw t;
                 }

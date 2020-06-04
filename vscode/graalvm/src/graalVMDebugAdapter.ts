@@ -107,7 +107,7 @@ export class GraalVMDebugAdapter extends ChromeDebugAdapter {
             }
         }
 
-        if (runtimeArgs.indexOf('--lsp') >= 0) {
+        if (runtimeArgs.find(arg => arg.startsWith('--lsp'))) {
             this._killChildProcess = false;
         }
 

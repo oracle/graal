@@ -69,6 +69,12 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         this.wordTypes = wordTypes;
     }
 
+    @Override
+    protected void run(StructuredGraph graph) {
+        super.run(graph);
+        assert wordTypes == null || wordTypes.ensureGraphContainsNoWordTypeReferences(graph);
+    }
+
     public abstract static class SharedBytecodeParser extends BytecodeParser {
 
         private final boolean explicitExceptionEdges;
@@ -111,12 +117,22 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             return result;
         }
 
+        /**
+         * Native image can suffer high contention when synchronizing resolution and initialization
+         * of a type referenced by a constant pool entry. Such synchronization should be unnecessary
+         * for native-image.
+         */
+        @Override
+        protected Object loadReferenceTypeLock() {
+            return null;
+        }
+
         @Override
         protected void maybeEagerlyResolve(int cpi, int bytecode) {
             try {
                 super.maybeEagerlyResolve(cpi, bytecode);
             } catch (UnresolvedElementException e) {
-                if (e.getCause() instanceof NoClassDefFoundError) {
+                if (e.getCause() instanceof NoClassDefFoundError || e.getCause() instanceof IllegalAccessError) {
                     /*
                      * Ignore NoClassDefFoundError if thrown from eager resolution attempt. This is
                      * usually followed by a call to ConstantPool.lookupType() which should return

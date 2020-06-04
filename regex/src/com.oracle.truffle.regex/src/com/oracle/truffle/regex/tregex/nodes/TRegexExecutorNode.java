@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -73,7 +73,18 @@ public abstract class TRegexExecutorNode extends Node {
         return root.inputCharAt(locals.getInput(), index);
     }
 
+    protected int getNumberOfCaptureGroups() {
+        assert root != null;
+        return root.getNumberOfCaptureGroups();
+    }
+
+    /**
+     * Returns {@code true} if this executor may write any new capture group boundaries.
+     */
+    public abstract boolean writesCaptureGroups();
+
     public abstract TRegexExecutorLocals createLocals(Object input, int fromIndex, int index, int maxIndex);
 
     public abstract Object execute(TRegexExecutorLocals locals, boolean compactString);
+
 }

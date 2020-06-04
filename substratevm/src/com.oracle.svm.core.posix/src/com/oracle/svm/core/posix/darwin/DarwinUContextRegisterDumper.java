@@ -24,16 +24,16 @@
  */
 package com.oracle.svm.core.posix.darwin;
 
+import static com.oracle.svm.core.RegisterDumper.dumpReg;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.RegisterDumper;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.graal.amd64.SubstrateAMD64RegisterConfig;
@@ -52,7 +52,7 @@ class DarwinUContextRegisterDumperFeature implements Feature {
     public void afterRegistration(AfterRegistrationAccess access) {
         VMError.guarantee(AMD64.r14.equals(SubstrateAMD64RegisterConfig.HEAP_BASE_REGISTER_CANDIDATE));
         VMError.guarantee(AMD64.r15.equals(SubstrateAMD64RegisterConfig.THREAD_REGISTER_CANDIDATE));
-        ImageSingletons.add(UContextRegisterDumper.class, new DarwinUContextRegisterDumper());
+        ImageSingletons.add(RegisterDumper.class, new DarwinUContextRegisterDumper());
     }
 }
 
@@ -60,54 +60,49 @@ class DarwinUContextRegisterDumper implements UContextRegisterDumper {
     @Override
     public void dumpRegisters(Log log, ucontext_t uContext) {
         Signal.MContext64 sigcontext = uContext.uc_mcontext64();
-
-        log.indent(true);
-        long spValue = readRegisterAt(sigcontext, sigcontext.rsp_offset());
-        long ipValue = readRegisterAt(sigcontext, sigcontext.rip_offset());
-
-        log.newline().string("General Purpose Register Set Values: ").newline();
-
-        log.indent(true);
-        log.string("RAX ").zhex(readRegisterAt(sigcontext, sigcontext.rax_offset())).newline();
-        log.string("RBX ").zhex(readRegisterAt(sigcontext, sigcontext.rbx_offset())).newline();
-        log.string("RCX ").zhex(readRegisterAt(sigcontext, sigcontext.rcx_offset())).newline();
-        log.string("RDX ").zhex(readRegisterAt(sigcontext, sigcontext.rdx_offset())).newline();
-        log.string("RBP ").zhex(readRegisterAt(sigcontext, sigcontext.rbx_offset())).newline();
-        log.string("RSI ").zhex(readRegisterAt(sigcontext, sigcontext.rsi_offset())).newline();
-        log.string("RDI ").zhex(readRegisterAt(sigcontext, sigcontext.rdi_offset())).newline();
-        log.string("RSP ").zhex(spValue).newline();
-        log.string("R8 ").zhex(readRegisterAt(sigcontext, sigcontext.r8_offset())).newline();
-        log.string("R9 ").zhex(readRegisterAt(sigcontext, sigcontext.r9_offset())).newline();
-        log.string("R10 ").zhex(readRegisterAt(sigcontext, sigcontext.r10_offset())).newline();
-        log.string("R11 ").zhex(readRegisterAt(sigcontext, sigcontext.r11_offset())).newline();
-        log.string("R12 ").zhex(readRegisterAt(sigcontext, sigcontext.r12_offset())).newline();
-        log.string("R13 ").zhex(readRegisterAt(sigcontext, sigcontext.r13_offset())).newline();
-        log.string("R14 ").zhex(readRegisterAt(sigcontext, sigcontext.r14_offset())).newline();
-        log.string("R15 ").zhex(readRegisterAt(sigcontext, sigcontext.r15_offset())).newline();
-        log.string("EFL ").zhex(readRegisterAt(sigcontext, sigcontext.efl_offset())).newline();
-        log.string("RIP ").zhex(ipValue).newline();
-        log.indent(false);
-
-        SubstrateUtil.printDiagnostics(log, WordFactory.pointer(spValue), WordFactory.pointer(ipValue));
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
-    private static long readRegisterAt(Signal.MContext64 sigcontext, int i) {
-        return ((CLongPointer) ((CCharPointer) sigcontext).addressOf(i)).read();
+        dumpReg(log, "RAX ", ((Pointer) sigcontext).readLong(sigcontext.rax_offset()));
+        dumpReg(log, "RBX ", ((Pointer) sigcontext).readLong(sigcontext.rbx_offset()));
+        dumpReg(log, "RCX ", ((Pointer) sigcontext).readLong(sigcontext.rcx_offset()));
+        dumpReg(log, "RDX ", ((Pointer) sigcontext).readLong(sigcontext.rdx_offset()));
+        dumpReg(log, "RBP ", ((Pointer) sigcontext).readLong(sigcontext.rbp_offset()));
+        dumpReg(log, "RSI ", ((Pointer) sigcontext).readLong(sigcontext.rsi_offset()));
+        dumpReg(log, "RDI ", ((Pointer) sigcontext).readLong(sigcontext.rdi_offset()));
+        dumpReg(log, "RSP ", ((Pointer) sigcontext).readLong(sigcontext.rsp_offset()));
+        dumpReg(log, "R8  ", ((Pointer) sigcontext).readLong(sigcontext.r8_offset()));
+        dumpReg(log, "R9  ", ((Pointer) sigcontext).readLong(sigcontext.r9_offset()));
+        dumpReg(log, "R10 ", ((Pointer) sigcontext).readLong(sigcontext.r10_offset()));
+        dumpReg(log, "R11 ", ((Pointer) sigcontext).readLong(sigcontext.r11_offset()));
+        dumpReg(log, "R12 ", ((Pointer) sigcontext).readLong(sigcontext.r12_offset()));
+        dumpReg(log, "R13 ", ((Pointer) sigcontext).readLong(sigcontext.r13_offset()));
+        dumpReg(log, "R14 ", ((Pointer) sigcontext).readLong(sigcontext.r14_offset()));
+        dumpReg(log, "R15 ", ((Pointer) sigcontext).readLong(sigcontext.r15_offset()));
+        dumpReg(log, "EFL ", ((Pointer) sigcontext).readLong(sigcontext.efl_offset()));
+        dumpReg(log, "RIP ", ((Pointer) sigcontext).readLong(sigcontext.rip_offset()));
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
     public PointerBase getHeapBase(ucontext_t uContext) {
         Signal.MContext64 sigcontext = uContext.uc_mcontext64();
-        return WordFactory.pointer(readRegisterAt(sigcontext, sigcontext.r14_offset()));
+        return ((Pointer) sigcontext).readWord(sigcontext.r14_offset());
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
     public PointerBase getThreadPointer(ucontext_t uContext) {
         Signal.MContext64 sigcontext = uContext.uc_mcontext64();
-        return WordFactory.pointer(readRegisterAt(sigcontext, sigcontext.r15_offset()));
+        return ((Pointer) sigcontext).readWord(sigcontext.r15_offset());
     }
 
+    @Override
+    public PointerBase getSP(ucontext_t uContext) {
+        Signal.MContext64 sigcontext = uContext.uc_mcontext64();
+        return ((Pointer) sigcontext).readWord(sigcontext.rsp_offset());
+    }
+
+    @Override
+    public PointerBase getIP(ucontext_t uContext) {
+        Signal.MContext64 sigcontext = uContext.uc_mcontext64();
+        return ((Pointer) sigcontext).readWord(sigcontext.rip_offset());
+    }
 }

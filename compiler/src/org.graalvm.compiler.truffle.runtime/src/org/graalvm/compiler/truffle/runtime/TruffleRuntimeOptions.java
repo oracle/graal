@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -138,7 +138,7 @@ public final class TruffleRuntimeOptions {
             if (hasBeenSet(values, key)) {
                 Object value = getPolyglotOptionValue(values, key);
                 if (!isPrimitiveType(value)) {
-                    value = CompilerRuntimeAccessor.engineAccessor().getUnparsedOptionValue(values, key);
+                    value = GraalRuntimeAccessor.ENGINE.getUnparsedOptionValue(values, key);
                 }
                 if (value != null) {
                     map.put(desc.getName(), value);

@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 #
 # Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
@@ -45,7 +45,7 @@
 # source file in the Graal.js code base. It collects data from the Unicode
 # database necessary for the support of Unicode property escapes in regular
 # expressions. In order to run this script, you need to make sure to have the
-# following Unicode data files in your working directory:
+# following Unicode data files in a folder called "dat" in your working directory:
 #   - ucd.nounihan.flat.xml (This is part of the Unicode in XML data files (UAX #42))
 #   - PropertyAliases.txt
 #   - PropertyValueAliases.txt
@@ -53,6 +53,9 @@
 
 import re
 import xml.etree.ElementTree as ET
+import os
+
+os.chdir('dat')
 
 # The abbreviated names of binary character properties required by ECMAScript.
 # All of these can be found in the Unicode Character Database
@@ -107,16 +110,17 @@ bin_props_xml = [
 # The names of binary Emoji properties defined in Unicode TR51.
 bin_props_emoji = [
     'Emoji',
-    'Emoji_Component',
-    'Emoji_Modifier_Base',
-    'Emoji_Modifier',
-    'Emoji_Presentation',
-    'Extended_Pictographic'
+    'EComp',  # Emoji_Component
+    'EBase',  # Emoji_Modifier_Base
+    'EMod',   # Emoji_Modifier
+    'EPres',  # Emoji_Presentation
+    'ExtPict' # Extended_Pictographic
 ]
 
 tracked_props = bin_props_xml + bin_props_emoji + ['gc', 'sc', 'scx']
 
 prop_contents = {}
+
 
 def add_code_points_to_property(code_points, prop_name):
     if prop_name in prop_contents:
@@ -124,48 +128,28 @@ def add_code_points_to_property(code_points, prop_name):
     else:
         prop_contents[prop_name] = code_points
 
+
 def add_xml_entry_to_property(entry, prop_name):
     if entry.get('first-cp'):
         first_code_point = int(entry.get('first-cp'), 16)
         last_code_point = int(entry.get('last-cp'), 16)
-        add_code_points_to_property(range(first_code_point, last_code_point + 1), prop_name)
+        add_code_points_to_property(list(range(first_code_point, last_code_point + 1)), prop_name)
     else:
         code_point = int(entry.get('cp'), 16)
         add_code_points_to_property([code_point], prop_name)
 
+
 def add_txt_entry_to_property(code_points_str, prop_name):
     if '..' in code_points_str:
         [first_code_point, last_code_point] = [int(cps, 16) for cps in code_points_str.split('..')]
-        add_code_points_to_property(range(first_code_point, last_code_point + 1), prop_name)
+        add_code_points_to_property(list(range(first_code_point, last_code_point + 1)), prop_name)
     else:
         code_point = int(code_points_str, 16)
         add_code_points_to_property([code_point], prop_name)
 
+
 def complement_property(prop):
-    return sorted(set(xrange(0, 0x110000)) - set(prop))
-
-
-## Parse XML
-
-tree = ET.parse('ucd.nounihan.flat.xml')
-root = tree.getroot()
-
-ns = {
-    'unicode': 'http://www.unicode.org/ns/2003/ucd/1.0'
-}
-
-for char_elem in root.find('unicode:repertoire', ns):
-    for bin_prop_name in bin_props_xml:
-        if char_elem.get(bin_prop_name) == 'Y':
-            add_xml_entry_to_property(char_elem, bin_prop_name)
-    add_xml_entry_to_property(char_elem, 'gc=' + char_elem.get('gc'))
-    add_xml_entry_to_property(char_elem, 'sc=' + char_elem.get('sc'))
-    for script in char_elem.get('scx').split():
-        add_xml_entry_to_property(char_elem, 'scx=' + script)
-
-
-
-## Parse Emoji data
+    return sorted(set(range(0, 0x110000)) - set(prop))
 
 def unicode_file_lines_without_comments(file_name):
     lines = []
@@ -176,24 +160,8 @@ def unicode_file_lines_without_comments(file_name):
                 lines.append(line)
     return lines
 
-for line in unicode_file_lines_without_comments('emoji-data.txt'):
-    [code_points_str, prop_name] = [x.strip() for x in line.split(';')]
-    add_txt_entry_to_property(code_points_str, prop_name)
 
-
-
-## Add special properties from Unicode TR18
-
-# The following properties are not defined in the Unicode character database. Their
-# definitions are given in Section 1.2.1. of Techinal Report 18
-# (http://www.unicode.org/reports/tr18/tr18-19.html#General_Category_Property).
-prop_contents['Any'] = xrange(0, 0x110000)
-prop_contents['ASCII'] = xrange(0, 0x80)
-prop_contents['Assigned'] = complement_property(prop_contents['gc=Cn'])
-
-
-
-## Parse aliases
+# Parse aliases
 
 prop_aliases = {}
 
@@ -204,12 +172,6 @@ for line in unicode_file_lines_without_comments('PropertyAliases.txt'):
     if short_name in tracked_props:
         for name in all_names:
             prop_aliases[name] = short_name
-
-# The Emoji character properties from TR51 are not included in the Unicode
-# character database's PropertyAliases.txt file and so add their names to the
-# alias table manually.
-for name in bin_props_emoji:
-    prop_aliases[name] = name
 
 # We also add the names of the properties from TR18 into the alias table.
 for name in ['Any', 'ASCII', 'Assigned']:
@@ -231,9 +193,45 @@ for line in unicode_file_lines_without_comments('PropertyValueAliases.txt'):
             sc_aliases[value_name] = short_value_name
 
 
+# Parse XML
 
-## Generate Java source code
+tree = ET.parse('ucd.nounihan.flat.xml')
+root = tree.getroot()
 
+ns = {
+    'unicode': 'http://www.unicode.org/ns/2003/ucd/1.0'
+}
+
+for char_elem in root.find('unicode:repertoire', ns):
+    for bin_prop_name in bin_props_xml:
+        if char_elem.get(bin_prop_name) == 'Y':
+            add_xml_entry_to_property(char_elem, bin_prop_name)
+    add_xml_entry_to_property(char_elem, 'gc=' + char_elem.get('gc'))
+    add_xml_entry_to_property(char_elem, 'sc=' + char_elem.get('sc'))
+    for script in char_elem.get('scx').split():
+        add_xml_entry_to_property(char_elem, 'scx=' + script)
+
+
+# Parse Emoji data
+
+
+for line in unicode_file_lines_without_comments('emoji-data.txt'):
+    [code_points_str, long_prop_name] = [x.strip() for x in line.split(';')]
+    short_prop_name = prop_aliases[long_prop_name]
+    add_txt_entry_to_property(code_points_str, short_prop_name)
+
+
+# Add special properties from Unicode TR18
+
+# The following properties are not defined in the Unicode character database. Their
+# definitions are given in Section 1.2.1. of Techinal Report 18
+# (http://www.unicode.org/reports/tr18/tr18-19.html#General_Category_Property).
+prop_contents['Any'] = range(0, 0x110000)
+prop_contents['ASCII'] = range(0, 0x80)
+prop_contents['Assigned'] = complement_property(prop_contents['gc=Cn'])
+
+
+# Generate Java source code
 def indent(text, spaces, skipFirst=False):
     def indent_line(line):
         if len(line.strip()) == 0:
@@ -248,12 +246,14 @@ def indent(text, spaces, skipFirst=False):
         indented = ''.join(map(indent_line, lines))
         return indented
 
+
 def int_to_java_hex_literal(i):
-    absolute = '0x%04x' % abs(i)
+    absolute = '0x%06x' % abs(i)
     if i < 0:
         return '-' + absolute
     else:
         return absolute
+
 
 def property_to_java_array_init(prop):
     ranges = []
@@ -273,14 +273,18 @@ def property_to_java_array_init(prop):
     for (range_start, range_end) in ranges:
         encoding.append(range_start)
         encoding.append(range_end)
+
     return 'CodePointSet.createNoDedup(%s)' % ', '.join(map(int_to_java_hex_literal, encoding))
+
 
 def aliases_to_java_initializer(map_name, aliases):
     return '\n'.join(['%s.put("%s", "%s");' % (map_name, long_name, short_name)
                       for (long_name, short_name) in sorted(aliases.items())])
 
+
 def mangle_prop_name(name):
     return name.upper().replace('=', '_')
+
 
 PROPERTY_ALIASES = aliases_to_java_initializer('PROPERTY_ALIASES', prop_aliases)
 
@@ -296,8 +300,8 @@ POPULATE_DEFS = '\n\n'.join(['''private static void populate%s() {
 }''' % (mangle_prop_name(name), name, property_to_java_array_init(prop))
                            for (name, prop) in sorted(prop_contents.items())])
 
-print '''/*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+print('''/*
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -372,4 +376,4 @@ class UnicodePropertyData {
 %s
 }''' % (len(prop_aliases), len(gc_aliases), len(sc_aliases), len(prop_contents),
         indent(PROPERTY_ALIASES, 8), indent(GENERAL_CATEGORY_ALIASES, 8), indent(SCRIPT_ALIASES, 8), indent(POPULATE_CALLS, 8),
-        indent(POPULATE_DEFS, 4))
+        indent(POPULATE_DEFS, 4)))

@@ -44,6 +44,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
 import java.util.concurrent.Callable;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import org.graalvm.polyglot.Context;
@@ -55,6 +56,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -67,6 +69,8 @@ import com.oracle.truffle.api.nodes.RootNode;
  * @see #setupEnv(Context, ProxyLanguage, ProxyInstrument)
  */
 public abstract class AbstractPolyglotTest {
+
+    protected static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
     protected Context context;
     protected TruffleLanguage.Env languageEnv;
@@ -193,6 +197,32 @@ public abstract class AbstractPolyglotTest {
             if (!exceptionType.isInstance(t)) {
                 throw new AssertionError("expected instanceof " + exceptionType.getName() + " was " + t.getClass().getName(), t);
             }
+            return;
+        }
+        fail("expected " + exceptionType.getName() + " but no exception was thrown");
+    }
+
+    public static <T extends Throwable> void assertFails(Runnable run, Class<T> exceptionType, Consumer<T> verifier) {
+        try {
+            run.run();
+        } catch (Throwable t) {
+            if (!exceptionType.isInstance(t)) {
+                throw new AssertionError("expected instanceof " + exceptionType.getName() + " was " + t.getClass().getName(), t);
+            }
+            verifier.accept(exceptionType.cast(t));
+            return;
+        }
+        fail("expected " + exceptionType.getName() + " but no exception was thrown");
+    }
+
+    public static <T extends Throwable> void assertFails(Callable<?> callable, Class<T> exceptionType, Consumer<T> verifier) {
+        try {
+            callable.call();
+        } catch (Throwable t) {
+            if (!exceptionType.isInstance(t)) {
+                throw new AssertionError("expected instanceof " + exceptionType.getName() + " was " + t.getClass().getName(), t);
+            }
+            verifier.accept(exceptionType.cast(t));
             return;
         }
         fail("expected " + exceptionType.getName() + " but no exception was thrown");

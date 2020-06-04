@@ -40,7 +40,150 @@
  */
 package com.oracle.truffle.regex.tregex.nfa;
 
-public class QuantifierGuard {
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.tregex.parser.Token.Quantifier;
 
-    public static final QuantifierGuard[] NO_GUARDS = new QuantifierGuard[0];
+/**
+ * Transition guards introduced by bounded {@link Quantifier}s.
+ */
+public final class QuantifierGuard {
+
+    public enum Kind {
+        /**
+         * Transition is entering a quantified expression. Just increase the loop count.
+         */
+        enter,
+        /**
+         * Transition represents a back-edge in the quantifier loop. Check if the loop count is
+         * below {@link Quantifier#getMax()}, then increase loop count.
+         */
+        loop,
+        /**
+         * Transition represents a back-edge in a quantifier loop without upper bound, i.e.
+         * quantifiers where {@link Quantifier#isInfiniteLoop()} is {@code true}. Just increase the
+         * loop count.
+         */
+        loopInc,
+        /**
+         * Transition is leaving a quantified expression. Check if the loop count is above
+         * {@link Quantifier#getMin()}, then reset the loop count.
+         */
+        exit,
+        /**
+         * Transition is leaving a quantified expression without lower bound, i.e. quantifiers where
+         * {@link Quantifier#getMin()} {@code == 0}. Just reset the loop count.
+         */
+        exitReset,
+        /**
+         * Transition is entering a quantified expression that may match the empty string. Save the
+         * current index.
+         */
+        enterZeroWidth,
+        /**
+         * Transition is leaving a quantified expression that may match the empty string. Check if
+         * the current index is greater than the saved index.
+         */
+        exitZeroWidth,
+        /**
+         * Transition would go through an entire quantified expression without matching anything.
+         * Check if quantifier count is less than {@link Quantifier#getMin()}, then increase the
+         * quantifier count. This guard is added to all transitions to the special
+         * {@link PureNFAState#isEmptyMatch() empty-match} state.
+         */
+        enterEmptyMatch,
+        /**
+         * Transition is leaving an {@link PureNFAState#isEmptyMatch() empty-match} state. This
+         * guard doesn't do anything, it just serves as a marker for
+         * {@link QuantifierGuard#getKindReverse()}.
+         */
+        exitEmptyMatch
+    }
+
+    public static final QuantifierGuard[] NO_GUARDS = {};
+
+    private final Kind kind;
+    private final Quantifier quantifier;
+
+    private QuantifierGuard(Kind kind, Quantifier quantifier) {
+        this.kind = kind;
+        this.quantifier = quantifier;
+    }
+
+    public static QuantifierGuard createEnter(Quantifier quantifier) {
+        return new QuantifierGuard(Kind.enter, quantifier);
+    }
+
+    public static QuantifierGuard createLoop(Quantifier quantifier) {
+        return new QuantifierGuard(Kind.loop, quantifier);
+    }
+
+    public static QuantifierGuard createLoopInc(Quantifier quantifier) {
+        return new QuantifierGuard(Kind.loopInc, quantifier);
+    }
+
+    public static QuantifierGuard createExit(Quantifier quantifier) {
+        return new QuantifierGuard(Kind.exit, quantifier);
+    }
+
+    public static QuantifierGuard createClear(Quantifier quantifier) {
+        return new QuantifierGuard(Kind.exitReset, quantifier);
+    }
+
+    public static QuantifierGuard createEnterZeroWidth(Quantifier quantifier) {
+        return new QuantifierGuard(Kind.enterZeroWidth, quantifier);
+    }
+
+    public static QuantifierGuard createExitZeroWidth(Quantifier quantifier) {
+        return new QuantifierGuard(Kind.exitZeroWidth, quantifier);
+    }
+
+    public static QuantifierGuard createEnterEmptyMatch(Quantifier quantifier) {
+        return new QuantifierGuard(Kind.enterEmptyMatch, quantifier);
+    }
+
+    public static QuantifierGuard createExitEmptyMatch(Quantifier quantifier) {
+        return new QuantifierGuard(Kind.exitEmptyMatch, quantifier);
+    }
+
+    public Kind getKind() {
+        return kind;
+    }
+
+    /**
+     * Get the equivalent of this guard when matching in reverse.
+     */
+    public Kind getKindReverse() {
+        switch (kind) {
+            case enter:
+                return quantifier.getMin() > 0 ? Kind.exit : Kind.exitReset;
+            case loop:
+            case loopInc:
+                return kind;
+            case exit:
+            case exitReset:
+                return Kind.enter;
+            case enterZeroWidth:
+                return Kind.exitZeroWidth;
+            case exitZeroWidth:
+                return Kind.enterZeroWidth;
+            case enterEmptyMatch:
+                return Kind.exitEmptyMatch;
+            case exitEmptyMatch:
+                return Kind.enterEmptyMatch;
+            default:
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw new IllegalStateException();
+        }
+    }
+
+    public Quantifier getQuantifier() {
+        return quantifier;
+    }
+
+    @TruffleBoundary
+    @Override
+    public String toString() {
+        return kind + " " + quantifier;
+    }
 }

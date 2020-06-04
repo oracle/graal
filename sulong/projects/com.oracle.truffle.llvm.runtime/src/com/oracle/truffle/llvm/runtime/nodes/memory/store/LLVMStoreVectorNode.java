@@ -38,6 +38,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDerefHandleGetReceiverNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMDoubleVector;
@@ -56,7 +57,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
 
     protected abstract void executeManaged(LLVMManagedPointer address, Object vector);
 
-    @Specialization(guards = "!isAutoDerefHandle(address)")
+    @Specialization(guards = "!isAutoDerefHandle(language, address)")
     @ExplodeLoop
     protected void writeVector(LLVMNativePointer address, LLVMDoubleVector vector,
                     @CachedLanguage LLVMLanguage language) {
@@ -73,13 +74,15 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
         return LLVMStoreVectorNodeGen.create(null, null, getVectorLength());
     }
 
-    @Specialization(guards = "isAutoDerefHandle(address)")
+    @Specialization(guards = "isAutoDerefHandle(language, address)")
     protected void writeVectorDerefHandle(LLVMNativePointer address, Object value,
+                    @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
+                    @Cached LLVMDerefHandleGetReceiverNode getReceiver,
                     @Cached("createRecursive()") LLVMStoreVectorNode store) {
-        store.executeManaged(getDerefHandleGetReceiverNode().execute(address), value);
+        store.executeManaged(getReceiver.execute(address), value);
     }
 
-    @Specialization(guards = "!isAutoDerefHandle(address)")
+    @Specialization(guards = "!isAutoDerefHandle(language, address)")
     @ExplodeLoop
     protected void writeVector(LLVMNativePointer address, LLVMFloatVector vector,
                     @CachedLanguage LLVMLanguage language) {
@@ -92,7 +95,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
         }
     }
 
-    @Specialization(guards = "!isAutoDerefHandle(address)")
+    @Specialization(guards = "!isAutoDerefHandle(language, address)")
     @ExplodeLoop
     protected void writeVector(LLVMNativePointer address, LLVMI16Vector vector,
                     @CachedLanguage LLVMLanguage language) {
@@ -105,7 +108,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
         }
     }
 
-    @Specialization(guards = "!isAutoDerefHandle(address)")
+    @Specialization(guards = "!isAutoDerefHandle(language, address)")
     @ExplodeLoop
     protected void writeVector(LLVMNativePointer address, LLVMI1Vector vector,
                     @CachedLanguage LLVMLanguage language) {
@@ -125,7 +128,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
         }
     }
 
-    @Specialization(guards = "!isAutoDerefHandle(address)")
+    @Specialization(guards = "!isAutoDerefHandle(language, address)")
     @ExplodeLoop
     protected void writeVector(LLVMNativePointer address, LLVMI32Vector vector,
                     @CachedLanguage LLVMLanguage language) {
@@ -138,7 +141,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
         }
     }
 
-    @Specialization(guards = "!isAutoDerefHandle(address)")
+    @Specialization(guards = "!isAutoDerefHandle(language, address)")
     @ExplodeLoop
     protected void writeVector(LLVMNativePointer address, LLVMI64Vector vector,
                     @CachedLanguage LLVMLanguage language) {
@@ -151,7 +154,7 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
         }
     }
 
-    @Specialization(guards = "!isAutoDerefHandle(address)")
+    @Specialization(guards = "!isAutoDerefHandle(language, address)")
     @ExplodeLoop
     protected void writeVector(LLVMNativePointer address, LLVMI8Vector vector,
                     @CachedLanguage LLVMLanguage language) {
@@ -164,9 +167,10 @@ public abstract class LLVMStoreVectorNode extends LLVMStoreNodeCommon {
         }
     }
 
-    @Specialization(guards = "!isAutoDerefHandle(address)")
+    @Specialization(guards = "!isAutoDerefHandle(language, address)")
     @ExplodeLoop
     protected void writeVector(LLVMNativePointer address, LLVMPointerVector value,
+                    @CachedLanguage @SuppressWarnings("unused") LLVMLanguage language,
                     @Cached("createPointerStore()") LLVMPointerStoreNode write) {
         assert value.getLength() == getVectorLength();
         long currentPtr = address.asNative();

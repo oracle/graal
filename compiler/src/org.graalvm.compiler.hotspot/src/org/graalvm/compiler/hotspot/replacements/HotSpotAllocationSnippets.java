@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,8 +29,8 @@ import static jdk.vm.ci.meta.DeoptimizationAction.None;
 import static jdk.vm.ci.meta.DeoptimizationReason.RuntimeConstraint;
 import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.core.common.GraalOptions.MinimalBulkZeroingSize;
-import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfigBase.INJECTED_OPTIONVALUES;
-import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfigBase.INJECTED_VMCONFIG;
+import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_OPTIONVALUES;
+import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.NEW_ARRAY;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.NEW_ARRAY_OR_NULL;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.NEW_INSTANCE;
@@ -66,7 +66,7 @@ import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FAST_PAT
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.VERY_FAST_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
-import static org.graalvm.compiler.replacements.ReplacementsUtil.runtimeAssert;
+import static org.graalvm.compiler.replacements.ReplacementsUtil.dynamicAssert;
 import static org.graalvm.compiler.replacements.ReplacementsUtil.staticAssert;
 import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 import static org.graalvm.compiler.replacements.nodes.CStringConstant.cstring;
@@ -290,7 +290,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
         if (knownElementKind == JavaKind.Illegal) {
             layoutHelper = readLayoutHelper(nonNullKlass);
         } else {
-            runtimeAssert(knownLayoutHelper == readLayoutHelper(nonNullKlass), "layout mismatch");
+            dynamicAssert(knownLayoutHelper == readLayoutHelper(nonNullKlass), "layout mismatch");
             layoutHelper = knownLayoutHelper;
         }
         //@formatter:off

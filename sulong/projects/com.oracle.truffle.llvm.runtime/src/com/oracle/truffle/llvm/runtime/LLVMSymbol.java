@@ -29,8 +29,8 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 
@@ -40,6 +40,8 @@ public abstract class LLVMSymbol {
     @CompilationFinal private ExternalLibrary library;
     private final int moduleId;
     private final int symbolIndex;
+    private final boolean exported;
+    static final LLVMSymbol[] EMPTY = {};
 
     // Index for non-parsed symbols, such as alias, and function symbol for inline assembly.
     public static final int INVALID_INDEX = -1;
@@ -53,11 +55,12 @@ public abstract class LLVMSymbol {
     // Index reserved for non-parsed miscellaneous functions.
     private static int miscFunctionIndex = 0;
 
-    public LLVMSymbol(String name, ExternalLibrary library, int bitcodeID, int symbolIndex) {
+    public LLVMSymbol(String name, ExternalLibrary library, int bitcodeID, int symbolIndex, boolean exported) {
         this.name = name;
         this.library = library;
         this.moduleId = bitcodeID;
         this.symbolIndex = symbolIndex;
+        this.exported = exported;
     }
 
     public String getName() {
@@ -86,6 +89,10 @@ public abstract class LLVMSymbol {
         return this.getClass().getSimpleName();
     }
 
+    public boolean isExported() {
+        return exported;
+    }
+
     /**
      * Get the unique index of the symbol. The index is assigned during parsing. Symbols that are
      * not created from parsing or that are alias have the value of -1.
@@ -96,6 +103,7 @@ public abstract class LLVMSymbol {
         if (symbolIndex >= 0 || illegalOK) {
             return symbolIndex;
         }
+        CompilerDirectives.transferToInterpreter();
         throw new LLVMIllegalSymbolIndexException("Invalid function index: " + symbolIndex);
     }
 
@@ -110,6 +118,7 @@ public abstract class LLVMSymbol {
         if (moduleId >= 0 || illegalOK) {
             return moduleId;
         }
+        CompilerDirectives.transferToInterpreter();
         throw new LLVMIllegalSymbolIndexException("Invalid function ID: " + moduleId);
     }
 

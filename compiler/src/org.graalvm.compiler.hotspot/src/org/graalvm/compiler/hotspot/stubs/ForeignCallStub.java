@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -245,6 +245,7 @@ public class ForeignCallStub extends Stub {
             ResolvedJavaMethod thisMethod = getGraphMethod();
             GraphKit kit = new GraphKit(debug, thisMethod, providers, wordTypes, providers.getGraphBuilderPlugins(), compilationId, toString());
             StructuredGraph graph = kit.getGraph();
+            graph.disableFrameStateVerification();
             ParameterNode[] params = createParameters(kit, args);
             ReadRegisterNode thread = kit.append(new ReadRegisterNode(providers.getRegisters().getThreadRegister(), wordTypes.getWordKind(), true, false));
             ValueNode result = createTargetCall(kit, params, thread);

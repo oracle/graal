@@ -64,17 +64,14 @@ public final class SulongEngineOption {
                    "Paths are delimited by a colon \'" + OPTION_ARRAY_SEPARATOR + "\'.")
     public static final OptionKey<String> LIBRARY_PATH = new OptionKey<>("");
 
-    @Option(name = "llvm.sourcePath",
-            category = OptionCategory.USER,
-            help = "This option is deprecated. Use --inspect.SourcePath instead.",
-            deprecated = true)
-    public static final OptionKey<String> SOURCE_PATH = new OptionKey<>("");
-
-    @Option(name = "llvm.loadC++Libraries",
+    public static final String LOAD_CXX_LIBRARIES_NAME = "llvm.loadC++Libraries";
+    @Option(name = LOAD_CXX_LIBRARIES_NAME,
             category = OptionCategory.EXPERT,
             help = "Specifies whether the standard C++ libraries (libc++ and libc++abi) " +
-                   "should be loaded. Enabled by default.")
-    public static final OptionKey<Boolean> LOAD_CXX_LIBRARIES = new OptionKey<>(true);
+                   "should be loaded by default. This should only be needed for running " +
+                   "plain bitcode files, since executables (ELF, Mach-O) usually have a " +
+                   "dependency on both of them. Thus, the option is off by default.")
+    public static final OptionKey<Boolean> LOAD_CXX_LIBRARIES = new OptionKey<>(false);
 
     @Option(name = "llvm.enableExternalNativeAccess",
             category = OptionCategory.USER,
@@ -123,8 +120,14 @@ public final class SulongEngineOption {
 
     @Option(name = "llvm.enableLVI",
             category = OptionCategory.EXPERT,
-            help = "Enable source-level inspection of local variables.")
+            help = "This option is deprecated, local variable inspection is always enabled.",
+            deprecated = true)
     public static final OptionKey<Boolean> ENABLE_LVI = new OptionKey<>(false);
+
+    @Option(name = "llvm.OSR",
+            category = OptionCategory.EXPERT,
+            help = "Enable on-stack-replacement of loops.")
+    public static final OptionKey<Boolean> ENABLE_OSR = new OptionKey<>(true);
 
     public static final String LAZY_PARSING_NAME = "llvm.lazyParsing";
     @Option(name = LAZY_PARSING_NAME,
@@ -153,11 +156,6 @@ public final class SulongEngineOption {
             category = OptionCategory.INTERNAL,
             help = "Prints a C stack trace when abort() is called.")
     public static final OptionKey<Boolean> STACKTRACE_ON_ABORT = new OptionKey<>(false);
-
-    @Option(name = "llvm.printToolchainPath",
-            category = OptionCategory.INTERNAL,
-            help = "Enables the intrinisc for printing the toolchain path.")
-    public static final OptionKey<Boolean> PRINT_TOOLCHAIN_PATH = new OptionKey<>(false);
 
     @Option(name = "llvm.traceIR",
             category = OptionCategory.EXPERT,

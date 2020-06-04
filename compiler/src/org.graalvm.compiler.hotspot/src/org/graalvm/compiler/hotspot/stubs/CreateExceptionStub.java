@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,7 @@
 package org.graalvm.compiler.hotspot.stubs;
 
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
-import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfigBase.INJECTED_OPTIONVALUES;
+import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_OPTIONVALUES;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.Reexecutability.REEXECUTABLE;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.Transition.SAFEPOINT;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.clearPendingException;
@@ -37,7 +37,6 @@ import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
-import org.graalvm.compiler.hotspot.GraalHotSpotVMConfigBase;
 import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
@@ -116,7 +115,7 @@ public class CreateExceptionStub extends SnippetStub {
         // keep both the deopt and return paths, so include a test against the exception which we
         // know should always succeed.
         if ((alwayDeoptimize(INJECTED_OPTIONVALUES) && clearPendingException != null) ||
-                        (reportsDeoptimization(GraalHotSpotVMConfigBase.INJECTED_VMCONFIG) && deoptimized != 0)) {
+                        (reportsDeoptimization(GraalHotSpotVMConfig.INJECTED_VMCONFIG) && deoptimized != 0)) {
             DeoptimizeWithExceptionInCallerNode.deopt(clearPendingException);
         }
         return clearPendingException;

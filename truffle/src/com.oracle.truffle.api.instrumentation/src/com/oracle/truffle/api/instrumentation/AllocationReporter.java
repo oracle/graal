@@ -405,11 +405,6 @@ class AllocationReporterSnippets extends TruffleLanguage<ContextObject> {
     // END: AllocationReporterSnippets#example
     // @formatter:on
 
-    @Override
-    protected boolean isObjectOfLanguage(Object object) {
-        return false;
-    }
-
     private static long findSizeEstimate() {
         return 0L;
     }

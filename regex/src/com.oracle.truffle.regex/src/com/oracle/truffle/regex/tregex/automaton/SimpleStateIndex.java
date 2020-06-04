@@ -42,11 +42,20 @@ package com.oracle.truffle.regex.tregex.automaton;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.Spliterator;
+import java.util.Spliterators;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
+/**
+ * Simple base class for implementors of {@link StateIndex}.
+ */
 public abstract class SimpleStateIndex<T> implements StateIndex<T>, Iterable<T> {
 
     private final ArrayList<T> states;
-    private StateSet<T> emptySet;
+    private StateSet<SimpleStateIndex<T>, T> emptySet;
 
     protected SimpleStateIndex() {
         states = new ArrayList<>();
@@ -58,14 +67,14 @@ public abstract class SimpleStateIndex<T> implements StateIndex<T>, Iterable<T> 
 
     public void add(T state) {
         assert !states.contains(state);
-        setStateId(state, (short) states.size());
+        setStateId(state, states.size());
         states.add(state);
         assert states.get(getStateId(state)) == state;
     }
 
-    protected abstract short getStateId(T state);
+    protected abstract int getStateId(T state);
 
-    protected abstract void setStateId(T state, short id);
+    protected abstract void setStateId(T state, int id);
 
     @Override
     public int getNumberOfStates() {
@@ -73,8 +82,8 @@ public abstract class SimpleStateIndex<T> implements StateIndex<T>, Iterable<T> 
     }
 
     @Override
-    public short getId(T state) {
-        short id = getStateId(state);
+    public int getId(T state) {
+        int id = getStateId(state);
         assert states.get(id) == state;
         return id;
     }
@@ -84,7 +93,7 @@ public abstract class SimpleStateIndex<T> implements StateIndex<T>, Iterable<T> 
         return states.get(id);
     }
 
-    public StateSet<T> getEmptySet() {
+    public StateSet<SimpleStateIndex<T>, T> getEmptySet() {
         if (emptySet == null) {
             emptySet = StateSet.create(this);
         }
@@ -102,5 +111,16 @@ public abstract class SimpleStateIndex<T> implements StateIndex<T>, Iterable<T> 
     @Override
     public Iterator<T> iterator() {
         return states.iterator();
+    }
+
+    @TruffleBoundary
+    @Override
+    public Spliterator<T> spliterator() {
+        return Spliterators.spliterator(iterator(), states.size(), Spliterator.DISTINCT | Spliterator.NONNULL);
+    }
+
+    @TruffleBoundary
+    public Stream<T> stream() {
+        return StreamSupport.stream(spliterator(), false);
     }
 }

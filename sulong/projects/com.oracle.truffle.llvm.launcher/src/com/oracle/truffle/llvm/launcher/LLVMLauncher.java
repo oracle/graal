@@ -142,9 +142,6 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
             }
         }
 
-        if (printToolchainPath) {
-            polyglotOptions.put("llvm.printToolchainPath", "true");
-        }
         if (!path.isEmpty()) {
             polyglotOptions.put("llvm.libraryPath", path.stream().collect(Collectors.joining(":")));
         }
@@ -209,7 +206,7 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
         try (Context context = contextBuilder.build()) {
             runVersionAction(versionAction, context.getEngine());
             if (printToolchainPath) {
-                context.getBindings(getLanguageId()).getMember("__sulong_print_toolchain_path").execute();
+                printToolchainPath(context);
                 return 0;
             }
             Value library = context.eval(Source.newBuilder(getLanguageId(), file).build());
@@ -229,6 +226,20 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
         } catch (IOException e) {
             throw abort(String.format("Error loading file '%s' (%s)", file, e.getMessage()));
         }
+    }
+
+    private void printToolchainPath(Context context) {
+        Value paths = context.getBindings(getLanguageId()).getMember("toolchain_api_paths").execute("PATH");
+        if (paths == null) {
+            throw abort("Unexpected result from toolchain_api_paths intrinsic: PATH not found");
+        }
+        long arraySize = paths.getArraySize();
+        if (arraySize != 1) {
+            throw abort("Unexpected result from toolchain_api_paths intrinsic: array size " + arraySize);
+        }
+        Value path = paths.getArrayElement(0);
+        String pathStr = path.asString();
+        System.out.println(pathStr);
     }
 
     private static void printStackTraceSkipTrailingHost(PolyglotException e) {

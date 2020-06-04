@@ -47,6 +47,7 @@ import shutil
 import stat
 import tempfile
 import zipfile
+import argparse
 
 from mx_benchmark import JMHDistBenchmarkSuite
 from mx_benchmark import add_bm_suite
@@ -81,9 +82,9 @@ class WasmBenchmarkVm(mx_benchmark.OutputCapturingVm):
     If a Wasm benchmark suite consists of benchmarks in the category `c`,
     then the binaries of that benchmark must structured as follows:
 
-    - For GraalWasm: bench/x/{*.wasm, *.init, *.result, *.wat}
-    - For Node: bench/x/node/{*.wasm, *.js}
-    - For native binaries: bench/x/native/*<platform-specific-binary-extension>
+    - For GraalWasm: bench/x/{*.wasm, *.result, *.wat}
+    - For Node: bench/x/{*.wasm, *.js}
+    - For native binaries: bench/x/*<platform-specific-binary-extension>
 
     Furthermore, these VMs expect that the benchmark suites that use them
     will provide a `-Dwasmbench.benchmarkName=<benchmark-name>` command-line flag,
@@ -124,11 +125,11 @@ class WasmBenchmarkVm(mx_benchmark.OutputCapturingVm):
         suite, benchmark = self.parse_suite_benchmark(args)
         return jar, suite, benchmark
 
-    def extract_jar_to_tempdir(self, jar, mode, suite, benchmark):
+    def extract_jar_to_tempdir(self, jar, suite, benchmark):
         tmp_dir = tempfile.mkdtemp()
         with zipfile.ZipFile(jar, "r") as z:
             for name in z.namelist():
-                if name.startswith(os.path.join("bench", suite, mode, benchmark)):
+                if name.startswith(os.path.join("bench", suite, benchmark)):
                     z.extract(name, tmp_dir)
         return tmp_dir
 
@@ -162,10 +163,9 @@ class NodeWasmBenchmarkVm(WasmBenchmarkVm):
         jar, suite, benchmark = self.parse_jar_suite_benchmark(args)
         tmp_dir = None
         try:
-            mode = self.config_name()
-            tmp_dir = self.extract_jar_to_tempdir(jar, mode, suite, benchmark)
-            node_cmd = os.path.join(node_dir, mode)
-            node_cmd_line = [node_cmd, os.path.join(tmp_dir, "bench", suite, mode, benchmark + ".js")]
+            tmp_dir = self.extract_jar_to_tempdir(jar, suite, benchmark)
+            node_cmd = os.path.join(node_dir, "node")
+            node_cmd_line = [node_cmd, "--experimental-wasm-bigint", os.path.join(tmp_dir, "bench", suite, benchmark + ".js")]
             mx.log("Running benchmark " + benchmark + " with node.")
             mx.run(node_cmd_line, cwd=tmp_dir, out=out, err=err, nonZeroIsFatal=nonZeroIsFatal)
         finally:
@@ -182,9 +182,8 @@ class NativeWasmBenchmarkVm(WasmBenchmarkVm):
         jar, suite, benchmark = self.parse_jar_suite_benchmark(args)
         tmp_dir = None
         try:
-            mode = self.config_name()
-            tmp_dir = self.extract_jar_to_tempdir(jar, mode, suite, benchmark)
-            binary_path = os.path.join(tmp_dir, "bench", suite, mode, mx.exe_suffix(benchmark))
+            tmp_dir = self.extract_jar_to_tempdir(jar, suite, benchmark)
+            binary_path = os.path.join(tmp_dir, "bench", suite, mx.exe_suffix(benchmark))
             os.chmod(binary_path, stat.S_IRUSR | stat.S_IXUSR)
             cmd_line = [binary_path]
             mx.log("Running benchmark " + benchmark + " natively.")
@@ -223,8 +222,10 @@ class WasmBenchmarkSuite(JMHDistBenchmarkSuite):
         return []
 
     def isWasmBenchmarkVm(self, bmSuiteArgs):
-        jvm_config = bmSuiteArgs[bmSuiteArgs.index("--jvm-config") + 1]
-        return jvm_config == "node" or jvm_config == "native"
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--jvm-config")
+        jvm_config = parser.parse_known_args(bmSuiteArgs)[0].jvm_config
+        return jvm_config in ("node", "native")
 
     def rules(self, out, benchmarks, bmSuiteArgs):
         if self.isWasmBenchmarkVm(bmSuiteArgs):
@@ -233,3 +234,68 @@ class WasmBenchmarkSuite(JMHDistBenchmarkSuite):
 
 
 add_bm_suite(WasmBenchmarkSuite())
+
+
+_suite = mx.suite("wasm")
+
+
+MEMORY_PROFILER_CLASS_NAME = "org.graalvm.wasm.benchmark.MemoryFootprintBenchmarkRunner"
+MEMORY_WARMUP_ITERATIONS = 10
+BENCHMARKCASES_DISTRIBUTION = "WASM_BENCHMARKCASES"
+
+
+class MemoryBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin):
+    """
+    Example suite used for testing and as a subclassing template.
+    """
+
+    def group(self):
+        return "Graal"
+
+    def subgroup(self):
+        return "wasm"
+
+    def name(self):
+        return "wasm-memory"
+
+    def benchmarkList(self, _):
+        jdk = mx.get_jdk(mx.distribution(BENCHMARKCASES_DISTRIBUTION).javaCompliance)
+        jvm_args = mx.get_runtime_jvm_args([BENCHMARKCASES_DISTRIBUTION], jdk=jdk)
+        args = jvm_args + [MEMORY_PROFILER_CLASS_NAME, "--list"]
+
+        out = mx.OutputCapture()
+        jdk.run_java(args, out=out)
+        return out.data.split()
+
+    def createCommandLineArgs(self, benchmarks, bm_suite_args):
+        benchmarks = benchmarks if benchmarks is not None else self.benchmarkList(bm_suite_args)
+        jdk = mx.get_jdk(mx.distribution(BENCHMARKCASES_DISTRIBUTION).javaCompliance)
+        vm_args = self.vmArgs(bm_suite_args) + mx.get_runtime_jvm_args([BENCHMARKCASES_DISTRIBUTION], jdk=jdk)
+        run_args = ["--warmup-iterations", str(MEMORY_WARMUP_ITERATIONS),
+                    "--result-iterations", str(self.getExtraIterationCount(MEMORY_WARMUP_ITERATIONS))]
+        return vm_args + [MEMORY_PROFILER_CLASS_NAME] + run_args + benchmarks
+
+    def rules(self, out, benchmarks, bm_suite_args):
+        return [
+            # We collect all our measures as "warmup"s. `AveragingBenchmarkMixin.addAverageAcrossLatestResults` then
+            # takes care of creating one final "memory" point which is the average of the last N points, where N is
+            # obtained from `AveragingBenchmarkMixin.getExtraIterationCount`.
+            mx_benchmark.StdOutRule(r"(?P<path>.*): (warmup )?iteration\[(?P<iteration>.*)\]: (?P<value>.*) MB", {
+                "benchmark": ("<path>", str),
+                "metric.better": "lower",
+                "metric.name": "warmup",
+                "metric.unit": "MB",
+                "metric.value": ("<value>", float),
+                "metric.type": "numeric",
+                "metric.score-function": "id",
+                "metric.iteration": ("<iteration>", int)
+            })
+        ]
+
+    def run(self, benchmarks, bmSuiteArgs):
+        results = super(MemoryBenchmarkSuite, self).run(benchmarks, bmSuiteArgs)
+        self.addAverageAcrossLatestResults(results, "memory")
+        return results
+
+
+add_bm_suite(MemoryBenchmarkSuite())

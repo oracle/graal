@@ -29,23 +29,27 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.Function;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor.UnresolvedFunction;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.Function;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionCode.UnresolvedFunction;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
+/**
+ * {@link LLVMFunctionCode} represents the symbol for a function.
+ *
+ */
 public final class LLVMFunction extends LLVMSymbol {
 
     private final FunctionType type;
     private final Function function;
+    public static final LLVMFunction[] EMPTY = {};
 
-    public static LLVMFunction create(String name, ExternalLibrary library, Function function, FunctionType type, int bitcodeID, int symbolIndex) {
-        return new LLVMFunction(name, library, function, type, bitcodeID, symbolIndex);
+    public static LLVMFunction create(String name, ExternalLibrary library, Function function, FunctionType type, int bitcodeID, int symbolIndex, boolean exported) {
+        return new LLVMFunction(name, library, function, type, bitcodeID, symbolIndex, exported);
     }
 
-    public LLVMFunction(String name, ExternalLibrary library, Function function, FunctionType type, int bitcodeID, int symbolIndex) {
-        super(name, library, bitcodeID, symbolIndex);
+    public LLVMFunction(String name, ExternalLibrary library, Function function, FunctionType type, int bitcodeID, int symbolIndex, boolean exported) {
+        super(name, library, bitcodeID, symbolIndex, exported);
         this.type = type;
         this.function = function;
     }

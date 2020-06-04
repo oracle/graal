@@ -33,22 +33,21 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMGetStackNode;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
 import com.oracle.truffle.llvm.runtime.interop.LLVMForeignCallNodeFactory.PackForeignArgumentsNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
-import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
@@ -64,89 +63,107 @@ public class LLVMForeignCallNode extends RootNode {
 
         abstract Object[] execute(Object[] arguments, StackPointer stackPointer) throws ArityException;
 
-        @Children final ForeignToLLVM[] toLLVM;
+        @Children final LLVMGetInteropParamNode[] toLLVM;
 
-        PackForeignArgumentsNode(Type[] parameterTypes, LLVMInteropType interopType) {
-            this.toLLVM = new ForeignToLLVM[parameterTypes.length];
+        /**
+         * The purpose is to produce a tree of nodes that will map bitcode parameters to interop
+         * parameters. Since there may be a mismatch between those, this node handles the packing by
+         * creating the respective ParamNode and delegating the execution to that. Note however that
+         * the different cases of mapping (e.g. structs) are handled in this constructor.
+         * <p>
+         * Example: struct Point { double a; double b; };
+         * </p>
+         *
+         * <pre>
+         * JS:     double      object      double      object       double
+         *           |        /     \        |        /     \         |
+         * LLVM:    int    double  double   int    double  double    int
+         *           |        \     /        |        \     /         |
+         * C:       int     struct Point    int     struct Point     int
+         * </pre>
+         *
+         * @param bitcodeParameterTypes The LLVM/bitcode-level parameter types.
+         * @param interopType The "foreign" function type.
+         * @param sourceType The source (e.g. C) level function type.
+         */
+        public static PackForeignArgumentsNode create(Type[] bitcodeParameterTypes, LLVMInteropType interopType, LLVMSourceFunctionType sourceType) {
+            LLVMGetInteropParamNode[] toLLVM = new LLVMGetInteropParamNode[bitcodeParameterTypes.length];
+
             if (interopType instanceof LLVMInteropType.Function) {
                 LLVMInteropType.Function interopFunctionType = (LLVMInteropType.Function) interopType;
-                assert interopFunctionType.getParameterLength() == parameterTypes.length;
-                for (int i = 0; i < parameterTypes.length; i++) {
-                    LLVMInteropType interopParameterType = interopFunctionType.getParameter(i);
-                    if (interopParameterType instanceof LLVMInteropType.Value) {
-                        toLLVM[i] = CommonNodeFactory.createForeignToLLVM((LLVMInteropType.Value) interopParameterType);
+
+                for (int bitcodeArgIdx = 0, prevIdx = -1; bitcodeArgIdx < bitcodeParameterTypes.length; bitcodeArgIdx++) {
+                    Type bitcodeParameterType = bitcodeParameterTypes[bitcodeArgIdx];
+                    LLVMSourceFunctionType.SourceArgumentInformation bitcodeParameterInfo = sourceType.getSourceArgumentInformation(bitcodeArgIdx);
+
+                    assert toLLVM[bitcodeArgIdx] == null;
+
+                    if (bitcodeParameterInfo == null) {
+                        int currentIdx = prevIdx + 1;
+
+                        LLVMInteropType interopParameterType = interopFunctionType.getParameter(currentIdx);
+
+                        if (interopParameterType instanceof LLVMInteropType.Value) {
+                            toLLVM[bitcodeArgIdx] = LLVMGetInteropPrimitiveParamNode.create(currentIdx, (LLVMInteropType.Value) interopParameterType);
+                        } else if (interopParameterType instanceof LLVMInteropType.Structured) {
+                            toLLVM[bitcodeArgIdx] = LLVMGetInteropPrimitiveParamNode.create(currentIdx,
+                                            LLVMInteropType.Value.pointer((LLVMInteropType.Structured) interopParameterType, LLVMNode.ADDRESS_SIZE_IN_BYTES));
+                        } else {
+                            // interop only supported for value types
+                            toLLVM[bitcodeArgIdx] = LLVMGetInteropPrimitiveParamNode.create(currentIdx, ForeignToLLVM.convert(bitcodeParameterType));
+                        }
+
+                        prevIdx = currentIdx;
                     } else {
-                        // interop only supported for value types
-                        toLLVM[i] = CommonNodeFactory.createForeignToLLVM(ForeignToLLVM.convert(parameterTypes[i]));
+                        int sourceArgIndex = bitcodeParameterInfo.getSourceArgIndex();
+
+                        LLVMInteropType targetObjectType = interopFunctionType.getParameter(sourceArgIndex);
+
+                        LLVMInteropType.Struct targetObjectStructType = (LLVMInteropType.Struct) targetObjectType;
+                        assert bitcodeParameterInfo.getBitcodeArgIndex() == bitcodeArgIdx;
+
+                        Type targetMemberType = bitcodeParameterTypes[bitcodeArgIdx];
+                        assert targetMemberType == bitcodeParameterType;
+
+                        int numberOfBitcodeParams = bitcodeParameterTypes.length;
+
+                        if (Long.compareUnsigned(sourceArgIndex, numberOfBitcodeParams) >= 0) {
+                            CompilerDirectives.transferToInterpreter();
+                            throw new ArrayIndexOutOfBoundsException(String.format("Source argument index (%s) is out of bitcode parameters list bounds (which is of length %s)",
+                                            Long.toUnsignedString(sourceArgIndex), Integer.toUnsignedString(numberOfBitcodeParams)));
+                        }
+
+                        int offsetInBytes = bitcodeParameterInfo.getOffset() / Byte.SIZE;
+
+                        toLLVM[bitcodeArgIdx] = LLVMGetInteropStructParamNode.create(targetObjectStructType, sourceArgIndex, offsetInBytes,
+                                        ForeignToLLVM.convert(targetMemberType));
+
+                        prevIdx = sourceArgIndex;
                     }
                 }
             } else {
-                // no interop parameter types available
-                for (int i = 0; i < parameterTypes.length; i++) {
-                    toLLVM[i] = CommonNodeFactory.createForeignToLLVM(ForeignToLLVM.convert(parameterTypes[i]));
+                // Not a function, so no interop parameter types available.
+                for (int i = 0; i < bitcodeParameterTypes.length; i++) {
+                    toLLVM[i] = LLVMGetInteropPrimitiveParamNode.create(i, ForeignToLLVM.convert(bitcodeParameterTypes[i]));
                 }
             }
+
+            return PackForeignArgumentsNodeGen.create(toLLVM);
         }
 
-        @Specialization(guards = "arguments.length == toLLVM.length")
+        PackForeignArgumentsNode(LLVMGetInteropParamNode[] toLLVM) {
+            this.toLLVM = toLLVM;
+        }
+
+        @Specialization
         @ExplodeLoop
         Object[] packNonVarargs(Object[] arguments, StackPointer stackPointer) {
-            assert arguments.length >= toLLVM.length;
-            final Object[] packedArguments = new Object[1 + arguments.length];
+            final Object[] packedArguments = new Object[1 + toLLVM.length];
             packedArguments[0] = stackPointer;
             for (int i = 0; i < toLLVM.length; i++) {
-                packedArguments[i + 1] = toLLVM[i].executeWithTarget(arguments[i]);
+                packedArguments[i + 1] = toLLVM[i].execute(arguments);
             }
             return packedArguments;
-        }
-
-        ForeignToLLVM[] createVarargsToLLVM(int argCount) {
-            int count = argCount - toLLVM.length;
-            if (count > 0) {
-                ForeignToLLVM[] ret = new ForeignToLLVM[count];
-                for (int i = 0; i < count; i++) {
-                    ret[i] = CommonNodeFactory.createForeignToLLVM(ForeignToLLVMType.ANY);
-                }
-                return ret;
-            } else {
-                return new ForeignToLLVM[0];
-            }
-        }
-
-        boolean checkLength(int argCount, ForeignToLLVM[] varargsToLLVM) {
-            return argCount == toLLVM.length + varargsToLLVM.length;
-        }
-
-        @Specialization(guards = "checkLength(arguments.length, varargsToLLVM)", replaces = "packNonVarargs")
-        @ExplodeLoop
-        Object[] packCachedArgCount(Object[] arguments, StackPointer stackPointer,
-                        @Cached("createVarargsToLLVM(arguments.length)") ForeignToLLVM[] varargsToLLVM) {
-            assert arguments.length >= toLLVM.length;
-            final Object[] packedArguments = packNonVarargs(arguments, stackPointer);
-            for (int i = toLLVM.length, j = 0; j < varargsToLLVM.length; i++, j++) {
-                packedArguments[i + 1] = varargsToLLVM[j].executeWithTarget(arguments[i]);
-            }
-            return packedArguments;
-        }
-
-        ForeignToLLVM createVarargsToLLVM() {
-            return CommonNodeFactory.createForeignToLLVM(ForeignToLLVMType.ANY);
-        }
-
-        @Specialization(guards = "arguments.length >= toLLVM.length", replaces = "packCachedArgCount")
-        Object[] packGeneric(Object[] arguments, StackPointer stackPointer,
-                        @Cached("createVarargsToLLVM()") ForeignToLLVM varargsToLLVM) {
-            Object[] args = packNonVarargs(arguments, stackPointer);
-            for (int i = toLLVM.length; i < arguments.length; i++) {
-                args[i + 1] = varargsToLLVM.executeWithTarget(arguments[i]);
-            }
-            return args;
-        }
-
-        @Specialization(guards = "arguments.length < toLLVM.length")
-        Object[] error(Object[] arguments, @SuppressWarnings("unused") StackPointer stackPointer) throws ArityException {
-            CompilerDirectives.transferToInterpreter();
-            throw ArityException.create(toLLVM.length, arguments.length);
         }
     }
 
@@ -158,14 +175,14 @@ public class LLVMForeignCallNode extends RootNode {
     @Child LLVMDataEscapeNode prepareValueForEscape;
     @Child PackForeignArgumentsNode packArguments;
 
-    public LLVMForeignCallNode(LLVMLanguage language, LLVMFunctionDescriptor function, LLVMInteropType interopType) {
+    public LLVMForeignCallNode(LLVMLanguage language, LLVMFunctionDescriptor function, LLVMInteropType interopType, LLVMSourceFunctionType sourceType) {
         super(language);
         this.returnBaseType = getReturnBaseType(interopType);
         this.getStack = LLVMGetStackNode.create();
         this.callNode = DirectCallNode.create(getCallTarget(function));
         this.callNode.forceInlining();
         this.prepareValueForEscape = LLVMDataEscapeNode.create(function.getLLVMFunction().getType().getReturnType());
-        this.packArguments = PackForeignArgumentsNodeGen.create(function.getLLVMFunction().getType().getArgumentTypes(), interopType);
+        this.packArguments = PackForeignArgumentsNodeGen.create(function.getLLVMFunction().getType().getArgumentTypes(), interopType, sourceType);
     }
 
     @Override
@@ -200,14 +217,15 @@ public class LLVMForeignCallNode extends RootNode {
         return null;
     }
 
-    static CallTarget getCallTarget(LLVMFunctionDescriptor function) {
-        if (function.isLLVMIRFunction()) {
-            return function.getLLVMIRFunctionSlowPath();
-        } else if (function.isIntrinsicFunctionSlowPath()) {
-            return function.getIntrinsicSlowPath().cachedCallTarget(function.getLLVMFunction().getType());
+    static CallTarget getCallTarget(LLVMFunctionDescriptor descriptor) {
+        LLVMFunctionCode functionCode = descriptor.getFunctionCode();
+        if (functionCode.isLLVMIRFunction()) {
+            return functionCode.getLLVMIRFunctionSlowPath();
+        } else if (functionCode.isIntrinsicFunctionSlowPath()) {
+            return functionCode.getIntrinsicSlowPath().cachedCallTarget(descriptor.getLLVMFunction().getType());
         } else {
             CompilerDirectives.transferToInterpreter();
-            throw new AssertionError("native function not supported at this point: " + function.getFunction());
+            throw new AssertionError("native function not supported at this point: " + functionCode.getFunction());
         }
     }
 

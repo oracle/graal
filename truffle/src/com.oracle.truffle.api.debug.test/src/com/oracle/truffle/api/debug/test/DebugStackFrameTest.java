@@ -52,6 +52,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import org.junit.Test;
 
@@ -59,10 +60,16 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.debug.DebugStackFrame;
+import com.oracle.truffle.api.debug.DebugStackTraceElement;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedEvent;
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -100,7 +107,7 @@ public class DebugStackFrameTest extends AbstractDebugTest {
                 DebugStackFrame frame = stackFrames.next();
                 assertDynamicFrame(frame);
                 DebugValue aValue = frame.getScope().getDeclaredValue("a");
-                String aStringValue = aValue.as(String.class);
+                String aStringValue = aValue.toDisplayString();
 
                 // assert changes to a parent frame
                 frame = stackFrames.next();
@@ -108,7 +115,7 @@ public class DebugStackFrameTest extends AbstractDebugTest {
 
                 // assign from one stack frame to another one
                 frame.getScope().getDeclaredValue("a").set(aValue);
-                assertEquals(aStringValue, frame.getScope().getDeclaredValue("a").as(String.class));
+                assertEquals(aStringValue, frame.getScope().getDeclaredValue("a").toDisplayString());
                 event.prepareContinue();
             });
             expectDone();
@@ -116,34 +123,34 @@ public class DebugStackFrameTest extends AbstractDebugTest {
     }
 
     private static void assertDynamicFrame(DebugStackFrame frame) {
-        assertEquals("42", frame.getScope().getDeclaredValue("a").as(String.class));
-        assertEquals("43", frame.getScope().getDeclaredValue("b").as(String.class));
-        assertEquals("44", frame.getScope().getDeclaredValue("c").as(String.class));
+        assertEquals("42", frame.getScope().getDeclaredValue("a").toDisplayString());
+        assertEquals("43", frame.getScope().getDeclaredValue("b").toDisplayString());
+        assertEquals("44", frame.getScope().getDeclaredValue("c").toDisplayString());
 
         // dynamic value should now be accessible
         DebugValue dStackValue = frame.getScope().getDeclaredValue("d");
         assertNull(dStackValue);
 
         // should change the dynamic value
-        assertEquals("45", frame.eval("VARIABLE(d, 45)").as(String.class));
+        assertEquals("45", frame.eval("VARIABLE(d, 45)").toDisplayString());
         dStackValue = frame.getScope().getDeclaredValue("d");
-        assertEquals("45", dStackValue.as(String.class));
-        assertEquals("45", frame.getScope().getDeclaredValue("d").as(String.class));
+        assertEquals("45", dStackValue.toDisplayString());
+        assertEquals("45", frame.getScope().getDeclaredValue("d").toDisplayString());
 
         // change an existing value
-        assertEquals("45", frame.eval("VARIABLE(c, 45)").as(String.class));
-        assertEquals("45", frame.getScope().getDeclaredValue("c").as(String.class));
+        assertEquals("45", frame.eval("VARIABLE(c, 45)").toDisplayString());
+        assertEquals("45", frame.getScope().getDeclaredValue("c").toDisplayString());
 
         // set an existing value using a constant expression
         DebugValue bValue = frame.getScope().getDeclaredValue("b");
         frame.getScope().getDeclaredValue("b").set(frame.eval("CONSTANT(46)"));
-        assertEquals("46", frame.getScope().getDeclaredValue("b").as(String.class));
-        assertEquals("46", bValue.as(String.class));
+        assertEquals("46", frame.getScope().getDeclaredValue("b").toDisplayString());
+        assertEquals("46", bValue.toDisplayString());
 
         // set an existing value using a constant expression with side effect
         frame.getScope().getDeclaredValue("b").set(frame.eval("VARIABLE(a, 47)"));
-        assertEquals("47", frame.getScope().getDeclaredValue("b").as(String.class));
-        assertEquals("47", frame.getScope().getDeclaredValue("a").as(String.class));
+        assertEquals("47", frame.getScope().getDeclaredValue("b").toDisplayString());
+        assertEquals("47", frame.getScope().getDeclaredValue("a").toDisplayString());
     }
 
     @Test
@@ -192,7 +199,7 @@ public class DebugStackFrameTest extends AbstractDebugTest {
                 assertInvalidDebugValue(data.stackValueWithGetValue);
                 assertInvalidDebugValue(data.stackValueWithIterator);
 
-                assertEquals("45", data.heapValue.as(String.class));
+                assertEquals("45", data.heapValue.toDisplayString());
                 assertTrue(data.heapValue.isWritable());
                 assertTrue(data.heapValue.isReadable());
             });
@@ -240,9 +247,49 @@ public class DebugStackFrameTest extends AbstractDebugTest {
     }
 
     @Test
+    public void testVariables() {
+        final Source source = testSource("ROOT(DEFINE(a,ROOT(\n" +
+                        "  VARIABLE(v1, 1), \n" +
+                        "  STATEMENT())\n" +
+                        "),\n" +
+                        "DEFINE(b,ROOT(\n" +
+                        "  VARIABLE(v2, 2), \n" +
+                        "  CALL(a))\n" +
+                        "), \n" +
+                        "VARIABLE(v3, 3), \n" +
+                        "CALL(b))\n");
+        try (DebuggerSession session = startSession()) {
+            session.suspendNextExecution();
+            startEval(source);
+
+            expectSuspended((SuspendedEvent event) -> {
+                DebugStackFrame frame = event.getTopStackFrame();
+                assertEquals("a", frame.getName());
+                assertEquals("STATEMENT()", frame.getSourceSection().getCharacters());
+                checkStack(frame, "v1", "1");
+
+                Iterator<DebugStackFrame> stackFrames = event.getStackFrames().iterator();
+                assertEquals(frame, stackFrames.next()); // The top one
+                frame = stackFrames.next();
+                assertEquals("b", frame.getName());
+                assertEquals("CALL(a)", frame.getSourceSection().getCharacters());
+                checkStack(frame, "v2", "2");
+
+                frame = stackFrames.next(); // root
+                assertEquals("", frame.getName());
+                assertEquals("CALL(b)", frame.getSourceSection().getCharacters());
+                checkStack(frame, "v3", "3");
+
+                assertFalse(stackFrames.hasNext());
+                event.prepareContinue();
+            });
+            expectDone();
+        }
+    }
+
+    @Test
     public void testStackNodes() {
-        int depth = 5;
-        TestStackLanguage language = new TestStackLanguage(depth);
+        TestStackLanguage language = new TestStackLanguage();
         ProxyLanguage.setDelegate(language);
         try (DebuggerSession session = tester.startSession()) {
             session.suspendNextExecution();
@@ -253,12 +300,38 @@ public class DebugStackFrameTest extends AbstractDebugTest {
                 assertEquals(3, frame.getSourceSection().getCharLength());
                 Iterator<DebugStackFrame> stackFrames = event.getStackFrames().iterator();
                 assertEquals(frame, stackFrames.next()); // The top one
-                for (int d = depth; d > 0; d--) {
+                for (int d = TestStackLanguage.DEPTH; d > 0; d--) {
                     assertTrue("Depth: " + d, stackFrames.hasNext());
                     frame = stackFrames.next();
                     assertSection(frame.getSourceSection(), "St", 1, 1, 1, 2);
                 }
                 assertFalse(stackFrames.hasNext());
+            });
+        }
+        expectDone();
+    }
+
+    @Test
+    public void testAsynchronousStack() {
+        TestStackLanguage language = new TestStackLanguage();
+        ProxyLanguage.setDelegate(language);
+        try (DebuggerSession session = tester.startSession()) {
+            session.suspendNextExecution();
+            Source source = Source.create(ProxyLanguage.ID, "Stack Test");
+            tester.startEval(source);
+            expectSuspended((SuspendedEvent event) -> {
+                List<List<DebugStackTraceElement>> asynchronousStacks = event.getAsynchronousStacks();
+                assertEquals(TestStackLanguage.DEPTH, asynchronousStacks.size());
+                for (int depth = 0; depth < TestStackLanguage.DEPTH; depth++) {
+                    List<DebugStackTraceElement> stack = asynchronousStacks.get(depth);
+                    assertEquals(TestStackLanguage.DEPTH - depth, stack.size());
+                }
+                try {
+                    asynchronousStacks.get(TestStackLanguage.DEPTH);
+                    fail("Expected IndexOutOfBoundsException.");
+                } catch (IndexOutOfBoundsException ex) {
+                    // O.K.
+                }
             });
         }
         expectDone();
@@ -280,7 +353,7 @@ public class DebugStackFrameTest extends AbstractDebugTest {
 
     private static void assertInvalidDebugValue(DebugValue value) {
         try {
-            value.as(String.class);
+            value.toDisplayString();
             fail();
         } catch (IllegalStateException s) {
         }
@@ -359,8 +432,7 @@ public class DebugStackFrameTest extends AbstractDebugTest {
 
     @Test
     public void testRawNodes() {
-        int depth = 5;
-        TestStackLanguage language = new TestStackLanguage(depth);
+        TestStackLanguage language = new TestStackLanguage();
         ProxyLanguage.setDelegate(language);
         try (DebuggerSession session = tester.startSession()) {
             session.suspendNextExecution();
@@ -371,7 +443,7 @@ public class DebugStackFrameTest extends AbstractDebugTest {
                 assertEquals(TestStackLanguage.TestStackRootNode.class, frame.getRawNode(ProxyLanguage.class).getRootNode().getClass());
                 Iterator<DebugStackFrame> stackFrames = event.getStackFrames().iterator();
                 assertEquals(frame, stackFrames.next()); // The top one
-                for (int d = depth; d > 0; d--) {
+                for (int d = TestStackLanguage.DEPTH; d > 0; d--) {
                     assertTrue("Depth: " + d, stackFrames.hasNext());
                     frame = stackFrames.next();
                     assertEquals(TestStackLanguage.TestStackRootNode.class, frame.getRawNode(ProxyLanguage.class).getRootNode().getClass());
@@ -384,8 +456,7 @@ public class DebugStackFrameTest extends AbstractDebugTest {
 
     @Test
     public void testRawNodesRestricted() {
-        int depth = 5;
-        TestStackLanguage language = new TestStackLanguage(depth);
+        TestStackLanguage language = new TestStackLanguage();
         ProxyLanguage.setDelegate(language);
         try (DebuggerSession session = tester.startSession()) {
             session.suspendNextExecution();
@@ -396,7 +467,7 @@ public class DebugStackFrameTest extends AbstractDebugTest {
                 assertEquals(null, frame.getRawNode(InstrumentationTestLanguage.class));
                 Iterator<DebugStackFrame> stackFrames = event.getStackFrames().iterator();
                 assertEquals(frame, stackFrames.next()); // The top one
-                for (int d = depth; d > 0; d--) {
+                for (int d = TestStackLanguage.DEPTH; d > 0; d--) {
                     assertTrue("Depth: " + d, stackFrames.hasNext());
                     frame = stackFrames.next();
                     assertEquals(null, frame.getRawNode(InstrumentationTestLanguage.class));
@@ -409,8 +480,7 @@ public class DebugStackFrameTest extends AbstractDebugTest {
 
     @Test
     public void testRawFrame() {
-        int depth = 5;
-        TestStackLanguage language = new TestStackLanguage(depth);
+        TestStackLanguage language = new TestStackLanguage();
         ProxyLanguage.setDelegate(language);
         try (DebuggerSession session = tester.startSession()) {
             session.suspendNextExecution();
@@ -418,13 +488,13 @@ public class DebugStackFrameTest extends AbstractDebugTest {
             tester.startEval(source);
             expectSuspended((SuspendedEvent event) -> {
                 DebugStackFrame frame = event.getTopStackFrame();
-                assertNotNull(frame.getRawFrame(ProxyLanguage.class));
+                assertNotNull(frame.getRawFrame(ProxyLanguage.class, FrameInstance.FrameAccess.READ_WRITE));
                 Iterator<DebugStackFrame> stackFrames = event.getStackFrames().iterator();
                 assertEquals(frame, stackFrames.next()); // The top one
-                for (int d = depth; d > 0; d--) {
+                for (int d = TestStackLanguage.DEPTH; d > 0; d--) {
                     assertTrue("Depth: " + d, stackFrames.hasNext());
                     frame = stackFrames.next();
-                    assertNotNull(frame.getRawFrame(ProxyLanguage.class));
+                    assertNotNull(frame.getRawFrame(ProxyLanguage.class, FrameInstance.FrameAccess.READ_WRITE));
                 }
                 assertFalse(stackFrames.hasNext());
             });
@@ -434,8 +504,7 @@ public class DebugStackFrameTest extends AbstractDebugTest {
 
     @Test
     public void testRawFrameRestricted() {
-        int depth = 5;
-        TestStackLanguage language = new TestStackLanguage(depth);
+        TestStackLanguage language = new TestStackLanguage();
         ProxyLanguage.setDelegate(language);
         try (DebuggerSession session = tester.startSession()) {
             session.suspendNextExecution();
@@ -443,13 +512,13 @@ public class DebugStackFrameTest extends AbstractDebugTest {
             tester.startEval(source);
             expectSuspended((SuspendedEvent event) -> {
                 DebugStackFrame frame = event.getTopStackFrame();
-                assertNull(frame.getRawFrame(InstrumentationTestLanguage.class));
+                assertNull(frame.getRawFrame(InstrumentationTestLanguage.class, FrameInstance.FrameAccess.READ_WRITE));
                 Iterator<DebugStackFrame> stackFrames = event.getStackFrames().iterator();
                 assertEquals(frame, stackFrames.next()); // The top one
-                for (int d = depth; d > 0; d--) {
+                for (int d = TestStackLanguage.DEPTH; d > 0; d--) {
                     assertTrue("Depth: " + d, stackFrames.hasNext());
                     frame = stackFrames.next();
-                    assertNull(frame.getRawFrame(InstrumentationTestLanguage.class));
+                    assertNull(frame.getRawFrame(InstrumentationTestLanguage.class, FrameInstance.FrameAccess.READ_WRITE));
                 }
                 assertFalse(stackFrames.hasNext());
             });
@@ -459,16 +528,15 @@ public class DebugStackFrameTest extends AbstractDebugTest {
 
     static final class TestStackLanguage extends ProxyLanguage {
 
-        private final int depth;
+        private static final int DEPTH = 5;
 
-        TestStackLanguage(int depth) {
-            this.depth = depth;
+        TestStackLanguage() {
         }
 
         @Override
         protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
             com.oracle.truffle.api.source.Source source = request.getSource();
-            return Truffle.getRuntime().createCallTarget(new TestStackRootNode(languageInstance, source, depth));
+            return Truffle.getRuntime().createCallTarget(new TestStackRootNode(languageInstance, source, DEPTH));
         }
 
         private static final class TestStackRootNode extends RootNode {
@@ -477,13 +545,16 @@ public class DebugStackFrameTest extends AbstractDebugTest {
             private final TruffleLanguage<?> language;
             private final String name;
             private final SourceSection rootSection;
+            private final int depth;
+            private final FrameSlot entryCall = getFrameDescriptor().findOrAddFrameSlot("entryCall", FrameSlotKind.Boolean);
 
             TestStackRootNode(TruffleLanguage<?> language, com.oracle.truffle.api.source.Source parsedSource, int depth) {
                 super(language);
                 this.language = language;
+                this.depth = depth;
                 rootSection = parsedSource.createSection(1);
                 name = "Test Stack";
-                child = createTestNodes(depth);
+                child = createTestNodes();
                 insert(child);
             }
 
@@ -499,6 +570,7 @@ public class DebugStackFrameTest extends AbstractDebugTest {
 
             @Override
             public Object execute(VirtualFrame frame) {
+                frame.setBoolean(entryCall, DEPTH == depth);
                 return child.execute(frame);
             }
 
@@ -507,7 +579,47 @@ public class DebugStackFrameTest extends AbstractDebugTest {
                 return true;
             }
 
-            private TestNode createTestNodes(int depth) {
+            @Override
+            protected List<TruffleStackTraceElement> findAsynchronousFrames(Frame frame) {
+                if (depth == 0) {
+                    return null;
+                }
+                boolean isEntryCall;
+                try {
+                    isEntryCall = frame.getBoolean(entryCall);
+                } catch (FrameSlotTypeException ex) {
+                    return null;
+                }
+                if (!isEntryCall) {
+                    return null;
+                }
+                List<TruffleStackTraceElement> asyncStack = new ArrayList<>(depth);
+                TestStackRootNode asyncRoot = new TestStackRootNode(language, rootSection.getSource(), depth - 1);
+                do {
+                    RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(asyncRoot);
+                    TestNode leaf = asyncRoot.child;
+                    while (leaf.testChild != null) {
+                        leaf = leaf.testChild;
+                    }
+                    DirectCallNode callNode = leaf.getCallNode();
+                    Frame asyncFrame;
+                    if (asyncRoot.depth == depth - 1) {
+                        asyncFrame = Truffle.getRuntime().createMaterializedFrame(new Object[]{}, asyncRoot.getFrameDescriptor());
+                        asyncFrame.setBoolean(entryCall, true);
+                    } else {
+                        asyncFrame = null;
+                    }
+                    TruffleStackTraceElement element = TruffleStackTraceElement.create(leaf, callTarget, asyncFrame);
+                    asyncStack.add(0, element);
+                    if (callNode == null) {
+                        break;
+                    }
+                    asyncRoot = (TestStackRootNode) ((RootCallTarget) callNode.getCallTarget()).getRootNode();
+                } while (true);
+                return asyncStack;
+            }
+
+            private TestNode createTestNodes() {
                 TestNode node;
                 if (depth > 0) {
                     RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(new TestStackRootNode(language, rootSection.getSource(), depth - 1));
@@ -519,6 +631,11 @@ public class DebugStackFrameTest extends AbstractDebugTest {
                             @Override
                             public Object execute(VirtualFrame frame) {
                                 return call.call();
+                            }
+
+                            @Override
+                            protected DirectCallNode getCallNode() {
+                                return call;
                             }
                         };
                     } else {
@@ -533,6 +650,11 @@ public class DebugStackFrameTest extends AbstractDebugTest {
                             @Override
                             public Object execute(VirtualFrame frame) {
                                 return call.call();
+                            }
+
+                            @Override
+                            protected DirectCallNode getCallNode() {
+                                return call;
                             }
                         };
                     }
@@ -642,6 +764,9 @@ public class DebugStackFrameTest extends AbstractDebugTest {
                 }
             }
 
+            protected DirectCallNode getCallNode() {
+                return null;
+            }
         }
     }
 }

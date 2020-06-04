@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -126,15 +126,15 @@ import org.graalvm.polyglot.io.FileSystem;
  *
  * <h2>Character and binary based Sources</h2>
  *
- * A source is either {@link #hasBytes() byte} or {@link #hasCharacters() character} based. For
- * literal sources it depends on whether the byte or character based factory method was used. When
- * the source was loaded from a {@link File file} or {@link URL url} then the
- * {@link LanguageInfo#getDefaultMimeType() default MIME type} of the provided language will be used
- * to determine whether bytes or characters should be loaded. The behavior can be customized by
- * specifying a {@link SourceBuilder#mimeType(String) MIME type} or
- * {@link SourceBuilder#content(ByteSequence) content} explicitly. If the specified or inferred MIME
- * type starts with <code>'text/</code> or the MIME types is <code>null</code> then it will be
- * interpreted as character based, otherwise byte based.
+ * A source is {@link #hasBytes() byte} or {@link #hasCharacters() character} based, or none of
+ * those when {@link #CONTENT_NONE no content} is specified. For literal sources it depends on
+ * whether the byte or character based factory method was used. When the source was loaded from a
+ * {@link File file} or {@link URL url} then the {@link LanguageInfo#getDefaultMimeType() default
+ * MIME type} of the provided language will be used to determine whether bytes or characters should
+ * be loaded. The behavior can be customized by specifying a {@link SourceBuilder#mimeType(String)
+ * MIME type} or {@link SourceBuilder#content(ByteSequence) content} explicitly. If the specified or
+ * inferred MIME type starts with <code>'text/</code> or the MIME types is <code>null</code> then it
+ * will be interpreted as character based, otherwise byte based.
  *
  * @since 0.8 or earlier
  */
@@ -143,7 +143,10 @@ public abstract class Source {
 
     /**
      * Constant to be used as an argument to {@link SourceBuilder#content(CharSequence)} to set no
-     * content to the Source built.
+     * content to the Source built. The created sections will contain location information only and
+     * no characters. That's useful mainly when the source code is not available, but there are
+     * relative file paths, like in Java bytecode or LLVM bitcode. It's up to tools to resolve those
+     * relative paths and use the section location in resolved sources.
      *
      * @since 19.0
      */
@@ -304,8 +307,8 @@ public abstract class Source {
 
     /**
      * Returns <code>true</code> if this source represents a byte based source, else
-     * <code>false</code>. A source is either a byte based or a character based source, never both
-     * at the same time.
+     * <code>false</code>. A source is either a byte based, a character based, or with
+     * {@link #CONTENT_NONE no content}, but never both byte and character based at the same time.
      * <p>
      * The method {@link #getBytes()} is only supported if this method returns <code>true</code>.
      *
@@ -316,8 +319,8 @@ public abstract class Source {
 
     /**
      * Returns <code>true</code> if this source represents a character based source, else
-     * <code>false</code>. A source is either a byte based or a character based source, never both
-     * at the same time.
+     * <code>false</code>. A source is either a byte based, a character based, or with
+     * {@link #CONTENT_NONE no content}, but never both byte and character based at the same time.
      *
      * <p>
      * The following methods are only supported if {@link #hasCharacters()} is <code>true</code>:
@@ -1093,7 +1096,7 @@ public abstract class Source {
                     }
                 }
             } catch (FileSystemNotFoundException fsnf) {
-                if (ALLOW_IO && SourceAccessor.isDefaultFileSystem(fileSystemContext.get())) {
+                if (ALLOW_IO && SourceAccessor.hasAllAccess(fileSystemContext.get())) {
                     // Not a recognized by FileSystem, fall back to URLConnection only for allowed
                     // IO without a custom FileSystem
                     URLConnection connection = useUrl.openConnection();
@@ -1290,7 +1293,7 @@ public abstract class Source {
             // swallow and go on
         }
 
-        if (!ALLOW_IO || !SourceAccessor.isDefaultFileSystem(fileSystemContext)) {
+        if (!ALLOW_IO || !SourceAccessor.hasAllAccess(fileSystemContext)) {
             throw new SecurityException("Reading of URL " + url + " is not allowed.");
         }
 

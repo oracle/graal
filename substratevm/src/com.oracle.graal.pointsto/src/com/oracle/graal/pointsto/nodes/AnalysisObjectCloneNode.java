@@ -24,21 +24,16 @@
  */
 package com.oracle.graal.pointsto.nodes;
 
-import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.replacements.nodes.BasicObjectCloneNode;
-
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @NodeInfo
 public class AnalysisObjectCloneNode extends BasicObjectCloneNode {
 
     public static final NodeClass<AnalysisObjectCloneNode> TYPE = NodeClass.create(AnalysisObjectCloneNode.class);
 
-    public AnalysisObjectCloneNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, int bci, StampPair returnStamp, ValueNode receiver) {
-        super(TYPE, invokeKind, targetMethod, bci, returnStamp, receiver);
+    public AnalysisObjectCloneNode(MacroParams p) {
+        super(TYPE, p);
     }
 }

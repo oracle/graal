@@ -583,7 +583,7 @@ public final class NativeImageHeap implements ImageHeap {
         private final Object object;
         private final HostedClass clazz;
         private final long size;
-        private int identityHashCode;
+        private final int identityHashCode;
         private ImageHeapPartition partition;
         private long offsetInPartition;
         /**
@@ -601,7 +601,7 @@ public final class NativeImageHeap implements ImageHeap {
             this.partition = null;
             this.offsetInPartition = -1L;
             this.size = size;
-            this.setIdentityHashCode(identityHashCode);
+            this.identityHashCode = identityHashCode;
             this.reason = reason;
         }
 
@@ -673,10 +673,6 @@ public final class NativeImageHeap implements ImageHeap {
 
         int getIdentityHashCode() {
             return identityHashCode;
-        }
-
-        private void setIdentityHashCode(int identityHashCode) {
-            this.identityHashCode = identityHashCode;
         }
 
         @Override

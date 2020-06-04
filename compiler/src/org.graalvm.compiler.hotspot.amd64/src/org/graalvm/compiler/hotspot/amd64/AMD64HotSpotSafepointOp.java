@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -67,7 +67,7 @@ public final class AMD64HotSpotSafepointOp extends AMD64LIRInstruction {
         this.state = state;
         this.config = config;
         this.thread = thread;
-        if (config.threadLocalHandshakes || isPollingPageFar(config) || ImmutableCode.getValue(tool.getOptions())) {
+        if (config.useThreadLocalPolling || isPollingPageFar(config) || ImmutableCode.getValue(tool.getOptions())) {
             temp = tool.getLIRGeneratorTool().newVariable(LIRKind.value(tool.getLIRGeneratorTool().target().arch.getWordKind()));
         } else {
             // Don't waste a register if it's unneeded
@@ -81,7 +81,7 @@ public final class AMD64HotSpotSafepointOp extends AMD64LIRInstruction {
     }
 
     public static void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler asm, GraalHotSpotVMConfig config, boolean atReturn, LIRFrameState state, Register thread, Register scratch) {
-        if (config.threadLocalHandshakes) {
+        if (config.useThreadLocalPolling) {
             emitThreadLocalPoll(crb, asm, config, atReturn, state, thread, scratch);
         } else {
             emitGlobalPoll(crb, asm, config, atReturn, state, scratch);

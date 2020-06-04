@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.truffle.options;
 
-import java.util.function.Function;
-
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
@@ -35,9 +33,12 @@ import org.graalvm.options.OptionType;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.Option;
+import com.oracle.truffle.api.CallTarget;
+
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Set;
+import java.util.function.Function;
 
 /**
  * Truffle compilation options that can be configured per {@link Engine engine} instance. These
@@ -97,6 +98,60 @@ public final class PolyglotCompilerOptions {
         }
     }
 
+    /**
+     * Actions to take upon an exception being raised during Truffle compilation. The actions are
+     * with respect to what the user sees on the console. The enum constants and order are the same
+     * as defined in {@code org.graalvm.compiler.core.CompilationWrapper.ExceptionAction}.
+     *
+     * The actions are in ascending order of verbosity.
+     */
+    public enum ExceptionAction {
+        /**
+         * Print nothing to the console.
+         */
+        Silent,
+
+        /**
+         * Print a stack trace to the console.
+         */
+        Print,
+
+        /**
+         * Throw the exception to {@link CallTarget} caller.
+         */
+        Throw,
+
+        /**
+         * Retry compilation with extra diagnostics enabled.
+         */
+        Diagnose,
+
+        /**
+         * Exit the VM process.
+         */
+        ExitVM;
+
+        private static final String HELP = "Specifies the action to take when Truffle compilation fails.%n" +
+                        "The accepted values are:%n" +
+                        "    Silent - Print nothing to the console.%n" +
+                        "     Print - Print the exception to the console.%n" +
+                        "     Throw - Throw the exception to caller.%n" +
+                        "  Diagnose - Retry compilation with extra diagnostics enabled.%n" +
+                        "    ExitVM - Exit the VM process.";
+    }
+
+    static final OptionType<ExceptionAction> EXCEPTION_ACTION_TYPE = new OptionType<>("ExceptionAction",
+                    new Function<String, ExceptionAction>() {
+                        @Override
+                        public ExceptionAction apply(String s) {
+                            try {
+                                return ExceptionAction.valueOf(s);
+                            } catch (IllegalArgumentException e) {
+                                throw new IllegalArgumentException(ExceptionAction.HELP);
+                            }
+                        }
+                    });
+
     static final OptionType<Set<PerformanceWarningKind>> PERFORMANCE_WARNING_TYPE = new OptionType<>("PerformanceWarningKind",
                     new Function<String, Set<PerformanceWarningKind>>() {
                         @Override
@@ -108,6 +163,15 @@ public final class PolyglotCompilerOptions {
                             } else {
                                 Set<PerformanceWarningKind> result = EnumSet.noneOf(PerformanceWarningKind.class);
                                 for (String name : value.split(",")) {
+                                    if ("bailout".equals(name)) {
+                                        /*
+                                         * The PerformanceWarningKind.BAILOUT was removed but
+                                         * 'bailout' can still appear in option value due to
+                                         * backward compatibility. We need to ignore the 'bailout'
+                                         * option value.
+                                         */
+                                        continue;
+                                    }
                                     try {
                                         result.add(PerformanceWarningKind.forName(name));
                                     } catch (IllegalArgumentException e) {
@@ -135,7 +199,7 @@ public final class PolyglotCompilerOptions {
     // Compilation
 
     @Option(help = "Configures the execution mode of the engine. Available modes are 'latency' and 'throughput'. The default value balances between the two.",
-            category = OptionCategory.EXPERT)
+            category = OptionCategory.EXPERT, stability = OptionStability.STABLE)
     public static final OptionKey<EngineModeEnum> Mode = new OptionKey<>(EngineModeEnum.DEFAULT, ENGINE_MODE_TYPE);
 
     @Option(help = "Enable or disable Truffle compilation.", category = OptionCategory.INTERNAL)
@@ -189,17 +253,23 @@ public final class PolyglotCompilerOptions {
 
     // Failed compilation behavior
 
-    @Option(help = "Prints the exception stack trace for compilation exceptions", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Boolean> CompilationExceptionsArePrinted = new OptionKey<>(true);
+    @Option(help = "Prints the exception stack trace for compilation exceptions", category = OptionCategory.INTERNAL, deprecated = true, deprecationMessage = "Use 'engine.CompilationFailureAction=Print'")
+    public static final OptionKey<Boolean> CompilationExceptionsArePrinted = new OptionKey<>(false);
 
-    @Option(help = "Treat compilation exceptions as thrown runtime exceptions", category = OptionCategory.INTERNAL)
+    @Option(help = "Treat compilation exceptions as thrown runtime exceptions", category = OptionCategory.INTERNAL, deprecated = true, deprecationMessage = "Use 'engine.CompilationFailureAction=Throw'")
     public static final OptionKey<Boolean> CompilationExceptionsAreThrown = new OptionKey<>(false);
 
-    @Option(help = "Treat compilation exceptions as fatal exceptions that will exit the application", category = OptionCategory.INTERNAL)
+    @Option(help = "Treat compilation exceptions as fatal exceptions that will exit the application", category = OptionCategory.INTERNAL, deprecated = true, deprecationMessage = "Use 'engine.CompilationFailureAction=ExitVM'")
     public static final OptionKey<Boolean> CompilationExceptionsAreFatal = new OptionKey<>(false);
 
-    @Option(help = "Treat performance warnings as fatal occurrences that will exit the applications", category = OptionCategory.INTERNAL)
+    @Option(help = "Treat performance warnings as fatal occurrences that will exit the applications", category = OptionCategory.INTERNAL, deprecated = true, deprecationMessage = "Use 'engine.CompilationFailureAction=ExitVM' 'engine.TreatPerformanceWarningsAsErrors=<PerformanceWarningKinds>'")
     public static final OptionKey<Set<PerformanceWarningKind>> PerformanceWarningsAreFatal = new OptionKey<>(Collections.emptySet(), PERFORMANCE_WARNING_TYPE);
+
+    @Option(help = ExceptionAction.HELP, category = OptionCategory.EXPERT)
+    public static final OptionKey<ExceptionAction> CompilationFailureAction = new OptionKey<>(ExceptionAction.Silent, EXCEPTION_ACTION_TYPE);
+
+    @Option(help = "Treat performance warnings as error. Handling of the error depends on the CompilationFailureAction option value", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Set<PerformanceWarningKind>> TreatPerformanceWarningsAsErrors = new OptionKey<>(Collections.emptySet(), PERFORMANCE_WARNING_TYPE);
 
     // Tracing
 
@@ -251,25 +321,7 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<Integer> InliningRecursionDepth = new OptionKey<>(2);
 
     @Option(help = "Use language-agnostic inlining (overrides the TruffleFunctionInlining setting, option is experimental).", category = OptionCategory.EXPERT)
-    public static final OptionKey<Boolean> LanguageAgnosticInlining = new OptionKey<>(false);
-
-    @Option(help = "Controls how impactful many cutoff nodes is on exploration decision in language-agnostic inlining.", category = OptionCategory.EXPERT)
-    public static final OptionKey<Double> InliningCutoffCountPenalty = new OptionKey<>(0.9);
-
-    @Option(help = "Controls how impactful the size of the subtree is on exploration decision in language-agnostic inlining.", category = OptionCategory.EXPERT)
-    public static final OptionKey<Double> InliningNodeCountPenalty = new OptionKey<>(0.01);
-
-    @Option(help = "Controls how impactful few cutoff nodes are on exploration decisions in language-agnostic inlining.", category = OptionCategory.EXPERT)
-    public static final OptionKey<Double> InliningExpandAllProximityFactor = new OptionKey<>(0.5);
-
-    @Option(help = "Controls at what point few cutoff nodes are impactful on exploration decisions in language-agnostic inlining.", category = OptionCategory.EXPERT)
-    public static final OptionKey<Integer> InliningExpandAllProximityBonus = new OptionKey<>(10);
-
-    @Option(help = "Controls how steep the exploration limit curve grows in language-agnostic inlining.", category = OptionCategory.EXPERT)
-    public static final OptionKey<Integer> InliningExpansionCounterPressure = new OptionKey<>(2000);
-
-    @Option(help = "Controls how steep the inlining limit curve grows in language-agnostic inlining", category = OptionCategory.EXPERT)
-    public static final OptionKey<Integer> InliningInliningCounterPressure = new OptionKey<>(2000);
+    public static final OptionKey<Boolean> LanguageAgnosticInlining = new OptionKey<>(true);
 
     // Splitting
 
@@ -375,10 +427,10 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<String> InliningPolicy = new OptionKey<>("");
 
     @Option(help = "The base expansion budget for language-agnostic inlining.", category = OptionCategory.EXPERT)
-    public static final OptionKey<Integer> InliningExpansionBudget = new OptionKey<>(50_000);
+    public static final OptionKey<Integer> InliningExpansionBudget = new OptionKey<>(30_000);
 
     @Option(help = "The base inlining budget for language-agnostic inlining", category = OptionCategory.EXPERT)
-    public static final OptionKey<Integer> InliningInliningBudget = new OptionKey<>(50_000);
+    public static final OptionKey<Integer> InliningInliningBudget = new OptionKey<>(30_000);
 
     // @formatter:on
 

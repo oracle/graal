@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -42,8 +43,11 @@ public final class LLVMBitcodeLibraryFunctions {
 
         protected LibraryFunctionNode(LLVMContext context, String name) {
             LLVMFunction function = context.getGlobalScope().getFunction(name);
+            if (function == null) {
+                throw new LLVMLinkerException("Function not found: " + name);
+            }
             LLVMFunctionDescriptor descriptor = context.createFunctionDescriptor(function);
-            callNode = DirectCallNode.create(descriptor.getLLVMIRFunctionSlowPath());
+            callNode = DirectCallNode.create(descriptor.getFunctionCode().getLLVMIRFunctionSlowPath());
         }
 
         protected Object execute(Object... args) {

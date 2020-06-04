@@ -25,9 +25,10 @@
 package com.oracle.graal.pointsto;
 
 import org.graalvm.compiler.nodes.Invoke;
-import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.options.OptionValues;
 
+import com.oracle.graal.pointsto.api.PointstoOptions;
+import com.oracle.graal.pointsto.flow.AbstractSpecialInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
@@ -49,8 +50,34 @@ public abstract class AnalysisPolicy {
 
     protected final OptionValues options;
 
+    protected final boolean aliasArrayTypeFlows;
+    protected final boolean relaxTypeFlowConstraints;
+    protected final boolean removeSaturatedTypeFlows;
+    protected final int typeFlowSaturationCutoff;
+
     public AnalysisPolicy(OptionValues options) {
         this.options = options;
+
+        aliasArrayTypeFlows = PointstoOptions.AliasArrayTypeFlows.getValue(options);
+        relaxTypeFlowConstraints = PointstoOptions.RelaxTypeFlowStateConstraints.getValue(options);
+        removeSaturatedTypeFlows = PointstoOptions.RemoveSaturatedTypeFlows.getValue(options);
+        typeFlowSaturationCutoff = PointstoOptions.TypeFlowSaturationCutoff.getValue(options);
+    }
+
+    public boolean aliasArrayTypeFlows() {
+        return aliasArrayTypeFlows;
+    }
+
+    public boolean relaxTypeFlowConstraints() {
+        return relaxTypeFlowConstraints;
+    }
+
+    public boolean removeSaturatedTypeFlows() {
+        return removeSaturatedTypeFlows;
+    }
+
+    public int typeFlowSaturationCutoff() {
+        return typeFlowSaturationCutoff;
     }
 
     /** Provide an analysis context policy. */
@@ -108,7 +135,11 @@ public abstract class AnalysisPolicy {
     public abstract ArrayElementsTypeStore createArrayElementsTypeStore(AnalysisObject object, AnalysisUniverse universe);
 
     /** Provides implementation for the virtual invoke type flow. */
-    public abstract AbstractVirtualInvokeTypeFlow createVirtualInvokeTypeFlow(Invoke invoke, MethodCallTargetNode target,
+    public abstract AbstractVirtualInvokeTypeFlow createVirtualInvokeTypeFlow(Invoke invoke, AnalysisType receiverType, AnalysisMethod targetMethod,
+                    TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location);
+
+    /** Provides implementation for the virtual invoke type flow. */
+    public abstract AbstractSpecialInvokeTypeFlow createSpecialInvokeTypeFlow(Invoke invoke, AnalysisType receiverType, AnalysisMethod targetMethod,
                     TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location);
 
     @SuppressWarnings("unused")

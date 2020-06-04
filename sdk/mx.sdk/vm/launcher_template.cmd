@@ -29,83 +29,218 @@
 
 setlocal enabledelayedexpansion
 
-set location=%~dp0
-set executablename=%~f0
+call :getScriptLocation location
+call :getExecutableName executablename
+for /f "delims=" %%i in ("%executablename%") do set "basename=%%~ni"
 
 set "relcp=<classpath>"
-set "realcp="
-set "cp_delim="
+set "absolute_cp="
+set newline=^
 
-:nextcp
-for /f "tokens=1* delims=;" %%i in ("%relcp%") do (
-  set "realcp=%realcp%%cp_delim%%location%%%i"
-  set "cp_delim=;"
-  set "relcp_next=%relcp:*;=%"
+
+:: The two white lines above this comment are significant.
+
+:: Split on semicolon by replacing it by newlines.
+for /f "delims=" %%i in ("%relcp:;=!newline!%") do (
+    if "!absolute_cp!"=="" (
+        set "absolute_cp=%location%%%i"
+    ) else (
+        set "absolute_cp=!absolute_cp!;%location%%%i"
+    )
 )
-if not "%relcp_next%"=="%relcp%" set "relcp=%relcp_next%" & goto :nextcp
 
 set "jvm_args=-Dorg.graalvm.launcher.shell=true "-Dorg.graalvm.launcher.executablename=%executablename%""
 set "launcher_args="
-set "args_delim="
 
-:arg_loop
-if not "%~1"=="" (
-  echo %* | findstr /C:%1=%2 >nul && (
-    set "arg=%1=%2"
-    set "u_arg=!arg!"
-    shift
-  ) || (
-    set "arg=%1"
-    set "u_arg=%~1"
-  )
-  shift
-
-  rem `!arg!` is the argument as passed by the user, propagated as-is to `java`.
-  rem `!u_arg!` is the unquoted argument, used to understand if `!arg!` is a JVM or a program argument.
-
-  set "jvm_arg="
-  set "wrong_cp="
-
-  rem Unfortunately, parsing of `--jvm.*` and `--vm.*` arguments has to be done blind:
-  rem Maybe some of those arguments where not really intended for the launcher but were application arguments
-  if "!u_arg:~0,5!"=="--vm." (
-    set "jvm_arg=-!u_arg:~5!"
-  ) else if "!u_arg:~0,6!"=="--jvm." (
-    set "jvm_arg=-!u_arg:~6!"
-  ) else if "!u_arg:~0,9!"=="--native." (
-    echo "The native version of this launcher does not exist: cannot use '--native.*'."
-    exit /b 1
-  ) else if "!u_arg!"=="--native" (
-    echo "The native version of this launcher does not exist: cannot use '--native'."
-    exit /b 1
-  )
-
-  if not "!jvm_arg!"=="" (
-    if "!jvm_arg!"=="-cp" (
-      set "wrong_cp=true"
-    ) else if "!jvm_arg!"=="-classpath" (
-      set "wrong_cp=true"
-    )
-
-    if "!wrong_cp!"=="true" (
-      echo "!arg!" argument must be of the form "!arg!=<classpath>", not two separate arguments
-      exit /b 1
-    ) else if "!jvm_arg:~0,4!"=="-cp=" (
-      set "realcp=%realcp%;!jvm_arg:~4!"
-    ) else if "!jvm_arg:~0,11!"=="-classpath=" (
-      set "realcp=%realcp%;!jvm_arg:~11!"
-    ) else (
-      rem Quote all VM arguments
-      set "jvm_args=!jvm_args! "!jvm_arg!""
-    )
-  ) else (
-    set "launcher_args=!launcher_args!!args_delim!!arg!"
-    set "args_delim= "
-  )
-
-  goto :arg_loop
+call :escape_args %*
+for %%a in (%args%) do (
+  call :unescape_arg %%a
+  call :process_arg !arg!
+  if errorlevel 1 exit /b 1
 )
 
 if "%VERBOSE_GRAALVM_LAUNCHERS%"=="true" echo on
 
-"%location%<jre_bin>\java" <extra_jvm_args> %jvm_args% -cp "%realcp%" <main_class> %launcher_args%
+"%location%<jre_bin>\java" <extra_jvm_args> %jvm_args% -cp "%absolute_cp%" <main_class> %launcher_args%
+
+:: Function are defined via labels, so have to be defined at the end of the file and skipped
+:: in order not to be executed. :eof is implicitly defined.
+goto :eof
+
+:: A digression on quotes and escapes.
+:: ----
+:: By default, batch splits arguments (for scripts, subroutine calls, and optionless `for`) on
+:: delimiter characters: spaces, commas, semicolon and equals (excepted when they appear within
+:: double quotes).
+::
+:: Graal expects `=` in its arguments, and we want to preserve language arguments as much as
+:: possible. To achieve this, we escape all such delimiter characters, except spaces, by replacing
+:: them by markers. This lets us "correctly" split the arguments.
+::
+:: Quoting is also peculiar in batch. It has the splitting-prevention effect said above, but double
+:: quotes are regular characters that are passed along with arguments. This means we can't blindly
+:: requote arguments, as we risk getting the quotes mismatched (e.g. ""a""). In practice such things
+:: can be made to work, but it's much worse when only part of the argument is quoted (e.g.
+:: --vm.cp="my path").
+::
+:: We can avoid issues in comparisons by always using quotes + delayed expansions variables (e.g.
+:: !myvar!). When matching the start of arguments, we need to strip the outer quotes beforehand.
+::
+:: Things are harder when passing arguments to subroutines. By stripping away quotes and taking
+:: substring of arguments, we risk unforeseen splitting. If we allow only part of an argument to be
+:: quoted (--vm.cp="my path";path2), there is no easy way to ensure quotation in all cases. Instead,
+:: we let splitting occur and simply coalesce all arguments in one (set "arg=%*") in most function.
+:: Because we escaped our arguments beforehand, splitting occur only on spaces and we avoid losing
+:: meaningful symbols.
+::
+:: We use %arg_quoted% to track whether non-classpath jvm arguments appear nested inside quotes in
+:: order to know if we need to requote the translated argument. This enables both
+:: [--vm.obscure="with spaces"] and ["--vm.obscure=with spaces"] to work.
+::
+:: Also, cmd.exe will blow up with weird errors (can't find label, unexpected else) when you put
+:: some characters in *some* :: comments. Test every time you change a comment It is particularly
+:: finicky around labels.
+
+:escape_args
+    set "args=%*"
+    :: Without early exit on empty contents, substitutions fail.
+    if "!args!"=="" exit /b 0
+    set "args=%args:,=##GRAAL_ESCAPE_COMMA##%"
+    set "args=%args:;=##GRAAL_ESCAPE_SEMI##%"
+    :: Temporarily, so that args are split on '=' only.
+    set "args=%args: =##GRAAL_ESCAPE_SPACE##%"
+    :: Temporarily, otherwise we won't split on '=' inside quotes.
+    set "args=%args:"=##GRAAL_ESCAPE_QUOTE##%"
+    :: We can't replace equal using the variable substitution syntax.
+    call :replace_equals %args%
+    set "args=%args:##GRAAL_ESCAPE_SPACE##= %"
+    set "args=%args:##GRAAL_ESCAPE_QUOTE##="%"
+    exit /b 0
+
+:replace_equals
+    setlocal
+    set "arg=%1"
+    if "!arg!"=="" goto :end_replace_equals
+    set "args=%1"
+    shift
+    :: Items in %* are all separated by =, because we replaced all other delimiters in :escape_args.
+    :loop_replace_equals
+        set "arg=%1"
+        if "!arg!"=="" goto :end_replace_equals
+        set "args=%args%##GRAAL_ESCAPE_EQUAL##%arg%"
+        shift
+        goto :loop_replace_equals
+    :end_replace_equals
+        endlocal & ( set "args=%args%" )
+        exit /b 0
+
+:unescape_arg
+    set "arg=%*"
+    set "arg=%arg:##GRAAL_ESCAPE_COMMA##=,%"
+    set "arg=%arg:##GRAAL_ESCAPE_SEMI##=;%"
+    set "arg=%arg:##GRAAL_ESCAPE_EQUAL##==%"
+    exit /b 0
+
+:is_quoted
+    setlocal
+    set /a argslen=0
+    for %%a in (%*) do set /a argslen+=1
+    if %argslen% gtr 1 (
+        set "quoted=false"
+    ) else (
+        set "arg=%1"
+        if "!arg:~0,1!!arg:~-1!"=="""" ( set "quoted=true" ) else ( set "quoted=false" )
+    )
+    endlocal & ( set "quoted=%quoted%" )
+    exit /b 0
+
+:unquote_arg
+    :: Sets %arg% to a version of the argument with outer quotes stripped, if present.
+    call :is_quoted %*
+    if %quoted%==true ( set "arg=%~1" ) else ( set "arg=%*" )
+    exit /b 0
+
+:: Unfortunately, parsing of `--jvm.*` and `--vm.*` arguments has to be done blind:
+:: Maybe some of those arguments where not really intended for the launcher but were application
+:: arguments.
+
+:process_vm_arg
+    if %arg_quoted%==false (
+        call :is_quoted %*
+        set "arg_quoted=%quoted%"
+    )
+    call :unquote_arg %*
+    set "vm_arg=%arg%"
+    set "custom_cp="
+
+    if "!vm_arg!"=="cp" (
+        set "part1='--%prefix%.cp' argument must be of the form"
+        set "part2='--%prefix%.cp=<classpath>', not two separate arguments."
+        >&2 echo !part1! !part2!
+        exit /b 1
+    ) else if "!vm_arg!"=="classpath" (
+        set "part1='--%prefix%.classpath' argument must be of the form"
+        set "part2='--%prefix%.classpath=<classpath>', not two separate arguments."
+        >&2 echo !part1! !part2!
+        exit /b 1
+    ) else if "!vm_arg:~0,3!"=="cp=" (
+        call :unquote_arg %vm_arg:~3%
+        set "absolute_cp=%absolute_cp%;!arg!"
+    ) else if "!vm_arg:~0,10!"=="classpath=" (
+        call :unquote_arg %vm_arg:~10%
+        set "absolute_cp=%absolute_cp%;!arg!"
+    ) else (
+        if %arg_quoted%==true ( set "arg="-%vm_arg%"" ) else ( set "arg=-%vm_arg%" )
+        set "jvm_args=%jvm_args% !arg!"
+    )
+    exit /b 0
+
+:process_arg
+    call :is_quoted %*
+    set "arg_quoted=%quoted%"
+    call :unquote_arg %*
+
+    if "!arg:~0,6!"=="--jvm." (
+        >&2 echo '--jvm.*' options are deprecated, use '--vm.*' instead.
+        set prefix=jvm
+        call :unquote_arg %arg:~6%
+        call :process_vm_arg !arg!
+        if errorlevel 1 exit /b 1
+    ) else if "!arg:~0,5!"=="--vm." (
+        set prefix=vm
+        call :unquote_arg %arg:~5%
+        call :process_vm_arg !arg!
+        if errorlevel 1 exit /b 1
+    ) else (
+        set cond=false
+        if "!arg!"=="--native" set cond=true
+        if "!arg:~0,9!"=="--native." set cond=true
+
+        if !cond!==true (
+            >&2 echo The native version of %basename% does not exist: cannot use '%arg%'.
+
+            set "extra="
+            if "!basename!"=="polyglot" set "extra= --language:all"
+            set "part1=If native-image is installed, you may build it with"
+            set "part2='native-image --macro:<macro_name>!extra!'."
+            >&2 echo !part1! !part2!
+            exit /b 1
+        ) else (
+            :: Use %* instead of %arg% to preserve surrounding quotes if present.
+            set "launcher_args=%launcher_args% %*"
+        )
+    )
+    exit /b 0
+
+:: If this script is in `%PATH%` and called quoted without a full path (e.g., `"js"`), `%~dp0` is expanded to `cwd`
+:: rather than the path to the script.
+:: This does not happen if `%~dp0` is accessed in a subroutine.
+:getScriptLocation variableName
+    set "%~1=%~dp0"
+    exit /b 0
+
+:getExecutableName variableName
+    set "%~1=%~f0"
+    exit /b 0
+
+endlocal

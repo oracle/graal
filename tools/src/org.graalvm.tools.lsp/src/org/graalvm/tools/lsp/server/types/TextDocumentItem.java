@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,12 +30,10 @@ import java.util.Objects;
 /**
  * An item to transfer a text document from the client to the server.
  */
-public class TextDocumentItem {
-
-    final JSONObject jsonData;
+public class TextDocumentItem extends JSONBase {
 
     TextDocumentItem(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -117,10 +115,10 @@ public class TextDocumentItem {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 17 * hash + Objects.hashCode(this.getUri());
-        hash = 17 * hash + Objects.hashCode(this.getLanguageId());
-        hash = 17 * hash + Integer.hashCode(this.getVersion());
-        hash = 17 * hash + Objects.hashCode(this.getText());
+        hash = 97 * hash + Objects.hashCode(this.getUri());
+        hash = 97 * hash + Objects.hashCode(this.getLanguageId());
+        hash = 97 * hash + Integer.hashCode(this.getVersion());
+        hash = 97 * hash + Objects.hashCode(this.getText());
         return hash;
     }
 

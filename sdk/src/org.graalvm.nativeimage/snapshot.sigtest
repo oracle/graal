@@ -159,18 +159,22 @@ supr java.lang.Object
 CLSS public final static org.graalvm.nativeimage.Isolates$CreateIsolateParameters
  outer org.graalvm.nativeimage.Isolates
 innr public final static Builder
+meth public java.lang.String getAuxiliaryImagePath()
+meth public org.graalvm.word.UnsignedWord getAuxiliaryImageReservedSpaceSize()
 meth public org.graalvm.word.UnsignedWord getReservedAddressSpaceSize()
 meth public static org.graalvm.nativeimage.Isolates$CreateIsolateParameters getDefault()
 supr java.lang.Object
-hfds DEFAULT,reservedAddressSpaceSize
+hfds DEFAULT,auxiliaryImagePath,auxiliaryImageReservedSpaceSize,reservedAddressSpaceSize
 
 CLSS public final static org.graalvm.nativeimage.Isolates$CreateIsolateParameters$Builder
  outer org.graalvm.nativeimage.Isolates$CreateIsolateParameters
 cons public init()
 meth public org.graalvm.nativeimage.Isolates$CreateIsolateParameters build()
+meth public org.graalvm.nativeimage.Isolates$CreateIsolateParameters$Builder auxiliaryImagePath(java.lang.String)
+meth public org.graalvm.nativeimage.Isolates$CreateIsolateParameters$Builder auxiliaryImageReservedSpaceSize(org.graalvm.word.UnsignedWord)
 meth public org.graalvm.nativeimage.Isolates$CreateIsolateParameters$Builder reservedAddressSpaceSize(org.graalvm.word.UnsignedWord)
 supr java.lang.Object
-hfds reservedAddressSpaceSize
+hfds auxiliaryImagePath,auxiliaryImageReservedSpaceSize,reservedAddressSpaceSize
 
 CLSS public final static org.graalvm.nativeimage.Isolates$IsolateException
  outer org.graalvm.nativeimage.Isolates
@@ -294,6 +298,9 @@ meth public static java.lang.String getObjectFile(org.graalvm.nativeimage.c.func
 meth public static java.lang.String setLocale(java.lang.String,java.lang.String)
 meth public static long getProcessID()
 meth public static long getProcessID(java.lang.Process)
+meth public static boolean setArgumentVectorProgramName(java.lang.String)
+meth public static java.lang.String getArgumentVectorProgramName()
+meth public static int getArgumentVectorBlockSize()
 supr java.lang.Object
 
 CLSS public final org.graalvm.nativeimage.RuntimeOptions
@@ -346,6 +353,7 @@ supr java.lang.Object
 CLSS public final org.graalvm.nativeimage.VMRuntime
 meth public static void initialize()
 meth public static void shutdown()
+meth public static void dumpHeap(java.lang.String,boolean)
 supr java.lang.Object
 
 CLSS public abstract interface !annotation org.graalvm.nativeimage.c.CContext
@@ -475,6 +483,7 @@ CLSS public abstract interface !annotation org.graalvm.nativeimage.c.function.CL
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE, METHOD])
 intf java.lang.annotation.Annotation
 meth public abstract !hasdefault boolean requireStatic()
+meth public abstract !hasdefault java.lang.String[] dependsOn()
 meth public abstract java.lang.String value()
 
 CLSS public abstract interface !annotation org.graalvm.nativeimage.c.function.CMacroInfo

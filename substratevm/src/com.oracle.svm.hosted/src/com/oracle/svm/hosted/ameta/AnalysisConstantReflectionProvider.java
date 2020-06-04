@@ -36,6 +36,7 @@ import org.graalvm.word.WordBase;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.graal.meta.SharedConstantReflectionProvider;
@@ -133,12 +134,27 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
             return JavaConstant.defaultForKind(kind);
         }
 
-        Field reflectionField = field.getJavaField();
-        assert Modifier.isStatic(reflectionField.getModifiers());
-        assert kind == JavaKind.fromJavaClass(reflectionField.getType());
+        assert Modifier.isStatic(field.getModifiers());
 
-        Object base = GraalUnsafeAccess.getUnsafe().staticFieldBase(reflectionField);
-        long offset = GraalUnsafeAccess.getUnsafe().staticFieldOffset(reflectionField);
+        /* On HotSpot the base of a static field is the Class object. */
+        Object base = field.getDeclaringClass().getJavaClass();
+        long offset = field.getOffset();
+
+        /*
+         * We cannot rely on the reflectionField because it can be null if there is some incomplete
+         * classpath issue or the field is either missing or hidden from reflection. However we can
+         * still use it to double check our assumptions.
+         */
+        Field reflectionField = field.getJavaField();
+        if (reflectionField != null) {
+            assert kind == JavaKind.fromJavaClass(reflectionField.getType());
+
+            Object reflectionFieldBase = GraalUnsafeAccess.getUnsafe().staticFieldBase(reflectionField);
+            long reflectionFieldOffset = GraalUnsafeAccess.getUnsafe().staticFieldOffset(reflectionField);
+
+            AnalysisError.guarantee(reflectionFieldBase == base && reflectionFieldOffset == offset);
+        }
+
         switch (kind) {
             case Boolean:
                 return JavaConstant.forBoolean(GraalUnsafeAccess.getUnsafe().getBoolean(base, offset));
@@ -209,22 +225,14 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     /**
      * Intercept assertion status: the value of the field during image generation does not matter at
      * all (because it is the hosted assertion status), we instead return the appropriate runtime
-     * assertion status.
+     * assertion status. Field loads are also intrinsified early in
+     * {@link com.oracle.svm.hosted.phases.EarlyConstantFoldLoadFieldPlugin}, but we could still see
+     * such a field here if user code, e.g., accesses it via reflection.
      */
     private static JavaConstant interceptAssertionStatus(AnalysisField field, JavaConstant value) {
-        if (Modifier.isStatic(field.getModifiers()) && field.isSynthetic() && field.getName().startsWith("$assertionsDisabled")) {
-            String unsubstitutedName = field.wrapped.getDeclaringClass().toJavaName();
-            if (unsubstitutedName.startsWith("java.") || unsubstitutedName.startsWith("javax.") || unsubstitutedName.startsWith("sun.")) {
-                /*
-                 * This is a JDK class, so not likely an assertion that we care about, and some JDK
-                 * assertions do not hold in Substrate VM. Note that we match the original class
-                 * (before substitution) here to keep assertions in substitution code.
-                 */
-                return JavaConstant.TRUE;
-            }
-            /* For the user-provided filter, match substitution target names to avoid confusion. */
-            String className = field.getDeclaringClass().toJavaName();
-            return JavaConstant.forBoolean(!SubstrateOptions.getRuntimeAssertionsForClass(className));
+        if (field.isStatic() && field.isSynthetic() && field.getName().startsWith("$assertionsDisabled")) {
+            boolean assertionsEnabled = SubstrateOptions.getRuntimeAssertionsForClass(field.getDeclaringClass().toJavaName());
+            return JavaConstant.forBoolean(!assertionsEnabled);
         }
         return value;
     }

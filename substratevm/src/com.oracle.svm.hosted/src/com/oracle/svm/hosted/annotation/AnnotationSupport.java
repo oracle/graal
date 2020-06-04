@@ -41,9 +41,11 @@ import org.graalvm.compiler.java.FrameStateBuilder;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
+import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ReturnNode;
+import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -56,7 +58,7 @@ import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
-import org.graalvm.compiler.replacements.nodes.BasicObjectCloneNode;
+import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
@@ -312,9 +314,10 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
                 JavaType returnType = cloneMethod.getSignature().getReturnType(null);
                 StampPair returnStampPair = StampFactory.forDeclaredType(null, returnType, false);
 
-                BasicObjectCloneNode cloned = kit.append(SubstrateGraphBuilderPlugins.objectCloneNode(InvokeKind.Virtual, bci++, returnStampPair, cloneMethod, loadField));
+                FixedNode cloned = kit.append(SubstrateGraphBuilderPlugins
+                                .objectCloneNode(MacroParams.of(InvokeKind.Virtual, method, cloneMethod, bci++, returnStampPair, loadField), kit.parsingIntrinsic()).asNode());
                 state.push(returnType.getJavaKind(), cloned);
-                cloned.setStateAfter(state.create(bci, cloned));
+                ((StateSplit) cloned).setStateAfter(state.create(bci, (StateSplit) cloned));
                 state.pop(returnType.getJavaKind());
 
                 ValueNode casted = kit.unique(new PiNode(cloned, resultType, false, false));
@@ -407,8 +410,8 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
                      * elimination to clean things up).
                      */
                     ResolvedJavaType boxedAttributeType = providers.getMetaAccess().lookupJavaType(attributeType.getJavaKind().toBoxedJavaClass());
-                    ourAttribute = kit.append(new BoxNode(ourAttribute, boxedAttributeType, attributeType.getJavaKind()));
-                    otherAttribute = kit.append(new BoxNode(otherAttribute, boxedAttributeType, attributeType.getJavaKind()));
+                    ourAttribute = kit.append(BoxNode.create(ourAttribute, boxedAttributeType, attributeType.getJavaKind()));
+                    otherAttribute = kit.append(BoxNode.create(otherAttribute, boxedAttributeType, attributeType.getJavaKind()));
                 }
 
                 ValueNode attributeEqual;
@@ -469,7 +472,7 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
                 if (attributeType.isPrimitive()) {
                     /* Box primitive types. */
                     ResolvedJavaType boxedAttributeType = providers.getMetaAccess().lookupJavaType(attributeType.getJavaKind().toBoxedJavaClass());
-                    ourAttribute = kit.append(new BoxNode(ourAttribute, boxedAttributeType, attributeType.getJavaKind()));
+                    ourAttribute = kit.append(BoxNode.create(ourAttribute, boxedAttributeType, attributeType.getJavaKind()));
                 }
 
                 ValueNode attributeHashCode;

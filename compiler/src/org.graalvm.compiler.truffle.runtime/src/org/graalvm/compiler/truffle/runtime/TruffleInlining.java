@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -64,8 +64,7 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision>, Truff
     }
 
     private static List<TruffleInliningDecision> createDecisions(OptimizedCallTarget sourceTarget, TruffleInliningPolicy policy, CompilerOptions options) {
-        if (!sourceTarget.getOptionValue(PolyglotCompilerOptions.Inlining) || sourceTarget.getOptionValue(PolyglotCompilerOptions.Mode) == PolyglotCompilerOptions.EngineModeEnum.LATENCY ||
-                        sourceTarget.getOptionValue(PolyglotCompilerOptions.LanguageAgnosticInlining)) {
+        if (!sourceTarget.engine.inlining || sourceTarget.getOptionValue(PolyglotCompilerOptions.LanguageAgnosticInlining)) {
             return Collections.emptyList();
         }
         int[] visitedNodes = {0};

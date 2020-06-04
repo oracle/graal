@@ -33,7 +33,7 @@ public interface InspectorWSConnection {
 
     int getPort();
 
-    void consoleAPICall(String wsspath, String type, Object text);
+    void consoleAPICall(Token token, String type, Object text);
 
-    void close(String wsspath) throws IOException;
+    void close(Token token) throws IOException;
 }

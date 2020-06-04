@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.nodes.asm;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.RepeatingNode;
@@ -40,15 +41,16 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 
-public class LLVMAMD64RepNode extends LLVMStatementNode {
+public abstract class LLVMAMD64RepNode extends LLVMStatementNode {
+
     @Child private LoopNode loop;
 
     public LLVMAMD64RepNode(LLVMAMD64WriteValueNode writeRCX, LLVMExpressionNode rcx, LLVMStatementNode body) {
         this.loop = Truffle.getRuntime().createLoopNode(new LLVMAMD64RepLoopNode(writeRCX, rcx, body));
     }
 
-    @Override
-    public void execute(VirtualFrame frame) {
+    @Specialization
+    public void doRep(VirtualFrame frame) {
         loop.execute(frame);
     }
 

@@ -43,6 +43,7 @@ from __future__ import print_function
 from abc import ABCMeta
 
 import mx
+import mx_javamodules
 import mx_subst
 import os
 import shutil
@@ -111,6 +112,22 @@ class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
 
     def __repr__(self):
         return str(self)
+
+    @staticmethod
+    def get_add_exports_list(required_exports, custom_target_module_str=None):
+        add_exports = []
+        for required in required_exports:
+            target_modules = required_exports[required]
+            target_modules_str = custom_target_module_str or ','.join(sorted(target_module.name for target_module in target_modules))
+            required_module_name, required_package_name = required
+            add_exports.append('--add-exports=' + required_module_name + '/' + required_package_name + "=" + target_modules_str)
+        return sorted(add_exports)
+
+    def get_add_exports(self):
+        distributions = self.jar_distributions
+        distributions_transitive = mx.classpath_entries(distributions)
+        required_exports = mx_javamodules.requiredExports(distributions_transitive, base_jdk())
+        return ' '.join(AbstractNativeImageConfig.get_add_exports_list(required_exports))
 
 
 class LauncherConfig(AbstractNativeImageConfig):
@@ -453,6 +470,18 @@ def jdk_has_new_jlink_options(jdk):
         setattr(jdk, '.supports_new_jlink_options', '--add-options=' in output.data)
     return getattr(jdk, '.supports_new_jlink_options')
 
+def jdk_supports_enablejvmciproduct(jdk):
+    """
+    Determines if the jdk supports flag -XX:+EnableJVMCIProduct which isn't the case
+    for some OpenJDK 11u distros.
+    """
+    if not hasattr(jdk, '.supports_enablejvmciproduct'):
+        out = mx.LinesOutputCapture()
+        sink = lambda x: x
+        mx.run([jdk.java, '-XX:+UnlockExperimentalVMOptions', '-XX:+PrintFlagsFinal', '-version'], out=out, err=sink)
+        setattr(jdk, '.supports_enablejvmciproduct', any('EnableJVMCIProduct' in line for line in out.lines))
+    return getattr(jdk, '.supports_enablejvmciproduct')
+
 def jdk_omits_warning_for_jlink_set_ThreadPriorityPolicy(jdk): # pylint: disable=invalid-name
     """
     Determines if the `jdk` suppresses a warning about ThreadPriorityPolicy when it
@@ -470,7 +499,12 @@ def jdk_omits_warning_for_jlink_set_ThreadPriorityPolicy(jdk): # pylint: disable
         setattr(jdk, '.omits_ThreadPriorityPolicy_warning', '-XX:ThreadPriorityPolicy=1 may require system level permission' not in out.data)
     return getattr(jdk, '.omits_ThreadPriorityPolicy_warning')
 
-def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, root_module_names=None, missing_export_target_action='create', with_source=lambda x: True, vendor_info=None):
+def jlink_new_jdk(jdk, dst_jdk_dir, module_dists,
+                  root_module_names=None,
+                  missing_export_target_action='create',
+                  with_source=lambda x: True,
+                  vendor_info=None,
+                  dedup_legal_notices=True):
     """
     Uses jlink from `jdk` to create a new JDK image in `dst_jdk_dir` with `module_dists` and
     their dependencies added to the JDK image, replacing any existing modules of the same name.
@@ -636,10 +670,11 @@ grant codeBase "jrt:/com.oracle.graal.graal_enterprise" {
         jlink.append('--module-path=' + module_path)
         jlink.append('--output=' + dst_jdk_dir)
 
-        # These options are inspired by how OpenJDK runs jlink to produce the final runtime image.
+        # These options are derived from how OpenJDK runs jlink to produce the final runtime image.
         jlink.extend(['-J-XX:+UseSerialGC', '-J-Xms32M', '-J-Xmx512M', '-J-XX:TieredStopAtLevel=1'])
         jlink.append('-J-Dlink.debug=true')
-        jlink.append('--dedup-legal-notices=error-if-not-same-content')
+        if dedup_legal_notices:
+            jlink.append('--dedup-legal-notices=error-if-not-same-content')
         jlink.append('--keep-packaged-modules=' + join(dst_jdk_dir, 'jmods'))
 
         if jdk_has_new_jlink_options(jdk):
@@ -649,13 +684,18 @@ grant codeBase "jrt:/com.oracle.graal.graal_enterprise" {
                 mx.logv('[Creating JDK without -XX:ThreadPriorityPolicy=1]')
                 thread_priority_policy_option = ''
 
-            if any((m.name == 'jdk.internal.vm.compiler' for m in modules)):
-                jlink.append('--add-options=-XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCIProduct -XX:-UnlockExperimentalVMOptions' + thread_priority_policy_option)
+            if jdk_supports_enablejvmciproduct(jdk):
+                if any((m.name == 'jdk.internal.vm.compiler' for m in modules)):
+                    jlink.append('--add-options=-XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCIProduct -XX:-UnlockExperimentalVMOptions' + thread_priority_policy_option)
+                else:
+                    # Don't default to using JVMCI as JIT unless Graal is being updated in the image.
+                    # This avoids unexpected issues with using the out-of-date Graal compiler in
+                    # the JDK itself.
+                    jlink.append('--add-options=-XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCIProduct -XX:-UseJVMCICompiler -XX:-UnlockExperimentalVMOptions' + thread_priority_policy_option)
             else:
-                # Don't default to using JVMCI as JIT unless Graal is being updated in the image.
-                # This avoids unexpected issues with using the out-of-date Graal compiler in
-                # the JDK itself.
-                jlink.append('--add-options=-XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCIProduct -XX:-UseJVMCICompiler -XX:-UnlockExperimentalVMOptions' + thread_priority_policy_option)
+                mx.logv('[Creating JDK without -XX:+EnableJVMCIProduct]')
+                if thread_priority_policy_option:
+                    jlink.append('--add-options=' + thread_priority_policy_option.strip())
             if vendor_info is not None:
                 for name, value in vendor_info.items():
                     jlink.append('--' + name + '=' + value)
@@ -685,13 +725,6 @@ grant codeBase "jrt:/com.oracle.graal.graal_enterprise" {
                 lib_path = join(lib_directory, f)
                 if isfile(lib_path):
                     shutil.copy2(lib_path, dst_lib_directory)
-
-        # Build the list of modules whose classes might have annotations
-        # to be processed by native-image (GR-15192).
-        with open(join(dst_jdk_dir, 'lib', 'native-image-modules.list'), 'w') as fp:
-            print('# Modules whose classes might have annotations processed by native-image', file=fp)
-            for m in modules:
-                print(m.name, file=fp)
 
     finally:
         if not mx.get_opts().verbose:

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,17 +29,21 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.control;
 
+import com.oracle.truffle.api.dsl.NodeField;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMControlFlowNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
+import com.oracle.truffle.llvm.runtime.nodes.control.LLVMBrUnconditionalNodeFactory.LLVMBrUnconditionalNodeImplNodeGen;
 
 @GenerateWrapper
+@NodeField(name = "successor", type = int.class)
 public abstract class LLVMBrUnconditionalNode extends LLVMControlFlowNode {
 
     public static LLVMBrUnconditionalNode create(int successor, LLVMStatementNode phi) {
-        return new LLVMBrUnconditionalNodeImpl(successor, phi);
+        return LLVMBrUnconditionalNodeImplNodeGen.create(phi, successor);
     }
 
     @Override
@@ -52,14 +56,23 @@ public abstract class LLVMBrUnconditionalNode extends LLVMControlFlowNode {
     // we need an execute method so the node can be properly instrumented
     public abstract void execute(VirtualFrame frame);
 
-    private static final class LLVMBrUnconditionalNodeImpl extends LLVMBrUnconditionalNode {
+    /**
+     * Override to allow access from generated wrapper.
+     */
+    @Override
+    protected abstract boolean isStatement();
+
+    /**
+     * Override to allow access from generated wrapper.
+     */
+    @Override
+    protected abstract void setStatement(boolean statementTag);
+
+    abstract static class LLVMBrUnconditionalNodeImpl extends LLVMBrUnconditionalNode {
 
         @Child private LLVMStatementNode phi;
 
-        private final int successor;
-
-        private LLVMBrUnconditionalNodeImpl(int successor, LLVMStatementNode phi) {
-            this.successor = successor;
+        LLVMBrUnconditionalNodeImpl(LLVMStatementNode phi) {
             this.phi = phi;
         }
 
@@ -79,13 +92,14 @@ public abstract class LLVMBrUnconditionalNode extends LLVMControlFlowNode {
             return phi;
         }
 
-        @Override
-        public int getSuccessor() {
-            return successor;
+        @Specialization
+        public void doCondition() {
+            // nothing to do, since this branch is unconditional
         }
 
         @Override
-        public void execute(VirtualFrame frame) {
+        public final int[] getSuccessors() {
+            return new int[]{getSuccessor()};
         }
     }
 }

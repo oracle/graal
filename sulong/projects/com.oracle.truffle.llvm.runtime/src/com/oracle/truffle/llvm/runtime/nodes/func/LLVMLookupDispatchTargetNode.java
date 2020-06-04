@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,10 +37,11 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.load.LLVMDerefHandleGetReceiverNode;
@@ -54,8 +55,6 @@ public abstract class LLVMLookupDispatchTargetNode extends LLVMExpressionNode {
 
     @CompilationFinal private LanguageReference<LLVMLanguage> languageRef;
 
-    @Child private LLVMDerefHandleGetReceiverNode derefHandleGetReceiverNode;
-
     @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"isSameObject(pointer.getObject(), cachedDescriptor)", "cachedDescriptor != null", "pointer.getOffset() == 0"})
     protected static LLVMFunctionDescriptor doDirectCached(@SuppressWarnings("unused") LLVMManagedPointer pointer,
                     @Cached("asFunctionDescriptor(pointer.getObject())") LLVMFunctionDescriptor cachedDescriptor) {
@@ -67,9 +66,10 @@ public abstract class LLVMLookupDispatchTargetNode extends LLVMExpressionNode {
         return (LLVMFunctionDescriptor) pointer.getObject();
     }
 
-    @Specialization(guards = {"isForeignFunction(pointer.getObject())", "pointer.getOffset() == 0"})
-    protected LLVMTypedForeignObject doForeign(LLVMManagedPointer pointer) {
-        return (LLVMTypedForeignObject) pointer.getObject();
+    @Specialization(guards = {"foreigns.isForeign(pointer.getObject())", "pointer.getOffset() == 0"})
+    protected Object doForeign(LLVMManagedPointer pointer,
+                    @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns) {
+        return pointer.getObject();
     }
 
     @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"pointer.asNative() == cachedAddress", "!isAutoDerefHandle(cachedAddress)", "cachedDescriptor != null"})
@@ -102,17 +102,14 @@ public abstract class LLVMLookupDispatchTargetNode extends LLVMExpressionNode {
     }
 
     @Specialization(guards = "isAutoDerefHandle(pointer.asNative())")
-    protected LLVMTypedForeignObject doDerefHandle(LLVMNativePointer pointer) {
-        LLVMManagedPointer foreignFunction = getDerefHandleGetReceiverNode().execute(pointer);
-        return doForeign(foreignFunction);
+    protected Object doDerefHandle(LLVMNativePointer pointer,
+                    @Cached LLVMDerefHandleGetReceiverNode getReceiver) {
+        LLVMManagedPointer foreignFunction = getReceiver.execute(pointer);
+        return foreignFunction.getObject();
     }
 
     protected LLVMFunctionDescriptor lookupFunction(ContextReference<LLVMContext> ctxRef, LLVMNativePointer function) {
         return ctxRef.get().getFunctionDescriptor(function);
-    }
-
-    protected static boolean isForeignFunction(Object object) {
-        return object instanceof LLVMTypedForeignObject;
     }
 
     protected boolean isAutoDerefHandle(long addr) {
@@ -125,13 +122,5 @@ public abstract class LLVMLookupDispatchTargetNode extends LLVMExpressionNode {
             return false;
         }
         return LLVMNativeMemory.isDerefHandleMemory(addr);
-    }
-
-    protected LLVMDerefHandleGetReceiverNode getDerefHandleGetReceiverNode() {
-        if (derefHandleGetReceiverNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            derefHandleGetReceiverNode = insert(LLVMDerefHandleGetReceiverNode.create());
-        }
-        return derefHandleGetReceiverNode;
     }
 }

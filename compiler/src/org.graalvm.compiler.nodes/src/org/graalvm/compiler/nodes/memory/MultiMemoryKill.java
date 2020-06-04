@@ -24,12 +24,11 @@
  */
 package org.graalvm.compiler.nodes.memory;
 
-import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.word.LocationIdentity;
 
 /**
- * This interface marks subclasses of {@link FixedNode} that kill multiple memory locations
- * represented by {@linkplain LocationIdentity} at once.
+ * This interface marks nodes that kill multiple memory locations represented by
+ * {@linkplain LocationIdentity} at once.
  */
 public interface MultiMemoryKill extends MemoryKill {
 

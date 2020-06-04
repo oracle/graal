@@ -51,7 +51,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @ExportLibrary(InteropLibrary.class)
 @SuppressWarnings("static-method")
-public final class LLVMScope implements TruffleObject {
+public class LLVMScope implements TruffleObject {
 
     private final HashMap<String, LLVMSymbol> symbols;
     private final ArrayList<String> functionKeys;
@@ -71,22 +71,34 @@ public final class LLVMScope implements TruffleObject {
         return functionKeys.get(idx);
     }
 
+    /**
+     * Lookup a function in the scope by name.
+     *
+     * @param name Function name to lookup.
+     * @return A handle to the function if found, null otherwise.
+     */
     @TruffleBoundary
     public LLVMFunction getFunction(String name) {
         LLVMSymbol symbol = get(name);
         if (symbol != null && symbol.isFunction()) {
             return symbol.asFunction();
         }
-        throw new IllegalStateException("Unknown function: " + name);
+        return null;
     }
 
+    /**
+     * Lookup a global variable in the scope by name.
+     *
+     * @param name Variable name to lookup.
+     * @return A handle to the global if found, null otherwise.
+     */
     @TruffleBoundary
     public LLVMGlobal getGlobalVariable(String name) {
         LLVMSymbol symbol = get(name);
         if (symbol != null && symbol.isGlobalVariable()) {
             return symbol.asGlobalVariable();
         }
-        throw new IllegalStateException("Unknown global: " + name);
+        return null;
     }
 
     @TruffleBoundary

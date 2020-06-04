@@ -114,6 +114,7 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.Option
 innr public abstract interface static !annotation Group
 intf java.lang.annotation.Annotation
 meth public abstract !hasdefault boolean deprecated()
+meth public abstract !hasdefault java.lang.String deprecationMessage()
 meth public abstract !hasdefault java.lang.String name()
 meth public abstract !hasdefault org.graalvm.options.OptionStability stability()
 meth public abstract java.lang.String help()
@@ -305,10 +306,12 @@ innr public final static !enum ContextPolicy
 innr public final static Env
 innr public final static InlineParsingRequest
 innr public final static ParsingRequest
-meth protected abstract boolean isObjectOfLanguage(java.lang.Object)
 meth protected abstract {com.oracle.truffle.api.TruffleLanguage%0} createContext(com.oracle.truffle.api.TruffleLanguage$Env)
 meth protected boolean areOptionsCompatible(org.graalvm.options.OptionValues,org.graalvm.options.OptionValues)
+meth protected final int getAsynchronousStackDepth()
 meth protected boolean initializeMultiContext()
+ anno 0 java.lang.Deprecated()
+meth protected boolean isObjectOfLanguage(java.lang.Object)
  anno 0 java.lang.Deprecated()
 meth protected boolean isThreadAccessAllowed(java.lang.Thread,boolean)
 meth protected boolean isVisible({com.oracle.truffle.api.TruffleLanguage%0},java.lang.Object)
@@ -316,15 +319,20 @@ meth protected boolean patchContext({com.oracle.truffle.api.TruffleLanguage%0},c
 meth protected com.oracle.truffle.api.CallTarget parse(com.oracle.truffle.api.TruffleLanguage$ParsingRequest) throws java.lang.Exception
 meth protected com.oracle.truffle.api.nodes.ExecutableNode parse(com.oracle.truffle.api.TruffleLanguage$InlineParsingRequest) throws java.lang.Exception
 meth protected com.oracle.truffle.api.source.SourceSection findSourceLocation({com.oracle.truffle.api.TruffleLanguage%0},java.lang.Object)
+ anno 0 java.lang.Deprecated()
 meth protected final java.lang.String getLanguageHome()
 meth protected java.lang.Iterable<com.oracle.truffle.api.Scope> findLocalScopes({com.oracle.truffle.api.TruffleLanguage%0},com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.Frame)
 meth protected java.lang.Iterable<com.oracle.truffle.api.Scope> findTopScopes({com.oracle.truffle.api.TruffleLanguage%0})
 meth protected java.lang.Object findExportedSymbol({com.oracle.truffle.api.TruffleLanguage%0},java.lang.String,boolean)
  anno 0 java.lang.Deprecated()
 meth protected java.lang.Object findMetaObject({com.oracle.truffle.api.TruffleLanguage%0},java.lang.Object)
+ anno 0 java.lang.Deprecated()
 meth protected java.lang.Object getLanguageGlobal({com.oracle.truffle.api.TruffleLanguage%0})
  anno 0 java.lang.Deprecated()
+meth protected java.lang.Object getLanguageView({com.oracle.truffle.api.TruffleLanguage%0},java.lang.Object)
+meth protected java.lang.Object getScopedView({com.oracle.truffle.api.TruffleLanguage%0},com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.Frame,java.lang.Object)
 meth protected java.lang.String toString({com.oracle.truffle.api.TruffleLanguage%0},java.lang.Object)
+ anno 0 java.lang.Deprecated()
 meth protected org.graalvm.options.OptionDescriptors getOptionDescriptors()
 meth protected static <%0 extends com.oracle.truffle.api.TruffleLanguage<?>> {%%0} getCurrentLanguage(java.lang.Class<{%%0}>)
 meth protected static <%0 extends java.lang.Object, %1 extends com.oracle.truffle.api.TruffleLanguage<{%%0}>> {%%0} getCurrentContext(java.lang.Class<{%%1}>)
@@ -367,6 +375,7 @@ meth public !varargs com.oracle.truffle.api.io.TruffleProcessBuilder newProcessB
 meth public <%0 extends java.lang.Object> {%%0} lookup(com.oracle.truffle.api.InstrumentInfo,java.lang.Class<{%%0}>)
 meth public <%0 extends java.lang.Object> {%%0} lookup(com.oracle.truffle.api.nodes.LanguageInfo,java.lang.Class<{%%0}>)
 meth public <%0 extends java.lang.Object> {%%0} lookup(java.lang.Class<{%%0}>)
+meth public boolean initializeLanguage(com.oracle.truffle.api.nodes.LanguageInfo)
 meth public boolean isCreateProcessAllowed()
 meth public boolean isCreateThreadAllowed()
 meth public boolean isHostException(java.lang.Throwable)
@@ -555,6 +564,7 @@ CLSS public final com.oracle.truffle.api.TruffleStackTrace
 meth public java.lang.String toString()
 meth public java.lang.Throwable fillInStackTrace()
 meth public static com.oracle.truffle.api.TruffleStackTrace fillIn(java.lang.Throwable)
+meth public static java.util.List<com.oracle.truffle.api.TruffleStackTraceElement> getAsynchronousStackTrace(com.oracle.truffle.api.CallTarget,com.oracle.truffle.api.frame.Frame)
 meth public static java.util.List<com.oracle.truffle.api.TruffleStackTraceElement> getStackTrace(java.lang.Throwable)
 supr java.lang.Exception
 hfds EMPTY,UNSAFE,causeFieldIndex,frames,lazyFrames,materializedHostException
@@ -564,6 +574,7 @@ CLSS public final com.oracle.truffle.api.TruffleStackTraceElement
 meth public com.oracle.truffle.api.RootCallTarget getTarget()
 meth public com.oracle.truffle.api.frame.Frame getFrame()
 meth public com.oracle.truffle.api.nodes.Node getLocation()
+meth public static com.oracle.truffle.api.TruffleStackTraceElement create(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.RootCallTarget,com.oracle.truffle.api.frame.Frame)
 supr java.lang.Object
 hfds frame,location,target
 
@@ -1093,6 +1104,7 @@ meth protected boolean isCloneUninitializedSupported()
 meth protected boolean isInstrumentable()
 meth protected com.oracle.truffle.api.nodes.RootNode cloneUninitialized()
 meth protected final void setCallTarget(com.oracle.truffle.api.RootCallTarget)
+meth protected java.util.List<com.oracle.truffle.api.TruffleStackTraceElement> findAsynchronousFrames(com.oracle.truffle.api.frame.Frame)
 meth public abstract java.lang.Object execute(com.oracle.truffle.api.frame.VirtualFrame)
 meth public boolean isCaptureFramesForTrace()
 meth public boolean isCloningAllowed()

@@ -275,9 +275,13 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         }
     }
 
+    private static String substitutionName(Class<?> originalClass) {
+        return "Target_" + originalClass.getName().replace('.', '_').replace('$', '_');
+    }
+
     private void handleAliasClass(Class<?> annotatedClass, Class<?> originalClass, TargetClass targetClassAnnotation) {
         if (VerifyNamingConventions.getValue() && targetClassAnnotation.classNameProvider() == TargetClass.NoClassNameProvider.class) {
-            String expectedName = "Target_" + originalClass.getName().replace('.', '_').replace('$', '_');
+            String expectedName = substitutionName(originalClass);
             String actualName = annotatedClass.getSimpleName();
             guarantee(actualName.equals(expectedName) || actualName.startsWith(expectedName + "_"),
                             "Naming convention violation: %s must be named %s or %s_<suffix>", annotatedClass, expectedName, expectedName);
@@ -631,6 +635,11 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
         } catch (NoSuchMethodException ex) {
             throw UserError.abort("could not find target method: " + annotatedMethod);
+        } catch (NoClassDefFoundError error) {
+            String message = String.format("can not find %s.%s, %s can not be loaded, due to %s not being available in the classpath. " +
+                            "Are you missing a dependency in your classpath?",
+                            originalClass.getName(), originalName, originalClass.getName(), error.getMessage());
+            throw UserError.abort(message);
         }
     }
 

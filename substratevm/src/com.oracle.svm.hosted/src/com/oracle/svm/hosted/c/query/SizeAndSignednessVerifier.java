@@ -48,9 +48,9 @@ import com.oracle.svm.hosted.c.info.EnumInfo;
 import com.oracle.svm.hosted.c.info.EnumValueInfo;
 import com.oracle.svm.hosted.c.info.NativeCodeInfo;
 import com.oracle.svm.hosted.c.info.SizableInfo;
+import com.oracle.svm.hosted.c.info.SizableInfo.ElementKind;
 import com.oracle.svm.hosted.c.info.StructBitfieldInfo;
 import com.oracle.svm.hosted.c.info.StructFieldInfo;
-import com.oracle.svm.hosted.c.info.SizableInfo.ElementKind;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -79,7 +79,7 @@ public final class SizeAndSignednessVerifier extends NativeInfoTreeVisitor {
     @Override
     protected void visitStructFieldInfo(StructFieldInfo structFieldInfo) {
         checkAccessorLocationIdentity(structFieldInfo.getChildren());
-        if (structFieldInfo.getAccessorInfo().hasUniqueLocationIdentity()) {
+        if (structFieldInfo.getAnyAccessorInfo().hasUniqueLocationIdentity()) {
             structFieldInfo.setLocationIdentity(new CInterfaceLocationIdentity(structFieldInfo.getParent().getName() + "." + structFieldInfo.getName()));
         }
         super.visitStructFieldInfo(structFieldInfo);

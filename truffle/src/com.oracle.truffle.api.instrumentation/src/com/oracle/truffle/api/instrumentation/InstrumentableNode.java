@@ -43,9 +43,9 @@ package com.oracle.truffle.api.instrumentation;
 import java.util.Set;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleRuntime;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
@@ -253,6 +253,17 @@ public interface InstrumentableNode extends NodeInterface {
      * relies on the stability of materialized nodes. Use {@link Node#notifyInserted(Node)} when you
      * need to change the structure of instrumentable nodes.
      * <p>
+     * Node must return itself from this method when it has already seen all the materializedTags
+     * specified as an argument, i.e., not only if the set of tags is exactly the same as before,
+     * but also if the current set of tags is completely contained in the union of all the sets of
+     * tags specified in all the calls of this method that led to creation of this materialized
+     * node.
+     * <p>
+     * If the node returns a new node from this method, the subtree rooted at the new node must be
+     * completely unadopted, i.e., all nodes it contains must not have existed in the original AST.
+     * Also, the new subtree must be completely materialized, so that no new materializations occur
+     * when the instrumentation framework instruments the new subtree during the current traversal.
+     * <p>
      * The AST lock is acquired while this method is invoked. Therefore it is not allowed to run
      * guest language code while this method is invoked. This method might be called in parallel
      * from multiple threads even if the language is single threaded. The method may be invoked
@@ -407,11 +418,12 @@ class InstrumentableNodeSnippets {
 
     // BEGIN: com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.SimpleNode
     @GenerateWrapper
-    abstract class SimpleNode extends Node implements InstrumentableNode {
+    abstract static class SimpleNode extends Node
+                    implements InstrumentableNode {
 
         public abstract Object execute(VirtualFrame frame);
 
-        public final boolean isInstrumentable() {
+        public boolean isInstrumentable() {
             return true;
         }
 
@@ -439,7 +451,8 @@ class InstrumentableNodeSnippets {
 
     // BEGIN: com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.RecommendedNode
     @GenerateWrapper
-    abstract class RecommendedNode extends Node implements InstrumentableNode {
+    abstract static class RecommendedNode extends Node
+                    implements InstrumentableNode {
 
         private static final int NO_SOURCE = -1;
 
@@ -486,14 +499,16 @@ class InstrumentableNodeSnippets {
     abstract static class StatementNodeWrapper implements WrapperNode {
 
         @SuppressWarnings("unused")
-        static StatementNodeWrapper create(StatementNode statementNode, ProbeNode probe) {
+        static StatementNodeWrapper create(StatementNode statementNode,
+                        ProbeNode probe) {
             return null;
         }
     }
 
     // BEGIN: com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.StatementNode
     @GenerateWrapper
-    abstract class StatementNode extends SimpleNode implements InstrumentableNode {
+    abstract static class StatementNode extends SimpleNode
+                    implements InstrumentableNode {
 
         @Override
         public final Object execute(VirtualFrame frame) {
@@ -523,9 +538,8 @@ class InstrumentableNodeSnippets {
     }
 
     @SuppressWarnings("unused")
-    class HaltNodeWrapper implements WrapperNode {
+    static class HaltNodeWrapper implements WrapperNode {
         HaltNodeWrapper(Node node, ProbeNode probe) {
-
         }
 
         public Node getDelegateNode() {
@@ -537,13 +551,19 @@ class InstrumentableNodeSnippets {
         }
     }
 
+    @SuppressWarnings("unused")
     // BEGIN: com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.HaltNode
     @GenerateWrapper
-    class HaltNode extends Node implements InstrumentableNode {
+    static class HaltNode extends Node implements InstrumentableNode {
         private boolean isDebuggerHalt;
 
         public void setDebuggerHalt(boolean isDebuggerHalt) {
             this.isDebuggerHalt = isDebuggerHalt;
+        }
+
+        public Object execute(VirtualFrame frame) {
+            // does nothing;
+            return null;
         }
 
         public boolean isInstrumentable() {
@@ -562,10 +582,10 @@ class InstrumentableNodeSnippets {
         }
 
     }
-    // END: com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.HaltNode
 
+    // END: com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.HaltNode
     @SuppressWarnings("unused")
-    class ExpressionNodeWrapper implements WrapperNode {
+    static class ExpressionNodeWrapper implements WrapperNode {
         ExpressionNodeWrapper(Node node, ProbeNode probe) {
         }
 
@@ -580,7 +600,8 @@ class InstrumentableNodeSnippets {
 
     // BEGIN: com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.ExpressionNode
     @GenerateWrapper
-    abstract class ExpressionNode extends Node implements InstrumentableNode {
+    abstract static class ExpressionNode extends Node
+                    implements InstrumentableNode {
         abstract int execute(VirtualFrame frame);
 
         public boolean isInstrumentable() {

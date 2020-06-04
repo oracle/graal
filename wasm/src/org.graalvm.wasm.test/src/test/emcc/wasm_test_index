@@ -1,11 +1,10 @@
 doublesum
 fact-global
 fact-rec
-hello
 sum
 issue-18450-full
+fib
 
 # disabled tests
-# fib
 # sum-table
 # superperfect

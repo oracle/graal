@@ -2,12 +2,20 @@
 
 var counter = 0;
 
-agent.on('enter', function(ctx, frame) {
-    if (++counter === 1000) {
-        throw `T-Trace: ${ctx.name} method called ${counter} times. enough!`;
+insight.on('enter', function(ctx, frame) {
+    if (++counter === 550) {
+        throw `GraalVM Insight: ${ctx.name} method called ${counter} times. enough!`;
     }
 }, {
     roots: true,
-    rootNameFilter: (n) => n === 'nextNatural'
+    rootNameFilter: 'n...Natural'
+});
+
+
+insight.on('enter', function(ctx, frame) {
+    print(`found new prime number ${frame.n}`);
+}, {
+    roots: true,
+    rootNameFilter: (n) => n === 'newFilter'
 });
 

@@ -43,7 +43,7 @@ location="$( cd -P "$( dirname "$source" )" && pwd )"
 graalvm_home="${location}/../../.."
 
 function usage_and_exit() {
-    echo "Usage: $0 [--verbose] polyglot|libpolyglot|js|llvm|python|ruby... [custom native-image args]..."
+    echo "Usage: $0 [--verbose] polyglot|libpolyglot|js|llvm|python|ruby|R... [custom native-image args]..."
     exit 1
 }
 
@@ -52,7 +52,7 @@ custom_args=()
 
 for opt in "${@:1}"; do
     case "$opt" in
-        polyglot|libpolyglot|js|llvm|python|ruby)
+        polyglot|libpolyglot|js|llvm|python|ruby|R)
            to_build+=("${opt}")
             ;;
         --help|-h)
@@ -127,6 +127,9 @@ for binary in "${to_build[@]}"; do
             ;;
         ruby)
             launcher truffleruby
+            ;;
+        R)
+            launcher RMain
             ;;
         *)
             echo "shouldNotReachHere()"

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -918,9 +918,11 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             }
 
             if (trueSuccessor() instanceof LoopExitNode) {
+                FrameState stateAfter = ((LoopExitNode) trueSuccessor()).stateAfter();
                 LoopBeginNode loopBegin = ((LoopExitNode) trueSuccessor()).loopBegin();
                 assert loopBegin == ((LoopExitNode) falseSuccessor()).loopBegin();
                 LoopExitNode loopExitNode = graph().add(new LoopExitNode(loopBegin));
+                loopExitNode.setStateAfter(stateAfter);
                 graph().addBeforeFixed(this, loopExitNode);
                 if (graph().hasValueProxies() && needsProxy) {
                     value = graph().addOrUnique(new ValueProxyNode(value, loopExitNode));

@@ -29,8 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser;
 
+import com.oracle.truffle.llvm.runtime.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
@@ -64,10 +64,6 @@ public final class LLVMParserRuntime {
         return fileScope;
     }
 
-    public LLVMScope getGlobalScope() {
-        return context.getGlobalScope();
-    }
-
     public NodeFactory getNodeFactory() {
         return nodeFactory;
     }
@@ -76,38 +72,27 @@ public final class LLVMParserRuntime {
         return bitcodeID;
     }
 
-    public LLVMFunction lookupFunction(String name, boolean preferGlobalScope) {
-        LLVMSymbol symbol = lookupSymbolImpl(name, preferGlobalScope);
+    public LLVMFunction lookupFunction(String name) {
+        LLVMSymbol symbol = fileScope.get(name);
         if (symbol != null && symbol.isFunction()) {
             return symbol.asFunction();
         }
-        throw new IllegalStateException("Unknown function: " + name);
+        throw new IllegalStateException("Retrieving unknown function symbol in LLVMParserRuntime: " + name);
     }
 
-    public LLVMGlobal lookupGlobal(String name, boolean preferGlobalScope) {
-        LLVMSymbol symbol = lookupSymbolImpl(name, preferGlobalScope);
+    public LLVMGlobal lookupGlobal(String name) {
+        LLVMSymbol symbol = fileScope.get(name);
         if (symbol != null && symbol.isGlobalVariable()) {
             return symbol.asGlobalVariable();
         }
-        throw new IllegalStateException("Unknown global: " + name);
+        throw new IllegalStateException("Retrieving unknown global symbol in LLVMParserRuntime: " + name);
     }
 
-    public LLVMSymbol lookupSymbol(String name, boolean preferGlobalScope) {
-        LLVMSymbol symbol = lookupSymbolImpl(name, preferGlobalScope);
+    public LLVMSymbol lookupSymbol(String name) {
+        LLVMSymbol symbol = fileScope.get(name);
         if (symbol != null) {
             return symbol;
         }
         throw new IllegalStateException("Unknown symbol: " + name);
-    }
-
-    private LLVMSymbol lookupSymbolImpl(String name, boolean preferGlobalScope) {
-        LLVMSymbol symbol = null;
-        if (preferGlobalScope) {
-            symbol = getGlobalScope().get(name);
-        }
-        if (symbol == null) {
-            symbol = fileScope.get(name);
-        }
-        return symbol;
     }
 }

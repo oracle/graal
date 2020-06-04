@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -140,14 +141,24 @@ public final class GraphOutput<G, M> implements Closeable, WritableByteChannel {
      * @param <M> the type of the methods
      */
     public static final class Builder<G, N, M> {
+        private static final int DEFAULT_MAJOR_VERSION = 4;
+        private static final int DEFAULT_MINOR_VERSION = 0;
+
         private final GraphStructure<G, N, ?, ?> structure;
         private ElementsAndLocations<M, ?, ?> elementsAndLocations;
 
         private GraphTypes types = DefaultGraphTypes.DEFAULT;
         private GraphBlocks<G, ?, N> blocks = DefaultGraphBlocks.empty();
-        private int major = 4;
+
+        /**
+         * The major version. Negative values mean automatically assigned version, implied by
+         * Builder functions.
+         */
+        private int major = 0;
         private int minor = 0;
+        private boolean explicitVersionSet;
         private boolean embeddedGraphOutput;
+        private Map<String, Object> properties;
 
         Builder(GraphStructure<G, N, ?, ?> structure) {
             this.structure = structure;
@@ -164,9 +175,43 @@ public final class GraphOutput<G, M> implements Closeable, WritableByteChannel {
          * @since 0.28
          */
         public Builder<G, N, M> protocolVersion(int majorVersion, int minorVersion) {
+            assert majorVersion >= 1 : "Major must be positive";
+            assert minorVersion >= 0 : "Minor must not be negative";
+
+            if (!(explicitVersionSet ||
+                            (majorVersion == 0) ||
+                            (majorVersion > major) ||
+                            ((majorVersion == major) && (minorVersion >= minor)))) {
+                throw new IllegalArgumentException("Cannot downgrade from minimum required version " + (-major) + "." + minor);
+            }
             this.major = majorVersion;
             this.minor = minorVersion;
+            explicitVersionSet = true;
             return this;
+        }
+
+        /**
+         * Asserts a specific version of the protocol. If not specified explicitly, upgrades the
+         * protocol version.
+         *
+         * @param reqMajor The required major version
+         * @param reqMinor the required minor version
+         */
+        private void requireVersion(int reqMajor, int reqMinor) {
+            assert reqMajor >= 1 : "Major must be positive";
+            assert reqMinor >= 0 : "Minor must not be negative";
+            if (explicitVersionSet) {
+                if (major < reqMajor || (major == reqMajor && minor < reqMinor)) {
+                    throw new IllegalStateException("Feature unsupported in version " + major + "." + minor);
+                }
+            } else {
+                if (major < reqMajor) {
+                    major = reqMajor;
+                    minor = reqMinor;
+                } else if (major == reqMajor) {
+                    minor = Math.max(minor, reqMinor);
+                }
+            }
         }
 
         /**
@@ -235,6 +280,24 @@ public final class GraphOutput<G, M> implements Closeable, WritableByteChannel {
         }
 
         /**
+         * Attaches metadata to the dump. The method may be called more times, subsequent calls will
+         * overwrite previous values of matching keys.
+         *
+         * @param name key name
+         * @param value value for the key
+         * @return this builder
+         * @since 20.1.0
+         */
+        public Builder<G, N, M> attr(String name, Object value) {
+            requireVersion(7, 0);
+            if (properties == null) {
+                properties = new HashMap<>(5);
+            }
+            properties.put(name, value);
+            return this;
+        }
+
+        /**
          * Creates new {@link GraphOutput} to output to provided channel. The output will use
          * interfaces currently associated with this builder.
          *
@@ -267,13 +330,22 @@ public final class GraphOutput<G, M> implements Closeable, WritableByteChannel {
         }
 
         private <L, P> GraphOutput<G, M> buildImpl(ElementsAndLocations<M, L, P> e, WritableByteChannel channel) throws IOException {
+            int m = major;
+            int n = minor;
+            if (m == 0) {
+                m = DEFAULT_MAJOR_VERSION;
+                n = DEFAULT_MINOR_VERSION;
+            }
             // @formatter:off
             ProtocolImpl<G, N, ?, ?, ?, M, ?, ?, ?, ?> p = new ProtocolImpl<>(
-                major, minor, embeddedGraphOutput, structure, types, blocks,
+                m, n, embeddedGraphOutput, structure, types, blocks,
                 e == null ? null : e.elements,
                 e == null ? null : e.locations, channel
             );
             // @formatter:on
+            if (properties != null) {
+                p.startDocument(properties);
+            }
             return new GraphOutput<>(p);
         }
 

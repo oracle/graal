@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,25 +24,27 @@
  */
 package com.oracle.svm.agent.restrict;
 
-import static com.oracle.svm.agent.Support.clearException;
-import static com.oracle.svm.agent.Support.fromCString;
-import static com.oracle.svm.agent.Support.fromJniString;
-import static com.oracle.svm.agent.Support.handles;
-import static com.oracle.svm.agent.Support.jniFunctions;
-import static com.oracle.svm.agent.Support.jvmtiEnv;
-import static com.oracle.svm.agent.Support.jvmtiFunctions;
+import static com.oracle.svm.configure.trace.LazyValueUtils.lazyValue;
 import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
+import static com.oracle.svm.jvmtiagentbase.Support.clearException;
+import static com.oracle.svm.jvmtiagentbase.Support.fromCString;
+import static com.oracle.svm.jvmtiagentbase.Support.fromJniString;
+import static com.oracle.svm.jvmtiagentbase.Support.jniFunctions;
+import static com.oracle.svm.jvmtiagentbase.Support.jvmtiEnv;
+import static com.oracle.svm.jvmtiagentbase.Support.jvmtiFunctions;
 import static org.graalvm.word.WordFactory.nullPointer;
 
 import java.util.function.Supplier;
 
+import org.graalvm.compiler.phases.common.LazyValue;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 
-import com.oracle.svm.agent.Support;
-import com.oracle.svm.agent.Support.WordSupplier;
-import com.oracle.svm.agent.jvmti.JvmtiError;
+import com.oracle.svm.agent.NativeImageAgent;
+import com.oracle.svm.jvmtiagentbase.Support;
+import com.oracle.svm.jvmtiagentbase.Support.WordSupplier;
+import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiError;
 import com.oracle.svm.configure.config.ConfigurationMethod;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.core.util.WordPredicate;
@@ -51,31 +53,41 @@ import com.oracle.svm.jni.nativeapi.JNIFieldId;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 
+/**
+ * In restriction mode, decides whether to permit or deny individual reflective accesses, using
+ * {@link AccessAdvisor} to decide additional exemptions from its own rules, such as system classes.
+ */
 public class ReflectAccessVerifier extends AbstractAccessVerifier {
     private final TypeAccessChecker typeAccessChecker;
+    private final NativeImageAgent agent;
 
-    public ReflectAccessVerifier(TypeAccessChecker typeAccessChecker, AccessAdvisor advisor) {
+    public ReflectAccessVerifier(TypeAccessChecker typeAccessChecker, AccessAdvisor advisor, NativeImageAgent agent) {
         super(advisor);
         this.typeAccessChecker = typeAccessChecker;
+        this.agent = agent;
     }
 
     public boolean verifyForName(JNIEnvironment env, JNIObjectHandle callerClass, String className) {
-        return verifyLoadClass(env, callerClass, className);
-    }
-
-    public boolean verifyLoadClass(JNIEnvironment env, JNIObjectHandle callerClass, String className) {
-        if (shouldApproveWithoutChecks(env, callerClass)) {
+        if (shouldApproveWithoutChecks(lazyValue(className), lazyClassNameOrNull(env, callerClass))) {
             return true;
         }
         return className == null || typeAccessChecker.getConfiguration().get(className) != null;
     }
 
-    public boolean verifyGetPackageInfo(JNIEnvironment env, JNIObjectHandle callerClass, String className) {
-        return verifyForName(env, callerClass, className);
+    public boolean verifyLoadClass(JNIEnvironment env, JNIObjectHandle callerClass, String className) {
+        LazyValue<String> lazyName = lazyValue(className);
+        LazyValue<String> callerClassName = lazyClassNameOrNull(env, callerClass);
+        if (shouldApproveWithoutChecks(lazyName, callerClassName)) {
+            return true;
+        }
+        if (accessAdvisor.shouldIgnoreLoadClass(lazyName, callerClassName)) {
+            return true;
+        }
+        return className == null || typeAccessChecker.getConfiguration().get(className) != null;
     }
 
     public boolean verifyGetField(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle name, JNIObjectHandle result, JNIObjectHandle declaring, JNIObjectHandle callerClass) {
-        if (shouldApproveWithoutChecks(env, callerClass)) {
+        if (shouldApproveWithoutChecks(env, clazz, callerClass)) {
             return true;
         }
         JNIFieldId field = jniFunctions().getFromReflectedField().invoke(env, result);
@@ -83,14 +95,14 @@ public class ReflectAccessVerifier extends AbstractAccessVerifier {
     }
 
     public boolean verifyObjectFieldOffset(JNIEnvironment env, JNIObjectHandle name, JNIObjectHandle declaring, JNIObjectHandle callerClass) {
-        if (shouldApproveWithoutChecks(env, callerClass)) {
+        if (shouldApproveWithoutChecks(env, declaring, callerClass)) {
             return true;
         }
         return typeAccessChecker.isFieldUnsafeAccessible(() -> fromJniString(env, name), declaring);
     }
 
     public boolean verifyGetMethod(JNIEnvironment env, JNIObjectHandle clazz, String name, Supplier<String> signature, JNIObjectHandle result, JNIObjectHandle declaring, JNIObjectHandle callerClass) {
-        if (shouldApproveWithoutChecks(env, callerClass)) {
+        if (shouldApproveWithoutChecks(env, clazz, callerClass)) {
             return true;
         }
         JNIMethodId method = jniFunctions().getFromReflectedMethod().invoke(env, result);
@@ -102,21 +114,21 @@ public class ReflectAccessVerifier extends AbstractAccessVerifier {
     }
 
     public boolean verifyNewInstance(JNIEnvironment env, JNIObjectHandle clazz, String name, String signature, JNIMethodId result, JNIObjectHandle callerClass) {
-        if (shouldApproveWithoutChecks(env, callerClass)) {
+        if (shouldApproveWithoutChecks(env, clazz, callerClass)) {
             return true;
         }
         return verifyGetMethod0(env, clazz, name, () -> signature, result, clazz);
     }
 
     public boolean verifyNewArray(JNIEnvironment env, JNIObjectHandle arrayClass, JNIObjectHandle callerClass) {
-        if (shouldApproveWithoutChecks(env, callerClass)) {
+        if (shouldApproveWithoutChecks(env, arrayClass, callerClass)) {
             return true;
         }
         return typeAccessChecker.getType(arrayClass) != null;
     }
 
     public boolean verifyGetEnclosingMethod(JNIEnvironment env, JNIObjectHandle clazz, String name, String signature, JNIObjectHandle result, JNIObjectHandle callerClass) {
-        if (shouldApproveWithoutChecks(env, callerClass)) {
+        if (shouldApproveWithoutChecks(env, clazz, callerClass)) {
             return true;
         }
         JNIMethodId method = jniFunctions().getFromReflectedMethod().invoke(env, result);
@@ -128,17 +140,17 @@ public class ReflectAccessVerifier extends AbstractAccessVerifier {
     }
 
     public JNIObjectHandle filterGetFields(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle array, boolean declaredOnly, JNIObjectHandle callerClass) {
-        if (shouldApproveWithoutChecks(env, callerClass)) {
+        if (shouldApproveWithoutChecks(env, clazz, callerClass)) {
             return array;
         }
         WordPredicate<JNIObjectHandle> predicate = f -> shouldRetainField(env, clazz, f, declaredOnly);
-        return filterArray(env, array, () -> handles().getJavaLangReflectField(env), predicate);
+        return filterArray(env, array, () -> agent.handles().getJavaLangReflectField(env), predicate);
     }
 
     public JNIObjectHandle filterGetMethods(JNIEnvironment env, JNIObjectHandle clazz, JNIObjectHandle array,
                     WordSupplier<JNIObjectHandle> elementClass, boolean declaredOnly, JNIObjectHandle callerClass) {
 
-        if (shouldApproveWithoutChecks(env, callerClass)) {
+        if (shouldApproveWithoutChecks(env, clazz, callerClass)) {
             return array;
         }
         WordPredicate<JNIObjectHandle> predicate = m -> shouldRetainMethod(env, clazz, m, declaredOnly);

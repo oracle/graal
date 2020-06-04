@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,21 +29,23 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.asm.base;
 
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
+import java.util.List;
 
-public class LLVMInlineAssemblyBlockNode extends LLVMStatementNode {
+public abstract class LLVMInlineAssemblyBlockNode extends LLVMStatementNode {
 
     @Children private final LLVMStatementNode[] statements;
 
-    public LLVMInlineAssemblyBlockNode(LLVMStatementNode[] statements) {
-        this.statements = statements;
+    LLVMInlineAssemblyBlockNode(List<LLVMStatementNode> statements) {
+        this.statements = statements.toArray(LLVMStatementNode.NO_STATEMENTS);
     }
 
-    @Override
+    @Specialization
     @ExplodeLoop
-    public void execute(VirtualFrame frame) {
+    public void doAsm(VirtualFrame frame) {
         for (LLVMStatementNode n : statements) {
             n.execute(frame);
         }

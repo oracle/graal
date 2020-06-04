@@ -57,8 +57,8 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
-import com.oracle.truffle.api.library.Message;
 import com.oracle.truffle.api.library.ReflectionLibrary;
+import com.oracle.truffle.api.test.AbstractParametrizedLibraryTest;
 import com.oracle.truffle.api.test.ExpectError;
 
 public class ExportDelegationTest extends AbstractParametrizedLibraryTest {
@@ -166,7 +166,7 @@ public class ExportDelegationTest extends AbstractParametrizedLibraryTest {
     }
 
     @ExportLibrary(value = ExportDelegationLibrary.class, delegateTo = "delegate")
-    @ExportLibrary(ReflectionLibrary.class)
+    @ExportLibrary(value = ReflectionLibrary.class, delegateTo = "delegate")
     public static class ExportDelegationWithReflection implements TruffleObject {
 
         final Object delegate;
@@ -178,11 +178,6 @@ public class ExportDelegationTest extends AbstractParametrizedLibraryTest {
         @ExportMessage
         public String m1(String arg0) {
             return "m1_double_exports_" + arg0;
-        }
-
-        @ExportMessage
-        final Object send(Message arg1, Object[] arg2, @CachedLibrary("this.delegate") ReflectionLibrary lib) throws Exception {
-            return lib.send(delegate, arg1, arg2);
         }
 
     }
@@ -266,6 +261,18 @@ public class ExportDelegationTest extends AbstractParametrizedLibraryTest {
 
     }
 
+    @ExportLibrary(value = ExportDelegationLibrary.class, delegateTo = "delegate")
+    public abstract class ExportDelegationPrimitive {
+
+        final int delegate = 0;
+
+        @ExportMessage
+        public String m1(String arg0) {
+            return "m1_" + arg0;
+        }
+
+    }
+
     @GenerateLibrary
     @SuppressWarnings("unused")
     public abstract static class ExportDelegationLibrary extends Library {
@@ -321,15 +328,6 @@ public class ExportDelegationTest extends AbstractParametrizedLibraryTest {
     public abstract class ExportDelegationError3 {
 
         @SuppressWarnings("unused") private final Object delegate = null;
-
-    }
-
-    @ExpectError("The type of export delegation field 'ExportDelegationError4.delegate' is not assignable to the expected type 'Object'. " +
-                    "Change the field type to 'Object' to resolve this.")
-    @ExportLibrary(value = ExportDelegationLibrary.class, delegateTo = "delegate")
-    public abstract class ExportDelegationError4 {
-
-        final int delegate = 0;
 
     }
 

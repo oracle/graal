@@ -118,6 +118,14 @@ public @interface Option {
     boolean deprecated() default false;
 
     /**
+     * Returns the deprecation reason and the recommended fix. The generated option descriptor
+     * returns this value as result of {@link OptionDescriptor#getDeprecationMessage()}.
+     *
+     * @since 20.1.0
+     */
+    String deprecationMessage() default "";
+
+    /**
      * Specifies the category of the option. The generated option descriptor returns this value as
      * result of {@link OptionDescriptor#getCategory()}.
      *

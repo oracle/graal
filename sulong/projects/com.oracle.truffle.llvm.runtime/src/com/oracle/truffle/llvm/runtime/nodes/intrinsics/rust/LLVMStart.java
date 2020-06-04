@@ -109,6 +109,7 @@ public abstract class LLVMStart extends LLVMIntrinsic {
                         @Cached("createClosureDispatchNode()") LLVMClosureDispatchNode dropInPlaceDispatchNode) {
             LLVMMemory memory = language.getLLVMMemory();
             LLVMGlobal vtableGlobal = ctx.findGlobal(vtable);
+            assert vtableGlobal != null;
             try {
                 LangStartVtableType langStartVtable = createLangStartVtable(vtableGlobal.getPointeeType());
                 LLVMNativePointer fn = readFn(memory, vtable, langStartVtable);

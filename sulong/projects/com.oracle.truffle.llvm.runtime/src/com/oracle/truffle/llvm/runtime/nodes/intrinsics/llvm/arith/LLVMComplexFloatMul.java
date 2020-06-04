@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,46 +29,27 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 
-public final class LLVMComplexFloatMul extends LLVMExpressionNode {
+@NodeChild(value = "a", type = LLVMExpressionNode.class)
+@NodeChild(value = "b", type = LLVMExpressionNode.class)
+@NodeChild(value = "c", type = LLVMExpressionNode.class)
+@NodeChild(value = "d", type = LLVMExpressionNode.class)
+public abstract class LLVMComplexFloatMul extends LLVMExpressionNode {
 
-    @Child private LLVMExpressionNode aNode;
-    @Child private LLVMExpressionNode bNode;
-    @Child private LLVMExpressionNode cNode;
-    @Child private LLVMExpressionNode dNode;
+    @Specialization
+    public LLVMFloatVector doFloat(float a, float b, float c, float d) {
+        float ac = a * c;
+        float bd = b * d;
+        float ad = a * d;
+        float bc = b * c;
+        float zReal = ac - bd;
+        float zImag = ad + bc;
 
-    public LLVMComplexFloatMul(LLVMExpressionNode a, LLVMExpressionNode b, LLVMExpressionNode c, LLVMExpressionNode d) {
-        this.aNode = a;
-        this.bNode = b;
-        this.cNode = c;
-        this.dNode = d;
-    }
-
-    @Override
-    public Object executeGeneric(VirtualFrame frame) {
-        try {
-            float a = aNode.executeFloat(frame);
-            float b = bNode.executeFloat(frame);
-            float c = cNode.executeFloat(frame);
-            float d = dNode.executeFloat(frame);
-
-            float ac = a * c;
-            float bd = b * d;
-            float ad = a * d;
-            float bc = b * c;
-            float zReal = ac - bd;
-            float zImag = ad + bc;
-
-            float[] values = {zReal, zImag};
-            return LLVMFloatVector.create(values);
-        } catch (UnexpectedResultException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new IllegalStateException(e);
-        }
+        float[] values = {zReal, zImag};
+        return LLVMFloatVector.create(values);
     }
 }

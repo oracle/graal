@@ -40,32 +40,38 @@
  */
 package com.oracle.truffle.regex.tregex.dfa;
 
+import java.util.Arrays;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.automaton.AbstractTransition;
+import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.automaton.TransitionBuilder;
+import com.oracle.truffle.regex.tregex.automaton.TransitionSet;
+import com.oracle.truffle.regex.tregex.nfa.NFA;
+import com.oracle.truffle.regex.tregex.nfa.NFAState;
+import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonArray;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
-public class DFAStateTransitionBuilder extends TransitionBuilder<NFATransitionSet> implements AbstractTransition<DFAStateNodeBuilder, DFAStateTransitionBuilder>, JsonConvertible {
+public class DFAStateTransitionBuilder extends TransitionBuilder<NFA, NFAState, NFAStateTransition> implements AbstractTransition<DFAStateNodeBuilder, DFAStateTransitionBuilder>, JsonConvertible {
 
     private int id = -1;
     private DFAStateNodeBuilder source;
     private DFAStateNodeBuilder target;
 
-    DFAStateTransitionBuilder(CodePointSet matcherBuilder, NFATransitionSet transitionSet) {
+    public DFAStateTransitionBuilder(NFAStateTransition[] transitions, StateSet<NFA, NFAState> targetStateSet, CodePointSet matcherBuilder) {
+        super(transitions, targetStateSet, matcherBuilder);
+    }
+
+    public DFAStateTransitionBuilder(TransitionSet<NFA, NFAState, NFAStateTransition> transitionSet, CodePointSet matcherBuilder) {
         super(transitionSet, matcherBuilder);
     }
 
     public DFAStateTransitionBuilder createNodeSplitCopy() {
-        return new DFAStateTransitionBuilder(getMatcherBuilder(), getTransitionSet());
-    }
-
-    @Override
-    public DFAStateTransitionBuilder createMerged(TransitionBuilder<NFATransitionSet> other, CodePointSet mergedMatcher) {
-        return new DFAStateTransitionBuilder(mergedMatcher, getTransitionSet().createMerged(other.getTransitionSet()));
+        return new DFAStateTransitionBuilder(getTransitionSet(), getMatcherBuilder());
     }
 
     @Override
@@ -104,7 +110,7 @@ public class DFAStateTransitionBuilder extends TransitionBuilder<NFATransitionSe
     @TruffleBoundary
     @Override
     public JsonValue toJson() {
-        JsonArray nfaTransitions = Json.array(getTransitionSet().stream().map(t -> Json.val(t.getId())));
+        JsonArray nfaTransitions = Json.array(Arrays.stream(getTransitionSet().getTransitions()).map(t -> Json.val(t.getId())));
         if (target.getAnchoredFinalStateTransition() != null) {
             nfaTransitions.append(Json.val(target.getAnchoredFinalStateTransition().getId()));
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -98,6 +98,7 @@ import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.extended.OpaqueNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.extended.RawStoreNode;
+import org.graalvm.compiler.nodes.extended.RawVolatileLoadNode;
 import org.graalvm.compiler.nodes.extended.UnboxNode;
 import org.graalvm.compiler.nodes.extended.UnsafeMemoryLoadNode;
 import org.graalvm.compiler.nodes.extended.UnsafeMemoryStoreNode;
@@ -120,6 +121,7 @@ import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.EnsureVirtualizedNode;
+import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
 import org.graalvm.compiler.replacements.nodes.ProfileBooleanNode;
 import org.graalvm.compiler.replacements.nodes.ReverseBytesNode;
 import org.graalvm.compiler.replacements.nodes.VirtualizableInvokeMacroNode;
@@ -369,7 +371,7 @@ public class StandardGraphBuilderPlugins {
         }
     }
 
-    private static UnsafeCompareAndSwapPluginsRegistrar unsafeCompareAndSwapPluginsRegistrar = new UnsafeCompareAndSwapPluginsRegistrar();
+    private static final UnsafeCompareAndSwapPluginsRegistrar unsafeCompareAndSwapPluginsRegistrar = new UnsafeCompareAndSwapPluginsRegistrar();
 
     private static class UnsafeCompareAndExchangePluginsRegistrar extends UnsafeCompareAndUpdatePluginsRegistrar {
         @Override
@@ -387,7 +389,7 @@ public class StandardGraphBuilderPlugins {
         }
     }
 
-    private static UnsafeCompareAndExchangePluginsRegistrar unsafeCompareAndExchangePluginsRegistrar = new UnsafeCompareAndExchangePluginsRegistrar();
+    private static final UnsafeCompareAndExchangePluginsRegistrar unsafeCompareAndExchangePluginsRegistrar = new UnsafeCompareAndExchangePluginsRegistrar();
 
     public static void registerPlatformSpecificUnsafePlugins(InvocationPlugins plugins, Replacements replacements, boolean explicitUnsafeNullChecks, JavaKind[] supportedCasKinds) {
         registerPlatformSpecificUnsafePlugins(supportedCasKinds, new Registration(plugins, Unsafe.class), true, explicitUnsafeNullChecks);
@@ -730,8 +732,7 @@ public class StandardGraphBuilderPlugins {
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode source, ValueNode sourceOffset, ValueNode sourceCount,
                         ValueNode target, ValueNode targetOffset, ValueNode targetCount, ValueNode origFromIndex) {
             if (target.isConstant()) {
-                b.addPush(JavaKind.Int, new StringIndexOfNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions()), source, sourceOffset, sourceCount,
-                                target, targetOffset, targetCount, origFromIndex));
+                b.addPush(JavaKind.Int, new StringIndexOfNode(MacroParams.of(b, targetMethod, source, sourceOffset, sourceCount, target, targetOffset, targetCount, origFromIndex)));
                 return true;
             }
             return false;
@@ -748,8 +749,7 @@ public class StandardGraphBuilderPlugins {
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver,
                         ValueNode source, ValueNode sourceCount, ValueNode target, ValueNode targetCount, ValueNode origFromIndex) {
             if (target.isConstant()) {
-                b.addPush(JavaKind.Int, new StringLatin1IndexOfNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions()),
-                                source, sourceCount, target, targetCount, origFromIndex));
+                b.addPush(JavaKind.Int, new StringLatin1IndexOfNode(MacroParams.of(b, targetMethod, source, sourceCount, target, targetCount, origFromIndex)));
                 return true;
             }
             return false;
@@ -766,8 +766,7 @@ public class StandardGraphBuilderPlugins {
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver,
                         ValueNode source, ValueNode sourceCount, ValueNode target, ValueNode targetCount, ValueNode origFromIndex) {
             if (target.isConstant()) {
-                b.addPush(JavaKind.Int, new StringUTF16IndexOfNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions()),
-                                source, sourceCount, target, targetCount, origFromIndex));
+                b.addPush(JavaKind.Int, new StringUTF16IndexOfNode(MacroParams.of(b, targetMethod, source, sourceCount, target, targetCount, origFromIndex)));
                 return true;
             }
             return false;
@@ -829,10 +828,12 @@ public class StandardGraphBuilderPlugins {
                  * the current definition is the normal empty method with a single return bytecode.
                  * The finalizer registration will instead be performed by the BytecodeParser.
                  */
-                if (targetMethod.getCodeSize() == 1) {
+                if (targetMethod.canBeInlined() && targetMethod.getCodeSize() == 1) {
                     ValueNode object = receiver.get();
                     if (RegisterFinalizerNode.mayHaveFinalizer(object, b.getAssumptions())) {
-                        b.add(new RegisterFinalizerNode(object));
+                        RegisterFinalizerNode regFin = new RegisterFinalizerNode(object);
+                        b.add(regFin);
+                        b.setStateAfter(regFin);
                     }
                     return true;
                 }
@@ -934,7 +935,7 @@ public class StandardGraphBuilderPlugins {
                 }
             }
             ResolvedJavaType resultType = b.getMetaAccess().lookupJavaType(kind.toBoxedJavaClass());
-            b.addPush(JavaKind.Object, new BoxNode(value, resultType, kind));
+            b.addPush(JavaKind.Object, BoxNode.create(value, resultType, kind));
             return true;
         }
 
@@ -1123,14 +1124,22 @@ public class StandardGraphBuilderPlugins {
             }
             // Emits a null-check for the otherwise unused receiver
             unsafe.get();
-            if (accessKind.emitBarriers) {
+            boolean isVolatile = accessKind == AccessKind.VOLATILE;
+            boolean emitBarriers = accessKind.emitBarriers && !isVolatile;
+            if (emitBarriers) {
                 b.add(new MembarNode(accessKind.preReadBarriers));
             }
             // Raw accesses can be turned into floatable field accesses, the membars preserve the
             // access mode. In the case of opaque access, and only for opaque, the location of the
             // wrapping membars can be refined to the field location.
-            createUnsafeAccess(object, b, (obj, loc) -> new RawLoadNode(obj, offset, unsafeAccessKind, loc));
-            if (accessKind.emitBarriers) {
+            UnsafeNodeConstructor unsafeNodeConstructor = null;
+            if (isVolatile) {
+                unsafeNodeConstructor = (obj, loc) -> new RawVolatileLoadNode(obj, offset, unsafeAccessKind, loc);
+            } else {
+                unsafeNodeConstructor = (obj, loc) -> new RawLoadNode(obj, offset, unsafeAccessKind, loc);
+            }
+            createUnsafeAccess(object, b, unsafeNodeConstructor);
+            if (emitBarriers) {
                 b.add(new MembarNode(accessKind.postReadBarriers));
             }
             return true;
@@ -1169,15 +1178,17 @@ public class StandardGraphBuilderPlugins {
             }
             // Emits a null-check for the otherwise unused receiver
             unsafe.get();
-            if (accessKind.emitBarriers) {
+            boolean isVolatile = accessKind == AccessKind.VOLATILE;
+            boolean emitBarriers = accessKind.emitBarriers && !isVolatile;
+            if (emitBarriers) {
                 b.add(new MembarNode(accessKind.preWriteBarriers));
             }
             ValueNode maskedValue = b.maskSubWordValue(value, unsafeAccessKind);
             // Raw accesses can be turned into floatable field accesses, the membars preserve the
             // access mode. In the case of opaque access, and only for opaque, the location of the
             // wrapping membars can be refined to the field location.
-            createUnsafeAccess(object, b, (obj, loc) -> new RawStoreNode(obj, offset, maskedValue, unsafeAccessKind, loc));
-            if (accessKind.emitBarriers) {
+            createUnsafeAccess(object, b, (obj, loc) -> new RawStoreNode(obj, offset, maskedValue, unsafeAccessKind, loc, true, isVolatile));
+            if (emitBarriers) {
                 b.add(new MembarNode(accessKind.postWriteBarriers));
             }
             return true;
@@ -1388,7 +1399,7 @@ public class StandardGraphBuilderPlugins {
         r.register2("traceThrowable", Throwable.class, String.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode throwable, ValueNode message) {
-                b.add(new VirtualizableInvokeMacroNode(b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions()), throwable, message));
+                b.add(new VirtualizableInvokeMacroNode(MacroParams.of(b, targetMethod, throwable, message)));
                 return true;
             }
 
@@ -1454,10 +1465,24 @@ public class StandardGraphBuilderPlugins {
                     return true;
                 }
                 b.addPush(JavaKind.Boolean,
-                                new ProfileBooleanNode(snippetReflection, b.getInvokeKind(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions()), result, counters));
+                                new ProfileBooleanNode(snippetReflection, MacroParams.of(b, targetMethod, result, counters)));
                 return true;
             }
         });
+        if (JavaVersionUtil.JAVA_SPEC >= 9) {
+            r.register1("isCompileConstant", Object.class, new InvocationPlugin() {
+                @Override
+                public boolean inlineOnly() {
+                    return true;
+                }
+
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode obj) {
+                    b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(obj.isConstant()));
+                    return true;
+                }
+            });
+        }
     }
 
     /**

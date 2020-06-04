@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -81,9 +81,7 @@ import org.graalvm.compiler.replacements.nodes.arithmetic.UnsignedMulHighNode;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
-import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
-import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionInjectNode;
-import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionNode;
+import org.graalvm.compiler.truffle.compiler.PerformanceInformationHandler;
 import org.graalvm.compiler.truffle.compiler.nodes.IsCompilationConstantNode;
 import org.graalvm.compiler.truffle.compiler.nodes.ObjectLocationIdentity;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
@@ -117,7 +115,6 @@ public class TruffleGraphBuilderPlugins {
         registerOptimizedAssumptionPlugins(plugins, metaAccess, types);
         registerExactMathPlugins(plugins, metaAccess);
         registerGraalCompilerDirectivesPlugins(plugins, metaAccess);
-        registerInlineDecisionPlugins(plugins, metaAccess);
         registerCompilerDirectivesPlugins(plugins, metaAccess, canDelayIntrinsification);
         registerCompilerAssertsPlugins(plugins, metaAccess, canDelayIntrinsification);
         registerOptimizedCallTargetPlugins(plugins, metaAccess, canDelayIntrinsification, types);
@@ -191,25 +188,6 @@ public class TruffleGraphBuilderPlugins {
                     return true;
                 }
                 return false;
-            }
-        });
-    }
-
-    public static void registerInlineDecisionPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess) {
-        final ResolvedJavaType inlinedTokenType = getRuntime().resolveType(metaAccess, "org.graalvm.compiler.truffle.runtime.InlineDecision");
-        Registration r = new Registration(plugins, new ResolvedJavaSymbol(inlinedTokenType));
-        r.register0("get", new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.addPush(JavaKind.Boolean, InlineDecisionNode.create());
-                return true;
-            }
-        });
-        r.register2("inject", Object[].class, boolean.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode args, ValueNode decision) {
-                b.addPush(JavaKind.Object, InlineDecisionInjectNode.create(args, (InlineDecisionNode) decision));
-                return true;
             }
         });
     }
@@ -707,19 +685,21 @@ public class TruffleGraphBuilderPlugins {
 
     @SuppressWarnings("try")
     static void logPerformanceWarningLocationNotConstant(ValueNode location, ResolvedJavaMethod targetMethod, UnsafeAccessNode access) {
-        if (PartialEvaluator.PerformanceInformationHandler.isWarningEnabled(PerformanceWarningKind.VIRTUAL_STORE)) {
+        if (PerformanceInformationHandler.isWarningEnabled(PerformanceWarningKind.VIRTUAL_STORE)) {
             StructuredGraph graph = location.graph();
             DebugContext debug = access.getDebug();
             try (DebugContext.Scope s = debug.scope("TrufflePerformanceWarnings", graph)) {
                 TruffleDebugJavaMethod truffleMethod = debug.contextLookup(TruffleDebugJavaMethod.class);
-                String callTargetName = truffleMethod != null ? truffleMethod.getName() : "";
-                Map<String, Object> properties = new LinkedHashMap<>();
-                properties.put("location", location);
-                properties.put("method", targetMethod.format("%h.%n"));
-                PartialEvaluator.PerformanceInformationHandler.logPerformanceWarning(PerformanceWarningKind.VIRTUAL_STORE, callTargetName,
-                                Collections.singletonList(access),
-                                "location argument not PE-constant", properties);
-                debug.dump(DebugContext.VERBOSE_LEVEL, graph, "perf warn: Location argument is not a partial evaluation constant: %s", location);
+                if (truffleMethod != null) {    // Never null in compilation but can be null in
+                                                // TrufflCompilerImplTest
+                    Map<String, Object> properties = new LinkedHashMap<>();
+                    properties.put("location", location);
+                    properties.put("method", targetMethod.format("%h.%n"));
+                    PerformanceInformationHandler.logPerformanceWarning(PerformanceWarningKind.VIRTUAL_STORE, truffleMethod.getCompilable(),
+                                    Collections.singletonList(access),
+                                    "location argument not PE-constant", properties);
+                    debug.dump(DebugContext.VERBOSE_LEVEL, graph, "perf warn: Location argument is not a partial evaluation constant: %s", location);
+                }
             } catch (Throwable t) {
                 debug.handle(t);
             }

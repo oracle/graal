@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,7 +47,7 @@ public abstract class FixedAccessNode extends DeoptimizingFixedWithNextNode impl
 
     @OptionalInput(InputType.Guard) protected GuardingNode guard;
     @Input(InputType.Association) AddressNode address;
-    @OptionalInput(Memory) MemoryNode lastLocationAccess;
+    @OptionalInput(Memory) MemoryKill lastLocationAccess;
     protected final LocationIdentity location;
 
     protected boolean nullCheck;
@@ -112,12 +112,12 @@ public abstract class FixedAccessNode extends DeoptimizingFixedWithNextNode impl
     }
 
     @Override
-    public MemoryNode getLastLocationAccess() {
+    public MemoryKill getLastLocationAccess() {
         return lastLocationAccess;
     }
 
     @Override
-    public void setLastLocationAccess(MemoryNode lla) {
+    public void setLastLocationAccess(MemoryKill lla) {
         updateUsagesInterface(lastLocationAccess, lla);
         lastLocationAccess = lla;
     }

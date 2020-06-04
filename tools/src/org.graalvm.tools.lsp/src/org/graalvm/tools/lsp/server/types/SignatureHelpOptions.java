@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,18 +32,16 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Signature help options.
+ * Server Capabilities for a [SignatureHelpRequest](#SignatureHelpRequest).
  */
-public class SignatureHelpOptions {
-
-    final JSONObject jsonData;
+public class SignatureHelpOptions extends WorkDoneProgressOptions {
 
     SignatureHelpOptions(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
-     * The characters that trigger signature help automatically.
+     * List of characters that trigger signature help.
      */
     public List<String> getTriggerCharacters() {
         final JSONArray json = jsonData.optJSONArray("triggerCharacters");
@@ -68,6 +66,37 @@ public class SignatureHelpOptions {
         return this;
     }
 
+    /**
+     * List of characters that re-trigger signature help.
+     *
+     * These trigger characters are only active when signature help is already showing. All trigger
+     * characters are also counted as re-trigger characters.
+     *
+     * @since 3.15.0
+     */
+    public List<String> getRetriggerCharacters() {
+        final JSONArray json = jsonData.optJSONArray("retriggerCharacters");
+        if (json == null) {
+            return null;
+        }
+        final List<String> list = new ArrayList<>(json.length());
+        for (int i = 0; i < json.length(); i++) {
+            list.add(json.getString(i));
+        }
+        return Collections.unmodifiableList(list);
+    }
+
+    public SignatureHelpOptions setRetriggerCharacters(List<String> retriggerCharacters) {
+        if (retriggerCharacters != null) {
+            final JSONArray json = new JSONArray();
+            for (String string : retriggerCharacters) {
+                json.put(string);
+            }
+            jsonData.put("retriggerCharacters", json);
+        }
+        return this;
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (this == obj) {
@@ -83,14 +112,26 @@ public class SignatureHelpOptions {
         if (!Objects.equals(this.getTriggerCharacters(), other.getTriggerCharacters())) {
             return false;
         }
+        if (!Objects.equals(this.getRetriggerCharacters(), other.getRetriggerCharacters())) {
+            return false;
+        }
+        if (!Objects.equals(this.getWorkDoneProgress(), other.getWorkDoneProgress())) {
+            return false;
+        }
         return true;
     }
 
     @Override
     public int hashCode() {
-        int hash = 5;
+        int hash = 7;
         if (this.getTriggerCharacters() != null) {
             hash = 17 * hash + Objects.hashCode(this.getTriggerCharacters());
+        }
+        if (this.getRetriggerCharacters() != null) {
+            hash = 17 * hash + Objects.hashCode(this.getRetriggerCharacters());
+        }
+        if (this.getWorkDoneProgress() != null) {
+            hash = 17 * hash + Boolean.hashCode(this.getWorkDoneProgress());
         }
         return hash;
     }

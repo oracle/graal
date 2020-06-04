@@ -61,6 +61,7 @@ import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.io.FileSystem;
 
+import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.impl.Accessor;
@@ -155,6 +156,33 @@ final class LanguageAccessor extends Accessor {
                 return c;
             } else {
                 return null;
+            }
+        }
+
+        @Override
+        public Object getLanguageView(Env env, Object value) {
+            Object c = env.getLanguageContext();
+            if (c == TruffleLanguage.Env.UNSET_CONTEXT) {
+                CompilerDirectives.transferToInterpreter();
+                return null;
+            } else {
+                Object result = env.getSpi().getLanguageView(c, value);
+                if (result == null) {
+                    return LanguageAccessor.engineAccess().getDefaultLanguageView(env.spi, c, value);
+                } else {
+                    return result;
+                }
+            }
+        }
+
+        @Override
+        public Object getScopedView(Env env, Node location, Frame frame, Object value) {
+            Object c = env.getLanguageContext();
+            if (c == TruffleLanguage.Env.UNSET_CONTEXT) {
+                CompilerDirectives.transferToInterpreter();
+                return value;
+            } else {
+                return env.getSpi().getScopedView(c, location, frame, value);
             }
         }
 
@@ -295,23 +323,46 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public String toStringIfVisible(TruffleLanguage.Env env, Object value, boolean checkVisibility) {
-            return env.toStringIfVisible(value, checkVisibility);
+        public boolean isVisible(TruffleLanguage.Env env, Object value) {
+            return env.isVisible(value);
         }
 
         @Override
-        public Object findMetaObject(TruffleLanguage.Env env, Object obj) {
+        public String legacyToString(TruffleLanguage.Env env, Object value) {
+            return env.toStringIfVisible(value, false);
+        }
+
+        @Override
+        public Object legacyFindMetaObject(TruffleLanguage.Env env, Object obj) {
             return env.findMetaObjectImpl(obj);
         }
 
         @Override
-        public SourceSection findSourceLocation(TruffleLanguage.Env env, Object obj) {
+        public SourceSection legacyFindSourceLocation(TruffleLanguage.Env env, Object obj) {
             return env.findSourceLocation(obj);
         }
 
         @Override
         public boolean isObjectOfLanguage(TruffleLanguage.Env env, Object value) {
             return env.isObjectOfLanguage(value);
+        }
+
+        @SuppressWarnings("deprecation")
+        @Override
+        public <C> Object legacyFindMetaObject(TruffleLanguage<C> language, C context, Object value) {
+            return language.findMetaObject(context, value);
+        }
+
+        @SuppressWarnings("deprecation")
+        @Override
+        public <C> SourceSection legacyFindSourceLocation(TruffleLanguage<C> language, C context, Object value) {
+            return language.findSourceLocation(context, value);
+        }
+
+        @SuppressWarnings("deprecation")
+        @Override
+        public <C> String legacyToString(TruffleLanguage<C> language, C context, Object obj) {
+            return language.toString(context, obj);
         }
 
         @Override
@@ -432,9 +483,9 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public boolean isDefaultFileSystem(Object fileSystemContext) {
+        public boolean hasAllAccess(Object fileSystemContext) {
             TruffleFile.FileSystemContext ctx = (TruffleFile.FileSystemContext) fileSystemContext;
-            return engineAccess().isDefaultFileSystem(ctx.fileSystem);
+            return engineAccess().hasAllAccess(ctx.fileSystem);
         }
 
         @Override
@@ -455,8 +506,8 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public Object createEngineLoggers(Object polyglotEngine, Map<String, Level> logLevels) {
-            return TruffleLogger.createLoggerCache(polyglotEngine, logLevels);
+        public Object createEngineLoggers(Object spi, Map<String, Level> logLevels) {
+            return TruffleLogger.createLoggerCache(spi, logLevels);
         }
 
         @Override
@@ -483,5 +534,6 @@ final class LanguageAccessor extends Accessor {
         public Path getPath(TruffleFile truffleFile) {
             return truffleFile.getSPIPath();
         }
+
     }
 }

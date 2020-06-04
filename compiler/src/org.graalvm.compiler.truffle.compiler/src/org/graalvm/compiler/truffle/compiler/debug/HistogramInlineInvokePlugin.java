@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.truffle.compiler.debug;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -92,28 +94,32 @@ public class HistogramInlineInvokePlugin implements InlineInvokePlugin {
     }
 
     public void print(CompilableTruffleAST target) {
-        TruffleCompilerRuntime tcr = TruffleCompilerRuntime.getRuntime();
-        tcr.log(String.format("Truffle expansion histogram for %s", target));
-        tcr.log("  Invocations = Number of expanded invocations");
-        tcr.log("  Nodes = Number of non-trival Graal nodes created for this method during partial evaluation.");
-        tcr.log("  Calls = Number of not expanded calls created for this method during partial evaluation.");
-        tcr.log(String.format(" %-11s |Nodes %5s %5s %5s %8s |Calls %5s %5s %5s %8s | Method Name", "Invocations", "Sum", "Min", "Max", "Avg", "Sum", "Min", "Max", "Avg"));
+        StringWriter messageBuilder = new StringWriter();
+        try (PrintWriter out = new PrintWriter(messageBuilder)) {
+            out.printf("Truffle expansion histogram for %s%n", target);
+            out.println("  Invocations = Number of expanded invocations");
+            out.println("  Nodes = Number of non-trival Graal nodes created for this method during partial evaluation.");
+            out.println("  Calls = Number of not expanded calls created for this method during partial evaluation.");
+            out.printf(" %-11s |Nodes %5s %5s %5s %8s |Calls %5s %5s %5s %8s | Method Name%n", "Invocations", "Sum", "Min", "Max", "Avg", "Sum", "Min", "Max", "Avg");
 
-        /* First filter the statistics and collect them in a list. */
-        List<MethodStatistics> statisticsList = new ArrayList<>();
-        for (MethodStatistics statistics : histogram.values()) {
-            if (statistics.shallowCount.getSum() > 0) {
-                statisticsList.add(statistics);
+            /* First filter the statistics and collect them in a list. */
+            List<MethodStatistics> statisticsList = new ArrayList<>();
+            for (MethodStatistics statistics : histogram.values()) {
+                if (statistics.shallowCount.getSum() > 0) {
+                    statisticsList.add(statistics);
+                }
+            }
+
+            /* Then sort the list. */
+            Collections.sort(statisticsList);
+
+            /* Finally print the filtered and sorted statistics. */
+            for (MethodStatistics statistics : statisticsList) {
+                statistics.print(out);
             }
         }
-
-        /* Then sort the list. */
-        Collections.sort(statisticsList);
-
-        /* Finally print the filtered and sorted statistics. */
-        for (MethodStatistics statistics : statisticsList) {
-            statistics.print();
-        }
+        TruffleCompilerRuntime tcr = TruffleCompilerRuntime.getRuntime();
+        tcr.log(target, messageBuilder.toString());
     }
 
     private static class MethodStatistics implements Comparable<MethodStatistics> {
@@ -128,11 +134,11 @@ public class HistogramInlineInvokePlugin implements InlineInvokePlugin {
             this.method = method;
         }
 
-        public void print() {
-            TruffleCompilerRuntime.getRuntime().log(String.format(" %11d |      %5d %5d %5d %8.2f |      %5d %5d %5d %8.2f | %s", //
+        public void print(PrintWriter out) {
+            out.printf(" %11d |      %5d %5d %5d %8.2f |      %5d %5d %5d %8.2f | %s", //
                             count, shallowCount.getSum(), shallowCount.getMin(), shallowCount.getMax(), //
                             shallowCount.getAverage(), callCount.getSum(), callCount.getMin(), callCount.getMax(), //
-                            callCount.getAverage(), method.format("%h.%n(%p)")));
+                            callCount.getAverage(), method.format("%h.%n(%p)"));
         }
 
         @Override
