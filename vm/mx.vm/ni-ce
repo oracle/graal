@@ -1,0 +1,3 @@
+DYNAMIC_IMPORTS=/substratevm
+DISABLE_INSTALLABLES=true
+NATIVE_IMAGES=native-image,lib:native-image-agent

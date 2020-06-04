@@ -95,8 +95,6 @@ _IMAGE_JMH_BENCHMARK_ARGS = [
 
     # JMH does HotSpot-specific field offset checks in class initializers
     '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.openjdk.jmh,joptsimple.internal',
-    # GR-19138
-    '-Dnative-image.benchmark.extra-image-build-argument=-H:-ParseRuntimeOptions',
 
     # Don't waste time and energy collecting reflection config.
     '-Dnative-image.benchmark.extra-agent-run-arg=-f0',
