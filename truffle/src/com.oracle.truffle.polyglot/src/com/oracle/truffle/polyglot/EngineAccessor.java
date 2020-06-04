@@ -97,7 +97,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.polyglot.PolyglotSource.EmbedderFileSystem;
+import com.oracle.truffle.polyglot.PolyglotSource.EmbedderFileSystemContext;
 
 final class EngineAccessor extends Accessor {
 
@@ -482,8 +482,8 @@ final class EngineAccessor extends Accessor {
         public Map<String, Collection<? extends FileTypeDetector>> getEngineFileTypeDetectors(Object engineFileSystemObject) {
             if (engineFileSystemObject instanceof PolyglotLanguageContext) {
                 return ((PolyglotLanguageContext) engineFileSystemObject).context.engine.getFileTypeDetectorsSupplier().get();
-            } else if (engineFileSystemObject instanceof EmbedderFileSystem) {
-                return ((EmbedderFileSystem) engineFileSystemObject).fileTypeDetectors.get();
+            } else if (engineFileSystemObject instanceof EmbedderFileSystemContext) {
+                return ((EmbedderFileSystemContext) engineFileSystemObject).fileTypeDetectors.get();
             } else {
                 throw new AssertionError();
             }
@@ -507,8 +507,8 @@ final class EngineAccessor extends Accessor {
                 } else {
                     return null;
                 }
-            } else if (engineObject instanceof EmbedderFileSystem) {
-                return ((EmbedderFileSystem) engineObject).cachedLanguages.get(language);
+            } else if (engineObject instanceof EmbedderFileSystemContext) {
+                return ((EmbedderFileSystemContext) engineObject).cachedLanguages.get(language);
             } else {
                 throw new AssertionError();
             }
@@ -598,7 +598,7 @@ final class EngineAccessor extends Accessor {
                 polyglotContext = (PolyglotContextImpl) polyglotObject;
             } else if (polyglotObject instanceof PolyglotLanguageContext) {
                 polyglotContext = ((PolyglotLanguageContext) polyglotObject).context;
-            } else if (polyglotObject instanceof EmbedderFileSystem) {
+            } else if (polyglotObject instanceof EmbedderFileSystemContext) {
                 return false;
             } else {
                 throw new AssertionError();

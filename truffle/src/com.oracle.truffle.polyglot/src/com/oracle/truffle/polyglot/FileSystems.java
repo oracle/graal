@@ -74,7 +74,7 @@ import java.util.function.Function;
 
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.nodes.LanguageInfo;
-import com.oracle.truffle.polyglot.PolyglotSource.EmbedderFileSystem;
+import com.oracle.truffle.polyglot.PolyglotSource.EmbedderFileSystemContext;
 
 import java.nio.charset.Charset;
 import org.graalvm.nativeimage.ImageInfo;
@@ -166,7 +166,7 @@ final class FileSystems {
                 }
             }
             return null;
-        } else if (engineObject instanceof EmbedderFileSystem) {
+        } else if (engineObject instanceof EmbedderFileSystemContext) {
             // embedding sources are never relative to language homes
             return null;
         } else {
