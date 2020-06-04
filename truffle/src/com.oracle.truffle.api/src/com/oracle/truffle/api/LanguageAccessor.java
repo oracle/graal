@@ -157,6 +157,11 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
+        public Object getFileSystemContext(TruffleFile file) {
+            return file.getFileSystemContext();
+        }
+
+        @Override
         public Object getLanguageView(Env env, Object value) {
             Object c = env.getLanguageContext();
             if (c == TruffleLanguage.Env.UNSET_CONTEXT) {
@@ -190,8 +195,8 @@ final class LanguageAccessor extends Accessor {
 
         @Override
         public TruffleLanguage.Env createEnv(Object polyglotLanguageContext, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config,
-                        OptionValues options, String[] applicationArguments, Object publicFileSystem, Object internalFileSystem) {
-            TruffleLanguage.Env env = new TruffleLanguage.Env(polyglotLanguageContext, language, stdOut, stdErr, stdIn, config, options, applicationArguments, publicFileSystem, internalFileSystem);
+                        OptionValues options, String[] applicationArguments) {
+            TruffleLanguage.Env env = new TruffleLanguage.Env(polyglotLanguageContext, language, stdOut, stdErr, stdIn, config, options, applicationArguments);
             LinkedHashSet<Object> collectedServices = new LinkedHashSet<>();
             LanguageInfo info = language.languageInfo;
             instrumentAccess().collectEnvServices(collectedServices, ACCESSOR.nodeSupport().getPolyglotLanguage(info), language);
@@ -394,7 +399,7 @@ final class LanguageAccessor extends Accessor {
 
         @Override
         public TruffleLanguage.Env patchEnvContext(TruffleLanguage.Env env, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options,
-                        String[] applicationArguments, Object publicFileSystem, Object internalFileSystem) {
+                        String[] applicationArguments) {
             assert env.spi != null;
             final TruffleLanguage.Env newEnv = createEnv(
                             env.polyglotLanguageContext,
@@ -404,9 +409,7 @@ final class LanguageAccessor extends Accessor {
                             stdIn,
                             config,
                             options,
-                            applicationArguments,
-                            publicFileSystem,
-                            internalFileSystem);
+                            applicationArguments);
 
             newEnv.initialized = env.initialized;
             newEnv.context = env.context;
@@ -420,12 +423,8 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public Object getCurrentFileSystemContext() {
-            Object polyglotContextImpl = engineAccess().getCurrentOuterContext();
-            if (polyglotContextImpl == null) {
-                throw new IllegalStateException("No current context");
-            }
-            return engineAccess().getPublicFileSystemContext(polyglotContextImpl);
+        public Object getFileSystemEngineObject(Object fileSystemContext) {
+            return ((TruffleFile.FileSystemContext) fileSystemContext).engineObject;
         }
 
         @Override

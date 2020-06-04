@@ -367,7 +367,11 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
         if (context == null) {
             return null;
         }
-        return context.config.internalFileSystemContext;
+        PolyglotLanguageContext hostContext = context.getHostContext();
+        if (!hostContext.isCreated()) {
+            return null;
+        }
+        return hostContext.getInternalFileSystemContext();
     }
 
     /**

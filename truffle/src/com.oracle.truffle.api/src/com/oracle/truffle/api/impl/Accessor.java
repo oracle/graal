@@ -376,9 +376,9 @@ public abstract class Accessor {
 
         public abstract Object getCurrentOuterContext();
 
-        public abstract boolean isCharacterBasedSource(String language, String mimeType);
+        public abstract boolean isCharacterBasedSource(Object fsEngineObject, String language, String mimeType);
 
-        public abstract Set<String> getValidMimeTypes(String language);
+        public abstract Set<String> getValidMimeTypes(Object engineObject, String language);
 
         public abstract Object asHostObject(Object value);
 
@@ -437,7 +437,7 @@ public abstract class Accessor {
 
         public abstract String getUnparsedOptionValue(OptionValues optionValues, OptionKey<?> optionKey);
 
-        public abstract String getRelativePathInLanguageHome(TruffleFile truffleFile);
+        public abstract String getPreinitializedRelativePathInLanguageHome(TruffleFile truffleFile);
 
         public abstract void onSourceCreated(Source source);
 
@@ -459,9 +459,14 @@ public abstract class Accessor {
 
         public abstract RuntimeException engineToInstrumentException(Throwable t);
 
+        public abstract Object getCurrentFileSystemContext();
+
         public abstract Object getPublicFileSystemContext(Object polyglotContextImpl);
 
+        public abstract Object getInternalFileSystemContext(Object polyglotContextImpl);
+
         public abstract Map<String, Collection<? extends FileTypeDetector>> getEngineFileTypeDetectors(Object engineFileSystemContext);
+
     }
 
     public abstract static class LanguageSupport extends Support {
@@ -476,7 +481,7 @@ public abstract class Accessor {
 
         public abstract Env createEnv(Object polyglotLanguageContext, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config,
                         OptionValues options,
-                        String[] applicationArguments, Object publicFileSystem, Object internalFileSystem);
+                        String[] applicationArguments);
 
         public abstract boolean areOptionsCompatible(TruffleLanguage<?> language, OptionValues firstContextOptions, OptionValues newContextOptions);
 
@@ -546,8 +551,7 @@ public abstract class Accessor {
 
         public abstract Iterable<Scope> findTopScopes(Env env);
 
-        public abstract Env patchEnvContext(Env env, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options, String[] applicationArguments,
-                        Object publicFileSystem, Object internalFileSystem);
+        public abstract Env patchEnvContext(Env env, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options, String[] applicationArguments);
 
         public abstract boolean initializeMultiContext(TruffleLanguage<?> language);
 
@@ -571,8 +575,6 @@ public abstract class Accessor {
 
         public abstract Object createFileSystemContext(Object engineObject, FileSystem fileSystem);
 
-        public abstract Object getCurrentFileSystemContext();
-
         public abstract String detectMimeType(TruffleFile file, Set<String> validMimeTypes);
 
         public abstract Charset detectEncoding(TruffleFile file, String mimeType);
@@ -594,6 +596,10 @@ public abstract class Accessor {
         public abstract Object getScopedView(TruffleLanguage.Env env, Node node, Frame frame, Object value);
 
         public abstract Object getLanguageView(TruffleLanguage.Env env, Object value);
+
+        public abstract Object getFileSystemContext(TruffleFile file);
+
+        public abstract Object getFileSystemEngineObject(Object fileSystemContext);
 
     }
 

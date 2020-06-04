@@ -88,9 +88,6 @@ final class PolyglotContextConfig {
     final PolyglotLimits limits;
     final ClassLoader hostClassLoader;
 
-    final Object internalFileSystemContext;
-    final Object publicFileSystemContext;
-
     PolyglotContextConfig(PolyglotEngineImpl engine, OutputStream out, OutputStream err, InputStream in,
                     boolean hostLookupAllowed, PolyglotAccess polyglotAccess, boolean nativeAccessAllowed, boolean createThreadAllowed,
                     boolean hostClassLoadingAllowed, boolean allowExperimentalOptions,
@@ -141,8 +138,6 @@ final class PolyglotContextConfig {
         this.environmentAccess = environmentAccess;
         this.environment = environment == null ? Collections.emptyMap() : environment;
         this.hostClassLoader = hostClassLoader;
-        this.publicFileSystemContext = EngineAccessor.LANGUAGE.createFileSystemContext(this, publicFileSystem);
-        this.internalFileSystemContext = EngineAccessor.LANGUAGE.createFileSystemContext(this, internalFileSystem);
     }
 
     public ZoneId getTimeZone() {
