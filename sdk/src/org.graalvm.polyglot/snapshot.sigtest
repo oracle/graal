@@ -526,6 +526,7 @@ meth public java.lang.String getSeparator()
 meth public java.nio.charset.Charset getEncoding(java.nio.file.Path)
 meth public java.nio.file.Path getTempDirectory()
 meth public java.nio.file.Path readSymbolicLink(java.nio.file.Path) throws java.io.IOException
+meth public static org.graalvm.polyglot.io.FileSystem newDefaultFileSystem()
 meth public void createLink(java.nio.file.Path,java.nio.file.Path) throws java.io.IOException
 meth public void setCurrentWorkingDirectory(java.nio.file.Path)
 

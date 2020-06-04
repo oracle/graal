@@ -184,7 +184,7 @@ final class FileSystems {
 
     private static boolean isFollowLinks(final LinkOption... linkOptions) {
         for (LinkOption lo : linkOptions) {
-            if (lo == LinkOption.NOFOLLOW_LINKS) {
+            if (Objects.requireNonNull(lo) == LinkOption.NOFOLLOW_LINKS) {
                 return false;
             }
         }
@@ -787,6 +787,18 @@ final class FileSystems {
         @Override
         public void setCurrentWorkingDirectory(Path currentWorkingDirectory) {
             Objects.requireNonNull(currentWorkingDirectory, "Current working directory must be non null.");
+            if (!currentWorkingDirectory.isAbsolute()) {
+                throw new IllegalArgumentException("Current working directory must be absolute.");
+            }
+            boolean isDirectory;
+            try {
+                isDirectory = Boolean.TRUE.equals(delegate.readAttributes(currentWorkingDirectory, "isDirectory").get("isDirectory"));
+            } catch (IOException ioe) {
+                isDirectory = false;
+            }
+            if (!isDirectory) {
+                throw new IllegalArgumentException("Current working directory must be directory.");
+            }
             if (explicitUserDir && userDir == null) { // Forbidden set of current working directory
                 throw new SecurityException("Modification of current working directory is not allowed.");
             }

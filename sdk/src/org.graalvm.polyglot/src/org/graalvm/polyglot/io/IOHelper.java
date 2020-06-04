@@ -41,6 +41,8 @@
 package org.graalvm.polyglot.io;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.lang.reflect.Method;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
@@ -55,8 +57,12 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 
 final class IOHelper {
 
@@ -176,5 +182,39 @@ final class IOHelper {
         }
         copy(source, target, sourceFileSystem, targetFileSystem, options);
         sourceFileSystem.delete(source);
+    }
+
+    static final AbstractPolyglotImpl IMPL = initImpl();
+
+    private static AbstractPolyglotImpl initImpl() {
+        try {
+            Method method = Engine.class.getDeclaredMethod("getImpl");
+            method.setAccessible(true);
+            AbstractPolyglotImpl polyglotImpl = (AbstractPolyglotImpl) method.invoke(null);
+            polyglotImpl.setIO(new IOAccessImpl());
+            return polyglotImpl;
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to initialize execution listener class.", e);
+        }
+    }
+
+    private static final class IOAccessImpl extends AbstractPolyglotImpl.IOAccess {
+
+        @Override
+        public ProcessHandler.ProcessCommand newProcessCommand(List<String> cmd, String cwd, Map<String, String> environment, boolean redirectErrorStream,
+                        ProcessHandler.Redirect inputRedirect, ProcessHandler.Redirect outputRedirect, ProcessHandler.Redirect errorRedirect) {
+            return new ProcessHandler.ProcessCommand(cmd, cwd, environment, redirectErrorStream, inputRedirect, outputRedirect, errorRedirect);
+        }
+
+        @Override
+        public ProcessHandler.Redirect createRedirectToStream(OutputStream stream) {
+            Objects.requireNonNull("Stream must be non null.");
+            return new ProcessHandler.Redirect(ProcessHandler.Redirect.Type.STREAM, stream);
+        }
+
+        @Override
+        public OutputStream getOutputStream(ProcessHandler.Redirect redirect) {
+            return redirect.getOutputStream();
+        }
     }
 }

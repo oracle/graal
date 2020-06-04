@@ -112,7 +112,7 @@ public abstract class AbstractPolyglotImpl {
 
     public abstract static class IOAccess {
         protected IOAccess() {
-            if (!getClass().getCanonicalName().equals("org.graalvm.polyglot.io.ProcessHandler.ProcessCommand.IOAccessImpl")) {
+            if (!getClass().getCanonicalName().equals("org.graalvm.polyglot.io.IOHelper.IOAccessImpl")) {
                 throw new AssertionError("Only one implementation of IOAccess allowed. " + getClass().getCanonicalName());
             }
         }
@@ -224,7 +224,7 @@ public abstract class AbstractPolyglotImpl {
     public final IOAccess getIO() {
         if (io == null) {
             try {
-                Class.forName(ProcessHandler.ProcessCommand.class.getName(), true, getClass().getClassLoader());
+                Class.forName("org.graalvm.polyglot.io.IOHelper", true, getClass().getClassLoader());
             } catch (ClassNotFoundException e) {
                 throw new IllegalStateException(e);
             }
@@ -763,5 +763,7 @@ public abstract class AbstractPolyglotImpl {
     public abstract Object buildLimits(long statementLimit, Predicate<Source> statementLimitSourceFilter, Duration timeLimit, Duration timeLimitAccuracy, Consumer<ResourceLimitEvent> onLimit);
 
     public abstract Context getLimitEventContext(Object impl);
+
+    public abstract FileSystem newDefaultFileSystem();
 
 }

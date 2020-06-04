@@ -148,7 +148,7 @@ public class FileSystemsTest {
     public static Collection<Configuration> createParameters() throws IOException, ReflectiveOperationException {
         assert cfgs == null;
         final List<Configuration> result = new ArrayList<>();
-        final FileSystem fullIO = FileSystemProviderTest.newFullIOFileSystem();
+        final FileSystem fullIO = FileSystem.newDefaultFileSystem();
         // Full IO
         Path accessibleDir = createContent(Files.createTempDirectory(FileSystemsTest.class.getSimpleName()),
                         fullIO);
