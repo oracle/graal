@@ -93,7 +93,7 @@ public abstract class LLVMPanic extends LLVMIntrinsic {
         LLVMExitException read(LLVMMemory memory, long address, Node location) {
             String desc = strslice.read(memory, address);
             String filename = strslice.read(memory, address + offsetFilename);
-            int linenr = memory.getI32(address + offsetLineNr);
+            int linenr = memory.getI32(null, address + offsetLineNr);
             System.err.printf("thread '%s' panicked at '%s', %s:%d%n", Thread.currentThread().getName(), desc, filename, linenr);
             System.err.print("note: No backtrace available");
             return LLVMExitException.exit(EXIT_CODE_PANIC, location);
@@ -124,11 +124,11 @@ public abstract class LLVMPanic extends LLVMIntrinsic {
 
         @TruffleBoundary
         String read(LLVMMemory memory, long address) {
-            long strAddr = memory.getPointer(address).asNative();
-            int strLen = memory.getI32(address + lengthOffset);
+            long strAddr = memory.getPointer(null, address).asNative();
+            int strLen = memory.getI32(null, address + lengthOffset);
             StringBuilder strBuilder = new StringBuilder();
             for (int i = 0; i < strLen; i++) {
-                strBuilder.append((char) Byte.toUnsignedInt(memory.getI8(strAddr)));
+                strBuilder.append((char) Byte.toUnsignedInt(memory.getI8(null, strAddr)));
                 strAddr += Byte.BYTES;
             }
             return strBuilder.toString();

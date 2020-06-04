@@ -54,7 +54,7 @@ public abstract class LLVMI64LoadNode extends LLVMLoadNode {
     protected long doI64Native(LLVMNativePointer addr,
                     @Cached("createIdentityProfile()") LongValueProfile profile,
                     @CachedLanguage LLVMLanguage language) {
-        return profile.profile(language.getLLVMMemory().getI64(addr));
+        return profile.profile(language.getLLVMMemory().getI64(this, addr));
     }
 
     @Specialization(guards = "isAutoDerefHandle(language, addr)", rewriteOn = UnexpectedResultException.class)

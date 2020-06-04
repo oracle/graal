@@ -151,48 +151,48 @@ public abstract class NativeProfiledMemMove extends LLVMNode implements LLVMMemM
         }
     }
 
-    private static void copyForward(LLVMMemory memory, long target, long source, long length) {
+    private void copyForward(LLVMMemory memory, long target, long source, long length) {
         long targetPointer = target;
         long sourcePointer = source;
         long i64ValuesToWrite = length >> 3;
         for (long i = 0; CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, i < i64ValuesToWrite); i++) {
-            long v64 = memory.getI64(sourcePointer);
-            memory.putI64(targetPointer, v64);
+            long v64 = memory.getI64(this, sourcePointer);
+            memory.putI64(this, targetPointer, v64);
             targetPointer += 8;
             sourcePointer += 8;
         }
 
         long i8ValuesToWrite = length & 0x07;
         for (long i = 0; CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, i < i8ValuesToWrite); i++) {
-            byte value = memory.getI8(sourcePointer);
-            memory.putI8(targetPointer, value);
+            byte value = memory.getI8(this, sourcePointer);
+            memory.putI8(this, targetPointer, value);
             targetPointer++;
             sourcePointer++;
         }
     }
 
-    private static void copyBackward(LLVMMemory memory, long target, long source, long length) {
+    private void copyBackward(LLVMMemory memory, long target, long source, long length) {
         long targetPointer = target + length;
         long sourcePointer = source + length;
         long i64ValuesToWrite = length >> 3;
         for (long i = 0; CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, i < i64ValuesToWrite); i++) {
             targetPointer -= 8;
             sourcePointer -= 8;
-            long v64 = memory.getI64(sourcePointer);
-            memory.putI64(targetPointer, v64);
+            long v64 = memory.getI64(this, sourcePointer);
+            memory.putI64(this, targetPointer, v64);
         }
 
         long i8ValuesToWrite = length & 0x07;
         for (long i = 0; CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, i < i8ValuesToWrite); i++) {
             targetPointer--;
             sourcePointer--;
-            byte value = memory.getI8(sourcePointer);
-            memory.putI8(targetPointer, value);
+            byte value = memory.getI8(this, sourcePointer);
+            memory.putI8(this, targetPointer, value);
         }
     }
 
     @SuppressWarnings("deprecation")
-    private static void nativeMemCopy(LLVMMemory memory, LLVMNativePointer target, LLVMNativePointer source, long length) {
-        memory.copyMemory(source.asNative(), target.asNative(), length);
+    private void nativeMemCopy(LLVMMemory memory, LLVMNativePointer target, LLVMNativePointer source, long length) {
+        memory.copyMemory(this, source.asNative(), target.asNative(), length);
     }
 }

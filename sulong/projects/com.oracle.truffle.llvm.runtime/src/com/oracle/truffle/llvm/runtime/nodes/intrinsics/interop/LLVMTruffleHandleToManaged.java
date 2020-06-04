@@ -54,9 +54,9 @@ public abstract class LLVMTruffleHandleToManaged extends LLVMIntrinsic {
                     @Cached ConditionProfile isDerefProfile) {
         long address = forceAddressNode.executeWithTarget(rawHandle).asNative();
         if (!language.getNoDerefHandleAssumption().isValid() && isDerefProfile.profile(LLVMNativeMemory.isDerefHandleMemory(address))) {
-            return context.getDerefHandleContainer().getValue(address).copy();
+            return context.getDerefHandleContainer().getValue(this, address).copy();
         } else {
-            return context.getHandleContainer().getValue(address).copy();
+            return context.getHandleContainer().getValue(this, address).copy();
         }
     }
 }

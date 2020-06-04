@@ -55,7 +55,7 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
         @Specialization
         protected long doOp(LLVMNativePointer address, long value,
                         @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getAndSetI64(address, value);
+            return language.getLLVMMemory().getAndSetI64(this, address, value);
         }
 
         @Specialization
@@ -75,7 +75,7 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
         @Specialization
         protected long doOp(LLVMNativePointer address, long value,
                         @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getAndAddI64(address, value);
+            return language.getLLVMMemory().getAndAddI64(this, address, value);
         }
 
         @Specialization
@@ -96,7 +96,7 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
         @Specialization
         protected long doOp(LLVMNativePointer address, long value,
                         @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getAndSubI64(address, value);
+            return language.getLLVMMemory().getAndSubI64(this, address, value);
         }
 
         @Specialization
@@ -117,7 +117,7 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
         @Specialization
         protected long doOp(LLVMNativePointer address, long value,
                         @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getAndOpI64(address, value, (a, b) -> a & b);
+            return language.getLLVMMemory().getAndOpI64(this, address, value, (a, b) -> a & b);
         }
 
         @Specialization
@@ -138,7 +138,7 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
         @Specialization
         protected long doOp(LLVMNativePointer address, long value,
                         @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getAndOpI64(address, value, (a, b) -> ~(a & b));
+            return language.getLLVMMemory().getAndOpI64(this, address, value, (a, b) -> ~(a & b));
         }
 
         @Specialization
@@ -159,7 +159,7 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
         @Specialization
         protected long doOp(LLVMNativePointer address, long value,
                         @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getAndOpI64(address, value, (a, b) -> a | b);
+            return language.getLLVMMemory().getAndOpI64(this, address, value, (a, b) -> a | b);
         }
 
         @Specialization
@@ -180,7 +180,7 @@ public abstract class LLVMI64RMWNode extends LLVMExpressionNode {
         @Specialization
         protected long doOp(LLVMNativePointer address, long value,
                         @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getAndOpI64(address, value, (a, b) -> a ^ b);
+            return language.getLLVMMemory().getAndOpI64(this, address, value, (a, b) -> a ^ b);
         }
 
         @Specialization

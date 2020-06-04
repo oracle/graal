@@ -146,7 +146,7 @@ abstract class LLVMManagedAccessDefaults {
         abstract Object executeRead(Object obj, long offset, ForeignToLLVMType type);
 
         @Specialization(guards = {"nativeLibrary.isPointer(receiver)", "!isWrappedAutoDerefHandle(language, nativeLibrary, receiver)"})
-        static Object doPointer(Object receiver, long offset, @SuppressWarnings("unused") ForeignToLLVMType type,
+        Object doPointer(Object receiver, long offset, @SuppressWarnings("unused") ForeignToLLVMType type,
                         @CachedLanguage LLVMLanguage language,
                         @CachedLibrary(limit = "3") LLVMNativeLibrary nativeLibrary,
                         @Cached("createIdentityProfile()") ValueProfile typeProfile) {
@@ -154,19 +154,19 @@ abstract class LLVMManagedAccessDefaults {
                 long addr = nativeLibrary.asPointer(receiver) + offset;
                 switch (typeProfile.profile(type)) {
                     case I8:
-                        return language.getLLVMMemory().getI8(addr);
+                        return language.getLLVMMemory().getI8(this, addr);
                     case I16:
-                        return language.getLLVMMemory().getI16(addr);
+                        return language.getLLVMMemory().getI16(this, addr);
                     case I32:
-                        return language.getLLVMMemory().getI32(addr);
+                        return language.getLLVMMemory().getI32(this, addr);
                     case I64:
-                        return language.getLLVMMemory().getI64(addr);
+                        return language.getLLVMMemory().getI64(this, addr);
                     case FLOAT:
-                        return language.getLLVMMemory().getFloat(addr);
+                        return language.getLLVMMemory().getFloat(this, addr);
                     case DOUBLE:
-                        return language.getLLVMMemory().getDouble(addr);
+                        return language.getLLVMMemory().getDouble(this, addr);
                     case POINTER:
-                        return language.getLLVMMemory().getPointer(addr);
+                        return language.getLLVMMemory().getPointer(this, addr);
                     default:
                         CompilerDirectives.transferToInterpreter();
                         throw new IllegalStateException("Unsupported type " + type);
@@ -376,19 +376,19 @@ abstract class LLVMManagedAccessDefaults {
         @Specialization
         void writeI8(long ptr, byte value,
                         @CachedLanguage LLVMLanguage language) {
-            language.getLLVMMemory().putI8(ptr, value);
+            language.getLLVMMemory().putI8(this, ptr, value);
         }
 
         @Specialization
         void writeI16(long ptr, short value,
                         @CachedLanguage LLVMLanguage language) {
-            language.getLLVMMemory().putI16(ptr, value);
+            language.getLLVMMemory().putI16(this, ptr, value);
         }
 
         @Specialization
         void writeI32(long ptr, int value,
                         @CachedLanguage LLVMLanguage language) {
-            language.getLLVMMemory().putI32(ptr, value);
+            language.getLLVMMemory().putI32(this, ptr, value);
         }
 
         @Specialization
@@ -396,19 +396,19 @@ abstract class LLVMManagedAccessDefaults {
                         @CachedLanguage LLVMLanguage language,
                         @CachedLibrary(limit = "3") LLVMNativeLibrary nativeLibrary) {
             long valuePointer = nativeLibrary.toNativePointer(value).asNative();
-            language.getLLVMMemory().putI64(ptr, valuePointer);
+            language.getLLVMMemory().putI64(this, ptr, valuePointer);
         }
 
         @Specialization
         void writeFloat(long ptr, float value,
                         @CachedLanguage LLVMLanguage language) {
-            language.getLLVMMemory().putFloat(ptr, value);
+            language.getLLVMMemory().putFloat(this, ptr, value);
         }
 
         @Specialization
         void writeDouble(long ptr, double value,
                         @CachedLanguage LLVMLanguage language) {
-            language.getLLVMMemory().putDouble(ptr, value);
+            language.getLLVMMemory().putDouble(this, ptr, value);
         }
 
         @Specialization
@@ -416,7 +416,7 @@ abstract class LLVMManagedAccessDefaults {
                         @CachedLanguage LLVMLanguage language,
                         @CachedLibrary(limit = "3") LLVMNativeLibrary nativeLibrary) {
             LLVMNativePointer nativePointer = nativeLibrary.toNativePointer(value);
-            language.getLLVMMemory().putPointer(ptr, nativePointer);
+            language.getLLVMMemory().putPointer(this, ptr, nativePointer);
         }
 
     }

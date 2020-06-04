@@ -46,7 +46,7 @@ public abstract class LLVMDoubleStoreNode extends LLVMStoreNodeCommon {
     @Specialization(guards = "!isAutoDerefHandle(language, addr)")
     protected void doOp(LLVMNativePointer addr, double value,
                     @CachedLanguage LLVMLanguage language) {
-        language.getLLVMMemory().putDouble(addr, value);
+        language.getLLVMMemory().putDouble(this, addr, value);
     }
 
     @Specialization(guards = "isAutoDerefHandle(language, addr)")

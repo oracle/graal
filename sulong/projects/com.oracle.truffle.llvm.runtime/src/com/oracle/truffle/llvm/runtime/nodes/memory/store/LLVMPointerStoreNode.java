@@ -49,14 +49,14 @@ public abstract class LLVMPointerStoreNode extends LLVMStoreNodeCommon {
     protected void doAddress(LLVMNativePointer addr, Object value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                     @CachedLanguage LLVMLanguage language) {
-        language.getLLVMMemory().putPointer(addr, toNative.executeWithTarget(value));
+        language.getLLVMMemory().putPointer(this, addr, toNative.executeWithTarget(value));
     }
 
     @Specialization(guards = "!isAutoDerefHandle(language, addr)")
     protected void doAddress(long addr, Object value,
                     @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
                     @CachedLanguage LLVMLanguage language) {
-        language.getLLVMMemory().putPointer(addr, toNative.executeWithTarget(value));
+        language.getLLVMMemory().putPointer(this, addr, toNative.executeWithTarget(value));
     }
 
     @Specialization(guards = "isAutoDerefHandle(language, addr)")
