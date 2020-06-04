@@ -24,35 +24,35 @@ env:
 
 matrix:
   include:
-  - env: JDK="jdk8" GATE="style,fullbuild" PRIMARY="substratevm"
-  - env: JDK="jdk8" GATE="build,test" PRIMARY="compiler"
-  - env: JDK="jdk8" GATE="build,test,helloworld" PRIMARY="substratevm"
-  - env: JDK="jdk8" GATE="build,test,helloworld_debug" PRIMARY="substratevm"
-  - env: JDK="jdk8" GATE="build,bootstraplite" PRIMARY="compiler"
-  - env: JDK="jdk8" GATE="style,fullbuild,sulongBasic" PRIMARY="sulong"
-    addons:
-      apt:
-        packages:
-          - python-pip
-          - libc++1
-          - libc++abi1
-  - env: JDK="jdk8" GATE="build,sulong" PRIMARY="vm" DYNAMIC_IMPORTS="/sulong,/substratevm" DISABLE_POLYGLOT=true DISABLE_LIBPOLYGLOT=true
-    addons:
-      apt:
-        sources:
-          - ubuntu-toolchain-r-test
-        packages:
-          - libc++1
-          - libc++abi1
-  - os: linux
-    env: JDK="jdk8" GATE="build,debuginfotest" PRIMARY="substratevm"
-    addons:
-      apt:
-        packages:
-          - gdb
-  - env: JDK="jdk11" GATE="style,fullbuild" PRIMARY="compiler"
-  - env: JDK="jdk11" GATE="build,test" PRIMARY="compiler"
-  - env: JDK="jdk11" GATE="build,bootstraplite" PRIMARY="compiler"
+#  - env: JDK="jdk8" GATE="style,fullbuild" PRIMARY="substratevm"
+#  - env: JDK="jdk8" GATE="build,test" PRIMARY="compiler"
+#  - env: JDK="jdk8" GATE="build,test,helloworld" PRIMARY="substratevm"
+#  - env: JDK="jdk8" GATE="build,test,helloworld_debug" PRIMARY="substratevm"
+#  - env: JDK="jdk8" GATE="build,bootstraplite" PRIMARY="compiler"
+#  - env: JDK="jdk8" GATE="style,fullbuild,sulongBasic" PRIMARY="sulong"
+#    addons:
+#      apt:
+#        packages:
+#          - python-pip
+#          - libc++1
+#          - libc++abi1
+#  - env: JDK="jdk8" GATE="build,sulong" PRIMARY="vm" DYNAMIC_IMPORTS="/sulong,/substratevm" DISABLE_POLYGLOT=true DISABLE_LIBPOLYGLOT=true
+#    addons:
+#      apt:
+#        sources:
+#          - ubuntu-toolchain-r-test
+#        packages:
+#          - libc++1
+#          - libc++abi1
+#  - os: linux
+#    env: JDK="jdk8" GATE="build,debuginfotest" PRIMARY="substratevm"
+#    addons:
+#      apt:
+#        packages:
+#          - gdb
+#  - env: JDK="jdk11" GATE="style,fullbuild" PRIMARY="compiler"
+#  - env: JDK="jdk11" GATE="build,test" PRIMARY="compiler"
+#  - env: JDK="jdk11" GATE="build,bootstraplite" PRIMARY="compiler"
   - os: linux
     arch: arm64
     env: JDK="jdk11" GATE="fullbuild,test" PRIMARY="compiler"
