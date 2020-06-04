@@ -979,7 +979,7 @@ public abstract class Source {
      * @since 19.0
      */
     public static String findMimeType(TruffleFile file) throws IOException {
-        return file.getMimeType();
+        return file.detectMimeType();
     }
 
     /**
@@ -1050,15 +1050,15 @@ public abstract class Source {
             useName = useName == null ? file.getName() : useName;
             usePath = usePath == null ? file.getPath() : usePath;
             useUri = useUri == null ? file.toUri() : useUri;
-            useMimeType = useMimeType == null ? SourceAccessor.getMimeType(file, getValidMimeTypes(language)) : useMimeType;
+            useMimeType = useMimeType == null ? SourceAccessor.detectMimeType(file, getValidMimeTypes(language)) : useMimeType;
             if (legacy) {
                 useMimeType = useMimeType == null ? UNKNOWN_MIME_TYPE : useMimeType;
-                useEncoding = useEncoding == null ? getEncoding(file, useMimeType) : useEncoding;
+                useEncoding = useEncoding == null ? findEncoding(file, useMimeType) : useEncoding;
                 useContent = useContent == CONTENT_UNSET ? read(file, useEncoding) : useContent;
             } else {
                 if (useContent == CONTENT_UNSET) {
                     if (isCharacterBased(language, useMimeType)) {
-                        useEncoding = useEncoding == null ? getEncoding(file, useMimeType) : useEncoding;
+                        useEncoding = useEncoding == null ? findEncoding(file, useMimeType) : useEncoding;
                         useContent = read(file, useEncoding);
                     } else {
                         useContent = ByteSequence.create(file.readAllBytes());
@@ -1082,14 +1082,14 @@ public abstract class Source {
                 useTruffleFile = SourceAccessor.getTruffleFile(tmpUri, fileSystemContext.get());
                 useTruffleFile = useTruffleFile.exists() ? useTruffleFile.getCanonicalFile() : useTruffleFile;
                 if (legacy) {
-                    useMimeType = useMimeType == null ? SourceAccessor.getMimeType(useTruffleFile, getValidMimeTypes(language)) : useMimeType;
+                    useMimeType = useMimeType == null ? SourceAccessor.detectMimeType(useTruffleFile, getValidMimeTypes(language)) : useMimeType;
                     useMimeType = useMimeType == null ? UNKNOWN_MIME_TYPE : useMimeType;
-                    useEncoding = useEncoding == null ? getEncoding(useTruffleFile, useMimeType) : useEncoding;
+                    useEncoding = useEncoding == null ? findEncoding(useTruffleFile, useMimeType) : useEncoding;
                     useContent = useContent == CONTENT_UNSET ? read(useTruffleFile, useEncoding) : useContent;
                 } else {
                     if (useContent == CONTENT_UNSET) {
                         if (isCharacterBased(language, useMimeType)) {
-                            useEncoding = useEncoding == null ? getEncoding(useTruffleFile, useMimeType) : useEncoding;
+                            useEncoding = useEncoding == null ? findEncoding(useTruffleFile, useMimeType) : useEncoding;
                             useContent = read(useTruffleFile, useEncoding);
                         } else {
                             useContent = ByteSequence.create(useTruffleFile.readAllBytes());
@@ -1282,11 +1282,11 @@ public abstract class Source {
         }
     }
 
-    static String findMimeType(final URL url, URLConnection connection, Set<String> validMimeTypes, Object fileSystemContext) throws IOException {
+    static String findMimeType(final URL url, URLConnection connection, Set<String> validMimeTypes, Object fileSystemContext) {
         try {
             URI uri = url.toURI();
             TruffleFile file = SourceAccessor.getTruffleFile(uri, fileSystemContext);
-            String firstGuess = SourceAccessor.getMimeType(file, validMimeTypes);
+            String firstGuess = SourceAccessor.detectMimeType(file, validMimeTypes);
             if (firstGuess != null) {
                 return firstGuess;
             }
@@ -1342,8 +1342,8 @@ public abstract class Source {
         throw (E) ex;
     }
 
-    private static Charset getEncoding(TruffleFile file, String mimeType) throws IOException {
-        Charset encoding = SourceAccessor.getEncoding(file, mimeType);
+    private static Charset findEncoding(TruffleFile file, String mimeType) {
+        Charset encoding = SourceAccessor.detectEncoding(file, mimeType);
         encoding = encoding == null ? StandardCharsets.UTF_8 : encoding;
         return encoding;
     }

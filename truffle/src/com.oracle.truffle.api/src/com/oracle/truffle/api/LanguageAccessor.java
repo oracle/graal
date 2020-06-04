@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URI;
@@ -435,14 +434,14 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public String getMimeType(TruffleFile file, Set<String> validMimeTypes) throws IOException {
-            return file.getMimeType(validMimeTypes);
+        public String detectMimeType(TruffleFile file, Set<String> validMimeTypes) {
+            return file.detectMimeType(validMimeTypes);
         }
 
         @Override
-        public Charset getEncoding(TruffleFile file, String mimeType) throws IOException {
-            String useMimeType = mimeType == null ? file.getMimeType() : mimeType;
-            return useMimeType == null ? null : file.getEncoding(useMimeType);
+        public Charset detectEncoding(TruffleFile file, String mimeType) {
+            String useMimeType = mimeType == null ? file.detectMimeType() : mimeType;
+            return useMimeType == null ? null : file.detectEncoding(useMimeType);
         }
 
         @Override

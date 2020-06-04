@@ -61,12 +61,12 @@ final class SourceAccessor extends Accessor {
     public static void load() {
     }
 
-    static String getMimeType(TruffleFile file, Set<String> validMimeTypes) throws IOException {
-        return ACCESSOR.languageSupport().getMimeType(file, validMimeTypes);
+    static String detectMimeType(TruffleFile file, Set<String> validMimeTypes) {
+        return ACCESSOR.languageSupport().detectMimeType(file, validMimeTypes);
     }
 
-    static Charset getEncoding(TruffleFile file, String mimeType) throws IOException {
-        return ACCESSOR.languageSupport().getEncoding(file, mimeType);
+    static Charset detectEncoding(TruffleFile file, String mimeType) {
+        return ACCESSOR.languageSupport().detectEncoding(file, mimeType);
     }
 
     static Object getCurrentFileSystemContext() {

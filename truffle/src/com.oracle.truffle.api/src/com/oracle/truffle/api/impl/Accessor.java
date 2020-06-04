@@ -573,9 +573,9 @@ public abstract class Accessor {
 
         public abstract Object getCurrentFileSystemContext();
 
-        public abstract String getMimeType(TruffleFile file, Set<String> validMimeTypes) throws IOException;
+        public abstract String detectMimeType(TruffleFile file, Set<String> validMimeTypes);
 
-        public abstract Charset getEncoding(TruffleFile file, String mimeType) throws IOException;
+        public abstract Charset detectEncoding(TruffleFile file, String mimeType);
 
         public abstract TruffleFile getTruffleFile(String path, Object fileSystemContext);
 
@@ -854,7 +854,7 @@ public abstract class Accessor {
             case "com.oracle.truffle.api.debug.Debugger$AccessorDebug":
             case "com.oracle.truffle.tck.instrumentation.VerifierInstrument$TruffleTCKAccessor":
             case "com.oracle.truffle.api.instrumentation.test.AbstractInstrumentationTest$TestAccessor":
-            case "com.oracle.truffle.api.test.polyglot.FileSystemsTest$TestAPIAccessor":
+            case "com.oracle.truffle.api.test.polyglot.TestAPIAccessor":
             case "com.oracle.truffle.api.impl.TVMCIAccessor":
             case "com.oracle.truffle.api.impl.DefaultRuntimeAccessor":
             case "org.graalvm.compiler.truffle.runtime.GraalRuntimeAccessor":
