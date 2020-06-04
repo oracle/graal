@@ -76,7 +76,7 @@ final class PolyglotThread extends Thread {
         try {
             prev = languageContext.enterThread(this);
         } catch (PolyglotEngineException polyglotException) {
-            if (polyglotException.e instanceof ClosingContextException) {
+            if (polyglotException.closingContext) {
                 return;
             } else {
                 throw polyglotException;
@@ -91,13 +91,5 @@ final class PolyglotThread extends Thread {
     }
 
     private static final AtomicInteger THREAD_INIT_NUMBER = new AtomicInteger(0);
-
-    @SuppressWarnings("serial")
-    static final class ClosingContextException extends IllegalStateException {
-
-        ClosingContextException(String message) {
-            super(message);
-        }
-    }
 
 }

@@ -3223,7 +3223,7 @@ class TruffleLanguageSnippets {
         }
 
         final Assumption singleThreaded = Truffle.getRuntime().createAssumption();
-        final Collection<Thread> startedThreads = new ArrayList<>();
+        final List<Thread> startedThreads = new ArrayList<>();
 
     }
 
@@ -3403,10 +3403,14 @@ class TruffleLanguageSnippets {
         protected void finalizeContext(Context context) {
             // stop and join all the created Threads
             boolean interrupted = false;
-            for (Thread threadToJoin : context.startedThreads) {
-                threadToJoin.interrupt();
+            for (int i = 0; i < context.startedThreads.size();) {
+                Thread threadToJoin  = context.startedThreads.get(i);
                 try {
-                    threadToJoin.join();
+                    if (threadToJoin != Thread.currentThread()) {
+                        threadToJoin.interrupt();
+                        threadToJoin.join();
+                    }
+                    i++;
                 } catch (InterruptedException ie) {
                     interrupted = true;
                 }

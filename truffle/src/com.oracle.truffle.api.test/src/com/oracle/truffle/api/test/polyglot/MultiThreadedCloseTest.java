@@ -50,37 +50,73 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Function;
 import org.graalvm.polyglot.Context;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
-public class MultiThreadedCloseTest {
+public class MultiThreadedCloseTest extends AbstractPolyglotTest {
+
+    public MultiThreadedCloseTest() {
+        enterContext = false;
+    }
 
     @Test
     public void testWithExecutor() {
-        ProxyLanguage.setDelegate(new CloseLanguage());
-        CloseLanguage.contextFactory = ExecutorCloseContext::new;
-        try (Context ctx = Context.newBuilder().allowCreateThread(true).build()) {
-            ctx.eval(ProxyLanguage.ID, "");
-        }
+        setupEnv(Context.newBuilder().allowCreateThread(true).build(), new CloseLanguage() {
+
+            @Override
+            protected void initializeContext(CloseContext ctx) throws Exception {
+                ctx.executor = Executors.newCachedThreadPool((r) -> {
+                    return ctx.registerThread(ctx.env.createThread(r, null, ctx.group));
+                });
+                ctx.executor.submit(() -> {
+                    ctx.env.parseInternal(Source.newBuilder(ProxyLanguage.ID, "", "test").build());
+                });
+            }
+
+            @Override
+            protected void finalizeContext(CloseContext ctx) {
+                ctx.executor.shutdownNow();
+                assertTrue(ctx.executor.isShutdown());
+                try {
+                    ctx.joinThreads();
+                } catch (InterruptedException ie) {
+                    throw new RuntimeException(ie);
+                }
+            }
+        });
+        context.eval(ProxyLanguage.ID, "");
     }
 
     @Test
     public void testWithThreads() {
-        ProxyLanguage.setDelegate(new CloseLanguage());
-        CloseLanguage.contextFactory = ThreadCloseContext::new;
-        try (Context ctx = Context.newBuilder().allowCreateThread(true).build()) {
-            ctx.eval(ProxyLanguage.ID, "");
-        }
+        setupEnv(Context.newBuilder().allowCreateThread(true).build(), new CloseLanguage() {
+
+            @Override
+            protected void initializeContext(CloseContext ctx) throws Exception {
+                ctx.registerThread(ctx.env.createThread(() -> {
+                    ctx.env.parseInternal(Source.newBuilder(ProxyLanguage.ID, "", "test").build());
+                }, null, ctx.group)).start();
+            }
+
+            @Override
+            protected void finalizeContext(CloseContext ctx) {
+                try {
+                    ctx.joinThreads();
+                } catch (InterruptedException ie) {
+                    throw new RuntimeException(ie);
+                }
+            }
+        });
+        context.eval(ProxyLanguage.ID, "");
     }
 
-    private abstract static class CloseContext extends ProxyLanguage.LanguageContext {
+    private static class CloseContext extends ProxyLanguage.LanguageContext {
 
-        private final AtomicReference<Collection<Thread>> createdThreads;
+        final AtomicReference<Collection<Thread>> createdThreads;
         final ThreadGroup group;
+        ExecutorService executor;
 
         CloseContext(Env env) {
             super(env);
@@ -88,11 +124,7 @@ public class MultiThreadedCloseTest {
             this.group = new ThreadGroup(getClass().getSimpleName());
         }
 
-        abstract void init();
-
-        abstract void cleanUp();
-
-        final Thread onThreadCreate(Thread thread) {
+        Thread registerThread(Thread thread) {
             Collection<Thread> into = createdThreads.get();
             if (into == null) {
                 throw new IllegalStateException("Creating a Thread after finalizeContext");
@@ -101,7 +133,7 @@ public class MultiThreadedCloseTest {
             return thread;
         }
 
-        final void joinThreads() throws InterruptedException {
+        void joinThreads() throws InterruptedException {
             Collection<Thread> toJoin = createdThreads.getAndSet(null);
             if (toJoin == null) {
                 return;
@@ -112,85 +144,32 @@ public class MultiThreadedCloseTest {
         }
     }
 
-    private static final class ExecutorCloseContext extends CloseContext implements ThreadFactory {
-
-        private final ExecutorService executor;
-
-        ExecutorCloseContext(Env env) {
-            super(env);
-            this.executor = Executors.newCachedThreadPool(this);
-        }
+    private abstract static class CloseLanguage extends ProxyLanguage {
 
         @Override
-        public Thread newThread(Runnable r) {
-            return onThreadCreate(env.createThread(r, null, group));
-        }
-
-        @Override
-        void init() {
-            executor.submit(() -> {
-                env.parseInternal(Source.newBuilder(ProxyLanguage.ID, "", "test").build());
-            });
-        }
-
-        @Override
-        void cleanUp() {
-            executor.shutdownNow();
-            assertTrue(executor.isShutdown());
-            try {
-                joinThreads();
-            } catch (InterruptedException ie) {
-                throw new RuntimeException(ie);
-            }
-        }
-    }
-
-    private static final class ThreadCloseContext extends CloseContext {
-
-        ThreadCloseContext(Env env) {
-            super(env);
-        }
-
-        @Override
-        void init() {
-            onThreadCreate(env.createThread(() -> {
-                env.parseInternal(Source.newBuilder(ProxyLanguage.ID, "", "test").build());
-            }, null, group)).start();
-        }
-
-        @Override
-        void cleanUp() {
-            try {
-                joinThreads();
-            } catch (InterruptedException ie) {
-                throw new RuntimeException(ie);
-            }
-        }
-    }
-
-    private static final class CloseLanguage extends ProxyLanguage {
-
-        static Function<Env, CloseContext> contextFactory;
-
-        @Override
-        protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+        protected final boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
             return true;
         }
 
         @Override
         protected LanguageContext createContext(Env env) {
-            return contextFactory.apply(env);
+            super.createContext(env);
+            return new CloseContext(env);
         }
 
         @Override
-        protected void initializeContext(LanguageContext context) throws Exception {
-            ((CloseContext) context).init();
+        protected final void initializeContext(LanguageContext context) throws Exception {
+            initializeContext((CloseContext) context);
         }
+
+        protected abstract void initializeContext(CloseContext context) throws Exception;
 
         @Override
         protected void finalizeContext(LanguageContext context) {
-            ((CloseContext) context).cleanUp();
+            finalizeContext((CloseContext) context);
         }
+
+        protected abstract void finalizeContext(CloseContext context);
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
