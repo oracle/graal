@@ -29,10 +29,8 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.func;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
@@ -44,20 +42,17 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMInvokeNodeFactory.LLVMInvokeNodeImplNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.others.LLVMValueProfilingNode;
+import com.oracle.truffle.llvm.runtime.nodes.vars.LLVMWriteNode;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
-import com.oracle.truffle.llvm.runtime.types.PointerType;
-import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
-import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.VoidType;
 
 @GenerateWrapper
 public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
 
-    public static LLVMInvokeNode create(FunctionType type, FrameSlot resultLocation, LLVMExpressionNode functionNode, LLVMExpressionNode[] argumentNodes,
+    public static LLVMInvokeNode create(FunctionType type, LLVMWriteNode writeResult, LLVMExpressionNode functionNode, LLVMExpressionNode[] argumentNodes,
                     int normalSuccessor, int unwindSuccessor,
                     LLVMStatementNode normalPhiNode, LLVMStatementNode unwindPhiNode) {
         LLVMLookupDispatchTargetNode dispatchTargetNode = LLVMLookupDispatchTargetNodeGen.create(functionNode);
-        return LLVMInvokeNodeImplNodeGen.create(type, resultLocation, argumentNodes, normalSuccessor, unwindSuccessor, normalPhiNode, unwindPhiNode, dispatchTargetNode);
+        return LLVMInvokeNodeImplNodeGen.create(type, writeResult, argumentNodes, normalSuccessor, unwindSuccessor, normalPhiNode, unwindPhiNode, dispatchTargetNode);
     }
 
     @NodeChild(value = "dispatchTarget", type = LLVMLookupDispatchTargetNode.class)
@@ -69,22 +64,22 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
 
         @Children private final LLVMExpressionNode[] argumentNodes;
         @Child private LLVMDispatchNode dispatchNode;
+        @Child private LLVMWriteNode writeResult;
 
         protected final FunctionType type;
 
         private final int normalSuccessor;
         private final int unwindSuccessor;
-        private final FrameSlot resultLocation;
 
-        LLVMInvokeNodeImpl(FunctionType type, FrameSlot resultLocation, LLVMExpressionNode[] argumentNodes,
+        LLVMInvokeNodeImpl(FunctionType type, LLVMWriteNode writeResult, LLVMExpressionNode[] argumentNodes,
                         int normalSuccessor, int unwindSuccessor,
                         LLVMStatementNode normalPhiNode, LLVMStatementNode unwindPhiNode) {
+            this.writeResult = writeResult;
             this.normalSuccessor = normalSuccessor;
             this.unwindSuccessor = unwindSuccessor;
             this.type = type;
             this.normalPhiNode = normalPhiNode;
             this.unwindPhiNode = unwindPhiNode;
-            this.resultLocation = resultLocation;
             this.returnValueProfile = (LLVMValueProfilingNode) LLVMValueProfilingNode.create(null, type.getReturnType());
 
             this.argumentNodes = argumentNodes;
@@ -114,7 +109,10 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
         @Specialization
         public void doInvoke(VirtualFrame frame, Object function) {
             Object[] argValues = prepareArguments(frame);
-            writeResult(frame, dispatchNode.executeDispatch(function, argValues));
+            Object result = dispatchNode.executeDispatch(function, argValues);
+            if (writeResult != null) {
+                writeResult.executeWithTarget(frame, result);
+            }
         }
 
         @ExplodeLoop
@@ -133,46 +131,6 @@ public abstract class LLVMInvokeNode extends LLVMControlFlowNode {
             } else {
                 assert successorIndex == UNWIND_SUCCESSOR;
                 return unwindPhiNode;
-            }
-        }
-
-        private void writeResult(VirtualFrame frame, Object value) {
-            Type returnType = type.getReturnType();
-            CompilerAsserts.partialEvaluationConstant(returnType);
-            if (returnType instanceof VoidType) {
-                return;
-            }
-            if (returnType instanceof PrimitiveType) {
-                switch (((PrimitiveType) returnType).getPrimitiveKind()) {
-                    case I1:
-                        frame.setBoolean(resultLocation, (boolean) returnValueProfile.executeWithTarget(value));
-                        break;
-                    case I8:
-                        frame.setByte(resultLocation, (byte) returnValueProfile.executeWithTarget(value));
-                        break;
-                    case I16:
-                        frame.setInt(resultLocation, (short) returnValueProfile.executeWithTarget(value));
-                        break;
-                    case I32:
-                        frame.setInt(resultLocation, (int) returnValueProfile.executeWithTarget(value));
-                        break;
-                    case I64:
-                        frame.setLong(resultLocation, (long) returnValueProfile.executeWithTarget(value));
-                        break;
-                    case FLOAT:
-                        frame.setFloat(resultLocation, (float) returnValueProfile.executeWithTarget(value));
-                        break;
-                    case DOUBLE:
-                        frame.setDouble(resultLocation, (double) returnValueProfile.executeWithTarget(value));
-                        break;
-                    default:
-                        frame.setObject(resultLocation, value);
-                }
-            } else if (type.getReturnType() instanceof PointerType) {
-                Object profiledValue = returnValueProfile.executeWithTarget(value);
-                frame.setObject(resultLocation, profiledValue);
-            } else {
-                frame.setObject(resultLocation, value);
             }
         }
     }
