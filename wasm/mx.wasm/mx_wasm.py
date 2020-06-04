@@ -86,16 +86,20 @@ class GraalWasmDefaultTags:
     wasmbenchtest = "wasmbenchtest"
 
 
+def wat2wasm_binary():
+    return mx.exe_suffix("wat2wasm")
+
+
 def graal_wasm_gate_runner(args, tasks):
     with Task("BuildAll", tasks, tags=[GraalWasmDefaultTags.buildall]) as t:
         if t:
             mx.build(["--all"])
     with Task("UnitTests", tasks, tags=[GraalWasmDefaultTags.wasmtest]) as t:
         if t:
-            unittest(["-Dwasmtest.watToWasmExecutable=" + os.path.join(wabt_dir, "wat2wasm"), "WasmTestSuite"])
+            unittest(["-Dwasmtest.watToWasmExecutable=" + os.path.join(wabt_dir, wat2wasm_binary()), "WasmTestSuite"])
     with Task("ConstantsPolicyUnitTests", tasks, tags=[GraalWasmDefaultTags.wasmconstantspolicytest]) as t:
         if t:
-            unittest(["-Dwasmtest.watToWasmExecutable=" + os.path.join(wabt_dir, "wat2wasm"),
+            unittest(["-Dwasmtest.watToWasmExecutable=" + os.path.join(wabt_dir, wat2wasm_binary()),
                       "-Dwasmtest.storeConstantsPolicy=LARGE_ONLY", "WasmTestSuite"])
     with Task("ExtraUnitTests", tasks, tags=[GraalWasmDefaultTags.wasmextratest]) as t:
         if t:

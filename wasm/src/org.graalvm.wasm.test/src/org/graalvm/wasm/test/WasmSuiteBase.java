@@ -121,8 +121,16 @@ public abstract class WasmSuiteBase extends WasmTestBase {
     }
 
     private static boolean inCI() {
-        final String prid = System.getenv("PULL_REQUEST_ID");
+        final String prid = System.getenv("CONTINUOUS_INTEGRATION");
         return prid != null;
+    }
+
+    private static boolean inWindows() {
+        return System.getProperty("os.name").contains("win");
+    }
+
+    private static boolean isPoorShell() {
+        return inCI() || inWindows();
     }
 
     private static void runInContext(WasmCase testCase, Context context, List<Source> sources, int iterations, String phaseIcon, String phaseLabel) {
@@ -211,7 +219,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         for (int i = formattedLabel.length(); i < STATUS_LABEL_WIDTH; i++) {
             formattedLabel += " ";
         }
-        if (inCI()) {
+        if (isPoorShell()) {
             oldOut.println();
             oldOut.print(icon);
             oldOut.print(formattedLabel);
@@ -344,7 +352,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
                 statusIcon = TEST_FAILED_ICON;
                 errors.put(testCase, e);
             } finally {
-                if (inCI()) {
+                if (isPoorShell()) {
                     System.out.println();
                     System.out.println(statusIcon);
                     System.out.println();
@@ -389,7 +397,8 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             final int width = Integer.parseInt(output.split(" ")[1]);
             return width;
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            System.err.println("Could not retrieve terminal width: " + e.getMessage());
+            return -1;
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }

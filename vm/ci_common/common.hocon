@@ -379,8 +379,8 @@ builds += [
   ${vm_java_8} ${deploy_daily_vm_windows} ${js_windows} ${svm-common-windows} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-win"]
-      ${mx_vm_installables} ["--exclude-components="${non-product-vm-components-windows}, build]
-      ${mx_vm_installables} ["--exclude-components="${non-product-vm-components-windows}] ${maven_deploy_sdk_components}
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites_windows}, "--exclude-components="${non-product-vm-components-windows}, build]
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites_windows}, "--exclude-components="${non-product-vm-components-windows}] ${maven_deploy_sdk_components}
       ${notify-nexus-deploy}
     ]
     timelimit: "1:30:00"
@@ -389,8 +389,8 @@ builds += [
   ${vm_java_11} ${deploy_daily_vm_windows-jdk11} ${svm-common-windows-jdk11} ${js_windows_jdk11} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-win"]
-      ${mx_vm_installables} ["--exclude-components="${non-product-vm-components-windows}, build]
-      ${mx_vm_installables} ["--exclude-components="${non-product-vm-components-windows}] ${maven_deploy_sdk_components}
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites_windows}, "--exclude-components="${non-product-vm-components-windows}, build]
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites_windows}, "--exclude-components="${non-product-vm-components-windows}] ${maven_deploy_sdk_components}
       ${notify-nexus-deploy}
     ]
     timelimit: "1:30:00"
