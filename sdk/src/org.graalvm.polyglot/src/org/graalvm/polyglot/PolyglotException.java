@@ -69,8 +69,8 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractStackFrameImpl;
  * error. For syntax errors a {@link #getSourceLocation() location} may be available.
  * <li>{@link #isIncompleteSource() Incomplete Source}: Is <code>true</code> if this returns a
  * {@link #isSyntaxError() syntax error} that indicates that the source is incomplete.
- * <li>{@link #isResourceExhausted() Resource exceeded}: Is <code>true</code> if a resource limit
- * e.g. the maximum memory was exceeded.
+ * <li>{@link #isResourceExhausted() Resource exhausted}: Is <code>true</code> if a resource limit
+ * e.g. the maximum memory was exhausted.
  * <li>{@link #isInternalError() Internal Error}: Is <code>true</code> if an internal implementation
  * error occurred in the polyglot runtime, the guest language or an instrument. It is not
  * recommended to show such errors to the user in production. Please consider filing issues for
@@ -280,9 +280,13 @@ public final class PolyglotException extends RuntimeException {
      * else <code>false</code>. Resource limit exceeded errors may be raised for the following
      * reasons:
      * <ul>
-     * <li>The host runtime or the guest context run out of memory or stack space.
+     * <li>The host runtime run out of memory or stack space. For example if host runtime throws
+     * {@link OutOfMemoryError} or {@link StackOverflowError}, then they will be translated to a
+     * {@link PolyglotException} that return <code>true</code> for {@link #isResourceExhausted()}.
      * <li>A configured {@link ResourceLimits resource limit} was exceeded.
-     * <li>A runtime specific per context resource limit was exceeded.
+     * <li>A runtime specific per context resource limit was exceeded. Depending on the host runtime
+     * implementation additional options to restrict the resource usage of a context may be
+     * specified using options.
      * </ul>
      * <p>
      * Resource limit exceptions may be originating from the {@link #isHostException() host} or
