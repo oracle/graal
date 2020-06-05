@@ -1696,10 +1696,26 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
         return self.name()
 
     def renaissanceLibraryName(self):
-        return "RENAISSANCE"
+        return "RENAISSANCE_{}".format(self.renaissanceVersionToRun())
 
     def renaissanceIterations(self):
-        return _renaissanceConfig.copy()
+        benchmarks = _renaissanceConfig.copy()
+        if self.renaissanceVersionToRun() == "0.9.0":
+            del benchmarks["scala-doku"]  # was introduced in 0.10.0
+        return benchmarks
+
+    def renaissanceVersionToRun(self):
+        current_version = self.defaultRenaissanceVersion()
+        version_to_run = self.desiredVersion() if self.desiredVersion() else current_version
+        if version_to_run not in self.availableRenaissanceVersions():
+            mx.abort("Available Renaissance versions are : {}".format(self.availableRenaissanceVersions()))
+        return version_to_run
+
+    def defaultRenaissanceVersion(self):
+        return "0.11.0"
+
+    def availableRenaissanceVersions(self):
+        return ["0.9.0", "0.10.0", "0.11.0"]
 
     def renaissancePath(self):
         lib = mx.library(self.renaissanceLibraryName())
@@ -1743,17 +1759,19 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
     def failurePatterns(self):
         return [
             re.compile(
-                r"^\[\[\[Graal compilation failure\]\]\]", # pylint: disable=line-too-long
+                r"^\[\[\[Graal compilation failure\]\]\]",
                 re.MULTILINE)
         ]
 
     def rules(self, out, benchmarks, bmSuiteArgs):
         return [
             mx_benchmark.StdOutRule(
-                r"====== (?P<benchmark>[a-zA-Z0-9_\-]+) \((?P<benchgroup>[a-zA-Z0-9_\-]+)\), iteration (?P<iteration>[0-9]+) completed \((?P<value>[0-9]+(.[0-9]*)?) ms\) ======",
+                r"====== (?P<benchmark>[a-zA-Z0-9_\-]+) \((?P<benchgroup>[a-zA-Z0-9_\-]+)\)( \[(?P<config>[a-zA-Z0-9_\-]+)\])?, iteration (?P<iteration>[0-9]+) completed \((?P<value>[0-9]+(.[0-9]*)?) ms\) ======",  # pylint: disable=line-too-long
                 {
                     "benchmark": ("<benchmark>", str),
+                    "benchmark-configuration": ("<config>", str),
                     "bench-suite": self.benchSuiteName(),
+                    "bench-suite-version": self.renaissanceVersionToRun(),
                     "vm": "jvmci",
                     "config.name": "default",
                     "metric.name": "warmup",
@@ -1763,22 +1781,6 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
                     "metric.score-function": "id",
                     "metric.better": "lower",
                     "metric.iteration": ("<iteration>", int),
-                }
-            ),
-            mx_benchmark.StdOutRule(
-                r"====== (?P<benchmark>[a-zA-Z0-9_\-]+) \((?P<benchgroup>[a-zA-Z0-9_\-]+)\), final iteration completed \((?P<value>[0-9]+(.[0-9]*)?) ms\) ======",
-                {
-                    "benchmark": ("<benchmark>", str),
-                    "bench-suite": self.benchSuiteName(),
-                    "vm": "jvmci",
-                    "config.name": "default",
-                    "metric.name": "final-time",
-                    "metric.value": ("<value>", float),
-                    "metric.unit": "ms",
-                    "metric.type": "numeric",
-                    "metric.score-function": "id",
-                    "metric.better": "lower",
-                    "metric.iteration": 0,
                 }
             )
         ]
