@@ -78,4 +78,8 @@ public final class CancellableCompileTask implements TruffleCompilationTask {
     public boolean isLastTier() {
         return lastTierCompilation;
     }
+
+    public Future<?> getFuture() {
+        return future;
+    }
 }

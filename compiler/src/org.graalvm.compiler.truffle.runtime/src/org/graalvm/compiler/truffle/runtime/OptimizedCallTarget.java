@@ -687,7 +687,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     private synchronized boolean cancelAndResetCompilationTask() {
         if (compilationTask != null && compilationTask.cancel()) {
-            resetCompilationTask();
+            if (compilationTask.getFuture().cancel(false)) {
+                resetCompilationTask();
+            }
             return true;
         }
         return false;
