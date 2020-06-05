@@ -27,6 +27,7 @@
 package com.oracle.objectfile.debugentry;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
 import org.graalvm.compiler.debug.DebugContext;
 
 import java.nio.ByteOrder;
@@ -122,6 +123,13 @@ public abstract class DebugInfoBase {
          * Ensure we have a null string in the string section.
          */
         stringTable.uniqueDebugString("");
+
+        debugInfoProvider.typeInfoProvider().forEach(debugTypeInfo -> debugTypeInfo.debugContext((debugContext) -> {
+            String typeName = debugTypeInfo.typeName().replaceAll("\\$", ".");
+            DebugTypeKind typeKind = debugTypeInfo.typeKind();
+
+            debugContext.log(DebugContext.INFO_LEVEL, "%s type %s ", typeKind.toString(), typeName);
+        }));
 
         debugInfoProvider.codeInfoProvider().forEach(debugCodeInfo -> debugCodeInfo.debugContext((debugContext) -> {
             /*

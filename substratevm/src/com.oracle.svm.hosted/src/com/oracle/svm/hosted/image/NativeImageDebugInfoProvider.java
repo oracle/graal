@@ -29,25 +29,35 @@ import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeCh
 import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange.Type.EXTEND;
 
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider;
+
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.graal.code.SubstrateBackend;
+import com.oracle.svm.hosted.image.sources.SourceManager;
+import com.oracle.svm.hosted.meta.HostedArrayClass;
+import com.oracle.svm.hosted.meta.HostedField;
+import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.hosted.meta.HostedType;
+import com.oracle.svm.hosted.meta.HostedInstanceClass;
+import com.oracle.svm.hosted.meta.HostedInterface;
+import com.oracle.svm.hosted.meta.HostedPrimitiveType;
+
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.SourceMapping;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider;
-import com.oracle.svm.core.graal.code.SubstrateBackend;
-import com.oracle.svm.hosted.image.sources.SourceManager;
-import com.oracle.svm.hosted.meta.HostedMethod;
-import com.oracle.svm.hosted.meta.HostedType;
 
 import jdk.vm.ci.meta.LineNumberTable;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -71,7 +81,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
     @Override
     public Stream<DebugTypeInfo> typeInfoProvider() {
-        return Stream.empty();
+        return heap.getUniverse().getTypes().stream().map(this::createDebugTypeInfo);
     }
 
     @Override
@@ -82,6 +92,215 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
     @Override
     public Stream<DebugDataInfo> dataInfoProvider() {
         return Stream.empty();
+    }
+
+    static ObjectLayout OBJECTLAYOUT = ConfigurationValues.getObjectLayout();
+
+    private abstract class NativeImageDebugTypeInfo implements DebugTypeInfo {
+
+        protected final HostedType hostedType;
+        protected final ResolvedJavaType javaType;
+        protected final Class<?> clazz;
+
+        protected NativeImageDebugTypeInfo(HostedType hostedType) {
+            this.hostedType = hostedType;
+            this.javaType = hostedType.getWrapped();
+            if (hostedType instanceof OriginalClassProvider) {
+                clazz = ((OriginalClassProvider) hostedType).getJavaClass();
+            } else {
+                clazz = null;
+            }
+        }
+
+        @SuppressWarnings("try")
+        @Override
+        public void debugContext(Consumer<DebugContext> action) {
+            try (DebugContext.Scope s = debugContext.scope("DebugTypeInfo",  typeName())) {
+                action.accept(debugContext);
+            } catch (Throwable e) {
+                throw debugContext.handle(e);
+            }
+        }
+
+        @Override
+        public String typeName() {
+            return hostedType.toJavaName();
+        }
+
+        @Override
+        public int size() {
+            if (hostedType instanceof HostedInstanceClass) {
+                return ((HostedInstanceClass) hostedType).getInstanceSize();
+            } else {
+                return hostedType.getStorageKind().getByteCount();
+            }
+        }
+    }
+
+    private class NativeImageDebugEnumTypeInfo extends NativeImageDebugInstanceTypeInfo implements DebugEnumTypeInfo {
+        HostedInstanceClass enumClass;
+
+        NativeImageDebugEnumTypeInfo(HostedInstanceClass enumClass) {
+            super(enumClass);
+            this.enumClass = enumClass;
+        }
+
+        public DebugTypeKind typeKind() {
+            return DebugTypeKind.ENUM;
+        }
+    }
+
+    private class NativeImageDebugInstanceTypeInfo extends NativeImageDebugTypeInfo implements DebugInstanceTypeInfo {
+        NativeImageDebugInstanceTypeInfo(HostedType hostedType) {
+            super(hostedType);
+        }
+
+        public DebugTypeKind typeKind() {
+            return DebugTypeKind.INSTANCE;
+        }
+
+        @Override
+        public int headerSize() {
+            return OBJECTLAYOUT.getFirstFieldOffset();
+        }
+        @Override
+        public Stream<DebugFieldInfo> fieldInfoProvider() {
+            return Arrays.stream(hostedType.getInstanceFields(true)).map(this::createDebugFieldInfo);
+        }
+
+        protected NativeImageDebugFieldInfo createDebugFieldInfo(HostedField field) {
+            return new NativeImageDebugFieldInfo(field);
+        }
+
+        protected class NativeImageDebugFieldInfo implements DebugFieldInfo {
+            private final HostedField field;
+
+            NativeImageDebugFieldInfo(HostedField field) {
+                this.field = field;
+            }
+
+            @Override
+            public String ownerType() {
+                return typeName();
+            }
+
+            @Override
+            public String valueType() {
+                return field.getType().toJavaName();
+            }
+
+            @Override
+            public int offset() {
+                return field.getLocation();
+            }
+
+            @Override
+            public int size() {
+                return OBJECTLAYOUT.sizeInBytes(field.getType().getStorageKind());
+            }
+        }
+    }
+
+    private class NativeImageDebugInterfaceTypeInfo extends NativeImageDebugTypeInfo implements DebugInterfaceTypeInfo {
+        HostedInterface interfaceClass;
+        NativeImageDebugInterfaceTypeInfo(HostedInterface interfaceClass) {
+            super(interfaceClass);
+            this.interfaceClass = interfaceClass;
+        }
+
+        public DebugTypeKind typeKind() {
+            return DebugTypeKind.INTERFACE;
+        }
+    }
+
+    private class NativeImageDebugArrayTypeInfo extends NativeImageDebugTypeInfo implements DebugArrayTypeInfo {
+        HostedArrayClass arrayClass;
+
+        NativeImageDebugArrayTypeInfo(HostedArrayClass arrayClass) {
+            super(arrayClass);
+            this.arrayClass = arrayClass;
+        }
+
+        public DebugTypeKind typeKind() {
+            return DebugTypeKind.ARRAY;
+        }
+
+        @Override
+        public int headerSize() {
+            return OBJECTLAYOUT.getArrayBaseOffset(arrayClass.getComponentType().getStorageKind());
+        }
+
+        @Override
+        public int lengthOffset() {
+            return OBJECTLAYOUT.getArrayLengthOffset();
+        }
+
+        @Override
+        public String elementType() {
+            return arrayClass.getComponentType().toJavaName();
+        }
+    }
+
+    private class NativeImageDebugPrimitiveTypeInfo extends NativeImageDebugTypeInfo implements DebugPrimitiveTypeInfo {
+        private final HostedPrimitiveType primitiveType;
+
+        NativeImageDebugPrimitiveTypeInfo(HostedPrimitiveType primitiveType) {
+            super(primitiveType);
+            this.primitiveType = primitiveType;
+        }
+
+        public DebugTypeKind typeKind() {
+            return DebugTypeKind.PRIMITIVE;
+        }
+
+        @Override
+        public int bitCount() {
+            return primitiveType.getStorageKind().getBitCount();
+        }
+
+        @Override
+        public int flags() {
+            char typeChar = primitiveType.getStorageKind().getTypeChar();
+            switch (typeChar) {
+                case 'B':
+                case 'S':
+                case 'I':
+                case 'J':
+                {
+                    return FLAG_NUMERIC | FLAG_INTEGRAL | FLAG_SIGNED;
+                }
+                case 'C':
+                {
+                    return FLAG_NUMERIC | FLAG_INTEGRAL;
+                }
+                case 'F':
+                case 'D':
+                {
+                    return FLAG_NUMERIC;
+                }
+                default:
+                {
+                    assert typeChar == 'V' || typeChar == 'Z';
+                    return 0;
+                }
+            }
+        }
+    }
+
+    private NativeImageDebugTypeInfo createDebugTypeInfo(HostedType hostedType) {
+        if (hostedType.isEnum()) {
+            return new NativeImageDebugEnumTypeInfo((HostedInstanceClass) hostedType);
+        } else if (hostedType.isInstanceClass()) {
+            return new NativeImageDebugInstanceTypeInfo((HostedInstanceClass) hostedType);
+        } else if (hostedType.isInterface()) {
+            return new NativeImageDebugInterfaceTypeInfo((HostedInterface) hostedType);
+        } else if (hostedType.isArray()) {
+            return new NativeImageDebugArrayTypeInfo((HostedArrayClass) hostedType);
+        } else if (hostedType.isPrimitive()) {
+            return new NativeImageDebugPrimitiveTypeInfo((HostedPrimitiveType) hostedType);
+        } else {
+            throw new RuntimeException("Unknown type kind " + hostedType.getName());
+        }
     }
 
     /**
@@ -326,9 +545,14 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                 clazz = ((OriginalClassProvider) declaringClass).getJavaClass();
             }
             /*
+<<<<<<< HEAD
              * HostedType wraps an AnalysisType and both HostedType and AnalysisType punt calls to
              * getSourceFilename to the wrapped class so for consistency we need to do the path
              * lookup relative to the doubly unwrapped HostedType or singly unwrapped AnalysisType.
+=======
+             * HostedType and HostedType punt calls to getSourceFilename to the wrapped class so
+             * for consistency we need to do the path lookup relative to the wrapped class.
+>>>>>>> e5e46875909... basic cut of DebugTypeInfo interface and implementation
              */
             if (declaringClass instanceof HostedType) {
                 declaringClass = ((HostedType) declaringClass).getWrapped();
