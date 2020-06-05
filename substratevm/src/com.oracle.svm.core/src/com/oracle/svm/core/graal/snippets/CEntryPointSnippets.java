@@ -25,7 +25,6 @@
 package com.oracle.svm.core.graal.snippets;
 
 import static com.oracle.svm.core.SubstrateOptions.MultiThreaded;
-import static com.oracle.svm.core.SubstrateOptions.SpawnIsolates;
 import static com.oracle.svm.core.SubstrateOptions.UseDedicatedVMOperationThread;
 import static com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode.writeCurrentVMThread;
 import static com.oracle.svm.core.graal.nodes.WriteHeapBaseNode.writeCurrentVMHeapBase;
@@ -39,7 +38,6 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
@@ -156,14 +154,9 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     @NodeIntrinsic(value = ForeignCallNode.class)
     public static native void runtimeCallFailFatally(@ConstantNodeParameter ForeignCallDescriptor descriptor, int code, CCharPointer message);
 
-    @Fold
-    static boolean hasHeapBase() {
-        return ImageSingletons.lookup(CompressEncoding.class).hasBase();
-    }
-
     @Uninterruptible(reason = "Called by an uninterruptible method.", mayBeInlined = true)
     public static void setHeapBase(PointerBase heapBase) {
-        writeCurrentVMHeapBase(hasHeapBase() ? heapBase : WordFactory.nullPointer());
+        writeCurrentVMHeapBase(heapBase);
     }
 
     public interface IsolateCreationWatcher {
@@ -197,9 +190,8 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         if (error != CEntryPointErrors.NO_ERROR) {
             return error;
         }
-        if (SpawnIsolates.getValue()) {
-            setHeapBase(Isolates.getHeapBase(isolate.read()));
-        }
+
+        setHeapBase(Isolates.getHeapBase(isolate.read()));
 
         if (ImageSingletons.contains(IsolateCreationWatcher.class)) {
             ImageSingletons.lookup(IsolateCreationWatcher.class).registerIsolate(isolate.read());
@@ -308,9 +300,9 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         if (sanityError != CEntryPointErrors.NO_ERROR) {
             return sanityError;
         }
-        if (SpawnIsolates.getValue()) {
-            setHeapBase(Isolates.getHeapBase(isolate));
-        }
+
+        setHeapBase(Isolates.getHeapBase(isolate));
+
         if (MultiThreaded.getValue()) {
             if (!VMThreads.isInitialized()) {
                 return CEntryPointErrors.UNINITIALIZED_ISOLATE;
@@ -354,9 +346,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             IsolateThread thread = CurrentIsolate.getCurrentThread();
             result = runtimeCall(DETACH_THREAD_MT, thread);
         }
-        if (SpawnIsolates.getValue()) {
-            writeCurrentVMHeapBase(WordFactory.nullPointer());
-        }
+        writeCurrentVMHeapBase(WordFactory.nullPointer());
         return result;
     }
 
@@ -407,7 +397,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             }
         } else {
             result = Isolates.checkSanity(isolate);
-            if (result == CEntryPointErrors.NO_ERROR && SpawnIsolates.getValue()) {
+            if (result == CEntryPointErrors.NO_ERROR) {
                 setHeapBase(Isolates.getHeapBase(isolate));
             }
         }
@@ -421,9 +411,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         if (sanityError != CEntryPointErrors.NO_ERROR) {
             return sanityError;
         }
-        if (SpawnIsolates.getValue()) {
-            setHeapBase(Isolates.getHeapBase(isolate));
-        }
+        setHeapBase(Isolates.getHeapBase(isolate));
         if (!VMThreads.isInitialized()) {
             return CEntryPointErrors.UNINITIALIZED_ISOLATE;
         }
@@ -445,18 +433,12 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             writeCurrentVMThread(thread);
             isolate = VMThreads.IsolateTL.get(thread);
         } else { // single-threaded
-            if (SpawnIsolates.getValue()) {
-                if (thread.isNull()) {
-                    return CEntryPointErrors.NULL_ARGUMENT;
-                }
-            } else if (!thread.equal(CEntryPointSetup.SINGLE_THREAD_SENTINEL)) {
-                return CEntryPointErrors.UNATTACHED_THREAD;
+            if (thread.isNull()) {
+                return CEntryPointErrors.NULL_ARGUMENT;
             }
-            isolate = (Isolate) ((Word) thread).subtract(CEntryPointSetup.SINGLE_ISOLATE_TO_SINGLE_THREAD_ADDEND);
+            isolate = (Isolate) ((Word) thread).subtract(CEntryPointSetup.ISOLATE_TO_SINGLE_THREAD_ADDEND);
         }
-        if (SpawnIsolates.getValue()) {
-            setHeapBase(Isolates.getHeapBase(isolate));
-        }
+        setHeapBase(Isolates.getHeapBase(isolate));
         if (MultiThreaded.getValue()) {
             if (runtimeAssertionsEnabled()) {
                 /*
@@ -541,9 +523,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     @Uninterruptible(reason = "Thread state not yet set up.")
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     private static boolean isAttachedMT(Isolate isolate) {
-        if (SpawnIsolates.getValue()) {
-            setHeapBase(Isolates.getHeapBase(isolate));
-        }
+        setHeapBase(Isolates.getHeapBase(isolate));
         return VMThreads.isInitialized() && VMThreads.singleton().findIsolateThreadForCurrentOSThread(false).isNonNull();
     }
 

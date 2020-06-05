@@ -39,8 +39,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -49,7 +47,6 @@ import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.StaticFieldsSupport;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.Heap;
@@ -174,16 +171,6 @@ public final class NativeImageHeap implements ImageHeap {
 
     public ImageHeapLayouter getHeapLayouter() {
         return heapLayouter;
-    }
-
-    @Fold
-    static boolean useHeapBase() {
-        return SubstrateOptions.SpawnIsolates.getValue() && ImageSingletons.lookup(CompressEncoding.class).hasBase();
-    }
-
-    @Fold
-    static boolean spawnIsolates() {
-        return SubstrateOptions.SpawnIsolates.getValue() && useHeapBase();
     }
 
     @SuppressWarnings("try")
@@ -367,7 +354,7 @@ public final class NativeImageHeap implements ImageHeap {
         boolean immutable = immutableFromParent || isKnownImmutable(object);
         boolean written = false;
         boolean references = false;
-        boolean relocatable = false; /* always false when !spawnIsolates() */
+        boolean relocatable = false;
 
         if (type.isInstanceClass()) {
             final HostedInstanceClass clazz = (HostedInstanceClass) type;
@@ -427,9 +414,7 @@ public final class NativeImageHeap implements ImageHeap {
                         JavaConstant fieldValueConstant = field.readValue(con);
                         if (fieldValueConstant.getJavaKind() == JavaKind.Object) {
                             Object fieldValue = SubstrateObjectConstant.asObject(fieldValueConstant);
-                            if (spawnIsolates()) {
-                                fieldRelocatable = fieldValue instanceof RelocatedPointer;
-                            }
+                            fieldRelocatable = fieldValue instanceof RelocatedPointer;
                             recursiveAddObject(fieldValue, fieldsAreImmutable, info);
                             references = true;
                         }
@@ -541,9 +526,7 @@ public final class NativeImageHeap implements ImageHeap {
         boolean relocatable = otherFieldsRelocatable;
         for (Object element : array) {
             Object value = aUniverse.replaceObject(element);
-            if (spawnIsolates()) {
-                relocatable = relocatable || value instanceof RelocatedPointer;
-            }
+            relocatable = relocatable || value instanceof RelocatedPointer;
             recursiveAddObject(value, false, reason);
         }
         return relocatable;

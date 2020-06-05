@@ -36,7 +36,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
@@ -63,7 +62,7 @@ public class HostedConfiguration {
         if (!ImageSingletons.contains(HostedConfiguration.class)) {
             ImageSingletons.add(HostedConfiguration.class, new HostedConfiguration());
 
-            CompressEncoding compressEncoding = new CompressEncoding(SubstrateOptions.SpawnIsolates.getValue() ? 1 : 0, 0);
+            CompressEncoding compressEncoding = new CompressEncoding(1, 0);
             ImageSingletons.add(CompressEncoding.class, compressEncoding);
 
             ObjectLayout objectLayout = createObjectLayout();

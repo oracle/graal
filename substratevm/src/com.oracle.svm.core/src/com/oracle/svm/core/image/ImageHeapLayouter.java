@@ -58,12 +58,4 @@ public interface ImageHeapLayouter {
      * address must not change anymore.
      */
     ImageHeapLayout layoutPartitionsAsContiguousHeap(String heapSectionName, int pageSize);
-
-    /**
-     * This method layouts read-only and writable data as two separate memory blocks so that the
-     * data can be put in different sections of the native image. After calling that method, all
-     * native image heap objects are assigned their final address. This address must not change
-     * anymore.
-     */
-    ImageHeapLayout layoutPartitionsAsSeparatedHeap(String roDataSectionName, long roConstantsEndOffset, String rwDataSectionName, long rwGlobalsEndOffset);
 }

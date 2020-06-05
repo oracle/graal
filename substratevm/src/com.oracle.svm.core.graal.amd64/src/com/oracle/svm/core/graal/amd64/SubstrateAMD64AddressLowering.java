@@ -31,7 +31,6 @@ import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.nodes.CompressionNode;
 import org.graalvm.compiler.nodes.ValueNode;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 
 import jdk.vm.ci.code.Register;
@@ -47,8 +46,6 @@ public class SubstrateAMD64AddressLowering extends AMD64CompressAddressLowering 
 
     @Override
     protected final boolean improveUncompression(AMD64AddressNode addr, CompressionNode compression, ValueNode other) {
-        assert SubstrateOptions.SpawnIsolates.getValue();
-
         CompressEncoding encoding = compression.getEncoding();
         if (!Scale.isScaleShiftSupported(encoding.getShift())) {
             return false;

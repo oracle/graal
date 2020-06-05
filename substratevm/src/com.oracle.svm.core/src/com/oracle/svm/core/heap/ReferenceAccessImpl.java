@@ -35,7 +35,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -98,7 +97,7 @@ public final class ReferenceAccessImpl implements ReferenceAccess {
     @Override
     @Fold
     public boolean haveCompressedReferences() {
-        return SubstrateOptions.SpawnIsolates.getValue();
+        return true;
     }
 
     @Override

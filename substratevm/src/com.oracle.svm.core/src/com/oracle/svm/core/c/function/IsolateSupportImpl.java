@@ -35,14 +35,10 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.IsolateSupport;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.c.function.CEntryPointNativeFunctions.IsolateThreadPointer;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
 
 public final class IsolateSupportImpl implements IsolateSupport {
-    private static final String ISOLATES_DISABLED_MESSAGE = "Spawning of multiple isolates is disabled, use " +
-                    SubstrateOptionsParser.commandArgument(SubstrateOptions.SpawnIsolates, "+") + " option.";
 
     static void initialize() {
         ImageSingletons.add(IsolateSupport.class, new IsolateSupportImpl());
@@ -53,10 +49,6 @@ public final class IsolateSupportImpl implements IsolateSupport {
 
     @Override
     public IsolateThread createIsolate(CreateIsolateParameters parameters) throws IsolateException {
-        if (!SubstrateOptions.SpawnIsolates.getValue()) {
-            throw new IsolateException(ISOLATES_DISABLED_MESSAGE);
-        }
-
         try (CTypeConversion.CCharPointerHolder auxImagePath = CTypeConversion.toCString(parameters.getAuxiliaryImagePath())) {
             CEntryPointCreateIsolateParameters params = StackValue.get(CEntryPointCreateIsolateParameters.class);
             params.setReservedSpaceSize(parameters.getReservedAddressSpaceSize());
@@ -94,11 +86,7 @@ public final class IsolateSupportImpl implements IsolateSupport {
 
     @Override
     public void tearDownIsolate(IsolateThread thread) throws IsolateException {
-        if (SubstrateOptions.SpawnIsolates.getValue()) {
-            throwOnError(CEntryPointNativeFunctions.tearDownIsolate(thread));
-        } else {
-            throw new IsolateException(ISOLATES_DISABLED_MESSAGE);
-        }
+        throwOnError(CEntryPointNativeFunctions.tearDownIsolate(thread));
     }
 
     private static void throwOnError(int code) {

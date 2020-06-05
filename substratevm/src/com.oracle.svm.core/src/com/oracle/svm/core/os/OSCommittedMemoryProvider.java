@@ -37,11 +37,8 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Isolates;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
-import com.oracle.svm.core.c.function.CEntryPointErrors;
-import com.oracle.svm.core.c.function.CEntryPointSetup;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
@@ -63,21 +60,12 @@ public class OSCommittedMemoryProvider extends AbstractCommittedMemoryProvider {
     @Override
     @Uninterruptible(reason = "Still being initialized.")
     public int initialize(WordPointer isolatePointer, CEntryPointCreateIsolateParameters parameters) {
-        if (!SubstrateOptions.SpawnIsolates.getValue()) {
-            isolatePointer.write(CEntryPointSetup.SINGLE_ISOLATE_SENTINEL);
-            return CEntryPointErrors.NO_ERROR;
-        }
-
         return ImageHeapProvider.get().initialize(nullPointer(), zero(), isolatePointer, nullPointer());
     }
 
     @Override
     @Uninterruptible(reason = "Tear-down in progress.")
     public int tearDown() {
-        if (!SubstrateOptions.SpawnIsolates.getValue()) {
-            return CEntryPointErrors.NO_ERROR;
-        }
-
         PointerBase heapBase = Isolates.getHeapBase(CurrentIsolate.getIsolate());
         return ImageHeapProvider.get().freeImageHeap(heapBase);
     }

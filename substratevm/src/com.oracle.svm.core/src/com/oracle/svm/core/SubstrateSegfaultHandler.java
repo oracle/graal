@@ -83,10 +83,9 @@ public abstract class SubstrateSegfaultHandler {
     @Uninterruptible(reason = "Called from uninterruptible code.")
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in segfault handler.", overridesCallers = true)
     protected static boolean tryEnterIsolate(RegisterDumper.Context context) {
-        if (SubstrateOptions.SpawnIsolates.getValue()) {
-            PointerBase heapBase = RegisterDumper.singleton().getHeapBase(context);
-            WriteHeapBaseNode.writeCurrentVMHeapBase(heapBase);
-        }
+        PointerBase heapBase = RegisterDumper.singleton().getHeapBase(context);
+        WriteHeapBaseNode.writeCurrentVMHeapBase(heapBase);
+
         if (SubstrateOptions.MultiThreaded.getValue()) {
             PointerBase threadPointer = RegisterDumper.singleton().getThreadPointer(context);
             WriteCurrentVMThreadNode.writeCurrentVMThread((IsolateThread) threadPointer);
@@ -97,8 +96,7 @@ public abstract class SubstrateSegfaultHandler {
          * However, this is fine, as it will eventually result in native stack overflow.
          */
         Isolate isolate = VMThreads.IsolateTL.get();
-        return Isolates.checkSanity(isolate) == CEntryPointErrors.NO_ERROR &&
-                        (!SubstrateOptions.SpawnIsolates.getValue() || isolate.equal(KnownIntrinsics.heapBase()));
+        return Isolates.checkSanity(isolate) == CEntryPointErrors.NO_ERROR && isolate.equal(KnownIntrinsics.heapBase());
     }
 
     /** Called from the platform dependent segfault handler to print diagnostics. */

@@ -178,12 +178,10 @@ public class CEntryPointSupport implements GraalFeature {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 if (SubstrateOptions.MultiThreaded.getValue()) {
                     b.addPush(JavaKind.Object, new ReadIsolateThreadFixedNode());
-                } else if (SubstrateOptions.SpawnIsolates.getValue()) {
-                    ValueNode heapBase = b.add(new ReadHeapBaseFixedNode());
-                    ConstantNode addend = b.add(ConstantNode.forIntegerKind(FrameAccess.getWordKind(), CEntryPointSetup.SINGLE_ISOLATE_TO_SINGLE_THREAD_ADDEND));
-                    b.addPush(JavaKind.Object, new AddNode(heapBase, addend));
                 } else {
-                    b.addPush(JavaKind.Object, ConstantNode.forIntegerKind(FrameAccess.getWordKind(), CEntryPointSetup.SINGLE_THREAD_SENTINEL.rawValue()));
+                    ValueNode heapBase = b.add(new ReadHeapBaseFixedNode());
+                    ConstantNode addend = b.add(ConstantNode.forIntegerKind(FrameAccess.getWordKind(), CEntryPointSetup.ISOLATE_TO_SINGLE_THREAD_ADDEND));
+                    b.addPush(JavaKind.Object, new AddNode(heapBase, addend));
                 }
                 return true;
             }
@@ -191,11 +189,7 @@ public class CEntryPointSupport implements GraalFeature {
         r.register0("getIsolate", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                if (SubstrateOptions.SpawnIsolates.getValue()) {
-                    b.addPush(JavaKind.Object, new ReadHeapBaseFixedNode());
-                } else {
-                    b.addPush(JavaKind.Object, ConstantNode.forIntegerKind(FrameAccess.getWordKind(), CEntryPointSetup.SINGLE_ISOLATE_SENTINEL.rawValue()));
-                }
+                b.addPush(JavaKind.Object, new ReadHeapBaseFixedNode());
                 return true;
             }
         });

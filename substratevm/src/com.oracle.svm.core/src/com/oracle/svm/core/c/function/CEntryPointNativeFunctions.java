@@ -141,8 +141,8 @@ public final class CEntryPointNativeFunctions {
             // proceed to return null
         } else if (SubstrateOptions.MultiThreaded.getValue()) {
             isolate = VMThreads.IsolateTL.get(thread);
-        } else if (SubstrateOptions.SpawnIsolates.getValue() || thread.equal(CEntryPointSetup.SINGLE_THREAD_SENTINEL)) {
-            isolate = (Isolate) ((Pointer) thread).subtract(CEntryPointSetup.SINGLE_ISOLATE_TO_SINGLE_THREAD_ADDEND);
+        } else {
+            isolate = (Isolate) ((Pointer) thread).subtract(CEntryPointSetup.ISOLATE_TO_SINGLE_THREAD_ADDEND);
         }
         return isolate;
     }

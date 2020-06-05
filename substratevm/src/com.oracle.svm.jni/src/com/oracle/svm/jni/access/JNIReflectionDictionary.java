@@ -46,7 +46,6 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Isolates;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.jni.nativeapi.JNIFieldId;
@@ -237,9 +236,8 @@ public final class JNIReflectionDictionary {
         SignedWord value = WordFactory.zero();
         if (method != null) {
             value = Word.objectToUntrackedPointer(method); // safe because it is in the image heap
-            if (SubstrateOptions.SpawnIsolates.getValue()) { // use offset: valid across isolates
-                value = value.subtract((SignedWord) Isolates.getHeapBase(CurrentIsolate.getIsolate()));
-            }
+            // use offset: valid across isolates
+            value = value.subtract((SignedWord) Isolates.getHeapBase(CurrentIsolate.getIsolate()));
         }
         return (JNIMethodId) value;
     }
@@ -247,10 +245,7 @@ public final class JNIReflectionDictionary {
     public static JNIAccessibleMethod getMethodByID(JNIMethodId method) {
         Object obj = null;
         if (method.notEqual(WordFactory.zero())) {
-            Pointer p = (Pointer) method;
-            if (SubstrateOptions.SpawnIsolates.getValue()) {
-                p = p.add((UnsignedWord) Isolates.getHeapBase(CurrentIsolate.getIsolate()));
-            }
+            Pointer p = ((Pointer) method).add((UnsignedWord) Isolates.getHeapBase(CurrentIsolate.getIsolate()));
             obj = p.toObject();
         }
         return KnownIntrinsics.convertUnknownValue(obj, JNIAccessibleMethod.class);

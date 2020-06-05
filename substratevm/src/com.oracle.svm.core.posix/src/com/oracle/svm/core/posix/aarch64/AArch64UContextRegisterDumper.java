@@ -51,7 +51,7 @@ import jdk.vm.ci.aarch64.AArch64;
 class AArch64UContextRegisterDumperFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        VMError.guarantee(AArch64.r27.equals(SubstrateAArch64RegisterConfig.HEAP_BASE_REGISTER_CANDIDATE));
+        VMError.guarantee(AArch64.r27.equals(SubstrateAArch64RegisterConfig.HEAP_BASE_REGISTER));
         VMError.guarantee(AArch64.r28.equals(SubstrateAArch64RegisterConfig.THREAD_REGISTER_CANDIDATE));
         ImageSingletons.add(RegisterDumper.class, new AArch64UContextRegisterDumper());
     }

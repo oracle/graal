@@ -27,7 +27,6 @@ package com.oracle.svm.core.genscavenge;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.Pointer;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 
@@ -48,12 +47,6 @@ public final class ImageHeapInfo {
     @UnknownObjectField(types = Object.class) public Object firstWritableReferenceObject;
     @UnknownObjectField(types = Object.class) public Object lastWritableReferenceObject;
 
-    @UnknownObjectField(types = Object.class) public Object firstReadOnlyObject;
-    @UnknownObjectField(types = Object.class) public Object lastReadOnlyObject;
-
-    @UnknownObjectField(types = Object.class) public Object firstWritableObject;
-    @UnknownObjectField(types = Object.class) public Object lastWritableObject;
-
     @UnknownObjectField(types = Object.class) public Object firstObject;
     @UnknownObjectField(types = Object.class) public Object lastObject;
 
@@ -73,10 +66,10 @@ public final class ImageHeapInfo {
         this.lastWritableReferenceObject = lastWritableReferenceObject;
 
         // Compute boundaries for checks considering partitions can be empty (first == last == null)
-        this.firstReadOnlyObject = (firstReadOnlyPrimitiveObject != null) ? firstReadOnlyPrimitiveObject : firstReadOnlyReferenceObject;
-        this.lastReadOnlyObject = (lastReadOnlyReferenceObject != null) ? lastReadOnlyReferenceObject : lastReadOnlyPrimitiveObject;
-        this.firstWritableObject = (firstWritablePrimitiveObject != null) ? firstWritablePrimitiveObject : firstWritableReferenceObject;
-        this.lastWritableObject = (lastWritableReferenceObject != null) ? lastWritableReferenceObject : lastWritablePrimitiveObject;
+        Object firstReadOnlyObject = (firstReadOnlyPrimitiveObject != null) ? firstReadOnlyPrimitiveObject : firstReadOnlyReferenceObject;
+        Object lastReadOnlyObject = (lastReadOnlyReferenceObject != null) ? lastReadOnlyReferenceObject : lastReadOnlyPrimitiveObject;
+        Object firstWritableObject = (firstWritablePrimitiveObject != null) ? firstWritablePrimitiveObject : firstWritableReferenceObject;
+        Object lastWritableObject = (lastWritableReferenceObject != null) ? lastWritableReferenceObject : lastWritablePrimitiveObject;
         this.firstObject = (firstReadOnlyObject != null) ? firstReadOnlyObject : firstWritableObject;
         this.lastObject = (lastWritableObject != null) ? lastWritableObject : lastReadOnlyObject;
     }
@@ -123,15 +116,9 @@ public final class ImageHeapInfo {
         boolean result;
         if (objectPointer.isNull()) {
             result = false;
-        } else if (SubstrateOptions.SpawnIsolates.getValue()) {
-            result = objectPointer.aboveOrEqual(Word.objectToUntrackedPointer(firstObject)) && objectPointer.belowOrEqual(Word.objectToUntrackedPointer(lastObject));
         } else {
-            result = objectPointer.aboveOrEqual(Word.objectToUntrackedPointer(firstReadOnlyObject)) &&
-                            objectPointer.belowOrEqual(Word.objectToUntrackedPointer(lastReadOnlyObject)) ||
-                            objectPointer.aboveOrEqual(Word.objectToUntrackedPointer(firstWritableObject)) &&
-                                            objectPointer.belowOrEqual(Word.objectToUntrackedPointer(lastWritableObject));
+            result = objectPointer.aboveOrEqual(Word.objectToUntrackedPointer(firstObject)) && objectPointer.belowOrEqual(Word.objectToUntrackedPointer(lastObject));
         }
-
         assert result == isInImageHeapSlow(objectPointer);
         return result;
     }

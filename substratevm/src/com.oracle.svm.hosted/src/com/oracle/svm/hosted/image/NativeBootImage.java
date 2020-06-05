@@ -124,7 +124,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod.Parameter;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public abstract class NativeBootImage extends AbstractBootImage {
-    public static final long RODATA_CGLOBALS_PARTITION_OFFSET = 0;
     public static final long RWDATA_CGLOBALS_PARTITION_OFFSET = 0;
 
     private final ObjectFile objectFile;
@@ -414,22 +413,10 @@ public abstract class NativeBootImage extends AbstractBootImage {
         try (DebugContext.Scope buildScope = debug.scope("NativeBootImage.build")) {
             final CGlobalDataFeature cGlobals = CGlobalDataFeature.singleton();
 
-            ImageHeapLayout heapLayout;
             long roSectionSize = codeCache.getAlignedConstantsSize();
             long rwSectionSize = ConfigurationValues.getObjectLayout().alignUp(cGlobals.getSize());
-            if (SubstrateOptions.SpawnIsolates.getValue()) {
-                String heapSectionName = SectionName.SVM_HEAP.getFormatDependentName(objectFile.getFormat());
-                heapLayout = layouter.layoutPartitionsAsContiguousHeap(heapSectionName, objectFile.getPageSize());
-            } else {
-                String roDataSectionName = SectionName.RODATA.getFormatDependentName(objectFile.getFormat());
-                String rwDataSectionName = SectionName.DATA.getFormatDependentName(objectFile.getFormat());
-                long roConstantsEndOffset = RODATA_CGLOBALS_PARTITION_OFFSET + roSectionSize;
-                long rwGlobalsEndOffset = RWDATA_CGLOBALS_PARTITION_OFFSET + rwSectionSize;
-                heapLayout = layouter.layoutPartitionsAsSeparatedHeap(roDataSectionName, roConstantsEndOffset, rwDataSectionName, rwGlobalsEndOffset);
-
-                roSectionSize += heapLayout.getReadOnlySize();
-                rwSectionSize += heapLayout.getWritableSize();
-            }
+            String heapSectionName = SectionName.SVM_HEAP.getFormatDependentName(objectFile.getFormat());
+            ImageHeapLayout heapLayout = layouter.layoutPartitionsAsContiguousHeap(heapSectionName, objectFile.getPageSize());
             // after this point, the layout is final and must not be changed anymore
             assert !hasDuplicatedObjects(heap.getObjects()) : "heap.getObjects() must not contain any duplicates";
 
@@ -446,10 +433,9 @@ public abstract class NativeBootImage extends AbstractBootImage {
              * order to use Graal on some platforms where you can't have relocations in a read-only
              * section (eg. Android).
              */
-            boolean roDataWritable = !SubstrateOptions.SpawnIsolates.getValue() && SubstrateOptions.UseOnlyWritableBootImageHeap.getValue();
             final RelocatableBuffer roDataBuffer = RelocatableBuffer.factory("roData", roSectionSize, objectFile.getByteOrder());
             final ProgbitsSectionImpl roDataImpl = new BasicProgbitsSectionImpl(roDataBuffer.getBytes());
-            roDataSection = objectFile.newProgbitsSection(SectionName.RODATA.getFormatDependentName(objectFile.getFormat()), objectFile.getPageSize(), roDataWritable, false, roDataImpl);
+            roDataSection = objectFile.newProgbitsSection(SectionName.RODATA.getFormatDependentName(objectFile.getFormat()), objectFile.getPageSize(), false, false, roDataImpl);
 
             // Read-write data section
             final RelocatableBuffer rwDataBuffer = RelocatableBuffer.factory("rwData", rwSectionSize, objectFile.getByteOrder());
@@ -484,38 +470,29 @@ public abstract class NativeBootImage extends AbstractBootImage {
                 objectFile.installDebugInfo(provider);
             }
             // - Write the heap, either to its own section, or to the ro and rw data sections.
-            RelocatableBuffer heapSectionBuffer = null;
-            ProgbitsSectionImpl heapSectionImpl = null;
-            if (SubstrateOptions.SpawnIsolates.getValue()) {
-                boolean writable = SubstrateOptions.UseOnlyWritableBootImageHeap.getValue();
-                long heapSize = heapLayout.getImageHeapSize();
-                heapSectionBuffer = RelocatableBuffer.factory("heap", heapSize, objectFile.getByteOrder());
-                heapSectionImpl = new BasicProgbitsSectionImpl(heapSectionBuffer.getBytes());
-                heapSection = objectFile.newProgbitsSection(SectionName.SVM_HEAP.getFormatDependentName(objectFile.getFormat()), objectFile.getPageSize(), writable, false, heapSectionImpl);
-                objectFile.createDefinedSymbol(heapSection.getName(), heapSection, 0, 0, false, false);
+            boolean writable = SubstrateOptions.UseOnlyWritableBootImageHeap.getValue();
+            long heapSize = heapLayout.getImageHeapSize();
+            RelocatableBuffer heapSectionBuffer = RelocatableBuffer.factory("heap", heapSize, objectFile.getByteOrder());
+            ProgbitsSectionImpl heapSectionImpl = new BasicProgbitsSectionImpl(heapSectionBuffer.getBytes());
+            heapSection = objectFile.newProgbitsSection(SectionName.SVM_HEAP.getFormatDependentName(objectFile.getFormat()), objectFile.getPageSize(), writable, false, heapSectionImpl);
+            objectFile.createDefinedSymbol(heapSection.getName(), heapSection, 0, 0, false, false);
 
-                long sectionOffsetOfARelocatablePointer = writer.writeHeap(debug, heapSectionBuffer, heapSectionBuffer);
-                assert castToByteBuffer(heapSectionBuffer).getLong((int) sectionOffsetOfARelocatablePointer) == 0L;
+            long sectionOffsetOfARelocatablePointer = writer.writeHeap(debug, heapSectionBuffer);
+            assert castToByteBuffer(heapSectionBuffer).getLong((int) sectionOffsetOfARelocatablePointer) == 0L;
 
-                defineDataSymbol(Isolates.IMAGE_HEAP_BEGIN_SYMBOL_NAME, heapSection, 0);
-                defineDataSymbol(Isolates.IMAGE_HEAP_END_SYMBOL_NAME, heapSection, heapSize);
-                defineDataSymbol(Isolates.IMAGE_HEAP_RELOCATABLE_BEGIN_SYMBOL_NAME, heapSection, heapLayout.getReadOnlyRelocatableOffsetInSection());
-                defineDataSymbol(Isolates.IMAGE_HEAP_RELOCATABLE_END_SYMBOL_NAME, heapSection, heapLayout.getReadOnlyRelocatableOffsetInSection() + heapLayout.getReadOnlyRelocatableSize());
-                defineDataSymbol(Isolates.IMAGE_HEAP_A_RELOCATABLE_POINTER_SYMBOL_NAME, heapSection, sectionOffsetOfARelocatablePointer);
-                defineDataSymbol(Isolates.IMAGE_HEAP_WRITABLE_BEGIN_SYMBOL_NAME, heapSection, heapLayout.getWritableOffsetInSection());
-                defineDataSymbol(Isolates.IMAGE_HEAP_WRITABLE_END_SYMBOL_NAME, heapSection, heapLayout.getWritableOffsetInSection() + heapLayout.getWritableSize());
-            } else {
-                assert heapSectionBuffer == null;
-                writer.writeHeap(debug, roDataBuffer, rwDataBuffer);
-            }
+            defineDataSymbol(Isolates.IMAGE_HEAP_BEGIN_SYMBOL_NAME, heapSection, 0);
+            defineDataSymbol(Isolates.IMAGE_HEAP_END_SYMBOL_NAME, heapSection, heapSize);
+            defineDataSymbol(Isolates.IMAGE_HEAP_RELOCATABLE_BEGIN_SYMBOL_NAME, heapSection, heapLayout.getReadOnlyRelocatableOffsetInSection());
+            defineDataSymbol(Isolates.IMAGE_HEAP_RELOCATABLE_END_SYMBOL_NAME, heapSection, heapLayout.getReadOnlyRelocatableOffsetInSection() + heapLayout.getReadOnlyRelocatableSize());
+            defineDataSymbol(Isolates.IMAGE_HEAP_A_RELOCATABLE_POINTER_SYMBOL_NAME, heapSection, sectionOffsetOfARelocatablePointer);
+            defineDataSymbol(Isolates.IMAGE_HEAP_WRITABLE_BEGIN_SYMBOL_NAME, heapSection, heapLayout.getWritableOffsetInSection());
+            defineDataSymbol(Isolates.IMAGE_HEAP_WRITABLE_END_SYMBOL_NAME, heapSection, heapLayout.getWritableOffsetInSection() + heapLayout.getWritableSize());
 
             // Mark the sections with the relocations from the maps.
             markRelocationSitesFromMaps(textBuffer, textImpl);
             markRelocationSitesFromMaps(roDataBuffer, roDataImpl);
             markRelocationSitesFromMaps(rwDataBuffer, rwDataImpl);
-            if (SubstrateOptions.SpawnIsolates.getValue()) {
-                markRelocationSitesFromMaps(heapSectionBuffer, heapSectionImpl);
-            }
+            markRelocationSitesFromMaps(heapSectionBuffer, heapSectionImpl);
 
             // We print the heap statistics after the heap was successfully written because this
             // could modify objects that will be part of the image heap.

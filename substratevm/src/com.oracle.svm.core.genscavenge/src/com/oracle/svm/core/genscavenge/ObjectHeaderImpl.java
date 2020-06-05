@@ -25,10 +25,8 @@
 package com.oracle.svm.core.genscavenge;
 
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.LocationIdentity;
@@ -37,7 +35,6 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
@@ -199,12 +196,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
          * All DynamicHub instances are in the native image heap and therefore do not move, so we
          * can convert the hub to a Pointer without any precautions.
          */
-        Word result = Word.objectToUntrackedPointer(hub);
-        if (SubstrateOptions.SpawnIsolates.getValue()) {
-            if (hasBase()) {
-                result = result.subtract(KnownIntrinsics.heapBase());
-            }
-        }
+        Word result = Word.objectToUntrackedPointer(hub).subtract(KnownIntrinsics.heapBase());
         if (rememberedSet) {
             result = result.or(REMEMBERED_SET_BIT);
         }
@@ -375,11 +367,6 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static int getReferenceSize() {
         return ConfigurationValues.getObjectLayout().getReferenceSize();
-    }
-
-    @Fold
-    static boolean hasBase() {
-        return ImageSingletons.lookup(CompressEncoding.class).hasBase();
     }
 
     @Fold

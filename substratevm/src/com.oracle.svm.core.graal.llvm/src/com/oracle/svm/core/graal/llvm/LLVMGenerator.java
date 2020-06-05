@@ -540,7 +540,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     public AllocatableValue emitLoadConstant(ValueKind<?> kind, Constant constant) {
         LLVMValueRef value = builder.buildLoad(getLLVMPlaceholderForConstant(constant), ((LLVMKind) kind.getPlatformKind()).get());
         AllocatableValue rawConstant = new LLVMVariable(value);
-        if (SubstrateOptions.SpawnIsolates.getValue() && ((LIRKind) kind).isReference(0) && !((LIRKind) kind).isCompressedReference(0)) {
+        if (((LIRKind) kind).isReference(0) && !((LIRKind) kind).isCompressedReference(0)) {
             return (AllocatableValue) emitUncompress(rawConstant, ReferenceAccess.singleton().getCompressEncoding(), false);
         }
         return rawConstant;
@@ -563,11 +563,11 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     }
 
     private static boolean isUncompressedObjectConstant(Constant constant) {
-        return SubstrateOptions.SpawnIsolates.getValue() && constant instanceof SubstrateObjectConstant && !((SubstrateObjectConstant) constant).isCompressed();
+        return constant instanceof SubstrateObjectConstant && !((SubstrateObjectConstant) constant).isCompressed();
     }
 
     private static boolean isUncompressedObjectKind(LIRKind kind) {
-        return SubstrateOptions.SpawnIsolates.getValue() && kind.isReference(0) && !kind.isCompressedReference(0);
+        return kind.isReference(0) && !kind.isCompressedReference(0);
     }
 
     @Override
@@ -1011,18 +1011,12 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         builder.buildStackmap(builder.constantLong(startPatchpointId));
         compilationResult.recordInfopoint(NumUtil.safeToInt(startPatchpointId), null, InfopointReason.METHOD_START);
 
-        LLVMValueRef jumpAddressAddress;
-        if (SubstrateOptions.SpawnIsolates.getValue()) {
-            LLVMValueRef thread = buildInlineGetRegister(threadArg.getRegister().name);
-            LLVMValueRef heapBaseAddress = builder.buildGEP(builder.buildIntToPtr(thread, builder.rawPointerType()), builder.constantInt(threadIsolateOffset));
-            LLVMValueRef heapBase = builder.buildLoad(heapBaseAddress, builder.rawPointerType());
-            LLVMValueRef methodId = buildInlineGetRegister(methodIdArg.getRegister().name);
-            LLVMValueRef methodBase = builder.buildGEP(builder.buildIntToPtr(heapBase, builder.rawPointerType()), builder.buildPtrToInt(methodId));
-            jumpAddressAddress = builder.buildGEP(methodBase, builder.constantInt(methodObjEntryPointOffset));
-        } else {
-            LLVMValueRef methodBase = buildInlineGetRegister(methodIdArg.getRegister().name);
-            jumpAddressAddress = builder.buildGEP(builder.buildIntToPtr(methodBase, builder.rawPointerType()), builder.constantInt(methodObjEntryPointOffset));
-        }
+        LLVMValueRef thread = buildInlineGetRegister(threadArg.getRegister().name);
+        LLVMValueRef heapBaseAddress = builder.buildGEP(builder.buildIntToPtr(thread, builder.rawPointerType()), builder.constantInt(threadIsolateOffset));
+        LLVMValueRef heapBase = builder.buildLoad(heapBaseAddress, builder.rawPointerType());
+        LLVMValueRef methodId = buildInlineGetRegister(methodIdArg.getRegister().name);
+        LLVMValueRef methodBase = builder.buildGEP(builder.buildIntToPtr(heapBase, builder.rawPointerType()), builder.buildPtrToInt(methodId));
+        LLVMValueRef jumpAddressAddress = builder.buildGEP(methodBase, builder.constantInt(methodObjEntryPointOffset));
         LLVMValueRef jumpAddress = builder.buildLoad(jumpAddressAddress, builder.rawPointerType());
         buildInlineJump(jumpAddress);
         builder.buildUnreachable();
@@ -1227,7 +1221,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
      */
     public enum SpecialRegister {
         ThreadPointer(SubstrateOptions.MultiThreaded.getValue()),
-        HeapBase(SubstrateOptions.SpawnIsolates.getValue());
+        HeapBase(true);
 
         private static final int presentCount;
         private static final SpecialRegister[] presentRegisters;

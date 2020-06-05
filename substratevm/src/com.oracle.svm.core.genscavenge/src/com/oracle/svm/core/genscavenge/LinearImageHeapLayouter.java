@@ -41,7 +41,7 @@ public class LinearImageHeapLayouter extends AbstractImageHeapLayouter<LinearIma
 
     @Override
     public void initialize() {
-        if (compressedNullPadding && useHeapBase()) {
+        if (compressedNullPadding) {
             /*
              * Zero designates null, so adding some explicit padding at the beginning of the native
              * image heap is the easiest approach to make object offsets strictly greater than 0.

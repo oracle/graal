@@ -24,13 +24,7 @@
  */
 package com.oracle.svm.core.image;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.core.common.CompressEncoding;
-import org.graalvm.nativeimage.ImageSingletons;
-
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.util.VMError;
 
 public abstract class AbstractImageHeapLayouter<T extends ImageHeapPartition> implements ImageHeapLayouter {
     /** A partition holding objects with only read-only primitive values, but no references. */
@@ -81,8 +75,6 @@ public abstract class AbstractImageHeapLayouter<T extends ImageHeapPartition> im
 
     @Override
     public ImageHeapLayout layoutPartitionsAsContiguousHeap(String sectionName, int pageSize) {
-        VMError.guarantee(SubstrateOptions.SpawnIsolates.getValue());
-
         // the read only relocatable values must be located in their own page(s)
         getReadOnlyPrimitive().addPadding(computePadding(getReadOnlyPrimitive().getSize() + getReadOnlyReference().getSize(), pageSize));
         getReadOnlyRelocatable().addPadding(computePadding(getReadOnlyRelocatable().getSize(), pageSize));
@@ -98,28 +90,6 @@ public abstract class AbstractImageHeapLayouter<T extends ImageHeapPartition> im
         assert getReadOnlyReference().getOffsetInSection() % objectAlignment == 0;
         assert getReadOnlyRelocatable().getOffsetInSection() % pageSize == 0;
         assert getWritablePrimitive().getOffsetInSection() % pageSize == 0;
-        assert getWritableReference().getOffsetInSection() % objectAlignment == 0;
-
-        return createLayout();
-    }
-
-    @Override
-    public ImageHeapLayout layoutPartitionsAsSeparatedHeap(String readOnlySectionName, long readOnlySectionOffset, String writableSectionName, long writableSectionOffset) {
-        VMError.guarantee(!SubstrateOptions.SpawnIsolates.getValue());
-
-        getReadOnlyPrimitive().setSection(readOnlySectionName, readOnlySectionOffset);
-        getReadOnlyReference().setSection(readOnlySectionName, getReadOnlyPrimitive().getOffsetInSection() + getReadOnlyPrimitive().getSize());
-        getReadOnlyRelocatable().setSection(readOnlySectionName, getReadOnlyReference().getOffsetInSection() + getReadOnlyReference().getSize());
-
-        getWritablePrimitive().setSection(writableSectionName, writableSectionOffset);
-        getWritableReference().setSection(writableSectionName, getWritablePrimitive().getOffsetInSection() + getWritablePrimitive().getSize());
-
-        int objectAlignment = ConfigurationValues.getObjectLayout().getAlignment();
-        assert getReadOnlyPrimitive().getOffsetInSection() % objectAlignment == 0;
-        assert getReadOnlyReference().getOffsetInSection() % objectAlignment == 0;
-        assert getReadOnlyRelocatable().getOffsetInSection() % objectAlignment == 0;
-
-        assert getWritablePrimitive().getOffsetInSection() % objectAlignment == 0;
         assert getWritableReference().getOffsetInSection() % objectAlignment == 0;
 
         return createLayout();
@@ -151,12 +121,6 @@ public abstract class AbstractImageHeapLayouter<T extends ImageHeapPartition> im
     }
 
     private ImageHeapPartition choosePartition(boolean immutable, boolean references, boolean relocatable) {
-        if (SubstrateOptions.UseOnlyWritableBootImageHeap.getValue()) {
-            if (!useHeapBase()) {
-                return getWritableReference();
-            }
-        }
-
         if (immutable) {
             if (relocatable) {
                 return getReadOnlyRelocatable();
@@ -174,11 +138,6 @@ public abstract class AbstractImageHeapLayouter<T extends ImageHeapPartition> im
         long readOnlyRelocatableSize = getReadOnlyRelocatable().getSize();
         return new ImageHeapLayout(getReadOnlyPrimitive().getOffsetInSection(), readOnlySectionSize, getWritablePrimitive().getOffsetInSection(), writableSectionSize,
                         readOnlyRelocatableOffsetInSection, readOnlyRelocatableSize);
-    }
-
-    @Fold
-    protected static boolean useHeapBase() {
-        return SubstrateOptions.SpawnIsolates.getValue() && ImageSingletons.lookup(CompressEncoding.class).hasBase();
     }
 
     protected abstract T[] createPartitionsArray(int count);

@@ -123,16 +123,13 @@ public class JNICallTrampolineMethod extends CustomSubstitutionMethod {
             ResolvedJavaType returnType = providers.getWordTypes().getWordImplType();
             CallingConvention callingConvention = backend.getCodeCache().getRegisterConfig().getCallingConvention(
                             SubstrateCallingConventionType.NativeCall, returnType, parameters.toArray(new JavaType[0]), backend);
-            RegisterValue threadArg = null;
+            RegisterValue threadArg = (RegisterValue) callingConvention.getArgument(0); // JNIEnv
             int threadIsolateOffset = -1;
-            if (SubstrateOptions.SpawnIsolates.getValue()) {
-                threadArg = (RegisterValue) callingConvention.getArgument(0); // JNIEnv
-                if (SubstrateOptions.MultiThreaded.getValue()) {
-                    threadIsolateOffset = ImageSingletons.lookup(VMThreadMTFeature.class).offsetOf(VMThreads.IsolateTL);
-                }
-                // NOTE: GR-17030: JNI is currently broken in the single-threaded, multi-isolate
-                // case. Fixing this also requires changes to how trampolines are generated.
+            if (SubstrateOptions.MultiThreaded.getValue()) {
+                threadIsolateOffset = ImageSingletons.lookup(VMThreadMTFeature.class).offsetOf(VMThreads.IsolateTL);
             }
+            // NOTE: GR-17030: JNI is currently broken in the single-threaded case. Fixing this also
+            // requires changes to how trampolines are generated.
             RegisterValue methodIdArg = (RegisterValue) callingConvention.getArgument(parameters.size() - 1);
 
             return backend.createJNITrampolineMethod(method, identifier, threadArg, threadIsolateOffset, methodIdArg, getFieldOffset(providers));
