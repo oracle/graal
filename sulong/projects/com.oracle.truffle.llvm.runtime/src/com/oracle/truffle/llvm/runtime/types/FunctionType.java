@@ -53,15 +53,14 @@ public final class FunctionType extends Type {
     }
 
     /**
-     * Creates a function type with known argument types.
-     *
-     * <b>Attention!</b> the {@code argumentTypes} array will be copied. Modifications to the
-     * original array are not propagated. Use {@link #setArgumentType} to modify the types. If you
-     * want create a function with unknown argument types use
-     * {@link #FunctionType(Type, int, boolean)} )} instead.
+     * Creates a function type with a single argument type.
      */
-    public static FunctionType createByCopy(Type returnType, Type[] argumentTypes, boolean isVarargs) {
-        return new FunctionType(returnType, argumentTypes.clone(), isVarargs);
+    public static FunctionType create(Type returnType, Type arg0, boolean isVarargs) {
+        return new FunctionType(returnType, new Type[]{arg0}, isVarargs);
+    }
+
+    public FunctionType(Type returnType, TypeArray argumentTypes, boolean isVarargs) {
+        this(returnType, getRawTypeArray(argumentTypes), isVarargs);
     }
 
     public FunctionType(Type returnType, int numArguments, boolean isVarargs) {
@@ -69,7 +68,7 @@ public final class FunctionType extends Type {
     }
 
     public static FunctionType copy(FunctionType type) {
-        return createByCopy(type.returnType, type.argumentTypes, type.isVarargs);
+        return new FunctionType(type.returnType, type.argumentTypes.clone(), type.isVarargs);
     }
 
     public void setArgumentType(int idx, Type type) {

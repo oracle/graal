@@ -44,6 +44,9 @@ import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
 import com.oracle.truffle.llvm.runtime.types.visitors.RecursiveTypeCheckVisitor;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
+import java.util.Arrays;
+import java.util.List;
+
 public abstract class Type {
 
     /**
@@ -103,6 +106,54 @@ public abstract class Type {
     }
 
     public static final Type[] EMPTY_ARRAY = {};
+
+    /**
+     * Encapsulates an array of {@link Type types}. Use to ensure that the array reference is not
+     * leaked and modified out of place.
+     */
+    public static class TypeArray {
+        private Type[] types;
+
+        public TypeArray(int size) {
+            this.types = new Type[size];
+        }
+
+        public void set(int idx, Type type) {
+            check();
+            types[idx] = type;
+        }
+
+        public Type get(int idx) {
+            check();
+            return types[idx];
+        }
+
+        public int size() {
+            check();
+            return types.length;
+        }
+
+        public List<Type> asList() {
+            return Arrays.asList(getRawArray());
+        }
+
+        private Type[] getRawArray() {
+            check();
+            Type[] ret = this.types;
+            this.types = null;
+            return ret;
+        }
+
+        private void check() {
+            if (types == null) {
+                throw new IllegalStateException("TypeArray already finalized");
+            }
+        }
+    }
+
+    protected static Type[] getRawTypeArray(TypeArray types) {
+        return types.getRawArray();
+    }
 
     public abstract long getBitSize() throws TypeOverflowException;
 

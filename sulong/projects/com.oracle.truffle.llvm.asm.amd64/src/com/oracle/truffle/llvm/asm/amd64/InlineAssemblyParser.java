@@ -367,7 +367,7 @@ public class InlineAssemblyParser extends Parser {
 	    }
 	}
 
-	public static LLVMInlineAssemblyRootNode parseInlineAssembly(LLVMLanguage language, String asmSnippet, String asmFlags, Type[] argTypes, Type retType, Type[] retTypes, long[] retOffsets) {
+	public static LLVMInlineAssemblyRootNode parseInlineAssembly(LLVMLanguage language, String asmSnippet, String asmFlags, Type.TypeArray argTypes, Type retType, Type[] retTypes, long[] retOffsets) {
 	    InlineAssemblyLexer lexer = new InlineAssemblyLexer(CharStreams.fromString(asmSnippet));
 	    InlineAssemblyParser parser = new InlineAssemblyParser(new CommonTokenStream(lexer));
 	    lexer.removeErrorListeners();
