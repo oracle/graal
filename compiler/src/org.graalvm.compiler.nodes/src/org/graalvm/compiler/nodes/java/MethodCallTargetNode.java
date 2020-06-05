@@ -179,18 +179,19 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
         }
 
         if (invokeKind.isInterface()) {
-            tryDevirtualizeInterfaceCall(receiver(), targetMethod, profile, graph().getAssumptions(), contextType, this, invoke().asNode());
+            MethodCallTargetNode result = tryDevirtualizeInterfaceCall(receiver(), targetMethod, profile, graph().getAssumptions(), contextType, this, invoke().asNode());
+            assert result == this;
         }
     }
 
-    public static void tryDevirtualizeInterfaceCall(ValueNode receiver, ResolvedJavaMethod targetMethod, JavaTypeProfile profile, Assumptions assumptions, ResolvedJavaType contextType,
+    public static MethodCallTargetNode tryDevirtualizeInterfaceCall(ValueNode receiver, ResolvedJavaMethod targetMethod, JavaTypeProfile profile, Assumptions assumptions, ResolvedJavaType contextType,
                     MethodCallTargetNode callTarget, FixedNode insertionPoint) {
         if (assumptions == null) {
             /*
              * Even though we are not registering an assumption (see comment below), the
              * optimization is only valid when speculative optimizations are enabled.
              */
-            return;
+            return callTarget;
         }
 
         // try to turn a interface call into a virtual call
@@ -204,8 +205,9 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
             ResolvedJavaType singleImplementor = declaredReceiverType.getSingleImplementor();
             if (singleImplementor != null && !singleImplementor.equals(declaredReceiverType)) {
                 TypeReference speculatedType = TypeReference.createTrusted(assumptions, singleImplementor);
-                if (tryCheckCastSingleImplementor(receiver, targetMethod, profile, contextType, speculatedType, insertionPoint, callTarget)) {
-                    return;
+                MethodCallTargetNode callTargetResult = tryCheckCastSingleImplementor(receiver, targetMethod, profile, contextType, speculatedType, insertionPoint, callTarget);
+                if (callTargetResult != null) {
+                    return callTargetResult;
                 }
             }
         }
@@ -216,15 +218,18 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
             if (uncheckedStamp != null) {
                 TypeReference speculatedType = StampTool.typeReferenceOrNull(uncheckedStamp);
                 if (speculatedType != null) {
-                    if (tryCheckCastSingleImplementor(receiver, targetMethod, profile, contextType, speculatedType, insertionPoint, callTarget)) {
-                        return;
+                    MethodCallTargetNode callTargetResult = tryCheckCastSingleImplementor(receiver, targetMethod, profile, contextType, speculatedType, insertionPoint, callTarget);
+                    if (callTargetResult != null) {
+                        return callTargetResult;
                     }
                 }
             }
         }
+        return callTarget;
     }
 
-    private static boolean tryCheckCastSingleImplementor(ValueNode receiver, ResolvedJavaMethod targetMethod, JavaTypeProfile profile, ResolvedJavaType contextType, TypeReference speculatedType,
+    private static MethodCallTargetNode tryCheckCastSingleImplementor(ValueNode receiver, ResolvedJavaMethod targetMethod, JavaTypeProfile profile, ResolvedJavaType contextType,
+                    TypeReference speculatedType,
                     FixedNode insertionPoint, MethodCallTargetNode callTarget) {
         ResolvedJavaType singleImplementor = speculatedType.getType();
         if (singleImplementor != null) {
@@ -246,18 +251,27 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
                 LogicNode condition = graph.addOrUniqueWithInputs(InstanceOfNode.create(speculatedType, receiver, profile, anchor));
                 FixedGuardNode guard = graph.add(new FixedGuardNode(condition, DeoptimizationReason.OptimizedTypeCheckViolated, DeoptimizationAction.InvalidateRecompile, false));
                 graph.addBeforeFixed(insertionPoint, guard);
-                ValueNode valueNode = graph.addOrUnique(new PiNode(receiver, StampFactory.objectNonNull(speculatedType), guard));
-                callTarget.arguments().set(0, valueNode);
+                InvokeKind invokeKind;
                 if (speculatedType.isExact()) {
-                    callTarget.setInvokeKind(InvokeKind.Special);
+                    invokeKind = InvokeKind.Special;
                 } else {
-                    callTarget.setInvokeKind(InvokeKind.Virtual);
+                    invokeKind = InvokeKind.Virtual;
                 }
-                callTarget.setTargetMethod(singleImplementorMethod);
-                return true;
+                MethodCallTargetNode callTargetResult = callTarget;
+                ValueNode valueNode = graph.addOrUnique(new PiNode(receiver, StampFactory.objectNonNull(speculatedType), guard));
+                if (callTarget.isAlive()) {
+                    callTarget.arguments().set(0, valueNode);
+                    callTargetResult.setInvokeKind(invokeKind);
+                    callTargetResult.setTargetMethod(singleImplementorMethod);
+                } else {
+                    ValueNode[] arguments = callTarget.arguments().toArray(new ValueNode[callTarget.arguments().size()]);
+                    arguments[0] = valueNode;
+                    callTargetResult = new MethodCallTargetNode(invokeKind, singleImplementorMethod, arguments, callTarget.returnStamp, profile);
+                }
+                return callTargetResult;
             }
         }
-        return false;
+        return null;
     }
 
     public JavaTypeProfile getProfile() {

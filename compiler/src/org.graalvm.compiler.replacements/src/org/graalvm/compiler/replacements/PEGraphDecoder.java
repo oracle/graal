@@ -778,6 +778,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             if (methodCall.invokeKind().hasReceiver()) {
                 invokeData.constantReceiver = methodCall.arguments().get(0).asJavaConstant();
             }
+            callTarget = trySimplifyCallTarget(methodScope, invokeData, (MethodCallTargetNode) callTarget);
             LoopScope inlineLoopScope = trySimplifyInvoke(methodScope, loopScope, invokeData, (MethodCallTargetNode) callTarget);
             if (inlineLoopScope != null) {
                 return inlineLoopScope;
@@ -790,19 +791,23 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         return super.handleInvoke(methodScope, loopScope, invokeData);
     }
 
-    protected LoopScope trySimplifyInvoke(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData, MethodCallTargetNode callTarget) {
+    protected MethodCallTargetNode trySimplifyCallTarget(PEMethodScope methodScope, InvokeData invokeData, MethodCallTargetNode callTarget) {
         // attempt to devirtualize the call
         ResolvedJavaMethod specialCallTarget = getSpecialCallTarget(invokeData, callTarget);
         if (specialCallTarget != null) {
             callTarget.setTargetMethod(specialCallTarget);
             callTarget.setInvokeKind(InvokeKind.Special);
+            return callTarget;
         }
         if (callTarget.invokeKind().isInterface()) {
             Invoke invoke = invokeData.invoke;
             ResolvedJavaType contextType = methodScope.method.getDeclaringClass();
-            MethodCallTargetNode.tryDevirtualizeInterfaceCall(callTarget.receiver(), callTarget.targetMethod(), null, graph.getAssumptions(), contextType, callTarget, invoke.asNode());
+            return MethodCallTargetNode.tryDevirtualizeInterfaceCall(callTarget.receiver(), callTarget.targetMethod(), null, graph.getAssumptions(), contextType, callTarget, invoke.asNode());
         }
+        return callTarget;
+    }
 
+    protected LoopScope trySimplifyInvoke(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData, MethodCallTargetNode callTarget) {
         if (tryInvocationPlugin(methodScope, loopScope, invokeData, callTarget)) {
             /*
              * The invocation plugin handled the call, so decoding continues in the calling method.

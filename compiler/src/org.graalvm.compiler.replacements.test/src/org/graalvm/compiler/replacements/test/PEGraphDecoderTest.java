@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.replacements.test;
 
-import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsing;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
 
 import org.graalvm.collections.EconomicMap;
@@ -48,8 +47,6 @@ import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.replacements.CachingPEGraphDecoder;
 import org.graalvm.word.LocationIdentity;
@@ -138,8 +135,12 @@ public class PEGraphDecoderTest extends GraalCompilerTest {
     }
 
     static class LLVMPointerImpl implements LLVMPointer {
+
+        int counter;
+
         @Override
         public LLVMPointerImpl increment(long offset) {
+            counter++;
             return this;
         }
 
@@ -147,6 +148,7 @@ public class PEGraphDecoderTest extends GraalCompilerTest {
         }
     }
 
+    @BytecodeParserNeverInline
     static LLVMPointer doIncrement(LLVMPointer ptr) {
         return ptr.increment(0);
     }
@@ -158,33 +160,30 @@ public class PEGraphDecoderTest extends GraalCompilerTest {
     @Test
     public void testSingleImplementor() {
         EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache = EconomicMap.create();
-        OptionValues initialOptions = getInitialOptions();
-        EconomicMap<OptionKey<?>, Object> options = EconomicMap.create(getInitialOptions().getMap());
-        // Disable InlineDuringParsing so that all inlining is done by the decoder
-        options.put(InlineDuringParsing, false);
         // Parse and cache doIncrement before the single implementor is loaded
-        test("doIncrement", graphCache, initialOptions);
+        test("doIncrement", graphCache);
         // Force loading of the single implementor
         LLVMPointerImpl.init();
-        StructuredGraph graph = test("testSingleImplementorDevirtualize", graphCache, initialOptions);
+        StructuredGraph graph = test("testSingleImplementorDevirtualize", graphCache);
         Assert.assertEquals(0, graph.getNodes().filter(InvokeNode.class).count());
     }
 
     @Test
     @SuppressWarnings("try")
     public void test() {
-        test("doTest", EconomicMap.create(), getInitialOptions());
+        test("doTest", EconomicMap.create());
     }
 
     @SuppressWarnings("try")
-    private StructuredGraph test(String methodName, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache, OptionValues initialOptions) {
+    private StructuredGraph test(String methodName, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache) {
         ResolvedJavaMethod testMethod = getResolvedJavaMethod(methodName);
         StructuredGraph targetGraph = null;
         DebugContext debug = getDebugContext();
         try (DebugContext.Scope scope = debug.scope("GraphPETest", testMethod)) {
             GraphBuilderConfiguration graphBuilderConfig = GraphBuilderConfiguration.getDefault(getDefaultGraphBuilderPlugins()).withEagerResolving(true).withUnresolvedIsError(true);
+            graphBuilderConfig = editGraphBuilderConfiguration(graphBuilderConfig);
             registerPlugins(graphBuilderConfig.getPlugins().getInvocationPlugins());
-            targetGraph = new StructuredGraph.Builder(initialOptions, debug, AllowAssumptions.YES).method(testMethod).build();
+            targetGraph = new StructuredGraph.Builder(debug.getOptions(), debug, AllowAssumptions.YES).method(testMethod).build();
             CachingPEGraphDecoder decoder = new CachingPEGraphDecoder(getTarget().arch, targetGraph, getProviders(), graphBuilderConfig, OptimisticOptimizations.NONE, AllowAssumptions.YES,
                             null, null, new InlineInvokePlugin[]{new InlineAll()}, null, null, null, null, null, graphCache);
 
