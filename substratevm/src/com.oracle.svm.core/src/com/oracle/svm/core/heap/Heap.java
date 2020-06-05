@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.heap;
 
-import java.lang.management.MemoryMXBean;
 import java.lang.ref.Reference;
 import java.util.List;
 
@@ -106,9 +105,6 @@ public abstract class Heap {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract ObjectHeader getObjectHeader();
-
-    /** Get the MemoryMXBean for this heap. */
-    public abstract MemoryMXBean getMemoryMXBean();
 
     /** Tear down the heap and free all allocated virtual memory chunks. */
     @Uninterruptible(reason = "Tear-down in progress.")

@@ -29,9 +29,7 @@ package com.oracle.svm.core.genscavenge;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 
-import java.lang.management.GarbageCollectorMXBean;
 import java.lang.ref.Reference;
-import java.util.List;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.word.Word;
@@ -111,8 +109,6 @@ public final class GCImpl implements GC {
     private final CollectionVMOperation collectOperation = new CollectionVMOperation();
     private final OutOfMemoryError oldGenerationSizeExceeded = new OutOfMemoryError("Garbage-collected heap size exceeded.");
     private final NoAllocationVerifier noAllocationVerifier = NoAllocationVerifier.factory("GCImpl.GCImpl()", false);
-
-    private final GCManagementFactory managementFactory = new GCManagementFactory();
 
     private CollectionPolicy policy;
     private boolean completeCollection = false;
@@ -1095,10 +1091,5 @@ public final class GCImpl implements GC {
         log.string(prefix).string("GCNanos: ").signed(gcNanos).newline();
         log.string(prefix).string("TotalNanos: ").signed(totalNanos).newline();
         log.string(prefix).string("GCLoadPercent: ").signed(roundedGCLoad).newline();
-    }
-
-    @Override
-    public List<GarbageCollectorMXBean> getGarbageCollectorMXBeanList() {
-        return managementFactory.getGCBeanList();
     }
 }

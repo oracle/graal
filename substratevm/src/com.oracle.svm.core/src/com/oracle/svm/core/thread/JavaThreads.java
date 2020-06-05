@@ -59,10 +59,10 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.heap.ReferenceHandlerThreadFeature;
-import com.oracle.svm.core.jdk.ManagementSupport;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
+import com.oracle.svm.core.jdk.management.ManagementSupport;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.monitor.MonitorSupport;
@@ -503,7 +503,7 @@ public abstract class JavaThreads {
         singleton().unattachedStartedThreads.decrementAndGet();
 
         singleton().beforeThreadRun(thread);
-        ManagementSupport.noteThreadStart(thread);
+        ManagementSupport.getSingleton().noteThreadStart(thread);
 
         try {
             if (VMThreads.isTearingDown()) {
@@ -520,7 +520,7 @@ public abstract class JavaThreads {
             dispatchUncaughtException(thread, ex);
         } finally {
             exit(thread);
-            ManagementSupport.noteThreadFinish(thread);
+            ManagementSupport.getSingleton().noteThreadFinish(thread);
         }
     }
 

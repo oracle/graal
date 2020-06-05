@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.core.heap;
 
-import java.lang.management.GarbageCollectorMXBean;
-import java.util.List;
-
 public interface GC {
 
     /** Cause a collection of the Heap's choosing. */
@@ -34,7 +31,4 @@ public interface GC {
 
     /** Cause a full collection. */
     void collectCompletely(GCCause cause);
-
-    /** Get the list of GarbageCollectorMXBeans for this collector. */
-    List<GarbageCollectorMXBean> getGarbageCollectorMXBeanList();
 }

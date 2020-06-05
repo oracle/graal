@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,34 +22,43 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.windows;
+package com.oracle.svm.core.jdk.management;
 
-import java.util.Arrays;
-import java.util.List;
+//Checkstyle: stop
+import java.lang.management.CompilationMXBean;
+import java.lang.management.ManagementFactory;
+
+import javax.management.ObjectName;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.jdk.management.ManagementFeature;
-import com.oracle.svm.core.jdk.management.ManagementSupport;
-import com.oracle.svm.core.jdk.management.SubstrateOperatingSystemMXBean;
+import sun.management.Util;
+//Checkstyle: resume
 
-class WindowsSubstrateOperatingSystemMXBean extends SubstrateOperatingSystemMXBean {
+class SubstrateCompilationMXBean implements CompilationMXBean {
 
-}
-
-@Platforms(Platform.WINDOWS.class)
-@AutomaticFeature
-class WindowsSubstrateOperatingSystemMXBeanFeature implements Feature {
-    @Override
-    public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Arrays.asList(ManagementFeature.class);
+    @Platforms(Platform.HOSTED_ONLY.class)
+    SubstrateCompilationMXBean() {
     }
 
     @Override
-    public void afterRegistration(Feature.AfterRegistrationAccess access) {
-        ManagementSupport.getSingleton().addPlatformManagedObjectSingleton(com.sun.management.OperatingSystemMXBean.class, new WindowsSubstrateOperatingSystemMXBean());
+    public ObjectName getObjectName() {
+        return Util.newObjectName(ManagementFactory.COMPILATION_MXBEAN_NAME);
+    }
+
+    @Override
+    public String getName() {
+        return "Graal";
+    }
+
+    @Override
+    public boolean isCompilationTimeMonitoringSupported() {
+        return false;
+    }
+
+    @Override
+    public long getTotalCompilationTime() {
+        return 0;
     }
 }
