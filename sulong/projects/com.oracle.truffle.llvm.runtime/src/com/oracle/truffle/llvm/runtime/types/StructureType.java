@@ -56,33 +56,45 @@ public final class StructureType extends AggregateType {
     }
 
     /**
-     * Creates a named structure type with known element types.
-     *
-     * <b>Attention!</b> the {@code types} array will be copied. Modifications to the original array
-     * are not propagated. Use {@link #setElementType} to modify the types. If you want create a
-     * structure with unknown element types use {@link #StructureType(String, boolean, int)}
-     * instead.
+     * Creates a named structure type with one element type.
      */
-    public static StructureType createNamedByCopy(String name, boolean isPacked, Type[] types) {
-        return new StructureType(name, isPacked, true, types.clone());
+    public static StructureType createNamed(String name, boolean isPacked, Type type0) {
+        return new StructureType(name, isPacked, true, new Type[]{type0});
     }
 
     /**
-     * @see #createNamedByCopy(String, boolean, Type[])
+     * Creates a named structure type with two element types.
      */
-    public static StructureType createNamedByCopy(String name, boolean isPacked, ArrayList<Type> types) {
+    public static StructureType createNamed(String name, boolean isPacked, Type type0, Type type1) {
+        return new StructureType(name, isPacked, true, new Type[]{type0, type1});
+    }
+
+    /**
+     * Creates a named structure type with known element types.
+     */
+    public static StructureType createNamedFromList(String name, boolean isPacked, ArrayList<Type> types) {
         return new StructureType(name, isPacked, true, types.toArray(Type.EMPTY_ARRAY));
     }
 
     /**
-     * Creates an unnamed structure type with known element types.
-     *
-     * <b>Attention!</b> the {@code types} array will be copied. Modifications to the original array
-     * are not propagated. Use {@link #setElementType} to modify the types. If you want create a
-     * structure with unknown element types use {@link #StructureType(boolean, int)} instead.
+     * Creates an unnamed structure type with one element type.
      */
-    public static StructureType createUnnamedByCopy(boolean isPacked, Type[] types) {
-        return new StructureType(LLVMIdentifier.UNKNOWN, isPacked, false, types.clone());
+    public static StructureType createUnnamed(boolean isPacked, Type type0) {
+        return new StructureType(LLVMIdentifier.UNKNOWN, isPacked, false, new Type[]{type0});
+    }
+
+    /**
+     * Creates an unnamed structure type with two element types.
+     */
+    public static StructureType createUnnamed(boolean isPacked, Type type0, Type type1) {
+        return new StructureType(LLVMIdentifier.UNKNOWN, isPacked, false, new Type[]{type0, type1});
+    }
+
+    /**
+     * Creates an unnamed structure type with three element types.
+     */
+    public static StructureType createUnnamed(boolean isPacked, Type type0, Type type1, Type type2) {
+        return new StructureType(LLVMIdentifier.UNKNOWN, isPacked, false, new Type[]{type0, type1, type2});
     }
 
     public StructureType(String name, boolean isPacked, int numElements) {
