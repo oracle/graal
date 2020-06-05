@@ -92,9 +92,19 @@ suite = {
       "sha1" : "b072de027141ac81ab5d48706949fda86de62468",
     },
 
-    "RENAISSANCE" : {
+    "RENAISSANCE_0.9.0" : {
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-gpl-0.9.0.jar"],
+      "sha1" : "925ca7d440078b0b30f5849695061262c226820e",
+    },
+
+    "RENAISSANCE_0.10.0" : {
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-gpl-0.10.0.jar"],
       "sha1" : "5f58e281bb5aae161854b036c7e49e593a81186a",
+    },
+
+    "RENAISSANCE_0.11.0" : {
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-gpl-0.11.0.jar"],
+      "sha1" : "613f7615179ea364116cdd68aa41ad44a9cc49e4",
     },
 
     "JAVA_ALLOCATION_INSTRUMENTER" : {
