@@ -77,8 +77,8 @@ public final class TestDebugNoContentLanguage extends ProxyLanguage {
 
     @Override
     protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
-        sourceInfo.createSource(getCurrentContext().getEnv());
         Source source = request.getSource();
+        sourceInfo.createSource(getCurrentContext().getEnv(), source);
         CharSequence characters = source.getCharacters();
         int varStartPos = source.getLength() - 1;
         while (varStartPos > 0) {
@@ -114,8 +114,9 @@ public final class TestDebugNoContentLanguage extends ProxyLanguage {
             this.columnInfo = columnInfo;
         }
 
-        void createSource(Env env) {
-            this.source = Source.newBuilder(ProxyLanguage.ID, env.getPublicTruffleFile(path)).content(Source.CONTENT_NONE).cached(false).build();
+        void createSource(Env env, Source parsedSource) {
+            this.source = Source.newBuilder(ProxyLanguage.ID, env.getPublicTruffleFile(path)).content(Source.CONTENT_NONE).cached(false).interactive(parsedSource.isInteractive()).internal(
+                            parsedSource.isInternal()).mimeType(parsedSource.getMimeType()).build();
         }
 
         private SourceSection copySection(SourceSection section) {

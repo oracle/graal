@@ -66,6 +66,7 @@ import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
+import com.oracle.truffle.api.debug.SuspensionFilter;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.GCUtils;
@@ -553,9 +554,15 @@ public class DebuggerSessionTest extends AbstractDebugTest {
                     tester.startEval(source);
                     expectSuspended((SuspendedEvent event) -> {
                         SourceSection sourceSection = event.getSourceSection();
-                        URI uri = sourceSection.getSource().getURI();
+                        com.oracle.truffle.api.source.Source resolvedSource = sourceSection.getSource();
+                        URI uri = resolvedSource.getURI();
                         Assert.assertTrue(uri.toString(), uri.isAbsolute());
                         Assert.assertEquals(resolvedURI, uri);
+                        Assert.assertEquals(ProxyLanguage.ID, resolvedSource.getLanguage());
+                        Assert.assertNull(resolvedSource.getMimeType());
+                        Assert.assertEquals("test.file", resolvedSource.getName());
+                        Assert.assertEquals(filePath.toString(), resolvedSource.getPath());
+                        Assert.assertNull(resolvedSource.getURL());
                         checkResolvedSourceSection(sourceSection, 2, 3, 17, 3, 15);
                         Assert.assertEquals(sourceContent, sourceSection.getSource().getCharacters().toString());
                         Assert.assertEquals(sourceContent.substring(3, sourceContent.indexOf('\n', 3)), sourceSection.getCharacters().toString());
@@ -574,6 +581,51 @@ public class DebuggerSessionTest extends AbstractDebugTest {
                         event.prepareContinue();
                     });
                     expectDone();
+                }
+            }
+        } finally {
+            deleteRecursively(testSourcePath);
+        }
+    }
+
+    @Test
+    public void testResolvedSourceAttributes() throws IOException {
+        String sourceContent = "\n  relative source\nVarA";
+        String relativePath = "relative/test.file";
+        Path testSourcePath = Files.createTempDirectory("testPath").toRealPath();
+        Files.createDirectory(testSourcePath.resolve("relative"));
+        Path filePath = testSourcePath.resolve(relativePath);
+        Files.write(filePath, sourceContent.getBytes());
+        URI resolvedURI = testSourcePath.resolve(relativePath).toUri();
+        boolean[] trueFalse = new boolean[]{true, false};
+        try (DebuggerSession session = tester.startSession()) {
+            session.setSteppingFilter(SuspensionFilter.newBuilder().includeInternal(true).build());
+            session.setSourcePath(Arrays.asList(testSourcePath.toUri()));
+            for (String mimeType : new String[]{"application/x-proxy-language", null}) {
+                for (boolean interactive : trueFalse) {
+                    for (boolean internal : trueFalse) {
+                        Source source = Source.newBuilder(ProxyLanguage.ID, sourceContent, "file").cached(false).interactive(interactive).internal(internal).mimeType(mimeType).name("foo").build();
+                        TestDebugNoContentLanguage language = new TestDebugNoContentLanguage(relativePath, true, false);
+                        ProxyLanguage.setDelegate(language);
+                        session.suspendNextExecution();
+                        tester.startEval(source);
+                        expectSuspended((SuspendedEvent event) -> {
+                            SourceSection sourceSection = event.getSourceSection();
+                            com.oracle.truffle.api.source.Source resolvedSource = sourceSection.getSource();
+                            URI uri = resolvedSource.getURI();
+                            Assert.assertTrue(uri.toString(), uri.isAbsolute());
+                            Assert.assertEquals(resolvedURI, uri);
+                            Assert.assertEquals(interactive, resolvedSource.isInteractive());
+                            Assert.assertEquals(internal, resolvedSource.isInternal());
+                            Assert.assertEquals(ProxyLanguage.ID, resolvedSource.getLanguage());
+                            Assert.assertEquals(mimeType, resolvedSource.getMimeType());
+                            Assert.assertEquals("test.file", resolvedSource.getName());
+                            Assert.assertEquals(filePath.toString(), resolvedSource.getPath());
+                            Assert.assertNull(resolvedSource.getURL());
+                            event.prepareContinue();
+                        });
+                        expectDone();
+                    }
                 }
             }
         } finally {

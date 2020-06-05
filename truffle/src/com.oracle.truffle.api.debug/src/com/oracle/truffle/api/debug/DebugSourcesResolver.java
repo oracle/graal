@@ -156,9 +156,9 @@ final class DebugSourcesResolver {
             try {
                 if (builder == null) {
                     String name = uri.getPath() != null ? uri.getPath() : uri.getSchemeSpecificPart();
-                    builder = Source.newBuilder(source.getLanguage(), new InputStreamReader(stream), name).uri(uri).mimeType(source.getMimeType());
+                    builder = Source.newBuilder(source.getLanguage(), new InputStreamReader(stream), name).uri(uri);
                 }
-                return builder.cached(false).interactive(source.isInteractive()).internal(source.isInternal()).build();
+                return builder.cached(false).interactive(source.isInteractive()).internal(source.isInternal()).mimeType(source.getMimeType()).build();
             } catch (IOException ex) {
                 return null;
             }
