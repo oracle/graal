@@ -24,15 +24,15 @@
  */
 package com.oracle.svm.hosted.agent.jdk8.lambda;
 
-import static org.objectweb.asm.Opcodes.ASM7;
-
-import org.objectweb.asm.ClassVisitor;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.Handle;
-import org.objectweb.asm.MethodVisitor;
+import static jdk.internal.org.objectweb.asm.Opcodes.ASM5;
 
 import com.oracle.svm.hosted.NativeImageClassLoader;
 import com.oracle.svm.hosted.agent.NativeImageBytecodeInstrumentationAgent;
+
+import jdk.internal.org.objectweb.asm.ClassVisitor;
+import jdk.internal.org.objectweb.asm.ClassWriter;
+import jdk.internal.org.objectweb.asm.Handle;
+import jdk.internal.org.objectweb.asm.MethodVisitor;
 
 public class LambdaMetaFactoryRewriteVisitor extends ClassVisitor {
 
@@ -40,7 +40,7 @@ public class LambdaMetaFactoryRewriteVisitor extends ClassVisitor {
     private final String className;
 
     public LambdaMetaFactoryRewriteVisitor(ClassLoader loader, String className, ClassWriter writer) {
-        super(ASM7, writer);
+        super(ASM5, writer);
         this.loader = loader;
         this.className = className;
     }
@@ -65,15 +65,15 @@ public class LambdaMetaFactoryRewriteVisitor extends ClassVisitor {
 
     public class LambdaMetaFactoryMethodVisitor extends MethodVisitor {
         LambdaMetaFactoryMethodVisitor(MethodVisitor methodVisitor) {
-            super(ASM7, methodVisitor);
+            super(ASM5, methodVisitor);
         }
 
+        @SuppressWarnings("deprecation")
         @Override
         public void visitInvokeDynamicInsn(String name, String descriptor, Handle bootstrapMethodHandle, Object... bootstrapMethodArguments) {
             if (isMetaFactoryCall(bootstrapMethodHandle.getOwner(), bootstrapMethodHandle.getName())) {
                 Handle handle = new Handle(bootstrapMethodHandle.getTag(), "com/oracle/svm/hosted/agent/jdk8/lambda/LambdaMetafactory", bootstrapMethodHandle.getName(),
-                                bootstrapMethodHandle.getDesc(),
-                                bootstrapMethodHandle.isInterface());
+                                bootstrapMethodHandle.getDesc());
                 super.visitInvokeDynamicInsn(name, descriptor, handle, bootstrapMethodArguments);
             } else {
                 super.visitInvokeDynamicInsn(name, descriptor, bootstrapMethodHandle, bootstrapMethodArguments);

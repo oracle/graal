@@ -334,7 +334,6 @@ suite = {
                 "com.oracle.objectfile",
                 "com.oracle.svm.core",
                 "com.oracle.graal.pointsto",
-                "mx:ASM_7.1",
             ],
             "javaCompliance": "8+",
             "checkstyleVersion" : "8.8",
