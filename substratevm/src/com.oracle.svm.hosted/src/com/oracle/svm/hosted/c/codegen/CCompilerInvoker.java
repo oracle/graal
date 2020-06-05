@@ -154,7 +154,7 @@ public abstract class CCompilerInvoker {
                 if (scanner.findInLine("Microsoft.*\\(R\\) C/C\\+\\+") == null) {
                     return null;
                 }
-                scanner.useDelimiter("[. ]");
+                scanner.useDelimiter("\\D");
                 while (!scanner.hasNextInt()) {
                     scanner.next();
                 }
