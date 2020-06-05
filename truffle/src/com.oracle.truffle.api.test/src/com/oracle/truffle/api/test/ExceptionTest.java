@@ -18,6 +18,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.junit.Test;
 
+// TODO: Delete me
 public class ExceptionTest {
 
     @Test
@@ -28,8 +29,7 @@ public class ExceptionTest {
         }
     }
 
-
-    @TruffleLanguage.Registration(id = ExceptionTestLanguage.ID, name=ExceptionTestLanguage.ID, characterMimeTypes = ExceptionTestLanguage.MIME)
+    @TruffleLanguage.Registration(id = ExceptionTestLanguage.ID, name = ExceptionTestLanguage.ID, characterMimeTypes = ExceptionTestLanguage.MIME)
     public static final class ExceptionTestLanguage extends TruffleLanguage<TruffleLanguage.Env> {
         public static final String ID = "ExceptionTestLanguage";
         public static final String MIME = "x-text/exceptiontestlanguage";
@@ -107,7 +107,6 @@ public class ExceptionTest {
             this.sourceSection = sourceSection;
         }
 
-
         Object execute(VirtualFrame frame) {
             throw createException();
         }
@@ -127,7 +126,7 @@ public class ExceptionTest {
 
         private final Node source;
 
-        public TestException(Node source) {
+        TestException(Node source) {
             this.source = source;
         }
 

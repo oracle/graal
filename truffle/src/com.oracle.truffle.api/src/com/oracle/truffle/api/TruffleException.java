@@ -133,7 +133,8 @@ public interface TruffleException {
 
     /**
      * Returns <code>true</code> if this exception indicates that guest language application was
-     * cancelled during its execution.
+     * cancelled during its execution. If {@code isCancelled} returns {@code true} languages should
+     * not catch this exception, they must just rethrow it.
      *
      * @since 0.27
      */

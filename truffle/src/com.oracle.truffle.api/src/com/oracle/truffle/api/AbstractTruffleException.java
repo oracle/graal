@@ -44,7 +44,63 @@ import com.oracle.truffle.api.TruffleStackTrace.LazyStackTrace;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
-
+/**
+ * A base class for an exception thrown during the execution of a guest language program.
+ *
+ * The following simplified {@code TryCatchNode} shows how the
+ * {@link AbstractTruffleException#isCatchable()} should be handled by languages.
+ *
+ * <pre>
+ * private static class TryCatchNode extends StatementNode {
+ *
+ *     &#64;Child private BlockNode block;
+ *     &#64;Children private CatchNode[] catches;
+ *     &#64;Child private BlockNode finallizer;
+ *     &#64;Child private InteropLibrary interop = InteropLibrary.getFactory().createDispatched(5);
+ *
+ *     public TryCatchNode(BlockNode block, CatchNode[] catches, BlockNode finallizer) {
+ *         this.block = block;
+ *         this.catches = catches;
+ *         this.finallizer = finallizer;
+ *     }
+ *
+ *     &#64;Override
+ *     &#64;ExplodeLoop
+ *     Object execute(VirtualFrame frame) {
+ *         boolean runHandlers = true;
+ *         try {
+ *             return block.execute(frame);
+ *         } catch (Exception ex) {
+ *             if (ex instanceof AbstractTruffleException) {
+ *                 AbstractTruffleException tex = (AbstractTruffleException) ex;
+ *                 runHandlers = tex.isCatchable();
+ *                 if (runHandlers && catches.length > 0) {
+ *                     Object exceptionObject = tex.getExceptionObject();
+ *                     if (exceptionObject != null) {
+ *                         for (CatchNode catchBlock : catches) {
+ *                             try {
+ *                                 if (interop.isMetaInstance(catchBlock.getException(), exceptionObject)) {
+ *                                     return catchBlock.execute(frame);
+ *                                 }
+ *                             } catch (UnsupportedMessageException um) {
+ *                                 ex.addSuppressed(um);
+ *                             }
+ *                         }
+ *                     }
+ *                 }
+ *             }
+ *             throw ex;
+ *         } finally {
+ *             if (runHandlers && finallizer != null) {
+ *                 finallizer.execute(frame);
+ *             }
+ *         }
+ *     }
+ * }
+ * </pre>
+ *
+ * @since 20.2
+ */
 @SuppressWarnings("serial")
 public abstract class AbstractTruffleException extends RuntimeException implements TruffleException {
 
@@ -58,12 +114,18 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
         this(message, null);
     }
 
-    protected AbstractTruffleException(Throwable throwable) {
-        this(null, throwable);
+    protected AbstractTruffleException(Throwable internaCause) {
+        this(null, internaCause);
     }
 
-    protected AbstractTruffleException(String message, Throwable throwable) {
-        super(message, throwable);
+    protected AbstractTruffleException(String message, Throwable internalCause) {
+        super(message, checkCause(internalCause));
+    }
+
+    @Override
+    @SuppressWarnings("sync-override")
+    public final Throwable fillInStackTrace() {
+        return this;
     }
 
     /**
@@ -74,10 +136,10 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
     public abstract Node getLocation();
 
     /**
-     * Returns an additional guest language object. The return object must be an interop type so it
-     * must be either implementing TruffleObject or be a primitive value. The default implementation
-     * returns <code>null</code> to indicate that no object is available for this exception.
-     *
+     * Returns an additional guest language object. The return object must be an interop exception
+     * type, the {@link @link com.oracle.truffle.api.interop.InteropLibrary#isException(Object)} has
+     * to return {@code true}. The default implementation returns <code>null</code> to indicate that
+     * no object is available for this exception.
      */
     @Override
     public Object getExceptionObject() {
@@ -129,7 +191,8 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
 
     /**
      * Returns <code>true</code> if this exception indicates that guest language application was
-     * cancelled during its execution.
+     * cancelled during its execution. If {@code isCancelled} returns {@code true} languages should
+     * not catch this exception, they must just rethrow it.
      *
      */
     @Override
@@ -186,6 +249,16 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
         return node == null ? null : node.getEncapsulatingSourceSection();
     }
 
+    /**
+     * Returns <code>true</code> if this exception can be safely caught by languages. If
+     * {@code isCatchable} returns {@code false} languages should not catch this exception, they
+     * must just rethrow it.
+     *
+     */
+    public final boolean isCatchable() {
+        return !(isCancelled() || isExit());
+    }
+
     LazyStackTrace getLazyStackTrace() {
         LazyStackTrace res = lazy;
         if (res == null) {
@@ -198,5 +271,12 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
             }
         }
         return res;
+    }
+
+    private static Throwable checkCause(Throwable t) {
+        if (t != null && !(t instanceof TruffleException)) {
+            throw new IllegalArgumentException("The " + t + " must be TruffleException subclass.");
+        }
+        return t;
     }
 }

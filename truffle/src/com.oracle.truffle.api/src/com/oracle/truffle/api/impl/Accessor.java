@@ -629,8 +629,6 @@ public abstract class Accessor {
 
         public abstract TruffleFile getTruffleFile(Object context, URI uri);
 
-        public abstract SecurityException throwSecurityException(String message);
-
         public abstract FileSystem getFileSystem(TruffleFile truffleFile);
 
         public abstract Path getPath(TruffleFile truffleFile);

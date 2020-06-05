@@ -42,7 +42,6 @@
 package com.oracle.truffle.sl.parser;
 
 import com.oracle.truffle.api.AbstractTruffleException;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;

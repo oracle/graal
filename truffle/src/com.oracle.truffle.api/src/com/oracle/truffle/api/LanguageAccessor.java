@@ -575,11 +575,6 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public SecurityException throwSecurityException(String message) {
-            throw new TruffleSecurityException(message);
-        }
-
-        @Override
         public FileSystem getFileSystem(TruffleFile truffleFile) {
             return truffleFile.getSPIFileSystem();
         }

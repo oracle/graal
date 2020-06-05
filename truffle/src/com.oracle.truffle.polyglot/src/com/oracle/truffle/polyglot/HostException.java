@@ -64,12 +64,6 @@ final class HostException extends AbstractTruffleException {
         return getOriginal().getMessage();
     }
 
-    @SuppressWarnings("sync-override")
-    @Override
-    public Throwable fillInStackTrace() {
-        return this;
-    }
-
     @Override
     public boolean isCancelled() {
         return getOriginal() instanceof InterruptedException;

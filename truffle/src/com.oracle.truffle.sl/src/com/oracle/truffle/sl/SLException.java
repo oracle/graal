@@ -71,12 +71,6 @@ public class SLException extends AbstractTruffleException {
         this.location = location;
     }
 
-    @SuppressWarnings("sync-override")
-    @Override
-    public final Throwable fillInStackTrace() {
-        return this;
-    }
-
     public Node getLocation() {
         return location;
     }
