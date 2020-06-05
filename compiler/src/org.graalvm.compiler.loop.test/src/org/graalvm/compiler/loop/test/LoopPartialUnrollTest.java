@@ -319,6 +319,7 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
             if (partialUnroll) {
                 LoopsData dataCounted = new LoopsData(graph);
                 dataCounted.detectedCountedLoops();
+                assertTrue(!dataCounted.countedLoops().isEmpty(), "must have counted loops");
                 for (LoopEx loop : dataCounted.countedLoops()) {
                     LoopFragmentInside newSegment = loop.inside().duplicate();
                     newSegment.insertWithinAfter(loop, null);
