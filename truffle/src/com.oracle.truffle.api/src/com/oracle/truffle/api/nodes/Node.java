@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -178,8 +178,8 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
-     * Returns <code>true</code> if this node can be adopated by a parent. This method is intended
-     * to be overriden by subclasses. If nodes need to be statically shared that they must not be
+     * Returns <code>true</code> if this node can be adopted by a parent. This method is intended to
+     * be overriden by subclasses. If nodes need to be statically shared that they must not be
      * adoptable, because otherwise the parent reference might cause a memory leak. If a node is not
      * adoptable then then it is guaranteed that the {@link #getParent() parent} pointer remains
      * <code>null</code> at all times, even if the node is tried to be adopted by a parent.
