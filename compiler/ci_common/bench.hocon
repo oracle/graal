@@ -168,6 +168,14 @@ bench-renaissance: ${bench-common} ${default-heap} ${renaissance-bench-notificat
   timelimit: "3:00:00"
 }
 
+bench-renaissance-0-10-0: ${bench-common} ${default-heap} ${renaissance-bench-notifications} {
+  targets: [bench, weekly]
+  run: [
+    ${bench-jvmci.mx-renaissance} ${bench-arguments} ["--bench-suite-version=0.10.0"]
+  ]
+  timelimit: "3:00:00"
+}
+
 bench-renaissance-no-db-shootout: ${bench-common} ${default-heap} ${renaissance-bench-notifications} {
   targets: [bench, post-merge]
   run: [
