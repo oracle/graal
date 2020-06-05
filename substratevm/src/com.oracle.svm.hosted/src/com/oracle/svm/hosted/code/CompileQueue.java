@@ -1197,4 +1197,8 @@ public class CompileQueue {
         }
         return result;
     }
+
+    public Suites getRegularSuites() {
+        return regularSuites;
+    }
 }
