@@ -520,4 +520,21 @@ public class CachedContextTest extends AbstractPolyglotTest {
         }
     }
 
+    public abstract static class CacheCachedContextTest extends Node {
+
+        protected abstract boolean executeMatch(Object arg0);
+
+        @ExpectError("The limit expression has no effect.%")
+        @Specialization(guards = {"cachedGuard"}, limit = "1")
+        boolean s0(Object arg0,
+                        @CachedContext(CachedContextTestLanguage.class) Env env,
+                        @Cached("getBoolean(env)") boolean cachedGuard) {
+            return false;
+        }
+
+        static boolean getBoolean(Env context) {
+            return context != null;
+        }
+    }
+
 }
