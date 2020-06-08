@@ -517,7 +517,7 @@ public class LanguageServer {
         private void processRequest(RequestMessage req, byte[] buffer) {
             final Object id = req.getId();
             try {
-                JSONObject params = (JSONObject) req.getParams();
+                JSONObject params = req.getParams() instanceof JSONObject ? (JSONObject) req.getParams() : null;
                 CompletableFuture<?> future = null;
                 String method = req.getMethod();
                 delegateServers.sendMessageToDelegates(buffer, id, method, params);
