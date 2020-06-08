@@ -403,6 +403,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Value eval(String language, Object sourceImpl);
 
+        public abstract void validate(String language, Object impl);
+
         public abstract Engine getEngineImpl(Context sourceContext);
 
         public abstract void close(Context sourceContext, boolean interuptExecution);
@@ -418,6 +420,7 @@ public abstract class AbstractPolyglotImpl {
         public abstract Value getPolyglotBindings();
 
         public abstract void resetLimits();
+
     }
 
     public abstract static class AbstractEngineImpl {

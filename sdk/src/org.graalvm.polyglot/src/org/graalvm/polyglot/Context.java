@@ -324,11 +324,11 @@ public final class Context implements AutoCloseable {
      * <b>Basic Example:</b>
      *
      * <pre>
-     * Context context = Context.create();
-     * Source source = Source.newBuilder("js", "42").name("mysource.js").build();
-     * Value result = context.eval(source);
-     * assert result.asInt() == 42;
-     * context.close();
+     * try (Context context = Context.create()) {
+     *     Source source = Source.newBuilder("js", "42", "mysource.js").build();
+     *     Value result = context.eval(source);
+     *     assert result.asInt() == 42;
+     * }
      * </pre>
      *
      * @param source a source object to evaluate
@@ -353,10 +353,10 @@ public final class Context implements AutoCloseable {
      * <b>Basic Example:</b>
      *
      * <pre>
-     * Context context = Context.create();
-     * Value result = context.eval("js", "42");
-     * assert result.asInt() == 42;
-     * context.close();
+     * try (Context context = Context.create()) {
+     *     Value result = context.eval("js", "42");
+     *     assert result.asInt() == 42;
+     * }
      * </pre>
      *
      * @throws PolyglotException in case the guest language code parsing or evaluation failed.
@@ -369,6 +369,88 @@ public final class Context implements AutoCloseable {
      */
     public Value eval(String languageId, CharSequence source) {
         return eval(Source.create(languageId, source));
+    }
+
+    /**
+     * Validates but does not evaluate a given source by using the {@linkplain Source#getLanguage()
+     * language} specified in the source. If a validation fails, e.g. due to a syntax error in the
+     * source, then a {@link PolyglotException} will be thrown. In case of a syntax error the
+     * {@link PolyglotException#isSyntaxError()} will return <code>true</code>. There is no
+     * guarantee that only syntax errors will be thrown by this method. Any other guest language
+     * exception might be thrown. If the validation succeeds then the method completes without
+     * throwing an exception.
+     * <p>
+     * If the validation succeeds and the source is {@link Source.Builder#cached(boolean) cached}
+     * then the result will automatically be reused for consecutive calls to
+     * {@link #validate(Source)} or {@link #eval(Source)}. If the validation should be performed for
+     * each invocation or the result should not be remembered then
+     * {@link Source.Builder#cached(boolean) cached} can be set to <code>false</code>. By default
+     * sources are cached.
+     * <p>
+     * <b>Basic Example:</b>
+     *
+     * <pre>
+     * try (Context context = Context.create()) {
+     *     Source source = Source.create("js", "42");
+     *     try {
+     *         context.validate(source);
+     *
+     *         // validation succeeded
+     *     } catch (PolyglotException e) {
+     *         if (e.isSyntaxError()) {
+     *             SourceSection location = e.getSourceLocation();
+     *             // syntax error detected at location
+     *         } else {
+     *             // other guest error detected
+     *         }
+     *     }
+     * }
+     * </pre>
+     *
+     * @param source a source object to evaluate
+     * @throws PolyglotException in case the guest language code parsing or validation failed.
+     * @throws IllegalArgumentException if the language does not exist or is not accessible.
+     * @throws IllegalStateException if the context is already closed and the current thread is not
+     *             allowed to access it, or if the given language is not installed.
+     * @since 20.2
+     */
+    public void validate(Source source) throws PolyglotException {
+        impl.validate(source.getLanguage(), source.impl);
+    }
+
+    /**
+     * Validates but does not evaluate a guest language code literal using a provided
+     * {@link Language#getId() language id} and character sequence. The provided
+     * {@link CharSequence} must represent an immutable String. This method represents a short-hand
+     * for {@link #validate(Source)}.
+     * <p>
+     * <b>Basic Example:</b>
+     *
+     * <pre>
+     * try (Context context = Context.create()) {
+     *     try {
+     *         context.validate("js", "42");
+     *
+     *         // validation succeeded
+     *     } catch (PolyglotException e) {
+     *         if (e.isSyntaxError()) {
+     *             SourceSection location = e.getSourceLocation();
+     *             // syntax error detected at location
+     *         } else {
+     *             // other guest error detected
+     *         }
+     *     }
+     * }
+     * </pre>
+     *
+     * @throws PolyglotException in case the guest language code parsing or evaluation failed.
+     * @throws IllegalArgumentException if the language does not exist or is not accessible.
+     * @throws IllegalStateException if the context is already closed and the current thread is not
+     *             allowed to access it, or if the given language is not installed.
+     * @since 20.2
+     */
+    public void validate(String languageId, CharSequence source) {
+        validate(Source.create(languageId, source));
     }
 
     /**

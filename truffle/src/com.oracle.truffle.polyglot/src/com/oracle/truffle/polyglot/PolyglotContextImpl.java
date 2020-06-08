@@ -838,15 +838,34 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     }
 
     @Override
+    public void validate(String languageId, Object sourceImpl) {
+        PolyglotLanguage language = requirePublicLanguage(languageId);
+        PolyglotLanguageContext languageContext = getContext(language);
+        try {
+            Object prev = engine.enterIfNeeded(this);
+            try {
+                Source source = (Source) sourceImpl;
+                languageContext.checkAccess(null);
+                languageContext.ensureInitialized(null);
+                languageContext.parseCached(null, source, null);
+            } finally {
+                engine.leaveIfNeeded(prev, this);
+            }
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException(languageContext, e);
+        }
+    }
+
+    @Override
     public Value eval(String languageId, Object sourceImpl) {
         PolyglotLanguage language = requirePublicLanguage(languageId);
         PolyglotLanguageContext languageContext = getContext(language);
         try {
             Object prev = engine.enterIfNeeded(this);
             try {
+                Source source = (Source) sourceImpl;
                 languageContext.checkAccess(null);
                 languageContext.ensureInitialized(null);
-                com.oracle.truffle.api.source.Source source = (com.oracle.truffle.api.source.Source) sourceImpl;
                 CallTarget target = languageContext.parseCached(null, source, null);
                 Object result = target.call(PolyglotImpl.EMPTY_ARGS);
                 Value hostValue;
