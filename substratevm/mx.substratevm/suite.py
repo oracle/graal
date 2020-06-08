@@ -932,6 +932,7 @@ suite = {
                         "sun.security.provider",
                         "com.sun.crypto.provider",
                         "sun.reflect.generics.repository",
+                        "jdk.internal.org.objectweb.asm",
                     ],
                 },
             },
