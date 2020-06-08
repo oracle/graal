@@ -59,17 +59,6 @@ public abstract class Type {
     }
 
     /**
-     * Checks whether adding {@code types} to {@code this} would create a cycle. The only allowed
-     * cycles are via pointers to named structs.
-     */
-    protected boolean verifyCycleFree(Type[] types) {
-        for (Type type : types) {
-            verifyCycleFree(type);
-        }
-        return true;
-    }
-
-    /**
      * Indicates that calculations based on properties {@link Type} would overflow. For example,
      * calculating the {@link VectorType#getSize size of a vector} containing huge arrays will
      * easily overflow the value range of {@code long}. The exceptions should be caught and
