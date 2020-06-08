@@ -32,5 +32,5 @@
 int global = 3;
 
 int main() {
-  assert(global == 3);
+    assert(global == 3);
 }

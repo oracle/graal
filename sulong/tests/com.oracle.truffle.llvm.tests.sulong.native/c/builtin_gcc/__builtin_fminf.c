@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,23 +28,23 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int main() {
-  volatile float nan = __builtin_nanf("");
-  volatile float a = 0.1;
-  if (__builtin_isnan(__builtin_fminf(nan, a))) {
-    return 1;
-  }
-  if (__builtin_isnan(__builtin_fminf(a, nan))) {
-    return 1;
-  }
-  if (!__builtin_isnan(__builtin_fminf(nan, nan))) {
-    return 1;
-  }
-  volatile float b = 0.2;
-  if (__builtin_fminf(a, b) != 0.1) {
-    return 1;
-  }
-  if (__builtin_fminf(b, a) != 0.1) {
-    return 1;
-  }
-  return 0;
+    volatile float nan = __builtin_nanf("");
+    volatile float a = 0.1;
+    if (__builtin_isnan(__builtin_fminf(nan, a))) {
+        return 1;
+    }
+    if (__builtin_isnan(__builtin_fminf(a, nan))) {
+        return 1;
+    }
+    if (!__builtin_isnan(__builtin_fminf(nan, nan))) {
+        return 1;
+    }
+    volatile float b = 0.2;
+    if (__builtin_fminf(a, b) != 0.1) {
+        return 1;
+    }
+    if (__builtin_fminf(b, a) != 0.1) {
+        return 1;
+    }
+    return 0;
 }

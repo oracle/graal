@@ -32,9 +32,9 @@
 
 bool if_statement(bool flag) {
 
-  if (flag) {
-    return true;
-  } else {
-    return false;
-  }
+    if (flag) {
+        return true;
+    } else {
+        return false;
+    }
 }

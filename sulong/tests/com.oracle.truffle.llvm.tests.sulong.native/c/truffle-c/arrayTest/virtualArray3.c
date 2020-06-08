@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,13 +28,13 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int main() {
-  int a;
-  int *b;
+    int a;
+    int *b;
 
-  if (1 == 2) {
-    b = &a;
-    return 1;
-  }
+    if (1 == 2) {
+        b = &a;
+        return 1;
+    }
 
-  return 0;
+    return 0;
 }

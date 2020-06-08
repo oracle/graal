@@ -30,5 +30,5 @@
 #include <stdio.h>
 
 int main() {
-  printf("char: %c\n", 'A');
+    printf("char: %c\n", 'A');
 }

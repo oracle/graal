@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,10 +33,10 @@
 int call_typecast(int (*)(void));
 
 int foo(int x) {
-  return 3 * x;
+    return 3 * x;
 }
 
 int main(void) {
-  printf("%d\n", call_typecast(foo));
-  return 0;
+    printf("%d\n", call_typecast(foo));
+    return 0;
 }

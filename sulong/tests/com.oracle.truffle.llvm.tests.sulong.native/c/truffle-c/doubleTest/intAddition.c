@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,9 +28,9 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 double eval_A(int i, int j) {
-  return 12.0 / ((double)(i * j));
+    return 12.0 / ((double) (i * j));
 }
 
 int main() {
-  return (int)(eval_A(3, 5) * 120.3);
+    return (int) (eval_A(3, 5) * 120.3);
 }

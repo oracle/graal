@@ -30,20 +30,20 @@
 #include <polyglot.h>
 
 int main() {
-  bool boxed_true = polyglot_as_boolean(polyglot_import("boxed_true"));
-  bool boxed_false = polyglot_as_boolean(polyglot_import("boxed_false"));
+    bool boxed_true = polyglot_as_boolean(polyglot_import("boxed_true"));
+    bool boxed_false = polyglot_as_boolean(polyglot_import("boxed_false"));
 
-  if (boxed_true) {
-    // correct
-  } else {
-    return 1;
-  }
+    if (boxed_true) {
+        // correct
+    } else {
+        return 1;
+    }
 
-  if (boxed_false) {
-    return 2;
-  } else {
-    // correct
-  }
+    if (boxed_false) {
+        return 2;
+    } else {
+        // correct
+    }
 
-  return 0;
+    return 0;
 }

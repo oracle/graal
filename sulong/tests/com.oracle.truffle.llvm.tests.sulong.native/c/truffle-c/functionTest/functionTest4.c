@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,11 +30,11 @@
 int foo(int *a);
 
 int main() {
-  int val = 5;
-  foo(&val);
-  return val;
+    int val = 5;
+    foo(&val);
+    return val;
 }
 
 int foo(int *a) {
-  *a = *a * 2 + 1;
+    *a = *a * 2 + 1;
 }

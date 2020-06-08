@@ -32,7 +32,7 @@
 
 void while_statment(bool flag) {
 
-  while (flag) {
-    break;
-  }
+    while (flag) {
+        break;
+    }
 }

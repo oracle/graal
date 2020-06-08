@@ -29,15 +29,15 @@
  */
 
 static void store_a(volatile int *p, int x) {
-  __asm__ __volatile__("mov %1, %0" : "=m"(*p) : "r"(x) : "memory");
+    __asm__ __volatile__("mov %1, %0" : "=m"(*p) : "r"(x) : "memory");
 }
 
 int run(int b) {
-  if (b > 1) {
-    int x = 0xA0000000;
-    volatile int *p = alloca(sizeof(int));
-    store_a(p, x);
-    return 1;
-  }
-  return 2;
+    if (b > 1) {
+        int x = 0xA0000000;
+        volatile int *p = alloca(sizeof(int));
+        store_a(p, x);
+        return 1;
+    }
+    return 2;
 }

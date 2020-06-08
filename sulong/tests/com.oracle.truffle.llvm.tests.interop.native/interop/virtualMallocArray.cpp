@@ -32,7 +32,7 @@
 #include <truffle.h>
 
 extern "C" int test() {
-  int *p = (int *)truffle_virtual_malloc(5 * sizeof(int));
-  *(p + 2) = 42;
-  return p[2];
+    int *p = (int *) truffle_virtual_malloc(5 * sizeof(int));
+    *(p + 2) = 42;
+    return p[2];
 }

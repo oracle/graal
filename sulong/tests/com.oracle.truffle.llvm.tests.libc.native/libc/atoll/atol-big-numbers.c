@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,13 +30,13 @@
 #include <stdlib.h>
 
 int main() {
-  if (atoll("3463456234575463723") != 3463456234575463723L) {
-    abort();
-  }
-  if (atoll("8903427589123480") != 8903427589123480L) {
-    abort();
-  }
-  if (atoll("9012783012740234983") != 9012783012740234983L) {
-    abort();
-  }
+    if (atoll("3463456234575463723") != 3463456234575463723L) {
+        abort();
+    }
+    if (atoll("8903427589123480") != 8903427589123480L) {
+        abort();
+    }
+    if (atoll("9012783012740234983") != 9012783012740234983L) {
+        abort();
+    }
 }

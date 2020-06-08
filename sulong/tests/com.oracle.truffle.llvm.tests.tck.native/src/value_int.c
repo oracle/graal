@@ -31,5 +31,5 @@
 #include <stdlib.h>
 
 int val(void) {
-  return 1;
+    return 1;
 }

@@ -31,19 +31,19 @@
 #include <stdio.h>
 
 static void myprint_main_1(char *str) {
-  printf("main print 1: %s", str);
+    printf("main print 1: %s", str);
 }
 
 static void myprint_main_2(char *str) {
-  printf("main print 2: %s", str);
+    printf("main print 2: %s", str);
 }
 
 void (*myprint)(char *) = myprint_main_1;
 
 __attribute__((constructor)) static void beginMain(void) {
-  myprint("ctor Main\n");
-  myprint = myprint_main_2;
-  myprint("ctor Main\n");
+    myprint("ctor Main\n");
+    myprint = myprint_main_2;
+    myprint("ctor Main\n");
 }
 
 /**
@@ -57,6 +57,6 @@ __attribute__((constructor)) static void beginMain(void) {
  * </pre>
  */
 int main() {
-  printf("Main\n");
-  return 0;
+    printf("Main\n");
+    return 0;
 }

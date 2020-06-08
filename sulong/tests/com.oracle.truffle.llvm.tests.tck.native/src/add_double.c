@@ -31,5 +31,5 @@
 #include <stdlib.h>
 
 double plus(double a, double b) {
-  return a + b;
+    return a + b;
 }

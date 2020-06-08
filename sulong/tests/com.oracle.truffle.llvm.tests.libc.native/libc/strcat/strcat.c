@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,28 +32,28 @@
 #include <stdlib.h>
 
 int main() {
-  char arr[100];
-  strcpy(arr, "hello world!");
-  int start = strlen(arr);
-  char *result = strcat(arr, " appended string");
-  if (result != arr) {
-    abort();
-  }
-  printf("%s\n", result);
+    char arr[100];
+    strcpy(arr, "hello world!");
+    int start = strlen(arr);
+    char *result = strcat(arr, " appended string");
+    if (result != arr) {
+        abort();
+    }
+    printf("%s\n", result);
 
-  result = strcat(arr, " again appended!");
-  if (result != arr) {
-    abort();
-  }
-  printf("%s\n", result);
-  result = strcat(arr, "");
-  if (result != arr) {
-    abort();
-  }
-  printf("%s\n", result);
-  result = strcat(arr, "a");
-  if (result != arr) {
-    abort();
-  }
-  printf("%s\n", result);
+    result = strcat(arr, " again appended!");
+    if (result != arr) {
+        abort();
+    }
+    printf("%s\n", result);
+    result = strcat(arr, "");
+    if (result != arr) {
+        abort();
+    }
+    printf("%s\n", result);
+    result = strcat(arr, "a");
+    if (result != arr) {
+        abort();
+    }
+    printf("%s\n", result);
 }

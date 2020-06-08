@@ -29,16 +29,16 @@
  */
 
 void bar() {
-  return;
+    return;
 }
 
 void foo() {
-  bar();
-  bar();
-  bar();
+    bar();
+    bar();
+    bar();
 }
 
 __attribute__((constructor)) int test() {
-  foo();
-  return 0;
+    foo();
+    return 0;
 }

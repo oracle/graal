@@ -1,7 +1,7 @@
 ---
 # BasedOnStyle:  LLVM
-AccessModifierOffset: -2
-ConstructorInitializerIndentWidth: 4
+AccessModifierOffset: -4
+ConstructorInitializerIndentWidth: 8
 AlignEscapedNewlinesLeft: false
 AlignTrailingComments: true
 AllowAllParametersOfDeclarationOnNextLine: true
@@ -17,8 +17,11 @@ BinPackParameters: true
 ColumnLimit:     150
 ConstructorInitializerAllOnOneLineOrOnePerLine: false
 DerivePointerBinding: false
+# added in LLVM 10
+# DeriveLineEnding: false
+# UseCRLF: false
 ExperimentalAutoDetectBinPacking: false
-IndentCaseLabels: false
+IndentCaseLabels: true
 MaxEmptyLinesToKeep: 1
 NamespaceIndentation: None
 ObjCSpaceBeforeProtocolList: true
@@ -32,7 +35,7 @@ PointerBindsToType: false
 SpacesBeforeTrailingComments: 1
 Cpp11BracedListStyle: false
 Standard:        Cpp03
-IndentWidth:     2
+IndentWidth:     4
 TabWidth:        8
 UseTab:          Never
 BreakBeforeBraces: Attach
@@ -43,6 +46,7 @@ SpacesInAngles:  false
 SpaceInEmptyParentheses: false
 SpacesInCStyleCastParentheses: false
 SpaceAfterControlStatementKeyword: true
+SpaceAfterCStyleCast: true
 SpaceBeforeAssignmentOperators: true
 SpaceBeforeParens: ControlStatements
 ContinuationIndentWidth: 4

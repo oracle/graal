@@ -36,65 +36,65 @@
 void run(const char *, const char *, char *);
 
 void print_output(void *_output, const char *test) {
-  long *output = _output;
+    long *output = _output;
 
-  printf(FMT, output[0], output[1], output[2], output[3], test);
-  memset(output, 0, 32);
+    printf(FMT, output[0], output[1], output[2], output[3], test);
+    memset(output, 0, 32);
 }
 
 void print_input(void *_input) {
-  long *input = _input;
+    long *input = _input;
 
-  printf("\n===========================\n");
-  printf(FMT, input[0], input[1], input[2], input[3], "input/lhs");
-  printf(FMT, input[4], input[5], input[6], input[7], "rhs");
-  printf("\n");
+    printf("\n===========================\n");
+    printf(FMT, input[0], input[1], input[2], input[3], "input/lhs");
+    printf(FMT, input[4], input[5], input[6], input[7], "rhs");
+    printf("\n");
 }
 
 void fill(void *_input, void *_output, long start, long increment) {
-  long *input = _input;
-  long *output = _output;
+    long *input = _input;
+    long *output = _output;
 
-  int i;
+    int i;
 
-  for (i = 0; i < (256 * 2 / 64); i++) {
-    input[i] = start + (increment * i);
-  }
+    for (i = 0; i < (256 * 2 / 64); i++) {
+        input[i] = start + (increment * i);
+    }
 
-  for (; i < ((256 + 128) * 2 / 64); i++) {
-    output[i - (256 * 2 / 64)] = start + (increment * i);
-  }
+    for (; i < ((256 + 128) * 2 / 64); i++) {
+        output[i - (256 * 2 / 64)] = start + (increment * i);
+    }
 }
 
 int main(void) {
-  char _input[256 / 8 * 2] = { 0 };
-  char _output[256 / 8] = { 0 };
+    char _input[256 / 8 * 2] = { 0 };
+    char _output[256 / 8] = { 0 };
 
-  void *input = _input;
-  void *output = _output;
+    void *input = _input;
+    void *output = _output;
 
-  print_input(input);
-  run(input, input + 32, output);
+    print_input(input);
+    run(input, input + 32, output);
 
-  fill(input, output, 0xffffffffffffffffl, 0);
-  print_input(input);
-  run(input, input + 32, output);
+    fill(input, output, 0xffffffffffffffffl, 0);
+    print_input(input);
+    run(input, input + 32, output);
 
-  fill(input, output, 0xf0f0f0f0f0f0f0f0l, 0);
-  print_input(input);
-  run(input, input + 32, output);
+    fill(input, output, 0xf0f0f0f0f0f0f0f0l, 0);
+    print_input(input);
+    run(input, input + 32, output);
 
-  fill(input, output, 0x0101010101010101l, 0x9456010101010101l);
-  print_input(input);
-  run(input, input + 32, output);
+    fill(input, output, 0x0101010101010101l, 0x9456010101010101l);
+    print_input(input);
+    run(input, input + 32, output);
 
-  fill(input, output, 0xffffffffffffffffl, -0x0101010101010101l);
-  print_input(input);
-  run(input, input + 32, output);
+    fill(input, output, 0xffffffffffffffffl, -0x0101010101010101l);
+    print_input(input);
+    run(input, input + 32, output);
 
-  fill(input, output, 0, 0x0101010101010101l);
-  print_input(input);
-  run(input, input + 32, output);
+    fill(input, output, 0, 0x0101010101010101l);
+    print_input(input);
+    run(input, input + 32, output);
 
-  return 0;
+    return 0;
 }

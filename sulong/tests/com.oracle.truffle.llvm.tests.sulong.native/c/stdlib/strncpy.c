@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,19 +35,19 @@
 char name[ARR_LEN];
 
 static void copy(char *to, char *from) {
-  strncpy(to, from, ARR_LEN - 10);
-  to[ARR_LEN - 10] = '\0';
+    strncpy(to, from, ARR_LEN - 10);
+    to[ARR_LEN - 10] = '\0';
 }
 
 int main() {
-  copy(name, "(none)");
-  printf("%s\n", name);
+    copy(name, "(none)");
+    printf("%s\n", name);
 
-  char *buf = (char *)malloc(sizeof(char) * ARR_LEN);
-  copy(buf, "../some/path/that/is/a/bit/longer");
-  copy(name, buf);
-  printf("%s\n", name);
-  free(buf);
+    char *buf = (char *) malloc(sizeof(char) * ARR_LEN);
+    copy(buf, "../some/path/that/is/a/bit/longer");
+    copy(name, buf);
+    printf("%s\n", name);
+    free(buf);
 
-  return 0;
+    return 0;
 }

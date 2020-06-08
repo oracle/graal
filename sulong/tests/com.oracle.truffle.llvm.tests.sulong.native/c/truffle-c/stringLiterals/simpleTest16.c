@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,8 +28,8 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int main() {
-  char s[] = "asdf";
-  char s2[] = "asdf";
-  s[0] = 'X';
-  return s[0] == s2[0];
+    char s[] = "asdf";
+    char s2[] = "asdf";
+    s[0] = 'X';
+    return s[0] == s2[0];
 }

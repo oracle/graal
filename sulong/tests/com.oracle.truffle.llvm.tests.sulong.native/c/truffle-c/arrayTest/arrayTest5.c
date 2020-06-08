@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,24 +28,24 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int main() {
-  int a[1000];
-  int i;
-  for (i = 0; i < 1000; i++) {
-    a[i] = i;
-  }
+    int a[1000];
+    int i;
+    for (i = 0; i < 1000; i++) {
+        a[i] = i;
+    }
 
-  int s = 0;
+    int s = 0;
 
-  for (i = 0; i < 1000; i++) {
-    s += a[i];
-  }
+    for (i = 0; i < 1000; i++) {
+        s += a[i];
+    }
 
-  int s2 = 0;
-  int *pa = a;
+    int s2 = 0;
+    int *pa = a;
 
-  for (i = 0; i < 1000; i++) {
-    s2 += *(pa++);
-  }
+    for (i = 0; i < 1000; i++) {
+        s2 += *(pa++);
+    }
 
-  return s == s2;
+    return s == s2;
 }

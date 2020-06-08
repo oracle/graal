@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,44 +32,44 @@
 #include <stdlib.h>
 
 typedef struct liststruct {
-  int a;
-  struct liststruct *next;
+    int a;
+    struct liststruct *next;
 } List;
 
 List *createNode(int a) {
-  List *l = (List *)malloc(sizeof(List *));
-  l->a = a;
-  l->next = NULL;
-  return l;
+    List *l = (List *) malloc(sizeof(List *));
+    l->a = a;
+    l->next = NULL;
+    return l;
 }
 
 void freeList(List *l) {
-  if (l->next != NULL)
-    freeList(l->next);
-  free(l);
+    if (l->next != NULL)
+        freeList(l->next);
+    free(l);
 }
 
 void push(List **list, int a) {
-  List *newList = createNode(a);
-  newList->next = *list;
-  *list = newList;
+    List *newList = createNode(a);
+    newList->next = *list;
+    *list = newList;
 }
 
 void printList(List *list) {
-  while (list != NULL) {
-    printf("%i\n", list->a);
-    list = list->next;
-  }
+    while (list != NULL) {
+        printf("%i\n", list->a);
+        list = list->next;
+    }
 }
 
 __attribute__((constructor)) int main() {
-  List *list = createNode(0);
-  __builtin_debugtrap();
-  for (int i = 1; i < 10; i++) {
-    push(&list, i);
-  }
-  __builtin_debugtrap();
-  printList(list);
-  freeList(list);
-  return 0;
+    List *list = createNode(0);
+    __builtin_debugtrap();
+    for (int i = 1; i < 10; i++) {
+        push(&list, i);
+    }
+    __builtin_debugtrap();
+    printList(list);
+    freeList(list);
+    return 0;
 }

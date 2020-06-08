@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,18 +32,18 @@
 char a;
 
 int main() {
-  char b;
-  long c;
+    char b;
+    long c;
 
-  char *ptr = &b;
-  if ((long)&a % __alignof__(char) != 0) {
-    abort();
-  }
-  if ((long)&b % __alignof__(char) != 0) {
-    abort();
-  }
-  if ((long)&c % __alignof__(long) != 0) {
-    abort();
-  }
-  return 0;
+    char *ptr = &b;
+    if ((long) &a % __alignof__(char) != 0) {
+        abort();
+    }
+    if ((long) &b % __alignof__(char) != 0) {
+        abort();
+    }
+    if ((long) &c % __alignof__(long) != 0) {
+        abort();
+    }
+    return 0;
 }

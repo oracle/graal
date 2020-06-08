@@ -31,5 +31,5 @@
 #include <stdlib.h>
 
 bool plus(bool a, bool b) {
-  return a + b;
+    return a + b;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,11 +28,11 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int main() {
-  int a[100], b[100];
-  for (int i = 0; i < 100; i++) {
-    a[i] = a[i] + b[i];
-    __builtin_prefetch(&a[i + 1], 1, 1);
-    __builtin_prefetch(&b[i + 1], 0, 1);
-  }
-  return 0;
+    int a[100], b[100];
+    for (int i = 0; i < 100; i++) {
+        a[i] = a[i] + b[i];
+        __builtin_prefetch(&a[i + 1], 1, 1);
+        __builtin_prefetch(&b[i + 1], 0, 1);
+    }
+    return 0;
 }

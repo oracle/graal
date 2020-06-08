@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,11 +28,11 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 void func(int *ptr) {
-  *ptr = 7;
+    *ptr = 7;
 }
 
 int main() {
-  static int var;
-  func(&var);
-  return var;
+    static int var;
+    func(&var);
+    return var;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,12 +29,12 @@
  */
 
 struct test {
-  int a;
+    int a;
 };
 
 int main() {
-  struct test a;
-  int *ptr = &a.a;
-  *ptr = 5;
-  return a.a;
+    struct test a;
+    int *ptr = &a.a;
+    *ptr = 5;
+    return a.a;
 }

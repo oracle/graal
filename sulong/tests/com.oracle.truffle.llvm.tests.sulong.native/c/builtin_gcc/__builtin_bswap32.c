@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,9 +28,9 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int main() {
-  volatile int a = 0x01234567;
-  if (__builtin_bswap32(a) != 0x67452301) {
-    return 1;
-  }
-  return 0;
+    volatile int a = 0x01234567;
+    if (__builtin_bswap32(a) != 0x67452301) {
+        return 1;
+    }
+    return 0;
 }

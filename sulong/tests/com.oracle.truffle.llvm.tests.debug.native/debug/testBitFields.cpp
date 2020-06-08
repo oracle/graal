@@ -29,31 +29,31 @@
  */
 
 #define TestType(T, BITS, PACKING)                                                                                                                   \
-  struct {                                                                                                                                           \
-    T a : BITS;                                                                                                                                      \
-    T b : BITS;                                                                                                                                      \
-    T c : BITS;                                                                                                                                      \
-    T d : BITS;                                                                                                                                      \
-    T e : BITS;                                                                                                                                      \
-    T f : BITS;                                                                                                                                      \
-    T g : BITS;                                                                                                                                      \
-    T h : BITS;                                                                                                                                      \
-  } PACKING
+    struct {                                                                                                                                         \
+        T a : BITS;                                                                                                                                  \
+        T b : BITS;                                                                                                                                  \
+        T c : BITS;                                                                                                                                  \
+        T d : BITS;                                                                                                                                  \
+        T e : BITS;                                                                                                                                  \
+        T f : BITS;                                                                                                                                  \
+        T g : BITS;                                                                                                                                  \
+        T h : BITS;                                                                                                                                  \
+    } PACKING
 
 #define TestDefine(T, BITS, PACKING, NAME) TestType(T, BITS, PACKING) NAME;
 
 #define TestAssign(NAME, A, B, C, D, E, F, G, H)                                                                                                     \
-  NAME.a = A;                                                                                                                                        \
-  NAME.b = B;                                                                                                                                        \
-  NAME.c = C;                                                                                                                                        \
-  NAME.d = D;                                                                                                                                        \
-  NAME.e = E;                                                                                                                                        \
-  NAME.f = F;                                                                                                                                        \
-  NAME.g = G;                                                                                                                                        \
-  NAME.h = H;
+    NAME.a = A;                                                                                                                                      \
+    NAME.b = B;                                                                                                                                      \
+    NAME.c = C;                                                                                                                                      \
+    NAME.d = D;                                                                                                                                      \
+    NAME.e = E;                                                                                                                                      \
+    NAME.f = F;                                                                                                                                      \
+    NAME.g = G;                                                                                                                                      \
+    NAME.h = H;
 
 __attribute__((constructor)) int test() {
-  // clang-format off
+    // clang-format off
   TestDefine(unsigned int, 1, , uiBool)
   TestDefine(signed int, 1, , siBool)
   TestDefine(unsigned int, 1, __attribute__ ((packed)), uiPackedBool)
@@ -85,5 +85,5 @@ __attribute__((constructor)) int test() {
   TestAssign(siPacked48Long, 140737488355328, 1, 0, 211106232532992, 150119987579016, 18764998447377, 900719925474102, 1351079888211145)
 
   return 0;
-  // clang-format on
+    // clang-format on
 }

@@ -34,32 +34,32 @@
 #include <unistd.h>
 
 struct globals_header {
-  uint64_t size;
-  __int128 data[0]; // align to 128 bit
+    uint64_t size;
+    __int128 data[0]; // align to 128 bit
 };
 
 static uint64_t align_up(uint64_t size) {
-  long pagesize = sysconf(_SC_PAGESIZE);
-  uint64_t ret = size;
-  if (ret % pagesize != 0) {
-    ret += pagesize - ret % pagesize;
-  }
-  return ret;
+    long pagesize = sysconf(_SC_PAGESIZE);
+    uint64_t ret = size;
+    if (ret % pagesize != 0) {
+        ret += pagesize - ret % pagesize;
+    }
+    return ret;
 }
 
 void *__sulong_allocate_globals_block(uint64_t size) {
-  uint64_t finalSize = align_up(size + sizeof(struct globals_header));
-  struct globals_header *page = mmap(NULL, finalSize, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
-  page->size = finalSize;
-  return &page->data;
+    uint64_t finalSize = align_up(size + sizeof(struct globals_header));
+    struct globals_header *page = mmap(NULL, finalSize, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
+    page->size = finalSize;
+    return &page->data;
 }
 
 void __sulong_protect_readonly_globals_block(void *ptr) {
-  struct globals_header *header = (struct globals_header *)(ptr - sizeof(struct globals_header));
-  mprotect(header, header->size, PROT_READ);
+    struct globals_header *header = (struct globals_header *) (ptr - sizeof(struct globals_header));
+    mprotect(header, header->size, PROT_READ);
 }
 
 void __sulong_free_globals_block(void *ptr) {
-  struct globals_header *header = (struct globals_header *)(ptr - sizeof(struct globals_header));
-  munmap(header, header->size);
+    struct globals_header *header = (struct globals_header *) (ptr - sizeof(struct globals_header));
+    munmap(header, header->size);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,8 +28,8 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int main() {
-  unsigned long ptr = 0;
-  unsigned long out = 0;
-  __asm__("lea %1, %0" : "=r"(out) : "m"(ptr));
-  return &ptr == (unsigned long *)out;
+    unsigned long ptr = 0;
+    unsigned long out = 0;
+    __asm__("lea %1, %0" : "=r"(out) : "m"(ptr));
+    return &ptr == (unsigned long *) out;
 }

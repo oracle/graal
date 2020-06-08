@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,42 +39,42 @@ void old_style_handler_new(int signo) {
 }
 
 int main(void) {
-  struct sigaction sa = { 0 };
-  sa.sa_handler = old_style_handler_old;
-  sigemptyset(&sa.sa_mask);
-  errno = 0;
-  if (sigaction(SIGINT, &sa, NULL) != 0) {
-    if (errno != EINVAL) {
-      return 1;
+    struct sigaction sa = { 0 };
+    sa.sa_handler = old_style_handler_old;
+    sigemptyset(&sa.sa_mask);
+    errno = 0;
+    if (sigaction(SIGINT, &sa, NULL) != 0) {
+        if (errno != EINVAL) {
+            return 1;
+        }
+        return 2;
     }
-    return 2;
-  }
 
-  sa.sa_handler = old_style_handler_new;
-  struct sigaction osa = { 0 };
-  errno = 0;
-  if (sigaction(SIGINT, &sa, &osa) != 0) {
-    if (errno != EINVAL) {
-      return 3;
+    sa.sa_handler = old_style_handler_new;
+    struct sigaction osa = { 0 };
+    errno = 0;
+    if (sigaction(SIGINT, &sa, &osa) != 0) {
+        if (errno != EINVAL) {
+            return 3;
+        }
+        return 4;
     }
-    return 4;
-  }
-  if (osa.sa_handler != old_style_handler_old) {
-    return 5;
-  }
-
-  /* unset handler */
-  sa.sa_handler = NULL;
-  errno = 0;
-  if (sigaction(SIGINT, &sa, &osa) != 0) {
-    if (errno != EINVAL) {
-      return 6;
+    if (osa.sa_handler != old_style_handler_old) {
+        return 5;
     }
-    return 7;
-  }
-  if (osa.sa_handler != old_style_handler_new) {
-    return 8;
-  }
 
-  return 0;
+    /* unset handler */
+    sa.sa_handler = NULL;
+    errno = 0;
+    if (sigaction(SIGINT, &sa, &osa) != 0) {
+        if (errno != EINVAL) {
+            return 6;
+        }
+        return 7;
+    }
+    if (osa.sa_handler != old_style_handler_new) {
+        return 8;
+    }
+
+    return 0;
 }

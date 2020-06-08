@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,21 +28,21 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 void function(char t[4]) {
-  t[3] = 0;
+    t[3] = 0;
 }
 
 int sum(char t[4]) {
-  int i;
-  int sum = 0;
-  // + '\0'
-  for (i = 0; i < 5; i++) {
-    sum += t[i];
-  }
-  return sum;
+    int i;
+    int sum = 0;
+    // + '\0'
+    for (i = 0; i < 5; i++) {
+        sum += t[i];
+    }
+    return sum;
 }
 
 int main() {
-  char t[] = "asdf";
-  function(t);
-  return sum(t) % 256;
+    char t[] = "asdf";
+    function(t);
+    return sum(t) % 256;
 }

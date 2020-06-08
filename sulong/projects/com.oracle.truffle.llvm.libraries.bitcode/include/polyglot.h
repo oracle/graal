@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -590,19 +590,19 @@ polyglot_typeid __polyglot_as_typeid(void *ptr);
  * @see POLYGLOT_DECLARE_TYPE
  */
 #define __POLYGLOT_DECLARE_GENERIC_ARRAY(typedecl, typename)                                                                                         \
-  __attribute__((always_inline)) static inline polyglot_typeid polyglot_##typename##_typeid() {                                                      \
-    static typedecl __polyglot_typeid_##typename[0];                                                                                                 \
-    return __polyglot_as_typeid(__polyglot_typeid_##typename);                                                                                       \
-  }                                                                                                                                                  \
+    __attribute__((always_inline)) static inline polyglot_typeid polyglot_##typename##_typeid() {                                                    \
+        static typedecl __polyglot_typeid_##typename[0];                                                                                             \
+        return __polyglot_as_typeid(__polyglot_typeid_##typename);                                                                                   \
+    }                                                                                                                                                \
                                                                                                                                                      \
-  __attribute__((always_inline)) static inline typedecl *polyglot_as_##typename##_array(void *p) {                                                   \
-    void *ret = polyglot_as_typed(p, polyglot_array_typeid(polyglot_##typename##_typeid(), 0));                                                      \
-    return (typedecl *)ret;                                                                                                                          \
-  }                                                                                                                                                  \
+    __attribute__((always_inline)) static inline typedecl *polyglot_as_##typename##_array(void *p) {                                                 \
+        void *ret = polyglot_as_typed(p, polyglot_array_typeid(polyglot_##typename##_typeid(), 0));                                                  \
+        return (typedecl *) ret;                                                                                                                     \
+    }                                                                                                                                                \
                                                                                                                                                      \
-  __attribute__((always_inline)) static inline void *polyglot_from_##typename##_array(typedecl *arr, uint64_t len) {                                 \
-    return polyglot_from_typed(arr, polyglot_array_typeid(polyglot_##typename##_typeid(), len));                                                     \
-  }
+    __attribute__((always_inline)) static inline void *polyglot_from_##typename##_array(typedecl *arr, uint64_t len) {                               \
+        return polyglot_from_typed(arr, polyglot_array_typeid(polyglot_##typename##_typeid(), len));                                                 \
+    }
 
 __POLYGLOT_DECLARE_GENERIC_ARRAY(bool, boolean)
 __POLYGLOT_DECLARE_GENERIC_ARRAY(int8_t, i8)
@@ -619,16 +619,16 @@ __POLYGLOT_DECLARE_GENERIC_ARRAY(double, double)
  * @see POLYGLOT_DECLARE_TYPE
  */
 #define __POLYGLOT_DECLARE_GENERIC_TYPE(typedecl, typename)                                                                                          \
-  __POLYGLOT_DECLARE_GENERIC_ARRAY(typedecl, typename)                                                                                               \
+    __POLYGLOT_DECLARE_GENERIC_ARRAY(typedecl, typename)                                                                                             \
                                                                                                                                                      \
-  __attribute__((always_inline)) static inline typedecl *polyglot_as_##typename(void *p) {                                                           \
-    void *ret = polyglot_as_typed(p, polyglot_##typename##_typeid());                                                                                \
-    return (typedecl *)ret;                                                                                                                          \
-  }                                                                                                                                                  \
+    __attribute__((always_inline)) static inline typedecl *polyglot_as_##typename(void *p) {                                                         \
+        void *ret = polyglot_as_typed(p, polyglot_##typename##_typeid());                                                                            \
+        return (typedecl *) ret;                                                                                                                     \
+    }                                                                                                                                                \
                                                                                                                                                      \
-  __attribute__((always_inline)) static inline void *polyglot_from_##typename(typedecl * s) {                                                        \
-    return polyglot_from_typed(s, polyglot_##typename##_typeid());                                                                                   \
-  }
+    __attribute__((always_inline)) static inline void *polyglot_from_##typename(typedecl * s) {                                                      \
+        return polyglot_from_typed(s, polyglot_##typename##_typeid());                                                                               \
+    }
 
 /**
  * Declare polyglot conversion functions for a user-defined struct type.

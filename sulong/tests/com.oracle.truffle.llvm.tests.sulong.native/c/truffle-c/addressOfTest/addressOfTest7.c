@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,16 +30,16 @@
 int a[20] = { 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 };
 
 void swap(int *a, int *b) {
-  int t = *a;
-  *a = *b;
-  *b = t;
+    int t = *a;
+    *a = *b;
+    *b = t;
 }
 void sort(int arr[]) {
-  swap(&arr[0], &arr[1]);
+    swap(&arr[0], &arr[1]);
 }
 
 int main() {
 
-  sort(a);
-  return a[1] + 2 * a[0];
+    sort(a);
+    return a[1] + 2 * a[0];
 }

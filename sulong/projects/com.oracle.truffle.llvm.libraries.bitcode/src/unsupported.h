@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,7 +33,7 @@
 #define WARN_UNSUPPORTED(x) fprintf(stderr, "WARNING: " #x " is unsupported!\n")
 
 #define ERR_UNSUPPORTED(x)                                                                                                                           \
-  {                                                                                                                                                  \
-    fprintf(stderr, "ERROR: " #x " is unsupported!\n");                                                                                              \
-    abort();                                                                                                                                         \
-  }
+    {                                                                                                                                                \
+        fprintf(stderr, "ERROR: " #x " is unsupported!\n");                                                                                          \
+        abort();                                                                                                                                     \
+    }

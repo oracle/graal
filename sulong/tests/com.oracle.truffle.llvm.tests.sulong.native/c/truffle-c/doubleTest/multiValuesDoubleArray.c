@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,9 +28,9 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int main() {
-  double arr[3];
-  arr[0] = 1;
-  arr[1] = 2.0;
-  arr[2] = arr - arr;
-  return (int)(arr[0] + arr[1] + arr[2]);
+    double arr[3];
+    arr[0] = 1;
+    arr[1] = 2.0;
+    arr[2] = arr - arr;
+    return (int) (arr[0] + arr[1] + arr[2]);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,8 +28,8 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int main() {
-  unsigned char arg = 0x1;
-  unsigned char out = 0;
-  __asm__("rorb $1, %%al;" : "=a"(out) : "a"(arg));
-  return (out == 0x80);
+    unsigned char arg = 0x1;
+    unsigned char out = 0;
+    __asm__("rorb $1, %%al;" : "=a"(out) : "a"(arg));
+    return (out == 0x80);
 }

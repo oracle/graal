@@ -42,6 +42,6 @@
  * </pre>
  */
 int main() {
-  printf("Main\n");
-  return 0;
+    printf("Main\n");
+    return 0;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,8 +28,8 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int main() {
-  __asm__(".p2align 4");
-  __asm__(".p2align 4, 0");
-  __asm__(".p2align 4, 0, 99");
-  return 0;
+    __asm__(".p2align 4");
+    __asm__(".p2align 4, 0");
+    __asm__(".p2align 4, 0, 99");
+    return 0;
 }

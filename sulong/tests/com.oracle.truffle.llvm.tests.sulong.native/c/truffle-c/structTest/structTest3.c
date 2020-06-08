@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,13 +28,13 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 struct myStruct {
-  int *p;
-  int b;
+    int *p;
+    int b;
 };
 
 int main() {
-  struct myStruct s;
-  int a = 123;
-  s.p = &a;
-  return *(s.p);
+    struct myStruct s;
+    int a = 123;
+    s.p = &a;
+    return *(s.p);
 }

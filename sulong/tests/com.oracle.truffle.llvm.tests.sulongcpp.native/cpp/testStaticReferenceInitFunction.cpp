@@ -30,20 +30,20 @@
 #include <stdio.h>
 
 struct Klass {
-  Klass() : y(-1) {
-  }
-  int x;
-  int y;
+    Klass() : y(-1) {
+    }
+    int x;
+    int y;
 };
 
 Klass &foo(int a) {
-  static Klass k;
-  k.x = a;
-  return k;
+    static Klass k;
+    k.x = a;
+    return k;
 }
 
 static Klass &k = foo(42);
 
 int main() {
-  return k.x + k.y;
+    return k.x + k.y;
 }

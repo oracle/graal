@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,36 +30,36 @@
 #include <stdio.h>
 
 void foo() throw(int) {
-  printf("Throwing an int!");
-  throw 42;
+    printf("Throwing an int!");
+    throw 42;
 }
 
 void bar() throw() {
-  try {
-    foo();
-  } catch (...) {
-    printf("Hander in bar");
-  }
+    try {
+        foo();
+    } catch (...) {
+        printf("Hander in bar");
+    }
 }
 
 void tar() {
-  try {
-    foo();
-  } catch (int i) {
-    printf("Hander in tar");
-  }
+    try {
+        foo();
+    } catch (int i) {
+        printf("Hander in tar");
+    }
 }
 
 void car() {
-  foo();
+    foo();
 }
 
 int main() {
-  bar();
-  tar();
-  try {
-    car();
-  } catch (...) {
-    printf("Caught car exception");
-  }
+    bar();
+    tar();
+    try {
+        car();
+    } catch (...) {
+        printf("Caught car exception");
+    }
 }

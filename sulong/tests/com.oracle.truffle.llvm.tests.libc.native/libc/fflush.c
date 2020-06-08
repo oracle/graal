@@ -30,5 +30,5 @@
 #include <stdio.h>
 
 int main() {
-  fflush(stdout);
+    fflush(stdout);
 }

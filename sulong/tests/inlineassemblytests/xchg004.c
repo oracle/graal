@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,8 +28,8 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int main() {
-  unsigned int arg = 0x1234;
-  unsigned int out = 0;
-  __asm__("xchgb %%al, %%ah" : "=a"(out) : "a"(arg));
-  return (out == 0x3412);
+    unsigned int arg = 0x1234;
+    unsigned int out = 0;
+    __asm__("xchgb %%al, %%ah" : "=a"(out) : "a"(arg));
+    return (out == 0x3412);
 }

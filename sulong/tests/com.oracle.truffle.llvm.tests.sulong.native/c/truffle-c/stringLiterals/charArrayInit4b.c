@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,10 +28,10 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 struct {
-  char a;
-  char b[][4];
+    char a;
+    char b[][4];
 } a3 = { 'o', { "wx", "ab" } };
 
 int main() {
-  return (a3.b[0][0] + a3.b[0][1] + a3.b[0][2] + a3.b[1][0] + a3.b[1][1] + a3.b[1][2]) % 256;
+    return (a3.b[0][0] + a3.b[0][1] + a3.b[0][2] + a3.b[1][0] + a3.b[1][1] + a3.b[1][2]) % 256;
 }

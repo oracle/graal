@@ -30,21 +30,21 @@
 #include <stdio.h>
 
 void bar() {
-  printf("");
+    printf("");
 }
 
 void foo() {
-  bar();
-  bar();
+    bar();
+    bar();
 }
 
 __attribute__((constructor)) int start() {
-  foo();
-  foo();
-  foo();
-  foo();
-  __builtin_debugtrap();
-  foo();
-  foo();
-  return 0;
+    foo();
+    foo();
+    foo();
+    foo();
+    __builtin_debugtrap();
+    foo();
+    foo();
+    return 0;
 }

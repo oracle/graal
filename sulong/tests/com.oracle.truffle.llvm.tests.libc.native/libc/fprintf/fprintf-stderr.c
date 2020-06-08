@@ -30,5 +30,5 @@
 #include <stdio.h>
 
 int main() {
-  fprintf(stderr, "asdf %d\n", 3);
+    fprintf(stderr, "asdf %d\n", 3);
 }

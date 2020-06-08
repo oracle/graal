@@ -30,56 +30,56 @@
 #include <limits>
 
 typedef struct {
-  long double a;
-  long double b;
-  long double c;
-  long double d;
-  long double e;
-  long double f;
-  long double g;
-  long double h;
+    long double a;
+    long double b;
+    long double c;
+    long double d;
+    long double e;
+    long double f;
+    long double g;
+    long double h;
 } UnpackedStruct;
 
 typedef struct {
-  long double a;
-  long double b;
-  long double c;
-  long double d;
-  long double e;
-  long double f;
-  long double g;
-  long double h;
+    long double a;
+    long double b;
+    long double c;
+    long double d;
+    long double e;
+    long double f;
+    long double g;
+    long double h;
 } __attribute__((packed)) PackedStruct;
 
 int start() __attribute__((constructor)) {
-  long double a = 1.23L;
-  long double b = -4.56L;
-  long double c = a - b;
-  long double d = 5553.6547;
-  long double e = 0;
-  long double f = std::numeric_limits<long double>::quiet_NaN();
-  long double g = std::numeric_limits<long double>::signaling_NaN();
-  long double h = std::numeric_limits<long double>::infinity();
+    long double a = 1.23L;
+    long double b = -4.56L;
+    long double c = a - b;
+    long double d = 5553.6547;
+    long double e = 0;
+    long double f = std::numeric_limits<long double>::quiet_NaN();
+    long double g = std::numeric_limits<long double>::signaling_NaN();
+    long double h = std::numeric_limits<long double>::infinity();
 
-  UnpackedStruct us;
-  us.a = 1.23L;
-  us.b = -4.56L;
-  us.c = us.a - us.b;
-  us.d = 5553.6547;
-  us.e = 0;
-  us.f = std::numeric_limits<long double>::quiet_NaN();
-  us.g = std::numeric_limits<long double>::signaling_NaN();
-  us.h = std::numeric_limits<long double>::infinity();
+    UnpackedStruct us;
+    us.a = 1.23L;
+    us.b = -4.56L;
+    us.c = us.a - us.b;
+    us.d = 5553.6547;
+    us.e = 0;
+    us.f = std::numeric_limits<long double>::quiet_NaN();
+    us.g = std::numeric_limits<long double>::signaling_NaN();
+    us.h = std::numeric_limits<long double>::infinity();
 
-  PackedStruct ps;
-  ps.a = 1.23L;
-  ps.b = -4.56L;
-  ps.c = ps.a - ps.b;
-  ps.d = 5553.6547;
-  ps.e = 0;
-  ps.f = std::numeric_limits<long double>::quiet_NaN();
-  ps.g = std::numeric_limits<long double>::signaling_NaN();
-  ps.h = std::numeric_limits<long double>::infinity();
+    PackedStruct ps;
+    ps.a = 1.23L;
+    ps.b = -4.56L;
+    ps.c = ps.a - ps.b;
+    ps.d = 5553.6547;
+    ps.e = 0;
+    ps.f = std::numeric_limits<long double>::quiet_NaN();
+    ps.g = std::numeric_limits<long double>::signaling_NaN();
+    ps.h = std::numeric_limits<long double>::infinity();
 
-  return 0;
+    return 0;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,8 +30,8 @@
 #include <stdlib.h>
 
 int main() {
-  TYPE *test = malloc(sizeof(TYPE) * 3);
-  test[1] = 9;
-  free(test);
-  return 0;
+    TYPE *test = malloc(sizeof(TYPE) * 3);
+    test[1] = 9;
+    free(test);
+    return 0;
 }

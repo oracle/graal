@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,7 +30,7 @@
 #include <stdlib.h>
 
 int main() {
-  volatile double *d = malloc(sizeof(double));
-  *d = 324234.123125;
-  return (int)*d % 256;
+    volatile double *d = malloc(sizeof(double));
+    *d = 324234.123125;
+    return (int) *d % 256;
 }

@@ -28,5 +28,5 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int main() {
-  return 42;
+    return 42;
 }

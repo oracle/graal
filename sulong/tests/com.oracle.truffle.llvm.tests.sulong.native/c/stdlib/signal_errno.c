@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -50,14 +50,14 @@ void handler(int signo) {
 #endif
 
 int main(void) {
-  errno = 0;
-  void (*handler_p)(int) = signal(SIGRTMAX + 1, handler);
-  if (handler_p == SIG_ERR) {
-    if (errno == 0) {
-      /* errno should be EINVAL */
-      return 1;
+    errno = 0;
+    void (*handler_p)(int) = signal(SIGRTMAX + 1, handler);
+    if (handler_p == SIG_ERR) {
+        if (errno == 0) {
+            /* errno should be EINVAL */
+            return 1;
+        }
     }
-  }
 
-  return 0;
+    return 0;
 }

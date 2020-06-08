@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,18 +30,18 @@
 // Modular exponentiation
 
 int modular_pow(int base, int exponent, int modulus) {
-  int result = 1;
-  while (exponent > 0) {
-    if (exponent % 2 == 1) {
-      result = (result * base) % modulus;
+    int result = 1;
+    while (exponent > 0) {
+        if (exponent % 2 == 1) {
+            result = (result * base) % modulus;
+        }
+        exponent = exponent >> 1;
+        base = (base * base) % modulus;
+        return result;
     }
-    exponent = exponent >> 1;
-    base = (base * base) % modulus;
-    return result;
-  }
 }
 
 int main() {
-  // b = 4, e = 13, and m = 497
-  return modular_pow(4, 13, 497);
+    // b = 4, e = 13, and m = 497
+    return modular_pow(4, 13, 497);
 }

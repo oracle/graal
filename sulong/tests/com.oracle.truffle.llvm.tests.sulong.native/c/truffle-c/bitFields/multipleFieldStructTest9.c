@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,11 +28,11 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 struct test {
-  unsigned int val1 : 1;
-  unsigned int val2 : 1;
+    unsigned int val1 : 1;
+    unsigned int val2 : 1;
 };
 
 int main() {
-  struct test t = { 2, 1 };
-  return t.val2 + t.val1;
+    struct test t = { 2, 1 };
+    return t.val2 + t.val1;
 }

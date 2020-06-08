@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,10 +30,10 @@
 int arr[2] = { 1, 2 };
 
 int *foo() {
-  return arr;
+    return arr;
 }
 
 int main() {
-  int *a = foo();
-  return a[0] + a[1];
+    int *a = foo();
+    return a[0] + a[1];
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,43 +32,43 @@
 #include <math.h>
 
 struct Point {
-  int x;
-  int y;
+    int x;
+    int y;
 };
 
 struct Line {
-  struct Point start;
-  struct Point end;
+    struct Point start;
+    struct Point end;
 };
 
 void printPoint(struct Point *p) {
-  printf("Point: x=%i, y=%i", p->x, p->y);
+    printf("Point: x=%i, y=%i", p->x, p->y);
 }
 
 // on some platforms sqrt is a macro or an intrinsic
 // define a new function here so we can call it reliably from the debugger
 double mySqrt(double value) {
-  return sqrt(value);
+    return sqrt(value);
 }
 
 double getLineLength(struct Line *l) {
-  int difX = l->end.x - l->start.x;
-  int difY = l->end.y - l->start.y;
-  return sqrt(difX * difX + difY * difY);
+    int difX = l->end.x - l->start.x;
+    int difY = l->end.y - l->start.y;
+    return sqrt(difX * difX + difY * difY);
 }
 
 __attribute__((constructor)) int main() {
-  struct Point p;
-  p.x = 3;
-  p.y = 4;
-  struct Line line;
-  line.start = p;
-  line.end.x = 6;
-  line.end.y = 0;
-  line.start.x = p.x;
-  double len = getLineLength(&line);
-  __builtin_debugtrap();
-  printPoint(&p);
-  printf("Length of line: %f", len);
-  return 0;
+    struct Point p;
+    p.x = 3;
+    p.y = 4;
+    struct Line line;
+    line.start = p;
+    line.end.x = 6;
+    line.end.y = 0;
+    line.start.x = p.x;
+    double len = getLineLength(&line);
+    __builtin_debugtrap();
+    printPoint(&p);
+    printf("Length of line: %f", len);
+    return 0;
 }

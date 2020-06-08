@@ -30,15 +30,15 @@
 #include <truffle.h>
 
 typedef struct rb_io_t {
-  void *mode;
-  void *fd;
+    void *mode;
+    void *fd;
 } rb_io_t;
 
 int main() {
-  rb_io_t *managed = truffle_managed_malloc(sizeof(rb_io_t));
+    rb_io_t *managed = truffle_managed_malloc(sizeof(rb_io_t));
 
-  managed->mode = 101;
-  managed->fd = 102;
+    managed->mode = 101;
+    managed->fd = 102;
 
-  return 0;
+    return 0;
 }

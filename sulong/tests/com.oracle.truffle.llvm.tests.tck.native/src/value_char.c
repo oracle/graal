@@ -31,5 +31,5 @@
 #include <stdlib.h>
 
 char val() {
-  return 'a';
+    return 'a';
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,6 +30,6 @@
 enum test { a, b, c };
 
 int main() {
-  enum test asdf[3];
-  return sizeof(asdf);
+    enum test asdf[3];
+    return sizeof(asdf);
 }

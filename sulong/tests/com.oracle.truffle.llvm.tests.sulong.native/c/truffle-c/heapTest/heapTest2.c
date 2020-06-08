@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,12 +30,12 @@
 int a[15];
 
 int main() {
-  int i;
-  for (i = 0; i < 15; i++) {
-    a[i] = 1;
-  }
-  for (i = 0; i < 15; i++) {
-    *a += a[i];
-  }
-  return *a;
+    int i;
+    for (i = 0; i < 15; i++) {
+        a[i] = 1;
+    }
+    for (i = 0; i < 15; i++) {
+        *a += a[i];
+    }
+    return *a;
 }

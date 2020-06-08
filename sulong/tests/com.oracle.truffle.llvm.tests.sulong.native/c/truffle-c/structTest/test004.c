@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,16 +28,16 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 struct test {
-  int a;
-  int b;
+    int a;
+    int b;
 };
 
 struct b {
-  struct test first;
-  struct test second;
+    struct test first;
+    struct test second;
 };
 
 int main() {
-  struct b xxx = { { 2, 3 }, { 4, 6 } };
-  return xxx.first.a + xxx.first.b; // + xxx.second.a + xxx.second.b;
+    struct b xxx = { { 2, 3 }, { 4, 6 } };
+    return xxx.first.a + xxx.first.b; // + xxx.second.a + xxx.second.b;
 }

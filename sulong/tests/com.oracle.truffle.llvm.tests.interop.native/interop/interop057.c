@@ -30,25 +30,25 @@
 #include <polyglot.h>
 
 struct Foreign {
-  uint32_t a;
-  uint32_t b;
+    uint32_t a;
+    uint32_t b;
 };
 
 POLYGLOT_DECLARE_STRUCT(Foreign)
 
 int main() {
-  struct Foreign *foreign = polyglot_as_Foreign(polyglot_import("foreign"));
+    struct Foreign *foreign = polyglot_as_Foreign(polyglot_import("foreign"));
 
-  if (foreign->a != 0) {
-    return 100 + foreign->a;
-  }
+    if (foreign->a != 0) {
+        return 100 + foreign->a;
+    }
 
-  if (foreign->b != 1) {
-    return 200 + foreign->b;
-  }
+    if (foreign->b != 1) {
+        return 200 + foreign->b;
+    }
 
-  foreign->a = 101;
-  foreign->b = 102;
+    foreign->a = 101;
+    foreign->b = 102;
 
-  return 0;
+    return 0;
 }

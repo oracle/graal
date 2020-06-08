@@ -29,36 +29,36 @@
  */
 __attribute__((constructor)) int start() {
 
-  int j = 0;
-  int i = 0;
-  for (i = 0; i < 5; i++) {
-    __builtin_debugtrap();
-    j += i;
-    __builtin_debugtrap();
-  }
-
-  i = 0;
-  j = 0;
-  do {
-    __builtin_debugtrap();
-    j += i;
-    __builtin_debugtrap();
-    i++;
-  } while (i < 5);
-
-  i = 0;
-  j = 0;
-  for (int k = 0; k < 1; k++) {
-    __builtin_debugtrap();
-    while (i < 5) {
-      __builtin_debugtrap();
-      j += i;
-      __builtin_debugtrap();
-      i++;
+    int j = 0;
+    int i = 0;
+    for (i = 0; i < 5; i++) {
+        __builtin_debugtrap();
+        j += i;
+        __builtin_debugtrap();
     }
-    __builtin_debugtrap();
-  }
 
-  __builtin_debugtrap();
-  return j;
+    i = 0;
+    j = 0;
+    do {
+        __builtin_debugtrap();
+        j += i;
+        __builtin_debugtrap();
+        i++;
+    } while (i < 5);
+
+    i = 0;
+    j = 0;
+    for (int k = 0; k < 1; k++) {
+        __builtin_debugtrap();
+        while (i < 5) {
+            __builtin_debugtrap();
+            j += i;
+            __builtin_debugtrap();
+            i++;
+        }
+        __builtin_debugtrap();
+    }
+
+    __builtin_debugtrap();
+    return j;
 }

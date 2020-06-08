@@ -30,5 +30,5 @@
 #include <stdio.h>
 
 int main() {
-  fprintf(stdout, "%s\n", NULL);
+    fprintf(stdout, "%s\n", NULL);
 }

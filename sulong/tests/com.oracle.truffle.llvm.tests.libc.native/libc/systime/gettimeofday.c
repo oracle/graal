@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,14 +35,14 @@
 struct timeval begin, end;
 
 int main() {
-  if (gettimeofday(&begin, (struct timezone *)0)) {
-    fprintf(stderr, "can not get time\n");
-    exit(1);
-  }
-  for (volatile int i = 0; i < 10000000; i++)
-    ;
-  if (gettimeofday(&end, (struct timezone *)0)) {
-    fprintf(stderr, "can not get time\n");
-    exit(1);
-  }
+    if (gettimeofday(&begin, (struct timezone *) 0)) {
+        fprintf(stderr, "can not get time\n");
+        exit(1);
+    }
+    for (volatile int i = 0; i < 10000000; i++)
+        ;
+    if (gettimeofday(&end, (struct timezone *) 0)) {
+        fprintf(stderr, "can not get time\n");
+        exit(1);
+    }
 }

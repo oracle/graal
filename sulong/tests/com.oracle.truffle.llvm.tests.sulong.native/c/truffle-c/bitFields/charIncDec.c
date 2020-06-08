@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,34 +30,34 @@
 extern void abort(void);
 
 struct test {
-  char a : 2;
+    char a : 2;
 };
 
 int main() {
-  struct test t = { 0 };
-  if (t.a++ != 0) {
-    abort();
-  }
-  if (t.a != 1) {
-    abort();
-  }
-  if (++t.a != -2) {
-    abort();
-  }
-  if (t.a != -2) {
-    abort();
-  }
-  if (t.a-- != -2) {
-    abort();
-  }
-  if (t.a != 1) {
-    abort();
-  }
-  if (--t.a != 0) {
-    abort();
-  }
-  if (t.a != 0) {
-    abort();
-  }
-  return 0;
+    struct test t = { 0 };
+    if (t.a++ != 0) {
+        abort();
+    }
+    if (t.a != 1) {
+        abort();
+    }
+    if (++t.a != -2) {
+        abort();
+    }
+    if (t.a != -2) {
+        abort();
+    }
+    if (t.a-- != -2) {
+        abort();
+    }
+    if (t.a != 1) {
+        abort();
+    }
+    if (--t.a != 0) {
+        abort();
+    }
+    if (t.a != 0) {
+        abort();
+    }
+    return 0;
 }

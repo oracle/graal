@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,10 +30,10 @@
 #include <stdio.h>
 
 int hello() {
-  printf("Hello!\n");
-  return 0;
+    printf("Hello!\n");
+    return 0;
 }
 
 __attribute__((visibility("hidden"))) int main() {
-  return hello();
+    return hello();
 }
