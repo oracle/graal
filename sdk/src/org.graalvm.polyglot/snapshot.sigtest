@@ -114,6 +114,8 @@ meth public void close(boolean)
 meth public void enter()
 meth public void leave()
 meth public void resetLimits()
+meth public void validate(java.lang.String,java.lang.CharSequence)
+meth public void validate(org.graalvm.polyglot.Source)
 supr java.lang.Object
 hfds ALL_HOST_CLASSES,EMPTY,NO_HOST_CLASSES,UNSET_HOST_LOOKUP,impl
 
