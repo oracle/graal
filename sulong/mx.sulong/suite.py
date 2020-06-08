@@ -732,6 +732,7 @@ suite = {
       "fileExts" : [".ll"],
       "buildEnv" : {
         "OS" : "<os>",
+        "SUITE_LDFLAGS" : "-lm",
       },
       "dependencies" : [
         "SULONG_TEST",
@@ -786,6 +787,7 @@ suite = {
       "buildEnv" : {
         "OS" : "<os>",
         "CFLAGS" : "-O0",
+        "SUITE_LDFLAGS" : "-lm",
       },
       "dependencies" : [
         "SULONG_TEST",
