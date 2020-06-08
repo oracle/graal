@@ -205,6 +205,7 @@ public class ResourceLimitsTest {
             // not expected exception
             throw e;
         }
+        assertTrue(e.isResourceExhausted());
         assertTrue(e.toString(), e.isCancelled());
         assertTrue(e.getMessage(), e.getMessage().startsWith("Time resource limit"));
         try {
@@ -705,6 +706,7 @@ public class ResourceLimitsTest {
     private static void assertStatementCountLimit(Context c, PolyglotException e, int limit) {
         assertTrue(e.isCancelled());
         String expectedMessage = "Statement count limit of " + limit + " exceeded. Statements executed " + (limit + 1) + ".";
+        assertTrue(e.isResourceExhausted());
         assertEquals(expectedMessage, e.getMessage());
         assertEquals("STATEMENT", e.getSourceLocation().getCharacters());
         try {
