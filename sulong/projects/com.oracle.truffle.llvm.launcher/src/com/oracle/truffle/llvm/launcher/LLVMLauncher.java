@@ -56,7 +56,8 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
     String[] programArgs;
     File file;
     private VersionAction versionAction = VersionAction.None;
-    private boolean printToolchainPath = false;
+    private String toolchainAPI = null;
+    private String toolchainAPIArg = null;
 
     @Override
     protected void launch(Context.Builder contextBuilder) {
@@ -92,7 +93,12 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
                     versionAction = VersionAction.PrintAndExit;
                     break;
                 case "--print-toolchain-path":
-                    printToolchainPath = true;
+                    toolchainAPI = "paths";
+                    toolchainAPIArg = "PATH";
+                    break;
+                case "--toolchain-api":
+                    iterator.remove();
+                    parseToolchainAPICommandLine(option, iterator);
                     break;
                 default:
                     // options with argument
@@ -161,9 +167,35 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
         return unrecognizedOptions;
     }
 
+    private void parseToolchainAPICommandLine(String optionName, ListIterator<String> iterator) {
+        // get function
+        if (!iterator.hasNext()) {
+            throw abort("Missing argument for " + optionName);
+        }
+        String function = iterator.next();
+        // remove function
+        iterator.remove();
+        toolchainAPI = function;
+        switch (function) {
+            case "tool":
+            case "paths":
+                if (!iterator.hasNext()) {
+                    throw abort("Missing argument for " + optionName + " " + function);
+                }
+                toolchainAPIArg = iterator.next();
+                // remove arg
+                iterator.remove();
+                break;
+            case "identifier":
+                break;
+            default:
+                throw abort("Unknown function for " + optionName + ": " + function);
+        }
+    }
+
     @Override
     protected void validateArguments(Map<String, String> polyglotOptions) {
-        if (file == null && versionAction != VersionAction.PrintAndExit && !printToolchainPath) {
+        if (file == null && versionAction != VersionAction.PrintAndExit && toolchainAPI == null) {
             throw abort("No bitcode file provided.", 6);
         }
     }
@@ -180,6 +212,7 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
         printOption("--version", "print the version and exit");
         printOption("--show-version", "print the version and continue");
         printOption("--print-toolchain-path", "print the toolchain path and exit");
+        printOption("--toolchain-api identifier|tool <name>|paths <name>", "query the toolchain API and exit");
     }
 
     @Override
@@ -187,7 +220,9 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
         args.addAll(Arrays.asList(
                         "-L", "--lib",
                         "--version",
-                        "--show-version"));
+                        "--show-version",
+                        "--print-toolchain-path",
+                        "--toolchain-api"));
     }
 
     protected static void printOption(String option, String description) {
@@ -205,8 +240,8 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
         contextBuilder.arguments(getLanguageId(), programArgs);
         try (Context context = contextBuilder.build()) {
             runVersionAction(versionAction, context.getEngine());
-            if (printToolchainPath) {
-                printToolchainPath(context);
+            if (toolchainAPI != null) {
+                printToolchainAPI(context);
                 return 0;
             }
             Value library = context.eval(Source.newBuilder(getLanguageId(), file).build());
@@ -228,18 +263,33 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
         }
     }
 
-    private void printToolchainPath(Context context) {
-        Value paths = context.getBindings(getLanguageId()).getMember("toolchain_api_paths").execute("PATH");
-        if (paths == null) {
-            throw abort("Unexpected result from toolchain_api_paths intrinsic: PATH not found");
+    private void printToolchainAPI(Context context) {
+        Value bindings = context.getBindings(getLanguageId());
+        final Value result;
+        switch (toolchainAPI) {
+            case "tool":
+                result = bindings.getMember("toolchain_api_tool").execute(toolchainAPIArg);
+                break;
+            case "paths":
+                result = bindings.getMember("toolchain_api_paths").execute(toolchainAPIArg);
+                break;
+            case "identifier":
+                result = bindings.getMember("toolchain_api_identifier").execute();
+                break;
+            default:
+                // should not reach here. this should be caught by the option parser
+                throw abort("Unknown --toolchain-api function: " + toolchainAPI);
         }
-        long arraySize = paths.getArraySize();
-        if (arraySize != 1) {
-            throw abort("Unexpected result from toolchain_api_paths intrinsic: array size " + arraySize);
+        if (result.isNull()) {
+            throw abort("Unknown entry for --toolchain-api " + toolchainAPI + ": " + toolchainAPIArg);
         }
-        Value path = paths.getArrayElement(0);
-        String pathStr = path.asString();
-        System.out.println(pathStr);
+        if (result.hasArrayElements()) {
+            for (int i = 0; i < result.getArraySize(); i++) {
+                System.out.println(result.getArrayElement(i).asString());
+            }
+        } else {
+            System.out.println(result.asString());
+        }
     }
 
     private static void printStackTraceSkipTrailingHost(PolyglotException e) {
