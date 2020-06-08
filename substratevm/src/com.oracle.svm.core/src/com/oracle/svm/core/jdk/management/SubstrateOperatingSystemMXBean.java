@@ -22,19 +22,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core.jdk.management;
+
+//Checkstyle: stop
+import java.lang.management.ManagementFactory;
+
+import javax.management.ObjectName;
+
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.util.VMError;
-import java.lang.management.ManagementFactory;
-import javax.management.ObjectName;
 
-//Checkstyle: stop
 import sun.management.Util;
 //Checkstyle: resume
 
 public abstract class SubstrateOperatingSystemMXBean implements com.sun.management.OperatingSystemMXBean {
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    protected SubstrateOperatingSystemMXBean() {
+    }
 
     @Override
     public ObjectName getObjectName() {
