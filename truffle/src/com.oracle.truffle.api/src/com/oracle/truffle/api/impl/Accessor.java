@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.impl;
 
+import com.oracle.truffle.api.AbstractTruffleException;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -598,6 +599,8 @@ public abstract class Accessor {
         public abstract boolean initializeMultiContext(TruffleLanguage<?> language);
 
         public abstract boolean isTruffleStackTrace(Throwable t);
+
+        public abstract Throwable getTruffleStackTrace(AbstractTruffleException t);
 
         public abstract StackTraceElement[] getInternalStackTraceElements(Throwable t);
 

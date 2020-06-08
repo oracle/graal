@@ -118,6 +118,11 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
+        public Throwable getTruffleStackTrace(AbstractTruffleException t) {
+            return t.getLazyStackTrace();
+        }
+
+        @Override
         public StackTraceElement[] getInternalStackTraceElements(Throwable t) {
             TruffleStackTrace trace = ((TruffleStackTrace.LazyStackTrace) t).getInternalStackTrace();
             if (trace == null) {

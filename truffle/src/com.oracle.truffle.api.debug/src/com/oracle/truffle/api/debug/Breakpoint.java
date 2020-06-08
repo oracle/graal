@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.debug;
 
+import com.oracle.truffle.api.AbstractTruffleException;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.net.URI;
@@ -1197,7 +1198,7 @@ public class Breakpoint {
 
         @Override
         protected void onReturnExceptional(VirtualFrame frame, Throwable exception) {
-            if (!(exception instanceof ControlFlowException || exception instanceof ThreadDeath)) {
+            if (!(exception instanceof ControlFlowException || !AbstractTruffleException.isCatchable(exception))) {
                 onNode(frame, false, null, exception);
             }
         }
@@ -1232,7 +1233,7 @@ public class Breakpoint {
 
         @Override
         protected void onReturnExceptional(VirtualFrame frame, Throwable exception) {
-            if (!(exception instanceof ControlFlowException || exception instanceof ThreadDeath)) {
+            if (!(exception instanceof ControlFlowException || !AbstractTruffleException.isCatchable(exception))) {
                 SessionList sessions = computeUniqueActiveSessions();
                 if (sessions == null) {
                     return;

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.polyglot;
 
+import com.oracle.truffle.api.AbstractTruffleException;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -484,14 +485,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
             this.impl = impl;
             this.apiAccess = impl.polyglot.getAPIAccess();
 
-            Throwable cause = impl.exception;
-            while (cause.getCause() != null && cause.getStackTrace().length == 0) {
-                if (cause instanceof HostException) {
-                    cause = ((HostException) cause).getOriginal();
-                } else {
-                    cause = cause.getCause();
-                }
-            }
+            Throwable cause = findCause(impl.exception);
             if (EngineAccessor.LANGUAGE.isTruffleStackTrace(cause)) {
                 this.hostStack = EngineAccessor.LANGUAGE.getInternalStackTraceElements(cause);
             } else if (cause.getStackTrace() == null || cause.getStackTrace().length == 0) {
@@ -508,6 +502,24 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
                 // To mark the beginning of the stack trace and separate from the previous one
                 PrintStream out = System.out;
                 out.println();
+            }
+        }
+
+        private Throwable findCause(Throwable throwable) {
+            Throwable cause = throwable;
+            if (cause instanceof HostException) {
+                return findCause(((HostException) cause).getOriginal());
+            } else if (cause instanceof AbstractTruffleException) {
+                return EngineAccessor.LANGUAGE.getTruffleStackTrace((AbstractTruffleException) cause);
+            } else {
+                while (cause.getCause() != null && cause.getStackTrace().length == 0) {
+                    if (cause instanceof HostException) {
+                        cause = ((HostException) cause).getOriginal();
+                    } else {
+                        cause = cause.getCause();
+                    }
+                }
+                return cause;
             }
         }
 

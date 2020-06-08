@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.tck.instrumentation;
 
+import com.oracle.truffle.api.AbstractTruffleException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -149,13 +150,9 @@ public class DebugALot extends TruffleInstrument implements SuspendedCallback {
                 logThrowable(t);
             } catch (Throwable lt) {
                 lt.printStackTrace(logger);
-                if (lt instanceof ThreadDeath) {
-                    throw lt;
-                }
+                AbstractTruffleException.rethrowUnCatchable(lt);
             }
-            if (t instanceof ThreadDeath) {
-                throw t;
-            }
+            AbstractTruffleException.rethrowUnCatchable(t);
             if (failFast) {
                 error = t;
             }

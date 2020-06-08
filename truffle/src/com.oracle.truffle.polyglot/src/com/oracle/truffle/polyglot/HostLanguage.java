@@ -205,6 +205,7 @@ final class HostLanguage extends TruffleLanguage<HostContext> {
             super(message);
         }
 
+        @Override
         public Node getLocation() {
             return null;
         }

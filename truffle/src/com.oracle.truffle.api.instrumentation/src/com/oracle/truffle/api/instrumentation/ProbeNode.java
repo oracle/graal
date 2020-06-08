@@ -49,6 +49,7 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
 
+import com.oracle.truffle.api.AbstractTruffleException;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -279,8 +280,8 @@ public final class ProbeNode extends Node {
         if (exception instanceof UnwindException) {
             profileBranch(SEEN_UNWIND);
             unwind = (UnwindException) exception;
-        } else if (exception instanceof ThreadDeath) {
-            throw (ThreadDeath) exception;
+        } else {
+            AbstractTruffleException.rethrowUnCatchable(exception);
         }
         EventChainNode localChain = lazyUpdate(frame);
         if (localChain != null) {
@@ -648,10 +649,7 @@ public final class ProbeNode extends Node {
      */
     @TruffleBoundary
     static void exceptionEventForClientInstrument(EventBinding.Source<?> b, String eventName, Throwable t) {
-        if (t instanceof ThreadDeath) {
-            // Terminates guest language execution immediately
-            throw (ThreadDeath) t;
-        }
+        AbstractTruffleException.rethrowUnCatchable(t);
         final Object polyglotEngine = InstrumentAccessor.engineAccess().getCurrentPolyglotEngine();
         if (b.getInstrumenter() instanceof EngineInstrumenter || (polyglotEngine != null && InstrumentAccessor.engineAccess().isInstrumentExceptionsAreThrown(polyglotEngine))) {
             throw sthrow(RuntimeException.class, t);

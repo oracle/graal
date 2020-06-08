@@ -286,10 +286,12 @@ public class LanguageSPITest {
     @SuppressWarnings("serial")
     private static class Interrupted extends AbstractTruffleException {
 
+        @Override
         public boolean isCancelled() {
             return true;
         }
 
+        @Override
         public Node getLocation() {
             return null;
         }

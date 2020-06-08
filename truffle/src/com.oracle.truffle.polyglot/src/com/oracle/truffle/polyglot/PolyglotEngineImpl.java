@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.polyglot;
 
-import com.oracle.truffle.api.AbstractTruffleException;
 import static com.oracle.truffle.polyglot.EngineAccessor.INSTRUMENT;
 import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 
@@ -95,6 +94,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
@@ -1362,7 +1362,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     }
 
     @SuppressWarnings("serial")
-    static final class CancelExecution extends AbstractTruffleException {
+    static final class CancelExecution extends ThreadDeath implements TruffleException {
 
         private final Node location;
         private final String cancelMessage;
@@ -1374,6 +1374,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             this.resourceLimit = resourceLimit;
         }
 
+        @Override
         public Node getLocation() {
             return location;
         }
@@ -1391,6 +1392,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
             }
         }
 
+        @Override
         public boolean isCancelled() {
             return true;
         }

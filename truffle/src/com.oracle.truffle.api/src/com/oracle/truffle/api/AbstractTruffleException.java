@@ -55,44 +55,42 @@ import com.oracle.truffle.api.source.SourceSection;
  *
  *     &#64;Child private BlockNode block;
  *     &#64;Children private CatchNode[] catches;
- *     &#64;Child private BlockNode finallizer;
+ *     &#64;Child private BlockNode finalizer;
  *     &#64;Child private InteropLibrary interop = InteropLibrary.getFactory().createDispatched(5);
  *
- *     public TryCatchNode(BlockNode block, CatchNode[] catches, BlockNode finallizer) {
+ *     public TryCatchNode(BlockNode block, CatchNode[] catches, BlockNode finalizer) {
  *         this.block = block;
  *         this.catches = catches;
- *         this.finallizer = finallizer;
+ *         this.finalizer = finalizer;
  *     }
  *
  *     &#64;Override
  *     &#64;ExplodeLoop
  *     Object execute(VirtualFrame frame) {
- *         boolean runHandlers = true;
+ *         boolean runFinalization = true;
  *         try {
  *             return block.execute(frame);
- *         } catch (Exception ex) {
- *             if (ex instanceof AbstractTruffleException) {
- *                 AbstractTruffleException tex = (AbstractTruffleException) ex;
- *                 runHandlers = tex.isCatchable();
- *                 if (runHandlers && catches.length > 0) {
- *                     Object exceptionObject = tex.getExceptionObject();
- *                     if (exceptionObject != null) {
- *                         for (CatchNode catchBlock : catches) {
- *                             try {
- *                                 if (interop.isMetaInstance(catchBlock.getException(), exceptionObject)) {
- *                                     return catchBlock.execute(frame);
- *                                 }
- *                             } catch (UnsupportedMessageException um) {
- *                                 ex.addSuppressed(um);
+ *         } catch (AbstractTruffleException ex) {
+ *             AbstractTruffleException tex = (AbstractTruffleException) ex;
+ *             runFinalization = tex.isCatchable();
+ *             if (tex.isCatchable() && catches.length > 0) {
+ *                 Object exceptionObject = tex.getExceptionObject();
+ *                 if (exceptionObject != null) {
+ *                     for (CatchNode catchBlock : catches) {
+ *                         try {
+ *                             if (interop.isMetaInstance(catchBlock.getException(), exceptionObject)) {
+ *                                 return catchBlock.execute(frame);
  *                             }
+ *                         } catch (UnsupportedMessageException um) {
+ *                             ex.addSuppressed(um);
  *                         }
  *                     }
  *                 }
  *             }
  *             throw ex;
  *         } finally {
- *             if (runHandlers && finallizer != null) {
- *                 finallizer.execute(frame);
+ *             if (runFinalization && finalizer != null) {
+ *                 finalizer.execute(frame);
  *             }
  *         }
  *     }
@@ -257,6 +255,27 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
      */
     public final boolean isCatchable() {
         return !(isCancelled() || isExit());
+    }
+
+    /**
+     * Re-throws the given exception if it's a {@link ThreadDeath} or a not {@link #isCatchable()
+     * catchable} {@link AbstractTruffleException}.
+     */
+    public static void rethrowUnCatchable(Throwable t) {
+        if (t instanceof ThreadDeath) {
+            throw (ThreadDeath) t;
+        }
+        if (t instanceof AbstractTruffleException && !((AbstractTruffleException) t).isCatchable()) {
+            throw (AbstractTruffleException) t;
+        }
+    }
+
+    /**
+     * Returns {@code true} if the given exception is neither a {@link ThreadDeath} nor a non
+     * {@link #isCatchable() catchable} {@link AbstractTruffleException}.
+     */
+    public static boolean isCatchable(Throwable t) {
+        return !(t instanceof ThreadDeath || (t instanceof AbstractTruffleException && !((AbstractTruffleException) t).isCatchable()));
     }
 
     LazyStackTrace getLazyStackTrace() {

@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.api.debug;
 
-import com.oracle.truffle.api.AbstractTruffleException;
+import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
@@ -55,7 +55,7 @@ import com.oracle.truffle.api.nodes.Node;
  *
  * @since 0.12
  */
-final class KillException extends AbstractTruffleException {
+final class KillException extends ThreadDeath implements TruffleException {
     private static final long serialVersionUID = -8638020836970813894L;
     private final Node node;
 
@@ -73,10 +73,12 @@ final class KillException extends AbstractTruffleException {
         return "Execution cancelled by a debugging session.";
     }
 
+    @Override
     public Node getLocation() {
         return node;
     }
 
+    @Override
     public boolean isCancelled() {
         return true;
     }
