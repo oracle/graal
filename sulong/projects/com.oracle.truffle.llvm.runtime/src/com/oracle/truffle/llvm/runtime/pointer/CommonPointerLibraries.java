@@ -63,6 +63,7 @@ abstract class CommonPointerLibraries {
 
     @ExportMessage
     static boolean hasMembers(LLVMPointerImpl receiver) {
+        // check for Clazz is not needed, since Clazz inherits from Struct
         return receiver.getExportType() instanceof LLVMInteropType.Struct;
     }
 
@@ -74,7 +75,10 @@ abstract class CommonPointerLibraries {
     @ExportMessage
     static Object getMembers(LLVMPointerImpl receiver, boolean includeInternal,
                     @Shared("isObject") @Cached ConditionProfile isObject) throws UnsupportedMessageException {
-        if (isObject.profile(receiver.getExportType() instanceof LLVMInteropType.Struct)) {
+        if (isObject.profile(receiver.getExportType() instanceof LLVMInteropType.Clazz)) {
+            LLVMInteropType.Clazz clazz = (LLVMInteropType.Clazz) receiver.getExportType();
+            return new ClassKeys(clazz);
+        } else if (isObject.profile(receiver.getExportType() instanceof LLVMInteropType.Struct)) {
             LLVMInteropType.Struct struct = (LLVMInteropType.Struct) receiver.getExportType();
             return new Keys(struct);
         } else {
@@ -85,7 +89,15 @@ abstract class CommonPointerLibraries {
     @ExportMessage
     static boolean isMemberReadable(LLVMPointerImpl receiver, String ident,
                     @Shared("isObject") @Cached ConditionProfile isObject) {
-        if (isObject.profile(receiver.getExportType() instanceof LLVMInteropType.Struct)) {
+        if (isObject.profile(receiver.getExportType() instanceof LLVMInteropType.Clazz)) {
+            LLVMInteropType.Clazz clazz = (LLVMInteropType.Clazz) receiver.getExportType();
+            LLVMInteropType.StructMember member = clazz.findMember(ident);
+            if (member == null) {
+                LLVMInteropType.Method method = clazz.findMethod(ident);
+                return method != null;
+            }
+            return member != null;
+        } else if (isObject.profile(receiver.getExportType() instanceof LLVMInteropType.Struct)) {
             LLVMInteropType.Struct struct = (LLVMInteropType.Struct) receiver.getExportType();
             LLVMInteropType.StructMember member = struct.findMember(ident);
             return member != null;
@@ -106,6 +118,10 @@ abstract class CommonPointerLibraries {
     static boolean isMemberModifiable(LLVMPointerImpl receiver, String ident,
                     @Shared("isObject") @Cached ConditionProfile isObject) {
         if (isObject.profile(receiver.getExportType() instanceof LLVMInteropType.Struct)) {
+            /*
+             * check for Clazz is not needed, since Clazz inherits from Struct, and methods
+             * (=currently the only difference between Clazz and Struct) are not modifiable
+             */
             LLVMInteropType.Struct struct = (LLVMInteropType.Struct) receiver.getExportType();
             LLVMInteropType.StructMember member = struct.findMember(ident);
             if (member == null) {
@@ -236,6 +252,46 @@ abstract class CommonPointerLibraries {
                         @Cached BranchProfile exception) throws InvalidArrayIndexException {
             try {
                 return type.getMember((int) idx).name;
+            } catch (IndexOutOfBoundsException ex) {
+                exception.enter();
+                throw InvalidArrayIndexException.create(idx);
+            }
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    public static final class ClassKeys implements TruffleObject {
+        private final LLVMInteropType.Clazz type;
+
+        private ClassKeys(LLVMInteropType.Clazz type) {
+            this.type = type;
+        }
+
+        @ExportMessage
+        boolean hasArrayElements() {
+            return true;
+        }
+
+        @ExportMessage
+        long getArraySize() {
+            return type.getMemberCount() + type.getMethodCount();
+        }
+
+        @ExportMessage
+        boolean isArrayElementReadable(long idx) {
+            return Long.compareUnsigned(idx, getArraySize()) < 0;
+        }
+
+        @ExportMessage
+        Object readArrayElement(long idx,
+                        @Cached BranchProfile exception) throws InvalidArrayIndexException {
+            try {
+                int index = (int) idx;
+                if (index < type.getMemberCount()) {
+                    return type.getMember(index).getName();
+                } else {
+                    return type.getMethod(index - type.getMemberCount());
+                }
             } catch (IndexOutOfBoundsException ex) {
                 exception.enter();
                 throw InvalidArrayIndexException.create(idx);

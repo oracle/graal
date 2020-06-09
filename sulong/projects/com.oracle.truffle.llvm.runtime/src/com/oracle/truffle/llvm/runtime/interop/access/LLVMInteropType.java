@@ -257,19 +257,31 @@ public abstract class LLVMInteropType implements TruffleObject {
 
     public static final class Clazz extends Struct {
 
-        @CompilationFinal(dimensions = 1) final Function[] methods;
+        @CompilationFinal(dimensions = 1) final Method[] methods;
 
-        Clazz(String name, StructMember[] members, Function[] methods, long size) {
+        Clazz(String name, StructMember[] members, Method[] methods, long size) {
             super(name, members, size);
             this.methods = methods;
         }
 
-        public Function getMethod(int i) {
+        public Method getMethod(int i) {
             return methods[i];
         }
 
         public int getMethodCount() {
             return methods.length;
+        }
+
+        @TruffleBoundary
+        public Method findMethod(String memberName) {
+            for (Method method : methods) {
+                if (method.getName().equals(memberName)) {
+                    return method;
+                } else if (method.getLinkageName().equals(memberName)) {
+                    return method;
+                }
+            }
+            return null;
         }
 
     }
@@ -297,7 +309,7 @@ public abstract class LLVMInteropType implements TruffleObject {
 
     }
 
-    public static final class Function extends Structured {
+    public static class Function extends Structured {
         final LLVMInteropType returnType;
         @CompilationFinal(dimensions = 1) final LLVMInteropType[] parameterTypes;
 
@@ -328,6 +340,44 @@ public abstract class LLVMInteropType implements TruffleObject {
 
         public int getNumberOfParameters() {
             return parameterTypes.length;
+        }
+    }
+
+    public static final class Method extends Function {
+
+        private final Clazz clazz;
+        private final String name;
+        private final String linkageName;
+
+        Method(Clazz clazz, String name, String linkageName, InteropTypeRegistry.Register returnType, LLVMInteropType[] parameterTypes) {
+            super(returnType, parameterTypes);
+            this.clazz = clazz;
+            this.name = name;
+            this.linkageName = linkageName;
+
+        }
+
+        public Clazz getObjectClass() {
+            return clazz;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public String getLinkageName() {
+            return linkageName;
+        }
+
+        @Override
+        @TruffleBoundary
+        protected String toString(EconomicSet<LLVMInteropType> visited) {
+            if (visited.contains(this)) {
+                return "<recursive function type>";
+            }
+            visited.add(this);
+            return String.format("%s %s(%s)", returnType == null ? "void" : returnType.toString(visited), name,
+                            Arrays.stream(parameterTypes).map(t -> t == null ? "<null>" : t.toString(visited)).collect(Collectors.joining(", ")));
         }
     }
 
@@ -400,10 +450,10 @@ public abstract class LLVMInteropType implements TruffleObject {
         private Structured convertStructured(LLVMSourceType type) {
             if (type instanceof LLVMSourceArrayLikeType) {
                 return convertArray((LLVMSourceArrayLikeType) type);
-            } else if (type instanceof LLVMSourceStructLikeType) {
-                return convertStruct((LLVMSourceStructLikeType) type);
             } else if (type instanceof LLVMSourceClassLikeType) {
                 return convertClass((LLVMSourceClassLikeType) type);
+            } else if (type instanceof LLVMSourceStructLikeType) {
+                return convertStruct((LLVMSourceStructLikeType) type);
             } else if (type instanceof LLVMSourceFunctionType) {
                 return convertFunction((LLVMSourceFunctionType) type);
             } else {
@@ -430,7 +480,7 @@ public abstract class LLVMInteropType implements TruffleObject {
         }
 
         private Clazz convertClass(LLVMSourceClassLikeType type) {
-            Clazz ret = new Clazz(type.getName(), new StructMember[type.getDynamicElementCount()], new Function[type.getMethodCount()], type.getSize() / 8);
+            Clazz ret = new Clazz(type.getName(), new StructMember[type.getDynamicElementCount()], new Method[type.getMethodCount()], type.getSize() / 8);
             typeCache.put(type, ret);
             for (int i = 0; i < ret.members.length; i++) {
                 LLVMSourceMemberType member = type.getDynamicElement(i);
@@ -440,7 +490,7 @@ public abstract class LLVMInteropType implements TruffleObject {
                 ret.members[i] = new StructMember(ret, member.getName(), startOffset, endOffset, get(memberType));
             }
             for (int i = 0; i < ret.methods.length; i++) {
-                ret.methods[i] = convertFunction(type.getMethod(i));
+                ret.methods[i] = convertMethod(type.getMethodName(i), type.getMethodLinkageName(i), type.getMethod(i), ret);
             }
             return ret;
         }
@@ -454,6 +504,17 @@ public abstract class LLVMInteropType implements TruffleObject {
                 interopParameterTypes[i] = get(parameterTypes.get(i));
             }
             return interopFunctionType;
+        }
+
+        private Method convertMethod(String name, String linkageName, LLVMSourceFunctionType functionType, Clazz clazz) {
+            List<LLVMSourceType> parameterTypes = functionType.getParameterTypes();
+            LLVMInteropType[] interopParameterTypes = new LLVMInteropType[parameterTypes.size()];
+            Method interopMethodType = new Method(clazz, name, linkageName, new Register(functionType, functionType.getReturnType()), interopParameterTypes);
+            typeCache.put(functionType, interopMethodType);
+            for (int i = 0; i < interopParameterTypes.length; i++) {
+                interopParameterTypes[i] = get(parameterTypes.get(i));
+            }
+            return interopMethodType;// TODO (pichristoph) call convertFunction
         }
 
         private static Value convertBasic(LLVMSourceBasicType type) {
