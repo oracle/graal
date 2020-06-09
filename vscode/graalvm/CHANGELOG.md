@@ -1,7 +1,10 @@
 # Change Log
 
+## Version 0.0.9
+* Bug fixes
+
 ## Version 0.0.8
-* Support Python, R, and Ruby languages added
+* Support Python, R, and Ruby languages merged from their separate extensions
 * Code coverage support added
 
 ## Version 0.0.7

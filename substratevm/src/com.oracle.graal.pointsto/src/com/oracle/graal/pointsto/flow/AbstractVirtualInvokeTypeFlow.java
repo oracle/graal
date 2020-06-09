@@ -31,8 +31,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
-import org.graalvm.compiler.nodes.Invoke;
-
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -59,9 +57,9 @@ public abstract class AbstractVirtualInvokeTypeFlow extends InvokeTypeFlow {
      */
     @SuppressWarnings("unused") protected volatile Object invokeLocations;
 
-    protected AbstractVirtualInvokeTypeFlow(Invoke invoke, AnalysisType receiverType, AnalysisMethod targetMethod,
+    protected AbstractVirtualInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, AnalysisMethod targetMethod,
                     TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
-        super(invoke, receiverType, targetMethod, actualParameters, actualReturn, location);
+        super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
     }
 
     protected AbstractVirtualInvokeTypeFlow(BigBang bb, MethodFlowsGraph methodFlows, AbstractVirtualInvokeTypeFlow original) {

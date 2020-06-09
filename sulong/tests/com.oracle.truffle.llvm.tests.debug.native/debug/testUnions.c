@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -54,7 +54,7 @@ union doubleUnion {
 union pointerUnion {
     short a;
     int b;
-    int* c;
+    int *c;
 };
 
 union simpleUnion myGlobalSimpleUnion;
@@ -62,8 +62,7 @@ union floatUnion myGlobalFloatUnion;
 union doubleUnion myGlobalDoubleUnion;
 union pointerUnion myGlobalPointerUnion;
 
-int start() __attribute__((constructor))
-{
+int start() __attribute__((constructor)) {
     myGlobalSimpleUnion.a = 1 << 4;
     myGlobalSimpleUnion.b = 1 << 5;
     myGlobalSimpleUnion.c = 1 << 9;

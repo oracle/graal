@@ -64,6 +64,7 @@ import org.graalvm.polyglot.proxy.Proxy;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.polyglot.PolyglotEngineImpl.CancelExecution;
 
 final class PolyglotExceptionImpl extends AbstractExceptionImpl {
 
@@ -77,6 +78,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
     final PolyglotEngineImpl engine;
     final PolyglotContextImpl context;
     final Throwable exception;
+    final boolean showInternalStackFrames;
     private final List<TruffleStackTraceElement> guestFrames;
 
     private StackTraceElement[] javaStackTrace;
@@ -88,6 +90,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
     private final boolean exit;
     private final boolean incompleteSource;
     private final boolean syntaxError;
+    private final boolean resourceLimit;
     private final int exitStatus;
     private final Value guestObject;
     private final String message;
@@ -114,6 +117,8 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
         this.context = (languageContext != null) ? languageContext.context : null;
         this.exception = original;
         this.guestFrames = TruffleStackTrace.getStackTrace(original);
+        this.showInternalStackFrames = engine == null ? false : engine.engineOptionValues.get(PolyglotEngineOptions.ShowInternalStackFrames);
+        this.resourceLimit = isResourceLimit(exception);
 
         if (exception instanceof TruffleException) {
             TruffleException truffleException = (TruffleException) exception;
@@ -156,7 +161,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
             }
         } else {
             this.cancelled = false;
-            this.internal = true;
+            this.internal = !resourceLimit;
             this.syntaxError = false;
             this.incompleteSource = false;
             this.exit = false;
@@ -177,6 +182,19 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
         // late materialization of host frames. only needed if polyglot exceptions cross the
         // host boundary.
         EngineAccessor.LANGUAGE.materializeHostFrames(original);
+    }
+
+    private static boolean isResourceLimit(Throwable e) {
+        if (e instanceof CancelExecution) {
+            return true;
+        }
+        Throwable toCheck;
+        if (e instanceof HostException) {
+            toCheck = ((HostException) e).getOriginal();
+        } else {
+            toCheck = e;
+        }
+        return toCheck instanceof StackOverflowError || toCheck instanceof OutOfMemoryError;
     }
 
     @Override
@@ -200,6 +218,11 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
     @Override
     public void onCreate(PolyglotException instance) {
         this.impl = instance;
+    }
+
+    @Override
+    public boolean isResourceExhausted() {
+        return resourceLimit;
     }
 
     @Override

@@ -84,6 +84,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractStackFrameImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
 import org.graalvm.polyglot.io.ByteSequence;
+import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.management.ExecutionEvent;
 
@@ -889,6 +890,11 @@ public final class Engine implements AutoCloseable {
 
         @Override
         public Value asValue(Object o) {
+            throw noPolyglotImplementationFound();
+        }
+
+        @Override
+        public FileSystem newDefaultFileSystem() {
             throw noPolyglotImplementationFound();
         }
 

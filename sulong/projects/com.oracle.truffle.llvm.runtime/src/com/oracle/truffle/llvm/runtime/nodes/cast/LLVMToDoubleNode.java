@@ -204,6 +204,11 @@ public abstract class LLVMToDoubleNode extends LLVMExpressionNode {
         }
 
         @Specialization
+        protected double doFloat(float from) {
+            return from;
+        }
+
+        @Specialization
         protected double doI1Vector(LLVMI1Vector from) {
             long raw = LLVMBitcastToI64Node.castI1Vector(from, Long.SIZE);
             return Double.longBitsToDouble(raw);

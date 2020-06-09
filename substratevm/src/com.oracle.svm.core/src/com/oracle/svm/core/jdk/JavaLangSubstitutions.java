@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2007, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,6 +58,7 @@ import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CLibrary;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -392,90 +394,179 @@ final class Target_java_lang_System {
 }
 
 @TargetClass(java.lang.StrictMath.class)
-@CLibrary(value = "strictmath", requireStatic = true)
 final class Target_java_lang_StrictMath {
+
+    @Substitute
+    private static double sin(double a) {
+        return StrictMathInvoker.sin(WordFactory.nullPointer(), WordFactory.nullPointer(), a);
+    }
+
+    @Substitute
+    private static double cos(double a) {
+        return StrictMathInvoker.cos(WordFactory.nullPointer(), WordFactory.nullPointer(), a);
+    }
+
+    @Substitute
+    private static double tan(double a) {
+        return StrictMathInvoker.tan(WordFactory.nullPointer(), WordFactory.nullPointer(), a);
+    }
+
+    @Substitute
+    private static double asin(double a) {
+        return StrictMathInvoker.asin(WordFactory.nullPointer(), WordFactory.nullPointer(), a);
+    }
+
+    @Substitute
+    private static double acos(double a) {
+        return StrictMathInvoker.acos(WordFactory.nullPointer(), WordFactory.nullPointer(), a);
+    }
+
+    @Substitute
+    private static double atan(double a) {
+        return StrictMathInvoker.atan(WordFactory.nullPointer(), WordFactory.nullPointer(), a);
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
+    private static double exp(double a) {
+        return StrictMathInvoker.exp(WordFactory.nullPointer(), WordFactory.nullPointer(), a);
+    }
+
+    @Substitute
+    private static double log(double a) {
+        return StrictMathInvoker.log(WordFactory.nullPointer(), WordFactory.nullPointer(), a);
+    }
+
+    @Substitute
+    private static double log10(double a) {
+        return StrictMathInvoker.log10(WordFactory.nullPointer(), WordFactory.nullPointer(), a);
+    }
+
+    @Substitute
+    private static double sqrt(double a) {
+        return StrictMathInvoker.sqrt(WordFactory.nullPointer(), WordFactory.nullPointer(), a);
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
+    private static double cbrt(double a) {
+        return StrictMathInvoker.cbrt(WordFactory.nullPointer(), WordFactory.nullPointer(), a);
+    }
+
     // Checkstyle: stop
-
     @Substitute
-    @CFunction(value = "StrictMath_sin", transition = CFunction.Transition.NO_TRANSITION)
-    private static native double sin(double a);
-
-    @Substitute
-    @CFunction(value = "StrictMath_cos", transition = CFunction.Transition.NO_TRANSITION)
-    private static native double cos(double a);
-
-    @Substitute
-    @CFunction(value = "StrictMath_tan", transition = CFunction.Transition.NO_TRANSITION)
-    private static native double tan(double a);
-
-    @Substitute
-    @CFunction(value = "StrictMath_asin", transition = CFunction.Transition.NO_TRANSITION)
-    private static native double asin(double a);
-
-    @Substitute
-    @CFunction(value = "StrictMath_acos", transition = CFunction.Transition.NO_TRANSITION)
-    private static native double acos(double a);
-
-    @Substitute
-    @CFunction(value = "StrictMath_atan", transition = CFunction.Transition.NO_TRANSITION)
-    private static native double atan(double a);
-
-    @Substitute
-    @CFunction(value = "StrictMath_exp", transition = CFunction.Transition.NO_TRANSITION)
-    private static native double exp(double a);
-
-    @Substitute
-    @CFunction(value = "StrictMath_log", transition = CFunction.Transition.NO_TRANSITION)
-    private static native double log(double a);
-
-    @Substitute
-    @CFunction(value = "StrictMath_log10", transition = CFunction.Transition.NO_TRANSITION)
-    private static native double log10(double a);
-
-    @Substitute
-    @CFunction(value = "StrictMath_sqrt", transition = CFunction.Transition.NO_TRANSITION)
-    private static native double sqrt(double a);
-
-    @Substitute
-    @CFunction(value = "StrictMath_cbrt", transition = CFunction.Transition.NO_TRANSITION)
-    private static native double cbrt(double a);
-
-    @Substitute
-    @CFunction(value = "StrictMath_IEEEremainder", transition = CFunction.Transition.NO_TRANSITION)
-    private static native double IEEEremainder(double f1, double f2);
-
-    @Substitute
-    @CFunction(value = "StrictMath_atan2", transition = CFunction.Transition.NO_TRANSITION)
-    private static native double atan2(double y, double x);
-
-    @Substitute
-    @CFunction(value = "StrictMath_pow", transition = CFunction.Transition.NO_TRANSITION)
-    private static native double pow(double a, double b);
-
-    @Substitute
-    @CFunction(value = "StrictMath_sinh", transition = CFunction.Transition.NO_TRANSITION)
-    private static native double sinh(double x);
-
-    @Substitute
-    @CFunction(value = "StrictMath_cosh", transition = CFunction.Transition.NO_TRANSITION)
-    private static native double cosh(double x);
-
-    @Substitute
-    @CFunction(value = "StrictMath_tanh", transition = CFunction.Transition.NO_TRANSITION)
-    private static native double tanh(double x);
-
-    @Substitute
-    @CFunction(value = "StrictMath_hypot", transition = CFunction.Transition.NO_TRANSITION)
-    private static native double hypot(double x, double y);
-
-    @Substitute
-    @CFunction(value = "StrictMath_expm1", transition = CFunction.Transition.NO_TRANSITION)
-    private static native double expm1(double x);
-
-    @Substitute
-    @CFunction(value = "StrictMath_log1p", transition = CFunction.Transition.NO_TRANSITION)
-    private static native double log1p(double x);
+    private static double IEEEremainder(double f1, double f2) {
+        return StrictMathInvoker.IEEEremainder(WordFactory.nullPointer(), WordFactory.nullPointer(), f1, f2);
+    }
     // Checkstyle: resume
+
+    @Substitute
+    private static double atan2(double y, double x) {
+        return StrictMathInvoker.atan2(WordFactory.nullPointer(), WordFactory.nullPointer(), y, x);
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
+    private static double pow(double a, double b) {
+        return StrictMathInvoker.pow(WordFactory.nullPointer(), WordFactory.nullPointer(), a, b);
+    }
+
+    @Substitute
+    private static double sinh(double x) {
+        return StrictMathInvoker.sinh(WordFactory.nullPointer(), WordFactory.nullPointer(), x);
+    }
+
+    @Substitute
+    private static double cosh(double x) {
+        return StrictMathInvoker.cosh(WordFactory.nullPointer(), WordFactory.nullPointer(), x);
+    }
+
+    @Substitute
+    private static double tanh(double x) {
+        return StrictMathInvoker.tanh(WordFactory.nullPointer(), WordFactory.nullPointer(), x);
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK8OrEarlier.class)
+    private static double hypot(double x, double y) {
+        return StrictMathInvoker.hypot(WordFactory.nullPointer(), WordFactory.nullPointer(), x, y);
+    }
+
+    @Substitute
+    private static double expm1(double x) {
+        return StrictMathInvoker.expm1(WordFactory.nullPointer(), WordFactory.nullPointer(), x);
+    }
+
+    @Substitute
+    private static double log1p(double x) {
+        return StrictMathInvoker.log1p(WordFactory.nullPointer(), WordFactory.nullPointer(), x);
+    }
+}
+
+@CLibrary(value = "java", requireStatic = true, dependsOn = "fdlibm")
+final class StrictMathInvoker {
+
+    @CFunction(value = "Java_java_lang_StrictMath_sin", transition = CFunction.Transition.NO_TRANSITION)
+    static native double sin(WordBase jnienv, WordBase clazz, double a);
+
+    @CFunction(value = "Java_java_lang_StrictMath_cos", transition = CFunction.Transition.NO_TRANSITION)
+    static native double cos(WordBase jnienv, WordBase clazz, double a);
+
+    @CFunction(value = "Java_java_lang_StrictMath_tan", transition = CFunction.Transition.NO_TRANSITION)
+    static native double tan(WordBase jnienv, WordBase clazz, double a);
+
+    @CFunction(value = "Java_java_lang_StrictMath_asin", transition = CFunction.Transition.NO_TRANSITION)
+    static native double asin(WordBase jnienv, WordBase clazz, double a);
+
+    @CFunction(value = "Java_java_lang_StrictMath_acos", transition = CFunction.Transition.NO_TRANSITION)
+    static native double acos(WordBase jnienv, WordBase clazz, double a);
+
+    @CFunction(value = "Java_java_lang_StrictMath_atan", transition = CFunction.Transition.NO_TRANSITION)
+    static native double atan(WordBase jnienv, WordBase clazz, double a);
+
+    @CFunction(value = "Java_java_lang_StrictMath_exp", transition = CFunction.Transition.NO_TRANSITION)
+    static native double exp(WordBase jnienv, WordBase clazz, double a);
+
+    @CFunction(value = "Java_java_lang_StrictMath_log", transition = CFunction.Transition.NO_TRANSITION)
+    static native double log(WordBase jnienv, WordBase clazz, double a);
+
+    @CFunction(value = "Java_java_lang_StrictMath_log10", transition = CFunction.Transition.NO_TRANSITION)
+    static native double log10(WordBase jnienv, WordBase clazz, double a);
+
+    @CFunction(value = "Java_java_lang_StrictMath_sqrt", transition = CFunction.Transition.NO_TRANSITION)
+    static native double sqrt(WordBase jnienv, WordBase clazz, double a);
+
+    @CFunction(value = "Java_java_lang_StrictMath_cbrt", transition = CFunction.Transition.NO_TRANSITION)
+    static native double cbrt(WordBase jnienv, WordBase clazz, double a);
+
+    // Checkstyle: stop
+    @CFunction(value = "Java_java_lang_StrictMath_IEEEremainder", transition = CFunction.Transition.NO_TRANSITION)
+    static native double IEEEremainder(WordBase jnienv, WordBase clazz, double f1, double f2);
+    // Checkstyle: resume
+
+    @CFunction(value = "Java_java_lang_StrictMath_atan2", transition = CFunction.Transition.NO_TRANSITION)
+    static native double atan2(WordBase jnienv, WordBase clazz, double y, double x);
+
+    @CFunction(value = "Java_java_lang_StrictMath_pow", transition = CFunction.Transition.NO_TRANSITION)
+    static native double pow(WordBase jnienv, WordBase clazz, double a, double b);
+
+    @CFunction(value = "Java_java_lang_StrictMath_sinh", transition = CFunction.Transition.NO_TRANSITION)
+    static native double sinh(WordBase jnienv, WordBase clazz, double x);
+
+    @CFunction(value = "Java_java_lang_StrictMath_cosh", transition = CFunction.Transition.NO_TRANSITION)
+    static native double cosh(WordBase jnienv, WordBase clazz, double x);
+
+    @CFunction(value = "Java_java_lang_StrictMath_tanh", transition = CFunction.Transition.NO_TRANSITION)
+    static native double tanh(WordBase jnienv, WordBase clazz, double x);
+
+    @CFunction(value = "Java_java_lang_StrictMath_hypot", transition = CFunction.Transition.NO_TRANSITION)
+    static native double hypot(WordBase jnienv, WordBase clazz, double x, double y);
+
+    @CFunction(value = "Java_java_lang_StrictMath_expm1", transition = CFunction.Transition.NO_TRANSITION)
+    static native double expm1(WordBase jnienv, WordBase clazz, double x);
+
+    @CFunction(value = "Java_java_lang_StrictMath_log1p", transition = CFunction.Transition.NO_TRANSITION)
+    static native double log1p(WordBase jnienv, WordBase clazz, double x);
 }
 
 /**

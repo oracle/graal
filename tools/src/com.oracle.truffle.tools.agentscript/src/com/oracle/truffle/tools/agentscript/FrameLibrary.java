@@ -31,6 +31,8 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
@@ -91,6 +93,21 @@ public abstract class FrameLibrary extends Library {
                     Query env,
                     String member) throws UnknownIdentifierException {
         return getUncached().readMember(env, member);
+    }
+
+    /**
+     * Assigns new value to an existing local variable.
+     * 
+     * @param env location, environment, etc. to read values from
+     * @param member the name of the variable to modify
+     * @param value new value for the variable
+     * @throws com.oracle.truffle.api.interop.UnknownIdentifierException if the variable doesn't
+     *             exist
+     * @throws com.oracle.truffle.api.interop.UnsupportedTypeException if the type isn't appropriate
+     * @since 20.1
+     */
+    public void writeMember(Query env, String member, Object value) throws UnknownIdentifierException, UnsupportedTypeException {
+        getUncached().writeMember(env, member, value);
     }
 
     /**
@@ -188,6 +205,24 @@ public abstract class FrameLibrary extends Library {
 
         @CompilerDirectives.TruffleBoundary
         @Override
+        public void writeMember(Query env, String member, Object value) throws UnknownIdentifierException, UnsupportedTypeException {
+            InteropLibrary iop = InteropLibrary.getFactory().getUncached();
+            for (Scope scope : env.findLocalScopes()) {
+                if (scope == null) {
+                    continue;
+                }
+                if (writeMemberImpl(member, value, scope.getVariables(), iop)) {
+                    return;
+                }
+                if (writeMemberImpl(member, value, scope.getArguments(), iop)) {
+                    return;
+                }
+            }
+            throw UnknownIdentifierException.create(member);
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        @Override
         public void collectNames(Query env, Set<String> names) throws InteropException {
             InteropLibrary iop = InteropLibrary.getFactory().getUncached();
             for (Scope scope : env.findLocalScopes()) {
@@ -217,6 +252,18 @@ public abstract class FrameLibrary extends Library {
                 }
             }
             return null;
+        }
+
+        static boolean writeMemberImpl(String name, Object value, Object map, InteropLibrary iop) throws UnknownIdentifierException, UnsupportedTypeException {
+            if (map != null && iop.hasMembers(map)) {
+                try {
+                    iop.writeMember(map, name, value);
+                    return true;
+                } catch (UnsupportedMessageException ex) {
+                    return false;
+                }
+            }
+            return false;
         }
 
         static void readMemberNames(Set<String> names, Object map, InteropLibrary iop) throws InteropException {

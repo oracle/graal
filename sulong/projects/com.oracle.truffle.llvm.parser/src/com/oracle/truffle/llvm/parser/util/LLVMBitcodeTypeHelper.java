@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,15 +31,16 @@ package com.oracle.truffle.llvm.parser.util;
 
 import com.oracle.truffle.llvm.parser.model.enums.BinaryOperator;
 import com.oracle.truffle.llvm.parser.model.enums.CastOperator;
+import com.oracle.truffle.llvm.parser.model.enums.UnaryOperator;
 import com.oracle.truffle.llvm.runtime.ArithmeticOperation;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
+import com.oracle.truffle.llvm.runtime.UnaryOperation;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class LLVMBitcodeTypeHelper {
-
     public static LLVMExpressionNode createArithmeticInstruction(LLVMExpressionNode lhs, LLVMExpressionNode rhs, BinaryOperator operator, Type type, NodeFactory nodeFactory) {
         return nodeFactory.createArithmeticOp(getArithmeticOperation(operator), type, lhs, rhs);
     }
@@ -102,6 +103,19 @@ public final class LLVMBitcodeTypeHelper {
                 // Note: managed is not avaliable for expression debugging.
                 return nodeFactory.createBitcast(fromNode, targetType, fromType);
             case ADDRESS_SPACE_CAST:
+            default:
+                return null;
+        }
+    }
+
+    public static LLVMExpressionNode createUnaryInstruction(LLVMExpressionNode operand, UnaryOperator operator, Type type, NodeFactory nodeFactory) {
+        return nodeFactory.createUnaryOp(getUnaryOperation(operator), type, operand);
+    }
+
+    private static UnaryOperation getUnaryOperation(UnaryOperator operator) {
+        switch (operator) {
+            case FP_NEG:
+                return UnaryOperation.NEG;
             default:
                 return null;
         }

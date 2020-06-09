@@ -129,7 +129,7 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
             return null;
         }
         RootNode targetRoot = frame.getTarget().getRootNode();
-        if (targetRoot.isInternal()) {
+        if (targetRoot.isInternal() && !exception.showInternalStackFrames) {
             return null;
         }
 

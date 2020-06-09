@@ -68,6 +68,7 @@ import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
 import org.graalvm.compiler.nodes.calc.IntegerNormalizeCompareNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
+import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.extended.UnboxNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
@@ -1029,6 +1030,43 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         return null;
     }
 
+    private List<Node> getNodesForBlock(AbstractBeginNode successor) {
+        StructuredGraph.ScheduleResult schedule = graph().getLastSchedule();
+        if (schedule == null) {
+            return null;
+        }
+        if (schedule.getCFG().getNodeToBlock().isNew(successor)) {
+            // This can occur when nodes were created after the last schedule.
+            return null;
+        }
+        Block block = schedule.getCFG().blockFor(successor);
+        if (block == null) {
+            return null;
+        }
+        return schedule.nodesFor(block);
+    }
+
+    /**
+     * Check whether conversion of an If to a Conditional causes extra unconditional work. Generally
+     * that transformation is beneficial if it doesn't result in extra work in the main path.
+     */
+    private boolean isSafeConditionalInput(ValueNode value, AbstractBeginNode successor) {
+        assert successor.hasNoUsages();
+        if (value.isConstant() || value instanceof ParameterNode || condition.inputs().contains(value)) {
+            // Assume constants are cheap to evaluate and Parameters are always evaluated. Any input
+            // to the condition itself is also unconditionally evaluated.
+            return true;
+        }
+
+        if (value instanceof FixedNode && graph().isAfterFixedReadPhase()) {
+            List<Node> nodes = getNodesForBlock(successor);
+            // The successor block is empty so assume that this input evaluated before the
+            // condition.
+            return nodes != null && nodes.size() == 2;
+        }
+        return false;
+    }
+
     private ValueNode canonicalizeConditionalCascade(SimplifierTool tool, ValueNode trueValue, ValueNode falseValue) {
         if (trueValue.getStackKind() != falseValue.getStackKind()) {
             return null;
@@ -1036,7 +1074,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         if (trueValue.getStackKind() != JavaKind.Int && trueValue.getStackKind() != JavaKind.Long) {
             return null;
         }
-        if (trueValue.isConstant() && falseValue.isConstant()) {
+        if (isSafeConditionalInput(trueValue, trueSuccessor) && isSafeConditionalInput(falseValue, falseSuccessor)) {
             return graph().unique(new ConditionalNode(condition(), trueValue, falseValue));
         }
         ValueNode value = canonicalizeConditionalViaImplies(trueValue, falseValue);

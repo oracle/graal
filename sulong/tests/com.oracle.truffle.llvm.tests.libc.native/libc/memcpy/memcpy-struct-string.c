@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,13 +31,13 @@
 #include <string.h>
 
 struct test {
-  char *str;
+    char *str;
 };
 
 int main() {
-  struct test t1 = { "hello world!" };
-  struct test t2 = { "asdf!" };
-  t1 = t2;
-  t2.str = "test";
-  printf("%s %s\n", t1.str, t2.str);
+    struct test t1 = { "hello world!" };
+    struct test t2 = { "asdf!" };
+    t1 = t2;
+    t2.str = "test";
+    printf("%s %s\n", t1.str, t2.str);
 }

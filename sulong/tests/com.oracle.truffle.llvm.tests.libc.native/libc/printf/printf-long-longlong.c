@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,8 +33,8 @@ long long int test1 = 2852126723232139342;
 long test2 = 2852126723232139342;
 
 int main() {
-  printf("%lld\n", test1);
-  printf("%llu\n", test1);
-  printf("%ld\n", test2);
-  printf("%lu\n", test2);
+    printf("%lld\n", test1);
+    printf("%llu\n", test1);
+    printf("%ld\n", test2);
+    printf("%lu\n", test2);
 }

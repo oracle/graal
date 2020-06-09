@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,21 +30,21 @@
 #include <stdio.h>
 
 struct A {
-  ~A() {
-    printf("DESTRUCT");
-  }
+    ~A() {
+        printf("DESTRUCT");
+    }
 };
 
 void foo() {
-  A a;
-  throw "BAM";
+    A a;
+    throw "BAM";
 }
 
 int main() {
-  try {
-    foo();
-    return 1;
-  } catch (...) {
-    return 0;
-  }
+    try {
+        foo();
+        return 1;
+    } catch (...) {
+        return 0;
+    }
 }

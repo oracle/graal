@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge.graal;
 
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -38,8 +38,11 @@ import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.genscavenge.CompleteGarbageCollectorMXBean;
 import com.oracle.svm.core.genscavenge.HeapImpl;
+import com.oracle.svm.core.genscavenge.HeapImplMemoryMXBean;
 import com.oracle.svm.core.genscavenge.ImageHeapInfo;
+import com.oracle.svm.core.genscavenge.IncrementalGarbageCollectorMXBean;
 import com.oracle.svm.core.genscavenge.LinearImageHeapLayouter;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
@@ -48,6 +51,8 @@ import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.jdk.RuntimeFeature;
+import com.oracle.svm.core.jdk.management.ManagementFeature;
+import com.oracle.svm.core.jdk.management.ManagementSupport;
 
 @AutomaticFeature
 class HeapFeature implements GraalFeature {
@@ -59,13 +64,17 @@ class HeapFeature implements GraalFeature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Collections.singletonList(RuntimeFeature.class);
+        return Arrays.asList(RuntimeFeature.class, ManagementFeature.class);
     }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(Heap.class, new HeapImpl(access));
         ImageSingletons.add(ImageHeapLayouter.class, new LinearImageHeapLayouter(HeapImpl.getImageHeapInfo(), true));
+
+        ManagementSupport managementSupport = ManagementSupport.getSingleton();
+        managementSupport.addPlatformManagedObjectSingleton(java.lang.management.MemoryMXBean.class, new HeapImplMemoryMXBean());
+        managementSupport.addPlatformManagedObjectList(com.sun.management.GarbageCollectorMXBean.class, Arrays.asList(new IncrementalGarbageCollectorMXBean(), new CompleteGarbageCollectorMXBean()));
     }
 
     @Override

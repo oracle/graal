@@ -668,7 +668,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     @Override
     public final void cancelInstalledTask() {
-        runtime().cancelInstalledTask(this, null, "got inlined. callsite count: " + getKnownCallSiteCount());
+        runtime().cancelInstalledTask(this, null, "Got inlined. Call site count: " + getKnownCallSiteCount());
     }
 
     @Override

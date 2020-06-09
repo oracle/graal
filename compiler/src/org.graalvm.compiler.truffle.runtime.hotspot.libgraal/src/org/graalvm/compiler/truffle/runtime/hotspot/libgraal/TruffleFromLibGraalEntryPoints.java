@@ -28,6 +28,7 @@ import static java.lang.String.format;
 import static java.lang.System.lineSeparator;
 import static java.util.stream.Collectors.joining;
 
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.AddTargetToDequeue;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.AsCompilableTruffleAST;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.AsJavaConstant;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CallNodeHashCode;
@@ -36,6 +37,7 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLi
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.ConsumeOptimizedAssumptionDependency;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CreateInliningPlan;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CreateStringSupplier;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.DequeueTargets;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.FindCallNode;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.FindDecision;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetCallCount;
@@ -463,6 +465,16 @@ final class TruffleFromLibGraalEntryPoints {
     @TruffleFromLibGraal(GetNonTrivialNodeCount)
     static int getNonTrivialNodeCount(Object compilableTruffleAST) {
         return ((CompilableTruffleAST) compilableTruffleAST).getNonTrivialNodeCount();
+    }
+
+    @TruffleFromLibGraal(AddTargetToDequeue)
+    static void addTargetToDequeue(Object inliningPlan, Object compilableTruffleAST) {
+        ((TruffleInliningPlan) inliningPlan).addTargetToDequeue((CompilableTruffleAST) compilableTruffleAST);
+    }
+
+    @TruffleFromLibGraal(DequeueTargets)
+    static void dequeueTargets(Object inliningPlan) {
+        ((TruffleInliningPlan) inliningPlan).dequeueTargets();
     }
 
     /*----------------------*/

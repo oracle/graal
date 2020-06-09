@@ -133,9 +133,9 @@ def test():
     # disable prompting to continue output
     execute("set pagination off")
     # set a break point at hello.Hello::main
-    # expect "Breakpoint 1 at 0x[0-9a-f]+: file hello.Hello.java, line 64."
+    # expect "Breakpoint 1 at 0x[0-9a-f]+: file hello.Hello.java, line 67."
     exec_string = execute("break hello.Hello::main")
-    rexp = r"Breakpoint 1 at %s: file hello/Hello\.java, line 64\."%address_pattern
+    rexp = r"Breakpoint 1 at %s: file hello/Hello\.java, line 67\."%address_pattern
     checker = Checker('break main', rexp)
     checker.check(exec_string)
 
@@ -143,17 +143,17 @@ def test():
     execute("run")
 
     # list the line at the breakpoint
-    # expect "64	        Greeter greeter = Greeter.greeter(args);"
+    # expect "67	        Greeter greeter = Greeter.greeter(args);"
     exec_string = execute("list")
-    checker = Checker(r"list bp 1", "64%sGreeter greeter = Greeter\.greeter\(args\);"%spaces_pattern)
+    checker = Checker(r"list bp 1", "67%sGreeter greeter = Greeter\.greeter\(args\);"%spaces_pattern)
     checker.check(exec_string, skip_fails=False)
 
     # run a backtrace
-    # expect "#0  hello.Hello::main(java.lang.String[]).* at hello.Hello.java:64"
+    # expect "#0  hello.Hello::main(java.lang.String[]).* at hello.Hello.java:67"
     # expect "#1  0x[0-9a-f]+ in com.oracle.svm.core.code.IsolateEnterStub::JavaMainWrapper_run_.* at [a-z/]+/JavaMainWrapper.java:[0-9]+"
     exec_string = execute("backtrace")
     checker = Checker("backtrace hello.Hello::main",
-                      [r"#0%shello\.Hello::main\(java\.lang\.String\[\]\)%s at hello/Hello\.java:64"%(spaces_pattern, wildcard_pattern),
+                      [r"#0%shello\.Hello::main\(java\.lang\.String\[\]\)%s at hello/Hello\.java:67"%(spaces_pattern, wildcard_pattern),
                        r"#1%s%s in com\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_%s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, wildcard_pattern, package_pattern)
                       ])
     checker.check(exec_string, skip_fails=False)
@@ -187,20 +187,20 @@ def test():
     execute("step")
 
     # list current line
-    # expect "31	            if (args.length == 0) {"
+    # expect "34	            if (args.length == 0) {"
     exec_string = execute("list")
-    rexp = r"31%sif \(args\.length == 0\) {"%spaces_pattern
+    rexp = r"34%sif \(args\.length == 0\) {"%spaces_pattern
     checker = Checker('list hello.Hello.Greeter::greeter', rexp)
     checker.check(exec_string, skip_fails=False)
 
     # run a backtrace
-    # expect "#0  hello.Hello.greeter::greeter(java.lang.String[]).* at hello.Hello.java:31"
-    # expect "#1  0x[0-9a-f]+ in hello.Hello::main(java.lang.String[]).* at hello.Hello.java:64"
+    # expect "#0  hello.Hello.greeter::greeter(java.lang.String[]).* at hello.Hello.java:34"
+    # expect "#1  0x[0-9a-f]+ in hello.Hello::main(java.lang.String[]).* at hello.Hello.java:67"
     # expect "#2  0x[0-9a-f]+ in com.oracle.svm.core.code.IsolateEnterStub::JavaMainWrapper_run_.* at [a-z/]+/JavaMainWrapper.java:[0-9]+"
     exec_string = execute("backtrace")
     checker = Checker("backtrace hello.Hello.Greeter::greeter",
-                      [r"#0%shello\.Hello\.Greeter::greeter\(java\.lang\.String\[\]\)%s at hello/Hello\.java:31"%(spaces_pattern, wildcard_pattern),
-                       r"#1%s%s in hello\.Hello::main\(java\.lang\.String\[\]\)%s at hello/Hello\.java:64"%(spaces_pattern, address_pattern, wildcard_pattern),
+                      [r"#0%shello\.Hello\.Greeter::greeter\(java\.lang\.String\[\]\)%s at hello/Hello\.java:34"%(spaces_pattern, wildcard_pattern),
+                       r"#1%s%s in hello\.Hello::main\(java\.lang\.String\[\]\)%s at hello/Hello\.java:67"%(spaces_pattern, address_pattern, wildcard_pattern),
                        r"#2%s%s in com\.oracle\.svm\.core\.code\.IsolateEnterStub::JavaMainWrapper_run_%s at [a-z/]+/JavaMainWrapper\.java:%s"%(spaces_pattern, address_pattern, wildcard_pattern, digits_pattern)
                       ])
     checker.check(exec_string, skip_fails=False)

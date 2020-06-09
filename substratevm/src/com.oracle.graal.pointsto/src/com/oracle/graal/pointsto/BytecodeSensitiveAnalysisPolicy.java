@@ -30,7 +30,6 @@ import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.options.OptionValues;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
@@ -176,15 +175,15 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
     }
 
     @Override
-    public AbstractVirtualInvokeTypeFlow createVirtualInvokeTypeFlow(Invoke invoke, AnalysisType receiverType, AnalysisMethod targetMethod,
+    public AbstractVirtualInvokeTypeFlow createVirtualInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, AnalysisMethod targetMethod,
                     TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
-        return new BytecodeSensitiveVirtualInvokeTypeFlow(invoke, receiverType, targetMethod, actualParameters, actualReturn, location);
+        return new BytecodeSensitiveVirtualInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
     }
 
     @Override
-    public AbstractSpecialInvokeTypeFlow createSpecialInvokeTypeFlow(Invoke invoke, AnalysisType receiverType, AnalysisMethod targetMethod,
+    public AbstractSpecialInvokeTypeFlow createSpecialInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, AnalysisMethod targetMethod,
                     TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
-        return new BytecodeSensitiveSpecialInvokeTypeFlow(invoke, receiverType, targetMethod, actualParameters, actualReturn, location);
+        return new BytecodeSensitiveSpecialInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
     }
 
     /**
@@ -204,9 +203,9 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
         private final ConcurrentMap<MethodFlowsGraph, Object> calleesFlows;
         private final AnalysisContext callerContext;
 
-        protected BytecodeSensitiveVirtualInvokeTypeFlow(Invoke invoke, AnalysisType receiverType, AnalysisMethod targetMethod,
+        protected BytecodeSensitiveVirtualInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, AnalysisMethod targetMethod,
                         TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
-            super(invoke, receiverType, targetMethod, actualParameters, actualReturn, location);
+            super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
             calleesFlows = null;
             callerContext = null;
         }
@@ -289,9 +288,9 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
          */
         private ConcurrentMap<MethodFlowsGraph, Object> calleesFlows;
 
-        BytecodeSensitiveSpecialInvokeTypeFlow(Invoke invoke, AnalysisType receiverType, AnalysisMethod targetMethod,
+        BytecodeSensitiveSpecialInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, AnalysisMethod targetMethod,
                         TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
-            super(invoke, receiverType, targetMethod, actualParameters, actualReturn, location);
+            super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
         }
 
         private BytecodeSensitiveSpecialInvokeTypeFlow(BigBang bb, MethodFlowsGraph methodFlows, BytecodeSensitiveSpecialInvokeTypeFlow original) {

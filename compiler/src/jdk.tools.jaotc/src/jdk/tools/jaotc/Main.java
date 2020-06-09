@@ -31,6 +31,8 @@ import static org.graalvm.compiler.hotspot.meta.HotSpotAOTProfilingPlugin.Option
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -39,8 +41,6 @@ import java.util.ListIterator;
 import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.stream.Stream;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.runtime.GraalJVMCICompiler;

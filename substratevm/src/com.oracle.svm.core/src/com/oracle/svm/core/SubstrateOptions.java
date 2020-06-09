@@ -27,6 +27,7 @@ package com.oracle.svm.core;
 import static org.graalvm.compiler.core.common.GraalOptions.TrackNodeSourcePosition;
 import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.None;
 import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.Options.MitigateSpeculativeExecutionAttacks;
+import static org.graalvm.compiler.options.OptionType.Expert;
 import static org.graalvm.compiler.options.OptionType.User;
 
 import java.nio.file.InvalidPathException;
@@ -35,7 +36,6 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.function.Predicate;
 
-import com.oracle.svm.core.util.UserError;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
@@ -56,6 +56,7 @@ import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.XOptions;
+import com.oracle.svm.core.util.UserError;
 
 public class SubstrateOptions {
 
@@ -435,15 +436,12 @@ public class SubstrateOptions {
     @Option(help = "Show native-toolchain information and image-build settings", type = User)//
     public static final HostedOptionKey<Boolean> DumpTargetInfo = new HostedOptionKey<>(false);
 
+    @Option(help = "Check if native-toolchain is known to work with native-image", type = Expert)//
+    public static final HostedOptionKey<Boolean> CheckToolchain = new HostedOptionKey<>(true);
+
     @APIOption(name = "install-exit-handlers")//
     @Option(help = "Provide java.lang.Terminator exit handlers for executable images", type = User)//
     public static final HostedOptionKey<Boolean> InstallExitHandlers = new HostedOptionKey<>(false);
-
-    @Option(help = "file:doc-files/UseMuslCHelp.txt", type = OptionType.Expert)//
-    public static final HostedOptionKey<String> UseMuslC = new HostedOptionKey<>(null);
-
-    @Option(help = "When set to true, sets the internally used libc to Bionic. Note that this does not currently download and link against Bionic libc, but serves as a workaround that makes it possible externally", type = OptionType.Expert)//
-    public static final HostedOptionKey<Boolean> UseBionicC = new HostedOptionKey<>(false);
 
     @Option(help = "When set to true, the image generator verifies that the image heap does not contain a home directory as a substring", type = User)//
     public static final HostedOptionKey<Boolean> DetectUserDirectoriesInImageHeap = new HostedOptionKey<>(false);
@@ -490,4 +488,8 @@ public class SubstrateOptions {
             throw UserError.abort("Invalid path provided for option DebugInfoSourceCacheRoot " + DebugInfoSourceCacheRoot.getValue());
         }
     }
+
+    /** Command line option to disable image build server. */
+    public static final String NO_SERVER = "--no-server";
+
 }

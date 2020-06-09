@@ -67,6 +67,10 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         super(target, optionValues, hasIntelJccErratum);
     }
 
+    public final void decrementq(Register reg) {
+        decrementq(reg, 1);
+    }
+
     public final void decrementq(Register reg, int value) {
         if (value == Integer.MIN_VALUE) {
             subq(reg, value);
@@ -103,6 +107,10 @@ public class AMD64MacroAssembler extends AMD64Assembler {
         } else {
             subq(dst, value);
         }
+    }
+
+    public final void incrementq(Register reg) {
+        incrementq(reg, 1);
     }
 
     public void incrementq(Register reg, int value) {

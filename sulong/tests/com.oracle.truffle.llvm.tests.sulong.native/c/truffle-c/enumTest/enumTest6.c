@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,9 +30,9 @@
 enum NUMBERS { ONE, TWO, THREE, FOUR, FIVE };
 
 int add(enum NUMBERS first, enum NUMBERS second) {
-  return first + second;
+    return first + second;
 }
 
 int main() {
-  return ONE + add(TWO, (enum NUMBERS)add(THREE, FOUR)) + (int)FIVE;
+    return ONE + add(TWO, (enum NUMBERS) add(THREE, FOUR)) + (int) FIVE;
 }

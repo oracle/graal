@@ -102,12 +102,19 @@ def mktemp_libfile():
     return tempfile.NamedTemporaryFile(prefix=mx.add_lib_prefix(''), suffix=mx.add_lib_suffix(''))
 
 
-common_opts_variants = [
+common_opts_variants_class = [
     [gc, ops, '-ea', '-esa']
     for gc in ['-XX:+UseParallelGC', '-XX:+UseG1GC']
     for ops in ['-XX:-UseCompressedOops', '-XX:+UseCompressedOops']
 ]
 
+common_opts_variants_modules = [
+    ['-ea:org.graalvm...']
+]
+
+common_opts_variants_javac = [
+    ['-ea', '-esa']
+]
 
 def test_class(classpath, main_class, program_args=None):
     """(jaotc-)Compiles simple HelloWorld program.
@@ -119,7 +126,7 @@ def test_class(classpath, main_class, program_args=None):
     mx_compiler.run_vm((['-cp', classpath] if classpath else []) +
                        [main_class] + program_args, out=expected_out)
 
-    for common_opts in common_opts_variants:
+    for common_opts in common_opts_variants_class:
         mx.log('Running {} with {}'.format(main_class, ' '.join(common_opts)))
 
         with mktemp_libfile() as lib_module:
@@ -142,7 +149,7 @@ def test_modules(classpath, main_class, modules, program_args=None):
     # jaotc uses ':' as separator.
     module_list = ':'.join(modules)
 
-    for common_opts in common_opts_variants:
+    for common_opts in common_opts_variants_modules:
         mx.log('(jaotc) Compiling module(s) {} with {}'.format(module_list, ' '.join(common_opts)))
         with mktemp_libfile() as lib_module:
             run_jaotc(['-J' + opt for opt in common_opts] +
@@ -165,7 +172,7 @@ def test_javac(project_name):
     """(jaotc-)Compiles the `jdk.compiler` module and compiles (mx) project_name using `javac` (+ AOT module)."""
     # jaotc uses ':' as separator.
     modules = ':'.join(['jdk.compiler'])
-    for common_opts in common_opts_variants:
+    for common_opts in common_opts_variants_javac:
         out_dir = tempfile.mkdtemp()
         try:
             mx.log('(jaotc) Compiling module(s) {} with {}'.format(modules, ' '.join(common_opts)))

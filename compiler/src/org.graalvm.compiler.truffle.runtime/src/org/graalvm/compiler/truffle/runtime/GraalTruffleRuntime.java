@@ -668,7 +668,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                             debug.closeDebugChannels();
                         }
                     }
+                    // used by legacy inlining
                     dequeueInlinedCallSites(inlining, callTarget);
+                    // used by language-agnostic inlining
+                    inlining.dequeueTargets();
                 }
             }
         } catch (OptimizationFailedException e) {

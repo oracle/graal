@@ -31,6 +31,7 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -80,4 +81,19 @@ final class VariablesObject implements TruffleObject {
         return true;
     }
 
+    @ExportMessage
+    void writeMember(String member, Object value, @CachedLibrary(limit = "1") FrameLibrary frameLibrary)
+                    throws UnknownIdentifierException, UnsupportedTypeException {
+        frameLibrary.writeMember(AccessorFrameLibrary.DEFAULT.create(where, frame, env), member, value);
+    }
+
+    @ExportMessage
+    static boolean isMemberModifiable(VariablesObject obj, String member) {
+        return true;
+    }
+
+    @ExportMessage
+    static boolean isMemberInsertable(VariablesObject obj, String member) {
+        return false;
+    }
 }

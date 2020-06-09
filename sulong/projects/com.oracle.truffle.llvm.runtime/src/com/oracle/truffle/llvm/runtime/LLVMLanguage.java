@@ -107,6 +107,14 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     private final Assumption noCommonHandleAssumption = Truffle.getRuntime().createAssumption("no common handle");
     private final Assumption noDerefHandleAssumption = Truffle.getRuntime().createAssumption("no deref handle");
 
+    {
+        /*
+         * This is needed at the moment to make sure the Assumption classes are initialized in the
+         * proper class loader by the time compilation starts.
+         */
+        noCommonHandleAssumption.isValid();
+    }
+
     public abstract static class Loader implements LLVMCapability {
         public abstract CallTarget load(LLVMContext context, Source source, AtomicInteger id);
     }

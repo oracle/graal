@@ -76,7 +76,6 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.GenericInfo;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.hosted.NativeImageClassLoader;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.analysis.flow.SVMMethodTypeFlowBuilder;
 import com.oracle.svm.hosted.meta.HostedType;
@@ -245,12 +244,6 @@ public class Inflation extends BigBang {
         genericInterfacesMap = null;
         annotatedInterfacesMap = null;
         interfacesEncodings = null;
-    }
-
-    @Override
-    public boolean isValidClassLoader(Object valueObj) {
-        return valueObj.getClass().getClassLoader() == null || // boot class loader
-                        !(valueObj.getClass().getClassLoader() instanceof NativeImageClassLoader) || valueObj.getClass().getClassLoader() == Thread.currentThread().getContextClassLoader();
     }
 
     @Override

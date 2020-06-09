@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -48,51 +48,51 @@ void *__sulong_thread_getspecific(__sulong_key_t key);
 void __sulong_thread_setspecific(__sulong_key_t key, const void *value);
 
 int pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine)(void *), void *arg) {
-  __sulong_thread_t sthread;
-  int ret = __sulong_thread_create(&sthread, start_routine, arg);
-  if (ret == 0) {
-    *thread = (pthread_t)sthread;
-  }
-  return ret;
+    __sulong_thread_t sthread;
+    int ret = __sulong_thread_create(&sthread, start_routine, arg);
+    if (ret == 0) {
+        *thread = (pthread_t) sthread;
+    }
+    return ret;
 }
 
 #if !defined(pthread_equal)
 // some libcs have pthread_equal as a macro that simply does ==
 // others have it as an actual function
 int pthread_equal(pthread_t thread1, pthread_t thread2) {
-  return thread1 == thread2;
+    return thread1 == thread2;
 }
 #endif
 
 void pthread_exit(void *); // intrinsic
 
 int pthread_join(pthread_t thread, void **retval) {
-  void *ret = __sulong_thread_join((__sulong_thread_t)thread);
-  if (retval) {
-    *retval = ret;
-  }
-  return 0;
+    void *ret = __sulong_thread_join((__sulong_thread_t) thread);
+    if (retval) {
+        *retval = ret;
+    }
+    return 0;
 }
 
 pthread_t pthread_self() {
-  return (pthread_t)__sulong_thread_self();
+    return (pthread_t) __sulong_thread_self();
 }
 
 int pthread_key_create(pthread_key_t *key, void (*destructor)(void *)) {
-  *key = (pthread_key_t)__sulong_thread_key_create(destructor);
-  return 0;
+    *key = (pthread_key_t) __sulong_thread_key_create(destructor);
+    return 0;
 }
 
 int pthread_key_delete(pthread_key_t key) {
-  __sulong_thread_key_delete((__sulong_key_t)key);
-  return 0;
+    __sulong_thread_key_delete((__sulong_key_t) key);
+    return 0;
 }
 
 void *pthread_getspecific(pthread_key_t key) {
-  return __sulong_thread_getspecific((__sulong_key_t)key);
+    return __sulong_thread_getspecific((__sulong_key_t) key);
 }
 
 int pthread_setspecific(pthread_key_t key, const void *value) {
-  __sulong_thread_setspecific((__sulong_key_t)key, value);
-  return 0;
+    __sulong_thread_setspecific((__sulong_key_t) key, value);
+    return 0;
 }

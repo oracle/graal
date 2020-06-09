@@ -31,6 +31,8 @@ import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.calc.FloatConvertNode;
+import org.graalvm.compiler.nodes.memory.VolatileReadNode;
+import org.graalvm.compiler.nodes.memory.VolatileWriteNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 
@@ -62,6 +64,9 @@ public class SubstrateAArch64LoweringProvider extends SubstrateBasicLoweringProv
             // expect to see a ConvertNode and throws an error, just do nothing here.
         } else if (n instanceof CodeSynchronizationNode) {
             lowerCodeSynchronizationNode((CodeSynchronizationNode) n);
+        } else if (n instanceof VolatileReadNode || n instanceof VolatileWriteNode) {
+            // AArch64 emits its own code sequence for volatile accesses. We don't want it lowered
+            // to memory barriers + a regular access.
         } else {
             super.lower(n, tool);
         }

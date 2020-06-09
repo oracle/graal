@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,10 +31,10 @@
 #include <string.h>
 
 int main() {
-  char str[50];
-  memset(str, 'a', 10);
-  str[10] = '\0';
-  puts(str);
+    char str[50];
+    memset(str, 'a', 10);
+    str[10] = '\0';
+    puts(str);
 
-  return 0;
+    return 0;
 }

@@ -33,6 +33,7 @@ import org.graalvm.compiler.asm.sparc.SPARCMacroAssembler.ScratchRegister;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotDebugInfoBuilder;
+import org.graalvm.compiler.hotspot.HotSpotMarkId;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
@@ -78,15 +79,15 @@ public class SPARCHotSpotSafepointOp extends SPARCLIRInstruction {
         if (config.useThreadLocalPolling) {
             emitThreadLocalPoll(crb, masm, config, atReturn, state, thread);
         } else {
-            emitGlobalPoll(crb, masm, config, atReturn, state, asRegister(safepointPollAddress));
+            emitGlobalPoll(crb, masm, atReturn, state, asRegister(safepointPollAddress));
         }
     }
 
     /**
      * Emit a global safepoint poll.
      */
-    private static void emitGlobalPoll(CompilationResultBuilder crb, SPARCMacroAssembler masm, GraalHotSpotVMConfig config, boolean atReturn, LIRFrameState state, Register safepointPollAddress) {
-        crb.recordMark(atReturn ? config.MARKID_POLL_RETURN_FAR : config.MARKID_POLL_FAR);
+    private static void emitGlobalPoll(CompilationResultBuilder crb, SPARCMacroAssembler masm, boolean atReturn, LIRFrameState state, Register safepointPollAddress) {
+        crb.recordMark(atReturn ? HotSpotMarkId.POLL_RETURN_FAR : HotSpotMarkId.POLL_FAR);
         if (state != null) {
             final int pos = masm.position();
             crb.recordInfopoint(pos, state, InfopointReason.SAFEPOINT);
@@ -107,7 +108,7 @@ public class SPARCHotSpotSafepointOp extends SPARCLIRInstruction {
 
             masm.ldx(new SPARCAddress(thread, config.threadPollingPageOffset), scratch);
 
-            crb.recordMark(atReturn ? config.MARKID_POLL_RETURN_FAR : config.MARKID_POLL_FAR);
+            crb.recordMark(atReturn ? HotSpotMarkId.POLL_RETURN_FAR : HotSpotMarkId.POLL_FAR);
             if (state != null) {
                 final int pos = masm.position();
                 crb.recordInfopoint(pos, state, InfopointReason.SAFEPOINT);

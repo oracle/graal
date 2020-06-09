@@ -30,3 +30,5 @@
 TOP := $(dir $(lastword $(MAKEFILE_LIST)))
 
 include $(realpath $(TOP)/../Makefile)
+
+$(eval $(call ADD_DEPENDENCY,bitcode/gep-vec.ll,bitcode/gep-vec.c))

@@ -282,6 +282,7 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
         } else {
             UNSAFE.putLong(t, getUnsafeByteArrayOffset(0), l2);
         }
+        sideEffect();
         if (c) {
             GraalDirectives.deoptimize();
         }

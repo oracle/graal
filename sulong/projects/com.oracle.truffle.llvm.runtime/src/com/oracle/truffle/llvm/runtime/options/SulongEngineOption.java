@@ -73,6 +73,12 @@ public final class SulongEngineOption {
                    "dependency on both of them. Thus, the option is off by default.")
     public static final OptionKey<Boolean> LOAD_CXX_LIBRARIES = new OptionKey<>(false);
 
+    public static final String CXX_INTEROP_NAME = "llvm.C++Interop";
+    @Option(name = CXX_INTEROP_NAME,
+            category = OptionCategory.EXPERT,
+            help = "Enables using C++ code and features via interop.")
+    public static final OptionKey<Boolean> CXX_INTEROP = new OptionKey<>(false);
+
     @Option(name = "llvm.enableExternalNativeAccess",
             category = OptionCategory.USER,
             help = "Enable Sulongs native interface.")

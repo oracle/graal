@@ -24,12 +24,12 @@
  */
 package org.graalvm.compiler.hotspot.sparc;
 
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.sparc.SPARC.g5;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
 import org.graalvm.compiler.asm.sparc.SPARCMacroAssembler;
-import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.hotspot.HotSpotMarkId;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
@@ -59,20 +59,16 @@ final class SPARCIndirectCallOp extends IndirectCallOp {
 
     @Use({REG}) protected Value metaspaceMethod;
 
-    private final GraalHotSpotVMConfig config;
-
-    SPARCIndirectCallOp(ResolvedJavaMethod targetMethod, Value result, Value[] parameters, Value[] temps, Value metaspaceMethod, Value targetAddress, LIRFrameState state,
-                    GraalHotSpotVMConfig config) {
+    SPARCIndirectCallOp(ResolvedJavaMethod targetMethod, Value result, Value[] parameters, Value[] temps, Value metaspaceMethod, Value targetAddress, LIRFrameState state) {
         super(TYPE, SIZE, targetMethod, result, parameters, temps, targetAddress, state);
         this.metaspaceMethod = metaspaceMethod;
-        this.config = config;
     }
 
     @Override
     @SuppressWarnings("try")
     public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
         try (CompilationResultBuilder.CallContext callContext = crb.openCallContext(false)) {
-            crb.recordMark(config.MARKID_INLINE_INVOKE);
+            crb.recordMark(HotSpotMarkId.INLINE_INVOKE);
             Register callReg = asRegister(targetAddress);
             assert !callReg.equals(METHOD);
             SPARCCall.indirectCall(crb, masm, callReg, callTarget, state);

@@ -208,7 +208,7 @@ class PolyglotSource extends AbstractSourceImpl {
     public String findMimeType(File file) throws IOException {
         Objects.requireNonNull(file);
         TruffleFile truffleFile = EngineAccessor.LANGUAGE.getTruffleFile(file.toPath().toString(), getDefaultFileSystemContext());
-        return truffleFile.getMimeType();
+        return truffleFile.detectMimeType();
     }
 
     @Override

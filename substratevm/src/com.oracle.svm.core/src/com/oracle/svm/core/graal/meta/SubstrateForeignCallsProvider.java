@@ -34,9 +34,11 @@ import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopyForeignCalls;
+import org.graalvm.compiler.replacements.arraycopy.ArrayCopyLookup;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.snippets.SnippetRuntime;
@@ -47,6 +49,7 @@ import jdk.vm.ci.meta.JavaKind;
 public class SubstrateForeignCallsProvider implements ArrayCopyForeignCalls {
 
     private final Map<ForeignCallSignature, SubstrateForeignCallLinkage> foreignCalls;
+    protected ArrayCopyLookup arrayCopyLookup;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public SubstrateForeignCallsProvider() {
@@ -84,13 +87,25 @@ public class SubstrateForeignCallsProvider implements ArrayCopyForeignCalls {
         return LIRKind.fromJavaKind(ImageSingletons.lookup(SubstrateTargetDescription.class).arch, javaKind);
     }
 
-    @Override
-    public ForeignCallDescriptor lookupCheckcastArraycopyDescriptor(boolean uninit) {
-        throw VMError.unsupportedFeature("Fast ArrayCopy not supported yet.");
+    public void registerArrayCopyForeignCallsDelegate(ArrayCopyLookup arraycopyForeignCalls) {
+        this.arrayCopyLookup = arraycopyForeignCalls;
     }
 
     @Override
-    public ForeignCallDescriptor lookupArraycopyDescriptor(JavaKind kind, boolean aligned, boolean disjoint, boolean uninit, boolean killAny) {
-        throw VMError.unsupportedFeature("Fast ArrayCopy not supported yet.");
+    public ForeignCallDescriptor lookupCheckcastArraycopyDescriptor(boolean uninit) {
+        if (arrayCopyLookup != null) {
+            return arrayCopyLookup.lookupCheckcastArraycopyDescriptor(uninit);
+        } else {
+            throw VMError.unsupportedFeature("Fast checkcast ArrayCopy not supported yet.");
+        }
+    }
+
+    @Override
+    public ForeignCallDescriptor lookupArraycopyDescriptor(JavaKind kind, boolean aligned, boolean disjoint, boolean uninit, LocationIdentity killedLocation) {
+        if (arrayCopyLookup != null) {
+            return arrayCopyLookup.lookupArraycopyDescriptor(kind, aligned, disjoint, uninit, killedLocation);
+        } else {
+            throw VMError.unsupportedFeature("Fast ArrayCopy not supported yet.");
+        }
     }
 }

@@ -3,6 +3,7 @@
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
 ## Version 20.2.0
+* Added new internal engine option `ShowInternalStackFrames` to show internal frames specific to the language implementation in stack traces.
 * Added new identity APIs to `InteropLibrary`:
     * `hasIdentity(Object receiver)` to find out whether an object specifies identity
 	* `isIdentical(Object receiver, Object other, InteropLibrary otherLib)` to compare the identity of two object
@@ -14,6 +15,9 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added `ConditionProfile#create()` as an alias of `createBinaryProfile()` so it can be used like `@Cached ConditionProfile myProfile`. 
 * Improved `AssumedValue` utility class: Code that reads the value but can not constant fold it does not need to deopt when the value changes.
 * A `TruffleFile` for an empty path is no more resolved to the current working directory.
+* Added [`SourceBuilder.canonicalizePath(boolean)`](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/Source.SourceBuilder.html) to control whether the `Source#getPath()` should be canonicalized.
+* Deprecated and renamed `TruffleFile.getMimeType` to [TruffleFile.detectMimeType](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#detectMimeType--). The new method no longer throws `IOException` but returns `null` instead.
+* The languages are responsible for stopping and joining the stopped `Thread`s in the [TruffleLanguage.finalizeContext](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html#finalizeContext-C-).
 
 ## Version 20.1.0
 * Added `@GenerateLibrary(dynamicDispatchEnabled = false)` that allows to disable dynamic dispatch semantics for a library. The default is `true`.

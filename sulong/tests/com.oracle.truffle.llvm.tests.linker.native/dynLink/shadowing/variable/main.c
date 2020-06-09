@@ -31,10 +31,10 @@
 #include <stdio.h>
 
 char *hello() {
-  return "function";
+    return "function";
 }
 
 int main() {
-  printf("Hello %s\n", hello());
-  return 0;
+    printf("Hello %s\n", hello());
+    return 0;
 }

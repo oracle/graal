@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,17 +29,14 @@
  */
 #include <stdio.h>
 
-class SimpleClass
-{
+class SimpleClass {
 
 private:
-
     int a;
     long b;
     double c;
 
 public:
-
     SimpleClass(int _a, long _b, double _c) {
         this->a = _a;
         this->b = _b;
@@ -63,18 +60,15 @@ public:
     void print() {
         printf("a = %d\nb = %ld\nc = %f\n", this->a, this->b, this->c);
     }
-
 };
 
 class Point {
 
 private:
-
     int x;
     int y;
 
 public:
-
     Point(int _x, int _y) : x(_x), y(_y) {
         printf("Point Constructor\n");
     }
@@ -99,11 +93,9 @@ public:
 class Shape {
 
 private:
-
     Point center;
 
 public:
-
     Shape(Point _center) : center(_center) {
         printf("Shape Constructor\n");
     }
@@ -119,17 +111,14 @@ public:
         this->center.setX(newX);
         printf("Shape::moveLeft(int)\n");
     }
-
 };
 
 class Circle : public Shape {
 
 private:
-
     int radius;
 
 public:
-
     Circle(Point _center, int _radius) : Shape(_center) {
         this->radius = _radius;
         printf("Circle Constructor\n");
@@ -139,12 +128,10 @@ public:
 class Rectangle : public Shape {
 
 private:
-
     int width;
     int height;
 
 public:
-
     Rectangle(Point _center, int _width, int _height) : Shape(_center) {
         this->width = _width;
         this->height = _height;
@@ -155,24 +142,20 @@ public:
 class Square : public Rectangle {
 
 public:
-
     Square(Point _center, int length) : Rectangle(_center, length, length) {
         printf("Square Constructor\n");
     };
-
 };
 
 class SimpleSquare : public SimpleClass, public Square {
-    
+
 public:
-    
     SimpleSquare(Point center, int length, int a) : Square(center, length), SimpleClass(a) {
         printf("SimpleSquare Constructor\n");
     }
 };
 
-int start() __attribute__((constructor))
-{
+int start() __attribute__((constructor)) {
     SimpleClass a(7, 28L, 302.4);
     a.print();
 
@@ -188,7 +171,7 @@ int start() __attribute__((constructor))
 
     Square mySquare(Point(3, 5), 5);
     mySquare.moveLeft(-3);
-    
+
     SimpleSquare mySimpleSquare(Point(4, 2), 19, 43);
     mySimpleSquare.print();
 

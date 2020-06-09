@@ -122,8 +122,7 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
 
     /**
      * Descriptor for {@link ExceptionHandlerStub}. This stub is called by the
-     * {@linkplain GraalHotSpotVMConfig#MARKID_EXCEPTION_HANDLER_ENTRY exception handler} in a
-     * compiled method.
+     * {@linkplain HotSpotMarkId#EXCEPTION_HANDLER_ENTRY exception handler} in a compiled method.
      */
     public static final HotSpotForeignCallDescriptor EXCEPTION_HANDLER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, any(), "exceptionHandler", void.class, Object.class,
                     Word.class);

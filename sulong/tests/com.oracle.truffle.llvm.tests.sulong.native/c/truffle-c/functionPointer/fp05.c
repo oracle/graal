@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,14 +31,14 @@
 int func(int);
 
 int main() {
-  int (*fp)(int);
+    int (*fp)(int);
 
-  fp = func;
+    fp = func;
 
-  int (**fpp)(int) = &fp;
-  return (*fpp)(2);
+    int (**fpp)(int) = &fp;
+    return (*fpp)(2);
 }
 
 int func(int arg) {
-  return arg + 1;
+    return arg + 1;
 }

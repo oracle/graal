@@ -281,7 +281,7 @@ final class EngineAccessor extends Accessor {
         @Override
         public <T> T lookup(InstrumentInfo info, Class<T> serviceClass) {
             PolyglotInstrument instrument = (PolyglotInstrument) LANGUAGE.getPolyglotInstrument(info);
-            return instrument.lookup(serviceClass, false);
+            return instrument.lookupInternal(serviceClass);
         }
 
         @Override

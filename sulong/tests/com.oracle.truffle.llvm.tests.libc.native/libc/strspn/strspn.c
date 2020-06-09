@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,11 +31,11 @@
 #include <string.h>
 
 int main() {
-  printf("%ld\n", strspn("129asdf", "1234567890"));
-  printf("%ld\n", strspn("1234567890", "129asdf"));
-  printf("%ld\n", strspn("asdf", "asdf"));
-  printf("%ld\n", strspn("1", "1"));
-  printf("%ld\n", strspn("1", ""));
-  printf("%ld\n", strspn("", "1"));
-  printf("%ld\n", strspn("hello world!", "test hello!"));
+    printf("%ld\n", strspn("129asdf", "1234567890"));
+    printf("%ld\n", strspn("1234567890", "129asdf"));
+    printf("%ld\n", strspn("asdf", "asdf"));
+    printf("%ld\n", strspn("1", "1"));
+    printf("%ld\n", strspn("1", ""));
+    printf("%ld\n", strspn("", "1"));
+    printf("%ld\n", strspn("hello world!", "test hello!"));
 }

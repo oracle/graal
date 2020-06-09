@@ -369,6 +369,7 @@ public class InstrumentationTest extends AbstractInstrumentationTest {
                 public void onReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
                 }
 
+                @TruffleBoundary
                 public void onEnter(EventContext context, VirtualFrame frame) {
                     // since we are a language instrumentation we can throw exceptions
                     // without getting wrapped into Instrumentation exception.

@@ -28,6 +28,7 @@ import static jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig.inlineCache
 
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.hotspot.HotSpotMarkId;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
@@ -66,7 +67,7 @@ final class AArch64HotSpotDirectStaticCallOp extends DirectCallOp {
             // For the first invocation this is set to a bitpattern that is guaranteed to never be a
             // valid object which causes the called function to call a handler that installs the
             // correct inline cache value here.
-            crb.recordMark(invokeKind == InvokeKind.Static ? config.MARKID_INVOKESTATIC : config.MARKID_INVOKESPECIAL);
+            crb.recordMark(invokeKind == InvokeKind.Static ? HotSpotMarkId.INVOKESTATIC : HotSpotMarkId.INVOKESPECIAL);
             masm.movNativeAddress(inlineCacheRegister, config.nonOopBits);
             super.emitCode(crb, masm);
         }

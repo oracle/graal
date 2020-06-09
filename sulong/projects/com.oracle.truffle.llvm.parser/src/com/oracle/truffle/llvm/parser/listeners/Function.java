@@ -69,6 +69,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.ShuffleVectorIn
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.StoreInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.SwitchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.SwitchOldInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.UnaryOperationInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.UnreachableInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
@@ -136,6 +137,7 @@ public final class Function implements ParserListener {
     private static final int INSTRUCTION_CLEANUPPAD = 51;
     private static final int INSTRUCTION_CATCHSWITCH = 52;
     private static final int INSTRUCTION_OPERAND_BUNDLE = 55;
+    private static final int INSTRUCTION_UNOP = 56;
 
     private final FunctionDefinition function;
 
@@ -232,6 +234,10 @@ public final class Function implements ParserListener {
 
             case INSTRUCTION_BINOP:
                 createBinaryOperation(buffer);
+                break;
+
+            case INSTRUCTION_UNOP:
+                createUnaryOperation(buffer);
                 break;
 
             case INSTRUCTION_CAST:
@@ -721,6 +727,15 @@ public final class Function implements ParserListener {
         int flags = buffer.remaining() > 0 ? buffer.readInt() : 0;
 
         emit(BinaryOperationInstruction.fromSymbols(scope.getSymbols(), type, opcode, flags, lhs, rhs));
+    }
+
+    private void createUnaryOperation(RecordBuffer buffer) {
+        int operand = readIndex(buffer);
+        Type type = readValueType(buffer, operand);
+        int opcode = buffer.readInt();
+        int flags = buffer.remaining() > 0 ? buffer.readInt() : 0;
+
+        emit(UnaryOperationInstruction.fromSymbols(scope.getSymbols(), type, opcode, flags, operand));
     }
 
     private void createBranch(RecordBuffer buffer) {

@@ -240,7 +240,7 @@ final class RelocationInfo implements RelocationRecord, RelocationMethod {
         int remainingWord = 0;
         //@formatter:off
         remainingWord |=                       symbolNum & 0x00ffffff;
-        remainingWord |= (kind == RelocationKind.PC_RELATIVE) ? (1 << 24) : 0;
+        remainingWord |=                       isPCRelative() ? (1 << 24) : 0;
         remainingWord |=                        (log2length & 0x3) << 25;
         remainingWord |=                           isExtern() ? (1 << 27) : 0;
         remainingWord |=          (getMachORelocationType() & 0xf) << 28;
@@ -290,6 +290,16 @@ final class RelocationInfo implements RelocationRecord, RelocationMethod {
         return targetSection == null;
     }
 
+    private boolean isPCRelative() {
+        switch (kind) {
+            case PC_RELATIVE:
+            case AARCH64_R_AARCH64_ADR_PREL_PG_HI21:
+                return true;
+            default:
+                return false;
+        }
+    }
+
     private int getMachORelocationType() {
         switch (getRelocatedSection().getOwner().cpuType) {
             case X86_64:
@@ -308,6 +318,16 @@ final class RelocationInfo implements RelocationRecord, RelocationMethod {
                 switch (kind) {
                     case DIRECT:
                         return ARM64Reloc.UNSIGNED.getValue();
+                    case PC_RELATIVE:
+                        return ARM64Reloc.BRANCH26.getValue();
+                    case AARCH64_R_AARCH64_ADR_PREL_PG_HI21:
+                        return ARM64Reloc.PAGE21.getValue();
+                    case AARCH64_R_AARCH64_LDST64_ABS_LO12_NC:
+                    case AARCH64_R_AARCH64_LDST32_ABS_LO12_NC:
+                    case AARCH64_R_AARCH64_LDST16_ABS_LO12_NC:
+                    case AARCH64_R_AARCH64_LDST8_ABS_LO12_NC:
+                    case AARCH64_R_AARCH64_ADD_ABS_LO12_NC:
+                        return ARM64Reloc.PAGEOFF12.getValue();
                     default:
                     case UNKNOWN:
                         throw new IllegalArgumentException("unknown relocation kind: " + kind);

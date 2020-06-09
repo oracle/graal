@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,12 +30,12 @@
 #include "nanolibc.h"
 
 int main(void) {
-  int fd;
-  fd = open("LICENSE", O_RDONLY, 0);
-  if (fd < 0) {
-    perror("Error opening file");
-    return 1;
-  }
-  close(fd);
-  return 0;
+    int fd;
+    fd = open("LICENSE", O_RDONLY, 0);
+    if (fd < 0) {
+        perror("Error opening file");
+        return 1;
+    }
+    close(fd);
+    return 0;
 }

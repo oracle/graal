@@ -163,55 +163,67 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
     }
 
     @Override
-    public ForeignCallDescriptor lookupArraycopyDescriptor(JavaKind kind, boolean aligned, boolean disjoint, boolean uninit, boolean killAny) {
-        if (uninit) {
-            assert kind == JavaKind.Object;
+    public ForeignCallDescriptor lookupArraycopyDescriptor(JavaKind kind, boolean aligned, boolean disjoint, boolean uninit, LocationIdentity killedLocation) {
+        // We support Object arraycopy killing the Object array location or ANY. We support
+        // primitive arraycopy killing the kind's array location or INIT.
+        // This is enough for well-typed copies and for the kind of type punning done by
+        // StringUTF16Substitutions#getChars. This will need more work if at some point we need to
+        // support more general type punning, e.g., writing char-typed data into a byte array.
+        boolean killAny = killedLocation.isAny();
+        boolean killInit = killedLocation.isInit();
+        if (kind.isObject()) {
+            assert !killInit : "unsupported";
+            assert killAny || killedLocation.equals(NamedLocationIdentity.getArrayLocation(kind));
+            return objectArraycopyDescriptors[aligned ? 1 : 0][disjoint ? 1 : 0][uninit ? 1 : 0][killAny ? 1 : 0];
+        } else {
+            assert kind.isPrimitive();
             assert !killAny : "unsupported";
-            return uninitObjectArraycopyDescriptors[aligned ? 1 : 0][disjoint ? 1 : 0];
+            assert killInit || killedLocation.equals(NamedLocationIdentity.getArrayLocation(kind));
+            return primitiveArraycopyDescriptors[aligned ? 1 : 0][disjoint ? 1 : 0][killInit ? 1 : 0].get(kind);
         }
-        if (killAny) {
-            return arraycopyDescriptorsKillAny[aligned ? 1 : 0][disjoint ? 1 : 0].get(kind);
-        }
-        return arraycopyDescriptors[aligned ? 1 : 0][disjoint ? 1 : 0].get(kind);
     }
 
-    @SuppressWarnings("unchecked") private static final EnumMap<JavaKind, ForeignCallDescriptor>[][] arraycopyDescriptors = (EnumMap<JavaKind, ForeignCallDescriptor>[][]) new EnumMap<?, ?>[2][2];
-    @SuppressWarnings("unchecked") private static final EnumMap<JavaKind, ForeignCallDescriptor>[][] arraycopyDescriptorsKillAny = (EnumMap<JavaKind, ForeignCallDescriptor>[][]) new EnumMap<?, ?>[2][2];
+    // indexed by aligned, disjoint, killInit
+    @SuppressWarnings("unchecked") private static final EnumMap<JavaKind, ForeignCallDescriptor>[][][] primitiveArraycopyDescriptors = (EnumMap<JavaKind, ForeignCallDescriptor>[][][]) new EnumMap<?, ?>[2][2][2];
 
-    private static final ForeignCallDescriptor[][] uninitObjectArraycopyDescriptors = new ForeignCallDescriptor[2][2];
+    // indexed by aligned, disjoint, uninit, killAny
+    private static final ForeignCallDescriptor[][][][] objectArraycopyDescriptors = new ForeignCallDescriptor[2][2][2][2];
+    // indexed by uninit
     private static final ForeignCallDescriptor[] checkcastArraycopyDescriptors = new ForeignCallDescriptor[2];
 
     static {
         // Populate the EnumMap instances
-        for (int i = 0; i < arraycopyDescriptors.length; i++) {
-            for (int j = 0; j < arraycopyDescriptors[i].length; j++) {
-                arraycopyDescriptors[i][j] = new EnumMap<>(JavaKind.class);
-                arraycopyDescriptorsKillAny[i][j] = new EnumMap<>(JavaKind.class);
+        for (int i = 0; i < primitiveArraycopyDescriptors.length; i++) {
+            for (int j = 0; j < primitiveArraycopyDescriptors[i].length; j++) {
+                for (int k = 0; k < primitiveArraycopyDescriptors[i][j].length; k++) {
+                    primitiveArraycopyDescriptors[i][j][k] = new EnumMap<>(JavaKind.class);
+                }
             }
         }
     }
 
-    private void registerArraycopyDescriptor(EconomicMap<Long, ForeignCallDescriptor> descMap, JavaKind kind, boolean aligned, boolean disjoint, boolean uninit, boolean killAny, long routine) {
+    private void registerArraycopyDescriptor(EconomicMap<Long, ForeignCallDescriptor> descMap, JavaKind kind, boolean aligned, boolean disjoint, boolean uninit, LocationIdentity killedLocation,
+                    long routine) {
+        boolean killAny = killedLocation.isAny();
+        boolean killInit = killedLocation.isInit();
         ForeignCallDescriptor desc = descMap.get(routine);
         if (desc == null) {
-            desc = buildDescriptor(kind, aligned, disjoint, uninit, killAny, routine);
+            desc = buildDescriptor(kind, aligned, disjoint, uninit, killedLocation, routine);
             descMap.put(routine, desc);
         }
-        if (uninit) {
-            assert kind == JavaKind.Object;
-            uninitObjectArraycopyDescriptors[aligned ? 1 : 0][disjoint ? 1 : 0] = desc;
-        } else if (killAny) {
-            arraycopyDescriptorsKillAny[aligned ? 1 : 0][disjoint ? 1 : 0].put(kind, desc);
+        if (kind.isObject()) {
+            objectArraycopyDescriptors[aligned ? 1 : 0][disjoint ? 1 : 0][uninit ? 1 : 0][killAny ? 1 : 0] = desc;
         } else {
-            arraycopyDescriptors[aligned ? 1 : 0][disjoint ? 1 : 0].put(kind, desc);
+            primitiveArraycopyDescriptors[aligned ? 1 : 0][disjoint ? 1 : 0][killInit ? 1 : 0].put(kind, desc);
         }
     }
 
-    private ForeignCallDescriptor buildDescriptor(JavaKind kind, boolean aligned, boolean disjoint, boolean uninit, boolean killAny, long routine) {
+    private ForeignCallDescriptor buildDescriptor(JavaKind kind, boolean aligned, boolean disjoint, boolean uninit, LocationIdentity killedLocation, long routine) {
         assert !uninit || kind == JavaKind.Object;
-        String name = kind + (aligned ? "Aligned" : "") + (disjoint ? "Disjoint" : "") + (uninit ? "Uninit" : "") + "Arraycopy" + (killAny ? "KillAny" : "");
-        LocationIdentity killed = killAny ? LocationIdentity.any() : NamedLocationIdentity.getArrayLocation(kind);
-        HotSpotForeignCallDescriptor desc = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, killed, name, void.class, Word.class, Word.class, Word.class);
+        boolean killAny = killedLocation.isAny();
+        boolean killInit = killedLocation.isInit();
+        String name = kind + (aligned ? "Aligned" : "") + (disjoint ? "Disjoint" : "") + (uninit ? "Uninit" : "") + "Arraycopy" + (killInit ? "KillInit" : killAny ? "KillAny" : "");
+        HotSpotForeignCallDescriptor desc = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, killedLocation, name, void.class, Word.class, Word.class, Word.class);
         registerForeignCall(desc, routine, NativeCall);
         return desc;
     }
@@ -252,17 +264,26 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
          * they kill different memory so they still have to be distinct.
          */
         EconomicMap<Long, ForeignCallDescriptor> descMap = EconomicMap.create();
-        registerArraycopyDescriptor(descMap, kind, false, false, uninit, false, routine);
-        registerArraycopyDescriptor(descMap, kind, true, false, uninit, false, alignedRoutine);
-        registerArraycopyDescriptor(descMap, kind, false, true, uninit, false, disjointRoutine);
-        registerArraycopyDescriptor(descMap, kind, true, true, uninit, false, alignedDisjointRoutine);
+        LocationIdentity arrayLocation = NamedLocationIdentity.getArrayLocation(kind);
+        registerArraycopyDescriptor(descMap, kind, false, false, uninit, arrayLocation, routine);
+        registerArraycopyDescriptor(descMap, kind, true, false, uninit, arrayLocation, alignedRoutine);
+        registerArraycopyDescriptor(descMap, kind, false, true, uninit, arrayLocation, disjointRoutine);
+        registerArraycopyDescriptor(descMap, kind, true, true, uninit, arrayLocation, alignedDisjointRoutine);
 
-        if (!uninit) {
+        if (kind.isPrimitive()) {
+            assert !uninit;
+            EconomicMap<Long, ForeignCallDescriptor> killInitDescMap = EconomicMap.create();
+            registerArraycopyDescriptor(killInitDescMap, kind, false, false, uninit, LocationIdentity.init(), routine);
+            registerArraycopyDescriptor(killInitDescMap, kind, true, false, uninit, LocationIdentity.init(), alignedRoutine);
+            registerArraycopyDescriptor(killInitDescMap, kind, false, true, uninit, LocationIdentity.init(), disjointRoutine);
+            registerArraycopyDescriptor(killInitDescMap, kind, true, true, uninit, LocationIdentity.init(), alignedDisjointRoutine);
+        } else {
+            assert kind.isObject();
             EconomicMap<Long, ForeignCallDescriptor> killAnyDescMap = EconomicMap.create();
-            registerArraycopyDescriptor(killAnyDescMap, kind, false, false, uninit, true, routine);
-            registerArraycopyDescriptor(killAnyDescMap, kind, true, false, uninit, true, alignedRoutine);
-            registerArraycopyDescriptor(killAnyDescMap, kind, false, true, uninit, true, disjointRoutine);
-            registerArraycopyDescriptor(killAnyDescMap, kind, true, true, uninit, true, alignedDisjointRoutine);
+            registerArraycopyDescriptor(killAnyDescMap, kind, false, false, uninit, LocationIdentity.any(), routine);
+            registerArraycopyDescriptor(killAnyDescMap, kind, true, false, uninit, LocationIdentity.any(), alignedRoutine);
+            registerArraycopyDescriptor(killAnyDescMap, kind, false, true, uninit, LocationIdentity.any(), disjointRoutine);
+            registerArraycopyDescriptor(killAnyDescMap, kind, true, true, uninit, LocationIdentity.any(), alignedDisjointRoutine);
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,26 +30,26 @@
 #include <stdio.h>
 
 int gcd(int a, int b) {
-  if (a < 0)
-    a = -a;
-  if (b < 0)
-    b = -b;
-  if (a == 0)
-    return b;
-  if (b == 0)
-    return a;
-  return gcd(b, a % b);
+    if (a < 0)
+        a = -a;
+    if (b < 0)
+        b = -b;
+    if (a == 0)
+        return b;
+    if (b == 0)
+        return a;
+    return gcd(b, a % b);
 }
 
 __attribute__((constructor)) int main() {
-  int a = 54;
-  int b = 2016;
-  __builtin_debugtrap();
-  int sum = a + b;
-  int prod = a * b;
-  int rem = a % b;
-  int g = gcd(a, b);
-  __builtin_debugtrap();
-  printf("%i\n", g);
-  return 0;
+    int a = 54;
+    int b = 2016;
+    __builtin_debugtrap();
+    int sum = a + b;
+    int prod = a * b;
+    int rem = a % b;
+    int g = gcd(a, b);
+    __builtin_debugtrap();
+    printf("%i\n", g);
+    return 0;
 }

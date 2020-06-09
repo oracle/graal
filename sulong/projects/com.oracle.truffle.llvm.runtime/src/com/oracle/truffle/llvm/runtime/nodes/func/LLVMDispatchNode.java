@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.runtime.nodes.func;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
@@ -261,10 +260,15 @@ public abstract class LLVMDispatchNode extends LLVMNode {
     }
 
     abstract static class LLVMLookupDispatchForeignNode extends LLVMNode {
-        final FunctionType type;
+
+        private final boolean isVoidReturn;
+        private final int argumentCount;
+        private final FunctionType type;
 
         LLVMLookupDispatchForeignNode(FunctionType type) {
             this.type = type;
+            this.isVoidReturn = type.getReturnType() instanceof VoidType;
+            this.argumentCount = type.getNumberOfArguments();
         }
 
         abstract Object execute(Object function, Object interopType, Object[] arguments);
@@ -289,7 +293,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
                 try (StackPointer save = ((StackPointer) arguments[0]).newFrame()) {
                     ret = crossLanguageCall.execute(function, args);
                 }
-                if (!(type.getReturnType() instanceof VoidType) && functionType != null) {
+                if (!isVoidReturn && functionType != null) {
                     LLVMInteropType retType = functionType.getReturnType();
                     if (retType instanceof LLVMInteropType.Value) {
                         return toLLVMNode.executeWithType(ret, ((LLVMInteropType.Value) retType).getBaseType());
@@ -320,7 +324,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
 
         @ExplodeLoop
         private Object[] getForeignArguments(LLVMDataEscapeNode[] dataEscapeNodes, Object[] arguments, LLVMInteropType.Function functionType) {
-            assert arguments.length == type.getNumberOfArguments();
+            assert arguments.length == argumentCount;
             Object[] args = new Object[dataEscapeNodes.length];
             int i = 0;
             if (functionType != null) {
@@ -348,8 +352,8 @@ public abstract class LLVMDispatchNode extends LLVMNode {
             return CommonNodeFactory.createForeignToLLVM(ForeignToLLVM.convert(type.getReturnType()));
         }
 
-        @TruffleBoundary
         protected LLVMDataEscapeNode[] createLLVMDataEscapeNodes() {
+            CompilerAsserts.neverPartOfCompilation();
             LLVMDataEscapeNode[] args = new LLVMDataEscapeNode[type.getNumberOfArguments() - LLVMCallNode.USER_ARGUMENT_OFFSET];
             for (int i = 0; i < args.length; i++) {
                 args[i] = LLVMDataEscapeNode.create(type.getArgumentType(i + LLVMCallNode.USER_ARGUMENT_OFFSET));

@@ -97,7 +97,7 @@ gateTestBenchmark : {
   run : [
     ${gateCmd} ["build,benchmarktest"]
     # blackbox jmh test
-    ["mx", "benchmark", "jmh-dist:*", "--", "-Djmh.ignoreLock=true", "--jvm-config=${JVM_CONFIG}", "--jvm=${JVM}", "--", ".*TestJMH.*" ]
+    ["mx", "benchmark", "jmh-dist:GRAAL_COMPILER_MICRO_BENCHMARKS", "--", "-Djmh.ignoreLock=true", "--jvm-config=${JVM_CONFIG}", "--jvm=${JVM}", "--", ".*TestJMH.*" ]
     # whitebox jmh test
     ["mx", "benchmark", "jmh-whitebox:*", "--", "-Djmh.ignoreLock=true", "--jvm-config=${JVM_CONFIG}", "--jvm=${JVM}", "--", ".*TestJMH.*" ]
   ]

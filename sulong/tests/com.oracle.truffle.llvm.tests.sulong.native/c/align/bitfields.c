@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,34 +32,34 @@
 #pragma pack(push)
 #pragma pack(1)
 struct Struct {
-  signed f0 : 14;
-  unsigned f1 : 13;
-  volatile signed f2 : 28;
-  unsigned f3 : 23;
-  const signed f4 : 12;
-  volatile unsigned f5 : 21;
-  volatile signed : 0;
+    signed f0 : 14;
+    unsigned f1 : 13;
+    volatile signed f2 : 28;
+    unsigned f3 : 23;
+    const signed f4 : 12;
+    volatile unsigned f5 : 21;
+    volatile signed : 0;
 };
 #pragma pack(pop)
 
 static struct Struct value[2] = { { -87, 27, 202, 441 }, { -87, 27, 202, 441 } };
 
 void dump_ptr(unsigned char *ptr, int len) {
-  for (int i = 0; i < len; i++, ptr++) {
-    if (i % 16 == 0) {
-      printf("\n%04x:", i);
-    } else if (i % 8 == 0) {
-      printf("  ");
+    for (int i = 0; i < len; i++, ptr++) {
+        if (i % 16 == 0) {
+            printf("\n%04x:", i);
+        } else if (i % 8 == 0) {
+            printf("  ");
+        }
+        printf(" %02x", *ptr);
     }
-    printf(" %02x", *ptr);
-  }
-  printf("\n");
+    printf("\n");
 }
 
 int main(int argc, char *argv[]) {
-  dump_ptr(value, 2 * sizeof(*value));
-  dump_ptr(&value[argc], sizeof(struct Struct));
+    dump_ptr(value, 2 * sizeof(*value));
+    dump_ptr(&value[argc], sizeof(struct Struct));
 
-  printf("%d\n", value[argc].f0);
-  return 0;
+    printf("%d\n", value[argc].f0);
+    return 0;
 }

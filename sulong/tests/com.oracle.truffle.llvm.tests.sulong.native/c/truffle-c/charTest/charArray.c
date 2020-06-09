@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,10 +30,10 @@
 char arr[4] = { 'a', 'b', 2, 3 };
 
 int main() {
-  int i;
-  char sum = 0;
-  for (i = 0; i < 4; i++) {
-    sum = sum + arr[i];
-  }
-  return 100 + sum;
+    int i;
+    char sum = 0;
+    for (i = 0; i < 4; i++) {
+        sum = sum + arr[i];
+    }
+    return 100 + sum;
 }

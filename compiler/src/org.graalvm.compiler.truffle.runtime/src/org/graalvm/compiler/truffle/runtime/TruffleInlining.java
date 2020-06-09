@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
+import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import static org.graalvm.compiler.truffle.runtime.OptimizedCallTarget.runtime;
 
@@ -53,6 +54,8 @@ import jdk.vm.ci.meta.JavaConstant;
 public class TruffleInlining implements Iterable<TruffleInliningDecision>, TruffleInliningPlan {
 
     private final List<TruffleInliningDecision> callSites;
+
+    private final List<CompilableTruffleAST> targets = new ArrayList<>();
 
     protected TruffleInlining(List<TruffleInliningDecision> callSites) {
         this.callSites = callSites;
@@ -282,6 +285,18 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision>, Truff
         @Override
         public String getLanguage() {
             return sourceSection.getSource().getLanguage();
+        }
+    }
+
+    @Override
+    public void addTargetToDequeue(CompilableTruffleAST target) {
+        targets.add(target);
+    }
+
+    @Override
+    public void dequeueTargets() {
+        for (CompilableTruffleAST target : targets) {
+            target.cancelInstalledTask();
         }
     }
 

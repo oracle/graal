@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,15 +28,15 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int func(int a, int b) {
-  static int c = 1;
-  static int d = 2;
-  c += a;
-  d += b;
-  return c + d;
+    static int c = 1;
+    static int d = 2;
+    c += a;
+    d += b;
+    return c + d;
 }
 
 int main() {
-  func(2, 3);
-  func(8, 2);
-  return func(-3, -2);
+    func(2, 3);
+    func(8, 2);
+    return func(-3, -2);
 }

@@ -28,7 +28,7 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-BREAK 85 CONTINUE "start"
+BREAK 84 CONTINUE "start"
     OPEN_SCOPE
         MEMBER exact "long double" "a" "0xK3fff9d70a3d70a3d70a4"
         MEMBER exact "long double" "b" "0xKc00191eb851eb851eb85"

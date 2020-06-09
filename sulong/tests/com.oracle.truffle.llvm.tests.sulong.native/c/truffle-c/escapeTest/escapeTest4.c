@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,22 +28,22 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 void foo(int ***pppa) {
-  pppa += 1;
-  pppa = pppa - 1;
-  *pppa = *pppa + 1;
-  *pppa -= 1;
+    pppa += 1;
+    pppa = pppa - 1;
+    *pppa = *pppa + 1;
+    *pppa -= 1;
 
-  **pppa = **pppa + 1;
-  **pppa -= 1;
+    **pppa = **pppa + 1;
+    **pppa -= 1;
 
-  ***pppa = 23;
+    ***pppa = 23;
 }
 
 int main() {
-  int a = 1;
-  int *pa = &a;
-  int **ppa = &pa;
-  int ***pppa = &ppa;
-  foo(pppa);
-  return a;
+    int a = 1;
+    int *pa = &a;
+    int **ppa = &pa;
+    int ***pppa = &ppa;
+    foo(pppa);
+    return a;
 }

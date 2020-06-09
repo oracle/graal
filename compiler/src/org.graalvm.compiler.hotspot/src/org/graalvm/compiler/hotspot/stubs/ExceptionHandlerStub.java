@@ -52,6 +52,7 @@ import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotBackend;
 import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage;
+import org.graalvm.compiler.hotspot.HotSpotMarkId;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.nodes.StubForeignCallNode;
@@ -62,10 +63,10 @@ import org.graalvm.word.WordFactory;
 import jdk.vm.ci.code.Register;
 
 /**
- * Stub called by the {@linkplain GraalHotSpotVMConfig#MARKID_EXCEPTION_HANDLER_ENTRY exception
- * handler entry point} in a compiled method. This entry point is used when returning to a method to
- * handle an exception thrown by a callee. It is not used for routing implicit exceptions.
- * Therefore, it does not need to save any registers as HotSpot uses a caller save convention.
+ * Stub called by the {@linkplain HotSpotMarkId#EXCEPTION_HANDLER_ENTRY exception handler entry
+ * point} in a compiled method. This entry point is used when returning to a method to handle an
+ * exception thrown by a callee. It is not used for routing implicit exceptions. Therefore, it does
+ * not need to save any registers as HotSpot uses a caller save convention.
  * <p>
  * The descriptor for a call to this stub is {@link HotSpotBackend#EXCEPTION_HANDLER}.
  */

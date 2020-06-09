@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,6 +31,6 @@ int a = 5;
 int *pa = &a;
 
 int main() {
-  *pa = *pa + 1;
-  return *pa;
+    *pa = *pa + 1;
+    return *pa;
 }

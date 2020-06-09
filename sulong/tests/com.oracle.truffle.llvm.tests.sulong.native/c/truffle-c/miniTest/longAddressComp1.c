@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,13 +28,13 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int main() {
-  long adr = 0;
-  int sum = 0;
-  sum += adr > &adr;
-  sum += adr < &adr;
-  sum += adr >= &adr;
-  sum += adr <= &adr;
-  sum += adr == &adr;
-  sum += adr != &adr;
-  return sum;
+    long adr = 0;
+    int sum = 0;
+    sum += adr > &adr;
+    sum += adr < &adr;
+    sum += adr >= &adr;
+    sum += adr <= &adr;
+    sum += adr == &adr;
+    sum += adr != &adr;
+    return sum;
 }

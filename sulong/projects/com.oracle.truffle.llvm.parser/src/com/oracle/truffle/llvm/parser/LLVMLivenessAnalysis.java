@@ -73,6 +73,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.StoreInstructio
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.SwitchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.SwitchOldInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.TerminatingInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.UnaryOperationInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.UnreachableInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
@@ -442,6 +443,11 @@ public final class LLVMLivenessAnalysis {
         public void visit(BinaryOperationInstruction operation) {
             visitLocalRead(operation.getLHS());
             visitLocalRead(operation.getRHS());
+        }
+
+        @Override
+        public void visit(UnaryOperationInstruction operation) {
+            visitLocalRead(operation.getOperand());
         }
 
         @Override

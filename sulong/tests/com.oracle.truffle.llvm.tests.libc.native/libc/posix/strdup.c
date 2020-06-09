@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,11 +32,11 @@
 #include <string.h>
 
 int main() {
-  const char *test = "asdfasdf";
-  char *s = malloc(strlen(test) + 1);
-  strcpy(s, test);
-  char *new = strdup(s);
-  free(s);
-  puts(new);
-  free(new);
+    const char *test = "asdfasdf";
+    char *s = malloc(strlen(test) + 1);
+    strcpy(s, test);
+    char *new = strdup(s);
+    free(s);
+    puts(new);
+    free(new);
 }

@@ -286,9 +286,6 @@ def _get_component_type_base(c, apply_substitutions=False):
     elif isinstance(c, mx_sdk.GraalVMSvmMacro):
         svm_component = get_component('svm', stage1=True)
         result = _get_component_type_base(svm_component, apply_substitutions=apply_substitutions) + svm_component.dir_name + '/macros/'
-    elif isinstance(c, mx_sdk.GraalVMSvmStaticLib):
-        svm_component = get_component('svm')
-        result = _get_component_type_base(svm_component, apply_substitutions=apply_substitutions) + svm_component.dir_name + '/static-libs/'
     elif isinstance(c, mx_sdk.GraalVmComponent):
         result = '<jdk_base>/'
     else:
@@ -713,11 +710,14 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             _add(layout, '<jre_base>/lib/graalvm/', ['dependency:' + d for d in sorted(graalvm_dists)], _component, with_sources=True)
 
             for _provided_executable in _component.provided_executables:
-                _provided_executable = mx_subst.results_substitutions.substitute(_provided_executable)
-                if _component.short_name == 'vvm':
-                    _add(layout, _jdk_jre_bin, 'extracted-dependency:tools:VISUALVM_PLATFORM_SPECIFIC/./' + _provided_executable, _component)
+                if isinstance(_provided_executable, tuple):
+                    # copied executable
+                    _src_dist, _executable = _provided_executable
+                    _executable = mx_subst.results_substitutions.substitute(_executable)
+                    _add(layout, _jdk_jre_bin, 'extracted-dependency:{}/{}'.format(_src_dist, _executable), _component)
                 else:
-                    _link_dest = _component_base + _provided_executable
+                    # linked executable
+                    _link_dest = _component_base + mx_subst.results_substitutions.substitute(_provided_executable)
                     _link_path = _add_link(_jdk_jre_bin, _link_dest, _component)
                     _jre_bin_names.append(basename(_link_path))
 
@@ -2073,7 +2073,7 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
             **kw_args)
 
 
-class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=too-many-ancestors
+class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
     def __init__(self, component, graalvm, **kw_args):
         """
         :type component: mx_sdk.GraalVmTruffleComponent

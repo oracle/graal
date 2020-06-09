@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -183,6 +183,11 @@ public abstract class LLVMTo80BitFloatingNode extends LLVMExpressionNode {
         @Override
         protected LLVMTo80BitFloatingNode createRecursive() {
             return LLVMBitcastToLLVM80BitFloatNodeGen.create(null);
+        }
+
+        @Specialization
+        protected LLVM80BitFloat doDouble(double from) {
+            return LLVM80BitFloat.fromDouble(from);
         }
 
         @Specialization

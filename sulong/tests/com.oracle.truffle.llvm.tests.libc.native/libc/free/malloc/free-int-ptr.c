@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,10 +30,10 @@
 #include <stdlib.h>
 
 int main() {
-  int **val = malloc(sizeof(int *));
-  int result = 5;
-  *val = &result;
-  int ret = **val;
-  free(val);
-  return ret;
+    int **val = malloc(sizeof(int *));
+    int result = 5;
+    *val = &result;
+    int ret = **val;
+    free(val);
+    return ret;
 }

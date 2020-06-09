@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,14 +31,14 @@
 #include <string.h>
 
 int main() {
-  char *haystack = "The quick brown fox jumps over the lazy dog";
-  if (strpbrk(haystack, "") != NULL) {
-    abort();
-  }
-  if (strpbrk("", haystack) != NULL) {
-    abort();
-  }
-  if (strpbrk("", "") != NULL) {
-    abort();
-  }
+    char *haystack = "The quick brown fox jumps over the lazy dog";
+    if (strpbrk(haystack, "") != NULL) {
+        abort();
+    }
+    if (strpbrk("", haystack) != NULL) {
+        abort();
+    }
+    if (strpbrk("", "") != NULL) {
+        abort();
+    }
 }

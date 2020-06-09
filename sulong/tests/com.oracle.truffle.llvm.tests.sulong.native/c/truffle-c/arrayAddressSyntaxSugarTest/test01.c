@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,16 +29,16 @@
  */
 long function(int test[]) {
 
-  if (test == &test[0]) {
-    if (test == &test) {
-      return 0;
+    if (test == &test[0]) {
+        if (test == &test) {
+            return 0;
+        }
+        return 1;
     }
-    return 1;
-  }
-  return 2;
+    return 2;
 }
 
 int main() {
-  int a[3] = { 0 };
-  return function(a);
+    int a[3] = { 0 };
+    return function(a);
 }

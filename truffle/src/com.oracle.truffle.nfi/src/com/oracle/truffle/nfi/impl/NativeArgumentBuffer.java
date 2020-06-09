@@ -101,6 +101,66 @@ abstract class NativeArgumentBuffer {
         protected ByteBuffer getPrimBuffer() {
             return CompilerDirectives.castExact(primBuffer, heapByteBuffer);
         }
+
+        @Override
+        public byte getInt8() {
+            return CompilerDirectives.castExact(primBuffer, heapByteBuffer).get();
+        }
+
+        @Override
+        public void putInt8(byte b) {
+            CompilerDirectives.castExact(primBuffer, heapByteBuffer).put(b);
+        }
+
+        @Override
+        public short getInt16() {
+            return CompilerDirectives.castExact(primBuffer, heapByteBuffer).getShort();
+        }
+
+        @Override
+        public void putInt16(short s) {
+            CompilerDirectives.castExact(primBuffer, heapByteBuffer).putShort(s);
+        }
+
+        @Override
+        public int getInt32() {
+            return CompilerDirectives.castExact(primBuffer, heapByteBuffer).getInt();
+        }
+
+        @Override
+        public void putInt32(int i) {
+            CompilerDirectives.castExact(primBuffer, heapByteBuffer).putInt(i);
+        }
+
+        @Override
+        public long getInt64() {
+            return CompilerDirectives.castExact(primBuffer, heapByteBuffer).getLong();
+        }
+
+        @Override
+        public void putInt64(long l) {
+            CompilerDirectives.castExact(primBuffer, heapByteBuffer).putLong(l);
+        }
+
+        @Override
+        public float getFloat() {
+            return CompilerDirectives.castExact(primBuffer, heapByteBuffer).getFloat();
+        }
+
+        @Override
+        public void putFloat(float f) {
+            CompilerDirectives.castExact(primBuffer, heapByteBuffer).putFloat(f);
+        }
+
+        @Override
+        public double getDouble() {
+            return CompilerDirectives.castExact(primBuffer, heapByteBuffer).getDouble();
+        }
+
+        @Override
+        public void putDouble(double d) {
+            CompilerDirectives.castExact(primBuffer, heapByteBuffer).putDouble(d);
+        }
     }
 
     static final class Direct extends NativeArgumentBuffer {
@@ -117,6 +177,66 @@ abstract class NativeArgumentBuffer {
         @Override
         protected ByteBuffer getPrimBuffer() {
             return CompilerDirectives.castExact(primBuffer, directByteBuffer);
+        }
+
+        @Override
+        public byte getInt8() {
+            return CompilerDirectives.castExact(primBuffer, directByteBuffer).get();
+        }
+
+        @Override
+        public void putInt8(byte b) {
+            CompilerDirectives.castExact(primBuffer, directByteBuffer).put(b);
+        }
+
+        @Override
+        public short getInt16() {
+            return CompilerDirectives.castExact(primBuffer, directByteBuffer).getShort();
+        }
+
+        @Override
+        public void putInt16(short s) {
+            CompilerDirectives.castExact(primBuffer, directByteBuffer).putShort(s);
+        }
+
+        @Override
+        public int getInt32() {
+            return CompilerDirectives.castExact(primBuffer, directByteBuffer).getInt();
+        }
+
+        @Override
+        public void putInt32(int i) {
+            CompilerDirectives.castExact(primBuffer, directByteBuffer).putInt(i);
+        }
+
+        @Override
+        public long getInt64() {
+            return CompilerDirectives.castExact(primBuffer, directByteBuffer).getLong();
+        }
+
+        @Override
+        public void putInt64(long l) {
+            CompilerDirectives.castExact(primBuffer, directByteBuffer).putLong(l);
+        }
+
+        @Override
+        public float getFloat() {
+            return CompilerDirectives.castExact(primBuffer, directByteBuffer).getFloat();
+        }
+
+        @Override
+        public void putFloat(float f) {
+            CompilerDirectives.castExact(primBuffer, directByteBuffer).putFloat(f);
+        }
+
+        @Override
+        public double getDouble() {
+            return CompilerDirectives.castExact(primBuffer, directByteBuffer).getDouble();
+        }
+
+        @Override
+        public void putDouble(double d) {
+            CompilerDirectives.castExact(primBuffer, directByteBuffer).putDouble(d);
         }
     }
 
@@ -146,53 +266,29 @@ abstract class NativeArgumentBuffer {
 
     protected abstract ByteBuffer getPrimBuffer();
 
-    public byte getInt8() {
-        return getPrimBuffer().get();
-    }
+    public abstract byte getInt8();
 
-    public void putInt8(byte b) {
-        getPrimBuffer().put(b);
-    }
+    public abstract void putInt8(byte b);
 
-    public short getInt16() {
-        return getPrimBuffer().getShort();
-    }
+    public abstract short getInt16();
 
-    public void putInt16(short s) {
-        getPrimBuffer().putShort(s);
-    }
+    public abstract void putInt16(short s);
 
-    public int getInt32() {
-        return getPrimBuffer().getInt();
-    }
+    public abstract int getInt32();
 
-    public void putInt32(int i) {
-        getPrimBuffer().putInt(i);
-    }
+    public abstract void putInt32(int i);
 
-    public long getInt64() {
-        return getPrimBuffer().getLong();
-    }
+    public abstract long getInt64();
 
-    public void putInt64(long l) {
-        getPrimBuffer().putLong(l);
-    }
+    public abstract void putInt64(long l);
 
-    public float getFloat() {
-        return getPrimBuffer().getFloat();
-    }
+    public abstract float getFloat();
 
-    public void putFloat(float f) {
-        getPrimBuffer().putFloat(f);
-    }
+    public abstract void putFloat(float f);
 
-    public double getDouble() {
-        return getPrimBuffer().getDouble();
-    }
+    public abstract double getDouble();
 
-    public void putDouble(double d) {
-        getPrimBuffer().putDouble(d);
-    }
+    public abstract void putDouble(double d);
 
     public long getPointer(int size) {
         switch (size) {

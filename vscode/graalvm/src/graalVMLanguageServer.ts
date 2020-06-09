@@ -20,7 +20,6 @@ let languageServerPID: number = 0;
 
 export function registerLanguageServer(server: (() => Thenable<string>)): void {
     delegateLanguageServers.add(server);
-    stopLanguageServer().then(() => startLanguageServer(vscode.workspace.getConfiguration('graalvm').get('home') as string));
 }
 
 export function startLanguageServer(graalVMHome: string) {
@@ -92,12 +91,13 @@ export function connectToLanguageServer(connection: (() => Thenable<StreamInfo>)
 
 export function stopLanguageServer(): Thenable<void> {
 	if (languageClient) {
-		return languageClient.then((client) => client.stop().then(() => {
+		let terminate = () => {
 			languageClient = undefined;
 			if (languageServerPID > 0) {
 				terminateLanguageServer();
 			}
-		}));
+		};
+		return languageClient.then((client) => client.stop().then(terminate, terminate));
 	}
 	if (languageServerPID > 0) {
 		terminateLanguageServer();

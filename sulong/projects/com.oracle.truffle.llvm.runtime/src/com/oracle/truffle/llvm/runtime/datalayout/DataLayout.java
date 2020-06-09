@@ -87,7 +87,7 @@ public final class DataLayout {
         }
         DataTypeSpecification spec = getDataTypeSpecification(baseType);
         if (spec == null) {
-            throw new IllegalStateException("No data specification found for " + baseType);
+            throw new IllegalStateException("No data specification found for " + baseType + ". Data layout is " + dataLayout);
         }
         int alignment = spec.getAbiAlignment();
         alignmentCache.put(baseType, alignment);
@@ -121,7 +121,10 @@ public final class DataLayout {
 
     private DataTypeSpecification getDataTypeSpecification(Type baseType) {
         if (baseType instanceof PointerType || baseType instanceof FunctionType) {
-            return getDataTypeSpecification(DataLayoutType.POINTER);
+            DataTypeSpecification ptrDTSpec = getDataTypeSpecification(DataLayoutType.POINTER, 64);
+            // The preceding call does not work for ARM arch that uses 128 bit pointers. In that
+            // case we take the first pointer spec available.
+            return ptrDTSpec == null ? getDataTypeSpecification(DataLayoutType.POINTER) : ptrDTSpec;
         } else if (baseType instanceof PrimitiveType) {
             PrimitiveType primitiveType = (PrimitiveType) baseType;
             switch (primitiveType.getPrimitiveKind()) {
