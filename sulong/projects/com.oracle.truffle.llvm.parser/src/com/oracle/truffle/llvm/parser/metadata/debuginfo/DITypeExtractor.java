@@ -205,8 +205,30 @@ final class DITypeExtractor implements MetadataVisitor {
 
                     } else if (member instanceof LLVMSourceStaticMemberType) {
                         type.addStaticMember((LLVMSourceStaticMemberType) member);
-                    } else if (member instanceof LLVMSourceFunctionType) {
-                        type.addMethod((LLVMSourceFunctionType) member);
+                    } /*
+                       * else if (member instanceof LLVMSourceFunctionType) {
+                       * type.addMethod((LLVMSourceFunctionType) member); }
+                       */
+
+                }
+                MDBaseNode mdMembers = mdType.getMembers();
+                if (mdMembers instanceof MDNode) {
+                    final MDNode elemListNode = (MDNode) mdMembers;
+                    for (MDBaseNode elemNode : elemListNode) {
+                        if (elemNode instanceof MDSubprogram) {
+                            MDSubprogram mdSubprogram = (MDSubprogram) elemNode;
+                            try {
+                                final String methodName = ((MDString) mdSubprogram.getName()).getString();
+                                final String methodLinkageName = ((MDString) mdSubprogram.getLinkageName()).getString();
+                                final LLVMSourceFunctionType llvmSourceFunctionType = (LLVMSourceFunctionType) parsedTypes.get(mdSubprogram);
+                                if (llvmSourceFunctionType != null) {
+                                    type.addMethod(methodName, methodLinkageName, llvmSourceFunctionType);
+                                }
+                            } catch (ClassCastException cce) {
+                                // TODO (pichristoph) deal with exception in a nice way, or do
+                                // 'instanceof' checks in try block
+                            }
+                        }
                     }
                 }
                 break;
