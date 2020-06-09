@@ -47,11 +47,13 @@ import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.graal.nodes.KillMemoryNode;
 import com.oracle.svm.core.graal.nodes.VerificationMarkerNode;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode.StackSlotIdentity;
@@ -133,6 +135,13 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
 
         /* The thread is now back in the Java state, it is safe to pop the JavaFrameAnchor. */
         JavaFrameAnchors.popFrameAnchor();
+
+        /*
+         * Ensure that no floating reads are scheduled before we are done with the transition. All
+         * memory dependencies of the replaced CEntryPointEpilogueNode are re-wired to this
+         * KillMemoryNode since this is the last kill-all node of the snippet.
+         */
+        KillMemoryNode.killMemory(LocationIdentity.ANY_LOCATION);
     }
 
     private CFunctionSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
