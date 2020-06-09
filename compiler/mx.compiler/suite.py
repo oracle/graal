@@ -2305,7 +2305,7 @@ suite = {
           "org.graalvm.compiler.core                   to jdk.aot",
           "org.graalvm.compiler.core.common            to jdk.aot,jdk.internal.vm.compiler.management",
           "org.graalvm.compiler.core.target            to jdk.aot",
-          "org.graalvm.compiler.debug                  to jdk.aot,jdk.internal.vm.compiler.management",
+          "org.graalvm.compiler.debug                  to jdk.aot,jdk.internal.vm.compiler.management,org.graalvm.nativeimage.objectfile",
           "org.graalvm.compiler.graph                  to jdk.aot",
           "org.graalvm.compiler.hotspot                to jdk.aot,jdk.internal.vm.compiler.management",
           "org.graalvm.compiler.hotspot.meta           to jdk.aot",

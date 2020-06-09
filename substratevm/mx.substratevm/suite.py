@@ -928,6 +928,7 @@ suite = {
                         "jdk.vm.ci.hotspot",
                     ],
                     "java.base": [
+                        "sun.util.calendar",
                         "sun.security.util",
                         "sun.security.provider",
                         "com.sun.crypto.provider",
@@ -980,6 +981,15 @@ suite = {
             ],
             "moduleInfo" : {
               "name" : "org.graalvm.nativeimage.objectfile",
+              "exports" : [
+                "com.oracle.objectfile",
+              ],
+              "requiresConcealed" : {
+                "java.base" : [
+                  "sun.nio.ch",
+                  "jdk.internal.ref",
+                ],
+              }
             },
         },
 
@@ -1110,6 +1120,9 @@ suite = {
                 "com.oracle.graal.pointsto.meta",
                 "com.oracle.graal.pointsto.flow",
                 "com.oracle.graal.pointsto.nodes",
+                "com.oracle.graal.pointsto.phases",
+                "com.oracle.graal.pointsto.results",
+                "com.oracle.graal.pointsto.typestate",
                 "com.oracle.graal.pointsto.infrastructure",
                 "com.oracle.graal.pointsto.flow.context.object",
               ],
