@@ -34,7 +34,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-public class ToJson implements AutoCloseable {
+public class ToJson {
 
     private static final String EMPTY = "";
     private static final String NEW_LINE = "\n";
@@ -62,7 +62,6 @@ public class ToJson implements AutoCloseable {
         MAP.put('\t', 't');
     }
 
-    private final PrintWriter writer;
     private final boolean pretty;
     private final String newPrefix;
     private final String prefi;
@@ -87,12 +86,11 @@ public class ToJson implements AutoCloseable {
         }
     };
 
-    public ToJson(PrintWriter writer) {
-        this(writer, false);
+    public ToJson() {
+        this(false);
     }
 
-    public ToJson(PrintWriter writer, boolean pretty) {
-        this.writer = writer;
+    public ToJson(boolean pretty) {
         this.pretty = pretty;
         if (pretty) {
             prefi = ",\n";
@@ -104,32 +102,38 @@ public class ToJson implements AutoCloseable {
             colon = ":";
         }
         pref = newPrefix;
+    }
+
+    public void printHeader(PrintWriter writer) {
         writer.append(OPEN_OBJECT);
         ++depth;
     }
 
-    private void prepend() {
+    private void prepend(PrintWriter writer) {
         if (pretty) {
             writer.append(prepends.get(depth));
         }
     }
 
-    public void put(String name, JsonValue value) {
+    public void put(PrintWriter writer, String name, JsonValue value) {
+        if (depth == 0) {
+            printHeader(writer);
+        }
         if (value != null) {
             writer.print(pref);
-            putProperty(name, value);
+            putProperty(writer, name, value);
             pref = prefi;
         }
     }
 
-    private void putProperty(String name, JsonValue value) {
-        prepend();
-        dumpString(name);
+    private void putProperty(PrintWriter writer, String name, JsonValue value) {
+        prepend(writer);
+        dumpString(writer, name);
         writer.append(colon);
-        value.dump(this);
+        value.dump(writer, this);
     }
 
-    private void dumpString(String string) {
+    private static void dumpString(PrintWriter writer, String string) {
         writer.append(QUOTE);
         for (int i = 0, n = string.length(); i < n; ++i) {
             char c = string.charAt(i);
@@ -143,35 +147,35 @@ public class ToJson implements AutoCloseable {
         writer.append(QUOTE);
     }
 
-    private void dumpElement(String element) {
+    private static void dumpElement(PrintWriter writer, String element) {
         writer.print(element);
     }
 
-    private void dumpNumber(Number number) {
+    private static void dumpNumber(PrintWriter writer, Number number) {
         writer.print(number);
     }
 
-    private void dumpArray(Stream<JsonValue> values) {
+    private void dumpArray(PrintWriter writer, Stream<JsonValue> values) {
         writer.append(OPEN_ARRAY);
         ++depth;
         String[] prefix = new String[]{newPrefix};
         values.sequential().forEach(val -> {
             if (val != null) {
                 writer.print(prefix[0]);
-                prepend();
-                val.dump(this);
+                prepend(writer);
+                val.dump(writer, this);
                 prefix[0] = this.prefi;
             }
         });
         --depth;
         if (pretty && !prefix[0].equals(NEW_LINE)) {
             writer.append(NEW_LINE);
-            prepend();
+            prepend(writer);
         }
         writer.append(CLOSE_ARRAY);
     }
 
-    private void dumpObject(Stream<String> names, Function<String, JsonValue> func) {
+    private void dumpObject(PrintWriter writer, Stream<String> names, Function<String, JsonValue> func) {
         writer.append(OPEN_OBJECT);
         ++depth;
         String[] prefix = new String[]{newPrefix};
@@ -179,24 +183,22 @@ public class ToJson implements AutoCloseable {
             JsonValue val = func.apply(name);
             if (val != null) {
                 writer.print(prefix[0]);
-                putProperty(name, val);
+                putProperty(writer, name, val);
                 prefix[0] = this.prefi;
             }
         });
         --depth;
         if (pretty && !prefix[0].equals(NEW_LINE)) {
             writer.append(NEW_LINE);
-            prepend();
+            prepend(writer);
         }
         writer.append(CLOSE_OBJECT);
     }
 
-    @Override
-    public void close() {
+    public void close(PrintWriter writer) {
         --depth;
         assert depth == 0;
         writer.append(CLOSE_OBJECT);
-        writer.close();
     }
 
     public abstract static class JsonValue {
@@ -205,7 +207,7 @@ public class ToJson implements AutoCloseable {
         public static final JsonValue TRUE = JsonElement.get("true");
         public static final JsonValue FALSE = JsonElement.get("false");
 
-        abstract void dump(ToJson access);
+        abstract void dump(PrintWriter writer, ToJson access);
 
         protected void build() {
         }
@@ -225,8 +227,8 @@ public class ToJson implements AutoCloseable {
         abstract String getElement();
 
         @Override
-        final void dump(ToJson access) {
-            access.dumpElement(this.getElement());
+        final void dump(PrintWriter writer, ToJson access) {
+            ToJson.dumpElement(writer, this.getElement());
         }
     }
 
@@ -244,13 +246,13 @@ public class ToJson implements AutoCloseable {
         abstract Number getNumber();
 
         @Override
-        final void dump(ToJson access) {
+        final void dump(PrintWriter writer, ToJson access) {
             build();
             Number number = getNumber();
             if (number == null) {
-                JsonValue.NULL.dump(access);
+                JsonValue.NULL.dump(writer, access);
             } else {
-                access.dumpNumber(number);
+                ToJson.dumpNumber(writer, number);
             }
         }
     }
@@ -269,13 +271,13 @@ public class ToJson implements AutoCloseable {
         abstract String getString();
 
         @Override
-        final void dump(ToJson access) {
+        final void dump(PrintWriter writer, ToJson access) {
             build();
             String string = getString();
             if (string == null) {
-                JsonValue.NULL.dump(access);
+                JsonValue.NULL.dump(writer, access);
             } else {
-                access.dumpString(string);
+                ToJson.dumpString(writer, string);
             }
         }
     }
@@ -294,13 +296,13 @@ public class ToJson implements AutoCloseable {
         abstract Stream<JsonValue> getValues();
 
         @Override
-        final void dump(ToJson access) {
+        final void dump(PrintWriter writer, ToJson access) {
             build();
             Stream<JsonValue> values = getValues();
             if (values == null) {
-                JsonValue.NULL.dump(access);
+                JsonValue.NULL.dump(writer, access);
             } else {
-                access.dumpArray(values);
+                access.dumpArray(writer, values);
             }
         }
     }
@@ -326,13 +328,13 @@ public class ToJson implements AutoCloseable {
         abstract JsonValue getValue(String name);
 
         @Override
-        final void dump(ToJson access) {
+        final void dump(PrintWriter writer, ToJson access) {
             build();
             Stream<String> names = getNames();
             if (names == null) {
-                JsonValue.NULL.dump(access);
+                JsonValue.NULL.dump(writer, access);
             } else {
-                access.dumpObject(names, this::getValue);
+                access.dumpObject(writer, names, this::getValue);
             }
         }
     }
