@@ -403,7 +403,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Value eval(String language, Object sourceImpl);
 
-        public abstract void validate(String language, Object impl);
+        public abstract Value parse(String language, Object sourceImpl);
 
         public abstract Engine getEngineImpl(Context sourceContext);
 

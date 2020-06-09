@@ -838,7 +838,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     }
 
     @Override
-    public void validate(String languageId, Object sourceImpl) {
+    public Value parse(String languageId, Object sourceImpl) {
         PolyglotLanguage language = requirePublicLanguage(languageId);
         PolyglotLanguageContext languageContext = getContext(language);
         try {
@@ -847,7 +847,8 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
                 Source source = (Source) sourceImpl;
                 languageContext.checkAccess(null);
                 languageContext.ensureInitialized(null);
-                languageContext.parseCached(null, source, null);
+                CallTarget target = languageContext.parseCached(null, source, null);
+                return languageContext.asValue(new PolyglotParsedEval(languageContext, source, target));
             } finally {
                 engine.leaveIfNeeded(prev, this);
             }
@@ -897,7 +898,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     }
 
     @TruffleBoundary
-    private static void printResult(PolyglotLanguageContext languageContext, Object result) {
+    static void printResult(PolyglotLanguageContext languageContext, Object result) {
         if (!LANGUAGE.isVisible(languageContext.env, result)) {
             return;
         }

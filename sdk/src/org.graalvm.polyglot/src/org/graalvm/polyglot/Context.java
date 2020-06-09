@@ -372,29 +372,34 @@ public final class Context implements AutoCloseable {
     }
 
     /**
-     * Validates but does not evaluate a given source by using the {@linkplain Source#getLanguage()
-     * language} specified in the source. If a validation fails, e.g. due to a syntax error in the
-     * source, then a {@link PolyglotException} will be thrown. In case of a syntax error the
+     * Parses but does not evaluate a given source by using the {@linkplain Source#getLanguage()
+     * language} specified in the source and returns a {@link Value value} that can be
+     * {@link Value#execute(Object...) executed}. If a parsing fails, e.g. due to a syntax error in
+     * the source, then a {@link PolyglotException} will be thrown. In case of a syntax error the
      * {@link PolyglotException#isSyntaxError()} will return <code>true</code>. There is no
      * guarantee that only syntax errors will be thrown by this method. Any other guest language
      * exception might be thrown. If the validation succeeds then the method completes without
      * throwing an exception.
      * <p>
-     * If the validation succeeds and the source is {@link Source.Builder#cached(boolean) cached}
-     * then the result will automatically be reused for consecutive calls to
-     * {@link #validate(Source)} or {@link #eval(Source)}. If the validation should be performed for
-     * each invocation or the result should not be remembered then
-     * {@link Source.Builder#cached(boolean) cached} can be set to <code>false</code>. By default
-     * sources are cached.
+     * The result value only supports an empty set of arguments to {@link Value#execute(Object...)
+     * execute}. If executed repeatedly then the source is evaluated multiple times.
+     * {@link Source.Builder#interactive(boolean) Interactive} sources to be printed for each
+     * execution of the parsing result.
+     * <p>
+     * If the parsing succeeds and the source is {@link Source.Builder#cached(boolean) cached} then
+     * the result will automatically be reused for consecutive calls to {@link #parse(Source)} or
+     * {@link #eval(Source)}. If the validation should be performed for each invocation or the
+     * result should not be remembered then {@link Source.Builder#cached(boolean) cached} can be set
+     * to <code>false</code>. By default sources are cached.
      * <p>
      * <b>Basic Example:</b>
      *
      * <pre>
      * try (Context context = Context.create()) {
      *     Source source = Source.create("js", "42");
+     *     Value value;
      *     try {
-     *         context.validate(source);
-     *
+     *         value = context.parse(source);
      *         // validation succeeded
      *     } catch (PolyglotException e) {
      *         if (e.isSyntaxError()) {
@@ -403,34 +408,42 @@ public final class Context implements AutoCloseable {
      *         } else {
      *             // other guest error detected
      *         }
+     *         throw e;
      *     }
+     *     // evaluate the parsed script
+     *     value.execute();
      * }
      * </pre>
      *
-     * @param source a source object to evaluate
+     * @param source a source object to parse
      * @throws PolyglotException in case the guest language code parsing or validation failed.
      * @throws IllegalArgumentException if the language does not exist or is not accessible.
      * @throws IllegalStateException if the context is already closed and the current thread is not
      *             allowed to access it, or if the given language is not installed.
      * @since 20.2
      */
-    public void validate(Source source) throws PolyglotException {
-        impl.validate(source.getLanguage(), source.impl);
+    public Value parse(Source source) throws PolyglotException {
+        return impl.parse(source.getLanguage(), source.impl);
     }
 
     /**
-     * Validates but does not evaluate a guest language code literal using a provided
-     * {@link Language#getId() language id} and character sequence. The provided
-     * {@link CharSequence} must represent an immutable String. This method represents a short-hand
-     * for {@link #validate(Source)}.
+     * Parses but does not evaluate a guest language code literal using a provided
+     * {@link Language#getId() language id} and character sequence and returns a {@link Value value}
+     * that can be {@link Value#execute(Object...) executed}. The provided {@link CharSequence} must
+     * represent an immutable String. This method represents a short-hand for
+     * {@link #parse(Source)}.
      * <p>
-     * <b>Basic Example:</b>
+     * The result value only supports an empty set of arguments to {@link Value#execute(Object...)
+     * execute}. If executed repeatedly then the source is evaluated multiple times.
+     * {@link Source.Builder#interactive(boolean) Interactive} sources to be printed for each
+     * execution of the parsing result.
+     * <p>
      *
      * <pre>
      * try (Context context = Context.create()) {
+     *     Value value;
      *     try {
-     *         context.validate("js", "42");
-     *
+     *         value = context.parse("js", "42");
      *         // validation succeeded
      *     } catch (PolyglotException e) {
      *         if (e.isSyntaxError()) {
@@ -439,7 +452,10 @@ public final class Context implements AutoCloseable {
      *         } else {
      *             // other guest error detected
      *         }
+     *         throw e;
      *     }
+     *     // evaluate the parsed script
+     *     value.execute();
      * }
      * </pre>
      *
@@ -449,8 +465,8 @@ public final class Context implements AutoCloseable {
      *             allowed to access it, or if the given language is not installed.
      * @since 20.2
      */
-    public void validate(String languageId, CharSequence source) {
-        validate(Source.create(languageId, source));
+    public Value parse(String languageId, CharSequence source) {
+        return parse(Source.create(languageId, source));
     }
 
     /**

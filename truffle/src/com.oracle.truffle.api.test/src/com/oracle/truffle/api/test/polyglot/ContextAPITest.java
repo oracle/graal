@@ -45,13 +45,16 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.ByteArrayOutputStream;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -137,18 +140,18 @@ public class ContextAPITest extends AbstractPolyglotTest {
     }
 
     @Test
-    public void testValidateErrors() {
+    public void testParseErrors() {
         setupEnv();
 
-        assertFails(() -> context.validate(null, null), NullPointerException.class);
-        assertFails(() -> context.validate(ProxyLanguage.ID, null), NullPointerException.class);
-        assertFails(() -> context.validate(null, ""), NullPointerException.class);
-        assertFails(() -> context.validate("<<unknown-language>>", null), NullPointerException.class);
-        assertFails(() -> context.validate("<<unknown-language>>", ""), IllegalArgumentException.class);
+        assertFails(() -> context.parse(null, null), NullPointerException.class);
+        assertFails(() -> context.parse(ProxyLanguage.ID, null), NullPointerException.class);
+        assertFails(() -> context.parse(null, ""), NullPointerException.class);
+        assertFails(() -> context.parse("<<unknown-language>>", null), NullPointerException.class);
+        assertFails(() -> context.parse("<<unknown-language>>", ""), IllegalArgumentException.class);
 
         Source src = Source.create("<<unknown-language>>", "");
-        assertFails(() -> context.validate(src), IllegalArgumentException.class);
-        assertFails(() -> context.validate(null), NullPointerException.class);
+        assertFails(() -> context.parse(src), IllegalArgumentException.class);
+        assertFails(() -> context.parse(null), NullPointerException.class);
     }
 
     @SuppressWarnings("serial")
@@ -174,10 +177,123 @@ public class ContextAPITest extends AbstractPolyglotTest {
     }
 
     @Test
-    public void testValidate() {
+    public void testParseBasic() {
         AtomicInteger parseCalls = new AtomicInteger();
         AtomicInteger executeCalls = new AtomicInteger();
-        setupEnv(Context.create(), new ProxyLanguage() {
+        setupParseLang(Context.create(), parseCalls, executeCalls);
+
+        assertEquals(0, parseCalls.get());
+        assertEquals(0, executeCalls.get());
+
+        context.parse(ProxyLanguage.ID, "42");
+        assertEquals(1, parseCalls.get());
+        assertEquals(0, executeCalls.get());
+
+        context.parse(ProxyLanguage.ID, "42");
+        assertEquals(1, parseCalls.get());
+        assertEquals(0, executeCalls.get());
+
+        context.eval(ProxyLanguage.ID, "42");
+        assertEquals(1, parseCalls.get());
+        assertEquals(1, executeCalls.get());
+
+        Source uncachedSource = Source.newBuilder(ProxyLanguage.ID, "42", "uncached").cached(false).buildLiteral();
+        context.parse(uncachedSource);
+        assertEquals(2, parseCalls.get());
+        assertEquals(1, executeCalls.get());
+
+        context.parse(uncachedSource);
+        assertEquals(3, parseCalls.get());
+        assertEquals(1, executeCalls.get());
+
+        context.eval(uncachedSource);
+        assertEquals(4, parseCalls.get());
+        assertEquals(2, executeCalls.get());
+
+        assertFails(() -> context.parse(ProxyLanguage.ID, "error-1"), PolyglotException.class,
+                        (e) -> {
+                            assertTrue(e.isSyntaxError());
+                            assertEquals("error", e.getSourceLocation().getCharacters());
+                        });
+        assertEquals(5, parseCalls.get());
+        assertEquals(2, executeCalls.get());
+
+        assertFails(() -> context.parse(ProxyLanguage.ID, "error-1"), PolyglotException.class,
+                        (e) -> {
+                            assertTrue(e.isSyntaxError());
+                            assertEquals("error", e.getSourceLocation().getCharacters());
+                        });
+        assertEquals(6, parseCalls.get());
+        assertEquals(2, executeCalls.get());
+    }
+
+    @Test
+    public void testParseInteractive() {
+        AtomicInteger parseCalls = new AtomicInteger();
+        AtomicInteger executeCalls = new AtomicInteger();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        setupParseLang(Context.newBuilder().out(out).build(), parseCalls, executeCalls);
+
+        assertEquals(0, parseCalls.get());
+        assertEquals(0, executeCalls.get());
+
+        Source source = Source.newBuilder(ProxyLanguage.ID, "42", "interactive").interactive(true).buildLiteral();
+        Value v = context.parse(source);
+
+        assertEquals(1, parseCalls.get());
+        assertEquals(0, executeCalls.get());
+        assertEquals(0, out.size());
+
+        String lineFeed = System.getProperty("line.separator");
+        v.execute();
+        assertEquals(1, parseCalls.get());
+        assertEquals(1, executeCalls.get());
+        assertEquals("42" + lineFeed, new String(out.toByteArray(), StandardCharsets.UTF_8));
+
+        v.execute();
+        assertEquals(1, parseCalls.get());
+        assertEquals(2, executeCalls.get());
+        assertEquals("42" + lineFeed + "42" + lineFeed, new String(out.toByteArray()));
+    }
+
+    @Test
+    public void testParseAndEval() {
+        AtomicInteger parseCalls = new AtomicInteger();
+        AtomicInteger executeCalls = new AtomicInteger();
+        setupParseLang(Context.create(), parseCalls, executeCalls);
+
+        assertEquals(0, parseCalls.get());
+        assertEquals(0, executeCalls.get());
+
+        Source source = Source.create(ProxyLanguage.ID, "42");
+        Value parseResult = context.parse(source);
+        assertEquals(1, parseCalls.get());
+        assertEquals(0, executeCalls.get());
+
+        assertTrue(parseResult.canExecute());
+        assertEquals(parseResult, context.parse(source));
+        assertNotSame(parseResult, context.parse(source));
+        assertNotEquals(parseResult, context.parse(ProxyLanguage.ID, "43"));
+        assertEquals("Parsed[Source=" + source.toString() + "]", parseResult.toString());
+        ValueAssert.assertValue(parseResult);
+
+        Value result = parseResult.execute();
+        assertEquals(2, parseCalls.get());
+        assertEquals(1, executeCalls.get());
+        assertEquals(source.getCharacters(), result.asString());
+
+        result = parseResult.execute();
+        assertEquals(2, parseCalls.get());
+        assertEquals(2, executeCalls.get());
+        assertEquals(source.getCharacters(), result.asString());
+
+        assertFails(() -> parseResult.execute(42), IllegalArgumentException.class);
+        assertFails(() -> parseResult.execute(42, 42), IllegalArgumentException.class);
+
+    }
+
+    private void setupParseLang(Context context, AtomicInteger parseCalls, AtomicInteger executeCalls) {
+        setupEnv(context, new ProxyLanguage() {
             @Override
             protected CallTarget parse(ParsingRequest request) throws Exception {
                 parseCalls.incrementAndGet();
@@ -197,55 +313,6 @@ public class ContextAPITest extends AbstractPolyglotTest {
                 });
             }
         });
-
-        assertEquals(0, parseCalls.get());
-        assertEquals(0, executeCalls.get());
-
-        context.validate(ProxyLanguage.ID, "42");
-        assertEquals(1, parseCalls.get());
-        assertEquals(0, executeCalls.get());
-
-        context.validate(ProxyLanguage.ID, "42");
-        assertEquals(1, parseCalls.get());
-        assertEquals(0, executeCalls.get());
-
-        context.eval(ProxyLanguage.ID, "42");
-        assertEquals(1, parseCalls.get());
-        assertEquals(1, executeCalls.get());
-
-        Source uncachedSource = Source.newBuilder(ProxyLanguage.ID, "42", "uncached").cached(false).buildLiteral();
-        context.validate(uncachedSource);
-        assertEquals(2, parseCalls.get());
-        assertEquals(1, executeCalls.get());
-
-        context.validate(uncachedSource);
-        assertEquals(3, parseCalls.get());
-        assertEquals(1, executeCalls.get());
-
-        context.eval(uncachedSource);
-        assertEquals(4, parseCalls.get());
-        assertEquals(2, executeCalls.get());
-
-        assertFails(() -> context.validate(ProxyLanguage.ID, "error-1"), PolyglotException.class,
-                        (e) -> {
-                            assertTrue(e.isSyntaxError());
-                            assertEquals("error", e.getSourceLocation().getCharacters());
-                        });
-        assertEquals(5, parseCalls.get());
-        assertEquals(2, executeCalls.get());
-
-        assertFails(() -> context.validate(ProxyLanguage.ID, "error-1"), PolyglotException.class,
-                        (e) -> {
-                            assertTrue(e.isSyntaxError());
-                            assertEquals("error", e.getSourceLocation().getCharacters());
-                        });
-        assertEquals(6, parseCalls.get());
-        assertEquals(2, executeCalls.get());
-    }
-
-    @Test
-    public void testValidateFail() {
-
     }
 
     @Test
