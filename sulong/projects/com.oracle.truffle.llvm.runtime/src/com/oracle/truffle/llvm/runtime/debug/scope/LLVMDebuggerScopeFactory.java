@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.debug.scope;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -153,7 +154,7 @@ public final class LLVMDebuggerScopeFactory {
     }
 
     @TruffleBoundary
-    public static Iterable<Scope> createSourceLevelScope(Node node, Frame frame, LLVMContext context) {
+    public static Collection<Scope> createSourceLevelScope(Node node, Frame frame, LLVMContext context) {
         final LLVMSourceContext sourceContext = context.getSourceContext();
         final RootNode rootNode = node.getRootNode();
         LLVMSourceLocation scope = findSourceLocation(node);
