@@ -383,8 +383,8 @@ public final class Context implements AutoCloseable {
      * <p>
      * The result value only supports an empty set of arguments to {@link Value#execute(Object...)
      * execute}. If executed repeatedly then the source is evaluated multiple times.
-     * {@link Source.Builder#interactive(boolean) Interactive} sources to be printed for each
-     * execution of the parsing result.
+     * {@link Source.Builder#interactive(boolean) Interactive} sources will print their result for
+     * each execution of the parsing result to the {@link Builder#out(OutputStream) output} stream.
      * <p>
      * If the parsing succeeds and the source is {@link Source.Builder#cached(boolean) cached} then
      * the result will automatically be reused for consecutive calls to {@link #parse(Source)} or
@@ -400,7 +400,7 @@ public final class Context implements AutoCloseable {
      *     Value value;
      *     try {
      *         value = context.parse(source);
-     *         // validation succeeded
+     *         // parsing succeeded
      *     } catch (PolyglotException e) {
      *         if (e.isSyntaxError()) {
      *             SourceSection location = e.getSourceLocation();
@@ -435,8 +435,8 @@ public final class Context implements AutoCloseable {
      * <p>
      * The result value only supports an empty set of arguments to {@link Value#execute(Object...)
      * execute}. If executed repeatedly then the source is evaluated multiple times.
-     * {@link Source.Builder#interactive(boolean) Interactive} sources to be printed for each
-     * execution of the parsing result.
+     * {@link Source.Builder#interactive(boolean) Interactive} sources will print their result for
+     * each execution of the parsing result to the {@link Builder#out(OutputStream) output} stream.
      * <p>
      *
      * <pre>
@@ -444,7 +444,7 @@ public final class Context implements AutoCloseable {
      *     Value value;
      *     try {
      *         value = context.parse("js", "42");
-     *         // validation succeeded
+     *         // parsing succeeded
      *     } catch (PolyglotException e) {
      *         if (e.isSyntaxError()) {
      *             SourceSection location = e.getSourceLocation();
