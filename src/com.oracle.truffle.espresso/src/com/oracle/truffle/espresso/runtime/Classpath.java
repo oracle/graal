@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
+import static com.oracle.truffle.espresso.runtime.EspressoProperties.BOOT_MODULES_NAME;
+
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -238,6 +240,30 @@ public final class Classpath {
         }
     }
 
+    // TODO(garcia): use libjimage library to read the file.
+    static final class Modules extends Entry {
+        private File file;
+
+        Modules(File file) {
+            this.file = file;
+        }
+
+        @Override
+        public File file() {
+            return file;
+        }
+
+        @Override
+        public boolean contains(String path) {
+            return false;
+        }
+
+        @Override
+        ClasspathFile readFile(String archiveName, String fsPath) {
+            return null;
+        }
+    }
+
     /**
      * Gets the ordered entries from which this classpath is composed.
      *
@@ -259,6 +285,10 @@ public final class Classpath {
         } else if (name.endsWith(".zip") || name.endsWith(".jar")) {
             if (pathFile.exists() && pathFile.isFile()) {
                 return new Archive(pathFile);
+            }
+        } else if (name.endsWith(BOOT_MODULES_NAME)) {
+            if (pathFile.exists() && pathFile.isFile()) {
+                return new Modules(pathFile);
             }
         }
         return new PlainFile(pathFile);
