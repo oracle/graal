@@ -491,6 +491,46 @@ abstract class CommonPointerLibraries {
         }
     }
 
+    @ExportLibrary(InteropLibrary.class)
+    public static final class ClassKeys implements TruffleObject {
+        private final LLVMInteropType.Clazz type;
+
+        private ClassKeys(LLVMInteropType.Clazz type) {
+            this.type = type;
+        }
+
+        @ExportMessage
+        boolean hasArrayElements() {
+            return true;
+        }
+
+        @ExportMessage
+        long getArraySize() {
+            return type.getMemberCount() + type.getMethodCount();
+        }
+
+        @ExportMessage
+        boolean isArrayElementReadable(long idx) {
+            return Long.compareUnsigned(idx, getArraySize()) < 0;
+        }
+
+        @ExportMessage
+        Object readArrayElement(long idx,
+                        @Cached BranchProfile exception) throws InvalidArrayIndexException {
+            try {
+                int index = (int) idx;
+                if (index < type.getMemberCount()) {
+                    return type.getMember(index).getName();
+                } else {
+                    return type.getMethod(index - type.getMemberCount());
+                }
+            } catch (IndexOutOfBoundsException ex) {
+                exception.enter();
+                throw InvalidArrayIndexException.create(idx);
+            }
+        }
+    }
+
     @ExportMessage
     static class IsSame {
 
