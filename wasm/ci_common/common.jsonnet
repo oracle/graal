@@ -7,10 +7,17 @@ local graal_suite_root = root_ci.graal_suite_root;
 {
   local jdks = (import "../../common.json").jdks,
   local labsjdk8 = jdks.oraclejdk8,
+  local labsjdk11 = jdks["labsjdk-ce-11"],
 
   jdk8: {
     downloads+: {
       JAVA_HOME: labsjdk8,
+    },
+  },
+
+  jdk11: {
+    downloads+: {
+      JAVA_HOME: labsjdk11,
     },
   },
 
@@ -160,4 +167,6 @@ local graal_suite_root = root_ci.graal_suite_root;
   jdk8_gate_linux_wabt_emsdk    : self.jdk8 + self.gate + self.linux + self.wabt + self.emsdk,
   jdk8_bench_linux_wabt_emsdk   : self.jdk8 + self.bench + self.linux + self.wabt + self.emsdk,
   jdk8_gate_windows_wabt        : self.jdk8 + self.gate + self.windows + self.wabt,
+
+  jdk11_gate_linux_wabt         : self.jdk11 + self.gate + self.linux + self.wabt,
 }
