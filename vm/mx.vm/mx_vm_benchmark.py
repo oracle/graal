@@ -118,7 +118,7 @@ class NativeImageVM(GraalVm):
         def parse(self, args):
             def add_to_list(arg, name, arg_list):
                 if arg.startswith(name + '='):
-                    arg_list += [arg[len(name) + 1:]]
+                    arg_list += arg[len(name) + 1:].split(' ')
                     return True
                 else:
                     return False
