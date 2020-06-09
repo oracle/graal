@@ -36,7 +36,6 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 class WarmupEstimatorNode extends ExecutionEventNode {
 
     private final List<Long> times;
-    // TODO: This should be checked for potential recursion
     private FrameSlot startSlot;
 
     WarmupEstimatorNode(List<Long> times) {

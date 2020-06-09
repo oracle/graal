@@ -69,11 +69,11 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
                     });
     @Option(name = "", help = "Enable the Warmup Estimator (default: false).", category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL) //
     static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
-    @Option(name = "RootName", help = "", category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL) //
+    @Option(name = "RootName", help = "The name of root being benchmarked, ie. that should be instrumented.", category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL) //
     static final OptionKey<String> ROOT_NAME = new OptionKey<>("");
-    @Option(name = "OutputFile", help = "Save output to the given file. Simple output is printed to stdout by default.", category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL) //
+    @Option(name = "OutputFile", help = "Save output to the given file. Output is printed to stdout by default.", category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL) //
     static final OptionKey<String> OUTPUT_FILE = new OptionKey<>("");
-    @Option(name = "Output", help = "Can be: 'raw' for json array of raw samples; 'json' for included post processing of samples; 'simple' for just the human-readable post-processing result (default: simple)", category = OptionCategory.USER) static final OptionKey<Output> OUTPUT = new OptionKey<>(
+    @Option(name = "Output", help = "Can be: 'raw' for json array of raw samples; 'json' for included post processing of samples; 'simple' for just the human-readable post-processed result (default: simple)", category = OptionCategory.USER) static final OptionKey<Output> OUTPUT = new OptionKey<>(
                     Output.SIMPLE, CLI_OUTPUT_TYPE);
     @Option(name = "Epsilon", help = "Epsilon value. It's inferred if the value is 0. (default: 1.05)", category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL) //
     static final OptionKey<Double> EPSILON = new OptionKey<>(1.05);
