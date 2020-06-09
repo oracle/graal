@@ -104,6 +104,7 @@ class NativeImageVM(GraalVm):
             self.extra_agent_run_args = []
             self.extra_profile_run_args = []
             self.extra_agent_profile_run_args = []
+            self.extra_optimization_image_args = []
             self.benchmark_name = None
             self.benchmark_output_dir = None
             self.needs_config = True
@@ -133,6 +134,7 @@ class NativeImageVM(GraalVm):
                     found |= add_to_list(trimmed_arg, 'extra-agent-run-arg', self.extra_agent_run_args)
                     found |= add_to_list(trimmed_arg, 'extra-profile-run-arg', self.extra_profile_run_args)
                     found |= add_to_list(trimmed_arg, 'extra-agent-profile-run-arg', self.extra_agent_profile_run_args)
+                    found |= add_to_list(trimmed_arg, 'extra-optimization-image-arg', self.extra_optimization_image_args)
                     if trimmed_arg.startswith('needs-config='):
                         self.needs_config = trimmed_arg[len('needs-config='):] == 'true'
                         found = True
@@ -315,7 +317,7 @@ class NativeImageVM(GraalVm):
                         executable_name_args = ['-H:Name=' + instrumentation_image_name]
                         image_path = os.path.join(config.output_dir, instrumentation_image_name)
                         pgo_verification_output_path = os.path.join(config.output_dir, instrumentation_image_name + '-probabilities.log')
-                        pgo_args = ['--pgo=' + profile_path, '-H:+VerifyPGOProfiles', '-H:VerificationDumpFile=' + pgo_verification_output_path]
+                        pgo_args = ['--pgo=' + profile_path, '-H:+VerifyPGOProfiles', '-H:VerificationDumpFile=' + pgo_verification_output_path] + config.extra_optimization_image_args
                         instrument_args = ['--pgo-instrument'] + ([] if i == 0 else pgo_args)
 
                         instrument_image_build_args = base_image_build_args + executable_name_args + instrument_args
@@ -349,7 +351,10 @@ class NativeImageVM(GraalVm):
                 # Build the final image
                 executable_name_args = ['-H:Name=' + final_image_name]
                 pgo_verification_output_path = os.path.join(config.output_dir, final_image_name + '-probabilities.log')
-                pgo_args = ['--pgo=' + profile_path, '-H:+VerifyPGOProfiles', '-H:VerificationDumpFile=' + pgo_verification_output_path] if self.pgo_instrumented_iterations > 0 or self.hotspot_pgo else []
+                if self.pgo_instrumented_iterations > 0 or self.hotspot_pgo:
+                    pgo_args = ['--pgo=' + profile_path, '-H:+VerifyPGOProfiles', '-H:VerificationDumpFile=' + pgo_verification_output_path] + config.extra_optimization_image_args
+                else:
+                    pgo_args = []
                 final_image_args = base_image_build_args + executable_name_args + pgo_args
                 mx.log('Building the final image with: ')
                 mx.log(' ' + ' '.join([pipes.quote(str(arg)) for arg in final_image_args]))
