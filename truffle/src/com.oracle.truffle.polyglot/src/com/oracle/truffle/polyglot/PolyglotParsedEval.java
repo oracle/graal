@@ -110,7 +110,7 @@ final class PolyglotParsedEval implements TruffleObject {
     @SuppressWarnings("unused")
     static final class IsIdenticalOrUndefined {
         @Specialization
-        static TriState doHostObject(PolyglotParsedEval receiver, PolyglotParsedEval other) {
+        static TriState doDefault(PolyglotParsedEval receiver, PolyglotParsedEval other) {
             return receiver.target == other.target && receiver.languageContext == other.languageContext ? TriState.TRUE : TriState.FALSE;
         }
 
