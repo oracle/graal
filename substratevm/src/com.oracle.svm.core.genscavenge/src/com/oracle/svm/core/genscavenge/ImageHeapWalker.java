@@ -75,7 +75,7 @@ public final class ImageHeapWalker {
             if (!visitor.visitObject(currentObject)) {
                 return false;
             }
-            current = LayoutEncoding.getObjectEnd(currentObject);
+            current = HeapImpl.getNextObjectInImageHeap(currentObject);
         }
         return true;
     }

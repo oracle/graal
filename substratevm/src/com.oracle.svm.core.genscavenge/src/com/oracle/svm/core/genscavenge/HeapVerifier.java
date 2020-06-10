@@ -37,7 +37,6 @@ import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.InteriorObjRefWalker;
-import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.JavaVMOperation;
@@ -246,7 +245,7 @@ public final class HeapVerifier {
                     witness.string("  current: ").hex(currentPointer).string("  object does not verify").string("]").newline();
                 }
             }
-            currentPointer = LayoutEncoding.getObjectEnd(currentObject);
+            currentPointer = HeapImpl.getNextObjectInImageHeap(currentObject);
         }
         trace.string("  returns: ").bool(result).string("]").newline();
         return result;

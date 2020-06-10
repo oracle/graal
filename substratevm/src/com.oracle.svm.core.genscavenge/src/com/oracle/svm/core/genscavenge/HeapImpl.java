@@ -395,8 +395,12 @@ public final class HeapImpl extends Heap {
                 Class<?> asClass = (Class<?>) currentObject;
                 list.add(asClass);
             }
-            currentPointer = LayoutEncoding.getObjectEnd(currentObject);
+            currentPointer = getNextObjectInImageHeap(currentObject);
         }
+    }
+
+    static Pointer getNextObjectInImageHeap(Object obj) {
+        return LayoutEncoding.getObjectEnd(obj);
     }
 
     /*

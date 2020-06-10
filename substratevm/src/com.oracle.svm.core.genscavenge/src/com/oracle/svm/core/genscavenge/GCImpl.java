@@ -72,7 +72,6 @@ import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.ReferenceHandler;
-import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
@@ -746,7 +745,7 @@ public final class GCImpl implements GC {
                         if (obj != null) {
                             greyToBlackObjectVisitor.visitObjectInline(obj);
                         }
-                        cur = LayoutEncoding.getObjectEnd(obj);
+                        cur = HeapImpl.getNextObjectInImageHeap(obj);
                     }
                 }
             }
