@@ -207,15 +207,17 @@ public final class HeapVerifier {
 
     private boolean verifyBootImageObjects() {
         ImageHeapInfo info = HeapImpl.getImageHeapInfo();
-        boolean ropResult = verifyBootImageObjects(info.firstReadOnlyPrimitiveObject, info.lastReadOnlyPrimitiveObject);
-        boolean rorResult = verifyBootImageObjects(info.firstReadOnlyReferenceObject, info.lastReadOnlyReferenceObject);
-        boolean rolResult = verifyBootImageObjects(info.firstReadOnlyRelocatableObject, info.lastReadOnlyRelocatableObject);
-        boolean rwpResult = verifyBootImageObjects(info.firstWritablePrimitiveObject, info.lastWritablePrimitiveObject);
-        boolean rwrResult = verifyBootImageObjects(info.firstWritableReferenceObject, info.lastWritableReferenceObject);
-        return ropResult && rorResult && rolResult && rwpResult && rwrResult;
+        boolean ropResult = verifyBootImageObjects(info.firstReadOnlyPrimitiveObject, info.lastReadOnlyPrimitiveObject, true);
+        boolean rorResult = verifyBootImageObjects(info.firstReadOnlyReferenceObject, info.lastReadOnlyReferenceObject, true);
+        boolean rolResult = verifyBootImageObjects(info.firstReadOnlyRelocatableObject, info.lastReadOnlyRelocatableObject, true);
+        boolean rwpResult = verifyBootImageObjects(info.firstWritablePrimitiveObject, info.lastWritablePrimitiveObject, true);
+        boolean rwrResult = verifyBootImageObjects(info.firstWritableReferenceObject, info.lastWritableReferenceObject, true);
+        boolean rwhResult = verifyBootImageObjects(info.firstWritableHugeObject, info.lastWritableHugeObject, false);
+        boolean rohResult = verifyBootImageObjects(info.firstReadOnlyHugeObject, info.lastReadOnlyHugeObject, false);
+        return ropResult && rorResult && rolResult && rwpResult && rwrResult && rwhResult && rohResult;
     }
 
-    private boolean verifyBootImageObjects(Object firstObject, Object lastObject) {
+    private boolean verifyBootImageObjects(Object firstObject, Object lastObject, boolean alignedChunks) {
         Log trace = getTraceLog();
         trace.string("[HeapVerifier.verifyBootImageObjects:").newline();
 
@@ -245,7 +247,7 @@ public final class HeapVerifier {
                     witness.string("  current: ").hex(currentPointer).string("  object does not verify").string("]").newline();
                 }
             }
-            currentPointer = HeapImpl.getNextObjectInImageHeap(currentObject);
+            currentPointer = HeapImpl.getNextObjectInImageHeapPartition(currentObject, alignedChunks);
         }
         trace.string("  returns: ").bool(result).string("]").newline();
         return result;

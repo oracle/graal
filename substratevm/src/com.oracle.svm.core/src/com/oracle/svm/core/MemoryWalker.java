@@ -79,6 +79,8 @@ public abstract class MemoryWalker {
         boolean containsReferences(T region);
 
         boolean isWritable(T region);
+
+        boolean hasHugeObjects(T region);
     }
 
     /** A set of access methods for visiting heap chunk memory. */

@@ -74,7 +74,7 @@ public final class UnsignedUtils {
      */
     @Uninterruptible(reason = "Used in uninterruptible code.", mayBeInlined = true)
     public static boolean isAMultiple(UnsignedWord that, UnsignedWord multiple) {
-        return that.equal(UnsignedUtils.roundDown(that, multiple));
+        return that.unsignedRemainder(multiple).equal(0);
     }
 
     /**

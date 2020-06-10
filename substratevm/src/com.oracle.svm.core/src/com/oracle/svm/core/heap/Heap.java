@@ -36,6 +36,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.os.CommittedMemoryProvider;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 
@@ -120,6 +121,14 @@ public abstract class Heap {
      * Returns a suitable {@link BarrierSet} for the garbage collector that is used for this heap.
      */
     public abstract BarrierSet createBarrierSet(MetaAccessProvider metaAccess);
+
+    /**
+     * Returns a multiple to which the heap address space should be aligned to at runtime.
+     *
+     * @see CommittedMemoryProvider#guaranteesHeapPreferredAddressSpaceAlignment()
+     */
+    @Fold
+    public abstract int getPreferredAddressSpaceAlignment();
 
     /**
      * Returns the offset that the image heap should have when mapping the native image file to the

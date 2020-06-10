@@ -47,6 +47,7 @@ import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
+import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -55,6 +56,7 @@ import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.heap.FillerObject;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -92,6 +94,8 @@ public final class NativeImageHeap implements ImageHeap {
     private final HostedMetaAccess metaAccess;
     private final ObjectLayout objectLayout;
     private final ImageHeapLayouter heapLayouter;
+    private final int minInstanceSize;
+    private final int minArraySize;
 
     /**
      * A Map from objects at construction-time to native image objects.
@@ -119,18 +123,17 @@ public final class NativeImageHeap implements ImageHeap {
     /** Objects that are known to be immutable in the native image heap. */
     private final Set<Object> knownImmutableObjects = Collections.newSetFromMap(new IdentityHashMap<>());
 
-    private final int minObjectSize;
-    private final int minArraySize;
-
     public NativeImageHeap(AnalysisUniverse aUniverse, HostedUniverse universe, HostedMetaAccess metaAccess, ImageHeapLayouter heapLayouter) {
         this.aUniverse = aUniverse;
         this.universe = universe;
         this.metaAccess = metaAccess;
 
         this.objectLayout = ConfigurationValues.getObjectLayout();
-        this.minObjectSize = NumUtil.safeToInt(LayoutEncoding.getInstanceSize(universe.getObjectClass().getHub().getLayoutEncoding()).rawValue());
-        this.minArraySize = NumUtil.safeToInt(objectLayout.getArraySize(JavaKind.Int, 0));
         this.heapLayouter = heapLayouter;
+
+        this.minInstanceSize = objectLayout.getMinimumInstanceObjectSize();
+        this.minArraySize = objectLayout.getMinimumArraySize();
+        assert assertFillerObjectSizes();
     }
 
     @Override
@@ -144,11 +147,6 @@ public final class NativeImageHeap implements ImageHeap {
 
     public ObjectInfo getObjectInfo(Object obj) {
         return objects.get(obj);
-    }
-
-    @Override
-    public int getMinHeapObjectSize() {
-        return minObjectSize < minArraySize ? minObjectSize : minArraySize;
     }
 
     protected HostedUniverse getUniverse() {
@@ -316,17 +314,30 @@ public final class NativeImageHeap implements ImageHeap {
      */
     @Override
     public ObjectInfo addFillerObject(int size) {
-        assert minObjectSize * 2 >= minArraySize : "otherwise, we might need more than one non-array object";
         if (size >= minArraySize) {
             int elementSize = objectLayout.getArrayIndexScale(JavaKind.Int);
             int arrayLength = (size - minArraySize) / elementSize;
             assert objectLayout.getArraySize(JavaKind.Int, arrayLength) == size;
             return addLateToImageHeap(new int[arrayLength], "Filler object");
-        } else if (size >= minObjectSize) {
-            return addLateToImageHeap(new Object(), "Filler object");
+        } else if (size >= minInstanceSize) {
+            return addLateToImageHeap(new FillerObject(), "Filler object");
         } else {
             return null;
         }
+    }
+
+    private boolean assertFillerObjectSizes() {
+        assert minArraySize == objectLayout.getArraySize(JavaKind.Int, 0);
+
+        Optional<HostedType> filler = metaAccess.optionalLookupJavaType(FillerObject.class);
+        if (filler.isPresent()) { // image heap might not use it
+            UnsignedWord fillerSize = LayoutEncoding.getInstanceSize(filler.get().getHub().getLayoutEncoding());
+            assert fillerSize.equal(minInstanceSize);
+        }
+
+        assert minInstanceSize * 2 >= minArraySize : "otherwise, we might need more than one non-array object";
+
+        return true;
     }
 
     private void handleImageString(final String str) {

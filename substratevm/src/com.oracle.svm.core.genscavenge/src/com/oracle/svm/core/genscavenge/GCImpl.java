@@ -32,7 +32,6 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 import java.lang.ref.Reference;
 
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -736,16 +735,16 @@ public final class GCImpl implements GC {
         @SuppressWarnings("try")
         public <T> boolean visitNativeImageHeapRegion(T region, MemoryWalker.NativeImageHeapRegionAccess<T> access) {
             if (access.containsReferences(region) && access.isWritable(region)) {
+                boolean alignedChunks = !access.hasHugeObjects(region);
                 try (Timer timer = timers.blackenImageHeapRoots.open()) {
-                    ImageHeapInfo imageHeapInfo = HeapImpl.getImageHeapInfo();
-                    Pointer cur = Word.objectToUntrackedPointer(imageHeapInfo.firstWritableReferenceObject);
-                    Pointer last = Word.objectToUntrackedPointer(imageHeapInfo.lastWritableReferenceObject);
-                    while (cur.belowOrEqual(last)) {
+                    Pointer cur = (Pointer) access.getStart(region);
+                    Pointer endOfLastObject = cur.add(access.getSize(region));
+                    while (cur.belowThan(endOfLastObject)) {
                         Object obj = cur.toObject();
                         if (obj != null) {
                             greyToBlackObjectVisitor.visitObjectInline(obj);
                         }
-                        cur = HeapImpl.getNextObjectInImageHeap(obj);
+                        cur = HeapImpl.getNextObjectInImageHeapPartition(obj, alignedChunks);
                     }
                 }
             }
