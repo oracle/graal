@@ -207,7 +207,6 @@ def test_class(opts_set, classpath, main_class, program_args=None):
                        [main_class] + program_args, out=expected_out)
 
     for common_opts in opts_set:
-        print('test_class common_opts '+repr(common_opts))
         mx.log('Running {} with {}'.format(main_class, ' '.join(common_opts)))
 
         with mktemp_libfile() as lib_module:
