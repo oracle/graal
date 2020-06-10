@@ -26,6 +26,14 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.Meta;
 
 public class InteropUtils {
+    public static boolean inIntRange(float f) {
+        return f >= Integer.MIN_VALUE && f <= Integer.MAX_VALUE;
+    }
+
+    public static boolean inIntRange(double d) {
+        return d >= Integer.MIN_VALUE && d <= Integer.MAX_VALUE;
+    }
+
     public static boolean isAtMostByte(Klass klass) {
         return klass == klass.getMeta().java_lang_Byte;
     }

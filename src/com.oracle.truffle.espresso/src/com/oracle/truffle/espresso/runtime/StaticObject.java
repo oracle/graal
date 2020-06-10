@@ -109,10 +109,10 @@ public final class StaticObject implements TruffleObject {
         if (isNull(this)) {
             return false;
         }
-        Klass klass = getKlass();
-        Meta meta = klass.getMeta();
-        return klass == meta.java_lang_Byte || klass == meta.java_lang_Short || klass == meta.java_lang_Integer || klass == meta.java_lang_Long || klass == meta.java_lang_Float ||
-                        klass == meta.java_lang_Double;
+        Klass thisKlass = getKlass();
+        Meta meta = thisKlass.getMeta();
+        return thisKlass == meta.java_lang_Byte || thisKlass == meta.java_lang_Short || thisKlass == meta.java_lang_Integer || thisKlass == meta.java_lang_Long || thisKlass == meta.java_lang_Float ||
+                        thisKlass == meta.java_lang_Double;
     }
 
     @ExportMessage
@@ -136,7 +136,24 @@ public final class StaticObject implements TruffleObject {
         if (isNull(this)) {
             return false;
         }
-        return isAtMostInt(getKlass());
+        if (isAtMostInt(getKlass())) {
+            return true;
+        }
+        Klass thisKlass = getKlass();
+        Meta meta = thisKlass.getMeta();
+        if (thisKlass == meta.java_lang_Long) {
+            long content = getLongField(meta.java_lang_Long_value);
+            return (int) content == content;
+        }
+        if (thisKlass == meta.java_lang_Float) {
+            float content = getFloatField(meta.java_lang_Float_value);
+            return inIntRange(content) && (int) content == content;
+        }
+        if (thisKlass == meta.java_lang_Double) {
+            double content = getDoubleField(meta.java_lang_Double_value);
+            return inIntRange(content) && (int) content == content;
+        }
+        return false;
     }
 
     @ExportMessage
@@ -160,7 +177,16 @@ public final class StaticObject implements TruffleObject {
         if (isNull(this)) {
             return false;
         }
-        return isAtMostDouble(getKlass());
+        if (isAtMostDouble(getKlass())) {
+            return true;
+        }
+        Klass thisKlass = getKlass();
+        Meta meta = thisKlass.getMeta();
+        if (thisKlass == meta.java_lang_Long) {
+            long content = getLongField(meta.java_lang_Long_value);
+            return (double) content == content;
+        }
+        return false;
     }
 
     @ExportMessage
