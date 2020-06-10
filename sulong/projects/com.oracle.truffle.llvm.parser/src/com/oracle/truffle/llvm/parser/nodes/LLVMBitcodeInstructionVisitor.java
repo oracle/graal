@@ -132,7 +132,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 import com.oracle.truffle.llvm.runtime.types.symbols.SSAValue;
 
-import static com.oracle.truffle.llvm.runtime.types.Type.TypeArray;
+import static com.oracle.truffle.llvm.runtime.types.Type.TypeArrayBuilder;
 
 public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
@@ -390,7 +390,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         final Type targetType = call.getType();
         int argumentCount = getArgumentCount(call.getArgumentCount(), targetType);
         final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[argumentCount];
-        final TypeArray argTypes = new TypeArray(argumentCount);
+        final TypeArrayBuilder argTypes = new TypeArrayBuilder(argumentCount);
         int argIndex = 0;
         // stack pointer
         argNodes[argIndex] = CommonNodeFactory.createFrameRead(PointerType.VOID, getStackSlot());
@@ -564,7 +564,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
     public void visit(VoidCallInstruction call) {
         final int argumentCount = call.getArgumentCount() + 1; // stackpointer
         final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[argumentCount];
-        final TypeArray argTypes = new TypeArray(argumentCount);
+        final TypeArrayBuilder argTypes = new TypeArrayBuilder(argumentCount);
 
         int argIndex = 0;
         argNodes[argIndex] = CommonNodeFactory.createFrameRead(PointerType.VOID, getStackSlot());
@@ -609,7 +609,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         final Type targetType = call.getType();
         int argumentCount = getArgumentCount(call.getArgumentCount(), targetType);
         final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[argumentCount];
-        final TypeArray argTypes = new TypeArray(argumentCount);
+        final TypeArrayBuilder argTypes = new TypeArrayBuilder(argumentCount);
         int argIndex = 0;
         argNodes[argIndex] = CommonNodeFactory.createFrameRead(PointerType.VOID, getStackSlot());
         argTypes.set(argIndex, new PointerType(null));
@@ -661,7 +661,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
 
         final int argumentCount = call.getArgumentCount() + 1; // stackpointer
         final LLVMExpressionNode[] args = new LLVMExpressionNode[argumentCount];
-        final TypeArray argsType = new TypeArray(argumentCount);
+        final TypeArrayBuilder argsType = new TypeArrayBuilder(argumentCount);
 
         int argIndex = 0;
         args[argIndex] = CommonNodeFactory.createFrameRead(PointerType.VOID, getStackSlot());
@@ -1153,7 +1153,7 @@ public final class LLVMBitcodeInstructionVisitor implements SymbolVisitor {
         handleNullerInfo();
     }
 
-    private LLVMExpressionNode createInlineAssemblerNode(InlineAsmConstant inlineAsmConstant, LLVMExpressionNode[] argNodes, TypeArray argsType, Type retType) {
+    private LLVMExpressionNode createInlineAssemblerNode(InlineAsmConstant inlineAsmConstant, LLVMExpressionNode[] argNodes, TypeArrayBuilder argsType, Type retType) {
         if (inlineAsmConstant.needsAlignedStack()) {
             throw new LLVMParserException("Assembly Expressions that require an aligned Stack are not supported yet!");
         }

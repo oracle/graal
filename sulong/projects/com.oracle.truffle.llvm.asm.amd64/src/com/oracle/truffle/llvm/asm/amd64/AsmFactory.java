@@ -248,7 +248,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 
-import static com.oracle.truffle.llvm.runtime.types.Type.TypeArray;
+import static com.oracle.truffle.llvm.runtime.types.Type.TypeArrayBuilder;
 
 class AsmFactory {
     private static final int REG_START_INDEX = 1;
@@ -265,7 +265,7 @@ class AsmFactory {
     private LLVMExpressionNode result;
     private List<Argument> argInfo;
     private final String asmFlags;
-    private final TypeArray argTypes;
+    private final TypeArrayBuilder argTypes;
     private final Type retType;
     private final Type[] retTypes;
     private final long[] retOffsets;
@@ -274,7 +274,7 @@ class AsmFactory {
 
     private final LLVMLanguage language;
 
-    AsmFactory(LLVMLanguage language, TypeArray argTypes, String asmFlags, Type retType, Type[] retTypes, long[] retOffsets) {
+    AsmFactory(LLVMLanguage language, TypeArrayBuilder argTypes, String asmFlags, Type retType, Type[] retTypes, long[] retOffsets) {
         this.language = language;
         this.argTypes = argTypes;
         this.asmFlags = asmFlags;

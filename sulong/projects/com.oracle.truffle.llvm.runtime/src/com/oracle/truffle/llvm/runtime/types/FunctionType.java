@@ -59,7 +59,7 @@ public final class FunctionType extends Type {
         return new FunctionType(returnType, new Type[]{arg0}, isVarargs);
     }
 
-    public FunctionType(Type returnType, TypeArray argumentTypes, boolean isVarargs) {
+    public FunctionType(Type returnType, TypeArrayBuilder argumentTypes, boolean isVarargs) {
         this(returnType, getRawTypeArray(argumentTypes), isVarargs);
     }
 

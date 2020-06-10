@@ -98,13 +98,13 @@ public abstract class Type {
 
     /**
      * Encapsulates an array of {@link Type types}. Use to ensure that the array reference is not
-     * leaked and modified out of place. The {@link TypeArray} is never stored in a {@link Type} but
-     * only used for construction.
+     * leaked and modified out of place. The {@link TypeArrayBuilder} is never stored in a
+     * {@link Type} but only used for construction.
      */
-    public static class TypeArray {
+    public static class TypeArrayBuilder {
         private Type[] types;
 
-        public TypeArray(int size) {
+        public TypeArrayBuilder(int size) {
             this.types = new Type[size];
         }
 
@@ -142,12 +142,12 @@ public abstract class Type {
     }
 
     /**
-     * Gets the raw type array stored in a {@link TypeArray}. This method "finalizes" the type
-     * array, i.e., the elements can no longer be {@linkplain TypeArray#get accessed} or
-     * {@linkplain TypeArray#set modified}. This method can only be called once for a give
-     * {@link TypeArray}.
+     * Gets the raw type array stored in a {@link TypeArrayBuilder}. This method "finalizes" the
+     * type array, i.e., the elements can no longer be {@linkplain TypeArrayBuilder#get accessed} or
+     * {@linkplain TypeArrayBuilder#set modified}. This method can only be called once for a give
+     * {@link TypeArrayBuilder}.
      */
-    public static Type[] getRawTypeArray(TypeArray types) {
+    public static Type[] getRawTypeArray(TypeArrayBuilder types) {
         return types.getRawArray();
     }
 

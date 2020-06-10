@@ -58,8 +58,6 @@ import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.symbols.LocalVariableDebugInfo;
 import com.oracle.truffle.llvm.runtime.types.symbols.Symbol;
 
-import static com.oracle.truffle.llvm.runtime.types.Type.TypeArray;
-
 /**
  * This interface decouples the parser and the concrete implementation of the nodes by only making
  * {@link LLVMExpressionNode} and {@link LLVMExpressionNode} visible. The parser should not directly
@@ -163,7 +161,7 @@ public interface NodeFactory {
     RootNode createFunctionStartNode(LLVMExpressionNode functionBodyNode, FrameDescriptor frameDescriptor, String name, String originalName, int argumentCount, Source bcSource,
                     LLVMSourceLocation location);
 
-    LLVMExpressionNode createInlineAssemblerExpression(ExternalLibrary library, String asmExpression, String asmFlags, LLVMExpressionNode[] args, TypeArray argTypes, Type retType);
+    LLVMExpressionNode createInlineAssemblerExpression(ExternalLibrary library, String asmExpression, String asmFlags, LLVMExpressionNode[] args, Type.TypeArrayBuilder argTypes, Type retType);
 
     LLVMExpressionNode createLandingPad(LLVMExpressionNode allocateLandingPadValue, FrameSlot exceptionSlot, boolean cleanup, long[] clauseKinds, LLVMExpressionNode[] entries,
                     LLVMExpressionNode getStack);
@@ -172,7 +170,7 @@ public interface NodeFactory {
 
     LLVMExpressionNode createCompareExchangeInstruction(AggregateType returnType, Type elementType, LLVMExpressionNode ptrNode, LLVMExpressionNode cmpNode, LLVMExpressionNode newNode);
 
-    LLVMExpressionNode createLLVMBuiltin(Symbol target, LLVMExpressionNode[] args, TypeArray argsTypes, int callerArgumentCount);
+    LLVMExpressionNode createLLVMBuiltin(Symbol target, LLVMExpressionNode[] args, Type.TypeArrayBuilder argsTypes, int callerArgumentCount);
 
     LLVMStatementNode createPhi(LLVMExpressionNode[] cycleFrom, LLVMWriteNode[] cycleWrites, LLVMWriteNode[] ordinaryWrites);
 

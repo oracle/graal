@@ -1138,7 +1138,7 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMExpressionNode createInlineAssemblerExpression(ExternalLibrary library, String asmExpression, String asmFlags, LLVMExpressionNode[] args, Type.TypeArray argTypes,
+    public LLVMExpressionNode createInlineAssemblerExpression(ExternalLibrary library, String asmExpression, String asmFlags, LLVMExpressionNode[] args, Type.TypeArrayBuilder argTypes,
                     Type retType) {
         Type[] retTypes = null;
         long[] retOffsets = null;
@@ -1224,7 +1224,7 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     @Override
-    public LLVMExpressionNode createLLVMBuiltin(Symbol target, LLVMExpressionNode[] args, Type.TypeArray argsTypes, int callerArgumentCount) {
+    public LLVMExpressionNode createLLVMBuiltin(Symbol target, LLVMExpressionNode[] args, Type.TypeArrayBuilder argsTypes, int callerArgumentCount) {
         if (target instanceof FunctionDeclaration) {
             FunctionDeclaration declaration = (FunctionDeclaration) target;
             String name = declaration.getName();

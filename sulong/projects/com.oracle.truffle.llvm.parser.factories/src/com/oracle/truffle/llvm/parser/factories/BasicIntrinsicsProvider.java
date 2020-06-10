@@ -189,7 +189,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
     }
 
     @Override
-    public final LLVMExpressionNode generateIntrinsicNode(String name, LLVMExpressionNode[] arguments, Type.TypeArray argTypes, NodeFactory nodeFactory) {
+    public final LLVMExpressionNode generateIntrinsicNode(String name, LLVMExpressionNode[] arguments, Type.TypeArrayBuilder argTypes, NodeFactory nodeFactory) {
         CompilerAsserts.neverPartOfCompilation();
         LLVMTypedIntrinsicFactory factory = getFactory(name);
         if (factory == null) {
