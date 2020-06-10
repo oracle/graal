@@ -36,17 +36,22 @@ import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.llvm.runtime.LLVMFunction;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Method;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignGetIndexPointerNode;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignGetMemberPointerNode;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignReadNode;
@@ -127,6 +132,40 @@ abstract class CommonPointerLibraries {
         } else {
             return false;
         }
+    }
+
+    @ExportMessage
+    static boolean isMemberInvocable(LLVMPointerImpl receiver, String ident) {
+        LLVMInteropType type = receiver.getExportType();
+        if (type instanceof LLVMInteropType.Clazz) {
+            LLVMInteropType.Clazz clazz = (LLVMInteropType.Clazz) type;
+            return clazz.findMethod(ident) != null;
+        }
+        return false;
+    }
+
+    @ExportMessage
+    static Object invokeMember(LLVMPointerImpl receiver, String member, Object[] arguments)
+                    throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException {
+        LLVMInteropType type = receiver.getExportType();
+        if (!(type instanceof LLVMInteropType.Clazz)) {
+            throw UnsupportedTypeException.create(new Object[]{receiver}, receiver + " cannot be casted to LLVMInteropType.Clazz");
+        }
+        LLVMInteropType.Clazz clazz = (LLVMInteropType.Clazz) receiver.getExportType();
+        Method method = clazz.findMethod(member);
+        if (method == null) {
+            throw UnknownIdentifierException.create(member);
+        }
+        LLVMFunction llvmFunction = LLVMLanguage.getContext().getGlobalScope().getFunction(method.getLinkageName());
+        // change from receiver.foo(arguments) to interopLibrary.execute(foo, [receiver+arguments])
+        Object[] newArguments = new Object[arguments.length + 1];
+        newArguments[0] = receiver;
+        for (int i = 0; i < arguments.length; i++) {
+            newArguments[i + 1] = arguments[i];
+        }
+        LLVMFunctionDescriptor fn = LLVMLanguage.getContext().createFunctionDescriptor(llvmFunction);
+
+        return InteropLibrary.getUncached().execute(fn, newArguments);
     }
 
     @ExportMessage
