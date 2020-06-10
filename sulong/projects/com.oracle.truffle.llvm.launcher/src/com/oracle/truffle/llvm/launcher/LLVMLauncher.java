@@ -107,9 +107,22 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
                     toolchainAPI = ToolchainAPIFunction.PATHS;
                     toolchainAPIArg = "PATH";
                     break;
-                case "--toolchain-api":
-                    iterator.remove();
-                    parseToolchainAPICommandLine(option, iterator);
+                case "--toolchain-api-tool":
+                    toolchainAPI = ToolchainAPIFunction.TOOL;
+                    if (!iterator.hasNext()) {
+                        throw abort("Missing argument for " + option);
+                    }
+                    toolchainAPIArg = iterator.next();
+                    break;
+                case "--toolchain-api-paths":
+                    toolchainAPI = ToolchainAPIFunction.PATHS;
+                    if (!iterator.hasNext()) {
+                        throw abort("Missing argument for " + option);
+                    }
+                    toolchainAPIArg = iterator.next();
+                    break;
+                case "--toolchain-api-identifier":
+                    toolchainAPI = ToolchainAPIFunction.IDENTIFIER;
                     break;
                 default:
                     // options with argument
@@ -178,40 +191,6 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
         return unrecognizedOptions;
     }
 
-    private void parseToolchainAPICommandLine(String optionName, ListIterator<String> iterator) {
-        // get function
-        if (!iterator.hasNext()) {
-            throw abort("Missing argument for " + optionName);
-        }
-        String function = iterator.next();
-        // remove function
-        iterator.remove();
-        switch (function) {
-            case "tool":
-                toolchainAPI = ToolchainAPIFunction.TOOL;
-                parseToolchainAPIArg(optionName, iterator, function);
-                break;
-            case "paths":
-                toolchainAPI = ToolchainAPIFunction.PATHS;
-                parseToolchainAPIArg(optionName, iterator, function);
-                break;
-            case "identifier":
-                toolchainAPI = ToolchainAPIFunction.IDENTIFIER;
-                break;
-            default:
-                throw abort("Unknown function for " + optionName + ": " + function);
-        }
-    }
-
-    private void parseToolchainAPIArg(String optionName, ListIterator<String> iterator, String function) {
-        if (!iterator.hasNext()) {
-            throw abort("Missing argument for " + optionName + " " + function);
-        }
-        toolchainAPIArg = iterator.next();
-        // remove arg
-        iterator.remove();
-    }
-
     @Override
     protected void validateArguments(Map<String, String> polyglotOptions) {
         if (file == null && versionAction != VersionAction.PrintAndExit && toolchainAPI == null) {
@@ -230,8 +209,10 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
         printOption("--lib <libraries>", "add library (*.bc or precompiled library *.so/*.dylib)");
         printOption("--version", "print the version and exit");
         printOption("--show-version", "print the version and continue");
-        printOption("--print-toolchain-path", "print the toolchain path and exit");
-        printOption("--toolchain-api identifier|tool <name>|paths <name>", "query the toolchain API and exit");
+        printOption("--print-toolchain-path", "print the toolchain path and exit (shortcut for `--toolchain-api-paths PATH`)");
+        printOption("--toolchain-api-tool <name>", "print the location of a toolchain API tool and exit");
+        printOption("--toolchain-api-paths <name>", "print toolchain API paths and exit");
+        printOption("--toolchain-api-identifier", "print the toolchain API identifier and exit");
     }
 
     @Override
@@ -241,7 +222,9 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
                         "--version",
                         "--show-version",
                         "--print-toolchain-path",
-                        "--toolchain-api"));
+                        "--toolchain-api-paths",
+                        "--toolchain-api-tool",
+                        "--toolchain-api-identifier"));
     }
 
     protected static void printOption(String option, String description) {
@@ -300,7 +283,7 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
                 throw abort("Unknown --toolchain-api function: " + toolchainAPI);
         }
         if (result.isNull()) {
-            throw abort("Unknown entry for --toolchain-api " + toolchainAPI + ": " + toolchainAPIArg);
+            throw abort("Unknown entry for --toolchain-api-" + toolchainAPI + ": " + toolchainAPIArg);
         }
         if (result.hasArrayElements()) {
             for (int i = 0; i < result.getArraySize(); i++) {
