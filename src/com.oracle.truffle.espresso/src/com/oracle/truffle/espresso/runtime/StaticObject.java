@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.runtime;
 
 import static com.oracle.truffle.api.CompilerDirectives.castExact;
 import static com.oracle.truffle.espresso.impl.Klass.STATIC_TO_CLASS;
+import static com.oracle.truffle.espresso.runtime.InteropUtils.*;
 import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 
 import java.lang.reflect.Array;
@@ -35,6 +36,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -100,6 +102,113 @@ public final class StaticObject implements TruffleObject {
     @ExportMessage
     public String asString() {
         return Meta.toHostString(this);
+    }
+
+    @ExportMessage
+    public boolean isNumber() {
+        if (isNull(this)) {
+            return false;
+        }
+        Klass klass = getKlass();
+        Meta meta = klass.getMeta();
+        return klass == meta.java_lang_Byte || klass == meta.java_lang_Short || klass == meta.java_lang_Integer || klass == meta.java_lang_Long || klass == meta.java_lang_Float ||
+                        klass == meta.java_lang_Double;
+    }
+
+    @ExportMessage
+    boolean fitsInByte() {
+        if (isNull(this)) {
+            return false;
+        }
+        return isAtMostByte(getKlass());
+    }
+
+    @ExportMessage
+    boolean fitsInShort() {
+        if (isNull(this)) {
+            return false;
+        }
+        return isAtMostShort(getKlass());
+    }
+
+    @ExportMessage
+    public boolean fitsInInt() {
+        if (isNull(this)) {
+            return false;
+        }
+        return isAtMostInt(getKlass());
+    }
+
+    @ExportMessage
+    boolean fitsInLong() {
+        if (isNull(this)) {
+            return false;
+        }
+        return isAtMostLong(getKlass());
+    }
+
+    @ExportMessage
+    boolean fitsInFloat() {
+        if (isNull(this)) {
+            return false;
+        }
+        return isAtMostFloat(getKlass());
+    }
+
+    @ExportMessage
+    boolean fitsInDouble() {
+        if (isNull(this)) {
+            return false;
+        }
+        return isAtMostDouble(getKlass());
+    }
+
+    @ExportMessage
+    byte asByte() throws UnsupportedMessageException {
+        if (!fitsInByte()) {
+            throw UnsupportedMessageException.create();
+        }
+        return (byte) 0;
+    }
+
+    @ExportMessage
+    short asShort() throws UnsupportedMessageException {
+        if (!fitsInShort()) {
+            throw UnsupportedMessageException.create();
+        }
+        return (short) 0;
+    }
+
+    @ExportMessage
+    public int asInt() throws UnsupportedMessageException {
+        if (!fitsInInt()) {
+            throw UnsupportedMessageException.create();
+        }
+        return 0;
+    }
+
+    @ExportMessage
+    long asLong() throws UnsupportedMessageException {
+        if (!fitsInLong()) {
+            throw UnsupportedMessageException.create();
+        }
+        return 0L;
+    }
+
+    @ExportMessage
+    float asFloat() throws UnsupportedMessageException {
+        if (!fitsInFloat()) {
+            throw UnsupportedMessageException.create();
+        }
+        return 0.0F;
+    }
+
+    @ExportMessage
+    double asDouble() throws UnsupportedMessageException {
+        if (!fitsInDouble()) {
+            throw UnsupportedMessageException.create();
+        }
+        return 0.0D;
     }
 
     @SuppressWarnings("static-method")
