@@ -54,6 +54,7 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
+import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
@@ -329,10 +330,34 @@ abstract class CommonPointerLibraries {
 
     /**
      * @param receiver
-     * @param ident
      * @see InteropLibrary#isMemberInsertable(Object, String)
      */
     @ExportMessage
+    static Object invokeMember(LLVMPointerImpl receiver, String member, Object[] arguments)
+                    throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException {
+        LLVMInteropType type = receiver.getExportType();
+        if (!(type instanceof LLVMInteropType.Clazz)) {
+            throw UnsupportedTypeException.create(new Object[]{receiver}, receiver + " cannot be casted to LLVMInteropType.Clazz");
+        }
+        LLVMInteropType.Clazz clazz = (LLVMInteropType.Clazz) receiver.getExportType();
+        Method method = clazz.findMethod(member);
+        if (method == null) {
+            throw UnknownIdentifierException.create(member);
+        }
+        LLVMFunction llvmFunction = LLVMLanguage.getContext().getGlobalScope().getFunction(method.getLinkageName());
+        // change from receiver.foo(arguments) to interopLibrary.execute(foo, [receiver+arguments])
+        Object[] newArguments = new Object[arguments.length + 1];
+        newArguments[0] = receiver;
+        for (int i = 0; i < arguments.length; i++) {
+            newArguments[i + 1] = arguments[i];
+        }
+        LLVMFunctionDescriptor fn = LLVMLanguage.getContext().createFunctionDescriptor(llvmFunction);
+
+        return InteropLibrary.getUncached().execute(fn, newArguments);
+    }
+
+    @ExportMessage
+    @SuppressWarnings("unused")
     static boolean isMemberInsertable(LLVMPointerImpl receiver, String ident) {
         return false;
     }
@@ -483,46 +508,6 @@ abstract class CommonPointerLibraries {
                     return type.getMember(index).name;
                 } else {
                     return type.getMethod(index - type.getMemberCount()).getName();
-                }
-            } catch (IndexOutOfBoundsException ex) {
-                exception.enter();
-                throw InvalidArrayIndexException.create(idx);
-            }
-        }
-    }
-
-    @ExportLibrary(InteropLibrary.class)
-    public static final class ClassKeys implements TruffleObject {
-        private final LLVMInteropType.Clazz type;
-
-        private ClassKeys(LLVMInteropType.Clazz type) {
-            this.type = type;
-        }
-
-        @ExportMessage
-        boolean hasArrayElements() {
-            return true;
-        }
-
-        @ExportMessage
-        long getArraySize() {
-            return type.getMemberCount() + type.getMethodCount();
-        }
-
-        @ExportMessage
-        boolean isArrayElementReadable(long idx) {
-            return Long.compareUnsigned(idx, getArraySize()) < 0;
-        }
-
-        @ExportMessage
-        Object readArrayElement(long idx,
-                        @Cached BranchProfile exception) throws InvalidArrayIndexException {
-            try {
-                int index = (int) idx;
-                if (index < type.getMemberCount()) {
-                    return type.getMember(index).getName();
-                } else {
-                    return type.getMethod(index - type.getMemberCount());
                 }
             } catch (IndexOutOfBoundsException ex) {
                 exception.enter();
