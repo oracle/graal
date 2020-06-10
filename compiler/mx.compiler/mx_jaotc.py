@@ -68,8 +68,8 @@ def jaotc_run(tests, group):
     for test in tests:
         mx.log('Testing `{}`'.format(test))
 
-        group_config=jaotc_group_config[group]
-        test_info=jaotc_test_info[test]
+        group_config = jaotc_group_config[group]
+        test_info = jaotc_test_info[test]
 
         test_type = jaotc_test_info[test]['type']
         if test_type == 'app':
@@ -79,7 +79,7 @@ def jaotc_run(tests, group):
                 main_class=test_info['main']
             )
         elif test_type == 'javac':
-            test_javac('jdk.tools.jaotc',group_config['javac'])
+            test_javac('jdk.tools.jaotc', group_config['javac'])
         elif test_type == 'modules':
             cp = jaotc_test_info[test].get('cp')
             cp = cp() if cp else None
@@ -145,14 +145,14 @@ jaotc_test_info = {
         'modules'      : ['jdk.internal.vm.ci', 'jdk.internal.vm.compiler', 'jdk.internal.vm.compiler.management'],
         'commands'     : '\n'.join([
             '# exclude troublesome methods',
-            'exclude org\.graalvm\.compiler\.replacements\..*',
-            'exclude org\.graalvm\.compiler\.hotspot\.replacements\..*',
-            'exclude org\.graalvm\.compiler\.nodes\.java\.DynamicNewArrayNode\.new.*',
-            'exclude org\.graalvm\.compiler\.nodes\.PiNode\..*',
-            'exclude org\.graalvm\.compiler\.hotspot\.stubs\.Plugin_.*',
-            'exclude org\.graalvm\.compiler\.hotspot\.stubs\.StubUtil\..*',
-            'exclude org\.graalvm\.compiler\.hotspot\.nodes\.GraalHotSpotVMConfigNode\..*',
-            'exclude org\.graalvm\.compiler\..*\.substitutions\..*',
+            r'exclude org\.graalvm\.compiler\.replacements\..*',
+            r'exclude org\.graalvm\.compiler\.hotspot\.replacements\..*',
+            r'exclude org\.graalvm\.compiler\.nodes\.java\.DynamicNewArrayNode\.new.*',
+            r'exclude org\.graalvm\.compiler\.nodes\.PiNode\..*',
+            r'exclude org\.graalvm\.compiler\.hotspot\.stubs\.Plugin_.*',
+            r'exclude org\.graalvm\.compiler\.hotspot\.stubs\.StubUtil\..*',
+            r'exclude org\.graalvm\.compiler\.hotspot\.nodes\.GraalHotSpotVMConfigNode\..*',
+            r'exclude org\.graalvm\.compiler\..*\.substitutions\..*',
             'exclude org.graalvm.compiler.nodes.java.NewArrayNode.newUninitializedArray(Ljava/lang/Class;I)Ljava/lang/Object;',
             'exclude org.graalvm.compiler.nodes.PiNode.piCastNonNull(Ljava/lang/Object;Ljava/lang/Class;)Ljava/lang/Object;',
             ''
@@ -191,7 +191,7 @@ jaotc_group_config = {
     'stress': {
         'tests': ['HelloWorld', 'javac', 'graal-jlink', 'java.base'],
         'class':   jaotc_common_gc_compressed,
-        'javac':   jaotc_common_gc_compressed, 
+        'javac':   jaotc_common_gc_compressed,
         'modules': jaotc_common_gc_compressed,
     },
 }
