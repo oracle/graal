@@ -92,7 +92,6 @@ import org.graalvm.compiler.word.WordOperationPlugin;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
-import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.graal.nodes.DeadEndNode;
@@ -370,15 +369,15 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
         @Override
         public boolean canConstantFoldDynamicAllocation(ResolvedJavaType type) {
-            ResolvedJavaType convertedType = lookup(type);
-            if (convertedType instanceof AnalysisType) {
+            if (hUniverse == null) {
                 /*
                  * During static analysis, every type can be constant folded and the static analysis
                  * will see the real allocation.
                  */
                 return true;
             } else {
-                return ((HostedType) convertedType).isInstantiated();
+                ResolvedJavaType convertedType = optionalLookup(type);
+                return convertedType != null && ((HostedType) convertedType).isInstantiated();
             }
         }
     }
@@ -722,6 +721,14 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         ResolvedJavaType result = aUniverse.lookup(type);
         if (hUniverse != null) {
             result = hUniverse.lookup(result);
+        }
+        return result;
+    }
+
+    private ResolvedJavaType optionalLookup(ResolvedJavaType type) {
+        ResolvedJavaType result = aUniverse.optionalLookup(type);
+        if (result != null && hUniverse != null) {
+            result = hUniverse.optionalLookup(result);
         }
         return result;
     }
