@@ -90,7 +90,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
     private final boolean exit;
     private final boolean incompleteSource;
     private final boolean syntaxError;
-    private final boolean resourceLimit;
+    private final boolean resourceExhausted;
     private final int exitStatus;
     private final Value guestObject;
     private final String message;
@@ -118,7 +118,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
         this.exception = original;
         this.guestFrames = TruffleStackTrace.getStackTrace(original);
         this.showInternalStackFrames = engine == null ? false : engine.engineOptionValues.get(PolyglotEngineOptions.ShowInternalStackFrames);
-        this.resourceLimit = isResourceLimit(exception);
+        this.resourceExhausted = isResourceLimit(exception);
 
         if (exception instanceof TruffleException) {
             TruffleException truffleException = (TruffleException) exception;
@@ -161,7 +161,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
             }
         } else {
             this.cancelled = false;
-            this.internal = !resourceLimit;
+            this.internal = !resourceExhausted;
             this.syntaxError = false;
             this.incompleteSource = false;
             this.exit = false;
@@ -222,7 +222,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
 
     @Override
     public boolean isResourceExhausted() {
-        return resourceLimit;
+        return resourceExhausted;
     }
 
     @Override
