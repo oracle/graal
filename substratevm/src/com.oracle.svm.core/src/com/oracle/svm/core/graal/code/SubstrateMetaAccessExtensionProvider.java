@@ -42,6 +42,6 @@ public class SubstrateMetaAccessExtensionProvider implements MetaAccessExtension
 
     @Override
     public boolean canConstantFoldDynamicAllocation(ResolvedJavaType type) {
-        return ((SharedType) type).getHub().isInstantiated();
+        return type != null && ((SharedType) type).getHub().isInstantiated();
     }
 }
