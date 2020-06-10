@@ -40,6 +40,7 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.word.WordBase;
 
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -49,7 +50,6 @@ import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.image.AbstractImageHeapLayouter.ImageHeapLayout;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
@@ -127,14 +127,19 @@ public final class NativeImageHeapWriter {
 
     private static void verifyTargetDidNotChange(Object target, Object reason, Object targetInfo) {
         if (targetInfo == null) {
-            throw UserError.abort(String.format("Static field or an object referenced from a static field changed during native image generation?%n" +
-                            "  object:%s  of class: %s%n  reachable through:%n%s", target, target.getClass().getTypeName(), NativeImageHeap.fillReasonStack(new StringBuilder(), reason)));
+            throw NativeImageHeap.reportIllegalType(target, reason);
         }
     }
 
     private void writeField(RelocatableBuffer buffer, ObjectInfo fields, HostedField field, JavaConstant receiver, ObjectInfo info) {
         int index = fields.getIndexInBuffer(field.getLocation());
-        JavaConstant value = field.readValue(receiver);
+        JavaConstant value;
+        try {
+            value = field.readValue(receiver);
+        } catch (AnalysisError.TypeNotFoundError ex) {
+            throw NativeImageHeap.reportIllegalType(ex.getType(), info);
+        }
+
         if (value.getJavaKind() == JavaKind.Object && SubstrateObjectConstant.asObject(value) instanceof RelocatedPointer) {
             addNonDataRelocation(buffer, index, (RelocatedPointer) SubstrateObjectConstant.asObject(value));
         } else {
@@ -372,7 +377,13 @@ public final class NativeImageHeapWriter {
                 assert oarray.length == length;
                 for (int i = 0; i < length; i++) {
                     final int elementIndex = info.getIndexInBuffer(objectLayout.getArrayElementOffset(kind, i));
-                    final Object element = heap.getAnalysisUniverse().replaceObject(oarray[i]);
+                    Object element;
+                    try {
+                        element = heap.getAnalysisUniverse().replaceObject(oarray[i]);
+                    } catch (AnalysisError.TypeNotFoundError ex) {
+                        throw NativeImageHeap.reportIllegalType(ex.getType(), info);
+                    }
+
                     assert (oarray[i] instanceof RelocatedPointer) == (element instanceof RelocatedPointer);
                     writeConstant(buffer, elementIndex, kind, element, info);
                 }

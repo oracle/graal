@@ -48,6 +48,7 @@ import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -63,7 +64,6 @@ import com.oracle.svm.core.jdk.StringInternSupport;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.meta.HostedArrayClass;
@@ -78,6 +78,7 @@ import com.oracle.svm.hosted.meta.UniverseBuilder;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * This class keeps track of all objects that should be part of the native image heap. It should not
@@ -282,12 +283,7 @@ public final class NativeImageHeap implements ImageHeap {
              * not seen - so this check actually protects against much more than just missing class
              * initialization information.
              */
-            throw VMError.shouldNotReachHere(String.format(
-                            "Image heap writing found a class not seen as instantiated during static analysis. Did a static field or an object referenced " +
-                                            "from a static field change during native image generation? For example, a lazily initialized cache could have been " +
-                                            "initialized during image generation, in which case you need to force eager initialization of the cache before static analysis " +
-                                            "or reset the cache using a field value recomputation.%n  class: %s%n  reachable through:%n%s",
-                            original, fillReasonStack(new StringBuilder(), reason)));
+            throw reportIllegalType(original, reason);
         }
 
         int identityHashCode;
@@ -416,48 +412,58 @@ public final class NativeImageHeap implements ImageHeap {
             }
 
             info = addToImageHeap(object, clazz, size, identityHashCode, reason);
-            recursiveAddObject(hub, false, info);
-            // Recursively add all the fields of the object.
-            final boolean fieldsAreImmutable = object instanceof String;
-            for (HostedField field : clazz.getInstanceFields(true)) {
-                if (field.isAccessed() && !field.equals(hybridArrayField) && !field.equals(hybridBitsetField)) {
-                    boolean fieldRelocatable = false;
-                    if (field.getJavaKind() == JavaKind.Object) {
-                        assert field.hasLocation();
-                        JavaConstant fieldValueConstant = field.readValue(con);
-                        if (fieldValueConstant.getJavaKind() == JavaKind.Object) {
-                            Object fieldValue = SubstrateObjectConstant.asObject(fieldValueConstant);
-                            if (spawnIsolates()) {
-                                fieldRelocatable = fieldValue instanceof RelocatedPointer;
+            try {
+                recursiveAddObject(hub, false, info);
+                // Recursively add all the fields of the object.
+                final boolean fieldsAreImmutable = object instanceof String;
+                for (HostedField field : clazz.getInstanceFields(true)) {
+                    if (field.isAccessed() && !field.equals(hybridArrayField) && !field.equals(hybridBitsetField)) {
+                        boolean fieldRelocatable = false;
+                        if (field.getJavaKind() == JavaKind.Object) {
+                            assert field.hasLocation();
+                            JavaConstant fieldValueConstant = field.readValue(con);
+                            if (fieldValueConstant.getJavaKind() == JavaKind.Object) {
+                                Object fieldValue = SubstrateObjectConstant.asObject(fieldValueConstant);
+                                if (spawnIsolates()) {
+                                    fieldRelocatable = fieldValue instanceof RelocatedPointer;
+                                }
+                                recursiveAddObject(fieldValue, fieldsAreImmutable, info);
+                                references = true;
                             }
-                            recursiveAddObject(fieldValue, fieldsAreImmutable, info);
-                            references = true;
                         }
+                        /*
+                         * The analysis considers relocatable pointers to be written because their
+                         * eventual value is assigned at runtime by the dynamic linker and it cannot
+                         * be inlined. Relocatable pointers are read-only for our purposes, however.
+                         */
+                        relocatable = relocatable || fieldRelocatable;
+                        written = written || (field.isWritten() && !field.isFinal() && !fieldRelocatable);
                     }
-                    /*
-                     * The analysis considers relocatable pointers to be written because their
-                     * eventual value is assigned at runtime by the dynamic linker and it cannot be
-                     * inlined. Relocatable pointers are read-only for our purposes, however.
-                     */
-                    relocatable = relocatable || fieldRelocatable;
-                    written = written || (field.isWritten() && !field.isFinal() && !fieldRelocatable);
-                }
 
+                }
+                if (hybridArray instanceof Object[]) {
+                    relocatable = addArrayElements((Object[]) hybridArray, relocatable, info);
+                    references = true;
+                }
+            } catch (AnalysisError.TypeNotFoundError ex) {
+                throw reportIllegalType(ex.getType(), info);
             }
-            if (hybridArray instanceof Object[]) {
-                relocatable = addArrayElements((Object[]) hybridArray, relocatable, info);
-                references = true;
-            }
+
         } else if (type.isArray()) {
             HostedArrayClass clazz = (HostedArrayClass) type;
             final long size = objectLayout.getArraySize(type.getComponentType().getStorageKind(), Array.getLength(object));
             info = addToImageHeap(object, clazz, size, identityHashCode, reason);
-            recursiveAddObject(hub, false, info);
-            if (object instanceof Object[]) {
-                relocatable = addArrayElements((Object[]) object, false, info);
-                references = true;
+            try {
+                recursiveAddObject(hub, false, info);
+                if (object instanceof Object[]) {
+                    relocatable = addArrayElements((Object[]) object, false, info);
+                    references = true;
+                }
+                written = true; /* How to know if any of the array elements are written? */
+            } catch (AnalysisError.TypeNotFoundError ex) {
+                throw reportIllegalType(ex.getType(), info);
             }
-            written = true; /* How to know if any of the array elements are written? */
+
         } else {
             throw shouldNotReachHere();
         }
@@ -468,20 +474,33 @@ public final class NativeImageHeap implements ImageHeap {
         heapLayouter.assignObjectToPartition(info, !written || immutable, references, relocatable);
     }
 
-    private static HostedType requireType(final Optional<HostedType> optionalType, final Object object, final Object reason) throws UserException {
+    private static HostedType requireType(Optional<HostedType> optionalType, Object object, Object reason) {
         if (!optionalType.isPresent() || !optionalType.get().isInstantiated()) {
-            throw UserError.abort(
-                            String.format("Image heap writing found an object whose class was not seen as instantiated during static analysis. " +
-                                            "Did a static field or an object referenced from a static field change during native image generation? " +
-                                            "For example, a lazily initialized cache could have been initialized during image generation, in which case " +
-                                            "you need to force eager initialization of the cache before static analysis or reset the cache using a field " +
-                                            "value recomputation.%n  object: %s of class: %s%n  reachable through:%n%s",
-                                            object, object.getClass().getTypeName(), fillReasonStack(new StringBuilder(), reason)));
+            throw reportIllegalType(object, reason);
         }
         return optionalType.get();
     }
 
-    static StringBuilder fillReasonStack(StringBuilder msg, Object reason) {
+    static RuntimeException reportIllegalType(Object object, Object reason) {
+        StringBuilder msg = new StringBuilder();
+        msg.append("Image heap writing found a class not seen during static analysis. ");
+        msg.append("Did a static field or an object referenced from a static field change during native image generation? ");
+        msg.append("For example, a lazily initialized cache could have been initialized during image generation, in which case ");
+        msg.append("you need to force eager initialization of the cache before static analysis or reset the cache using a field ");
+        msg.append("value recomputation.").append(System.lineSeparator()).append("    ");
+        if (object instanceof DynamicHub) {
+            msg.append("class: ").append(((DynamicHub) object).getName());
+        } else if (object instanceof ResolvedJavaType) {
+            msg.append("class: ").append(((ResolvedJavaType) object).toJavaName(true));
+        } else {
+            msg.append("object: ").append(object).append("  of class: ").append(object.getClass().getTypeName());
+        }
+        msg.append(System.lineSeparator()).append("  reachable through:").append(System.lineSeparator());
+        fillReasonStack(msg, reason);
+        throw UserError.abort(msg.toString());
+    }
+
+    private static StringBuilder fillReasonStack(StringBuilder msg, Object reason) {
         if (reason instanceof ObjectInfo) {
             ObjectInfo info = (ObjectInfo) reason;
             msg.append("    object: ").append(info.getObject()).append("  of class: ").append(info.getObject().getClass().getTypeName()).append(System.lineSeparator());
