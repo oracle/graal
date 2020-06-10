@@ -12,13 +12,15 @@ import { pathToFileURL } from 'url';
 import { LSPORT, connectToLanguageServer, stopLanguageServer, lspArgs, hasLSClient, setLSPID } from './graalVMLanguageServer';
 import { StreamInfo } from 'vscode-languageclient';
 
+const POLYGLOT: string = "polyglot";
+
 export class GraalVMDebugAdapterTracker implements vscode.DebugAdapterTrackerFactory {
 
 	createDebugAdapterTracker(session: vscode.DebugSession): vscode.ProviderResult<vscode.DebugAdapterTracker> {
 		const inProcessServer = vscode.workspace.getConfiguration('graalvm').get('languageServer.inProcessServer') as boolean;
 		return {
 			onDidSendMessage(message: any) {
-				if (message.type === 'event' && !hasLSClient() && inProcessServer) {
+				if (message.type === 'event' && !hasLSClient() && session.configuration.request === 'launch' && inProcessServer) {
 					if (message.event === 'output' && message.body.category === 'telemetry' && message.body.output === 'childProcessID') {
 						setLSPID(message.body.data.pid);
 					}
@@ -74,8 +76,18 @@ export class GraalVMConfigurationProvider implements vscode.DebugConfigurationPr
 								if (idx < 0) {
 									config.runtimeArgs = config.runtimeArgs.concat('--experimental-options');
 								}
+								if (config.runtimeExecutable !== POLYGLOT) {
+									let idx = config.runtimeArgs.indexOf('--polyglot');
+									if (idx < 0) {
+										config.runtimeArgs = config.runtimeArgs.concat('--polyglot');
+									}
+								}
 							} else {
-								config.runtimeArgs = args.concat('--experimental-options');
+								args = args.concat('--experimental-options');
+								if (config.runtimeExecutable !== POLYGLOT) {
+									args = args.concat('--polyglot');
+								}
+								config.runtimeArgs = args;
 							}
 							resolve(config);
 						});

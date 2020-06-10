@@ -17,6 +17,7 @@ const delegateLanguageServers: Set<() => Thenable<String>> = new Set();
 
 let languageClient: Promise<LanguageClient> | undefined;
 let languageServerPID: number = 0;
+let hasR: boolean | undefined;
 
 export function registerLanguageServer(server: (() => Thenable<string>)): void {
     delegateLanguageServers.add(server);
@@ -107,12 +108,13 @@ export function stopLanguageServer(): Thenable<void> {
 	return Promise.resolve();
 }
 
-export function lspArgs(): Thenable<string[]> {
+export async function lspArgs(): Promise<string[]> {
 	const port = utils.random(3000, 50000);
     let delegateServers: string | undefined = vscode.workspace.getConfiguration('graalvm').get('languageServer.delegateServers') as string;
-    const s = Array.from(delegateLanguageServers).map(server => server());
+	const s = Array.from(delegateLanguageServers).map(server => server());
+	const r = await hasRSource();
     return Promise.all(s).then((servers) => {
-		let args = [`--lsp=${port}`];
+		let args = r ? ['--jvm', `--lsp=${port}`] : [`--lsp=${port}`];
 		delegateServers = delegateServers ? delegateServers.concat(',', servers.join()) : servers.join();
 		if (delegateServers) {
 			args = args.concat('--lsp.Delegates=' + delegateServers);
@@ -127,6 +129,21 @@ export function setLSPID(pid: number) {
 
 export function hasLSClient(): boolean {
     return languageClient !== undefined;
+}
+
+async function hasRSource(): Promise<boolean> {
+	if (hasR === undefined) {
+		const uris: vscode.Uri[] = await vscode.workspace.findFiles('*.{r,R}', undefined, 1);
+		hasR = uris.length > 0;
+		if (!hasR) {
+			const fsWatcher = vscode.workspace.createFileSystemWatcher('*.{r,R}', false, true, true);
+			fsWatcher.onDidCreate(_uri => {
+				hasR = true;
+				fsWatcher.dispose();
+			});
+		}
+	}
+	return hasR;
 }
 
 function terminateLanguageServer() {
