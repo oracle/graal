@@ -32,8 +32,10 @@ export function startLanguageServer(graalVMHome: string) {
 				serverWorkDir = vscode.workspace.rootPath;
 			}
 			connectToLanguageServer(() => new Promise<StreamInfo>((resolve, reject) => {
-                lspArg().then((arg) => {
-					const serverProcess = cp.spawn(re, [arg, '--experimental-options', '--shell'], { cwd: serverWorkDir });
+                lspArgs().then(args => {
+					const lspArg = args.find(arg => arg.startsWith('--lsp='));
+					const lsPort = lspArg ? parseInt(lspArg.substring(6)) : LSPORT;
+					const serverProcess = cp.spawn(re, args.concat(['--experimental-options', '--shell']), { cwd: serverWorkDir });
 					if (!serverProcess || !serverProcess.pid) {
 						reject(`Launching server using command ${re} failed.`);
 					} else {
@@ -46,7 +48,7 @@ export function startLanguageServer(graalVMHome: string) {
 							socket.once('error', (e) => {
 								reject(e);
 							});
-							socket.connect(LSPORT, '127.0.0.1', () => {
+							socket.connect(lsPort, '127.0.0.1', () => {
 								resolve({
 									reader: socket,
 									writer: socket
@@ -105,12 +107,17 @@ export function stopLanguageServer(): Thenable<void> {
 	return Promise.resolve();
 }
 
-export function lspArg(): Thenable<string> {
+export function lspArgs(): Thenable<string[]> {
+	const port = utils.random(3000, 50000);
     let delegateServers: string | undefined = vscode.workspace.getConfiguration('graalvm').get('languageServer.delegateServers') as string;
     const s = Array.from(delegateLanguageServers).map(server => server());
     return Promise.all(s).then((servers) => {
-        delegateServers = delegateServers ? delegateServers.concat(',', servers.join()) : servers.join();
-        return delegateServers ? '--lsp.Delegates=' + delegateServers : '--lsp';
+		let args = [`--lsp=${port}`];
+		delegateServers = delegateServers ? delegateServers.concat(',', servers.join()) : servers.join();
+		if (delegateServers) {
+			args = args.concat('--lsp.Delegates=' + delegateServers);
+		}
+		return args;
     });
 }
 
@@ -135,4 +142,3 @@ function terminateLanguageServer() {
 	}
 	languageServerPID = 0;
 }
-
