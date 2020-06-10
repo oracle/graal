@@ -13,11 +13,17 @@ local graal_suite_root = root_ci.graal_suite_root;
     downloads+: {
       JAVA_HOME: labsjdk8,
     },
+    environment+: {
+      JDK_JVMCI_ARGS: '--jdk=jvmci',
+    },
   },
 
   jdk11: {
     downloads+: {
       JAVA_HOME: labsjdk11,
+    },
+    environment+: {
+      JDK_JVMCI_ARGS: '-v',
     },
   },
 
@@ -100,7 +106,7 @@ local graal_suite_root = root_ci.graal_suite_root;
   },
 
   local gate_cmd       = ['mx', '--strict-compliance', 'gate', '--strict-mode', '--tags', '${GATE_TAGS}'],
-  local gate_cmd_jvmci = ['mx', '--strict-compliance', '--dynamicimports', graal_suite_root, '--jdk', 'jvmci', 'gate', '--strict-mode', '--tags', '${GATE_TAGS}'],
+  local gate_cmd_jvmci = ['mx', '--strict-compliance', '--dynamicimports', graal_suite_root, '${JDK_JVMCI_ARGS}', 'gate', '--strict-mode', '--tags', '${GATE_TAGS}'],
 
   setup_common: {
     setup+: [
