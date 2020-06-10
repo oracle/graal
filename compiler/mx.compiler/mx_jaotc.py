@@ -237,7 +237,7 @@ def test_modules(opts_set, classpath, main_class, modules, vm_args, program_args
         mx.log('(jaotc) Compiling module(s) {} with {}'.format(module_list, ' '.join(common_opts)))
         with mktemp_libfile() as lib_module:
             lib_module.file.close()
-            with tempfile.NamedTemporaryFile(prefix='cmds_', suffix='.txt') as cmd_file:
+            with tempfile.NamedTemporaryFile(mode='w', prefix='cmds_', suffix='.txt') as cmd_file:
                 cmd_file.write(commands)
                 cmd_file.file.close()
                 run_jaotc(['-J' + opt for opt in common_opts] +
