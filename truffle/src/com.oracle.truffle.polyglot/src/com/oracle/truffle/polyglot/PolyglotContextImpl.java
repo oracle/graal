@@ -838,15 +838,35 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     }
 
     @Override
+    public Value parse(String languageId, Object sourceImpl) {
+        PolyglotLanguage language = requirePublicLanguage(languageId);
+        PolyglotLanguageContext languageContext = getContext(language);
+        try {
+            Object prev = engine.enterIfNeeded(this);
+            try {
+                Source source = (Source) sourceImpl;
+                languageContext.checkAccess(null);
+                languageContext.ensureInitialized(null);
+                CallTarget target = languageContext.parseCached(null, source, null);
+                return languageContext.asValue(new PolyglotParsedEval(languageContext, source, target));
+            } finally {
+                engine.leaveIfNeeded(prev, this);
+            }
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException(languageContext, e);
+        }
+    }
+
+    @Override
     public Value eval(String languageId, Object sourceImpl) {
         PolyglotLanguage language = requirePublicLanguage(languageId);
         PolyglotLanguageContext languageContext = getContext(language);
         try {
             Object prev = engine.enterIfNeeded(this);
             try {
+                Source source = (Source) sourceImpl;
                 languageContext.checkAccess(null);
                 languageContext.ensureInitialized(null);
-                com.oracle.truffle.api.source.Source source = (com.oracle.truffle.api.source.Source) sourceImpl;
                 CallTarget target = languageContext.parseCached(null, source, null);
                 Object result = target.call(PolyglotImpl.EMPTY_ARGS);
                 Value hostValue;
@@ -878,7 +898,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     }
 
     @TruffleBoundary
-    private static void printResult(PolyglotLanguageContext languageContext, Object result) {
+    static void printResult(PolyglotLanguageContext languageContext, Object result) {
         if (!LANGUAGE.isVisible(languageContext.env, result)) {
             return;
         }

@@ -45,11 +45,16 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.ByteArrayOutputStream;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -70,10 +75,13 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.PolyglotAccess;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
+import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -81,6 +89,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
@@ -91,18 +100,16 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.GCUtils;
 import com.oracle.truffle.api.test.option.OptionProcessorTest.OptionTestLang1;
 import com.oracle.truffle.api.test.polyglot.ContextAPITestLanguage.LanguageContext;
 import com.oracle.truffle.tck.tests.ValueAssert;
 import com.oracle.truffle.tck.tests.ValueAssert.Trait;
-import java.net.URL;
-import java.net.URLClassLoader;
-import org.graalvm.polyglot.Source;
-import org.junit.Assume;
 
-public class ContextAPITest {
+public class ContextAPITest extends AbstractPolyglotTest {
     private static HostAccess CONFIG;
 
     static LanguageContext langContext;
@@ -112,9 +119,205 @@ public class ContextAPITest {
         CONFIG = HostAccess.newBuilder().allowAccess(Runnable.class.getMethod("run")).allowAccessAnnotatedBy(HostAccess.Export.class).build();
     }
 
+    public ContextAPITest() {
+        // API test should not enter automatically by default for more control
+        enterContext = false;
+    }
+
+    @Test
+    public void testEvalErrors() {
+        setupEnv();
+
+        assertFails(() -> context.eval(null, null), NullPointerException.class);
+        assertFails(() -> context.eval(ProxyLanguage.ID, null), NullPointerException.class);
+        assertFails(() -> context.eval(null, ""), NullPointerException.class);
+        assertFails(() -> context.eval("<<unknown-language>>", null), NullPointerException.class);
+        assertFails(() -> context.eval("<<unknown-language>>", ""), IllegalArgumentException.class);
+
+        Source src = Source.create("<<unknown-language>>", "");
+        assertFails(() -> context.eval(src), IllegalArgumentException.class);
+        assertFails(() -> context.eval(null), NullPointerException.class);
+    }
+
+    @Test
+    public void testParseErrors() {
+        setupEnv();
+
+        assertFails(() -> context.parse(null, null), NullPointerException.class);
+        assertFails(() -> context.parse(ProxyLanguage.ID, null), NullPointerException.class);
+        assertFails(() -> context.parse(null, ""), NullPointerException.class);
+        assertFails(() -> context.parse("<<unknown-language>>", null), NullPointerException.class);
+        assertFails(() -> context.parse("<<unknown-language>>", ""), IllegalArgumentException.class);
+
+        Source src = Source.create("<<unknown-language>>", "");
+        assertFails(() -> context.parse(src), IllegalArgumentException.class);
+        assertFails(() -> context.parse(null), NullPointerException.class);
+    }
+
+    @SuppressWarnings("serial")
+    static class SyntaxError extends RuntimeException implements TruffleException {
+
+        private final SourceSection location;
+
+        SyntaxError(SourceSection location) {
+            this.location = location;
+        }
+
+        public boolean isSyntaxError() {
+            return true;
+        }
+
+        public Node getLocation() {
+            return null;
+        }
+
+        public SourceSection getSourceLocation() {
+            return location;
+        }
+    }
+
+    @Test
+    public void testParseBasic() {
+        AtomicInteger parseCalls = new AtomicInteger();
+        AtomicInteger executeCalls = new AtomicInteger();
+        setupParseLang(Context.create(), parseCalls, executeCalls);
+
+        assertEquals(0, parseCalls.get());
+        assertEquals(0, executeCalls.get());
+
+        context.parse(ProxyLanguage.ID, "42");
+        assertEquals(1, parseCalls.get());
+        assertEquals(0, executeCalls.get());
+
+        context.parse(ProxyLanguage.ID, "42");
+        assertEquals(1, parseCalls.get());
+        assertEquals(0, executeCalls.get());
+
+        context.eval(ProxyLanguage.ID, "42");
+        assertEquals(1, parseCalls.get());
+        assertEquals(1, executeCalls.get());
+
+        Source uncachedSource = Source.newBuilder(ProxyLanguage.ID, "42", "uncached").cached(false).buildLiteral();
+        context.parse(uncachedSource);
+        assertEquals(2, parseCalls.get());
+        assertEquals(1, executeCalls.get());
+
+        context.parse(uncachedSource);
+        assertEquals(3, parseCalls.get());
+        assertEquals(1, executeCalls.get());
+
+        context.eval(uncachedSource);
+        assertEquals(4, parseCalls.get());
+        assertEquals(2, executeCalls.get());
+
+        assertFails(() -> context.parse(ProxyLanguage.ID, "error-1"), PolyglotException.class,
+                        (e) -> {
+                            assertTrue(e.isSyntaxError());
+                            assertEquals("error", e.getSourceLocation().getCharacters());
+                        });
+        assertEquals(5, parseCalls.get());
+        assertEquals(2, executeCalls.get());
+
+        assertFails(() -> context.parse(ProxyLanguage.ID, "error-1"), PolyglotException.class,
+                        (e) -> {
+                            assertTrue(e.isSyntaxError());
+                            assertEquals("error", e.getSourceLocation().getCharacters());
+                        });
+        assertEquals(6, parseCalls.get());
+        assertEquals(2, executeCalls.get());
+    }
+
+    @Test
+    public void testParseInteractive() {
+        AtomicInteger parseCalls = new AtomicInteger();
+        AtomicInteger executeCalls = new AtomicInteger();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        setupParseLang(Context.newBuilder().out(out).build(), parseCalls, executeCalls);
+
+        assertEquals(0, parseCalls.get());
+        assertEquals(0, executeCalls.get());
+
+        Source source = Source.newBuilder(ProxyLanguage.ID, "42", "interactive").interactive(true).buildLiteral();
+        Value v = context.parse(source);
+
+        assertEquals(1, parseCalls.get());
+        assertEquals(0, executeCalls.get());
+        assertEquals(0, out.size());
+
+        String lineFeed = System.getProperty("line.separator");
+        v.execute();
+        assertEquals(1, parseCalls.get());
+        assertEquals(1, executeCalls.get());
+        assertEquals("42" + lineFeed, new String(out.toByteArray(), StandardCharsets.UTF_8));
+
+        v.execute();
+        assertEquals(1, parseCalls.get());
+        assertEquals(2, executeCalls.get());
+        assertEquals("42" + lineFeed + "42" + lineFeed, new String(out.toByteArray()));
+    }
+
+    @Test
+    public void testParseAndEval() {
+        AtomicInteger parseCalls = new AtomicInteger();
+        AtomicInteger executeCalls = new AtomicInteger();
+        setupParseLang(Context.create(), parseCalls, executeCalls);
+
+        assertEquals(0, parseCalls.get());
+        assertEquals(0, executeCalls.get());
+
+        Source source = Source.create(ProxyLanguage.ID, "42");
+        Value parseResult = context.parse(source);
+        assertEquals(1, parseCalls.get());
+        assertEquals(0, executeCalls.get());
+
+        assertTrue(parseResult.canExecute());
+        assertEquals(parseResult, context.parse(source));
+        assertNotSame(parseResult, context.parse(source));
+        assertNotEquals(parseResult, context.parse(ProxyLanguage.ID, "43"));
+        assertEquals("Parsed[Source=" + source.toString() + "]", parseResult.toString());
+        ValueAssert.assertValue(parseResult);
+
+        Value result = parseResult.execute();
+        assertEquals(2, parseCalls.get());
+        assertEquals(1, executeCalls.get());
+        assertEquals(source.getCharacters(), result.asString());
+
+        result = parseResult.execute();
+        assertEquals(2, parseCalls.get());
+        assertEquals(2, executeCalls.get());
+        assertEquals(source.getCharacters(), result.asString());
+
+        assertFails(() -> parseResult.execute(42), IllegalArgumentException.class);
+        assertFails(() -> parseResult.execute(42, 42), IllegalArgumentException.class);
+
+    }
+
+    private void setupParseLang(Context context, AtomicInteger parseCalls, AtomicInteger executeCalls) {
+        setupEnv(context, new ProxyLanguage() {
+            @Override
+            protected CallTarget parse(ParsingRequest request) throws Exception {
+                parseCalls.incrementAndGet();
+
+                if (request.getSource().getCharacters().toString().startsWith("error-")) {
+                    throw new SyntaxError(request.getSource().createSection(0, 5));
+                }
+
+                return Truffle.getRuntime().createCallTarget(new RootNode(getCurrentLanguage()) {
+                    private final com.oracle.truffle.api.source.Source source = request.getSource();
+
+                    @Override
+                    public Object execute(VirtualFrame frame) {
+                        executeCalls.incrementAndGet();
+                        return source.getCharacters();
+                    }
+                });
+            }
+        });
+    }
+
     @Test
     public void testEqualsAndHashcode() {
-        Context context = Context.create();
+        setupEnv();
         context.enter();
 
         Context currentContext = Context.getCurrent();
@@ -122,17 +325,16 @@ public class ContextAPITest {
         assertEquals(context.hashCode(), currentContext.hashCode());
 
         context.leave();
-        context.close();
     }
 
     @Test
     public void testCloseBeforeLeave() {
         for (int i = 0; i < 10; i++) {
-            Context context = Context.create();
+            Context c = Context.create();
             for (int j = 0; j < i; j++) {
-                context.enter();
+                c.enter();
             }
-            context.close();
+            c.close();
             // we have already left the context
             try {
                 Context.getCurrent();
@@ -142,21 +344,21 @@ public class ContextAPITest {
             for (int j = 0; j < i; j++) {
                 // additional leave calls are allowed
                 // this allows to simplify some error recovery code
-                context.leave();
+                c.leave();
             }
         }
     }
 
     @Test
     public void testContextCreateSingleLanguage() {
-        Context context = Context.create(ContextAPITestLanguage.ID);
+        Context c = Context.create(ContextAPITestLanguage.ID);
         try {
-            context.eval(LanguageSPITestLanguage.ID, "");
+            c.eval(LanguageSPITestLanguage.ID, "");
             fail();
         } catch (IllegalArgumentException e) {
         }
-        assertInternalNotAccessible(context);
-        context.close();
+        assertInternalNotAccessible(c);
+        c.close();
     }
 
     private static void assertInternalNotAccessible(Context context) {
@@ -182,16 +384,15 @@ public class ContextAPITest {
 
     @Test
     public void testContextCreateAllLanguages() {
-        Context context = Context.create();
+        setupEnv();
         context.eval(ContextAPITestLanguage.ID, "");
         context.eval(LanguageSPITestLanguage.ID, "");
         assertInternalNotAccessible(context);
-        context.close();
     }
 
     @Test
     public void testImportExport() {
-        Context context = Context.create();
+        setupEnv();
         Value polyglotBindings = context.getPolyglotBindings();
         polyglotBindings.putMember("string", "bar");
         polyglotBindings.putMember("null", null);
@@ -204,7 +405,6 @@ public class ContextAPITest {
         assertEquals(42, polyglotBindings.getMember("int").asInt());
         assertSame(object, polyglotBindings.getMember("object").asHostObject());
         assertNull(polyglotBindings.getMember("notexisting"));
-        context.close();
     }
 
     @Test
@@ -217,36 +417,36 @@ public class ContextAPITest {
 
     @Test
     public void testStableOption() {
-        try (Context context = Context.newBuilder().option("optiontestlang1.StableOption", "Hello").build()) {
-            context.initialize("optiontestlang1");
-            context.enter();
+        try (Context c = Context.newBuilder().option("optiontestlang1.StableOption", "Hello").build()) {
+            c.initialize("optiontestlang1");
+            c.enter();
             try {
                 assertEquals("Hello", OptionTestLang1.getCurrentContext().getOptions().get(OptionTestLang1.StableOption));
             } finally {
-                context.leave();
+                c.leave();
             }
         }
     }
 
     @Test
     public void testExperimentalOption() {
-        try (Context context = Context.newBuilder().allowExperimentalOptions(true).option("optiontestlang1.StringOption2", "Allow").build()) {
-            context.initialize("optiontestlang1");
-            context.enter();
+        try (Context c = Context.newBuilder().allowExperimentalOptions(true).option("optiontestlang1.StringOption2", "Allow").build()) {
+            c.initialize("optiontestlang1");
+            c.enter();
             try {
                 assertEquals("Allow", OptionTestLang1.getCurrentContext().getOptions().get(OptionTestLang1.StringOption2));
             } finally {
-                context.leave();
+                c.leave();
             }
         }
 
-        try (Context context = Context.newBuilder().allowAllAccess(true).option("optiontestlang1.StringOption2", "All access").build()) {
-            context.initialize("optiontestlang1");
-            context.enter();
+        try (Context c = Context.newBuilder().allowAllAccess(true).option("optiontestlang1.StringOption2", "All access").build()) {
+            c.initialize("optiontestlang1");
+            c.enter();
             try {
                 assertEquals("All access", OptionTestLang1.getCurrentContext().getOptions().get(OptionTestLang1.StringOption2));
             } finally {
-                context.leave();
+                c.leave();
             }
         }
     }
@@ -303,9 +503,8 @@ public class ContextAPITest {
     }
 
     public void testEnterLeave() {
-        Context context = Context.create();
+        setupEnv();
         testEnterLeave(context, 0);
-        context.close();
     }
 
     private static void testEnterLeave(Context context, int depth) {
@@ -340,7 +539,7 @@ public class ContextAPITest {
 
     @Test
     public void testMultithreadedEnterLeave() throws InterruptedException, ExecutionException {
-        Context context = Context.create();
+        Context c = Context.create();
         Set<Reference<Thread>> threads = new HashSet<>();
         int[] counter = {1};
         ExecutorService service = Executors.newFixedThreadPool(20, (run) -> {
@@ -357,7 +556,7 @@ public class ContextAPITest {
         List<Future<?>> futures = new ArrayList<>();
 
         for (int i = 0; i < 200; i++) {
-            futures.add(service.submit(() -> testEnterLeave(context, 0)));
+            futures.add(service.submit(() -> testEnterLeave(c, 0)));
         }
 
         for (Future<?> future : futures) {
@@ -372,50 +571,50 @@ public class ContextAPITest {
         for (Reference<Thread> t : threads) {
             GCUtils.assertGc("Nobody holds on the thread anymore", t);
         }
-        context.close();
+        c.close();
     }
 
     @Test
     public void testEnteredExecute() {
-        Context context = Context.create(ContextAPITestLanguage.ID);
+        Context c1 = Context.create(ContextAPITestLanguage.ID);
 
         // test outside
-        testExecute(context);
+        testExecute(c1);
 
         // test inside
-        context.enter();
-        testExecute(context);
-        context.leave();
+        c1.enter();
+        testExecute(c1);
+        c1.leave();
 
         // test enter twice
-        context.enter();
-        context.enter();
-        testExecute(context);
-        context.leave();
-        testExecute(context);
-        context.leave();
-        testExecute(context);
+        c1.enter();
+        c1.enter();
+        testExecute(c1);
+        c1.leave();
+        testExecute(c1);
+        c1.leave();
+        testExecute(c1);
 
         // test entered with inner context
-        context.enter();
+        c1.enter();
 
-        Context context2 = Context.create(ContextAPITestLanguage.ID);
-        testExecute(context2);
-        context2.enter();
-        testExecute(context2);
-        context2.leave();
-        context2.enter();
-        context2.enter();
-        testExecute(context2);
-        context2.leave();
-        testExecute(context2);
-        context2.leave();
-        context2.close();
+        Context c2 = Context.create(ContextAPITestLanguage.ID);
+        testExecute(c2);
+        c2.enter();
+        testExecute(c2);
+        c2.leave();
+        c2.enter();
+        c2.enter();
+        testExecute(c2);
+        c2.leave();
+        testExecute(c2);
+        c2.leave();
+        c2.close();
 
-        context.leave();
+        c1.leave();
 
         // finally close the context
-        context.close();
+        c1.close();
     }
 
     @ExportLibrary(InteropLibrary.class)
@@ -548,34 +747,34 @@ public class ContextAPITest {
     public void testEnteredContext() {
         assertFails(() -> Context.getCurrent(), IllegalStateException.class);
 
-        Context context = Context.newBuilder().allowHostAccess(HostAccess.ALL).build();
+        Context c = Context.newBuilder().allowHostAccess(HostAccess.ALL).build();
 
         assertFails(() -> Context.getCurrent(), IllegalStateException.class);
 
-        context.enter();
+        c.enter();
 
-        testGetContext(context);
+        testGetContext(c);
 
-        context.leave();
+        c.leave();
 
         assertFails(() -> Context.getCurrent(), IllegalStateException.class);
 
-        context.close();
+        c.close();
         assertFails(() -> Context.getCurrent(), IllegalStateException.class);
     }
 
     @Test
     public void testEnteredContextInJava() {
         assertFails(() -> Context.getCurrent(), IllegalStateException.class);
-        Context context = Context.newBuilder().allowHostAccess(HostAccess.ALL).build();
+        Context c = Context.newBuilder().allowHostAccess(HostAccess.ALL).build();
         assertFails(() -> Context.getCurrent(), IllegalStateException.class);
-        Value v = context.asValue(new Runnable() {
+        Value v = c.asValue(new Runnable() {
             public void run() {
-                testGetContext(context);
+                testGetContext(c);
 
                 Value.asValue(new Runnable() {
                     public void run() {
-                        testGetContext(context);
+                        testGetContext(c);
                     }
                 }).execute();
             }
@@ -583,13 +782,13 @@ public class ContextAPITest {
         assertFails(() -> Context.getCurrent(), IllegalStateException.class);
         v.execute();
         assertFails(() -> Context.getCurrent(), IllegalStateException.class);
-        context.close();
+        c.close();
         assertFails(() -> Context.getCurrent(), IllegalStateException.class);
     }
 
     @Test
     public void testChangeContextInJava() {
-        Context context = Context.newBuilder().allowHostAccess(HostAccess.ALL).build();
+        setupEnv(Context.newBuilder().allowHostAccess(HostAccess.ALL).build());
         Value v = context.asValue(new Runnable() {
             public void run() {
                 Context innerContext = Context.newBuilder().allowHostAccess(HostAccess.ALL).build();
@@ -603,7 +802,6 @@ public class ContextAPITest {
             }
         });
         v.execute();
-        context.close();
     }
 
     private static void testGetContext(Context creatorContext) {
@@ -633,43 +831,30 @@ public class ContextAPITest {
         assertFails(() -> context.getEngine().close(false), IllegalStateException.class);
     }
 
-    private static void assertFails(Runnable r, Class<?> exceptionType) {
-        try {
-            r.run();
-        } catch (Exception e) {
-            if (!exceptionType.isInstance(e)) {
-                throw new AssertionError(e);
-            }
-        }
-    }
-
     @Test
     public void testTransferControlToOtherThreadWhileEntered() {
-        Context context = Context.newBuilder().allowHostAccess(CONFIG).allowPolyglotAccess(PolyglotAccess.ALL).build();
+        setupEnv(Context.newBuilder().allowHostAccess(CONFIG).allowPolyglotAccess(PolyglotAccess.ALL).build(),
+                        new ProxyLanguage() {
+                            @Override
+                            protected CallTarget parse(ParsingRequest request) throws Exception {
+                                return Truffle.getRuntime().createCallTarget(new RootNode(getCurrentLanguage()) {
+                                    @Override
+                                    public Object execute(VirtualFrame frame) {
+                                        try {
+                                            return boundary();
+                                        } catch (Exception e) {
+                                            throw new RuntimeException(e);
+                                        }
+                                    }
 
-        ProxyLanguage.setDelegate(new ProxyLanguage() {
-            @Override
-            protected CallTarget parse(ParsingRequest request) throws Exception {
-                return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
-                    @Override
-                    public Object execute(VirtualFrame frame) {
-                        try {
-                            return boundary();
-                        } catch (Exception e) {
-                            throw new RuntimeException(e);
-                        }
-                    }
-
-                    @TruffleBoundary
-                    private Object boundary() throws UnsupportedMessageException, UnsupportedTypeException, ArityException, UnknownIdentifierException {
-                        Object o = InteropLibrary.getFactory().getUncached().readMember(ProxyLanguage.getCurrentContext().env.getPolyglotBindings(), "test");
-                        return InteropLibrary.getFactory().getUncached().execute(o);
-                    }
-                });
-            }
-        });
-
-        context.initialize(ProxyLanguage.ID);
+                                    @TruffleBoundary
+                                    private Object boundary() throws UnsupportedMessageException, UnsupportedTypeException, ArityException, UnknownIdentifierException {
+                                        Object o = InteropLibrary.getUncached().readMember(ProxyLanguage.getCurrentContext().env.getPolyglotBindings(), "test");
+                                        return InteropLibrary.getUncached().execute(o);
+                                    }
+                                });
+                            }
+                        });
         context.enter();
         AtomicInteger depth = new AtomicInteger(0);
         context.getPolyglotBindings().putMember("test", new Runnable() {
@@ -713,73 +898,73 @@ public class ContextAPITest {
     public void testContextBuilderAllAccess() {
         Context.Builder builder = Context.newBuilder();
         builder.allowAllAccess(true);
-        try (Context context = builder.build()) {
-            context.initialize(ProxyLanguage.ID);
-            context.enter();
+        try (Context c = builder.build()) {
+            c.initialize(ProxyLanguage.ID);
+            c.enter();
             TruffleLanguage.Env env = ProxyLanguage.getCurrentContext().getEnv();
             assertTrue("all access implies host access allowed", env.isHostLookupAllowed());
             assertTrue("all access implies native access allowed", env.isNativeAccessAllowed());
             assertTrue("all access implies create thread allowed", env.isCreateThreadAllowed());
-            context.leave();
+            c.leave();
         }
         builder.allowAllAccess(false);
-        try (Context context = builder.build()) {
-            context.initialize(ProxyLanguage.ID);
-            context.enter();
+        try (Context c = builder.build()) {
+            c.initialize(ProxyLanguage.ID);
+            c.enter();
             TruffleLanguage.Env env = ProxyLanguage.getCurrentContext().getEnv();
             assertFalse("host access is disallowed by default", env.isHostLookupAllowed());
             assertFalse("native access is disallowed by default", env.isNativeAccessAllowed());
             assertFalse("thread creation is disallowed by default", env.isCreateThreadAllowed());
-            context.leave();
+            c.leave();
         }
     }
 
     @Test
     public void testTimeZone() {
         ZoneId zone = ZoneId.of("UTC+1");
-        Context context = Context.newBuilder().timeZone(zone).build();
-        context.initialize(ProxyLanguage.ID);
-        context.enter();
+        Context c = Context.newBuilder().timeZone(zone).build();
+        c.initialize(ProxyLanguage.ID);
+        c.enter();
         assertEquals(zone, ProxyLanguage.getCurrentContext().getEnv().getTimeZone());
-        context.leave();
-        context.close();
+        c.leave();
+        c.close();
     }
 
     @Test
     public void testDefaultTimeZone() {
-        Context context = Context.create();
-        context.initialize(ProxyLanguage.ID);
-        context.enter();
+        Context c = Context.create();
+        c.initialize(ProxyLanguage.ID);
+        c.enter();
         assertEquals(ZoneId.systemDefault(), ProxyLanguage.getCurrentContext().getEnv().getTimeZone());
-        context.leave();
-        context.close();
+        c.leave();
+        c.close();
     }
 
     @Test
     public void testClose() {
-        Context context = Context.newBuilder().allowAllAccess(true).build();
-        context.enter();
-        Value bindings = context.getBindings(ContextAPITestLanguage.ID);
-        Value polyglotBindings = context.getPolyglotBindings();
+        Context c = Context.newBuilder().allowAllAccess(true).build();
+        c.enter();
+        Value bindings = c.getBindings(ContextAPITestLanguage.ID);
+        Value polyglotBindings = c.getPolyglotBindings();
         Map<String, Object> fields = new HashMap<>();
         fields.put("x", 1);
         fields.put("y", 2);
-        Value object = context.asValue(ProxyObject.fromMap(fields));
-        Value array = context.asValue(ProxyArray.fromArray(1, 2));
-        Value fnc = context.asValue(new ProxyExecutable() {
+        Value object = c.asValue(ProxyObject.fromMap(fields));
+        Value array = c.asValue(ProxyArray.fromArray(1, 2));
+        Value fnc = c.asValue(new ProxyExecutable() {
             @Override
             public Object execute(Value... arguments) {
                 return true;
             }
         });
-        context.close();
+        c.close();
 
-        assertFails(() -> context.asValue(1), IllegalStateException.class);
-        assertFails(() -> context.enter(), IllegalStateException.class);
-        assertFails(() -> context.eval(ContextAPITestLanguage.ID, ""), IllegalStateException.class);
-        assertFails(() -> context.initialize(ContextAPITestLanguage.ID), IllegalStateException.class);
-        assertFails(() -> context.getBindings(ContextAPITestLanguage.ID), IllegalStateException.class);
-        assertFails(() -> context.getPolyglotBindings(), IllegalStateException.class);
+        assertFails(() -> c.asValue(1), IllegalStateException.class);
+        assertFails(() -> c.enter(), IllegalStateException.class);
+        assertFails(() -> c.eval(ContextAPITestLanguage.ID, ""), IllegalStateException.class);
+        assertFails(() -> c.initialize(ContextAPITestLanguage.ID), IllegalStateException.class);
+        assertFails(() -> c.getBindings(ContextAPITestLanguage.ID), IllegalStateException.class);
+        assertFails(() -> c.getPolyglotBindings(), IllegalStateException.class);
 
         assertFails(() -> bindings.hasMembers(), IllegalStateException.class);
         assertFails(() -> polyglotBindings.putMember("d", 1), IllegalStateException.class);
@@ -796,11 +981,11 @@ public class ContextAPITest {
         try {
             ClassLoader cc = new URLClassLoader(new URL[0]);
             Thread.currentThread().setContextClassLoader(cc);
-            try (Context context = Context.newBuilder().allowHostAccess(HostAccess.ALL).build()) {
-                testContextClassLoaderImpl(context, cc);
+            try (Context c = Context.newBuilder().allowHostAccess(HostAccess.ALL).build()) {
+                testContextClassLoaderImpl(c, cc);
                 cc = new URLClassLoader(new URL[0]);
                 Thread.currentThread().setContextClassLoader(cc);
-                testContextClassLoaderImpl(context, cc);
+                testContextClassLoaderImpl(c, cc);
             }
         } finally {
             Thread.currentThread().setContextClassLoader(orig);
@@ -812,11 +997,11 @@ public class ContextAPITest {
         ClassLoader orig = Thread.currentThread().getContextClassLoader();
         try {
             ClassLoader hostClassLoader = new URLClassLoader(new URL[0]);
-            try (Context context = Context.newBuilder().hostClassLoader(hostClassLoader).allowHostAccess(HostAccess.ALL).build()) {
-                testContextClassLoaderImpl(context, hostClassLoader);
+            try (Context c = Context.newBuilder().hostClassLoader(hostClassLoader).allowHostAccess(HostAccess.ALL).build()) {
+                testContextClassLoaderImpl(c, hostClassLoader);
                 ClassLoader contextClassLoader = new URLClassLoader(new URL[0]);
                 Thread.currentThread().setContextClassLoader(contextClassLoader);
-                testContextClassLoaderImpl(context, hostClassLoader);
+                testContextClassLoaderImpl(c, hostClassLoader);
             }
         } finally {
             Thread.currentThread().setContextClassLoader(orig);
@@ -986,4 +1171,5 @@ public class ContextAPITest {
         });
         context.eval(Source.newBuilder(ProxyLanguage.ID, "", "test").cached(false).buildLiteral());
     }
+
 }
