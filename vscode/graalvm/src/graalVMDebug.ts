@@ -9,12 +9,12 @@ import * as vscode from 'vscode';
 import * as net from 'net';
 import * as path from 'path';
 import { pathToFileURL } from 'url';
-import { LSPORT, connectToLanguageServer, stopLanguageServer, lspArg, hasLSClient, setLSPID } from './graalVMLanguageServer';
+import { LSPORT, connectToLanguageServer, stopLanguageServer, lspArgs, hasLSClient, setLSPID } from './graalVMLanguageServer';
 import { StreamInfo } from 'vscode-languageclient';
 
 export class GraalVMDebugAdapterTracker implements vscode.DebugAdapterTrackerFactory {
 
-	createDebugAdapterTracker(_session: vscode.DebugSession): vscode.ProviderResult<vscode.DebugAdapterTracker> {
+	createDebugAdapterTracker(session: vscode.DebugSession): vscode.ProviderResult<vscode.DebugAdapterTracker> {
 		const inProcessServer = vscode.workspace.getConfiguration('graalvm').get('languageServer.inProcessServer') as boolean;
 		return {
 			onDidSendMessage(message: any) {
@@ -28,7 +28,7 @@ export class GraalVMDebugAdapterTracker implements vscode.DebugAdapterTrackerFac
 							socket.once('error', (e) => {
 								reject(e);
 							});
-							socket.connect(LSPORT, '127.0.0.1', () => {
+							socket.connect(session.configuration._lsPort ? session.configuration._lsPort : LSPORT, '127.0.0.1', () => {
 								resolve({
 									reader: socket,
 									writer: socket
@@ -60,20 +60,22 @@ export class GraalVMConfigurationProvider implements vscode.DebugConfigurationPr
 				} else {
 					config.env = { 'PATH': graalVMBin };
 				}
-				if (inProcessServer) {
+				if (config.request === 'launch' && inProcessServer) {
 					stopLanguageServer().then(() => {
-                        lspArg().then((arg: string) => {
+                        lspArgs().then(args => {
+							const lspArg = args.find(arg => arg.startsWith('--lsp='));
+							if (lspArg) {
+								config._lsPort = parseInt(lspArg.substring(6));
+							}
 							if (config.runtimeArgs) {
-								let idx = config.runtimeArgs.indexOf('--lsp');
+								config.runtimeArgs = config.runtimeArgs.filter((arg: string) => !arg.startsWith('--lsp'));
+								config.runtimeArgs = config.runtimeArgs.concat(args);
+								let idx = config.runtimeArgs.indexOf('--experimental-options');
 								if (idx < 0) {
-									config.runtimeArgs.unshift(arg);
-								}
-								idx = config.runtimeArgs.indexOf('--experimental-options');
-								if (idx < 0) {
-									config.runtimeArgs.unshift('--experimental-options');
+									config.runtimeArgs = config.runtimeArgs.concat('--experimental-options');
 								}
 							} else {
-								config.runtimeArgs = [arg, '--experimental-options'];
+								config.runtimeArgs = args.concat('--experimental-options');
 							}
 							resolve(config);
 						});
