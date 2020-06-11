@@ -293,6 +293,7 @@ abstract class PlatformBuilder extends EspressoProperties.Builder {
 
     private static final List<Path> BOOT_CLASSPATH = Collections.unmodifiableList(
                     Arrays.asList(
+                                    RT_JAR,
                                     Paths.get("lib", "resources.jar"),
                                     Paths.get("lib", "sunrsasign.jar"),
                                     Paths.get("lib", "jsse.jar"),
