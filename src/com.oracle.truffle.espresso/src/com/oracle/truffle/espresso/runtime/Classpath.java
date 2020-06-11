@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
-import static com.oracle.truffle.espresso.runtime.EspressoProperties.BOOT_MODULES_NAME;
-
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -36,6 +34,7 @@ import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 
@@ -240,12 +239,16 @@ public final class Classpath {
         }
     }
 
-    // TODO(garcia): use libjimage library to read the file.
+    /**
+     * Represents a classpath entry that is a path to a jimage modules file.
+     */
     static final class Modules extends Entry {
         private File file;
+        private ModulesReaderHelper helper;
 
-        Modules(File file) {
+        Modules(File file, EspressoContext context) {
             this.file = file;
+            this.helper = ModulesReaderHelper.create(file, context);
         }
 
         @Override
@@ -255,12 +258,17 @@ public final class Classpath {
 
         @Override
         public boolean contains(String path) {
-            return false;
+            return true;
         }
 
         @Override
         ClasspathFile readFile(String archiveName, String fsPath) {
-            return null;
+            String moduleName = helper.packageToModule(archiveName);
+            byte[] classBytes = helper.getClassBytes(moduleName, archiveName);
+            if (classBytes == null) {
+                return null;
+            }
+            return new ClasspathFile(classBytes, this, fsPath);
         }
     }
 
@@ -280,15 +288,15 @@ public final class Classpath {
      */
     public static Entry createEntry(String name) {
         final File pathFile = new File(name);
+        EspressoContext context = EspressoLanguage.getCurrentContext();
+        if (context.getVmProperties().bootClassPathType().isModule()) {
+            return new Modules(pathFile, context);
+        }
         if (pathFile.isDirectory()) {
             return new Directory(pathFile);
         } else if (name.endsWith(".zip") || name.endsWith(".jar")) {
             if (pathFile.exists() && pathFile.isFile()) {
                 return new Archive(pathFile);
-            }
-        } else if (name.endsWith(BOOT_MODULES_NAME)) {
-            if (pathFile.exists() && pathFile.isFile()) {
-                return new Modules(pathFile);
             }
         }
         return new PlainFile(pathFile);
