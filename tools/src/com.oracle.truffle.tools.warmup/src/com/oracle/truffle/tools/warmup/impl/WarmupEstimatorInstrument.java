@@ -142,7 +142,7 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
     @Override
     protected void onDispose(Env env) {
         if (nodes.isEmpty()) {
-            throw new IllegalArgumentException("No roots with names " + ROOT_NAMES.getValue(env.getOptions()) + " found during execution.");
+            env.getLogger(this.getClass()).log(Level.WARNING, "No roots with names " + ROOT_NAMES.getValue(env.getOptions()) + " found during execution.");
         }
         final OptionValues options = env.getOptions();
         final List<Results> results = results(EPSILON.getValue(options));
