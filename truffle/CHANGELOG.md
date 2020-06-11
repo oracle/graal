@@ -22,6 +22,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added support for @Cached annotations to be weak using `@Cached(value ="...", weak = true)`. 
 * Added `TruffleWeakReference` utility to be used on partial evaluated code paths instead of the default JDK `WeakReference`.
 * Removed deprecated API in `com.oracle.truffle.api.source.Source`. The APIs were deprecated in 19.0.
+* Added `CompilerAsserts.shouldNotReachHere()` as a short-cut for languages to indicate that a path should not be rechable neither in compiled nor interpreted code paths.
 
 ## Version 20.1.0
 * Added `@GenerateLibrary(dynamicDispatchEnabled = false)` that allows to disable dynamic dispatch semantics for a library. The default is `true`.
