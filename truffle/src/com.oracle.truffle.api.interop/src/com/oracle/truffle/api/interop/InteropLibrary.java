@@ -102,6 +102,9 @@ import com.oracle.truffle.api.utilities.TriState;
  * are interpreted as {@link #isNumber(Object) number} values.
  * </ul>
  * <p>
+ * Note that {@code null} is <i>never</i> a valid interop value. Instead, use a {@link TruffleObject}
+ * which implements {@link #isNull(Object)} message.
+ * <p>
  * The following type combinations are mutually exclusive and cannot return <code>true</code> for
  * the type check message of the same receiver value:
  * <ul>
