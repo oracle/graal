@@ -66,15 +66,6 @@ public class ControlFlowException extends RuntimeException {
     }
 
     /**
-     * Allows to set a message to the control flow exception.
-     *
-     * @since 20.2
-     */
-    public ControlFlowException(String message) {
-        super(message, null);
-    }
-
-    /**
      * For performance reasons, this exception does not record any stack trace information.
      *
      * @since 0.8 or earlier
