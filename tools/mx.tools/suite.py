@@ -41,7 +41,6 @@ suite = {
                 "NanoHTTPD",
                 "NanoHTTPD-WebSocket",
                 "TruffleJSON",
-                "SLF4J_API",
                 "SLF4J_SIMPLE",
                 "Java-WebSocket",
             ],
@@ -225,7 +224,8 @@ suite = {
                 "groupId" : "org.java-websocket",
                 "artifactId" : "Java-WebSocket",
                 "version" : "1.5.1",
-            }
+            },
+            "dependencies" : ["SLF4J_API"],
         },
         "SLF4J_API" : {
             "sha1" : "b5a4b6d16ab13e34a88fae84c35cd5d68cac922c",
@@ -241,7 +241,8 @@ suite = {
                 "groupId" : "org.slf4j",
                 "artifactId" : "slf4j-simple",
                 "version" : "1.7.30",
-            }
+            },
+            "dependencies" : ["SLF4J_API"]
         },
         "VISUALVM_COMMON" : {
             "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-830.tar.gz"],
