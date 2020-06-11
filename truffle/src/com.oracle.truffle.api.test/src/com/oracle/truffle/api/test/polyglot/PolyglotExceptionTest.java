@@ -357,11 +357,16 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
             assertFalse(e.isHostException());
             assertFalse(e.isCancelled());
             Iterator<StackFrame> iterator = e.getPolyglotStackTrace().iterator();
-            StackFrame frame = iterator.next();
-            assertTrue(frame.isGuestFrame());
-            assertEquals("testRootName", frame.getRootName());
-            frame = iterator.next();
-            assertTrue(frame.isHostFrame());
+            boolean foundFrame = false;
+            while (iterator.hasNext()) {
+                StackFrame frame = iterator.next();
+                if (frame.isGuestFrame()) {
+                    foundFrame = true;
+                    assertTrue(frame.isGuestFrame());
+                    assertEquals("testRootName", frame.getRootName());
+                }
+            }
+            assertTrue(foundFrame);
         });
     }
 
@@ -393,11 +398,16 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
             assertFalse(e.isHostException());
             assertFalse(e.isCancelled());
             Iterator<StackFrame> iterator = e.getPolyglotStackTrace().iterator();
-            StackFrame frame = iterator.next();
-            assertTrue(frame.isGuestFrame());
-            assertEquals("testRootName", frame.getRootName());
-            // guest java stack overflow does not allow for host stack frames.
-            assertFalse(iterator.hasNext());
+            boolean foundFrame = false;
+            while (iterator.hasNext()) {
+                StackFrame frame = iterator.next();
+                if (frame.isGuestFrame()) {
+                    foundFrame = true;
+                    assertTrue(frame.isGuestFrame());
+                    assertEquals("testRootName", frame.getRootName());
+                }
+            }
+            assertTrue(foundFrame);
         });
     }
 
@@ -421,12 +431,7 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
             assertFalse(e.isGuestException());
             assertTrue(e.isHostException());
             assertFalse(e.isCancelled());
-            Iterator<StackFrame> iterator = e.getPolyglotStackTrace().iterator();
-            StackFrame frame = iterator.next();
-            assertTrue(frame.isHostFrame());
-            assertTrue(frame.getRootName(), frame.getRootName().endsWith("ThrowOOM.run"));
-            frame = iterator.next();
-            assertTrue(frame.isHostFrame());
+            // no guarantees for stack frames.
         });
     }
 

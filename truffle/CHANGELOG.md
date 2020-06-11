@@ -18,6 +18,9 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added [`SourceBuilder.canonicalizePath(boolean)`](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/Source.SourceBuilder.html) to control whether the `Source#getPath()` should be canonicalized.
 * Deprecated and renamed `TruffleFile.getMimeType` to [TruffleFile.detectMimeType](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#detectMimeType--). The new method no longer throws `IOException` but returns `null` instead.
 * The languages are responsible for stopping and joining the stopped `Thread`s in the [TruffleLanguage.finalizeContext](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html#finalizeContext-C-).
+* Added Truffle DSL `@Bind` annotation to common out expression for use in guards and specialization methods.
+* Added support for @Cached annotations to be weak using `@Cached(value ="...", weak = true)`. 
+* Added `TruffleWeakReference` utility to be used on partial evaluated code paths instead of the default JDK `WeakReference`.
 
 ## Version 20.1.0
 * Added `@GenerateLibrary(dynamicDispatchEnabled = false)` that allows to disable dynamic dispatch semantics for a library. The default is `true`.
@@ -25,7 +28,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * The use of `@NodeField` is now permitted in combination with `@GenerateUncached`, but it throws UnsupportedOperationException when it is used.
 * It is now possible to specify a setter with `@NodeField`. The generated field then will be mutable.
 * Removed deprecated interoperability APIs that were deprecated in 19.0.0. 
-* Removed deprecated instrumentation APIs that were deprecated in 0.33.
+* Removed deprecated instrumentation APIs that were deprecated in 0.33
 * The `PerformanceWarningsAreFatal` and `TracePerformanceWarnings` engine options take a comma separated list of performance warning types. Allowed warning types are `call` to enable virtual call warnings, `instanceof` to enable virtual instance of warnings and `store` to enables virtual store warnings. There are also `all` and `none` types to enable (disable) all performance warnings.
 * Added [DebugValue#getRawValue()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebugValue.html) for raw guest language object lookup from same language.
 * Added [DebugStackFrame#getRawNode()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebugStackFrame.html) for root node lookup from same language.
@@ -41,7 +44,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added new meta-data APIs to `InteropLibrary`:
 	* `has/getLanguage(Object receiver)` to access the original language of an object.
 	* `has/getSourceLocation(Object receiver)` to access the source location of an object (e.g. of function or classes).
-	* `has/toDisplayString(Object receiver, boolean allowsSideEffect)` to produce a human readable string.
+	* `toDisplayString(Object receiver, boolean allowsSideEffect)` to produce a human readable string.
 	* `has/getMetaObject(Object receiver)` to access the meta-object of an object.
 	* `isMetaObject(Object receiver)` to find out whether an object is a meta-object (e.g. Java class)
 	* `getMetaQualifiedName(Object receiver)` to get the qualified name of the meta-object
