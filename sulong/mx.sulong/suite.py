@@ -59,7 +59,7 @@ suite = {
       "packedResource" : True,
       "urls" : [
         "https://lafo.ssw.uni-linz.ac.at/pub/sulong-deps/gcc-5.2.0.tar.gz",
-        "https://mirrors-usa.go-parts.com/gcc/releases/gcc-5.2.0/gcc-5.2.0.tar.gz",
+        # original: "https://mirrors-usa.go-parts.com/gcc/releases/gcc-5.2.0/gcc-5.2.0.tar.gz",
       ],
       "sha1" : "713211883406b3839bdba4a22e7111a0cff5d09b",
     },
