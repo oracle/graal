@@ -273,13 +273,17 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
                 s.println("\tat " + polyglot.getAPIAccess().getImpl(traceElement).toStringImpl(languageIdLength));
             }
 
-            // Print cause, if any
-            if (isHostException()) {
-                s.println(CAUSE_CAPTION + asHostException());
-            }
-            if (isInternalError()) {
-                s.println("Original Internal Error: ");
-                s.printStackTrace(exception);
+            if (guestFrames != null && !guestFrames.isEmpty()) {
+                // Print cause, if any
+                if (isHostException()) {
+                    s.println(CAUSE_CAPTION + asHostException());
+                }
+                if (isInternalError()) {
+                    s.println("Original Internal Error: ");
+                    s.printStackTrace(exception);
+                }
+            } else {
+                s.println("Internal GraalVM error, please report at https://github.com/oracle/graal/issues/.");
             }
         }
     }
