@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,23 +24,22 @@
  */
 package org.graalvm.compiler.nodes.graphbuilderconf;
 
-import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 
-public interface NodeIntrinsicPluginFactory {
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
-    public interface InjectionProvider {
-
-        <T> T getInjectedArgument(Class<T> type);
-
-        /**
-         * Gets a stamp denoting a given type and non-nullness property.
-         *
-         * @param type the type the returned stamp represents
-         * @param nonNull specifies if the returned stamp denotes a value that is guaranteed to be
-         *            non-null
-         */
-        Stamp getInjectedStamp(Class<?> type, boolean nonNull);
+public abstract class GeneratedNodeIntrinsicInvocationPlugin extends GeneratedInvocationPlugin {
+    protected boolean verifyForeignCallDescriptor(GraphBuilderTool b, ResolvedJavaMethod targetMethod, ForeignCallDescriptor descriptor) {
+        MetaAccessProvider metaAccess = b.getMetaAccess();
+        int parameters = 1;
+        for (Class<?> arg : descriptor.getArgumentTypes()) {
+            ResolvedJavaType res = metaAccess.lookupJavaType(arg);
+            ResolvedJavaType parameterType = (ResolvedJavaType) targetMethod.getSignature().getParameterType(parameters, targetMethod.getDeclaringClass());
+            assert parameterType.equals(res) : descriptor + ": parameter " + parameters + " mismatch: " + res + " != " + parameterType;
+            parameters++;
+        }
+        return true;
     }
-
-    void registerPlugins(InvocationPlugins plugins, InjectionProvider injection);
 }

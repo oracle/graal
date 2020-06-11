@@ -32,6 +32,7 @@ import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.nodes.PiNode.PlaceholderStamp;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
@@ -71,8 +72,8 @@ public class HostedReplacements extends SubstrateReplacements {
     private final SubstrateReplacements aReplacements;
 
     public HostedReplacements(HostedUniverse hUniverse, Providers providers, SnippetReflectionProvider snippetReflection, TargetDescription target, HostedProviders anaylysisProviders,
-                    BytecodeProvider bytecodeProvider) {
-        super(providers, snippetReflection, bytecodeProvider, target, null);
+                    BytecodeProvider bytecodeProvider, WordTypes wordTypes) {
+        super(providers, snippetReflection, bytecodeProvider, target, wordTypes, null);
         this.hUniverse = hUniverse;
         this.aReplacements = (SubstrateReplacements) anaylysisProviders.getReplacements();
     }

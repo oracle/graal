@@ -42,32 +42,35 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 
 public class HostedProviders extends Providers {
 
-    private final WordTypes wordTypes;
     private GraphBuilderConfiguration.Plugins graphBuilderPlugins;
-    private final SnippetReflectionProvider snippetReflection;
 
     public HostedProviders(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,
                     ForeignCallsProvider foreignCalls, LoweringProvider lowerer, Replacements replacements, StampProvider stampProvider, SnippetReflectionProvider snippetReflection,
                     WordTypes wordTypes, PlatformConfigurationProvider platformConfigurationProvider, MetaAccessExtensionProvider metaAccessExtensionProvider) {
-        super(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, platformConfigurationProvider, metaAccessExtensionProvider);
-        this.snippetReflection = snippetReflection;
-        this.wordTypes = wordTypes;
-    }
-
-    public WordTypes getWordTypes() {
-        return wordTypes;
+        super(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, platformConfigurationProvider, metaAccessExtensionProvider,
+                        snippetReflection, wordTypes);
     }
 
     public GraphBuilderConfiguration.Plugins getGraphBuilderPlugins() {
         return graphBuilderPlugins;
     }
 
-    public SnippetReflectionProvider getSnippetReflection() {
-        return snippetReflection;
-    }
-
     public void setGraphBuilderPlugins(GraphBuilderConfiguration.Plugins graphBuilderPlugins) {
         this.graphBuilderPlugins = graphBuilderPlugins;
+    }
+
+    @Override
+    public Providers copyWith(ConstantReflectionProvider substitution) {
+        assert this.getClass() == HostedProviders.class : "must override in " + getClass();
+        return new HostedProviders(getMetaAccess(), getCodeCache(), substitution, getConstantFieldProvider(), getForeignCalls(), getLowerer(), getReplacements(), getStampProvider(),
+                        getSnippetReflection(), getWordTypes(), getPlatformConfigurationProvider(), getMetaAccessExtensionProvider());
+    }
+
+    @Override
+    public Providers copyWith(ConstantFieldProvider substitution) {
+        assert this.getClass() == HostedProviders.class : "must override in " + getClass();
+        return new HostedProviders(getMetaAccess(), getCodeCache(), getConstantReflection(), substitution, getForeignCalls(), getLowerer(), getReplacements(), getStampProvider(),
+                        getSnippetReflection(), getWordTypes(), getPlatformConfigurationProvider(), getMetaAccessExtensionProvider());
     }
 
     @Override

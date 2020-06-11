@@ -27,6 +27,7 @@ package org.graalvm.compiler.nodes.spi;
 import org.graalvm.compiler.api.replacements.SnippetTemplateCache;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.Cancellable;
@@ -54,6 +55,16 @@ public class DelegatingReplacements implements Replacements {
     @Override
     public CoreProviders getProviders() {
         return delegate.getProviders();
+    }
+
+    @Override
+    public <T> T getInjectedArgument(Class<T> type) {
+        return delegate.getInjectedArgument(type);
+    }
+
+    @Override
+    public Stamp getInjectedStamp(Class<?> type, boolean nonNull) {
+        return delegate.getInjectedStamp(type, nonNull);
     }
 
     @Override

@@ -508,7 +508,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
             /* Races are not a problem because every thread is going to do the same steps. */
             isInHeap = true;
 
-            assert isArray() || (isInstanceClass() && !Modifier.isAbstract(getModifiers()));
+            assert isArray() || (isInstanceClass() && !Modifier.isAbstract(getModifiers())) : this;
             universe.hostVM.checkForbidden(this, UsageKind.InHeap);
         }
     }
