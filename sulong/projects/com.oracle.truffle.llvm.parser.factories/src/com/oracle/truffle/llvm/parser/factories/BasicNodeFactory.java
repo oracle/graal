@@ -1551,6 +1551,48 @@ public class BasicNodeFactory implements NodeFactory {
                 case "llvm.experimental.constrained.fpext.f80":
                 case "llvm.experimental.constrained.fpext.f80.f64":
                     return LLVMSignedCastToLLVM80BitFloatNodeGen.create(args[1]);
+
+/*
+ * We ignore the two meta-arguments of the binary arithmetic llvm.experimental.constrained builtins
+ * as they are just hints by compiler to optimization passes. They inform the passes on possible
+ * assumptions about the current rounding mode and floating point exceptions (FPE) behavior.
+ *
+ * Nonetheless, as the values of rounding mode or the FPE behavior other than "round.tonearest" and
+ * "fpexcept.ignore", which are the default and currently the only supported ones, indicate that the
+ * code may want to ensure a specific rounding of numbers or respond to FPE, we should issue some
+ * "unsupported FP mode" warning when parsing bitcode.
+ */
+
+                case "llvm.experimental.constrained.fadd.f32":
+                    return LLVMFloatArithmeticNodeGen.create(ArithmeticOperation.ADD, args[1], args[2]);
+                case "llvm.experimental.constrained.fadd.f64":
+                    return LLVMDoubleArithmeticNodeGen.create(ArithmeticOperation.ADD, args[1], args[2]);
+                case "llvm.experimental.constrained.fadd.f80":
+                    return LLVMFP80ArithmeticNodeGen.create(ArithmeticOperation.ADD, args[1], args[2]);
+                case "llvm.experimental.constrained.fsub.f32":
+                    return LLVMFloatArithmeticNodeGen.create(ArithmeticOperation.SUB, args[1], args[2]);
+                case "llvm.experimental.constrained.fsub.f64":
+                    return LLVMDoubleArithmeticNodeGen.create(ArithmeticOperation.SUB, args[1], args[2]);
+                case "llvm.experimental.constrained.fsub.f80":
+                    return LLVMFP80ArithmeticNodeGen.create(ArithmeticOperation.SUB, args[1], args[2]);
+                case "llvm.experimental.constrained.fmul.f32":
+                    return LLVMFloatArithmeticNodeGen.create(ArithmeticOperation.MUL, args[1], args[2]);
+                case "llvm.experimental.constrained.fmul.f64":
+                    return LLVMDoubleArithmeticNodeGen.create(ArithmeticOperation.MUL, args[1], args[2]);
+                case "llvm.experimental.constrained.fmul.f80":
+                    return LLVMFP80ArithmeticNodeGen.create(ArithmeticOperation.MUL, args[1], args[2]);
+                case "llvm.experimental.constrained.fdiv.f32":
+                    return LLVMFloatArithmeticNodeGen.create(ArithmeticOperation.DIV, args[1], args[2]);
+                case "llvm.experimental.constrained.fdiv.f64":
+                    return LLVMDoubleArithmeticNodeGen.create(ArithmeticOperation.DIV, args[1], args[2]);
+                case "llvm.experimental.constrained.fdiv.f80":
+                    return LLVMFP80ArithmeticNodeGen.create(ArithmeticOperation.DIV, args[1], args[2]);
+                case "llvm.experimental.constrained.frem.f32":
+                    return LLVMFloatArithmeticNodeGen.create(ArithmeticOperation.REM, args[1], args[2]);
+                case "llvm.experimental.constrained.frem.f64":
+                    return LLVMDoubleArithmeticNodeGen.create(ArithmeticOperation.REM, args[1], args[2]);
+                case "llvm.experimental.constrained.frem.f80":
+                    return LLVMFP80ArithmeticNodeGen.create(ArithmeticOperation.REM, args[1], args[2]);
                 default:
                     break;
             }
