@@ -45,8 +45,14 @@ import com.oracle.svm.core.util.VMError;
 @AutomaticFeature
 class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
 
+    private boolean hasExtendedOptionsImpl;
+    private boolean hasPlatformSocketOptions;
+
     @Override
     public void duringSetup(DuringSetupAccess a) {
+        hasExtendedOptionsImpl = a.findClassByName("sun.net.ExtendedOptionsImpl") != null;
+        hasPlatformSocketOptions = a.findClassByName("jdk.net.ExtendedSocketOptions$PlatformSocketOptions") != null;
+
         rerunClassInit(a, "java.net.DatagramPacket", "java.net.InetAddress", "java.net.NetworkInterface",
                         "java.net.SocketInputStream", "java.net.SocketOutputStream",
                         /* Caches networking properties. */
@@ -64,13 +70,14 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
         } else {
             assert isPosix();
             rerunClassInit(a, "java.net.PlainDatagramSocketImpl", "java.net.PlainSocketImpl");
-            if (JavaVersionUtil.JAVA_SPEC < 9) {
+            if (hasExtendedOptionsImpl) {
                 rerunClassInit(a, "sun.net.ExtendedOptionsImpl");
-            } else {
+            }
+            if (JavaVersionUtil.JAVA_SPEC >= 11) {
                 /* These two classes cache whether SO_REUSEPORT, added in Java 9, is supported. */
                 rerunClassInit(a, "java.net.AbstractPlainDatagramSocketImpl", "java.net.AbstractPlainSocketImpl");
             }
-            if (JavaVersionUtil.JAVA_SPEC >= 11) {
+            if (hasPlatformSocketOptions) {
                 /*
                  * The libextnet was actually introduced in Java 9, but the support for Linux and
                  * Darwin was added later in Java 10 and Java 11 respectively.
@@ -144,11 +151,11 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
                             method(a, "java.net." + dualStackPlainSocketImpl, "localAddress", int.class, clazz(a, "java.net.InetAddressContainer")));
         } else {
             assert isPosix();
-            if (JavaVersionUtil.JAVA_SPEC < 9) {
+            if (hasExtendedOptionsImpl) {
                 a.registerReachabilityHandler(JNIRegistrationJavaNet::registerExtendedOptionsImplInit,
                                 method(a, "sun.net.ExtendedOptionsImpl", "init"));
             }
-            if (JavaVersionUtil.JAVA_SPEC >= 11) {
+            if (hasPlatformSocketOptions) {
                 /* Support for the libextnet. */
                 a.registerReachabilityHandler(JNIRegistrationJavaNet::registerPlatformSocketOptionsCreate,
                                 method(a, "jdk.net.ExtendedSocketOptions$PlatformSocketOptions", "create"));
@@ -270,8 +277,6 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
     }
 
     private static void registerPlatformSocketOptionsCreate(DuringAnalysisAccess a) {
-        assert JavaVersionUtil.JAVA_SPEC >= 11;
-
         String implClassName;
         if (isLinux()) {
             implClassName = "jdk.net.LinuxSocketOptions";
