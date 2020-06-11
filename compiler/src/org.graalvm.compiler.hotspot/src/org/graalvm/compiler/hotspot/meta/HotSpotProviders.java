@@ -124,19 +124,6 @@ public class HotSpotProviders extends Providers {
     }
 
     @Override
-    public HotSpotProviders copyWith(MetaAccessProvider substitution) {
-        return new HotSpotProviders(substitution, getCodeCache(), getConstantReflection(), getConstantFieldProvider(), getForeignCalls(), getLowerer(), getReplacements(), getSuites(),
-                        getRegisters(), getSnippetReflection(), getWordTypes(), getGraphBuilderPlugins(), getPlatformConfigurationProvider(), getMetaAccessExtensionProvider(), config);
-    }
-
-    @Override
-    public HotSpotProviders copyWith(CodeCacheProvider substitution) {
-        return new HotSpotProviders(getMetaAccess(), (HotSpotCodeCacheProvider) substitution, getConstantReflection(), getConstantFieldProvider(), getForeignCalls(),
-                        getLowerer(), getReplacements(), getSuites(), getRegisters(), getSnippetReflection(), getWordTypes(), getGraphBuilderPlugins(), getPlatformConfigurationProvider(),
-                        getMetaAccessExtensionProvider(), config);
-    }
-
-    @Override
     public HotSpotProviders copyWith(ConstantReflectionProvider substitution) {
         return new HotSpotProviders(getMetaAccess(), getCodeCache(), substitution, getConstantFieldProvider(), getForeignCalls(), getLowerer(), getReplacements(), getSuites(),
                         getRegisters(), getSnippetReflection(), getWordTypes(), getGraphBuilderPlugins(), getPlatformConfigurationProvider(), getMetaAccessExtensionProvider(), config);
@@ -147,19 +134,6 @@ public class HotSpotProviders extends Providers {
         return new HotSpotProviders(getMetaAccess(), getCodeCache(), getConstantReflection(), substitution, getForeignCalls(), getLowerer(), getReplacements(),
                         getSuites(),
                         getRegisters(), getSnippetReflection(), getWordTypes(), getGraphBuilderPlugins(), getPlatformConfigurationProvider(), getMetaAccessExtensionProvider(), config);
-    }
-
-    @Override
-    public HotSpotProviders copyWith(ForeignCallsProvider substitution) {
-        return new HotSpotProviders(getMetaAccess(), getCodeCache(), getConstantReflection(), getConstantFieldProvider(), (HotSpotHostForeignCallsProvider) substitution,
-                        getLowerer(), getReplacements(), getSuites(), getRegisters(), getSnippetReflection(), getWordTypes(), getGraphBuilderPlugins(), getPlatformConfigurationProvider(),
-                        getMetaAccessExtensionProvider(), config);
-    }
-
-    @Override
-    public HotSpotProviders copyWith(LoweringProvider substitution) {
-        return new HotSpotProviders(getMetaAccess(), getCodeCache(), getConstantReflection(), getConstantFieldProvider(), getForeignCalls(), substitution, getReplacements(),
-                        getSuites(), getRegisters(), getSnippetReflection(), getWordTypes(), getGraphBuilderPlugins(), getPlatformConfigurationProvider(), getMetaAccessExtensionProvider(), config);
     }
 
     @Override

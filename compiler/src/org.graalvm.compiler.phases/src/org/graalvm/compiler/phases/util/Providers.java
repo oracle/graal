@@ -79,19 +79,6 @@ public class Providers extends CoreProvidersImpl implements CodeGenProviders {
     }
 
     @Override
-    public Providers copyWith(MetaAccessProvider substitution) {
-        assert this.getClass() == Providers.class : "must override";
-        return new Providers(substitution, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, platformConfigurationProvider,
-                        metaAccessExtensionProvider, snippetReflection, wordTypes);
-    }
-
-    public Providers copyWith(CodeCacheProvider substitution) {
-        assert this.getClass() == Providers.class : "must override";
-        return new Providers(metaAccess, substitution, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, platformConfigurationProvider,
-                        metaAccessExtensionProvider, snippetReflection, wordTypes);
-    }
-
-    @Override
     public Providers copyWith(ConstantReflectionProvider substitution) {
         assert this.getClass() == Providers.class : "must override";
         return new Providers(metaAccess, codeCache, substitution, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, platformConfigurationProvider, metaAccessExtensionProvider,
@@ -106,38 +93,10 @@ public class Providers extends CoreProvidersImpl implements CodeGenProviders {
     }
 
     @Override
-    public Providers copyWith(ForeignCallsProvider substitution) {
-        assert this.getClass() == Providers.class : "must override";
-        return new Providers(metaAccess, codeCache, constantReflection, constantFieldProvider, substitution, lowerer, replacements, stampProvider, platformConfigurationProvider,
-                        metaAccessExtensionProvider, snippetReflection, wordTypes);
-    }
-
-    @Override
-    public Providers copyWith(LoweringProvider substitution) {
-        assert this.getClass() == Providers.class : "must override";
-        return new Providers(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, substitution, replacements, stampProvider, platformConfigurationProvider,
-                        metaAccessExtensionProvider, snippetReflection, wordTypes);
-    }
-
-    @Override
     public Providers copyWith(Replacements substitution) {
         assert this.getClass() == Providers.class : "must override in " + getClass();
         return new Providers(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, substitution, stampProvider, platformConfigurationProvider,
                         metaAccessExtensionProvider, snippetReflection, wordTypes);
-    }
-
-    @Override
-    public Providers copyWith(StampProvider substitution) {
-        assert this.getClass() == Providers.class : "must override";
-        return new Providers(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, substitution, platformConfigurationProvider,
-                        metaAccessExtensionProvider, snippetReflection, wordTypes);
-    }
-
-    @Override
-    public Providers copyWith(PlatformConfigurationProvider substitution) {
-        assert this.getClass() == Providers.class : "must override";
-        return new Providers(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, substitution, metaAccessExtensionProvider,
-                        snippetReflection, wordTypes);
     }
 
     public Providers copyWith(MetaAccessExtensionProvider substitution) {

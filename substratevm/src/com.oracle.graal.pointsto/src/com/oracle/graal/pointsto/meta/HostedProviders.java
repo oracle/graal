@@ -60,6 +60,20 @@ public class HostedProviders extends Providers {
     }
 
     @Override
+    public Providers copyWith(ConstantReflectionProvider substitution) {
+        assert this.getClass() == HostedProviders.class : "must override in " + getClass();
+        return new HostedProviders(getMetaAccess(), getCodeCache(), substitution, getConstantFieldProvider(), getForeignCalls(), getLowerer(), getReplacements(), getStampProvider(),
+                        getSnippetReflection(), getWordTypes(), getPlatformConfigurationProvider(), getMetaAccessExtensionProvider());
+    }
+
+    @Override
+    public Providers copyWith(ConstantFieldProvider substitution) {
+        assert this.getClass() == HostedProviders.class : "must override in " + getClass();
+        return new HostedProviders(getMetaAccess(), getCodeCache(), getConstantReflection(), substitution, getForeignCalls(), getLowerer(), getReplacements(), getStampProvider(),
+                        getSnippetReflection(), getWordTypes(), getPlatformConfigurationProvider(), getMetaAccessExtensionProvider());
+    }
+
+    @Override
     public Providers copyWith(Replacements substitution) {
         assert this.getClass() == HostedProviders.class : "must override in " + getClass();
         return new HostedProviders(getMetaAccess(), getCodeCache(), getConstantReflection(), getConstantFieldProvider(), getForeignCalls(), getLowerer(), substitution, getStampProvider(),

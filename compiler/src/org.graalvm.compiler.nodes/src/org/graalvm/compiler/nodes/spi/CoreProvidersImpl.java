@@ -101,48 +101,19 @@ public class CoreProvidersImpl implements CoreProviders {
         return metaAccessExtensionProvider;
     }
 
-    public CoreProvidersImpl copyWith(MetaAccessProvider substitution) {
-        assert this.getClass() == CoreProvidersImpl.class : "must override";
-        return new CoreProvidersImpl(substitution, constantReflection, constantFieldProvider, lowerer, replacements, stampProvider, foreignCalls, platformConfigurationProvider,
-                        metaAccessExtensionProvider);
-    }
-
     public CoreProvidersImpl copyWith(ConstantReflectionProvider substitution) {
-        assert this.getClass() == CoreProvidersImpl.class : "must override";
+        assert this.getClass() == CoreProvidersImpl.class : "must override in " + getClass();
         return new CoreProvidersImpl(metaAccess, substitution, constantFieldProvider, lowerer, replacements, stampProvider, foreignCalls, platformConfigurationProvider, metaAccessExtensionProvider);
     }
 
     public CoreProvidersImpl copyWith(ConstantFieldProvider substitution) {
-        assert this.getClass() == CoreProvidersImpl.class : "must override";
+        assert this.getClass() == CoreProvidersImpl.class : "must override in " + getClass();
         return new CoreProvidersImpl(metaAccess, constantReflection, substitution, lowerer, replacements, stampProvider, foreignCalls, platformConfigurationProvider, metaAccessExtensionProvider);
-    }
-
-    public CoreProvidersImpl copyWith(ForeignCallsProvider substitution) {
-        assert this.getClass() == CoreProvidersImpl.class : "must override";
-        return new CoreProvidersImpl(metaAccess, constantReflection, constantFieldProvider, lowerer, replacements, stampProvider, substitution, platformConfigurationProvider,
-                        metaAccessExtensionProvider);
-    }
-
-    public CoreProvidersImpl copyWith(LoweringProvider substitution) {
-        assert this.getClass() == CoreProvidersImpl.class : "must override";
-        return new CoreProvidersImpl(metaAccess, constantReflection, constantFieldProvider, substitution, replacements, stampProvider, foreignCalls, platformConfigurationProvider,
-                        metaAccessExtensionProvider);
     }
 
     public CoreProvidersImpl copyWith(Replacements substitution) {
         assert this.getClass() == CoreProvidersImpl.class : "must override in " + getClass();
         return new CoreProvidersImpl(metaAccess, constantReflection, constantFieldProvider, lowerer, substitution, stampProvider, foreignCalls, platformConfigurationProvider,
                         metaAccessExtensionProvider);
-    }
-
-    public CoreProvidersImpl copyWith(StampProvider substitution) {
-        assert this.getClass() == CoreProvidersImpl.class : "must override";
-        return new CoreProvidersImpl(metaAccess, constantReflection, constantFieldProvider, lowerer, replacements, substitution, foreignCalls, platformConfigurationProvider,
-                        metaAccessExtensionProvider);
-    }
-
-    public CoreProvidersImpl copyWith(PlatformConfigurationProvider substitution) {
-        assert this.getClass() == CoreProvidersImpl.class : "must override";
-        return new CoreProvidersImpl(metaAccess, constantReflection, constantFieldProvider, lowerer, replacements, stampProvider, foreignCalls, substitution, metaAccessExtensionProvider);
     }
 }
