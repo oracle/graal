@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.runtime;
 
 import java.io.File;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -318,8 +319,7 @@ abstract class PlatformBuilder extends EspressoProperties.Builder {
     @Override
     List<Path> defaultBootClasspath() {
         Path path = javaHome().resolve(RT_JAR);
-        File f = new File(path.toString());
-        if (f.exists()) {
+        if (Files.exists(path)) {
             bootClassPathVersion(BootClassPathType.RT_JAR);
             List<Path> paths = new ArrayList<>(PATHS_SIZE);
             for (Path p : BOOT_CLASSPATH) {
@@ -328,16 +328,14 @@ abstract class PlatformBuilder extends EspressoProperties.Builder {
             return paths;
         }
         path = javaHome().resolve(MODULES_IMAGE);
-        f = new File(path.toString());
-        if (f.exists()) {
+        if (Files.exists(path)) {
             bootClassPathVersion(BootClassPathType.IMAGE);
             List<Path> paths = new ArrayList<>(1);
             paths.add(path);
             return paths;
         }
         path = javaHome().resolve(MODULES_EXPLODED);
-        f = new File(path.toString());
-        if (f.exists() && f.isDirectory()) {
+        if (Files.exists(path) && Files.isDirectory(path)) {
             bootClassPathVersion(BootClassPathType.EXPLODED);
             List<Path> paths = new ArrayList<>(1);
             paths.add(path);

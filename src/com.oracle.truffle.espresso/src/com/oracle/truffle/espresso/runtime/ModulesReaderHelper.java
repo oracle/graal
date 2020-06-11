@@ -26,13 +26,13 @@ package com.oracle.truffle.espresso.runtime;
 import java.io.File;
 
 public interface ModulesReaderHelper {
+    String JAVA_BASE = "java.base";
+
     void close();
 
     byte[] getClassBytes(String moduleName, String name);
 
     String packageToModule(String packageName);
-
-    String JAVA_BASE = "java.base";
 
     static ModulesReaderHelper create(File file, EspressoContext context) {
         if (file.isDirectory()) {
