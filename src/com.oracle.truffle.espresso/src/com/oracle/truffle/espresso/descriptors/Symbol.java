@@ -156,6 +156,12 @@ public final class Symbol<T> extends ByteSequence {
         // Boxing and String
         public static final Symbol<Name> value = StaticSymbols.putName("value");
         public static final Symbol<Name> valueOf = StaticSymbols.putName("valueOf");
+        public static final Symbol<Name> byteValue = StaticSymbols.putName("byteValue");
+        public static final Symbol<Name> shortValue = StaticSymbols.putName("shortValue");
+        public static final Symbol<Name> intValue = StaticSymbols.putName("intValue");
+        public static final Symbol<Name> longValue = StaticSymbols.putName("longValue");
+        public static final Symbol<Name> floatValue = StaticSymbols.putName("floatValue");
+        public static final Symbol<Name> doubleValue = StaticSymbols.putName("doubleValue");
         // Field, Thread and MemberName
         public static final Symbol<Name> name = StaticSymbols.putName("name");
         // Thread and Runnable
@@ -606,7 +612,12 @@ public final class Symbol<T> extends ByteSequence {
             /* nop */
         }
 
+        public static final Symbol<Signature> _byte = StaticSymbols.putSignature(Type._byte);
+        public static final Symbol<Signature> _short = StaticSymbols.putSignature(Type._short);
         public static final Symbol<Signature> _int = StaticSymbols.putSignature(Type._int);
+        public static final Symbol<Signature> _long = StaticSymbols.putSignature(Type._long);
+        public static final Symbol<Signature> _float = StaticSymbols.putSignature(Type._float);
+        public static final Symbol<Signature> _double = StaticSymbols.putSignature(Type._double);
         public static final Symbol<Signature> _void = StaticSymbols.putSignature(Type._void);
         public static final Symbol<Signature> _boolean = StaticSymbols.putSignature(Type._boolean);
         public static final Symbol<Signature> Class = StaticSymbols.putSignature(Type.java_lang_Class);
