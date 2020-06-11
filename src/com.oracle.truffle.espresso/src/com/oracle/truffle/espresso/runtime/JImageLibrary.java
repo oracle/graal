@@ -28,7 +28,6 @@ import static com.oracle.truffle.espresso.jni.NativeLibrary.lookupAndBind;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.CharBuffer;
-import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CharsetEncoder;
 import java.nio.charset.StandardCharsets;
 
@@ -164,21 +163,11 @@ class JImageLibrary extends NativeEnv implements ContextAccess {
     }
 
     private static TruffleObject getNativeString(String name) {
-        try {
-            char[] chars = name.toCharArray();
-            // Add one for zero termination.
-            ByteBuffer rawChars = allocateDirect(name.length() + 1, JavaKind.Char);
-            CharBuffer charBuffer = rawChars.asCharBuffer();
-            charBuffer.put(chars);
-            charBuffer.put((char) 0);
-            charBuffer.flip();
-            rawChars = encoder.encode(charBuffer);
-            ByteBuffer directEncoded = allocateDirect(rawChars.limit());
-            directEncoded.put(rawChars);
-            return byteBufferPointer(directEncoded);
-        } catch (CharacterCodingException e) {
-            throw EspressoError.shouldNotReachHere();
-        }
+        // Be super safe with the size of the buffer.
+        ByteBuffer bb = allocateDirect(name.length() + 1, JavaKind.Char);
+        encoder.encode(CharBuffer.wrap(name), bb, false);
+        bb.put((byte) 0);
+        return byteBufferPointer(bb);
     }
 
     @Override
