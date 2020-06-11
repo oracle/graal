@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.api.interop;
 
-import com.oracle.truffle.api.CompilerDirectives;
-
 /**
  * An exception thrown if a executable or instantiable object was provided with the wrong number of
  * arguments.
@@ -99,7 +97,6 @@ public final class ArityException extends InteropException {
      * @since 19.0
      */
     public static ArityException create(int expectedArity, int actualArity) {
-        CompilerDirectives.transferToInterpreter();
         return new ArityException(expectedArity, actualArity);
     }
 }

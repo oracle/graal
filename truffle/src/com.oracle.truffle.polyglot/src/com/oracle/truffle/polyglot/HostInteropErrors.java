@@ -43,7 +43,6 @@ package com.oracle.truffle.polyglot;
 import java.lang.reflect.Type;
 import java.util.Arrays;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 
@@ -54,7 +53,7 @@ final class HostInteropErrors {
 
     @TruffleBoundary
     static RuntimeException nullCoercion(PolyglotLanguageContext languageContext, Object nullValue, Type targetType) {
-        return newNullPointerException(String.format("Cannot convert null value %s to Java type '%s'.",
+        throw PolyglotEngineException.nullPointer(String.format("Cannot convert null value %s to Java type '%s'.",
                         getValueInfo(languageContext, nullValue),
                         targetType.getTypeName()));
     }
@@ -67,7 +66,7 @@ final class HostInteropErrors {
         } else {
             reason = "Unsupported target type.";
         }
-        return newClassCastException(String.format("Cannot convert %s to Java type '%s': %s",
+        return PolyglotEngineException.classCast(String.format("Cannot convert %s to Java type '%s': %s",
                         getValueInfo(languageContext, value),
                         targetType.getTypeName(),
                         reason));
@@ -75,7 +74,7 @@ final class HostInteropErrors {
 
     @TruffleBoundary
     static RuntimeException cannotConvert(PolyglotLanguageContext languageContext, Object value, Type targetType, String reason) {
-        return newClassCastException(String.format("Cannot convert %s to Java type '%s': %s",
+        return PolyglotEngineException.classCast(String.format("Cannot convert %s to Java type '%s': %s",
                         getValueInfo(languageContext, value),
                         targetType.getTypeName(),
                         reason));
@@ -84,13 +83,13 @@ final class HostInteropErrors {
     @TruffleBoundary
     static RuntimeException invalidListIndex(PolyglotLanguageContext context, Object receiver, Type componentType, int index) {
         String message = String.format("Invalid index %s for List<%s> %s.", index, formatComponentType(componentType), getValueInfo(context, receiver));
-        throw newArrayIndexOutOfBounds(message);
+        throw PolyglotEngineException.arrayIndexOutOfBounds(message);
     }
 
     @TruffleBoundary
     static RuntimeException invalidArrayIndex(PolyglotLanguageContext context, Object receiver, Type componentType, int index) {
         String message = String.format("Invalid array index %s for %s[] %s.", index, formatComponentType(componentType), getValueInfo(context, receiver));
-        throw newArrayIndexOutOfBounds(message);
+        throw PolyglotEngineException.arrayIndexOutOfBounds(message);
     }
 
     private static Object formatComponentType(Type componentType) {
@@ -100,24 +99,24 @@ final class HostInteropErrors {
     @TruffleBoundary
     static RuntimeException arrayReadUnsupported(PolyglotLanguageContext context, Object receiver, Type componentType) {
         String message = String.format("Unsupported array read operation for %s[] %s.", formatComponentType(componentType), getValueInfo(context, receiver));
-        throw newUnsupportedOperationException(message);
+        throw PolyglotEngineException.unsupported(message);
     }
 
     @TruffleBoundary
     static RuntimeException listUnsupported(PolyglotLanguageContext context, Object receiver, Type componentType, String operation) {
         String message = String.format("Unsupported operation %s for List<%s> %s.", operation, formatComponentType(componentType), getValueInfo(context, receiver));
-        throw newUnsupportedOperationException(message);
+        throw PolyglotEngineException.unsupported(message);
     }
 
     @TruffleBoundary
     static RuntimeException mapUnsupported(PolyglotLanguageContext context, Object receiver, Type keyType, Type valueType, String operation) {
         String message = String.format("Unsupported operation %s for Map<%s, %s> %s.", operation, formatComponentType(keyType), formatComponentType(valueType), getValueInfo(context, receiver));
-        throw newUnsupportedOperationException(message);
+        throw PolyglotEngineException.unsupported(message);
     }
 
     @TruffleBoundary
     static RuntimeException invalidMapValue(PolyglotLanguageContext context, Object receiver, Type keyType, Type valueType, Object identifier, Object value) {
-        throw newClassCastException(
+        throw PolyglotEngineException.classCast(
                         String.format("Invalid value %s for Map<%s, %s> %s and identifier '%s'.",
                                         getValueInfo(context, value), formatComponentType(keyType), formatComponentType(valueType), getValueInfo(context, receiver), identifier));
     }
@@ -125,11 +124,11 @@ final class HostInteropErrors {
     @TruffleBoundary
     static RuntimeException invalidMapIdentifier(PolyglotLanguageContext context, Object receiver, Type keyType, Type valueType, Object identifier) {
         if (identifier instanceof Number || identifier instanceof String) {
-            throw newIllegalArgumentException(
+            throw PolyglotEngineException.illegalArgument(
                             String.format("Invalid or unmodifiable value for identifier '%s' for Map<%s, %s> %s.", identifier, formatComponentType(keyType),
                                             formatComponentType(valueType), getValueInfo(context, receiver)));
         } else {
-            throw newIllegalArgumentException(
+            throw PolyglotEngineException.illegalArgument(
                             String.format("Illegal identifier type '%s' for Map<%s, %s> %s.", identifier == null ? "null" : identifier.getClass().getTypeName(), formatComponentType(keyType),
                                             formatComponentType(valueType), getValueInfo(context, receiver)));
         }
@@ -137,7 +136,7 @@ final class HostInteropErrors {
 
     @TruffleBoundary
     static RuntimeException invalidListValue(PolyglotLanguageContext context, Object receiver, Type componentType, int identifier, Object value) {
-        throw newClassCastException(
+        throw PolyglotEngineException.classCast(
                         String.format("Invalid value %s for List<%s> %s and index %s.",
                                         getValueInfo(context, value), formatComponentType(componentType), getValueInfo(context, receiver), identifier));
     }
@@ -146,14 +145,14 @@ final class HostInteropErrors {
     static RuntimeException invalidExecuteArgumentType(PolyglotLanguageContext context, Object receiver, Object[] arguments) {
         String[] formattedArgs = formatArgs(context, arguments);
         String message = String.format("Invalid argument when executing %s with arguments %s.", getValueInfo(context, receiver), Arrays.asList(formattedArgs));
-        throw newIllegalArgumentException(message);
+        throw PolyglotEngineException.illegalArgument(message);
     }
 
     @TruffleBoundary
     static RuntimeException invalidInstantiateArgumentType(PolyglotLanguageContext context, Object receiver, Object[] arguments) {
         String[] formattedArgs = formatArgs(context, arguments);
         String message = String.format("Invalid argument when instantiating %s with arguments %s.", getValueInfo(context, receiver), Arrays.asList(formattedArgs));
-        throw newIllegalArgumentException(message);
+        throw PolyglotEngineException.illegalArgument(message);
     }
 
     @TruffleBoundary
@@ -161,7 +160,7 @@ final class HostInteropErrors {
         String[] formattedArgs = formatArgs(context, arguments);
         String message = String.format("Invalid argument count when instantiating %s with arguments %s. Expected %s argument(s) but got %s.",
                         getValueInfo(context, receiver), Arrays.asList(formattedArgs), expected, actual);
-        throw newIllegalArgumentException(message);
+        throw PolyglotEngineException.illegalArgument(message);
     }
 
     @TruffleBoundary
@@ -169,19 +168,19 @@ final class HostInteropErrors {
         String[] formattedArgs = formatArgs(context, arguments);
         String message = String.format("Invalid argument count when executing %s with arguments %s. Expected %s argument(s) but got %s.",
                         getValueInfo(context, receiver), Arrays.asList(formattedArgs), expected, actual);
-        throw newIllegalArgumentException(message);
+        throw PolyglotEngineException.illegalArgument(message);
     }
 
     @TruffleBoundary
     static RuntimeException invokeUnsupported(PolyglotLanguageContext context, Object receiver, String identifier) {
         String message = String.format("Unsupported operation identifier '%s' and  object %s. Identifier is not executable or instantiable.", identifier, getValueInfo(context, receiver));
-        throw newUnsupportedOperationException(message);
+        throw PolyglotEngineException.unsupported(message);
     }
 
     @TruffleBoundary
     static RuntimeException executeUnsupported(PolyglotLanguageContext context, Object receiver) {
         String message = String.format("Unsupported operation for object %s. Object is not executable or instantiable.", getValueInfo(context, receiver));
-        throw newUnsupportedOperationException(message);
+        throw PolyglotEngineException.unsupported(message);
     }
 
     private static String[] formatArgs(PolyglotLanguageContext context, Object[] arguments) {
@@ -194,31 +193,6 @@ final class HostInteropErrors {
 
     static String getValueInfo(PolyglotLanguageContext languageContext, Object value) {
         return PolyglotValue.getValueInfo(languageContext, value);
-    }
-
-    private static RuntimeException newNullPointerException(String message) {
-        CompilerDirectives.transferToInterpreter();
-        throw PolyglotEngineException.nullPointer(message);
-    }
-
-    private static RuntimeException newUnsupportedOperationException(String message) {
-        CompilerDirectives.transferToInterpreter();
-        throw PolyglotEngineException.unsupported(message);
-    }
-
-    private static RuntimeException newClassCastException(String message) {
-        CompilerDirectives.transferToInterpreter();
-        throw PolyglotEngineException.classCast(message);
-    }
-
-    private static RuntimeException newIllegalArgumentException(String message) {
-        CompilerDirectives.transferToInterpreter();
-        throw PolyglotEngineException.illegalArgument(message);
-    }
-
-    private static RuntimeException newArrayIndexOutOfBounds(String message) {
-        CompilerDirectives.transferToInterpreter();
-        throw PolyglotEngineException.arrayIndexOutOfBounds(message);
     }
 
     @TruffleBoundary

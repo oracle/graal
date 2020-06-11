@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api.interop;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -85,7 +84,6 @@ final class DefaultIntegerExports {
         if (b == i) {
             return b;
         }
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -96,7 +94,6 @@ final class DefaultIntegerExports {
         if (s == i) {
             return s;
         }
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -107,7 +104,6 @@ final class DefaultIntegerExports {
         if (f == i) {
             return f;
         }
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 

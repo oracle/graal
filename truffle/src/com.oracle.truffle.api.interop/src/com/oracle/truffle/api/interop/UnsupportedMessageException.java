@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.api.interop;
 
-import com.oracle.truffle.api.CompilerDirectives;
-
 /**
  * An exception thrown if a {@link TruffleObject} does not support a interop message. If this
  * exception is thrown then the receiver does not support the message at all and it is not supported
@@ -52,6 +50,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 public final class UnsupportedMessageException extends InteropException {
 
     private static final long serialVersionUID = 1857745390734085182L;
+    private static final UnsupportedMessageException SINGLETON = new UnsupportedMessageException();
 
     private UnsupportedMessageException() {
     }
@@ -73,8 +72,7 @@ public final class UnsupportedMessageException extends InteropException {
      * @since 19.0
      */
     public static UnsupportedMessageException create() {
-        CompilerDirectives.transferToInterpreter();
-        return new UnsupportedMessageException();
+        return SINGLETON;
     }
 
 }

@@ -1329,8 +1329,7 @@ public class FlatNodeGenFactory {
         }
 
         if (implementedSpecializations.isEmpty()) {
-            builder.tree(createTransferToInterpreterAndInvalidate());
-            builder.startThrow().startNew(getType(AssertionError.class)).doubleQuote("Delegation failed.").end().end();
+            builder.tree(GeneratorUtils.createShouldNotReachHere("Delegation failed."));
         } else {
             SpecializationGroup group = SpecializationGroup.create(implementedSpecializations);
             builder.tree(createFastPath(builder, implementedSpecializations, group, type, frameState));
@@ -1373,11 +1372,8 @@ public class FlatNodeGenFactory {
 
         CodeTreeBuilder builder = method.createBuilder();
         if (isExecutableInUncached) {
-            builder.tree(GeneratorUtils.createTransferToInterpreter());
-            builder.startThrow().startNew(context.getType(AssertionError.class));
-            builder.doubleQuote("This execute method cannot be used for uncached node versions as it requires child nodes to be present. " +
-                            "Use an execute method that takes all arguments as parameters.");
-            builder.end().end();
+            builder.tree(GeneratorUtils.createShouldNotReachHere("This execute method cannot be used for uncached node versions as it requires child nodes to be present. " +
+                            "Use an execute method that takes all arguments as parameters."));
         } else {
             SpecializationGroup group = SpecializationGroup.create(compatibleSpecializations);
             FrameState originalFrameState = frameState.copy();
@@ -2280,9 +2276,7 @@ public class FlatNodeGenFactory {
             CodeTreeBuilder builder = method.createBuilder();
             if (uncached) {
                 method.getAnnotationMirrors().add(new CodeAnnotationMirror(types.CompilerDirectives_TruffleBoundary));
-                builder.startThrow().startNew(context.getType(AssertionError.class));
-                builder.doubleQuote("This getter method cannot be used for uncached node versions as it requires child nodes to be present.");
-                builder.end().end();
+                builder.tree(GeneratorUtils.createShouldNotReachHere("This getter method cannot be used for uncached node versions as it requires child nodes to be present."));
             } else {
                 if (child.getCardinality().isMany()) {
                     builder.startReturn().startNewArray((ArrayType) child.getOriginalType(), null);

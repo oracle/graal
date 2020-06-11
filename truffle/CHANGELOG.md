@@ -23,6 +23,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added `TruffleWeakReference` utility to be used on partial evaluated code paths instead of the default JDK `WeakReference`.
 * Removed deprecated API in `com.oracle.truffle.api.source.Source`. The APIs were deprecated in 19.0.
 * Added `CompilerAsserts.shouldNotReachHere()` as a short-cut for languages to indicate that a path should not be rechable neither in compiled nor interpreted code paths.
+* All subclasses of `InteropException` do no longer provide a Java stack trace. They are intended to be thrown, immediately caught by the caller and not rethrown. As a side-effect they can now be allocated on compiled code paths and do no longer require a `@TruffleBoundary` or `transferToInterpreterAndInvalidate()` before use. Languages are encouraged to remove `@TruffleBoundary` annotations or leading `transferToInterpreterAndInvalidate()` method calls before interop exceptions are thrown. 
 
 ## Version 20.1.0
 * Added `@GenerateLibrary(dynamicDispatchEnabled = false)` that allows to disable dynamic dispatch semantics for a library. The default is `true`.

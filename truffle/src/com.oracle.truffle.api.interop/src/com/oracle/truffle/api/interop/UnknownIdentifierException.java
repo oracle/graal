@@ -41,8 +41,6 @@
 
 package com.oracle.truffle.api.interop;
 
-import com.oracle.truffle.api.CompilerDirectives;
-
 /**
  * An exception thrown if an object does not contain a member with such an identifier. Interop
  * exceptions are supposed to be caught and converted into a guest language error by the caller.
@@ -88,7 +86,6 @@ public final class UnknownIdentifierException extends InteropException {
      * @since 19.0
      */
     public static UnknownIdentifierException create(String unknownIdentifier) {
-        CompilerDirectives.transferToInterpreter();
         return new UnknownIdentifierException(unknownIdentifier);
     }
 

@@ -40,9 +40,8 @@
  */
 package com.oracle.truffle.api.interop;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.source.SourceSection;
@@ -114,7 +113,6 @@ final class DefaultFloatExports {
         if (b == f && !NumberUtils.isNegativeZero(f)) {
             return b;
         }
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -125,7 +123,6 @@ final class DefaultFloatExports {
         if (s == f && !NumberUtils.isNegativeZero(f)) {
             return s;
         }
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -139,7 +136,6 @@ final class DefaultFloatExports {
                 return i;
             }
         }
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -152,7 +148,6 @@ final class DefaultFloatExports {
                 return l;
             }
         }
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -163,7 +158,6 @@ final class DefaultFloatExports {
         if (!Float.isFinite(f) || d == f) {
             return d;
         }
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 

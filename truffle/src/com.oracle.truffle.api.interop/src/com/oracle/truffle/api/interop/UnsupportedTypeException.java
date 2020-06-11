@@ -41,9 +41,6 @@
 
 package com.oracle.truffle.api.interop;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-
 /**
  * An exception thrown if a {@link TruffleObject} does not support the type of one ore more
  * arguments.
@@ -55,11 +52,6 @@ public final class UnsupportedTypeException extends InteropException {
     private static final long serialVersionUID = 1857745390734085182L;
 
     private final Object[] suppliedValues;
-
-    private UnsupportedTypeException(Exception cause, Object[] suppliedValues) {
-        super(cause);
-        this.suppliedValues = suppliedValues;
-    }
 
     private UnsupportedTypeException(String message, Object[] suppliedValues) {
         super(message);
@@ -83,9 +75,7 @@ public final class UnsupportedTypeException extends InteropException {
      *
      * @since 19.0
      */
-    @TruffleBoundary
     public static UnsupportedTypeException create(Object[] suppliedValues) {
-        CompilerDirectives.transferToInterpreter();
         return new UnsupportedTypeException((String) null, suppliedValues);
     }
 
@@ -95,9 +85,7 @@ public final class UnsupportedTypeException extends InteropException {
      *
      * @since 19.0
      */
-    @TruffleBoundary
     public static UnsupportedTypeException create(Object[] suppliedValues, String hint) {
-        CompilerDirectives.transferToInterpreter();
         return new UnsupportedTypeException(hint, suppliedValues);
     }
 

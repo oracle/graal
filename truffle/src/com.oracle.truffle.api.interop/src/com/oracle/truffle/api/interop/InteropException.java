@@ -49,16 +49,18 @@ package com.oracle.truffle.api.interop;
  */
 public abstract class InteropException extends Exception {
 
-    InteropException(String string) {
-        super(string);
-    }
-
-    InteropException(Exception cause) {
-        super(cause);
+    InteropException(String message) {
+        super(message, null);
     }
 
     InteropException() {
-        super();
+        super(null, null);
+    }
+
+    @SuppressWarnings("sync-override")
+    @Override
+    public Throwable fillInStackTrace() {
+        return this;
     }
 
     private static final long serialVersionUID = -5173354806966156285L;

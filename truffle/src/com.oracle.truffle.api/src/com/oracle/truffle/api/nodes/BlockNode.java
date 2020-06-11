@@ -530,7 +530,7 @@ class BlockNodeSnippets {
                     return e.result;
                 }
             } else {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw new AssertionError("Invalid start index");
             }
         }
