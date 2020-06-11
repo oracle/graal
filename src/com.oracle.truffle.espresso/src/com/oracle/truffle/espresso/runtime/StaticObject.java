@@ -107,6 +107,22 @@ public final class StaticObject implements TruffleObject {
     }
 
     @ExportMessage
+    public boolean isBoolean() {
+        if (isNull(this)) {
+            return false;
+        }
+        return getKlass() == getKlass().getMeta().java_lang_Boolean;
+    }
+
+    @ExportMessage
+    public boolean asBoolean() throws UnsupportedMessageException {
+        if (!isBoolean()) {
+            throw UnsupportedMessageException.create();
+        }
+        return (boolean) getKlass().lookupMethod(Name.booleanValue, Signature._boolean).invokeDirect(this);
+    }
+
+    @ExportMessage
     public boolean isNumber() {
         if (isNull(this)) {
             return false;

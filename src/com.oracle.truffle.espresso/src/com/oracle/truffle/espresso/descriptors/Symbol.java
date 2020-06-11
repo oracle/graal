@@ -156,6 +156,7 @@ public final class Symbol<T> extends ByteSequence {
         // Boxing and String
         public static final Symbol<Name> value = StaticSymbols.putName("value");
         public static final Symbol<Name> valueOf = StaticSymbols.putName("valueOf");
+        public static final Symbol<Name> booleanValue = StaticSymbols.putName("booleanValue");
         public static final Symbol<Name> byteValue = StaticSymbols.putName("byteValue");
         public static final Symbol<Name> shortValue = StaticSymbols.putName("shortValue");
         public static final Symbol<Name> intValue = StaticSymbols.putName("intValue");
