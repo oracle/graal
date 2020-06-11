@@ -29,7 +29,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.InetSocketAddress;
-import java.net.Socket;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
@@ -41,6 +40,7 @@ import java.security.UnrecoverableKeyException;
 import java.security.cert.CertificateException;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManagerFactory;
 
 import com.oracle.truffle.tools.chromeinspector.instrument.Token;
@@ -88,7 +88,7 @@ public class InspectWSClient extends WebSocketClient implements InspectorWSConne
             if (TruffleOptions.AOT) {
                 throw new IOException("Secure connection is not available in the native-image yet.");
             } else {
-                setSocket(createSecureSocket(keyStoreOptions));
+                setSocketFactory(createSecureSocketFactory(keyStoreOptions));
             }
         }
         try {
@@ -102,7 +102,7 @@ public class InspectWSClient extends WebSocketClient implements InspectorWSConne
         }
     }
 
-    private static Socket createSecureSocket(KeyStoreOptions keyStoreOptions) throws IOException {
+    private static SSLSocketFactory createSecureSocketFactory(KeyStoreOptions keyStoreOptions) throws IOException {
         String keyStoreFile = keyStoreOptions.getKeyStore();
         if (keyStoreFile != null) {
             try {
@@ -127,7 +127,7 @@ public class InspectWSClient extends WebSocketClient implements InspectorWSConne
 
                 SSLContext sslContext = SSLContext.getInstance("TLS");
                 sslContext.init(kmf.getKeyManagers(), tmf.getTrustManagers(), null);
-                return sslContext.getSocketFactory().createSocket();
+                return sslContext.getSocketFactory();
             } catch (KeyStoreException | KeyManagementException | NoSuchAlgorithmException | CertificateException | UnrecoverableKeyException ex) {
                 throw new IOException(ex);
             }
