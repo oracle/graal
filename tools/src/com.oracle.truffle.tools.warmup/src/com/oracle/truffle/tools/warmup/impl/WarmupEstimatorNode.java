@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.tools.warmup.impl;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -38,8 +40,8 @@ class WarmupEstimatorNode extends ExecutionEventNode {
     private final List<Long> times;
     private FrameSlot startSlot;
 
-    WarmupEstimatorNode(List<Long> times) {
-        this.times = times;
+    WarmupEstimatorNode() {
+        this.times = new ArrayList<>();
     }
 
     @Override
@@ -60,9 +62,11 @@ class WarmupEstimatorNode extends ExecutionEventNode {
     }
 
     @CompilerDirectives.TruffleBoundary
-    private void record(long duration) {
-        synchronized (times) {
-            times.add(duration);
-        }
+    private synchronized void record(long duration) {
+        times.add(duration);
+    }
+
+    synchronized List<Long> getTimes() {
+        return Collections.unmodifiableList(times);
     }
 }

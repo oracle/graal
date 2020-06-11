@@ -28,11 +28,16 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
-import java.util.LinkedList;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.logging.Level;
 
+import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.instrumentation.EventContext;
+import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
@@ -69,8 +74,8 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
                     });
     @Option(name = "", help = "Enable the Warmup Estimator (default: false).", category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL) //
     static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
-    @Option(name = "RootName", help = "The name of root being benchmarked, ie. that should be instrumented.", category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL) //
-    static final OptionKey<String> ROOT_NAME = new OptionKey<>("");
+    @Option(name = "RootNames", help = "A comma separated list of names of roots being benchmarked, ie. that should be instrumented. NOTE: Only first occurrence of a name will be instrumented.", category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL) //
+    static final OptionKey<String> ROOT_NAMES = new OptionKey<>("");
     @Option(name = "OutputFile", help = "Save output to the given file. Output is printed to stdout by default.", category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL) //
     static final OptionKey<String> OUTPUT_FILE = new OptionKey<>("");
     @Option(name = "Output", help = "Can be: 'raw' for json array of raw samples; 'json' for included post processing of samples; 'simple' for just the human-readable post-processed result (default: simple)", category = OptionCategory.USER) static final OptionKey<Output> OUTPUT = new OptionKey<>(
@@ -79,8 +84,7 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
     static final OptionKey<Double> EPSILON = new OptionKey<>(1.05);
 
     private boolean enabled;
-    private WarmupEstimatorNode node;
-    private List<Long> times = new LinkedList<>();
+    private final Map<String, WarmupEstimatorNode> nodes = new HashMap<>();
 
     @Override
     protected OptionDescriptors getOptionDescriptors() {
@@ -91,30 +95,59 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
     protected void onCreate(Env env) {
         enabled = env.getOptions().get(WarmupEstimatorInstrument.ENABLED);
         if (enabled) {
-            final String rootName = env.getOptions().get(ROOT_NAME);
-            if (rootName.equals("")) {
-                throw new IllegalArgumentException("RootName must be set");
+            final String[] rootNames = rootNames(env);
+            if (rootNames.length == 0) {
+                throw new IllegalArgumentException("RootNames must be set");
             }
-            final SourceSectionFilter filter = SourceSectionFilter.newBuilder().includeInternal(false).tagIs(StandardTags.RootTag.class).rootNameIs(rootName::equals).build();
-            env.getInstrumenter().attachExecutionEventFactory(filter, context -> {
-                if (node == null) {
-                    node = new WarmupEstimatorNode(times);
-                    return node;
-                }
-                env.getLogger(this.getClass()).log(Level.WARNING, "Ignoring multiple roots with name " + rootName + ".");
-                return null;
-            });
+            env.getInstrumenter().attachExecutionEventFactory(filter(rootNames), context -> createNode(env, context));
         }
+    }
+
+    private synchronized ExecutionEventNode createNode(Env env, EventContext context) {
+        final TruffleLogger logger = env.getLogger(this.getClass());
+        final String rootName = context.getInstrumentedNode().getRootNode().getName();
+        WarmupEstimatorNode node = nodes.get(rootName);
+        if (node == null) {
+            logger.log(Level.INFO, "Instrumenting root named " + rootName + " on " + context.getInstrumentedSourceSection());
+            node = new WarmupEstimatorNode();
+            nodes.put(rootName, node);
+            return node;
+        }
+        logger.log(Level.WARNING, "Ignoring multiple roots named " + rootName + " on " + context.getInstrumentedSourceSection());
+        return null;
+    }
+
+    private static SourceSectionFilter filter(String[] rootNames) {
+        return SourceSectionFilter.newBuilder().//
+                        includeInternal(false).//
+                        tagIs(StandardTags.RootTag.class).//
+                        rootNameIs(name -> contains(rootNames, name)).//
+                        build();
+    }
+
+    private static String[] rootNames(Env env) {
+        final String rootNamesOpt = env.getOptions().get(ROOT_NAMES);
+        return rootNamesOpt.split(",");
+    }
+
+    private static boolean contains(String[] rootNames, String name) {
+        for (String rootName : rootNames) {
+            if (rootName.equals(name)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
     protected void onDispose(Env env) {
-        if (node == null) {
-            throw new IllegalArgumentException("No root with name " + ROOT_NAME.getValue(env.getOptions()) + " found during execution.");
+        if (nodes.isEmpty()) {
+            throw new IllegalArgumentException("No roots with names " + ROOT_NAMES.getValue(env.getOptions()) + " found during execution.");
         }
         final OptionValues options = env.getOptions();
+        final List<Results> results = results(EPSILON.getValue(options));
         try (PrintStream stream = outputStream(env, options)) {
-            final ResultsPrinter printer = new ResultsPrinter(new Results(times, EPSILON.getValue(options)), stream);
+            final ResultsPrinter printer = new ResultsPrinter(results, stream);
             switch (OUTPUT.getValue(options)) {
                 case SIMPLE:
                     printer.printSimpleResults();
@@ -128,6 +161,16 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
             }
         }
         super.onDispose(env);
+    }
+
+    private List<Results> results(Double epsilon) {
+        final List<Results> results = new ArrayList<>();
+        for (String rootName : nodes.keySet()) {
+            final WarmupEstimatorNode node = nodes.get(rootName);
+            final List<Long> times = node.getTimes();
+            results.add(new Results(rootName, times, epsilon));
+        }
+        return results;
     }
 
     private PrintStream outputStream(Env env, OptionValues options) {

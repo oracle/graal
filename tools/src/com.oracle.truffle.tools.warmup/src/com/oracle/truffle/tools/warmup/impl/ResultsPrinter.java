@@ -28,49 +28,63 @@ import com.oracle.truffle.tools.utils.json.JSONArray;
 import com.oracle.truffle.tools.utils.json.JSONObject;
 
 import java.io.PrintStream;
+import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 class ResultsPrinter {
 
-    private static final String DOUBLE_FORMAT = "%-15s: %f\n";
-    private static final String LONG_FORMAT = "%-15s: %d\n";
-    private final Results results;
+    private static final String FORMAT = "[warmup estimator] %25s | %-15s | ";
+    private static final String DOUBLE_FORMAT = FORMAT + "%f\n";
+    private static final String LONG_FORMAT = FORMAT + "%d\n";
+    private final List<Results> resultsList;
     private final PrintStream stream;
 
-    ResultsPrinter(Results results, PrintStream stream) {
-        this.results = results;
+    ResultsPrinter(List<Results> resultsList, PrintStream stream) {
+        this.resultsList = resultsList;
         this.stream = stream;
     }
 
     void printSimpleResults() {
-        stream.printf(LONG_FORMAT, "Best time", results.bestT);
-        stream.printf(LONG_FORMAT, "Best iter", results.bestI);
-        stream.printf(DOUBLE_FORMAT, "Epsilon", results.epsilon);
-        stream.printf(LONG_FORMAT, "Peak Start Iter", results.peakStartI);
-        stream.printf(LONG_FORMAT, "Peak Start Time", results.peakStartT);
-        stream.printf(LONG_FORMAT, "Warmup time", results.warmupTime);
-        stream.printf(DOUBLE_FORMAT, "Warmup cost", results.warmupCost);
-        stream.printf(LONG_FORMAT, "Iterations", results.samples.size());
+        for (Results results : resultsList) {
+            stream.printf(LONG_FORMAT, results.rootName, "Best time", results.bestT);
+            stream.printf(LONG_FORMAT, results.rootName, "Best iter", results.bestI);
+            stream.printf(DOUBLE_FORMAT, results.rootName, "Epsilon", results.epsilon);
+            stream.printf(LONG_FORMAT, results.rootName, "Peak Start Iter", results.peakStartI);
+            stream.printf(LONG_FORMAT, results.rootName, "Peak Start Time", results.peakStartT);
+            stream.printf(LONG_FORMAT, results.rootName, "Warmup time", results.warmupTime);
+            stream.printf(DOUBLE_FORMAT, results.rootName, "Warmup cost", results.warmupCost);
+            stream.printf(LONG_FORMAT, results.rootName, "Iterations", results.samples.size());
+        }
     }
 
     void printJsonResults() {
-        JSONObject result = new JSONObject();
-        result.put("best_time", results.bestT);
-        result.put("best_iteration", results.bestI);
-        result.put("peak_start_iteration", results.peakStartI);
-        result.put("peak_start_time", results.peakStartT);
-        result.put("warmup_time", results.warmupTime);
-        result.put("warmup_cost", results.warmupCost);
-        result.put("epsilon", results.epsilon);
-        result.put("iterations", results.samples.size());
-        result.put("samples", new JSONArray(results.samples));
-        result.put("normalized_samples", new JSONArray(results.samples.stream().map(each -> (double) each / results.bestT).collect(Collectors.toList())));
-        stream.print(result.toString(2));
+        JSONArray output = new JSONArray();
+        for (Results results : resultsList) {
+            JSONObject jsonResults = new JSONObject();
+            jsonResults.put("root_name", results.rootName);
+            jsonResults.put("best_time", results.bestT);
+            jsonResults.put("best_iteration", results.bestI);
+            jsonResults.put("peak_start_iteration", results.peakStartI);
+            jsonResults.put("peak_start_time", results.peakStartT);
+            jsonResults.put("warmup_time", results.warmupTime);
+            jsonResults.put("warmup_cost", results.warmupCost);
+            jsonResults.put("epsilon", results.epsilon);
+            jsonResults.put("iterations", results.samples.size());
+            jsonResults.put("samples", new JSONArray(results.samples));
+            jsonResults.put("normalized_samples", new JSONArray(results.samples.stream().map(each -> (double) each / results.bestT).collect(Collectors.toList())));
+            output.put(jsonResults);
+        }
+        stream.print(output.toString(2));
     }
 
     void printRawResults() {
-        final JSONArray array = new JSONArray(results.samples);
-        stream.print(array.toString());
+        JSONArray output = new JSONArray();
+        for (Results results : resultsList) {
+            JSONObject jsonResults = new JSONObject();
+            jsonResults.put("root_name", results.rootName);
+            jsonResults.put("samples", new JSONArray(results.samples));
+            output.put(jsonResults);
+        }
+        stream.print(output);
     }
 }

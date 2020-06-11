@@ -33,31 +33,41 @@ public class WarmupEstimatorTest {
 
     @Test
     public void testBasic() {
-        try (Context context = defaultContext().option(WarmupEstimatorInstrument.ID + ".RootName", "foo").build()) {
+        try (Context context = defaultContext().option(WarmupEstimatorInstrument.ID + ".RootNames", "foo").build()) {
             context.eval(defaultSource);
         }
         final String output = out.toString();
-        assertContains(output, "Best time      :");
-        assertContains(output, "Best iter      :");
-        assertContains(output, "Epsilon        : 1.05");
-        assertContains(output, "Peak Start Iter:");
-        assertContains(output, "Peak Start Time:");
-        assertContains(output, "Warmup time    :");
-        assertContains(output, "Warmup cost    :");
-        assertContains(output, "Iterations     : 10");
+        assertContains(output, "Best time       |");
+        assertContains(output, "Best iter       |");
+        assertContains(output, "Epsilon         | 1.05");
+        assertContains(output, "Peak Start Iter |");
+        assertContains(output, "Peak Start Time |");
+        assertContains(output, "Warmup time     |");
+        assertContains(output, "Warmup cost     |");
+        assertContains(output, "Iterations      | 10");
+    }
+
+    @Test
+    public void testMultiRoot() {
+        try (Context context = defaultContext().option(WarmupEstimatorInstrument.ID + ".RootNames", "foo,bar").build()) {
+            context.eval(defaultSource);
+        }
+        final String output = out.toString();
+        assertContains(output, "foo");
+        assertContains(output, "bar");
     }
 
     @Test
     public void testRawOutput() {
-        try (Context context = defaultContext().option(WarmupEstimatorInstrument.ID + ".RootName", "foo").option(WarmupEstimatorInstrument.ID + ".Output", "raw").build()) {
+        try (Context context = defaultContext().option(WarmupEstimatorInstrument.ID + ".RootNames", "foo").option(WarmupEstimatorInstrument.ID + ".Output", "raw").build()) {
             context.eval(defaultSource);
         }
         final String output = out.toString();
         Assert.assertTrue(output.startsWith("["));
         Assert.assertTrue(output.endsWith("]"));
-        assertContains(output, ",");
-        Assert.assertEquals(10, output.split(",").length);
-        System.out.println(output);
+        assertContains(output, "{");
+        assertContains(output, "}");
+        Assert.assertEquals(11, output.split(",").length);
     }
 
     private void assertContains(String output, String expected) {
