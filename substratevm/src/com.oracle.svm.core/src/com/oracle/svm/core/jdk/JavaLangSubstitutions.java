@@ -879,6 +879,16 @@ final class Target_jdk_internal_loader_BootLoader {
     private static Enumeration<URL> findResources(String name) throws IOException {
         return ClassLoader.getSystemClassLoader().getResources(name);
     }
+
+    /**
+     * All ClassLoaderValue are reset at run time for now. See also
+     * {@link Target_java_lang_ClassLoader#classLoaderValueMap} for resetting of individual class
+     * loaders.
+     */
+    // Checkstyle: stop
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = ConcurrentHashMap.class)//
+    static ConcurrentHashMap<?, ?> CLASS_LOADER_VALUE_MAP;
+    // Checkstyle: resume
 }
 
 /** Dummy class to have a class with the file's name. */
