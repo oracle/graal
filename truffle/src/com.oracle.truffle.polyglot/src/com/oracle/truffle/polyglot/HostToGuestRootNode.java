@@ -115,7 +115,6 @@ abstract class HostToGuestRootNode extends RootNode {
     private PolyglotLanguageContext profileContext(Object languageContext) {
         ContextProfile localProfile = this.profile;
         if (localProfile == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
             profile = localProfile = ((PolyglotLanguageContext) languageContext).language.profile;
         }
         return localProfile.profile(languageContext);

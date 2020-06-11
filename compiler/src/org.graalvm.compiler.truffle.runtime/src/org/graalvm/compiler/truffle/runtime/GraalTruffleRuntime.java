@@ -107,6 +107,8 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.LayoutFactory;
+import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.stack.InspectedFrame;
@@ -369,6 +371,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                         AbstractAssumption.class,
                         MaterializedFrame.class,
                         FrameWithoutBoxing.class,
+                        BranchProfile.class,
+                        ConditionProfile.class,
         }) {
             m.put(c.getName(), c);
         }
