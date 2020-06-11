@@ -179,7 +179,21 @@ public final class StaticObject implements TruffleObject {
         if (isNull(this)) {
             return false;
         }
-        return isAtMostLong(getKlass());
+        if (isAtMostLong(getKlass())) {
+            return true;
+        }
+        Klass thisKlass = getKlass();
+        Meta meta = thisKlass.getMeta();
+        if (thisKlass == meta.java_lang_Float) {
+            float content = getFloatField(meta.java_lang_Float_value);
+            return inIntRange(content) && (int) content == content;
+        }
+        if (thisKlass == meta.java_lang_Double) {
+            double content = getDoubleField(meta.java_lang_Double_value);
+            return inIntRange(content) && (int) content == content;
+        }
+        return false;
+
     }
 
     @ExportMessage
