@@ -33,9 +33,14 @@ meth public static <%0 extends java.lang.Object> void partialEvaluationConstant(
 meth public static <%0 extends java.lang.Object> void partialEvaluationConstant(int)
 meth public static <%0 extends java.lang.Object> void partialEvaluationConstant(java.lang.Object)
 meth public static <%0 extends java.lang.Object> void partialEvaluationConstant(long)
+meth public static java.lang.RuntimeException shouldNotReachHere()
+meth public static java.lang.RuntimeException shouldNotReachHere(java.lang.String)
+meth public static java.lang.RuntimeException shouldNotReachHere(java.lang.String,java.lang.Throwable)
+meth public static java.lang.RuntimeException shouldNotReachHere(java.lang.Throwable)
 meth public static void neverPartOfCompilation()
 meth public static void neverPartOfCompilation(java.lang.String)
 supr java.lang.Object
+hcls ShouldNotReachHere
 
 CLSS public final com.oracle.truffle.api.CompilerDirectives
 fld public final static double FASTPATH_PROBABILITY = 0.9999
