@@ -31,6 +31,7 @@ import org.graalvm.compiler.core.common.type.DataPointerConstant;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
+import org.graalvm.compiler.graph.Node.NodeIntrinsicFactory;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.word.Word;
@@ -41,6 +42,7 @@ import jdk.vm.ci.meta.JavaKind;
  * Represents a compile-time constant zero-terminated UTF-8 string installed with the generated
  * code.
  */
+@NodeIntrinsicFactory
 public final class CStringConstant extends DataPointerConstant {
 
     private static final Charset UTF8 = Charset.forName("utf8");

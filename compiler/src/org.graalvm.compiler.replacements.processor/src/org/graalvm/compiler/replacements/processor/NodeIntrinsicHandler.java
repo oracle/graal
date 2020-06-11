@@ -29,7 +29,6 @@ import static org.graalvm.compiler.processor.AbstractProcessor.getAnnotationValu
 import static org.graalvm.compiler.processor.AbstractProcessor.getSimpleName;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Formatter;
 import java.util.HashMap;
 import java.util.List;
@@ -67,6 +66,7 @@ public final class NodeIntrinsicHandler extends AnnotationHandler {
     static final String NODE_CLASS_NAME = "org.graalvm.compiler.graph.Node";
     static final String NODE_INFO_CLASS_NAME = "org.graalvm.compiler.nodeinfo.NodeInfo";
     static final String NODE_INTRINSIC_CLASS_NAME = "org.graalvm.compiler.graph.Node.NodeIntrinsic";
+    static final String NODE_INTRINSIC_FACTORY_CLASS_NAME = "org.graalvm.compiler.graph.Node.NodeIntrinsicFactory";
     static final String INJECTED_NODE_PARAMETER_CLASS_NAME = "org.graalvm.compiler.graph.Node.InjectedNodeParameter";
     static final String FOREIGN_CALL_DESCRIPTOR_CLASS_NAME = "org.graalvm.compiler.core.common.spi.ForeignCallDescriptor";
 
@@ -111,6 +111,7 @@ public final class NodeIntrinsicHandler extends AnnotationHandler {
         }
 
         boolean injectedStampIsNonNull = getAnnotationValue(annotation, "injectedStampIsNonNull", Boolean.class);
+        boolean isFactory = processor.getAnnotation(nodeClass, processor.getType(NODE_INTRINSIC_FACTORY_CLASS_NAME)) != null;
 
         if (returnType.getKind() == TypeKind.VOID) {
             for (VariableElement parameter : intrinsicMethod.getParameters()) {
@@ -120,46 +121,70 @@ public final class NodeIntrinsicHandler extends AnnotationHandler {
                 }
             }
         }
+        Formatter msg = new Formatter();
+        List<ExecutableElement> factories = findIntrinsifyFactoryMethods(nodeClass);
+        if (factories.size() > 0) {
+            boolean hadError = false;
+            if (isFactory) {
+                for (ExecutableElement candidate : factories) {
+                    String error = checkIntrinsifyFactorySignature(candidate);
+                    if (error != null) {
+                        messager.printMessage(Kind.ERROR, msg.format("intrinsify method has invalid signature: %s%n%s", error, candidate).toString(), candidate);
+                        hadError = true;
+                    }
+                }
+            } else {
+                for (ExecutableElement candidate : factories) {
+                    messager.printMessage(Kind.ERROR, String.format("Found intrinsify methods in %s which is not a NodeIntrinsicFactory", nodeClass), candidate);
+                    hadError = true;
+                }
+            }
+            if (hadError) {
+                return;
+            }
+        }
 
         TypeMirror[] constructorSignature = constructorSignature(intrinsicMethod);
         Map<ExecutableElement, String> nonMatches = new HashMap<>();
-        List<ExecutableElement> factories = findIntrinsifyFactoryMethod(nodeClass, constructorSignature, nonMatches, injectedStampIsNonNull);
-        List<ExecutableElement> constructors = Collections.emptyList();
-        if (nodeClass.getModifiers().contains(Modifier.ABSTRACT)) {
-            if (factories.isEmpty()) {
-                messager.printMessage(Kind.ERROR, String.format("Cannot make a node intrinsic for abstract class %s.", nodeClass.getSimpleName()), element, annotation);
+        if (isFactory) {
+            List<ExecutableElement> candidates = findIntrinsifyFactoryMethods(factories, constructorSignature, nonMatches, injectedStampIsNonNull);
+            if (checkTooManyElements(annotation, intrinsicMethod, messager, nodeClass, "factories", candidates, msg)) {
+                return;
             }
-        } else if (!isNodeType(nodeClass)) {
-            if (factories.isEmpty()) {
-                messager.printMessage(Kind.ERROR, String.format("%s is not a subclass of %s.", nodeClass.getSimpleName(), processor.getType(NODE_CLASS_NAME)), element, annotation);
+            if (candidates.size() == 1) {
+                generator.addPlugin(new GeneratedNodeIntrinsicPlugin.CustomFactoryPlugin(intrinsicMethod, candidates.get(0), constructorSignature));
+                return;
             }
         } else {
-            TypeMirror ret = returnType;
-            if (processor.env().getTypeUtils().isAssignable(ret, processor.getType(STRUCTURAL_INPUT_CLASS_NAME))) {
-                checkInputType(nodeClass, ret, element, annotation);
+            if (nodeClass.getModifiers().contains(Modifier.ABSTRACT)) {
+                messager.printMessage(Kind.ERROR, String.format("Cannot make a node intrinsic for abstract class %s.", nodeClass.getSimpleName()), element, annotation);
+                return;
+            } else if (!isNodeType(nodeClass)) {
+                messager.printMessage(Kind.ERROR, String.format("%s is not a subclass of %s.", nodeClass.getSimpleName(), processor.getType(NODE_CLASS_NAME)), element, annotation);
+                return;
+            }
+            if (processor.env().getTypeUtils().isAssignable(returnType, processor.getType(STRUCTURAL_INPUT_CLASS_NAME))) {
+                checkInputType(nodeClass, returnType, element, annotation);
             }
 
-            constructors = findConstructors(nodeClass, constructorSignature, nonMatches, injectedStampIsNonNull);
-        }
-        Formatter msg = new Formatter();
-        if (checkTooManyElements(annotation, intrinsicMethod, messager, nodeClass, "factory", factories, msg)) {
-            return;
-        } else if (checkTooManyElements(annotation, intrinsicMethod, messager, nodeClass, "constructor", constructors, msg)) {
-            return;
-        } else if (factories.size() == 1) {
-            generator.addPlugin(new GeneratedNodeIntrinsicPlugin.CustomFactoryPlugin(intrinsicMethod, factories.get(0), constructorSignature));
-        } else if (constructors.size() == 1) {
-            generator.addPlugin(new GeneratedNodeIntrinsicPlugin.ConstructorPlugin(intrinsicMethod, constructors.get(0), constructorSignature));
-        } else {
-            msg.format("Could not find any factories or constructors in %s matching node intrinsic", nodeClass);
-            if (!nonMatches.isEmpty()) {
-                msg.format("%nFactories and constructors that failed to match:");
-                for (Map.Entry<ExecutableElement, String> e : nonMatches.entrySet()) {
-                    msg.format("%n  %s: %s", e.getKey(), e.getValue());
-                }
+            List<ExecutableElement> constructors = findConstructors(nodeClass, constructorSignature, nonMatches, injectedStampIsNonNull);
+            if (checkTooManyElements(annotation, intrinsicMethod, messager, nodeClass, "constructors", constructors, msg)) {
+                return;
             }
-            messager.printMessage(Kind.ERROR, msg.toString(), intrinsicMethod, annotation);
+            if (constructors.size() == 1) {
+                generator.addPlugin(new GeneratedNodeIntrinsicPlugin.ConstructorPlugin(intrinsicMethod, constructors.get(0), constructorSignature));
+                return;
+            }
         }
+        String label = isFactory ? "factories" : "constructors";
+        msg.format("Could not find any %s in %s matching node intrinsic", label, nodeClass);
+        if (!nonMatches.isEmpty()) {
+            msg.format("%nThese %s failed to match:", label);
+            for (Map.Entry<ExecutableElement, String> e : nonMatches.entrySet()) {
+                msg.format("%n  %s: %s", e.getKey(), e.getValue());
+            }
+        }
+        messager.printMessage(Kind.ERROR, msg.toString(), intrinsicMethod, annotation);
     }
 
     private static boolean checkTooManyElements(AnnotationMirror annotation, ExecutableElement intrinsicMethod, Messager messager, TypeElement nodeClass, String kind, List<ExecutableElement> elements,
@@ -241,40 +266,45 @@ public final class NodeIntrinsicHandler extends AnnotationHandler {
         return found;
     }
 
-    private List<ExecutableElement> findIntrinsifyFactoryMethod(TypeElement nodeClass, TypeMirror[] signature, Map<ExecutableElement, String> nonMatches, boolean requiresInjectedStamp) {
+    private String checkIntrinsifyFactorySignature(ExecutableElement method) {
+        if (method.getParameters().size() < 1) {
+            return "Too few arguments";
+        }
+
+        VariableElement firstArg = method.getParameters().get(0);
+        if (!isTypeCompatible(firstArg.asType(), processor.getType(GRAPH_BUILDER_CONTEXT_CLASS_NAME))) {
+            return "First argument isn't of type GraphBuilderContext";
+        }
+
+        if (method.getReturnType().getKind() != TypeKind.BOOLEAN) {
+            return "Doesn't return boolean";
+        }
+
+        if (!method.getModifiers().contains(Modifier.STATIC)) {
+            return "Method is non-static";
+        }
+
+        if (!method.getModifiers().contains(Modifier.PUBLIC)) {
+            return "Method is non-public";
+        }
+        return null;
+    }
+
+    private static List<ExecutableElement> findIntrinsifyFactoryMethods(TypeElement nodeClass) {
         List<ExecutableElement> methods = ElementFilter.methodsIn(nodeClass.getEnclosedElements());
-        List<ExecutableElement> found = new ArrayList<>(methods.size());
+        List<ExecutableElement> found = new ArrayList<>(1);
         for (ExecutableElement method : methods) {
-            if (!method.getSimpleName().toString().equals("intrinsify")) {
-                continue;
+            if (method.getSimpleName().toString().equals("intrinsify")) {
+                found.add(method);
             }
+        }
+        return found;
+    }
 
-            if (method.getParameters().size() < 1) {
-                nonMatches.put(method, "Too few arguments");
-                continue;
-            }
-
-            VariableElement firstArg = method.getParameters().get(0);
-            if (!isTypeCompatible(firstArg.asType(), processor.getType(GRAPH_BUILDER_CONTEXT_CLASS_NAME))) {
-                nonMatches.put(method, "First argument isn't of type GraphBuilderContext");
-                continue;
-            }
-
-            if (method.getReturnType().getKind() != TypeKind.BOOLEAN) {
-                nonMatches.put(method, "Doesn't return boolean");
-                continue;
-            }
-
-            if (!method.getModifiers().contains(Modifier.STATIC)) {
-                nonMatches.put(method, "Method is non-static");
-                continue;
-            }
-
-            if (!method.getModifiers().contains(Modifier.PUBLIC)) {
-                nonMatches.put(method, "Method is non-public");
-                continue;
-            }
-
+    private List<ExecutableElement> findIntrinsifyFactoryMethods(List<ExecutableElement> intrinsifyFactoryMethods, TypeMirror[] signature, Map<ExecutableElement, String> nonMatches,
+                    boolean requiresInjectedStamp) {
+        List<ExecutableElement> found = new ArrayList<>(1);
+        for (ExecutableElement method : intrinsifyFactoryMethods) {
             if (matchSignature(1, method, signature, nonMatches, requiresInjectedStamp)) {
                 found.add(method);
             }

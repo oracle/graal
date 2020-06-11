@@ -26,6 +26,7 @@ package org.graalvm.compiler.nodes.extended;
 
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
+import org.graalvm.compiler.graph.Node.NodeIntrinsicFactory;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.word.LocationIdentity;
@@ -36,6 +37,7 @@ import jdk.vm.ci.meta.JavaKind;
  * Copy a value at a location specified as an offset relative to a source object to another location
  * specified as an offset relative to destination object. No null checks are performed.
  */
+@NodeIntrinsicFactory
 public final class UnsafeCopyNode {
 
     public static boolean intrinsify(GraphBuilderContext b, ValueNode sourceObject, ValueNode sourceOffset, ValueNode destinationObject,

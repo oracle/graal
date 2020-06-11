@@ -34,6 +34,7 @@ import java.util.Arrays;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.graph.Node.NodeIntrinsicFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.graph.spi.Simplifiable;
@@ -65,6 +66,7 @@ import jdk.vm.ci.meta.JavaKind;
           size = SIZE_2,
           sizeRationale = "Rough estimation of the call operation itself.")
 // @formatter:on
+@NodeIntrinsicFactory
 public class ForeignCallWithExceptionNode extends WithExceptionNode implements ForeignCall, Simplifiable {
     public static final NodeClass<ForeignCallWithExceptionNode> TYPE = NodeClass.create(ForeignCallWithExceptionNode.class);
 

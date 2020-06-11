@@ -32,6 +32,7 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.Node.NodeIntrinsicFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
@@ -53,6 +54,7 @@ import jdk.vm.ci.meta.Value;
  * Represents {@link GraalHotSpotVMConfig} values that may change after compilation.
  */
 @NodeInfo(cycles = CYCLES_1, size = SIZE_1)
+@NodeIntrinsicFactory
 public class GraalHotSpotVMConfigNode extends FloatingNode implements LIRLowerable, Canonicalizable {
     public static final NodeClass<GraalHotSpotVMConfigNode> TYPE = NodeClass.create(GraalHotSpotVMConfigNode.class);
 
@@ -108,7 +110,6 @@ public class GraalHotSpotVMConfigNode extends FloatingNode implements LIRLowerab
         return loadIntConfigValue(HotSpotMarkId.LOG_OF_HEAP_REGION_GRAIN_BYTES);
     }
 
-    @SuppressWarnings("unused")
     public static boolean intrinsify(GraphBuilderContext b, @InjectedNodeParameter Stamp returnStamp, @InjectedNodeParameter GraalHotSpotVMConfig config, HotSpotMarkId mark) {
         HotSpotReplacementsImpl replacements = (HotSpotReplacementsImpl) b.getReplacements();
         if (replacements.isEncodingSnippets()) {
