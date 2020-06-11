@@ -6,6 +6,7 @@ vm_java_11: ${labsjdk-ce-11} {
 }
 svm_suite: /substratevm
 vm_extra_suites: "truffleruby,graalpython,fastr,/wasm"
+vm_extra_suites_aarch64: /wasm
 vm_extra_suites_windows: /wasm
 custom_vm_linux: {}
 custom_vm_darwin: {}
@@ -135,8 +136,8 @@ builds += [
   # Deploy GraalVM base on JDK11 for Linux/AARCH64
   ${vm_java_11} ${full_vm_build_linux_aarch64} ${linux-deploy} ${deploy_vm_linux_aarch64} {
     run: [
-      ${mx_vm_installables} ["--exclude-components="${non-product-vm-components}, build]
-      ${mx_vm_installables} ["--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk_components}
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites_aarch64}, "--exclude-components="${non-product-vm-components}, build]
+      ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites_aarch64}, "--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk_components}
     ] ${collect_profiles} [
       ${mx_vm_common} ${vm_profiles} [build]
       ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
