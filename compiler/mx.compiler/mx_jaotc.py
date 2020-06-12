@@ -149,7 +149,7 @@ jaotc_test_info = {
             r'exclude org\.graalvm\.compiler\.hotspot\.replacements\..*',
             r'exclude org\.graalvm\.compiler\.nodes\.java\.DynamicNewArrayNode\.new.*',
             r'exclude org\.graalvm\.compiler\.nodes\.PiNode\..*',
-            r'exclude org\.graalvm\.compiler\.hotspot\.stubs\.Plugin_.*',
+            r'exclude org\.graalvm\.compiler\.hotspot\.stubs\.Plugin.*',
             r'exclude org\.graalvm\.compiler\.hotspot\.stubs\.StubUtil\..*',
             r'exclude org\.graalvm\.compiler\.hotspot\.nodes\.GraalHotSpotVMConfigNode\..*',
             r'exclude org\.graalvm\.compiler\..*\.substitutions\..*',
