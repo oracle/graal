@@ -70,9 +70,4 @@ public class InteropUtils {
         Meta meta = klass.getMeta();
         return klass == meta.java_lang_Byte || klass == meta.java_lang_Short || klass == meta.java_lang_Float;
     }
-
-    public static boolean isAtMostDouble(Klass klass) {
-        Meta meta = klass.getMeta();
-        return klass == meta.java_lang_Byte || klass == meta.java_lang_Short || klass == meta.java_lang_Integer || klass == meta.java_lang_Float || klass == meta.java_lang_Double;
-    }
 }
