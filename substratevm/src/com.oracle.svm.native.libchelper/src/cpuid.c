@@ -214,12 +214,8 @@ void determineCPUFeatures(CPUFeatures* features) {
 #ifndef HWCAP_A53MAC
 #define HWCAP_A53MAC        (1L << 30)
 #endif
-#ifndef HWCAP_DMB_ATOMICS
-#define HWCAP_DMB_ATOMICS   (1L << 31)
-#endif
 
 #define CPU_ARM 'A'
-#define CPU_CAVIUM 'C'
 
 /*
  * Extracts the CPU features by both reading the hwcaps as well as
@@ -239,7 +235,6 @@ void determineCPUFeatures(CPUFeatures* features) {
   features->fLSE = !!(auxv & HWCAP_LSE);
   features->fSTXRPREFETCH = !!(auxv & HWCAP_STXR_PREFETCH);
   features->fA53MAC = !!(auxv & HWCAP_A53MAC);
-  features->fDMBATOMICS = !!(auxv & HWCAP_DMB_ATOMICS);
 
   //checking for features signaled in another way
 
@@ -274,7 +269,6 @@ void determineCPUFeatures(CPUFeatures* features) {
   if (_cpu == CPU_ARM && _cpu_lines == 1 && _model == 0xd07) features->fA53MAC = !!(1);
   if (_cpu == CPU_ARM && (_model == 0xd03 || _model2 == 0xd03)) features->fA53MAC = !!(1);
   if (_cpu == CPU_ARM && (_model == 0xd07 || _model2 == 0xd07)) features->fSTXRPREFETCH = !!(1);
-  if (_cpu == CPU_CAVIUM && _model == 0xA1 && _variant == 0) features->fDMBATOMICS = !!(1);
 }
 
 #else
