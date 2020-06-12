@@ -5,6 +5,7 @@ specVersion = "2"
 # openjdk8 JDKs on Linux are built by Oracle Labs
 # openjdk8 JDKs on macOS are based on AdoptOpenJDK binaries
 include "common.json"
+include "graal-common.json"
 
 # overlay version
 overlay = ${ci.overlay}
