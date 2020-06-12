@@ -174,8 +174,8 @@ public final class CompilerAsserts {
      * Indicates a code path that is not supposed to be reached during compilation or
      * interpretation. If it is reached then it is considered fatal internal error and execution
      * typically should not continue. Transfers to interpreter and
-     * {@link #transferToInterpreterAndInvalidate() invalidates} the compiled code and throws an
-     * {@link AssertionError} when reached unexpectedly.
+     * {@link CompilerDirectives#transferToInterpreterAndInvalidate() invalidates} the compiled code
+     * and throws an {@link AssertionError} when reached unexpectedly.
      * <p>
      * This method returns a runtime exception to be conveniently used in combination with Java
      * throw statements, for example:
@@ -200,8 +200,8 @@ public final class CompilerAsserts {
      * Indicates a code path that is not supposed to be reached during compilation or
      * interpretation. If it is reached then it is considered fatal internal error and execution
      * typically should not continue. Transfers to interpreter and
-     * {@link #transferToInterpreterAndInvalidate() invalidates} the compiled code and throws an
-     * {@link AssertionError} when reached unexpectedly.
+     * {@link CompilerDirectives#transferToInterpreterAndInvalidate() invalidates} the compiled code
+     * and throws an {@link AssertionError} when reached unexpectedly.
      * <p>
      * This method returns a runtime exception to be conveniently used in combination with Java
      * throw statements, for example:
@@ -227,8 +227,8 @@ public final class CompilerAsserts {
      * Indicates a code path that is not supposed to be reached during compilation or
      * interpretation. If it is reached then it is considered fatal internal error and execution
      * typically should not continue. Transfers to interpreter and
-     * {@link #transferToInterpreterAndInvalidate() invalidates} the compiled code and throws an
-     * {@link AssertionError} when reached unexpectedly.
+     * {@link CompilerDirectives#transferToInterpreterAndInvalidate() invalidates} the compiled code
+     * and throws an {@link AssertionError} when reached unexpectedly.
      * <p>
      * This method returns a runtime exception to be conveniently used in combination with Java
      * throw statements, for example:
@@ -254,8 +254,8 @@ public final class CompilerAsserts {
      * Indicates a code path that is not supposed to be reached during compilation or
      * interpretation. If it is reached then it is considered fatal internal error and execution
      * typically should not continue. Transfers to interpreter and
-     * {@link #transferToInterpreterAndInvalidate() invalidates} the compiled code and throws an
-     * {@link AssertionError} when reached unexpectedly.
+     * {@link CompilerDirectives#transferToInterpreterAndInvalidate() invalidates} the compiled code
+     * and throws an {@link AssertionError} when reached unexpectedly.
      * <p>
      * This method returns a runtime exception to be conveniently used in combination with Java
      * throw statements, for example:
@@ -267,6 +267,7 @@ public final class CompilerAsserts {
      *     throw shouldNotReachHere("Additional message");
      * }
      * </pre>
+     *
      * @param message an additional message for the exception thrown.
      * @param cause the cause if an exception was responsible for the unexpected case.
      *

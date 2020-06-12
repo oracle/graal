@@ -430,8 +430,8 @@ public final class Context implements AutoCloseable {
      * Parses but does not evaluate a guest language code literal using a provided
      * {@link Language#getId() language id} and character sequence and returns a {@link Value value}
      * that can be {@link Value#execute(Object...) executed}. The provided {@link CharSequence} must
-     * represent an immutable String. This method represents a short-hand for
-     * {@link #parse(Source)}.
+     * represent an immutable String. This method represents a short-hand for {@link #parse(Source)}
+     * .
      * <p>
      * The result value only supports an empty set of arguments to {@link Value#execute(Object...)
      * execute}. If executed repeatedly then the source is evaluated multiple times.
