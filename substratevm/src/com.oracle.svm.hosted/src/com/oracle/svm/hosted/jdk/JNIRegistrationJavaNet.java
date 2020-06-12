@@ -82,8 +82,16 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
                  * The libextnet was actually introduced in Java 9, but the support for Linux and
                  * Darwin was added later in Java 10 and Java 11 respectively.
                  */
-                rerunClassInit(a, "jdk.net.ExtendedSocketOptions", "sun.net.ext.ExtendedSocketOptions",
-                                "jdk.net.ExtendedSocketOptions$PlatformSocketOptions");
+                rerunClassInit(a, "jdk.net.ExtendedSocketOptions", "jdk.net.ExtendedSocketOptions$PlatformSocketOptions");
+                /*
+                 * Different JDK versions are not consistent about the "ext" in the package name. We
+                 * need to support both variants.
+                 */
+                if (a.findClassByName("sun.net.ext.ExtendedSocketOptions") != null) {
+                    rerunClassInit(a, "sun.net.ext.ExtendedSocketOptions");
+                } else {
+                    rerunClassInit(a, "sun.net.ExtendedSocketOptions");
+                }
             }
             if (isDarwin()) {
                 /* Caches the default interface. */
