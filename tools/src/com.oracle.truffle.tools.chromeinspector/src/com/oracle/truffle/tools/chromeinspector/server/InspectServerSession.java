@@ -120,6 +120,24 @@ public final class InspectServerSession implements MessageEndpoint {
         return debugger;
     }
 
+    public void dispose() {
+        CommandProcessThread cmdProcessThread;
+        synchronized (this) {
+            this.messageEndpoint = null;
+            cmdProcessThread = processThread;
+            if (cmdProcessThread != null) {
+                cmdProcessThread.dispose();
+                processThread = null;
+            }
+        }
+        if (cmdProcessThread != null) {
+            try {
+                cmdProcessThread.join();
+            } catch (InterruptedException e) {
+            }
+        }
+    }
+
     public synchronized void setMessageListener(MessageEndpoint messageListener) {
         this.messageEndpoint = messageListener;
         if (messageListener != null && processThread == null) {

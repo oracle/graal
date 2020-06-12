@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,21 +22,36 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.tools.chromeinspector.instrument;
+package com.oracle.truffle.tools.chromeinspector.test;
 
-import java.io.IOException;
+import java.lang.ref.WeakReference;
+import java.util.HashSet;
+import java.util.Set;
 
-/**
- * Web socket connection for the inspector protocol.
- */
-public interface InspectorWSConnection {
+import org.junit.After;
+import org.junit.Before;
 
-    int getPort();
+import org.graalvm.polyglot.Engine;
 
-    void consoleAPICall(Token token, String type, Object text);
+import com.oracle.truffle.api.test.GCUtils;
 
-    void close(Token token) throws IOException;
+abstract class EnginesGCedTest {
 
-    default void dispose() {
+    private Set<WeakReference<Engine>> engineRefs;
+
+    @Before
+    public void setUp() {
+        engineRefs = new HashSet<>();
+    }
+
+    @After
+    public void tearDown() {
+        for (WeakReference<Engine> engineRef : engineRefs) {
+            GCUtils.assertGc("Engine not collected", engineRef);
+        }
+    }
+
+    protected final void addEngineReference(Engine engine) {
+        engineRefs.add(new WeakReference<>(engine));
     }
 }
