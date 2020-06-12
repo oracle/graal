@@ -80,6 +80,11 @@ public final class WSInterceptorServer implements InspectorWSConnection, Message
     }
 
     @Override
+    public void dispose() {
+        iss.dispose();
+    }
+
+    @Override
     public void consoleAPICall(Token tokenToCall, String type, Object text) {
         iss.consoleAPICall(type, text);
     }
