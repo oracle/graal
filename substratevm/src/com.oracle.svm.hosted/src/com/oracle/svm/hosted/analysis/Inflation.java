@@ -47,7 +47,6 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.hub.AnnotationsEncoding;
 import org.graalvm.compiler.core.common.SuppressSVMWarnings;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.options.OptionValues;
@@ -72,6 +71,7 @@ import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.annotate.UnknownPrimitiveField;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
 import com.oracle.svm.core.hub.AnnotatedSuperInfo;
+import com.oracle.svm.core.hub.AnnotationsEncoding;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.GenericInfo;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
@@ -361,7 +361,18 @@ public class Inflation extends BigBang {
         }
 
         Type[] genericInterfaces = Arrays.stream(allGenericInterfaces).filter(this::isTypeAllowed).toArray(Type[]::new);
-        Type[] cachedGenericInterfaces = genericInterfacesMap.computeIfAbsent(new GenericInterfacesEncodingKey(genericInterfaces), k -> genericInterfaces);
+        Type[] cachedGenericInterfaces;
+        try {
+            cachedGenericInterfaces = genericInterfacesMap.computeIfAbsent(new GenericInterfacesEncodingKey(genericInterfaces), k -> genericInterfaces);
+        } catch (MalformedParameterizedTypeException | TypeNotPresentException | NoClassDefFoundError t) {
+            /*
+             * Computing the hash code of generic interfaces can fail due to missing types. Ignore
+             * the exception and proceed without caching. De-duplication of generic interfaces is an
+             * optimization and not necessary for correctness.
+             */
+            cachedGenericInterfaces = genericInterfaces;
+        }
+
         Type genericSuperClass;
         try {
             genericSuperClass = javaClass.getGenericSuperclass();
