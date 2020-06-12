@@ -57,6 +57,11 @@ public abstract class InteropException extends Exception {
         super(null, null);
     }
 
+    /**
+     * No stack trace for interop exceptions.
+     *
+     * @since 20.2
+     */
     @SuppressWarnings("sync-override")
     @Override
     public Throwable fillInStackTrace() {
