@@ -75,7 +75,16 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
         }
 
         if (hasPlatformSocketOptions) {
-            rerunClassInit(a, "jdk.net.ExtendedSocketOptions", "sun.net.ext.ExtendedSocketOptions", "jdk.net.ExtendedSocketOptions$PlatformSocketOptions");
+            rerunClassInit(a, "jdk.net.ExtendedSocketOptions", "jdk.net.ExtendedSocketOptions$PlatformSocketOptions");
+            /*
+             * Different JDK versions are not consistent about the "ext" in the package name. We
+             * need to support both variants.
+             */
+            if (a.findClassByName("sun.net.ext.ExtendedSocketOptions") != null) {
+                rerunClassInit(a, "sun.net.ext.ExtendedSocketOptions");
+            } else {
+                rerunClassInit(a, "sun.net.ExtendedSocketOptions");
+            }
         }
     }
 
