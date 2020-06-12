@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
 
 class ResultsPrinter {
 
-    private static final String FORMAT = "[warmup estimator] %25s | %-15s | ";
+    private static final String FORMAT = "[warmup estimator] %-25s | %-15s | ";
     private static final String DOUBLE_FORMAT = FORMAT + "%f\n";
     private static final String LONG_FORMAT = FORMAT + "%d\n";
     private final List<Results> resultsList;
