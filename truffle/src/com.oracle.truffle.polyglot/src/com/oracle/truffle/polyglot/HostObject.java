@@ -344,8 +344,13 @@ final class HostObject implements TruffleObject {
         } catch (ClassCastException | NullPointerException e) {
             // conversion failed by ToJavaNode
             error.enter();
-            throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
+            throw UnsupportedTypeException.create(new Object[]{value}, getMessage(e));
         }
+    }
+
+    @TruffleBoundary
+    private static String getMessage(RuntimeException e) {
+        return e.getMessage();
     }
 
     @ExportMessage
@@ -455,7 +460,7 @@ final class HostObject implements TruffleObject {
                 javaValue = toHostNode.execute(value, obj.getClass().getComponentType(), null, receiver.languageContext, true);
             } catch (PolyglotEngineException e) {
                 error.enter();
-                throw UnsupportedTypeException.create(new Object[]{value}, e.e.getMessage());
+                throw UnsupportedTypeException.create(new Object[]{value}, getMessage(e));
             }
             try {
                 arraySet.execute(obj, (int) index, javaValue);
@@ -463,6 +468,11 @@ final class HostObject implements TruffleObject {
                 error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
+        }
+
+        @TruffleBoundary
+        private static String getMessage(PolyglotEngineException e) {
+            return e.e.getMessage();
         }
 
         @Specialization(guards = {"isList.execute(receiver)"}, limit = "1")
@@ -480,7 +490,7 @@ final class HostObject implements TruffleObject {
                 javaValue = toHostNode.execute(value, Object.class, null, receiver.languageContext, true);
             } catch (PolyglotEngineException e) {
                 error.enter();
-                throw UnsupportedTypeException.create(new Object[]{value}, e.e.getMessage());
+                throw UnsupportedTypeException.create(new Object[]{value}, getMessage(e));
             }
             try {
                 List<Object> list = ((List<Object>) receiver.obj);
