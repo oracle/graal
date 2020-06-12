@@ -301,6 +301,7 @@ public final class StaticObject implements TruffleObject {
     @ExportMessage
     byte asByte() throws UnsupportedMessageException {
         if (!fitsInByte()) {
+            CompilerDirectives.transferToInterpreter();
             throw UnsupportedMessageException.create();
         }
         return (byte) getKlass().lookupMethod(Name.byteValue, Signature._byte).invokeDirect(this);
@@ -309,6 +310,7 @@ public final class StaticObject implements TruffleObject {
     @ExportMessage
     short asShort() throws UnsupportedMessageException {
         if (!fitsInShort()) {
+            CompilerDirectives.transferToInterpreter();
             throw UnsupportedMessageException.create();
         }
         return (short) getKlass().lookupMethod(Name.shortValue, Signature._short).invokeDirect(this);
@@ -317,6 +319,7 @@ public final class StaticObject implements TruffleObject {
     @ExportMessage
     public int asInt() throws UnsupportedMessageException {
         if (!fitsInInt()) {
+            CompilerDirectives.transferToInterpreter();
             throw UnsupportedMessageException.create();
         }
         return (int) getKlass().lookupMethod(Name.intValue, Signature._int).invokeDirect(this);
@@ -325,6 +328,7 @@ public final class StaticObject implements TruffleObject {
     @ExportMessage
     long asLong() throws UnsupportedMessageException {
         if (!fitsInLong()) {
+            CompilerDirectives.transferToInterpreter();
             throw UnsupportedMessageException.create();
         }
         return (long) getKlass().lookupMethod(Name.longValue, Signature._long).invokeDirect(this);
@@ -333,6 +337,7 @@ public final class StaticObject implements TruffleObject {
     @ExportMessage
     float asFloat() throws UnsupportedMessageException {
         if (!fitsInFloat()) {
+            CompilerDirectives.transferToInterpreter();
             throw UnsupportedMessageException.create();
         }
         return (float) getKlass().lookupMethod(Name.floatValue, Signature._float).invokeDirect(this);
@@ -341,6 +346,7 @@ public final class StaticObject implements TruffleObject {
     @ExportMessage
     double asDouble() throws UnsupportedMessageException {
         if (!fitsInDouble()) {
+            CompilerDirectives.transferToInterpreter();
             throw UnsupportedMessageException.create();
         }
         return (double) getKlass().lookupMethod(Name.doubleValue, Signature._double).invokeDirect(this);
