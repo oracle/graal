@@ -21,6 +21,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added Truffle DSL `@Bind` annotation to common out expression for use in guards and specialization methods.
 * Added support for @Cached annotations to be weak using `@Cached(value ="...", weak = true)`. 
 * Added `TruffleWeakReference` utility to be used on partial evaluated code paths instead of the default JDK `WeakReference`.
+* Removed deprecated API in `com.oracle.truffle.api.source.Source`. The APIs were deprecated in 19.0.
 
 ## Version 20.1.0
 * Added `@GenerateLibrary(dynamicDispatchEnabled = false)` that allows to disable dynamic dispatch semantics for a library. The default is `true`.

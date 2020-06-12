@@ -85,6 +85,7 @@ import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -186,8 +187,6 @@ public abstract class Accessor {
         public abstract org.graalvm.polyglot.Source getPolyglotSource(Source source);
 
         public abstract String findMimeType(URL url, Object fileSystemContext) throws IOException;
-
-        public abstract boolean isLegacySource(Source soure);
 
         public abstract SourceBuilder newBuilder(String language, File origin);
 
@@ -377,9 +376,9 @@ public abstract class Accessor {
 
         public abstract Object getCurrentOuterContext();
 
-        public abstract boolean isCharacterBasedSource(String language, String mimeType);
+        public abstract boolean isCharacterBasedSource(Object fsEngineObject, String language, String mimeType);
 
-        public abstract Set<String> getValidMimeTypes(String language);
+        public abstract Set<String> getValidMimeTypes(Object engineObject, String language);
 
         public abstract Object asHostObject(Object value);
 
@@ -402,8 +401,6 @@ public abstract class Accessor {
         public abstract <T extends TruffleLanguage<C>, C> ContextReference<C> getDirectContextReference(Object polyglotEngine, TruffleLanguage<?> language, Class<T> languageClass);
 
         public abstract FileSystem getFileSystem(Object polyglotContext);
-
-        public abstract Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> getFileTypeDetectorsSupplier(Object polyglotContext);
 
         public abstract boolean isPolyglotEvalAllowed(Object polyglotLanguageContext);
 
@@ -440,7 +437,7 @@ public abstract class Accessor {
 
         public abstract String getUnparsedOptionValue(OptionValues optionValues, OptionKey<?> optionKey);
 
-        public abstract String getRelativePathInLanguageHome(TruffleFile truffleFile);
+        public abstract String getPreinitializedRelativePathInLanguageHome(TruffleFile truffleFile);
 
         public abstract void onSourceCreated(Source source);
 
@@ -461,6 +458,15 @@ public abstract class Accessor {
         public abstract RuntimeException engineToLanguageException(Throwable t);
 
         public abstract RuntimeException engineToInstrumentException(Throwable t);
+
+        public abstract Object getCurrentFileSystemContext();
+
+        public abstract Object getPublicFileSystemContext(Object polyglotContextImpl);
+
+        public abstract Object getInternalFileSystemContext(Object polyglotContextImpl);
+
+        public abstract Map<String, Collection<? extends FileTypeDetector>> getEngineFileTypeDetectors(Object engineFileSystemContext);
+
     }
 
     public abstract static class LanguageSupport extends Support {
@@ -475,8 +481,7 @@ public abstract class Accessor {
 
         public abstract Env createEnv(Object polyglotLanguageContext, TruffleLanguage<?> language, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config,
                         OptionValues options,
-                        String[] applicationArguments, FileSystem fileSystem, FileSystem internalFileSystem,
-                        Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors);
+                        String[] applicationArguments);
 
         public abstract boolean areOptionsCompatible(TruffleLanguage<?> language, OptionValues firstContextOptions, OptionValues newContextOptions);
 
@@ -546,8 +551,7 @@ public abstract class Accessor {
 
         public abstract Iterable<Scope> findTopScopes(Env env);
 
-        public abstract Env patchEnvContext(Env env, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options, String[] applicationArguments,
-                        FileSystem fileSystem, FileSystem internalFileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors);
+        public abstract Env patchEnvContext(Env env, OutputStream stdOut, OutputStream stdErr, InputStream stdIn, Map<String, Object> config, OptionValues options, String[] applicationArguments);
 
         public abstract boolean initializeMultiContext(TruffleLanguage<?> language);
 
@@ -569,9 +573,7 @@ public abstract class Accessor {
 
         public abstract TruffleLanguage<?> getLanguage(Env env);
 
-        public abstract Object createFileSystemContext(FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors);
-
-        public abstract Object getCurrentFileSystemContext();
+        public abstract Object createFileSystemContext(Object engineObject, FileSystem fileSystem);
 
         public abstract String detectMimeType(TruffleFile file, Set<String> validMimeTypes);
 
@@ -579,13 +581,11 @@ public abstract class Accessor {
 
         public abstract TruffleFile getTruffleFile(String path, Object fileSystemContext);
 
-        public abstract TruffleFile getTruffleFile(URI uri, Object fileSystemContext);
-
         public abstract boolean hasAllAccess(Object fileSystemContext);
 
-        public abstract TruffleFile getTruffleFile(String path, FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectorsSupplier);
+        public abstract TruffleFile getTruffleFile(Object context, String path);
 
-        public abstract TruffleFile getTruffleFile(URI uri, FileSystem fileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectorsSupplier);
+        public abstract TruffleFile getTruffleFile(Object context, URI uri);
 
         public abstract SecurityException throwSecurityException(String message);
 
@@ -596,6 +596,10 @@ public abstract class Accessor {
         public abstract Object getScopedView(TruffleLanguage.Env env, Node node, Frame frame, Object value);
 
         public abstract Object getLanguageView(TruffleLanguage.Env env, Object value);
+
+        public abstract Object getFileSystemContext(TruffleFile file);
+
+        public abstract Object getFileSystemEngineObject(Object fileSystemContext);
 
     }
 

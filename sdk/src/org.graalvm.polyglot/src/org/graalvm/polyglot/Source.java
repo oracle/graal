@@ -285,7 +285,7 @@ public final class Source {
      * @since 19.0
      */
     public CharSequence getCharacters() {
-        return getImpl().getCode(impl);
+        return getImpl().getCharacters(impl);
     }
 
     /**
@@ -322,7 +322,7 @@ public final class Source {
      * @since 19.0
      */
     public CharSequence getCharacters(int lineNumber) {
-        return getImpl().getCode(impl, lineNumber);
+        return getImpl().getCharacters(impl, lineNumber);
     }
 
     /**

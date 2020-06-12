@@ -91,15 +91,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.Random;
 import java.util.Set;
-import java.util.function.Supplier;
 
 import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-
-import java.util.Random;
 
 /**
  * An abstract representation of a file used by Truffle languages.
@@ -266,6 +264,10 @@ public final class TruffleFile {
 
     Path getSPIPath() {
         return normalizedPath;
+    }
+
+    FileSystemContext getFileSystemContext() {
+        return fileSystemContext;
     }
 
     FileSystem getSPIFileSystem() {
@@ -1600,6 +1602,9 @@ public final class TruffleFile {
     @TruffleBoundary
     String detectMimeType(Set<String> validMimeTypes) {
         try {
+            if (validMimeTypes != null && validMimeTypes.isEmpty()) {
+                return null;
+            }
             checkFileOperationPreconditions();
             String result = fileSystemContext.fileSystem.getMimeType(normalizedPath);
             if (result != null && (validMimeTypes == null || validMimeTypes.contains(result))) {
@@ -1967,22 +1972,25 @@ public final class TruffleFile {
     }
 
     static final class FileSystemContext {
-        final FileSystem fileSystem;
-        private final Supplier<Map<String, Collection<? extends FileTypeDetector>>> fileTypeDetectorsSupplier;
-        private volatile Map<String, Collection<? extends FileTypeDetector>> fileTypeDetectors;
 
-        FileSystemContext(FileSystem fileSystem, Supplier<Map<String, Collection<? extends FileTypeDetector>>> fileTypeDetectorsSupplier) {
-            Objects.requireNonNull(fileSystem, "FileSystem must be non null.");
-            Objects.requireNonNull(fileTypeDetectorsSupplier, "FileTypeDetectorsSupplier must be non null.");
+        // instance of PolyglotContextConfig or PolyglotSource.EmbedderFileSystemContext
+        final Object engineObject;
+
+        private volatile Map<String, Collection<? extends FileTypeDetector>> fileTypeDetectors;
+        final FileSystem fileSystem;
+
+        FileSystemContext(Object engineFileSystemContext, FileSystem fileSystem) {
+            Objects.requireNonNull(engineFileSystemContext);
+            Objects.requireNonNull(fileSystem);
+            this.engineObject = engineFileSystemContext;
             this.fileSystem = fileSystem;
-            this.fileTypeDetectorsSupplier = fileTypeDetectorsSupplier;
         }
 
         Iterable<? extends FileTypeDetector> getFileTypeDetectors(Set<String> mimeTypes) {
             Map<String, Collection<? extends FileTypeDetector>> result = fileTypeDetectors;
             if (result == null) {
-                result = fileTypeDetectorsSupplier.get();
-                assert result != null : "FileTypeDetectorsSupplier returned null.";
+                result = LanguageAccessor.engineAccess().getEngineFileTypeDetectors(engineObject);
+                assert result != null;
                 fileTypeDetectors = result;
             }
             Set<FileTypeDetector> filtered = new HashSet<>();
