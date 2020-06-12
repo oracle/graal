@@ -25,7 +25,14 @@ package com.oracle.truffle.espresso.runtime;
 import static com.oracle.truffle.api.CompilerDirectives.castExact;
 import static com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import static com.oracle.truffle.espresso.impl.Klass.STATIC_TO_CLASS;
-import static com.oracle.truffle.espresso.runtime.InteropUtils.*;
+import static com.oracle.truffle.espresso.runtime.InteropUtils.inSafeIntegerRange;
+import static com.oracle.truffle.espresso.runtime.InteropUtils.isAtMostByte;
+import static com.oracle.truffle.espresso.runtime.InteropUtils.isAtMostDouble;
+import static com.oracle.truffle.espresso.runtime.InteropUtils.isAtMostFloat;
+import static com.oracle.truffle.espresso.runtime.InteropUtils.isAtMostInt;
+import static com.oracle.truffle.espresso.runtime.InteropUtils.isAtMostLong;
+import static com.oracle.truffle.espresso.runtime.InteropUtils.isAtMostShort;
+import static com.oracle.truffle.espresso.runtime.InteropUtils.isNegativeZero;
 import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 
 import java.lang.reflect.Array;
@@ -138,7 +145,32 @@ public final class StaticObject implements TruffleObject {
         if (isNull(this)) {
             return false;
         }
-        return isAtMostByte(getKlass());
+        if (isAtMostByte(getKlass())) {
+            return true;
+        }
+        Klass thisKlass = getKlass();
+        Meta meta = thisKlass.getMeta();
+        if (thisKlass == meta.java_lang_Short) {
+            short content = getShortField(meta.java_lang_Short_value);
+            return (byte) content == content;
+        }
+        if (thisKlass == meta.java_lang_Integer) {
+            int content = getIntField(meta.java_lang_Integer_value);
+            return (byte) content == content;
+        }
+        if (thisKlass == meta.java_lang_Long) {
+            long content = getLongField(meta.java_lang_Long_value);
+            return (byte) content == content;
+        }
+        if (thisKlass == meta.java_lang_Float) {
+            float content = getFloatField(meta.java_lang_Float_value);
+            return (byte) content == content && !isNegativeZero(content);
+        }
+        if (thisKlass == meta.java_lang_Double) {
+            double content = getDoubleField(meta.java_lang_Double_value);
+            return (byte) content == content && !isNegativeZero(content);
+        }
+        return false;
     }
 
     @ExportMessage
@@ -146,7 +178,28 @@ public final class StaticObject implements TruffleObject {
         if (isNull(this)) {
             return false;
         }
-        return isAtMostShort(getKlass());
+        if (isAtMostShort(getKlass())) {
+            return true;
+        }
+        Klass thisKlass = getKlass();
+        Meta meta = thisKlass.getMeta();
+        if (thisKlass == meta.java_lang_Integer) {
+            int content = getIntField(meta.java_lang_Integer_value);
+            return (short) content == content;
+        }
+        if (thisKlass == meta.java_lang_Long) {
+            long content = getLongField(meta.java_lang_Long_value);
+            return (short) content == content;
+        }
+        if (thisKlass == meta.java_lang_Float) {
+            float content = getFloatField(meta.java_lang_Float_value);
+            return (short) content == content && !isNegativeZero(content);
+        }
+        if (thisKlass == meta.java_lang_Double) {
+            double content = getDoubleField(meta.java_lang_Double_value);
+            return (short) content == content && !isNegativeZero(content);
+        }
+        return false;
     }
 
     @ExportMessage
@@ -165,11 +218,11 @@ public final class StaticObject implements TruffleObject {
         }
         if (thisKlass == meta.java_lang_Float) {
             float content = getFloatField(meta.java_lang_Float_value);
-            return inIntRange(content) && (int) content == content;
+            return InteropUtils.inSafeIntegerRange(content) && !isNegativeZero(content) && (int) content == content;
         }
         if (thisKlass == meta.java_lang_Double) {
             double content = getDoubleField(meta.java_lang_Double_value);
-            return inIntRange(content) && (int) content == content;
+            return (int) content == content && !isNegativeZero(content);
         }
         return false;
     }
@@ -186,11 +239,11 @@ public final class StaticObject implements TruffleObject {
         Meta meta = thisKlass.getMeta();
         if (thisKlass == meta.java_lang_Float) {
             float content = getFloatField(meta.java_lang_Float_value);
-            return inIntRange(content) && (int) content == content;
+            return InteropUtils.inSafeIntegerRange(content) && !isNegativeZero(content) && (long) content == content;
         }
         if (thisKlass == meta.java_lang_Double) {
             double content = getDoubleField(meta.java_lang_Double_value);
-            return inIntRange(content) && (int) content == content;
+            return InteropUtils.inSafeIntegerRange(content) && !isNegativeZero(content) && (long) content == content;
         }
         return false;
 
@@ -201,7 +254,27 @@ public final class StaticObject implements TruffleObject {
         if (isNull(this)) {
             return false;
         }
-        return isAtMostFloat(getKlass());
+        if (isAtMostFloat(getKlass())) {
+            return true;
+        }
+        Klass thisKlass = getKlass();
+        Meta meta = thisKlass.getMeta();
+        // We might lose precision when we convert an int or a long to a float, however, we still
+        // perform the conversion.
+        // This is consistent with Truffle interop, see GR-22718 for more details.
+        if (thisKlass == meta.java_lang_Integer) {
+            int content = getIntField(meta.java_lang_Integer_value);
+            return (float) content == content;
+        }
+        if (thisKlass == meta.java_lang_Long) {
+            long content = getLongField(meta.java_lang_Long_value);
+            return (float) content == content;
+        }
+        if (thisKlass == meta.java_lang_Double) {
+            double content = getDoubleField(meta.java_lang_Double_value);
+            return !Double.isFinite(content) || (float) content == content;
+        }
+        return false;
     }
 
     @ExportMessage
@@ -209,14 +282,18 @@ public final class StaticObject implements TruffleObject {
         if (isNull(this)) {
             return false;
         }
-        if (isAtMostDouble(getKlass())) {
-            return true;
-        }
         Klass thisKlass = getKlass();
         Meta meta = thisKlass.getMeta();
+        if (isAtMostInt(getKlass()) || thisKlass == meta.java_lang_Double) {
+            return true;
+        }
         if (thisKlass == meta.java_lang_Long) {
             long content = getLongField(meta.java_lang_Long_value);
             return (double) content == content;
+        }
+        if (thisKlass == meta.java_lang_Float) {
+            float content = getFloatField(meta.java_lang_Float_value);
+            return !Float.isFinite(content) || (double) content == content;
         }
         return false;
     }
