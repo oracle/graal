@@ -25,8 +25,6 @@
 package org.graalvm.compiler.loop;
 
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.LinkedList;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
@@ -92,8 +90,8 @@ public class LoopsData {
         return loops;
     }
 
-    public Collection<LoopEx> countedLoops() {
-        List<LoopEx> counted = new LinkedList<>();
+    public List<LoopEx> countedLoops() {
+        List<LoopEx> counted = new ArrayList<>();
         for (LoopEx loop : loops()) {
             if (loop.isCounted()) {
                 counted.add(loop);
