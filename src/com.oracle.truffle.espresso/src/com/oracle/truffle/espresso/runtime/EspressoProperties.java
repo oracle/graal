@@ -319,7 +319,7 @@ abstract class PlatformBuilder extends EspressoProperties.Builder {
     @Override
     List<Path> defaultBootClasspath() {
         Path path = javaHome().resolve(RT_JAR);
-        if (Files.exists(path)) {
+        if (Files.isReadable(path)) {
             bootClassPathVersion(BootClassPathType.RT_JAR);
             List<Path> paths = new ArrayList<>(PATHS_SIZE);
             for (Path p : BOOT_CLASSPATH) {
@@ -328,14 +328,14 @@ abstract class PlatformBuilder extends EspressoProperties.Builder {
             return paths;
         }
         path = javaHome().resolve(MODULES_IMAGE);
-        if (Files.exists(path)) {
+        if (Files.isReadable(path)) {
             bootClassPathVersion(BootClassPathType.IMAGE);
             List<Path> paths = new ArrayList<>(1);
             paths.add(path);
             return paths;
         }
         path = javaHome().resolve(MODULES_EXPLODED);
-        if (Files.exists(path) && Files.isDirectory(path)) {
+        if (Files.isDirectory(path)) {
             bootClassPathVersion(BootClassPathType.EXPLODED);
             List<Path> paths = new ArrayList<>(1);
             paths.add(path);

@@ -163,11 +163,21 @@ class JImageLibrary extends NativeEnv implements ContextAccess {
     }
 
     private static TruffleObject getNativeString(String name) {
-        // Be super safe with the size of the buffer.
-        ByteBuffer bb = allocateDirect(name.length() + 1, JavaKind.Char);
-        encoder.encode(CharBuffer.wrap(name), bb, false);
-        bb.put((byte) 0);
-        return byteBufferPointer(bb);
+        int length = ((int) (name.length() * encoder.averageBytesPerChar())) + 1;
+        for (;;) {
+            // Be super safe with the size of the buffer.
+            ByteBuffer bb = allocateDirect(length);
+            encoder.reset();
+            encoder.encode(CharBuffer.wrap(name), bb, false);
+            if (bb.position() < bb.capacity()) {
+                // We have at least one byte of leeway: null-terminate the string.
+                bb.put((byte) 0);
+                return byteBufferPointer(bb);
+            }
+            // Buffer was not big enough, retry with a bigger one.
+            length = 1;
+            // TODO(garcia): introduce some kind of limitation on the size of the encoded string ?
+        }
     }
 
     @Override

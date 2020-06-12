@@ -46,7 +46,7 @@ public class ExplodedModulesHelper implements ModulesReaderHelper {
     @Override
     public byte[] getClassBytes(String moduleName, String name) {
         Path pathname = path.resolve(moduleName).resolve(name);
-        if (Files.exists(pathname) && Files.isReadable(pathname)) {
+        if (Files.isReadable(pathname)) {
             try {
                 return Files.readAllBytes(pathname);
             } catch (IOException e) {
