@@ -64,6 +64,9 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
     private static final Method findResource = ReflectionUtil.lookupMethod(ClassLoader.class, "findResource",
                     String.class);
 
+    private static final Method getClassLoadingLock = ReflectionUtil.lookupMethod(ClassLoader.class, "getClassLoadingLock",
+                    String.class);
+
     public NativeImageSystemClassLoader(ClassLoader defaultSystemClassLoader) {
         super(defaultSystemClassLoader);
         this.defaultSystemClassLoader = defaultSystemClassLoader;
@@ -83,8 +86,11 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
         Class<?> loadedClass = null;
         try {
             classLoader = getActiveClassLoader();
-            // invoke the "loadClass" method on the current class loader
-            loadedClass = ((Class<?>) loadClass.invoke(classLoader, name, resolve));
+            final Object lock = getClassLoadingLock.invoke(classLoader, name);
+            synchronized (lock) {
+                // invoke the "loadClass" method on the current class loader
+                loadedClass = ((Class<?>) loadClass.invoke(classLoader, name, resolve));
+            }
         } catch (Exception e) {
             if (e.getCause() instanceof ClassNotFoundException) {
                 throw ((ClassNotFoundException) e.getCause());
