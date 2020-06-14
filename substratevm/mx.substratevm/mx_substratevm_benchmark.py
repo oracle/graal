@@ -61,6 +61,7 @@ _NANOS_PER_SEC = 10 ** 9
 _conf_arg_prefix = '--config='
 _IMAGE_BENCH_REPETITIONS = 3
 _IMAGE_WARM_UP_ITERATIONS = 3
+_successful_stage_pattern = re.compile(r'Successfully finished the last specified stage:.*$', re.MULTILINE)
 
 @contextmanager
 def _timedelta(name, out=print):
@@ -423,6 +424,11 @@ class RenaissanceNativeImageBenchmarkSuite(mx_graal_benchmark.RenaissanceBenchma
 
         return agent_args + pgo_args + [benchmark_name] + ['-cp', self.create_classpath(bench_arg)] + vm_args + ['-jar', self.renaissancePath()] + run_args + [bench_arg]
 
+    def successPatterns(self):
+        return super(RenaissanceNativeImageBenchmarkSuite, self).successPatterns() + [
+            _successful_stage_pattern
+        ]
+
     def create_classpath(self, benchArg):
         harness_project = RenaissanceNativeImageBenchmarkSuite.RenaissanceProject('harness', benchmark_scalaversion(benchArg), self)
         group_project = RenaissanceNativeImageBenchmarkSuite.RenaissanceProject(benchmark_group(benchArg), benchmark_scalaversion(benchArg), self, harness_project)
@@ -662,6 +668,11 @@ class DaCapoNativeImageBenchmarkSuite(mx_graal_benchmark.DaCapoBenchmarkSuite, B
         cp = ':'.join([dacapo_extracted] + dacapo_jars + dacapo_dat_resources + dacapo_nested_resources)
         return cp
 
+    def successPatterns(self):
+        return super(DaCapoNativeImageBenchmarkSuite, self).successPatterns() + [
+            _successful_stage_pattern
+        ]
+
 
 mx_benchmark.add_bm_suite(DaCapoNativeImageBenchmarkSuite())
 
@@ -767,10 +778,17 @@ class ScalaDaCapoNativeImageBenchmarkSuite(mx_graal_benchmark.ScalaDaCapoBenchma
             cp += ':' + self.daCapoAdditionalLib()
         return cp
 
+
+    def successPatterns(self):
+        return super(ScalaDaCapoNativeImageBenchmarkSuite, self).successPatterns() + [
+            _successful_stage_pattern
+        ]
+
+
     @staticmethod
     def substitution_path():
-        bench_suite = mx.suite('nativeimage-benchmarks')
-        root_dir = mx.join(bench_suite.dir, "mxbuild")
+        bench_suite = mx.suite('substratevm')
+        root_dir = mx.join(bench_suite.dir, 'mxbuild')
         return os.path.abspath(mx.join(root_dir, 'java/com.oracle.svm.bench.scaladacapo/bin/'))
 
 
