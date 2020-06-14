@@ -639,7 +639,9 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
                             typeClassLoader == NativeImageGenerator.class.getClassLoader() ||
                             typeClassLoader == com.sun.crypto.provider.SunJCE.class.getClassLoader() ||
                             /* JDK 11 */
-                            typeClassLoader == OptionKey.class.getClassLoader()) {
+                            typeClassLoader == OptionKey.class.getClassLoader() ||
+                            /* JDK 15 */
+                            typeClassLoader == ConfigurableClassInitialization.class.getClassLoader()) {
                 return InitKind.BUILD_TIME;
             }
         }

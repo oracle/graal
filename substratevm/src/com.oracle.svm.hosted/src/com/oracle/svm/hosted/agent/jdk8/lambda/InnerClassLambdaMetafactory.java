@@ -329,6 +329,11 @@ import sun.security.action.GetPropertyAction;
                             new PropertyPermission("user.dir", "read"));
         }
 
+        return defineAnonymousClass(classBytes);
+    }
+
+    @SuppressWarnings("deprecation") // defineAnonymousClass deprecated since JDK 15
+    private Class<?> defineAnonymousClass(final byte[] classBytes) {
         return UNSAFE.defineAnonymousClass(targetClass, classBytes, null);
     }
 

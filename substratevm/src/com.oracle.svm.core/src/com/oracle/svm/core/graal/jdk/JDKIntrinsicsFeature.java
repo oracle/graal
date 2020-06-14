@@ -40,9 +40,8 @@ import org.graalvm.compiler.phases.util.Providers;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
-import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
+import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
-import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -50,8 +49,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 final class JDKIntrinsicsFeature implements GraalFeature {
 
     @Override
-    public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection,
-                    Map<SubstrateForeignCallDescriptor, SubstrateForeignCallLinkage> foreignCalls, boolean hosted) {
+    public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection, SubstrateForeignCallsProvider foreignCalls, boolean hosted) {
         ArraycopySnippets.registerForeignCalls(providers, foreignCalls);
         SubstrateObjectCloneSnippets.registerForeignCalls(providers, foreignCalls);
         SubstrateArraysCopyOfSnippets.registerForeignCalls(providers, foreignCalls);

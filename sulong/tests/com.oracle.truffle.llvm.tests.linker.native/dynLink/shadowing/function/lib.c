@@ -30,5 +30,5 @@
 #include <stdio.h>
 
 char *hello() {
-  return "function";
+    return "function";
 }

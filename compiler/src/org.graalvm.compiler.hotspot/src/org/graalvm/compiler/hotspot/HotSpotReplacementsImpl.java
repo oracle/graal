@@ -37,11 +37,13 @@ import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeSourcePosition;
+import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.meta.HotSpotWordOperationPlugin;
 import org.graalvm.compiler.hotspot.word.HotSpotOperation;
 import org.graalvm.compiler.nodes.Cancellable;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
@@ -49,7 +51,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
 import org.graalvm.compiler.nodes.spi.SnippetParameterInfo;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.replacements.ReplacementsImpl;
 
@@ -62,13 +63,18 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * them.
  */
 public class HotSpotReplacementsImpl extends ReplacementsImpl {
-    public HotSpotReplacementsImpl(Providers providers, SnippetReflectionProvider snippetReflection, BytecodeProvider bytecodeProvider, TargetDescription target) {
+    public HotSpotReplacementsImpl(HotSpotProviders providers, SnippetReflectionProvider snippetReflection, BytecodeProvider bytecodeProvider, TargetDescription target) {
         super(new GraalDebugHandlersFactory(snippetReflection), providers, snippetReflection, bytecodeProvider, target);
     }
 
-    HotSpotReplacementsImpl(HotSpotReplacementsImpl replacements, Providers providers) {
+    HotSpotReplacementsImpl(HotSpotReplacementsImpl replacements, HotSpotProviders providers) {
         super(new GraalDebugHandlersFactory(replacements.snippetReflection), providers, replacements.snippetReflection,
                         replacements.getDefaultReplacementBytecodeProvider(), replacements.target);
+    }
+
+    @Override
+    public HotSpotProviders getProviders() {
+        return (HotSpotProviders) super.getProviders();
     }
 
     public void maybeInitializeEncoder(OptionValues options) {
@@ -82,6 +88,14 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
                 }
             }
         }
+    }
+
+    /**
+     * Returns true if this Replacements is being used for preparation of snippets and substitutions
+     * for libgraal.
+     */
+    public boolean isEncodingSnippets() {
+        return false;
     }
 
     @Override
@@ -117,7 +131,7 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
     }
 
     @Override
-    public StructuredGraph getIntrinsicGraph(ResolvedJavaMethod method, CompilationIdentifier compilationId, DebugContext debug, Cancellable cancellable) {
+    public StructuredGraph getIntrinsicGraph(ResolvedJavaMethod method, CompilationIdentifier compilationId, DebugContext debug, AllowAssumptions allowAssumptions, Cancellable cancellable) {
         boolean useEncodedGraphs = UseEncodedGraphs.getValue(debug.getOptions());
         if (IS_IN_NATIVE_IMAGE || useEncodedGraphs) {
             HotSpotReplacementsImpl replacements = (HotSpotReplacementsImpl) providers.getReplacements();
@@ -128,17 +142,18 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
                     replacements.maybeInitializeEncoder(debug.getOptions());
                     replacements.registerMethodSubstitution(msp);
                 }
-                StructuredGraph methodSubstitution = replacements.getMethodSubstitution(msp, method, ROOT_COMPILATION, StructuredGraph.AllowAssumptions.YES, cancellable, debug.getOptions());
+                StructuredGraph methodSubstitution = replacements.getMethodSubstitution(msp, method, ROOT_COMPILATION, allowAssumptions, cancellable, debug.getOptions());
                 methodSubstitution.resetDebug(debug);
                 return methodSubstitution;
             }
             return null;
         }
-        return super.getIntrinsicGraph(method, compilationId, debug, cancellable);
+        return super.getIntrinsicGraph(method, compilationId, debug, allowAssumptions, cancellable);
     }
 
     @Override
-    public StructuredGraph getSubstitution(ResolvedJavaMethod targetMethod, int invokeBci, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition, OptionValues options) {
+    public StructuredGraph getSubstitution(ResolvedJavaMethod targetMethod, int invokeBci, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition,
+                    AllowAssumptions allowAssumptions, OptionValues options) {
         boolean useEncodedGraphs = UseEncodedGraphs.getValue(options);
         if (IS_IN_NATIVE_IMAGE || useEncodedGraphs) {
             InvocationPlugin plugin = getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(targetMethod);
@@ -150,12 +165,12 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
                 }
                 // This assumes the normal path creates the graph using
                 // GraphBuilderConfiguration.getSnippetDefault with omits exception edges
-                StructuredGraph subst = getMethodSubstitution(msPlugin, targetMethod, INLINE_AFTER_PARSING, StructuredGraph.AllowAssumptions.NO, null, options);
+                StructuredGraph subst = getMethodSubstitution(msPlugin, targetMethod, INLINE_AFTER_PARSING, allowAssumptions, null, options);
                 return subst;
             }
         }
 
-        return super.getSubstitution(targetMethod, invokeBci, trackNodeSourcePosition, replaceePosition, options);
+        return super.getSubstitution(targetMethod, invokeBci, trackNodeSourcePosition, replaceePosition, allowAssumptions, options);
     }
 
     @Override
@@ -179,6 +194,7 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
 
     @Override
     public void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition, OptionValues options) {
+        assert method.isStatic() || receiver != null : "must have a constant type for the receiver";
         if (!IS_IN_NATIVE_IMAGE) {
             assert !snippetRegistrationClosed : "Cannot register snippet after registration is closed: " + method.format("%H.%n(%p)");
             assert registeredSnippets.add(method) : "Cannot register snippet twice: " + method.format("%H.%n(%p)");
@@ -293,4 +309,12 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
         return null;
     }
 
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T> T getInjectedArgument(Class<T> capability) {
+        if (capability.equals(GraalHotSpotVMConfig.class)) {
+            return (T) getProviders().getConfig();
+        }
+        return super.getInjectedArgument(capability);
+    }
 }

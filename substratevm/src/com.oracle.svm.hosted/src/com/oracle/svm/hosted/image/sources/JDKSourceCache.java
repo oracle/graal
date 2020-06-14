@@ -58,7 +58,11 @@ public class JDKSourceCache extends SourceCache {
         Path srcZipPath;
         String javaSpecVersion = System.getProperty(JAVA_SPEC_VERSION_PROP);
         if (javaSpecVersion.equals("1.8")) {
-            srcZipPath = javaHomePath.resolve("src.zip");
+            Path srcZipDir = javaHomePath.getParent();
+            if (srcZipDir == null) {
+                VMError.shouldNotReachHere("Cannot resolve parent directory of " + javaHome);
+            }
+            srcZipPath = srcZipDir.resolve("src.zip");
         } else {
             assert javaSpecVersion.matches("[1-9][0-9]");
             srcZipPath = javaHomePath.resolve("lib").resolve("src.zip");

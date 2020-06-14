@@ -29,7 +29,9 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_64;
 
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.replacements.nodes.MacroNode;
 import org.graalvm.compiler.replacements.nodes.MacroStateSplitNode;
 
 @NodeInfo(size = SIZE_64, cycles = CYCLES_256)
@@ -40,6 +42,10 @@ public class StringIndexOfNode extends MacroStateSplitNode {
         super(TYPE, p);
     }
 
+    /**
+     * Even though this implementation is the same as {@link Lowerable#lower}, it is required
+     * because we would actually inherit {@link MacroNode#lower} which we do not want.
+     */
     @Override
     public void lower(LoweringTool tool) {
         tool.getLowerer().lower(this, tool);

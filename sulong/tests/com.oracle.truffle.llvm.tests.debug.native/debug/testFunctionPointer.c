@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -40,7 +40,6 @@ void voidFuncIntArg(int i) {
 
 void voidFuncIntVarArgs(int i, ...) {
 }
-
 
 int intFuncNoArgs(void) {
     return 42;

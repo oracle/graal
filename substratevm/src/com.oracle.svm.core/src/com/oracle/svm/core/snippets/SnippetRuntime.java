@@ -56,13 +56,13 @@ public class SnippetRuntime {
      * the original Math function as the foreign call. The backend will emit the machine code
      * sequence.
      */
-    public static final SubstrateForeignCallDescriptor ARITHMETIC_SIN = findForeignCall(UnaryOperation.SIN.foreignCallDescriptor.getName(), Math.class, "sin", true);
-    public static final SubstrateForeignCallDescriptor ARITHMETIC_COS = findForeignCall(UnaryOperation.COS.foreignCallDescriptor.getName(), Math.class, "cos", true);
-    public static final SubstrateForeignCallDescriptor ARITHMETIC_TAN = findForeignCall(UnaryOperation.TAN.foreignCallDescriptor.getName(), Math.class, "tan", true);
-    public static final SubstrateForeignCallDescriptor ARITHMETIC_LOG = findForeignCall(UnaryOperation.LOG.foreignCallDescriptor.getName(), Math.class, "log", true);
-    public static final SubstrateForeignCallDescriptor ARITHMETIC_LOG10 = findForeignCall(UnaryOperation.LOG10.foreignCallDescriptor.getName(), Math.class, "log10", true);
-    public static final SubstrateForeignCallDescriptor ARITHMETIC_EXP = findForeignCall(UnaryOperation.EXP.foreignCallDescriptor.getName(), Math.class, "exp", true);
-    public static final SubstrateForeignCallDescriptor ARITHMETIC_POW = findForeignCall(BinaryOperation.POW.foreignCallDescriptor.getName(), Math.class, "pow", true);
+    public static final SubstrateForeignCallDescriptor ARITHMETIC_SIN = findForeignCall(UnaryOperation.SIN.foreignCallSignature.getName(), Math.class, "sin", true);
+    public static final SubstrateForeignCallDescriptor ARITHMETIC_COS = findForeignCall(UnaryOperation.COS.foreignCallSignature.getName(), Math.class, "cos", true);
+    public static final SubstrateForeignCallDescriptor ARITHMETIC_TAN = findForeignCall(UnaryOperation.TAN.foreignCallSignature.getName(), Math.class, "tan", true);
+    public static final SubstrateForeignCallDescriptor ARITHMETIC_LOG = findForeignCall(UnaryOperation.LOG.foreignCallSignature.getName(), Math.class, "log", true);
+    public static final SubstrateForeignCallDescriptor ARITHMETIC_LOG10 = findForeignCall(UnaryOperation.LOG10.foreignCallSignature.getName(), Math.class, "log10", true);
+    public static final SubstrateForeignCallDescriptor ARITHMETIC_EXP = findForeignCall(UnaryOperation.EXP.foreignCallSignature.getName(), Math.class, "exp", true);
+    public static final SubstrateForeignCallDescriptor ARITHMETIC_POW = findForeignCall(BinaryOperation.POW.foreignCallSignature.getName(), Math.class, "pow", true);
 
     /*
      * These methods are intrinsified as nodes at first, but can then lowered back to a call. Ensure
@@ -122,27 +122,15 @@ public class SnippetRuntime {
 
         private final Class<?> declaringClass;
         private final String methodName;
-        private final boolean isReexecutable;
-        private final LocationIdentity[] killedLocations;
-        private final boolean needsDebugInfo;
-        private final boolean isGuaranteedSafepoint;
 
         SubstrateForeignCallDescriptor(String descriptorName, Method method, boolean isReexecutable, LocationIdentity[] killedLocations, boolean needsDebugInfo, boolean isGuaranteedSafepoint) {
-            super(descriptorName, method.getReturnType(), method.getParameterTypes());
+            super(descriptorName, method.getReturnType(), method.getParameterTypes(), isReexecutable, killedLocations, needsDebugInfo, isGuaranteedSafepoint);
             this.declaringClass = method.getDeclaringClass();
             this.methodName = method.getName();
-            this.isReexecutable = isReexecutable;
-            this.killedLocations = killedLocations;
-            this.needsDebugInfo = needsDebugInfo;
-            this.isGuaranteedSafepoint = isGuaranteedSafepoint;
         }
 
         public Class<?> getDeclaringClass() {
             return declaringClass;
-        }
-
-        public boolean isReexecutable() {
-            return isReexecutable;
         }
 
         public ResolvedJavaMethod findMethod(MetaAccessProvider metaAccess) {
@@ -154,16 +142,8 @@ public class SnippetRuntime {
             throw VMError.shouldNotReachHere("method " + methodName + " not found");
         }
 
-        public LocationIdentity[] getKilledLocations() {
-            return killedLocations;
-        }
-
         public boolean needsDebugInfo() {
-            return needsDebugInfo;
-        }
-
-        public boolean isGuaranteedSafepoint() {
-            return isGuaranteedSafepoint;
+            return canDeoptimize();
         }
     }
 

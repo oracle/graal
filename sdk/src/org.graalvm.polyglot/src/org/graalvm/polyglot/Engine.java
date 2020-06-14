@@ -84,6 +84,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractStackFrameImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
 import org.graalvm.polyglot.io.ByteSequence;
+import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.management.ExecutionEvent;
 
@@ -892,6 +893,11 @@ public final class Engine implements AutoCloseable {
             throw noPolyglotImplementationFound();
         }
 
+        @Override
+        public FileSystem newDefaultFileSystem() {
+            throw noPolyglotImplementationFound();
+        }
+
         static class EmptySource extends AbstractSourceImpl {
 
             protected EmptySource(AbstractPolyglotImpl engineImpl) {
@@ -975,12 +981,12 @@ public final class Engine implements AutoCloseable {
             }
 
             @Override
-            public CharSequence getCode(Object impl) {
+            public CharSequence getCharacters(Object impl) {
                 throw new UnsupportedOperationException();
             }
 
             @Override
-            public CharSequence getCode(Object impl, int lineNumber) {
+            public CharSequence getCharacters(Object impl, int lineNumber) {
                 throw new UnsupportedOperationException();
             }
 

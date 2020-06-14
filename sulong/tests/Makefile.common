@@ -48,6 +48,11 @@ ifdef CLANG_LLVM_AS
 else
   LLVM_AS?=llvm-as
 endif
+ifdef CLANG_LLVM_LINK
+  LLVM_LINK=$(CLANG_LLVM_LINK)
+else
+  LLVM_LINK?=llvm-as
+endif
 ifdef CLANG_LLVM_DIS
   LLVM_DIS=$(CLANG_LLVM_DIS)
 else
@@ -108,6 +113,7 @@ tool-info.txt:
 	@echo "  CLANG: $(CLANG)" >> $@
 	@echo "  CLANGXX: $(CLANGXX)" >> $@
 	@echo "  LLVM_AS: $(LLVM_AS)" >> $@
+	@echo "  LLVM_LINK: $(LLVM_LINK)" >> $@
 	@echo "  LLVM_DIS: $(LLVM_DIS)" >> $@
 	@echo "  LLVM_OPT: $(LLVM_OPT)" >> $@
 	@echo "  LLVM_OBJCOPY: $(LLVM_OBJCOPY)" >> $@
@@ -172,7 +178,12 @@ endif
 %_MEM2REG.bc: %.bc
 	$(QUIETLY) $(OPT) -o $@ -mem2reg $<
 
-%.ll.dir/ref.out: %.ll
+# link .ll files first so that clang gets a single file and -fembed-bitcode can work
+%.ll.linked-ref-out.ll: %.ll
+	@mkdir -p $(shell dirname $@)
+	$(QUIETLY) $(LLVM_LINK) -S -o $@ $^
+
+%.ll.dir/ref.out: %.ll.linked-ref-out.ll
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANG) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CFLAGS) -g $(LDFLAGS) -o $@ $^
 
@@ -223,7 +234,7 @@ define OPT_RULES
 
 %.ll.dir/$(1).bc: %.ll
 	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) $(LLVM_AS) -o $$@ $$<
+	$(QUIETLY) $(LLVM_LINK) -o $$@ $$^
 
 %.c.dir/gcc_$(1).ll: %.c
 	@mkdir -p $$(shell dirname $$@)
@@ -301,6 +312,38 @@ $(eval $(call TOOLCHAIN_OPT_RULES,plain,))
 $(eval $(call TOOLCHAIN_OPT_RULES,O1,-O1))
 $(eval $(call TOOLCHAIN_OPT_RULES,O2,-O2))
 $(eval $(call TOOLCHAIN_OPT_RULES,O3,-O3))
+
+# allow linking ll tests with C sources
+
+%.c.ll: %.c
+	@mkdir -p $(shell dirname $@)
+	$(QUIETLY) $(CLANG) -S -emit-llvm -Wno-everything $(CPPFLAGS) $(CFLAGS) -g -o $@ $<
+
+define _ADD_DEP_OPT
+$(2).dir/$(1).bc:  $$(addsuffix .ll,$(3))
+endef
+
+# Add extra dependencies to a test file
+#
+# SYNOPSIS:
+#    ADD_DEPENDENCY <test file> <list of extra dependencies>
+#
+# EXAMPLE:
+#    $(eval $(call ADD_DEPENDENCY,path/to/test.ll,path/to/test-main.c path/to/test-utility.c))
+#
+# LIMITATION:
+#    Currently, only bitcode tests (.ll) and C dependencies (.c) are supported.
+#
+define ADD_DEPENDENCY
+# add dependency to ref.out
+$(1).linked-ref-out.ll: $$(addsuffix .ll,$(2))
+
+# add dependencies to Ox.bc
+$$(eval $$(call _ADD_DEP_OPT,O0,$(1),$(2)))
+$$(eval $$(call _ADD_DEP_OPT,O1,$(1),$(2)))
+$$(eval $$(call _ADD_DEP_OPT,O2,$(1),$(2)))
+$$(eval $$(call _ADD_DEP_OPT,O3,$(1),$(2)))
+endef
 
 # disable implicit rules
 .SUFFIXES:

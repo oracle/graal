@@ -868,7 +868,7 @@ final class Runner {
 
         LLVMAllocateNode getAllocateNode(NodeFactory factory, String typeName, boolean readOnly) {
             if (offset > 0) {
-                StructureType structType = new StructureType(typeName, true, types.toArray(Type.EMPTY_ARRAY));
+                StructureType structType = StructureType.createNamedByCopy(typeName, true, types);
                 return factory.createAllocateGlobalsBlock(structType, readOnly);
             } else {
                 return null;

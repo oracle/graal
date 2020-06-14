@@ -31,11 +31,7 @@ import java.io.IOException;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -47,12 +43,10 @@ import org.graalvm.libgraal.LibGraalObject;
 import org.graalvm.libgraal.LibGraalScope;
 import org.graalvm.util.OptionsEncoder;
 
-import jdk.vm.ci.services.Services;
-
 final class IgvSupport extends LibGraalObject implements TruffleDebugContext {
 
-    private static final String SOURCE_PREFIX = "SOURCE=";
     private static volatile Map<Object, Object> versionProperties;
+    private static volatile String executionId;
 
     private final LibGraalHotSpotTruffleCompiler owner;
     private final LibGraalScope scope;
@@ -76,7 +70,7 @@ final class IgvSupport extends LibGraalObject implements TruffleDebugContext {
         if (sharedChannel == null) {
             sharedChannel = new IgvDumpChannel(TruffleToLibGraalCalls.getDumpChannel(getIsolateThread(), getHandle()));
         }
-        final GraphOutput<G, M> res = builder.embedded(true).build(sharedChannel);
+        final GraphOutput<G, M> res = builder.attr(GraphOutput.ATTR_VM_ID, getExecutionID()).embedded(true).build(sharedChannel);
         parentOutput = res;
         return res;
     }
@@ -90,32 +84,9 @@ final class IgvSupport extends LibGraalObject implements TruffleDebugContext {
     public Map<Object, Object> getVersionProperties() {
         Map<Object, Object> res = versionProperties;
         if (res == null) {
-            synchronized (IgvSupport.class) {
-                res = versionProperties;
-                if (res == null) {
-                    res = new HashMap<>();
-                    final Path releaseFile = findReleaseFile();
-                    if (releaseFile != null) {
-                        try {
-                            for (String line : Files.readAllLines(releaseFile)) {
-                                if (line.startsWith(SOURCE_PREFIX)) {
-                                    for (String versionInfo : line.substring(SOURCE_PREFIX.length()).replace('"', ' ').split(" ")) {
-                                        String[] idVersion = versionInfo.split(":");
-                                        if (idVersion != null && idVersion.length == 2) {
-                                            res.put("version." + idVersion[0], idVersion[1]);
-                                        }
-                                    }
-                                    break;
-                                }
-                            }
-                        } catch (IOException ioe) {
-                            // cannot read release file
-                        }
-                    }
-                    res = Collections.unmodifiableMap(res);
-                    versionProperties = res;
-                }
-            }
+            byte[] serializedProperties = TruffleToLibGraalCalls.getVersionProperties(getIsolateThread());
+            res = Collections.unmodifiableMap(OptionsEncoder.decode(serializedProperties));
+            versionProperties = res;
         }
         return res;
     }
@@ -153,25 +124,13 @@ final class IgvSupport extends LibGraalObject implements TruffleDebugContext {
     public void closeDebugChannels() {
     }
 
-    private static Path findReleaseFile() {
-        final String home = Services.getSavedProperties().get("java.home");
-        if (home == null) {
-            return null;
+    private static String getExecutionID() {
+        String res = executionId;
+        if (res == null) {
+            res = TruffleToLibGraalCalls.getExecutionID(getIsolateThread());
+            executionId = res;
         }
-        final Path jreDir = Paths.get(home);
-        if (jreDir == null) {
-            return null;
-        }
-        Path releaseFile = jreDir.resolve("release");
-        if (Files.exists(releaseFile)) {
-            return releaseFile;
-        }
-        Path jdkDir = jreDir.getParent();
-        if (jdkDir == null) {
-            return null;
-        }
-        releaseFile = jdkDir.resolve("release");
-        return Files.exists(releaseFile) ? releaseFile : null;
+        return res;
     }
 
     static IgvSupport create(LibGraalHotSpotTruffleCompiler compiler, Map<String, Object> options, LibGraalTruffleCompilation compilation) {

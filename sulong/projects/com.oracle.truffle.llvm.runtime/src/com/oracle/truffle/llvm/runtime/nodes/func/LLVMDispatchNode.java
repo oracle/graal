@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.runtime.nodes.func;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
@@ -66,7 +65,6 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMDispatchNodeGen.LLVMLookupDispatchForeignNodeGen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
-import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
 
@@ -221,9 +219,9 @@ public abstract class LLVMDispatchNode extends LLVMNode {
 
     @ExplodeLoop
     protected LLVMNativeConvertNode[] createToNativeNodes() {
-        LLVMNativeConvertNode[] ret = new LLVMNativeConvertNode[type.getArgumentTypes().length - LLVMCallNode.USER_ARGUMENT_OFFSET];
-        for (int i = LLVMCallNode.USER_ARGUMENT_OFFSET; i < type.getArgumentTypes().length; i++) {
-            ret[i - LLVMCallNode.USER_ARGUMENT_OFFSET] = LLVMNativeConvertNode.createToNative(type.getArgumentTypes()[i]);
+        LLVMNativeConvertNode[] ret = new LLVMNativeConvertNode[type.getNumberOfArguments() - LLVMCallNode.USER_ARGUMENT_OFFSET];
+        for (int i = LLVMCallNode.USER_ARGUMENT_OFFSET; i < type.getNumberOfArguments(); i++) {
+            ret[i - LLVMCallNode.USER_ARGUMENT_OFFSET] = LLVMNativeConvertNode.createToNative(type.getArgumentType(i));
         }
         return ret;
     }
@@ -262,10 +260,15 @@ public abstract class LLVMDispatchNode extends LLVMNode {
     }
 
     abstract static class LLVMLookupDispatchForeignNode extends LLVMNode {
-        final FunctionType type;
+
+        private final boolean isVoidReturn;
+        private final int argumentCount;
+        private final FunctionType type;
 
         LLVMLookupDispatchForeignNode(FunctionType type) {
             this.type = type;
+            this.isVoidReturn = type.getReturnType() instanceof VoidType;
+            this.argumentCount = type.getNumberOfArguments();
         }
 
         abstract Object execute(Object function, Object interopType, Object[] arguments);
@@ -290,7 +293,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
                 try (StackPointer save = ((StackPointer) arguments[0]).newFrame()) {
                     ret = crossLanguageCall.execute(function, args);
                 }
-                if (!(type.getReturnType() instanceof VoidType) && functionType != null) {
+                if (!isVoidReturn && functionType != null) {
                     LLVMInteropType retType = functionType.getReturnType();
                     if (retType instanceof LLVMInteropType.Value) {
                         return toLLVMNode.executeWithType(ret, ((LLVMInteropType.Value) retType).getBaseType());
@@ -321,7 +324,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
 
         @ExplodeLoop
         private Object[] getForeignArguments(LLVMDataEscapeNode[] dataEscapeNodes, Object[] arguments, LLVMInteropType.Function functionType) {
-            assert arguments.length == type.getArgumentTypes().length;
+            assert arguments.length == argumentCount;
             Object[] args = new Object[dataEscapeNodes.length];
             int i = 0;
             if (functionType != null) {
@@ -349,12 +352,11 @@ public abstract class LLVMDispatchNode extends LLVMNode {
             return CommonNodeFactory.createForeignToLLVM(ForeignToLLVM.convert(type.getReturnType()));
         }
 
-        @TruffleBoundary
         protected LLVMDataEscapeNode[] createLLVMDataEscapeNodes() {
-            Type[] argTypes = type.getArgumentTypes();
-            LLVMDataEscapeNode[] args = new LLVMDataEscapeNode[argTypes.length - LLVMCallNode.USER_ARGUMENT_OFFSET];
+            CompilerAsserts.neverPartOfCompilation();
+            LLVMDataEscapeNode[] args = new LLVMDataEscapeNode[type.getNumberOfArguments() - LLVMCallNode.USER_ARGUMENT_OFFSET];
             for (int i = 0; i < args.length; i++) {
-                args[i] = LLVMDataEscapeNode.create(argTypes[i + LLVMCallNode.USER_ARGUMENT_OFFSET]);
+                args[i] = LLVMDataEscapeNode.create(type.getArgumentType(i + LLVMCallNode.USER_ARGUMENT_OFFSET));
             }
             return args;
         }

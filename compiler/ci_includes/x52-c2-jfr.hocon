@@ -9,13 +9,13 @@ x52.c2-jfr : {
   targets: [bench, weekly]
 }
 
-x52.c2-tmpfs10g-jfr : ${x52.c2-jfr} {
+x52.tmpfs10g-c2-jfr : ${x52.c2-jfr} {
   capabilities: [linux, x52, no_frequency_scaling, tmpfs10g]
 }
 
 builds += [
-  ${x52.c2-tmpfs10g-jfr} ${bench-dacapo-jfr}         ${oraclejdk8} { targets: [bench, weekly], name: "bench-compiler-dacapo-linux-x52-c2-jfr" }
-  ${x52.c2-tmpfs10g-jfr} ${bench-scala-dacapo-jfr}   ${oraclejdk8} { targets: [bench, weekly], name: "bench-compiler-scala-dacapo-linux-x52-c2-jfr" }
+  ${x52.tmpfs10g-c2-jfr} ${bench-dacapo-jfr}         ${oraclejdk8} { targets: [bench, weekly], name: "bench-compiler-dacapo-linux-x52-c2-jfr" }
+  ${x52.tmpfs10g-c2-jfr} ${bench-scala-dacapo-jfr}   ${oraclejdk8} { targets: [bench, weekly], name: "bench-compiler-scala-dacapo-linux-x52-c2-jfr" }
   ${x52.c2-jfr} ${bench-specjvm2008-Single-jfr}      ${oraclejdk8} { targets: [bench, weekly], name: "bench-compiler-specjvm2008-Single-linux-x52-c2-jfr" }
   ${x52.c2-jfr} ${bench-specjbb2015-jfr}             ${oraclejdk8} { targets: [bench, weekly], name: "bench-compiler-specjbb2015-linux-x52-c2-jfr" }
   ${x52.c2-jfr} ${bench-renaissance-jfr}      ${oraclejdk8} { targets: [bench, weekly], name: "bench-compiler-renaissance-linux-x52-c2-jfr" }

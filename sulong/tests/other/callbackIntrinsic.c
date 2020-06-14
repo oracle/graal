@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,6 +33,6 @@
 double caller_f64(double (*)(double), double);
 
 int main(void) {
-  printf("%f\n", caller_f64(cos, 2.0));
-  return 0;
+    printf("%f\n", caller_f64(cos, 2.0));
+    return 0;
 }

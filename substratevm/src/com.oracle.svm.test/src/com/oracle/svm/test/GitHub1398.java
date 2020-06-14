@@ -38,6 +38,7 @@ import org.junit.Test;
 public class GitHub1398 {
     public static final int PORT = 6789;
 
+    @SuppressWarnings("deprecation") // joinGroup deprecated since JDK 14
     @Test
     public void testMulticast() {
         try {

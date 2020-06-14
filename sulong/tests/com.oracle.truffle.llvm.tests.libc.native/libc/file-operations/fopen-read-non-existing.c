@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,11 +31,11 @@
 #include <stdlib.h>
 
 int main() {
-  FILE *readableFile = fopen("this file should not exist", "r");
-  if (readableFile == NULL) {
-    printf("error opening file!\n");
-    exit(0);
-  } else {
-    exit(-1);
-  }
+    FILE *readableFile = fopen("this file should not exist", "r");
+    if (readableFile == NULL) {
+        printf("error opening file!\n");
+        exit(0);
+    } else {
+        exit(-1);
+    }
 }

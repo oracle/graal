@@ -129,6 +129,7 @@ public class TruffleTypes {
     public final DeclaredType VirtualFrame = c.getDeclaredType(VirtualFrame_Name);
 
     // DSL API
+    public static final String Bind_Name = "com.oracle.truffle.api.dsl.Bind";
     public static final String Cached_Exclusive_Name = "com.oracle.truffle.api.dsl.Cached.Exclusive";
     public static final String Cached_Name = "com.oracle.truffle.api.dsl.Cached";
     public static final String Cached_Shared_Name = "com.oracle.truffle.api.dsl.Cached.Shared";
@@ -159,6 +160,7 @@ public class TruffleTypes {
     public static final String TypeSystemReference_Name = "com.oracle.truffle.api.dsl.TypeSystemReference";
     public static final String UnsupportedSpecializationException_Name = "com.oracle.truffle.api.dsl.UnsupportedSpecializationException";
 
+    public final DeclaredType Bind = c.getDeclaredType(Bind_Name);
     public final DeclaredType Cached = c.getDeclaredType(Cached_Name);
     public final DeclaredType Cached_Exclusive = c.getDeclaredType(Cached_Exclusive_Name);
     public final DeclaredType Cached_Shared = c.getDeclaredType(Cached_Shared_Name);
@@ -268,6 +270,11 @@ public class TruffleTypes {
     public final DeclaredType DynamicObject = c.getDeclaredTypeOptional(DynamicObject_Name);
     public final DeclaredType ObjectType = c.getDeclaredTypeOptional(ObjectType_Name);
     public final DeclaredType Layout_ImplicitCast = c.getDeclaredTypeOptional(Layout_ImplicitCast_Name);
+
+    // Utilities API
+    public static final String TruffleWeakReference_Name = "com.oracle.truffle.api.utilities.TruffleWeakReference";
+
+    public final DeclaredType TruffleWeakReference = c.getDeclaredTypeOptional(TruffleWeakReference_Name);
 
     // Checkstyle: resume
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,39 +33,39 @@
 #include <string.h>
 
 typedef struct pointstruct {
-  int x;
-  int y;
+    int x;
+    int y;
 } Point;
 
 Point *createPoint(int ix, int iy) {
-  Point *p = (Point *)malloc(sizeof(Point *));
-  p->x = ix;
-  p->y = iy;
-  return p;
+    Point *p = (Point *) malloc(sizeof(Point *));
+    p->x = ix;
+    p->y = iy;
+    return p;
 }
 
 void printPoint(Point *p) {
-  if (p != NULL) {
-    printf("Point: x=%i,y=%i\n", p->x, p->y);
-  }
+    if (p != NULL) {
+        printf("Point: x=%i,y=%i\n", p->x, p->y);
+    }
 }
 
 void swap(void *p1, void *p2, size_t size) {
-  char buffer[size];
-  memcpy(buffer, p1, size);
-  memcpy(p1, p2, size);
-  memcpy(p2, buffer, size);
+    char buffer[size];
+    memcpy(buffer, p1, size);
+    memcpy(p1, p2, size);
+    memcpy(p2, buffer, size);
 }
 
 __attribute__((constructor)) int main() {
-  Point *p = createPoint(2, 3);
-  void *q = createPoint(-4, -5);
-  __builtin_debugtrap();
-  printPoint(p);
-  swap(p, q, sizeof(Point *));
-  __builtin_debugtrap();
-  printPoint(p);
-  free(p);
-  free((Point *)q);
-  return 0;
+    Point *p = createPoint(2, 3);
+    void *q = createPoint(-4, -5);
+    __builtin_debugtrap();
+    printPoint(p);
+    swap(p, q, sizeof(Point *));
+    __builtin_debugtrap();
+    printPoint(p);
+    free(p);
+    free((Point *) q);
+    return 0;
 }

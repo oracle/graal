@@ -28,6 +28,7 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.inlining.info.elem.Inlineable;
@@ -77,7 +78,7 @@ public interface InlineInfo {
      *
      * @return a collection of nodes that need to be canonicalized after the inlining
      */
-    EconomicSet<Node> inline(Providers providers, String reason);
+    EconomicSet<Node> inline(CoreProviders providers, String reason);
 
     /**
      * Try to make the call static bindable to avoid interface and virtual method calls.

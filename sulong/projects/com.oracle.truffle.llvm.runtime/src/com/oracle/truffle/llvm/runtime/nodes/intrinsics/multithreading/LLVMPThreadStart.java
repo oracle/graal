@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -137,7 +137,7 @@ public final class LLVMPThreadStart {
                                             CommonNodeFactory.createFrameRead(PointerType.VOID, spSlot),
                                             CommonNodeFactory.createFrameRead(PointerType.VOID, argSlot)
                             },
-                            new FunctionType(PointerType.VOID, new Type[]{PointerType.VOID}, false));
+                            FunctionType.createByCopy(PointerType.VOID, new Type[]{PointerType.VOID}, false));
         }
 
         @Override

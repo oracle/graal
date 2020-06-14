@@ -1,0 +1,4 @@
+> js agent-sumarray.js
+45
+> js --experimental-options --insight=agent-sumevenonly.js agent-sumarray.js
+20

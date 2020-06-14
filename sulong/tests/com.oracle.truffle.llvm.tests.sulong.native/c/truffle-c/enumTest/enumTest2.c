@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,7 +30,7 @@
 enum BOOLEAN { t = 0, f = 1 };
 
 int main() {
-  enum BOOLEAN a = f;
-  enum BOOLEAN b = t;
-  return a == b + a - b + b;
+    enum BOOLEAN a = f;
+    enum BOOLEAN b = t;
+    return a == b + a - b + b;
 }

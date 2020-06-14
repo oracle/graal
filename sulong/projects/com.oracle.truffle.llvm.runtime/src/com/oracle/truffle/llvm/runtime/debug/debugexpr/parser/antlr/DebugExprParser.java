@@ -43,6 +43,8 @@ import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMDebuggerScopeFactory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
+import java.util.Collection;
+
 public class DebugExprParser {
 
     private static final class BailoutErrorListener extends BaseErrorListener {
@@ -63,12 +65,12 @@ public class DebugExprParser {
     private final DebugExpressionLexer lexer;
     private final String asmSnippet;
 
-    public DebugExprParser(InlineParsingRequest request, Iterable<Scope> globalScopes, LLVMContext context) {
+    public DebugExprParser(InlineParsingRequest request, Collection<Scope> globalScopes, LLVMContext context) {
         asmSnippet = request.getSource().getCharacters().toString();
         lexer = new DebugExpressionLexer(CharStreams.fromString(asmSnippet));
         parser = new DebugExpressionParser(new CommonTokenStream(lexer));
 
-        final Iterable<Scope> scopes = LLVMDebuggerScopeFactory.createSourceLevelScope(request.getLocation(), request.getFrame(), context);
+        final Collection<Scope> scopes = LLVMDebuggerScopeFactory.createSourceLevelScope(request.getLocation(), request.getFrame(), context);
         DebugExprNodeFactory nodeFactory = DebugExprNodeFactory.create(scopes, globalScopes);
         parser.setNodeFactory(nodeFactory);
     }

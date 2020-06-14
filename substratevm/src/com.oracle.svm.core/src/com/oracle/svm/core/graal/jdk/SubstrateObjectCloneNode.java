@@ -34,8 +34,10 @@ import org.graalvm.compiler.nodes.DeoptimizingNode.DeoptBefore;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
+import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.replacements.nodes.BasicObjectCloneNode;
+import org.graalvm.compiler.replacements.nodes.MacroNode;
 
 import com.oracle.svm.core.meta.SharedType;
 
@@ -69,6 +71,10 @@ public final class SubstrateObjectCloneNode extends BasicObjectCloneNode impleme
         }
     }
 
+    /**
+     * Even though this implementation is the same as {@link Lowerable#lower}, it is required
+     * because we would actually inherit {@link MacroNode#lower} which we do not want.
+     */
     @Override
     public void lower(LoweringTool tool) {
         tool.getLowerer().lower(this, tool);

@@ -36,4 +36,7 @@ public interface InspectorWSConnection {
     void consoleAPICall(Token token, String type, Object text);
 
     void close(Token token) throws IOException;
+
+    default void dispose() {
+    }
 }

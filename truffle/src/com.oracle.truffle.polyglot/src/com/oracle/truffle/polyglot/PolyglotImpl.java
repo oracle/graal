@@ -72,6 +72,7 @@ import com.oracle.truffle.api.impl.DispatchOutputStream;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import org.graalvm.polyglot.io.FileSystem;
 
 /*
  * This class is exported to the GraalVM SDK. Keep that in mind when changing its class or package name.
@@ -343,6 +344,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         } catch (Throwable t) {
             throw PolyglotImpl.guestToHostException(this, t);
         }
+    }
+
+    @Override
+    public FileSystem newDefaultFileSystem() {
+        return FileSystems.newDefaultFileSystem();
     }
 
     org.graalvm.polyglot.Source getPolyglotSource(Source source) {

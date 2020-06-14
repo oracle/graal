@@ -25,7 +25,6 @@
 package org.graalvm.compiler.nodes.extended;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodes.DeoptBciSupplier;
 import org.graalvm.compiler.nodes.DeoptimizingNode;
@@ -51,13 +50,11 @@ public interface ForeignCall extends LIRLowerable, DeoptimizingNode.DeoptDuring,
     @Override
     void setBci(int bci);
 
-    ForeignCallsProvider getForeignCalls();
-
     ForeignCallDescriptor getDescriptor();
 
     @Override
     default LocationIdentity[] getKilledLocationIdentities() {
-        return getForeignCalls().getKilledLocations(getDescriptor());
+        return getDescriptor().getKilledLocations();
     }
 
     default Value[] operands(NodeLIRBuilderTool gen) {
@@ -85,11 +82,11 @@ public interface ForeignCall extends LIRLowerable, DeoptimizingNode.DeoptDuring,
 
     @Override
     default boolean canDeoptimize() {
-        return getForeignCalls().canDeoptimize(getDescriptor());
+        return getDescriptor().canDeoptimize();
     }
 
     default boolean isGuaranteedSafepoint() {
-        return getForeignCalls().isGuaranteedSafepoint(getDescriptor());
+        return getDescriptor().isGuaranteedSafepoint();
     }
 
     @Override

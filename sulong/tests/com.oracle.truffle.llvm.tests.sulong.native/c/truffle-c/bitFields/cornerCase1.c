@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,11 +28,11 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 struct {
-  unsigned char a : 1;
-  unsigned char b : 3;
-  unsigned char c : 3;
+    unsigned char a : 1;
+    unsigned char b : 3;
+    unsigned char c : 3;
 } x = { 3, 1, 2 };
 
 int main() {
-  return x.a + x.b + x.c;
+    return x.a + x.b + x.c;
 }

@@ -34,6 +34,7 @@ sulong-gateTest-darwin: ${sulong-gateCommon} ${darwin-amd64} ${sulong.deps.darwi
 sulong-gateTest-default-tools {
     environment: {
         CLANG_LLVM_AS: "llvm-as"
+        CLANG_LLVM_LINK: "llvm-link"
         CLANG_LLVM_DIS: "llvm-dis"
         CLANG_LLVM_OPT: "opt"
     }
@@ -189,7 +190,7 @@ builds += [
   ] ${sulong-test-toolchain} }
 
   ${sulong-gateTestLLVMorg-linux} { name: gate-sulong-strict-native-image, run: [
-    [mx, --dynamicimports, "/substratevm,/tools", "--native-images=lli", "--extra-image-builder-argument=-H:+TruffleCheckBlackListedMethods", gate, --tags, "build"]
+    [mx, --dynamicimports, "/substratevm,/tools", "--native-images=lli", "--extra-image-builder-argument=-H:+TruffleCheckBlackListedMethods", "--extra-image-builder-argument=-H:+RemoveSaturatedTypeFlows", gate, --tags, "build"]
   ] }
 
   ${sulong-coverage-linux} { name: weekly-sulong-coverage }

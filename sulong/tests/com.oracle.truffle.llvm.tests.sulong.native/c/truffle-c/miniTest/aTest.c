@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,14 +28,14 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int foo() {
-  return 5;
+    return 5;
 }
 
 int main() {
-  int i = 0;
-  while (i < 5) {
-    int a = foo();
-    i++;
-  }
-  return foo();
+    int i = 0;
+    while (i < 5) {
+        int a = foo();
+        i++;
+    }
+    return foo();
 }

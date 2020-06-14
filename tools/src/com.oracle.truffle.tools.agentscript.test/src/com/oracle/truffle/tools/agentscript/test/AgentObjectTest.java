@@ -597,6 +597,18 @@ public class AgentObjectTest {
             agentAPI.on("enter", (ctx, frame) -> {
                 values[0] = frame.get("a");
                 values[1] = frame.get("b");
+                frame.put("a", 33);
+                assertEquals(Integer.valueOf(33), frame.get("a"));
+                frame.put("a", "ahoj");
+                assertEquals("ahoj", frame.get("a"));
+                try {
+                    frame.put("c", 42);
+                } catch (IllegalArgumentException t) {
+                    if (t.getMessage().contains("identifier 'c'")) {
+                        return;
+                    }
+                }
+                fail("Expecting an exception when setting unknown variable c");
             }, AgentObjectFactory.createConfig(true, false, false, "mul", null));
 
             Value mul = c.getBindings(InstrumentationTestLanguage.ID).getMember("mul");

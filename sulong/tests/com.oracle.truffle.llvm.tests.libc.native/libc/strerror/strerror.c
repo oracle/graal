@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,12 +33,12 @@
 #define MAX_ERROR_INDEX 100 // conservative value
 
 int main() {
-  printf("const char* error_numbers[%d] = {", MAX_ERROR_INDEX + 1);
-  for (int i = 0; i <= MAX_ERROR_INDEX; i++) {
-    if (i != 0) {
-      putchar(',');
+    printf("const char* error_numbers[%d] = {", MAX_ERROR_INDEX + 1);
+    for (int i = 0; i <= MAX_ERROR_INDEX; i++) {
+        if (i != 0) {
+            putchar(',');
+        }
+        printf("\n\t\"%d\"", strlen(strerror(i)) > 0);
     }
-    printf("\n\t\"%d\"", strlen(strerror(i)) > 0);
-  }
-  puts("\n};");
+    puts("\n};");
 }

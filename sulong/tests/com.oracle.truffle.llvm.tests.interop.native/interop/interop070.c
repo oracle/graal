@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,17 +30,17 @@
 int globalInt;
 
 int *returnPointerToGlobal() {
-  return &globalInt;
+    return &globalInt;
 }
 
-void setPointer(int* address, int value) {
-  *address = value;
+void setPointer(int *address, int value) {
+    *address = value;
 }
 
 int returnGlobal() {
-  return globalInt;
+    return globalInt;
 }
 
 int main() {
-  return 0;
+    return 0;
 }

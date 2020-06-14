@@ -33,13 +33,20 @@ import java.lang.reflect.Modifier;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
+import com.oracle.svm.hosted.NativeImageOptions;
 import org.graalvm.collections.Pair;
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.debug.DebugHandlersFactory;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.util.Providers;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -50,27 +57,32 @@ import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.hub.ClassInitializationInfo;
+import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
+import com.oracle.svm.core.classinitialization.EnsureClassInitializedSnippets;
+import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
+import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.meta.MethodPointer;
-import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 @AutomaticFeature
-public class ClassInitializationFeature implements Feature {
+public class ClassInitializationFeature implements GraalFeature {
 
     private ClassInitializationSupport classInitializationSupport;
-    private AnalysisMethod ensureInitializedMethod;
     private AnalysisUniverse universe;
     private AnalysisMetaAccess metaAccess;
 
@@ -176,6 +188,26 @@ public class ClassInitializationFeature implements Feature {
     }
 
     @Override
+    public void beforeAnalysis(BeforeAnalysisAccess a) {
+        BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
+        for (SnippetRuntime.SubstrateForeignCallDescriptor descriptor : EnsureClassInitializedSnippets.FOREIGN_CALLS) {
+            access.getBigBang().addRootMethod((AnalysisMethod) descriptor.findMethod(access.getMetaAccess()));
+        }
+    }
+
+    @Override
+    public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection, SubstrateForeignCallsProvider foreignCalls, boolean hosted) {
+        foreignCalls.register(providers, EnsureClassInitializedSnippets.FOREIGN_CALLS);
+    }
+
+    @Override
+    @SuppressWarnings("unused")
+    public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
+                    SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
+        EnsureClassInitializedSnippets.registerLowerings(options, factories, providers, snippetReflection, lowerings);
+    }
+
+    @Override
     public void duringAnalysis(DuringAnalysisAccess a) {
         FeatureImpl.DuringAnalysisAccessImpl access = (FeatureImpl.DuringAnalysisAccessImpl) a;
 
@@ -197,11 +229,6 @@ public class ClassInitializationFeature implements Feature {
         }
     }
 
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        ensureInitializedMethod = ((FeatureImpl.BeforeAnalysisAccessImpl) access).getBigBang().getMetaAccess().lookupJavaMethod(SubstrateClassInitializationPlugin.ENSURE_INITIALIZED_METHOD);
-    }
-
     /**
      * Initializes classes that can be proven safe and prints class initialization statistics.
      */
@@ -213,10 +240,9 @@ public class ClassInitializationFeature implements Feature {
             classInitializationSupport.setUnsupportedFeatures(null);
 
             String path = Paths.get(Paths.get(SubstrateOptions.Path.getValue()).toString(), "reports").toAbsolutePath().toString();
-            assert ensureInitializedMethod != null;
             assert classInitializationSupport.checkDelayedInitialization();
 
-            TypeInitializerGraph initGraph = new TypeInitializerGraph(universe, ensureInitializedMethod);
+            TypeInitializerGraph initGraph = new TypeInitializerGraph(universe);
             initGraph.computeInitializerSafety();
 
             Set<AnalysisType> provenSafe = initializeSafeDelayedClasses(initGraph);
@@ -378,17 +404,26 @@ public class ClassInitializationFeature implements Feature {
             /* Only interfaces can declare default methods. */
             return false;
         }
-        /*
-         * We call getDeclaredMethods() directly on the wrapped type. We avoid calling it on the
-         * AnalysisType because it resolves all the methods in the AnalysisUniverse.
-         */
-        for (ResolvedJavaMethod method : Inflation.toWrappedType(type).getDeclaredMethods()) {
-            if (method.isDefault()) {
-                assert !Modifier.isStatic(method.getModifiers()) : "Default method that is static?";
-                return true;
+
+        try {
+            /*
+             * We call getDeclaredMethods() directly on the wrapped type. We avoid calling it on the
+             * AnalysisType because it resolves all the methods in the AnalysisUniverse.
+             */
+            for (ResolvedJavaMethod method : Inflation.toWrappedType(type).getDeclaredMethods()) {
+                if (method.isDefault()) {
+                    assert !Modifier.isStatic(method.getModifiers()) : "Default method that is static?";
+                    return true;
+                }
             }
+            return false;
+        } catch (NoClassDefFoundError e) {
+            if (!NativeImageOptions.AllowIncompleteClasspath.getValue()) {
+                return false;
+            }
+
+            throw new GraalError(e, "Missing classes when looking up default methods in %s. Consider adding them to the classpath.", type.toClassName());
         }
-        return false;
     }
 
 }

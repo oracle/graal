@@ -114,6 +114,20 @@ public abstract class LibraryFactory<T extends Library> {
     }
 
     /**
+     * Reinitializes the state for native image generation.
+     *
+     * NOTE: this method is called reflectively by downstream projects.
+     */
+    @SuppressWarnings("unused")
+    private static void reinitializeNativeImageState() {
+        for (Map.Entry<Class<?>, LibraryFactory<?>> entry : LIBRARIES.entrySet()) {
+            LibraryFactory<?> libraryFactory = entry.getValue();
+            /* Trigger re-initialization of default exports. */
+            libraryFactory.initDefaultExports();
+        }
+    }
+
+    /**
      * Resets the state for native image generation.
      *
      * NOTE: this method is called reflectively by downstream projects.
@@ -121,6 +135,16 @@ public abstract class LibraryFactory<T extends Library> {
     @SuppressWarnings("unused")
     private static void resetNativeImageState() {
         assert TruffleOptions.AOT : "Only supported during image generation";
+        for (Map.Entry<Class<?>, LibraryFactory<?>> entry : LIBRARIES.entrySet()) {
+            LibraryFactory<?> libraryFactory = entry.getValue();
+            clearNonTruffleClasses(libraryFactory.exportCache);
+            clearNonTruffleClasses(libraryFactory.uncachedCache);
+            clearNonTruffleClasses(libraryFactory.cachedCache);
+            /* Reset the default exports. */
+            LibraryFactory.externalDefaultProviders = null;
+            libraryFactory.afterBuiltinDefaultExports = null;
+            libraryFactory.beforeBuiltinDefaultExports = null;
+        }
         clearNonTruffleClasses(LIBRARIES);
         clearNonTruffleClasses(ResolvedDispatch.CACHE);
         clearNonTruffleClasses(ResolvedDispatch.REGISTRY);
@@ -146,8 +170,8 @@ public abstract class LibraryFactory<T extends Library> {
 
     final DynamicDispatchLibrary dispatchLibrary;
 
-    final DefaultExportProvider[] beforeBuiltinDefaultExports;
-    final DefaultExportProvider[] afterBuiltinDefaultExports;
+    DefaultExportProvider[] beforeBuiltinDefaultExports;
+    DefaultExportProvider[] afterBuiltinDefaultExports;
 
     /**
      * Constructor for generated subclasses. Do not sub-class {@link LibraryFactory} manually.
@@ -180,6 +204,11 @@ public abstract class LibraryFactory<T extends Library> {
             }
         }
 
+        initDefaultExports();
+    }
+
+    /** Lazyily init the default exports data structures. */
+    private void initDefaultExports() {
         List<DefaultExportProvider> providers = getExternalDefaultProviders().get(libraryClass.getName());
         List<DefaultExportProvider> beforeBuiltin = null;
         List<DefaultExportProvider> afterBuiltin = null;

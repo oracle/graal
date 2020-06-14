@@ -301,6 +301,44 @@ public @interface Cached {
     String[] parameters() default {};
 
     /**
+     * If set to <code>true</code> then weak references will be used to refer to this cached value
+     * in the generated node. The default value is <code>false</code>. The weak cached parameter is
+     * guaranteed to not become <code>null</code> in guards or specialization method invocations. If
+     * a weak cached parameter gets collected by the GC, then any compiled code remain unaffected
+     * and the specialization instance will not be removed. Specializations with collected cached
+     * references continue to count to the specialization limit. This is necessary to provide an
+     * upper bound for the number of invalidations that may happen for this specialization.
+     * <p>
+     * A weak cached parameter implicitly adds a <code>weakRef.get() != null</code> guard that is
+     * invoked before the cached value is referenced for the first time. This means that
+     * specializations which previously did not result in fall-through behavior may now
+     * fall-through. This is important if used in combination with {@link Fallback}. Weak cached
+     * parameters that are used as part of {@link GenerateUncached uncached} nodes, execute the
+     * cached initializer for each execution and therefore implicitly do not use a weak reference.
+     * <p>
+     * Example usage:
+     *
+     * <pre>
+     * &#64;GenerateUncached
+     * abstract class WeakInlineCacheNode extends Node {
+     *
+     *     abstract Object execute(Object arg0);
+     *
+     *     &#64;Specialization(guards = "cachedArg.equals(arg)", limit = "3")
+     *     Object s0(String arg,
+     *                     &#64;Cached(value = "arg", weak = true) String cachedArg) {
+     *         assertNotNull(cachedStorage);
+     *         return arg;
+     *     }
+     * }
+     * </pre>
+     *
+     * @see com.oracle.truffle.api.utilities.TruffleWeakReference
+     * @since 20.2
+     */
+    boolean weak() default false;
+
+    /**
      * Allows sharing between multiple Cached parameters between multiple specializations or
      * exported library messages. If no sharing is desired then the {@link Cached cached} parameter
      * can be annotated with {@link Exclusive exclusive}. The DSL will indicate sharing

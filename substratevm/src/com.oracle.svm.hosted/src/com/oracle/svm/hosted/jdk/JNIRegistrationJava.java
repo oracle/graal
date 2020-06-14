@@ -24,7 +24,12 @@
  */
 package com.oracle.svm.hosted.jdk;
 
-import com.oracle.svm.hosted.FeatureImpl;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.Consumer;
+
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -37,14 +42,9 @@ import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jni.JNIRuntimeAccess;
+import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
-
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.function.Consumer;
 
 /**
  * Registration of classes, methods, and fields accessed via JNI by C code of the JDK.
@@ -66,15 +66,6 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements GraalFeature {
     @Override
     public void duringSetup(DuringSetupAccess a) {
         ImageSingletons.add(JNIRegistrationSupport.class, new JNIRegistrationSupport());
-
-        rerunClassInit(a, "java.io.RandomAccessFile", "java.lang.ProcessEnvironment", "java.io.File$TempDirectory", "java.lang.Terminator");
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            if (isPosix()) {
-                rerunClassInit(a, "java.lang.UNIXProcess");
-            }
-        } else {
-            rerunClassInit(a, "java.lang.ProcessImpl", "java.lang.ProcessHandleImpl", "java.lang.ProcessHandleImpl$Info", "java.io.FilePermission");
-        }
     }
 
     @Override

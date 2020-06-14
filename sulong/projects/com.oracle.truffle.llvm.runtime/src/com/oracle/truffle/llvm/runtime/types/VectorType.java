@@ -29,18 +29,15 @@
  */
 package com.oracle.truffle.llvm.runtime.types;
 
-import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public final class VectorType extends AggregateType {
 
-    @CompilationFinal private Assumption elementTypeAssumption;
-    @CompilationFinal private Type elementType;
+    private Type elementType;
     /**
      * Length of the vector. The value is interpreted as an unsigned 32 bit integer value.
      */
@@ -49,17 +46,14 @@ public final class VectorType extends AggregateType {
     public VectorType(Type elementType, int length) {
         if (elementType != null && !(elementType instanceof PrimitiveType || elementType instanceof PointerType)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new AssertionError("Invalid ElementType of Vector: " + elementType);
+            throw new AssertionError("Invalid ElementType of Vector: " + elementType.getClass().getSimpleName());
         }
-        this.elementTypeAssumption = Truffle.getRuntime().createAssumption("VectorType.elementType");
         this.elementType = elementType;
         this.length = length;
     }
 
     public Type getElementType() {
-        if (!elementTypeAssumption.isValid()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-        }
+        CompilerAsserts.neverPartOfCompilation();
         return elementType;
     }
 
@@ -78,13 +72,12 @@ public final class VectorType extends AggregateType {
     }
 
     public void setElementType(Type elementType) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        if (elementType == null || !(elementType instanceof PrimitiveType || elementType instanceof PointerType)) {
-            throw new AssertionError("Invalid ElementType of Vector: " + elementType);
+        CompilerAsserts.neverPartOfCompilation();
+        if (!(elementType instanceof PrimitiveType || elementType instanceof PointerType)) {
+            throw new AssertionError("Invalid ElementType of Vector: " + (elementType == null ? "null" : elementType.getClass().getSimpleName()));
         }
-        this.elementTypeAssumption.invalidate();
+        verifyCycleFree(elementType);
         this.elementType = elementType;
-        this.elementTypeAssumption = Truffle.getRuntime().createAssumption("VectorType.elementType");
     }
 
     @Override

@@ -32,7 +32,6 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.VirtualizableAllocation;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -59,11 +58,6 @@ public interface SubstrateArraysCopyOf extends Lowerable, VirtualizableAllocatio
             return result.join(StampFactory.objectNonNull());
         }
         return result;
-    }
-
-    @Override
-    default void lower(LoweringTool tool) {
-        tool.getLowerer().lower(asNode(), tool);
     }
 
     @Override

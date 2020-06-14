@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,9 +31,9 @@
 #include <stdlib.h>
 
 int main() {
-  double val = strtod("-20.23 hello world", NULL);
-  printf("val: %lf\n", val);
-  val = strtod("+20.23 hello world", NULL);
-  printf("val: %lf\n", val);
-  return 0;
+    double val = strtod("-20.23 hello world", NULL);
+    printf("val: %lf\n", val);
+    val = strtod("+20.23 hello world", NULL);
+    printf("val: %lf\n", val);
+    return 0;
 }

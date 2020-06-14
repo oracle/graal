@@ -43,9 +43,9 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.JavaMethodContext;
 import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage;
-import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.Reexecutability;
-import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.Transition;
 import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkageImpl;
+import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
+import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition;
 import org.graalvm.compiler.hotspot.meta.HotSpotLoweringProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.nodes.StubForeignCallNode;
@@ -60,7 +60,6 @@ import org.graalvm.compiler.replacements.GraphKit;
 import org.graalvm.compiler.replacements.nodes.ReadRegisterNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.compiler.word.WordTypes;
-import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotSignature;
@@ -103,22 +102,18 @@ public class ForeignCallStub extends Stub {
      * @param descriptor the signature of the call to this stub
      * @param prependThread true if the JavaThread value for the current thread is to be prepended
      *            to the arguments for the call to {@code address}
-     * @param reexecutability specifies if the stub call can be re-executed without (meaningful)
-     *            side effects. Deoptimization will not return to a point before a stub call that
-     *            cannot be re-executed.
-     * @param killedLocations the memory locations killed by the stub call
      */
-    public ForeignCallStub(OptionValues options, HotSpotJVMCIRuntime runtime, HotSpotProviders providers, long address, ForeignCallDescriptor descriptor, boolean prependThread,
-                    Transition transition, Reexecutability reexecutability, LocationIdentity... killedLocations) {
+    public ForeignCallStub(OptionValues options, HotSpotJVMCIRuntime runtime, HotSpotProviders providers, long address, HotSpotForeignCallDescriptor descriptor, boolean prependThread) {
         super(options, providers, HotSpotForeignCallLinkageImpl.create(providers.getMetaAccess(), providers.getCodeCache(), providers.getWordTypes(), providers.getForeignCalls(), descriptor, 0L,
-                        COMPUTES_REGISTERS_KILLED, JavaCall, JavaCallee, transition, reexecutability, killedLocations));
+                        COMPUTES_REGISTERS_KILLED, JavaCall, JavaCallee));
         this.jvmciRuntime = runtime;
         this.prependThread = prependThread;
         MetaAccessProvider metaAccess = providers.getMetaAccess();
         Class<?>[] targetParameterTypes = createTargetParameters(descriptor);
-        ForeignCallDescriptor targetSig = new ForeignCallDescriptor(descriptor.getName() + ":C", descriptor.getResultType(), targetParameterTypes);
+        HotSpotForeignCallDescriptor targetSig = new HotSpotForeignCallDescriptor(descriptor.getTransition(), descriptor.getReexecutability(), descriptor.getKilledLocations(),
+                        descriptor.getName() + ":C", descriptor.getResultType(), targetParameterTypes);
         target = HotSpotForeignCallLinkageImpl.create(metaAccess, providers.getCodeCache(), providers.getWordTypes(), providers.getForeignCalls(), targetSig, address,
-                        DESTROYS_ALL_CALLER_SAVE_REGISTERS, NativeCall, NativeCall, transition, reexecutability, killedLocations);
+                        DESTROYS_ALL_CALLER_SAVE_REGISTERS, NativeCall, NativeCall);
     }
 
     /**
@@ -235,7 +230,7 @@ public class ForeignCallStub extends Stub {
         Class<?>[] args = linkage.getDescriptor().getArgumentTypes();
         boolean isObjectResult = !LIRKind.isValue(linkage.getOutgoingCallingConvention().getReturn());
         // Do we want to clear the pending exception?
-        boolean shouldClearException = linkage.isReexecutable();
+        boolean shouldClearException = linkage.getDescriptor().isReexecutable();
         try {
             HotSpotLoweringProvider lowerer = (HotSpotLoweringProvider) providers.getLowerer();
             Templates foreignCallSnippets = lowerer.getForeignCallSnippets();

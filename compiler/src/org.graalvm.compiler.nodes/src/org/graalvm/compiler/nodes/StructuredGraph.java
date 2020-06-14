@@ -643,7 +643,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     @SuppressWarnings("try")
     private StructuredGraph copy(String newName, Consumer<UnmodifiableEconomicMap<Node, Node>> duplicationMapCallback, CompilationIdentifier newCompilationId, DebugContext debugForCopy) {
-        AllowAssumptions allowAssumptions = AllowAssumptions.ifNonNull(assumptions);
+        AllowAssumptions allowAssumptions = allowAssumptions();
         StructuredGraph copy = new StructuredGraph(newName,
                         method(),
                         entryBCI,
@@ -1020,6 +1020,16 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      */
     public Assumptions getAssumptions() {
         return assumptions;
+    }
+
+    /**
+     * Returns the AllowAssumptions status for this graph.
+     *
+     * @return {@code AllowAssumptions.YES} if this graph allows recording assumptions,
+     *         {@code AllowAssumptions.NO} otherwise
+     */
+    public AllowAssumptions allowAssumptions() {
+        return AllowAssumptions.ifNonNull(assumptions);
     }
 
     /**

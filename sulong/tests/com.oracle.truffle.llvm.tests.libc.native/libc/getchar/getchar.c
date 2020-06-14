@@ -31,14 +31,14 @@
 #include <stdlib.h>
 
 int main() {
-  int c;
-  int oldStdin = dup(0);
-  FILE *file = freopen(__FILE__, "r", stdin);
-  while ((c = getchar()) != EOF) {
-    putchar(c);
-  }
-  fclose(stdin);
-  dup2(oldStdin, 0);
-  close(oldStdin);
-  stdin = fdopen(0, "r");
+    int c;
+    int oldStdin = dup(0);
+    FILE *file = freopen(__FILE__, "r", stdin);
+    while ((c = getchar()) != EOF) {
+        putchar(c);
+    }
+    fclose(stdin);
+    dup2(oldStdin, 0);
+    close(oldStdin);
+    stdin = fdopen(0, "r");
 }

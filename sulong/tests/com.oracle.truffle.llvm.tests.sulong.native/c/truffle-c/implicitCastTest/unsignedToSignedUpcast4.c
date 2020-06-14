@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,7 +32,7 @@ unsigned long c = 0x8000000000000000;
 double t = 0x8000000000000000;
 
 int main() {
-  if (c - t < 0)
-    abort();
-  return 0;
+    if (c - t < 0)
+        abort();
+    return 0;
 }

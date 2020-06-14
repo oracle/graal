@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,6 +37,7 @@ private:
     long d;
     char e;
     short f[3];
+
 public:
     MyClass(int _a, float _b, double _c, long _d, char _e, short f1, short f2, short f3) {
         this->a = _a;
@@ -53,7 +54,7 @@ public:
     }
 };
 
-static void myStaticMethod(MyClass & myClass) {
+static void myStaticMethod(MyClass &myClass) {
 }
 
 #define MYCLASS_ARGS 16, 3.2f, 4.657, 149237354238697, 'e', -32768, -1, 32767
@@ -61,9 +62,9 @@ static void myStaticMethod(MyClass & myClass) {
 MyClass globalObj(MYCLASS_ARGS);
 MyClass *globalPtr = new MyClass(MYCLASS_ARGS);
 
-// set constructor priority to ensure 'start' is 
+// set constructor priority to ensure 'start' is
 // not executed prior to the global initializers
-int start() __attribute__((constructor (65536))) {
+int start() __attribute__((constructor(65536))) {
     MyClass localObj(MYCLASS_ARGS);
     MyClass *localPtr = new MyClass(MYCLASS_ARGS);
 

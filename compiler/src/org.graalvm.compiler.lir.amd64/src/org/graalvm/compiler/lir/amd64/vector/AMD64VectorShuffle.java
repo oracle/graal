@@ -35,6 +35,7 @@ import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMRIOp.VPEXTRQ;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMRIOp.VPEXTRW;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVQ;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRMIOp.VPSHUFD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VINSERTF128;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VINSERTI128;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VSHUFPD;
@@ -258,6 +259,39 @@ public class AMD64VectorShuffle {
             } else {
                 assert isStackSlot(result);
                 op.emit(masm, AVXKind.getRegisterSize(kind), (AMD64Address) crb.asAddress(result), asRegister(source), selector);
+            }
+        }
+    }
+
+    public static final class Extract64Op extends AMD64LIRInstruction {
+        public static final LIRInstructionClass<Extract64Op> TYPE = LIRInstructionClass.create(Extract64Op.class);
+        @Def({REG}) protected AllocatableValue result;
+        @Use({REG, STACK}) protected AllocatableValue source;
+        private final int selector;
+
+        public Extract64Op(AllocatableValue result, AllocatableValue source, int selector) {
+            super(TYPE);
+            this.result = result;
+            this.source = source;
+            this.selector = selector;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            AMD64Kind kind = (AMD64Kind) source.getPlatformKind();
+            AMD64 arch = (AMD64) crb.target.arch;
+            assert kind.getSizeInBytes() * 8 == 128 || (kind.getSizeInBytes() * 8 == 256 && arch.getFeatures().contains(CPUFeature.AVX2));
+
+            VexRMIOp op = VPSHUFD;
+            assert selector == 0 || selector == 1;
+            // select doublewords 1 and 0, or 3 and 2
+            int order = selector == 0 ? 0b01_00 : 0b11_10;
+
+            if (isRegister(source)) {
+                op.emit(masm, AVXKind.getRegisterSize(kind), asRegister(result), asRegister(source), order);
+            } else {
+                assert isStackSlot(source);
+                op.emit(masm, AVXKind.getRegisterSize(kind), asRegister(result), (AMD64Address) crb.asAddress(source), order);
             }
         }
     }

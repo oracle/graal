@@ -222,4 +222,8 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
     protected ValueNode newCompressionNode(CompressionOp op, ValueNode value) {
         return new SubstrateCompressionNode(op, value, ReferenceAccess.singleton().getCompressEncoding());
     }
+
+    public boolean targetingLLVM() {
+        return false;
+    }
 }

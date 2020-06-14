@@ -66,7 +66,7 @@ public class BciBlockMappingDumpHandler implements DebugDumpHandler {
                     structure = new BlockMappingStructure();
                 }
                 int id = nextId++;
-                Builder<BciBlockMapping, BciBlock, ResolvedJavaMethod> builder = GraphOutput.newBuilder(structure).elements(ELEMENTS).types(TYPES).protocolVersion(6, 1);
+                Builder<BciBlockMapping, BciBlock, ResolvedJavaMethod> builder = GraphOutput.newBuilder(structure).elements(ELEMENTS).types(TYPES).protocolVersion(7, 0);
                 GraphOutput<BciBlockMapping, ResolvedJavaMethod> output = debug.buildOutput(builder);
                 Map<Object, Object> properties = new HashMap<>();
                 properties.put("hasJsrBytecodes", ((BciBlockMapping) object).hasJsrBytecodes);

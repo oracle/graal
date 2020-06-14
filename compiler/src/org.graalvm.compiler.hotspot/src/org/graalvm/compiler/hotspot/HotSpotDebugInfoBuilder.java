@@ -100,7 +100,7 @@ public class HotSpotDebugInfoBuilder extends DebugInfoBuilder {
         if (node instanceof ForeignCallNode) {
             ForeignCallNode call = (ForeignCallNode) node;
             ForeignCallDescriptor descriptor = call.getDescriptor();
-            if (DefaultHotSpotLoweringProvider.RuntimeCalls.runtimeCalls.containsValue(descriptor)) {
+            if (DefaultHotSpotLoweringProvider.RuntimeCalls.runtimeCalls.containsValue(descriptor.getSignature())) {
                 return true;
             }
         }

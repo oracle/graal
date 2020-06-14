@@ -73,6 +73,9 @@ import java.util.function.Supplier;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.polyglot.PolyglotSource.EmbedderFileSystemContext;
+
 import java.nio.charset.Charset;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.polyglot.io.FileSystem;
@@ -143,16 +146,42 @@ final class FileSystems {
     }
 
     static String getRelativePathInLanguageHome(TruffleFile file) {
-        FileSystem fs = EngineAccessor.LANGUAGE.getFileSystem(file);
-        Path path = EngineAccessor.LANGUAGE.getPath(file);
-        for (LanguageCache cache : LanguageCache.languages().values()) {
-            final String languageHome = cache.getLanguageHome();
-            if (languageHome != null) {
-                Path languageHomePath = fs.parsePath(languageHome);
-                if (path.startsWith(languageHomePath)) {
-                    return languageHomePath.relativize(path).toString();
+        Object engineObject = EngineAccessor.LANGUAGE.getFileSystemEngineObject(EngineAccessor.LANGUAGE.getFileSystemContext(file));
+        if (engineObject instanceof PolyglotLanguageContext) {
+            PolyglotLanguageContext context = (PolyglotLanguageContext) engineObject;
+            if (!context.context.inContextPreInitialization) {
+                return null;
+            }
+            FileSystem fs = EngineAccessor.LANGUAGE.getFileSystem(file);
+            Path path = EngineAccessor.LANGUAGE.getPath(file);
+            String result = relativizeToLanguageHome(fs, path, context.language);
+            if (result != null) {
+                return result;
+            }
+            for (LanguageInfo language : context.getAccessibleLanguages(true).values()) {
+                PolyglotLanguage lang = (PolyglotLanguage) EngineAccessor.NODES.getPolyglotLanguage(language);
+                result = relativizeToLanguageHome(fs, path, lang);
+                if (result != null) {
+                    return result;
                 }
             }
+            return null;
+        } else if (engineObject instanceof EmbedderFileSystemContext) {
+            // embedding sources are never relative to language homes
+            return null;
+        } else {
+            throw new AssertionError();
+        }
+    }
+
+    private static String relativizeToLanguageHome(FileSystem fs, Path path, PolyglotLanguage language) {
+        String languageHome = language.cache.getLanguageHome();
+        if (languageHome == null) {
+            return null;
+        }
+        Path languageHomePath = fs.parsePath(language.cache.getLanguageHome());
+        if (path.startsWith(languageHomePath)) {
+            return languageHomePath.relativize(path).toString();
         }
         return null;
     }
@@ -184,7 +213,7 @@ final class FileSystems {
 
     private static boolean isFollowLinks(final LinkOption... linkOptions) {
         for (LinkOption lo : linkOptions) {
-            if (lo == LinkOption.NOFOLLOW_LINKS) {
+            if (Objects.requireNonNull(lo) == LinkOption.NOFOLLOW_LINKS) {
                 return false;
             }
         }
@@ -787,6 +816,18 @@ final class FileSystems {
         @Override
         public void setCurrentWorkingDirectory(Path currentWorkingDirectory) {
             Objects.requireNonNull(currentWorkingDirectory, "Current working directory must be non null.");
+            if (!currentWorkingDirectory.isAbsolute()) {
+                throw new IllegalArgumentException("Current working directory must be absolute.");
+            }
+            boolean isDirectory;
+            try {
+                isDirectory = Boolean.TRUE.equals(delegate.readAttributes(currentWorkingDirectory, "isDirectory").get("isDirectory"));
+            } catch (IOException ioe) {
+                isDirectory = false;
+            }
+            if (!isDirectory) {
+                throw new IllegalArgumentException("Current working directory must be directory.");
+            }
             if (explicitUserDir && userDir == null) { // Forbidden set of current working directory
                 throw new SecurityException("Modification of current working directory is not allowed.");
             }
@@ -945,6 +986,21 @@ final class FileSystems {
         @Override
         public Path getTempDirectory() {
             throw forbidden(null);
+        }
+
+        @Override
+        public void createLink(Path link, Path existing) throws IOException {
+            throw forbidden(link);
+        }
+
+        @Override
+        public void createSymbolicLink(Path link, Path target, FileAttribute<?>... attrs) throws IOException {
+            throw forbidden(link);
+        }
+
+        @Override
+        public Path readSymbolicLink(Path link) throws IOException {
+            throw forbidden(link);
         }
     }
 

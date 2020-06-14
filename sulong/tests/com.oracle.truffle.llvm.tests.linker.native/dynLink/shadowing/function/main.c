@@ -33,6 +33,6 @@
 char *hello = "variable";
 
 int main() {
-  printf("Hello %s\n", hello);
-  return 0;
+    printf("Hello %s\n", hello);
+    return 0;
 }

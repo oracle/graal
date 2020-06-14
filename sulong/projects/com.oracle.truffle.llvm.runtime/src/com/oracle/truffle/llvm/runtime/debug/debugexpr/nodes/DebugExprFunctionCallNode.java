@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes;
 
 import java.util.List;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -50,9 +51,10 @@ public abstract class DebugExprFunctionCallNode extends LLVMExpressionNode {
 
     private final String functionName;
     @Children private final LLVMExpressionNode[] arguments;
-    private Iterable<Scope> scopes;
 
-    public DebugExprFunctionCallNode(String functionName, List<DebugExpressionPair> arguments, Iterable<Scope> scopes) {
+    @CompilationFinal(dimensions = 1) private final Scope[] scopes;
+
+    public DebugExprFunctionCallNode(String functionName, List<DebugExpressionPair> arguments, Scope[] scopes) {
         this.functionName = functionName;
         this.scopes = scopes;
         this.arguments = new LLVMExpressionNode[arguments.size()];

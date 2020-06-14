@@ -69,6 +69,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.ShuffleVectorIn
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.StoreInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.SwitchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.SwitchOldInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.UnaryOperationInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.UnreachableInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
@@ -136,6 +137,7 @@ public final class Function implements ParserListener {
     private static final int INSTRUCTION_CLEANUPPAD = 51;
     private static final int INSTRUCTION_CATCHSWITCH = 52;
     private static final int INSTRUCTION_OPERAND_BUNDLE = 55;
+    private static final int INSTRUCTION_UNOP = 56;
 
     private final FunctionDefinition function;
 
@@ -166,7 +168,8 @@ public final class Function implements ParserListener {
     public void setupScope() {
         scope.startLocalScope(function);
         final FunctionType functionType = function.getType();
-        for (Type argType : functionType.getArgumentTypes()) {
+        for (int i = 0; i < functionType.getNumberOfArguments(); i++) {
+            Type argType = functionType.getArgumentType(i);
             scope.addSymbol(function.createParameter(argType), argType);
         }
     }
@@ -231,6 +234,10 @@ public final class Function implements ParserListener {
 
             case INSTRUCTION_BINOP:
                 createBinaryOperation(buffer);
+                break;
+
+            case INSTRUCTION_UNOP:
+                createUnaryOperation(buffer);
                 break;
 
             case INSTRUCTION_CAST:
@@ -419,7 +426,7 @@ public final class Function implements ParserListener {
         int[] args = new int[buffer.remaining()];
         int j = 0;
         // the formal parameters are read without forward types
-        while (j < functionType.getArgumentTypes().length && buffer.remaining() > 0) {
+        while (j < functionType.getNumberOfArguments() && buffer.remaining() > 0) {
             args[j++] = readIndex(buffer);
         }
         // now varargs are read with forward types
@@ -502,7 +509,7 @@ public final class Function implements ParserListener {
 
         int[] args = new int[buffer.remaining()];
         int j = 0;
-        while (j < functionType.getArgumentTypes().length && buffer.remaining() > 0) {
+        while (j < functionType.getNumberOfArguments() && buffer.remaining() > 0) {
             args[j++] = readIndex(buffer);
         }
         while (buffer.remaining() > 0) {
@@ -659,14 +666,14 @@ public final class Function implements ParserListener {
         // type table
         for (Type t : types) {
             if (t instanceof StructureType) {
-                final Type[] elts = ((StructureType) t).getElementTypes();
-                if (elts.length == CMPXCHG_TYPE_LENGTH && elementType == elts[CMPXCHG_TYPE_ELEMENTTYPE] && PrimitiveType.I1 == elts[CMPXCHG_TYPE_BOOLTYPE]) {
-                    return (AggregateType) t;
+                StructureType st = (StructureType) t;
+                if (st.getNumberOfElementsInt() == CMPXCHG_TYPE_LENGTH && elementType == st.getElementType(CMPXCHG_TYPE_ELEMENTTYPE) && PrimitiveType.I1 == st.getElementType(CMPXCHG_TYPE_BOOLTYPE)) {
+                    return st;
                 }
             }
         }
         // the type may not exist if the value is not being used
-        return new StructureType(true, new Type[]{elementType, PrimitiveType.I1});
+        return StructureType.createUnnamedByCopy(true, new Type[]{elementType, PrimitiveType.I1});
     }
 
     private void parseDebugLocation(RecordBuffer buffer) {
@@ -720,6 +727,15 @@ public final class Function implements ParserListener {
         int flags = buffer.remaining() > 0 ? buffer.readInt() : 0;
 
         emit(BinaryOperationInstruction.fromSymbols(scope.getSymbols(), type, opcode, flags, lhs, rhs));
+    }
+
+    private void createUnaryOperation(RecordBuffer buffer) {
+        int operand = readIndex(buffer);
+        Type type = readValueType(buffer, operand);
+        int opcode = buffer.readInt();
+        int flags = buffer.remaining() > 0 ? buffer.readInt() : 0;
+
+        emit(UnaryOperationInstruction.fromSymbols(scope.getSymbols(), type, opcode, flags, operand));
     }
 
     private void createBranch(RecordBuffer buffer) {

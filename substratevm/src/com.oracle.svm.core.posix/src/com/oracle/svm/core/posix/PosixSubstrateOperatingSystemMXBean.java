@@ -24,16 +24,19 @@
  */
 package com.oracle.svm.core.posix;
 
-import java.lang.management.OperatingSystemMXBean;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.hosted.Feature;
+
 import com.oracle.svm.core.CErrorNumber;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.jdk.SubstrateOperatingSystemMXBean;
+import com.oracle.svm.core.jdk.management.ManagementFeature;
+import com.oracle.svm.core.jdk.management.ManagementSupport;
+import com.oracle.svm.core.jdk.management.SubstrateOperatingSystemMXBean;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Resource;
 import com.oracle.svm.core.posix.headers.Times;
@@ -108,7 +111,12 @@ class PosixSubstrateOperatingSystemMXBean extends SubstrateOperatingSystemMXBean
 @AutomaticFeature
 class PosixSubstrateOperatingSystemMXBeanFeature implements Feature {
     @Override
+    public List<Class<? extends Feature>> getRequiredFeatures() {
+        return Arrays.asList(ManagementFeature.class);
+    }
+
+    @Override
     public void afterRegistration(Feature.AfterRegistrationAccess access) {
-        ImageSingletons.add(OperatingSystemMXBean.class, new PosixSubstrateOperatingSystemMXBean());
+        ManagementSupport.getSingleton().addPlatformManagedObjectSingleton(UnixOperatingSystemMXBean.class, new PosixSubstrateOperatingSystemMXBean());
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,13 +28,13 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int main() {
-  goto L1;
-  int a, b;
+    goto L1;
+    int a, b;
 L2:
-  b = 2;
-  goto L3;
+    b = 2;
+    goto L3;
 L1:
-  goto L2;
+    goto L2;
 L3:
-  return b;
+    return b;
 }

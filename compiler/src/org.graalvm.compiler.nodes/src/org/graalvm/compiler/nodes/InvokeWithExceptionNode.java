@@ -42,7 +42,6 @@ import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.UncheckedInterfaceProvider;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -138,11 +137,6 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
         } else {
             this.setNext(null);
         }
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
     }
 
     @Override
@@ -250,10 +244,5 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
     @Override
     public InvokeNode replaceWithNonThrowing() {
         return replaceWithInvoke();
-    }
-
-    @Override
-    public AbstractBeginNode createNextBegin() {
-        return KillingBeginNode.create(getKilledLocationIdentity());
     }
 }

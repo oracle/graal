@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,11 +28,11 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 struct str {
-  char a;
-  int b[2];
+    char a;
+    int b[2];
 } a3 = { 'o', { 1, 2 } };
 
 int main() {
-  struct str a2 = a3;
-  return a2.b[0] + a2.b[1];
+    struct str a2 = a3;
+    return a2.b[0] + a2.b[1];
 }

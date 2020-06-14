@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -96,9 +96,6 @@ public class AArch64CPUFeatureAccess implements CPUFeatureAccess {
         }
         if (cpuFeatures.fA53MAC()) {
             features.add(AArch64.CPUFeature.A53MAC);
-        }
-        if (cpuFeatures.fDMBATOMICS()) {
-            features.add(AArch64.CPUFeature.DMB_ATOMICS);
         }
 
         return features;

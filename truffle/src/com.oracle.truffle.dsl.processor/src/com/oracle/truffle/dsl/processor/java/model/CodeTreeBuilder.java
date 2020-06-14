@@ -636,6 +636,10 @@ public class CodeTreeBuilder {
         return declaration(type, name, singleString(init));
     }
 
+    public CodeTreeBuilder declarationDefault(TypeMirror type, String name) {
+        return declaration(type, name, createBuilder().defaultValue(type).build());
+    }
+
     public CodeTreeBuilder declaration(String type, String name, CodeTree init) {
         startStatement();
         string(type);

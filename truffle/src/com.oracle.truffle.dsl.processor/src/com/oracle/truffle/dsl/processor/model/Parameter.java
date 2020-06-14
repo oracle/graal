@@ -84,6 +84,15 @@ public final class Parameter {
         this.type = newType;
     }
 
+    public Parameter(Parameter parameter, VariableElement newVariable) {
+        this.specification = parameter.specification;
+        this.specificationVarArgsIndex = parameter.specificationVarArgsIndex;
+        this.localName = newVariable.getSimpleName().toString();
+        this.typeVarArgsIndex = parameter.typeVarArgsIndex;
+        this.variableElement = newVariable;
+        this.type = newVariable.asType();
+    }
+
     public void setLocalName(String localName) {
         this.localName = localName;
     }

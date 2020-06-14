@@ -115,7 +115,6 @@ _lib_prefix = mx.add_lib_prefix("")
 
 
 _graalvm_base_name = 'GraalVM'
-_graalvm_maven_attributes = {'groupId': 'org.graalvm', 'tag': 'graalvm'}
 
 
 default_components = []
@@ -287,9 +286,6 @@ def _get_component_type_base(c, apply_substitutions=False):
     elif isinstance(c, mx_sdk.GraalVMSvmMacro):
         svm_component = get_component('svm', stage1=True)
         result = _get_component_type_base(svm_component, apply_substitutions=apply_substitutions) + svm_component.dir_name + '/macros/'
-    elif isinstance(c, mx_sdk.GraalVMSvmStaticLib):
-        svm_component = get_component('svm')
-        result = _get_component_type_base(svm_component, apply_substitutions=apply_substitutions) + svm_component.dir_name + '/static-libs/'
     elif isinstance(c, mx_sdk.GraalVmComponent):
         result = '<jdk_base>/'
     else:
@@ -345,6 +341,14 @@ _src_jdk_version = mx_sdk_vm.base_jdk_version()
 #     _src_jdk_dir  = $JAVA_HOME (e.g. /usr/lib/jvm/oraclejdk1.8.0_212-jvmci-19.2-b01)
 #     _src_jdk_base = .
 _src_jdk_dir, _src_jdk_base = _get_jdk_base(_src_jdk)
+
+
+def _graalvm_maven_attributes(tag='graalvm'):
+    """
+    :type tag: str
+    :rtype: dict[str, str]
+    """
+    return {'groupId': 'org.graalvm', 'tag': tag}
 
 
 class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistribution)):
@@ -706,11 +710,14 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             _add(layout, '<jre_base>/lib/graalvm/', ['dependency:' + d for d in sorted(graalvm_dists)], _component, with_sources=True)
 
             for _provided_executable in _component.provided_executables:
-                _provided_executable = mx_subst.results_substitutions.substitute(_provided_executable)
-                if _component.short_name == 'vvm':
-                    _add(layout, _jdk_jre_bin, 'extracted-dependency:tools:VISUALVM_PLATFORM_SPECIFIC/./' + _provided_executable, _component)
+                if isinstance(_provided_executable, tuple):
+                    # copied executable
+                    _src_dist, _executable = _provided_executable
+                    _executable = mx_subst.results_substitutions.substitute(_executable)
+                    _add(layout, _jdk_jre_bin, 'extracted-dependency:{}/{}'.format(_src_dist, _executable), _component)
                 else:
-                    _link_dest = _component_base + _provided_executable
+                    # linked executable
+                    _link_dest = _component_base + mx_subst.results_substitutions.substitute(_provided_executable)
                     _link_path = _add_link(_jdk_jre_bin, _link_dest, _component)
                     _jre_bin_names.append(basename(_link_path))
 
@@ -976,7 +983,7 @@ class DebuginfoDistribution(mx.LayoutTARDistribution):  # pylint: disable=too-ma
                                                     platformDependent=subject_distribution.platformDependent,
                                                     theLicense=theLicense, **kw_args)
         self._layout_initialized = False
-        self.maven = _graalvm_maven_attributes
+        self.maven = subject_distribution.maven
         self.subject_distribution = subject_distribution
 
     def _walk_layout(self):
@@ -1755,12 +1762,17 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
             image_config = self.subject.native_image_config
             return mx.list_to_cmd_line(image_config.extra_jvm_args)
 
+        def _get_option_vars():
+            image_config = self.subject.native_image_config
+            return ' '.join(image_config.option_vars)
+
         _template_subst = mx_subst.SubstitutionEngine(mx_subst.string_substitutions)
         _template_subst.register_no_arg('classpath', _get_classpath)
         _template_subst.register_no_arg('jre_bin', _get_jre_bin)
         _template_subst.register_no_arg('main_class', _get_main_class)
         _template_subst.register_no_arg('extra_jvm_args', _get_extra_jvm_args)
         _template_subst.register_no_arg('macro_name', GraalVmNativeProperties.macro_name(self.subject.native_image_config))
+        _template_subst.register_no_arg('option_vars', _get_option_vars)
 
         with open(self._template_file(), 'r') as template, mx.SafeFileCreation(output_file) as sfc, open(sfc.tmpPath, 'w') as launcher:
             for line in template:
@@ -2042,7 +2054,7 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
         if other_involved_components:
             name += '_' + '_'.join(sorted((component.short_name.upper() for component in other_involved_components)))
         name += '_JAVA{}'.format(_src_jdk_version)
-        self.maven = _graalvm_maven_attributes
+        self.maven = _graalvm_maven_attributes(tag='installable')
         components = [component]
         if extra_components:
             components += extra_components
@@ -2061,7 +2073,7 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
             **kw_args)
 
 
-class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=too-many-ancestors
+class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
     def __init__(self, component, graalvm, **kw_args):
         """
         :type component: mx_sdk.GraalVmTruffleComponent
@@ -2157,7 +2169,7 @@ class GraalVmStandaloneComponent(mx.LayoutTARDistribution):  # pylint: disable=t
 
         mx.logvv("Standalone '{}' has layout:\n{}".format(name, pprint.pformat(layout)))
 
-        self.maven = _graalvm_maven_attributes
+        self.maven = _graalvm_maven_attributes(tag='standalone')
         super(GraalVmStandaloneComponent, self).__init__(
             suite=_suite,
             name=name,
@@ -2201,7 +2213,7 @@ def get_final_graalvm_distribution():
     if _final_graalvm_distribution == 'uninitialized':
         _final_graalvm_distribution = GraalVmLayoutDistribution(_graalvm_base_name)
         _final_graalvm_distribution.description = "GraalVM distribution"
-        _final_graalvm_distribution.maven = _graalvm_maven_attributes
+        _final_graalvm_distribution.maven = _graalvm_maven_attributes()
     return _final_graalvm_distribution
 
 

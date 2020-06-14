@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -49,10 +49,9 @@ typedef struct {
     long double f;
     long double g;
     long double h;
-} __attribute__ ((packed)) PackedStruct;
+} __attribute__((packed)) PackedStruct;
 
-int start() __attribute__((constructor))
-{
+int start() __attribute__((constructor)) {
     long double a = 1.23L;
     long double b = -4.56L;
     long double c = a - b;

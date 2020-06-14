@@ -29,14 +29,14 @@
  */
 
 void __clear_cache(void *begin, void *end) {
-  /*
+    /*
    * Old llvm/gcc+dragonegg versions do not intrinsify __builtin___clear_cache but replace it with a call to
    * __clear_cache from libgcc. Lets make sure the target exist even if not linked against libgcc.
    */
 }
 
 int main() {
-  char a[100];
-  __builtin___clear_cache(a, a + 100);
-  return 0;
+    char a[100];
+    __builtin___clear_cache(a, a + 100);
+    return 0;
 }

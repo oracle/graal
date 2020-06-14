@@ -29,7 +29,7 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_512;
 import java.nio.ByteOrder;
 
 import org.graalvm.compiler.core.common.GraalOptions;
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
@@ -49,7 +49,6 @@ import org.graalvm.compiler.nodes.ValueNodeUtil;
 import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -65,7 +64,7 @@ public class AMD64ArrayIndexOfDispatchNode extends FixedWithNextNode implements 
 
     public static final NodeClass<AMD64ArrayIndexOfDispatchNode> TYPE = NodeClass.create(AMD64ArrayIndexOfDispatchNode.class);
 
-    private final ForeignCallDescriptor stubCallDescriptor;
+    private final ForeignCallSignature stubCallDescriptor;
     private final JavaKind arrayKind;
     private final JavaKind valueKind;
     private final boolean findTwoConsecutive;
@@ -78,7 +77,7 @@ public class AMD64ArrayIndexOfDispatchNode extends FixedWithNextNode implements 
     @OptionalInput(InputType.Memory) private MemoryKill lastLocationAccess;
     @OptionalInput(InputType.State) protected FrameState stateBefore;
 
-    public AMD64ArrayIndexOfDispatchNode(@ConstantNodeParameter ForeignCallDescriptor stubCallDescriptor, @ConstantNodeParameter JavaKind arrayKind, @ConstantNodeParameter JavaKind valueKind,
+    public AMD64ArrayIndexOfDispatchNode(@ConstantNodeParameter ForeignCallSignature stubCallDescriptor, @ConstantNodeParameter JavaKind arrayKind, @ConstantNodeParameter JavaKind valueKind,
                     @ConstantNodeParameter boolean findTwoConsecutive, ValueNode arrayPointer, ValueNode arrayLength, ValueNode fromIndex, ValueNode... searchValues) {
         super(TYPE, StampFactory.forKind(JavaKind.Int));
         this.stubCallDescriptor = stubCallDescriptor;
@@ -127,7 +126,7 @@ public class AMD64ArrayIndexOfDispatchNode extends FixedWithNextNode implements 
         return stateBefore;
     }
 
-    public ForeignCallDescriptor getStubCallDescriptor() {
+    public ForeignCallSignature getStubCallDescriptor() {
         return stubCallDescriptor;
     }
 
@@ -158,7 +157,7 @@ public class AMD64ArrayIndexOfDispatchNode extends FixedWithNextNode implements 
         return ret;
     }
 
-    public AMD64ArrayIndexOfDispatchNode(@ConstantNodeParameter ForeignCallDescriptor stubCallDescriptor, @ConstantNodeParameter JavaKind arrayKind, @ConstantNodeParameter JavaKind valueKind,
+    public AMD64ArrayIndexOfDispatchNode(@ConstantNodeParameter ForeignCallSignature stubCallDescriptor, @ConstantNodeParameter JavaKind arrayKind, @ConstantNodeParameter JavaKind valueKind,
                     ValueNode arrayPointer, ValueNode arrayLength, ValueNode fromIndex, ValueNode... searchValues) {
         this(stubCallDescriptor, arrayKind, valueKind, false, arrayPointer, arrayLength, fromIndex, searchValues);
     }
@@ -222,11 +221,6 @@ public class AMD64ArrayIndexOfDispatchNode extends FixedWithNextNode implements 
     }
 
     @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
-    }
-
-    @Override
     public MemoryKill getLastLocationAccess() {
         return lastLocationAccess;
     }
@@ -239,7 +233,7 @@ public class AMD64ArrayIndexOfDispatchNode extends FixedWithNextNode implements 
 
     @NodeIntrinsic
     private static native int optimizedArrayIndexOf(
-                    @ConstantNodeParameter ForeignCallDescriptor descriptor,
+                    @ConstantNodeParameter ForeignCallSignature descriptor,
                     @ConstantNodeParameter JavaKind arrayKind,
                     @ConstantNodeParameter JavaKind valueKind,
                     @ConstantNodeParameter boolean findTwoConsecutive,
@@ -247,7 +241,7 @@ public class AMD64ArrayIndexOfDispatchNode extends FixedWithNextNode implements 
 
     @NodeIntrinsic
     private static native int optimizedArrayIndexOf(
-                    @ConstantNodeParameter ForeignCallDescriptor descriptor,
+                    @ConstantNodeParameter ForeignCallSignature descriptor,
                     @ConstantNodeParameter JavaKind arrayKind,
                     @ConstantNodeParameter JavaKind valueKind,
                     @ConstantNodeParameter boolean findTwoConsecutive,
@@ -255,7 +249,7 @@ public class AMD64ArrayIndexOfDispatchNode extends FixedWithNextNode implements 
 
     @NodeIntrinsic
     private static native int optimizedArrayIndexOf(
-                    @ConstantNodeParameter ForeignCallDescriptor descriptor,
+                    @ConstantNodeParameter ForeignCallSignature descriptor,
                     @ConstantNodeParameter JavaKind arrayKind,
                     @ConstantNodeParameter JavaKind valueKind,
                     @ConstantNodeParameter boolean findTwoConsecutive,
@@ -263,7 +257,7 @@ public class AMD64ArrayIndexOfDispatchNode extends FixedWithNextNode implements 
 
     @NodeIntrinsic
     private static native int optimizedArrayIndexOf(
-                    @ConstantNodeParameter ForeignCallDescriptor descriptor,
+                    @ConstantNodeParameter ForeignCallSignature descriptor,
                     @ConstantNodeParameter JavaKind arrayKind,
                     @ConstantNodeParameter JavaKind valueKind,
                     @ConstantNodeParameter boolean findTwoConsecutive,
@@ -271,7 +265,7 @@ public class AMD64ArrayIndexOfDispatchNode extends FixedWithNextNode implements 
 
     @NodeIntrinsic
     private static native int optimizedArrayIndexOf(
-                    @ConstantNodeParameter ForeignCallDescriptor descriptor,
+                    @ConstantNodeParameter ForeignCallSignature descriptor,
                     @ConstantNodeParameter JavaKind arrayKind,
                     @ConstantNodeParameter JavaKind valueKind,
                     @ConstantNodeParameter boolean findTwoConsecutive,
@@ -279,7 +273,7 @@ public class AMD64ArrayIndexOfDispatchNode extends FixedWithNextNode implements 
 
     @NodeIntrinsic
     private static native int optimizedArrayIndexOf(
-                    @ConstantNodeParameter ForeignCallDescriptor descriptor,
+                    @ConstantNodeParameter ForeignCallSignature descriptor,
                     @ConstantNodeParameter JavaKind arrayKind,
                     @ConstantNodeParameter JavaKind valueKind,
                     @ConstantNodeParameter boolean findTwoConsecutive,
@@ -287,7 +281,7 @@ public class AMD64ArrayIndexOfDispatchNode extends FixedWithNextNode implements 
 
     @NodeIntrinsic
     private static native int optimizedArrayIndexOf(
-                    @ConstantNodeParameter ForeignCallDescriptor descriptor,
+                    @ConstantNodeParameter ForeignCallSignature descriptor,
                     @ConstantNodeParameter JavaKind arrayKind,
                     @ConstantNodeParameter JavaKind valueKind,
                     @ConstantNodeParameter boolean findTwoConsecutive,
@@ -295,7 +289,7 @@ public class AMD64ArrayIndexOfDispatchNode extends FixedWithNextNode implements 
 
     @NodeIntrinsic
     private static native int optimizedArrayIndexOf(
-                    @ConstantNodeParameter ForeignCallDescriptor descriptor,
+                    @ConstantNodeParameter ForeignCallSignature descriptor,
                     @ConstantNodeParameter JavaKind arrayKind,
                     @ConstantNodeParameter JavaKind valueKind,
                     @ConstantNodeParameter boolean findTwoConsecutive,
@@ -303,69 +297,69 @@ public class AMD64ArrayIndexOfDispatchNode extends FixedWithNextNode implements 
 
     @NodeIntrinsic
     private static native int optimizedArrayIndexOf(
-                    @ConstantNodeParameter ForeignCallDescriptor descriptor,
+                    @ConstantNodeParameter ForeignCallSignature descriptor,
                     @ConstantNodeParameter JavaKind arrayKind,
                     @ConstantNodeParameter JavaKind valueKind,
                     @ConstantNodeParameter boolean findTwoConsecutive,
                     Object array, int arrayLength, int fromIndex, int searchValue);
 
-    public static int indexOf(@ConstantNodeParameter ForeignCallDescriptor descriptor, byte[] array, int arrayLength, int fromIndex, byte v1) {
+    public static int indexOf(@ConstantNodeParameter ForeignCallSignature descriptor, byte[] array, int arrayLength, int fromIndex, byte v1) {
         return optimizedArrayIndexOf(descriptor, JavaKind.Byte, JavaKind.Byte, false, array, arrayLength, fromIndex, v1);
     }
 
-    public static int indexOf(@ConstantNodeParameter ForeignCallDescriptor descriptor, byte[] array, int arrayLength, int fromIndex, byte v1, byte v2) {
+    public static int indexOf(@ConstantNodeParameter ForeignCallSignature descriptor, byte[] array, int arrayLength, int fromIndex, byte v1, byte v2) {
         return optimizedArrayIndexOf(descriptor, JavaKind.Byte, JavaKind.Byte, false, array, arrayLength, fromIndex, v1, v2);
     }
 
-    public static int indexOf(@ConstantNodeParameter ForeignCallDescriptor descriptor, byte[] array, int arrayLength, int fromIndex, byte v1, byte v2, byte v3) {
+    public static int indexOf(@ConstantNodeParameter ForeignCallSignature descriptor, byte[] array, int arrayLength, int fromIndex, byte v1, byte v2, byte v3) {
         return optimizedArrayIndexOf(descriptor, JavaKind.Byte, JavaKind.Byte, false, array, arrayLength, fromIndex, v1, v2, v3);
     }
 
-    public static int indexOf(@ConstantNodeParameter ForeignCallDescriptor descriptor, byte[] array, int arrayLength, int fromIndex, byte v1, byte v2, byte v3, byte v4) {
+    public static int indexOf(@ConstantNodeParameter ForeignCallSignature descriptor, byte[] array, int arrayLength, int fromIndex, byte v1, byte v2, byte v3, byte v4) {
         return optimizedArrayIndexOf(descriptor, JavaKind.Byte, JavaKind.Byte, false, array, arrayLength, fromIndex, v1, v2, v3, v4);
     }
 
-    public static int indexOf(@ConstantNodeParameter ForeignCallDescriptor descriptor, byte[] array, int arrayLength, int fromIndex, char v1) {
+    public static int indexOf(@ConstantNodeParameter ForeignCallSignature descriptor, byte[] array, int arrayLength, int fromIndex, char v1) {
         return optimizedArrayIndexOf(descriptor, JavaKind.Byte, JavaKind.Char, false, array, arrayLength, fromIndex, v1);
     }
 
-    public static int indexOf(@ConstantNodeParameter ForeignCallDescriptor descriptor, byte[] array, int arrayLength, int fromIndex, char v1, char v2) {
+    public static int indexOf(@ConstantNodeParameter ForeignCallSignature descriptor, byte[] array, int arrayLength, int fromIndex, char v1, char v2) {
         return optimizedArrayIndexOf(descriptor, JavaKind.Byte, JavaKind.Char, false, array, arrayLength, fromIndex, v1, v2);
     }
 
-    public static int indexOf(@ConstantNodeParameter ForeignCallDescriptor descriptor, byte[] array, int arrayLength, int fromIndex, char v1, char v2, char v3) {
+    public static int indexOf(@ConstantNodeParameter ForeignCallSignature descriptor, byte[] array, int arrayLength, int fromIndex, char v1, char v2, char v3) {
         return optimizedArrayIndexOf(descriptor, JavaKind.Byte, JavaKind.Char, false, array, arrayLength, fromIndex, v1, v2, v3);
     }
 
-    public static int indexOf(@ConstantNodeParameter ForeignCallDescriptor descriptor, byte[] array, int arrayLength, int fromIndex, char v1, char v2, char v3, char v4) {
+    public static int indexOf(@ConstantNodeParameter ForeignCallSignature descriptor, byte[] array, int arrayLength, int fromIndex, char v1, char v2, char v3, char v4) {
         return optimizedArrayIndexOf(descriptor, JavaKind.Byte, JavaKind.Char, false, array, arrayLength, fromIndex, v1, v2, v3, v4);
     }
 
-    public static int indexOf(@ConstantNodeParameter ForeignCallDescriptor descriptor, char[] array, int arrayLength, int fromIndex, char v1) {
+    public static int indexOf(@ConstantNodeParameter ForeignCallSignature descriptor, char[] array, int arrayLength, int fromIndex, char v1) {
         return optimizedArrayIndexOf(descriptor, JavaKind.Char, JavaKind.Char, false, array, arrayLength, fromIndex, v1);
     }
 
-    public static int indexOf(@ConstantNodeParameter ForeignCallDescriptor descriptor, char[] array, int arrayLength, int fromIndex, char v1, char v2) {
+    public static int indexOf(@ConstantNodeParameter ForeignCallSignature descriptor, char[] array, int arrayLength, int fromIndex, char v1, char v2) {
         return optimizedArrayIndexOf(descriptor, JavaKind.Char, JavaKind.Char, false, array, arrayLength, fromIndex, v1, v2);
     }
 
-    public static int indexOf(@ConstantNodeParameter ForeignCallDescriptor descriptor, char[] array, int arrayLength, int fromIndex, char v1, char v2, char v3) {
+    public static int indexOf(@ConstantNodeParameter ForeignCallSignature descriptor, char[] array, int arrayLength, int fromIndex, char v1, char v2, char v3) {
         return optimizedArrayIndexOf(descriptor, JavaKind.Char, JavaKind.Char, false, array, arrayLength, fromIndex, v1, v2, v3);
     }
 
-    public static int indexOf(@ConstantNodeParameter ForeignCallDescriptor descriptor, char[] array, int arrayLength, int fromIndex, char v1, char v2, char v3, char v4) {
+    public static int indexOf(@ConstantNodeParameter ForeignCallSignature descriptor, char[] array, int arrayLength, int fromIndex, char v1, char v2, char v3, char v4) {
         return optimizedArrayIndexOf(descriptor, JavaKind.Char, JavaKind.Char, false, array, arrayLength, fromIndex, v1, v2, v3, v4);
     }
 
-    public static int indexOf2ConsecutiveBytes(@ConstantNodeParameter ForeignCallDescriptor descriptor, byte[] array, int arrayLength, int fromIndex, int values) {
+    public static int indexOf2ConsecutiveBytes(@ConstantNodeParameter ForeignCallSignature descriptor, byte[] array, int arrayLength, int fromIndex, int values) {
         return optimizedArrayIndexOf(descriptor, JavaKind.Byte, JavaKind.Byte, true, array, arrayLength, fromIndex, values);
     }
 
-    public static int indexOf2ConsecutiveChars(@ConstantNodeParameter ForeignCallDescriptor descriptor, byte[] array, int arrayLength, int fromIndex, int values) {
+    public static int indexOf2ConsecutiveChars(@ConstantNodeParameter ForeignCallSignature descriptor, byte[] array, int arrayLength, int fromIndex, int values) {
         return optimizedArrayIndexOf(descriptor, JavaKind.Byte, JavaKind.Char, true, array, arrayLength, fromIndex, values);
     }
 
-    public static int indexOf2ConsecutiveChars(@ConstantNodeParameter ForeignCallDescriptor descriptor, char[] array, int arrayLength, int fromIndex, int values) {
+    public static int indexOf2ConsecutiveChars(@ConstantNodeParameter ForeignCallSignature descriptor, char[] array, int arrayLength, int fromIndex, int values) {
         return optimizedArrayIndexOf(descriptor, JavaKind.Char, JavaKind.Char, true, array, arrayLength, fromIndex, values);
     }
 }

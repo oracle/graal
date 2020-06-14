@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,6 +31,6 @@
 #include <stdio.h>
 
 int bar(int a, int b) {
-  printf("barC\n");
-  return a - b - 42;
+    printf("barC\n");
+    return a - b - 42;
 }

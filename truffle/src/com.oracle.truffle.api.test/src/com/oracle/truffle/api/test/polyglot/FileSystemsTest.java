@@ -103,7 +103,6 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.OSUtils;
 import java.nio.file.FileSystemException;
@@ -149,7 +148,7 @@ public class FileSystemsTest {
     public static Collection<Configuration> createParameters() throws IOException, ReflectiveOperationException {
         assert cfgs == null;
         final List<Configuration> result = new ArrayList<>();
-        final FileSystem fullIO = FileSystemProviderTest.newFullIOFileSystem();
+        final FileSystem fullIO = FileSystem.newDefaultFileSystem();
         // Full IO
         Path accessibleDir = createContent(Files.createTempDirectory(FileSystemsTest.class.getSimpleName()),
                         fullIO);
@@ -2625,14 +2624,6 @@ public class FileSystemsTest {
             public String toString() {
                 return file.toString();
             }
-        }
-    }
-
-    private static final TestAPIAccessor API = new TestAPIAccessor();
-
-    private static final class TestAPIAccessor extends Accessor {
-        static EngineSupport engineAccess() {
-            return API.engineSupport();
         }
     }
 }

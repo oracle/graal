@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,17 +28,17 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 struct _point {
-  int x, y;
+    int x, y;
 };
 
 typedef struct _point myPoint;
 typedef struct _point yourPoint;
 
 void foo() {
-  yourPoint p;
+    yourPoint p;
 }
 
 int main() {
-  myPoint p;
-  return 0;
+    myPoint p;
+    return 0;
 }

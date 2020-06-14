@@ -40,8 +40,8 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
-import static com.oracle.truffle.tck.tests.ValueAssert.assertValue;
 import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
+import static com.oracle.truffle.tck.tests.ValueAssert.assertValue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -81,6 +81,7 @@ import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
@@ -92,7 +93,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Option;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
@@ -591,39 +591,6 @@ public class LanguageSPITest {
         context.close();
         // inner context automatically closed
         assertEquals(1, returnedInnerContext.disposeCalled);
-    }
-
-    @Test
-    public void testParseOtherLanguage() {
-        Context context = Context.newBuilder().allowPolyglotAccess(PolyglotAccess.ALL).build();
-        eval(context, new Function<Env, Object>() {
-            @SuppressWarnings("deprecation")
-            public Object apply(Env t) {
-                assertCorrectTarget(t.parse(Source.newBuilder("").language(ContextAPITestLanguage.ID).name("").build()));
-                assertCorrectTarget(t.parse(Source.newBuilder("").mimeType(ContextAPITestLanguage.MIME).name("").build()));
-                // this is here for compatibility because mime types and language ids were allowed
-                // in between.
-                assertCorrectTarget(t.parse(Source.newBuilder("").mimeType(ContextAPITestLanguage.ID).name("").build()));
-
-                assertCorrectTarget(t.parse(Source.newBuilder(ContextAPITestLanguage.ID, "", "").name("").build()));
-                assertCorrectTarget(t.parse(Source.newBuilder(ContextAPITestLanguage.ID, "", "").mimeType(ContextAPITestLanguage.MIME).name("").build()));
-                // this is here for compatibility because mime types and language ids were allowed
-                // in between.
-                try {
-                    t.parse(Source.newBuilder(ContextAPITestLanguage.ID, "", "").mimeType("text/invalid").build());
-                    Assert.fail();
-                } catch (IllegalArgumentException e) {
-                    // illegal mime type
-                }
-                return null;
-            }
-
-            private void assertCorrectTarget(CallTarget target) {
-                Assert.assertEquals(ContextAPITestLanguage.ID, ((RootCallTarget) target).getRootNode().getLanguageInfo().getId());
-            }
-
-        });
-        context.close();
     }
 
     @Test
@@ -2216,4 +2183,59 @@ public class LanguageSPITest {
             LanguageInfo findLanguage(String id);
         }
     }
+
+    static volatile boolean enableThrow = false;
+
+    @TruffleLanguage.Registration(id = ThrowInLanguageInitializer.ID, name = ThrowInLanguageInitializer.ID)
+    public static final class ThrowInLanguageInitializer extends TruffleLanguage<TruffleLanguage.Env> {
+
+        static final String ID = "LanguageSPITestThrowInLanguageInitializer";
+
+        public ThrowInLanguageInitializer() {
+            if (enableThrow) {
+                throw new AssertionError("expectedMessage");
+            }
+        }
+
+        @Override
+        protected CallTarget parse(ParsingRequest request) throws Exception {
+            return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+        }
+
+        @Override
+        protected Env createContext(Env env) {
+            return env;
+        }
+
+    }
+
+    @Test
+    public void testThrowInClassInitializer() {
+        enableThrow = true;
+        try {
+            try (Engine engine = Engine.create()) {
+                Language language = engine.getLanguages().get(ThrowInLanguageInitializer.ID);
+                AbstractPolyglotTest.assertFails(() -> language.getOptions(), PolyglotException.class, this::assertExpectedInternalError);
+                AbstractPolyglotTest.assertFails(() -> language.getOptions(), PolyglotException.class, this::assertExpectedInternalError);
+            }
+
+            try (Context context = Context.create()) {
+                Language language = context.getEngine().getLanguages().get(ThrowInLanguageInitializer.ID);
+                AbstractPolyglotTest.assertFails(() -> language.getOptions(), PolyglotException.class, this::assertExpectedInternalError);
+                AbstractPolyglotTest.assertFails(() -> language.getOptions(), PolyglotException.class, this::assertExpectedInternalError);
+
+                AbstractPolyglotTest.assertFails(() -> context.initialize(ThrowInLanguageInitializer.ID), PolyglotException.class, this::assertExpectedInternalError);
+                AbstractPolyglotTest.assertFails(() -> context.eval(ThrowInLanguageInitializer.ID, ""), PolyglotException.class, this::assertExpectedInternalError);
+            }
+
+        } finally {
+            enableThrow = false;
+        }
+    }
+
+    void assertExpectedInternalError(PolyglotException e) {
+        assertTrue(e.isInternalError());
+        assertEquals("java.lang.AssertionError: expectedMessage", e.getMessage());
+    }
+
 }

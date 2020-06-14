@@ -77,4 +77,9 @@ public class SubstrateLLVMLoweringProvider extends SubstrateBasicLoweringProvide
     public boolean supportsBulkZeroing() {
         return false;
     }
+
+    @Override
+    public boolean targetingLLVM() {
+        return true;
+    }
 }

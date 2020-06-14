@@ -100,6 +100,18 @@ public final class GCUtils {
         }
     }
 
+    /**
+     * Asserts that given reference is not cleaned, the referent is freed by garbage collector.
+     *
+     * @param message the message for an {@link AssertionError} when referent is not freed by GC
+     * @param ref the reference
+     */
+    public static void assertNotGc(final String message, final Reference<?> ref) {
+        if (gc(IsFreed.allOf(Collections.singleton(ref)))) {
+            Assert.fail(message);
+        }
+    }
+
     private static boolean gc(BooleanSupplier isFreed) {
         int blockSize = 100_000;
         final List<byte[]> blocks = new ArrayList<>();

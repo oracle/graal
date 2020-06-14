@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,19 +31,19 @@
 #include <stdlib.h>
 
 void func() {
-  printf("destruct\n");
+    printf("destruct\n");
 }
 
 __attribute__((constructor)) void ctor() {
-  printf("construct\n");
-  atexit(func);
+    printf("construct\n");
+    atexit(func);
 }
 
 __attribute__((destructor)) void dtor() {
-  printf("destruct\n");
+    printf("destruct\n");
 }
 
 int main() {
-  printf("main\n");
-  return 0;
+    printf("main\n");
+    return 0;
 }

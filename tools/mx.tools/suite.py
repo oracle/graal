@@ -41,6 +41,7 @@ suite = {
                 "NanoHTTPD",
                 "NanoHTTPD-WebSocket",
                 "TruffleJSON",
+                "SLF4J_SIMPLE",
                 "Java-WebSocket",
             ],
             "exports" : [
@@ -218,40 +219,57 @@ suite = {
           "sha1" : "c556821b83878d3a327bc07dedc1bf2998f99a8f",
         },
         "Java-WebSocket" : {
-            "path" : "lib/Java-WebSocket-1.3.9.jar",
-            "sha1" : "e6e60889b7211a80b21052a249bd7e0f88f79fee",
+            "sha1" : "382b302303c830a7edb20c9ed61c4ac2cdf7a7a4",
             "maven" : {
                 "groupId" : "org.java-websocket",
                 "artifactId" : "Java-WebSocket",
-                "version" : "1.3.9",
+                "version" : "1.5.1",
+            },
+            "dependencies" : ["SLF4J_API"],
+        },
+        "SLF4J_API" : {
+            "sha1" : "b5a4b6d16ab13e34a88fae84c35cd5d68cac922c",
+            "maven" : {
+                "groupId" : "org.slf4j",
+                "artifactId" : "slf4j-api",
+                "version" : "1.7.30",
             }
         },
+        "SLF4J_SIMPLE" : {
+            "sha1" : "e606eac955f55ecf1d8edcccba04eb8ac98088dd",
+            "maven" : {
+                "groupId" : "org.slf4j",
+                "artifactId" : "slf4j-simple",
+                "version" : "1.7.30",
+            },
+            "dependencies" : ["SLF4J_API"]
+        },
         "VISUALVM_COMMON" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-801.tar.gz"],
-            "sha1" : "bf7a86003091d9be8d6d5d6af3c0360aa68a321a",
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-830.tar.gz"],
+            "sha1" : "dbf7cdee54f2797776b93bfaebd4f107ad8755f8",
         },
         "VISUALVM_PLATFORM_SPECIFIC" : {
             "os_arch" : {
                 "linux" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-801-linux-amd64.tar.gz"],
-                        "sha1" : "bd923b7c5a4c875effa105d25054ffcc510501af",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-830-linux-amd64.tar.gz"],
+                        "sha1" : "40d39ad1b1853fbe9bc452cd586de206411e0594",
                     },
                     "aarch64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-801-linux-aarch64.tar.gz"],
-                        "sha1" : "5f0bf062697746ba15971893d1c1010c7180cb6e",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-830-linux-aarch64.tar.gz"],
+                        "sha1" : "5de19e2d908b193dc023bc9da7062c0e2963de85",
                     }
                 },
                 "darwin" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-801-macosx-x86_64.tar.gz"],
-                        "sha1" : "3dd0f08c81b9c834148e1869984e4c91e651f3df",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-830-macosx-x86_64.tar.gz"],
+                        "sha1" : "9d0daca5bb63a9da535bd2081c3344b5084f2f02",
                     }
                 },
                 "windows" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-801-windows-amd64.tar.gz"],
-                        "sha1" : "6fe5493cf1959ae369e09e9cf9aa1b8fe7c9442f",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-830-windows-amd64.tar.gz"],
+                        "sha1" : "ac526df68ef683c8794e021cf32d3ead42fdc87a",
                     }
                 },
             }

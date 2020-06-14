@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,14 +28,14 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int func(int t) {
-  return t;
+    return t;
 }
 
 int other(int t) {
-  return 2;
+    return 2;
 }
 
 int main() {
-  int (*test[4])() = { func, other, func, func };
-  return test[0](4) + test[1](5) + test[3](7) * 5;
+    int (*test[4])() = { func, other, func, func };
+    return test[0](4) + test[1](5) + test[3](7) * 5;
 }

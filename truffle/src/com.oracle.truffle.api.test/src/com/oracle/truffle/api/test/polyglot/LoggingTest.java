@@ -1220,13 +1220,15 @@ public class LoggingTest {
         static final Level[] LOGGER_LEVELS = {Level.FINEST, Level.FINER, Level.FINE, Level.INFO, Level.SEVERE, Level.WARNING};
         static BiPredicate<LoggingContext, Collection<TruffleLogger>> action;
         private final Collection<TruffleLogger> allLoggers;
+        private final TruffleLogger[] allLoggersArray;
 
         AbstractLoggingLanguage(final String id) {
-            final Collection<TruffleLogger> loggers = new ArrayList<>(LOGGER_NAMES.length);
+            final ArrayList<TruffleLogger> loggers = new ArrayList<>(LOGGER_NAMES.length);
             for (String loggerName : LOGGER_NAMES) {
                 loggers.add(TruffleLogger.getLogger(id, loggerName));
             }
-            allLoggers = loggers;
+            allLoggersArray = loggers.toArray(new TruffleLogger[0]);
+            allLoggers = Arrays.asList(allLoggersArray);
         }
 
         @Override
@@ -1255,7 +1257,7 @@ public class LoggingTest {
 
         private void doLog() {
             for (Level level : LOGGER_LEVELS) {
-                for (TruffleLogger logger : allLoggers) {
+                for (TruffleLogger logger : allLoggersArray) {
                     logger.log(level, logger.getName());
                 }
             }

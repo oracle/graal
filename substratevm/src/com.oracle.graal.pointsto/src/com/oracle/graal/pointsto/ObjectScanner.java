@@ -351,7 +351,7 @@ public abstract class ObjectScanner {
 
     private String asString(JavaConstant constant) {
         Object obj = constantAsObject(bb, constant);
-        return obj.getClass().getTypeName() + '@' + Integer.toHexString(obj.hashCode());
+        return obj.getClass().getTypeName() + '@' + Integer.toHexString(System.identityHashCode(obj));
     }
 
     /**
@@ -361,10 +361,7 @@ public abstract class ObjectScanner {
      */
     private void doScan(WorklistEntry entry) {
         Object valueObj = constantAsObject(bb, entry.constant);
-        assert checkCorrectClassloaders(entry, valueObj) : "Invalid classloader " + valueObj.getClass().getClassLoader() + " for " + valueObj +
-                        ".\nThis error happens when objects from previous image compilations are reached in the current compilation. " +
-                        "To prevent this issue reset all static state from the bootclasspath and application classpath that points to the application objects. " +
-                        "For reference, see com.oracle.svm.truffle.TruffleFeature.cleanup().";
+
         try {
             AnalysisType type = analysisType(bb, valueObj);
 
@@ -383,21 +380,6 @@ public abstract class ObjectScanner {
         } catch (UnsupportedFeatureException ex) {
             unsupportedFeature("", ex.getMessage(), entry.reason, entry.previous);
         }
-    }
-
-    private boolean checkCorrectClassloaders(WorklistEntry entry, Object valueObj) {
-        boolean result = bb.isValidClassLoader(valueObj);
-        if (!result) {
-            System.err.println("detected an object that originates from previous compilations: " + valueObj.toString());
-            Object reason = entry.getReason();
-            while (reason instanceof WorklistEntry) {
-                Object value = constantAsObject(bb, ((WorklistEntry) reason).constant);
-                System.err.println("  referenced from " + value.toString());
-                reason = ((WorklistEntry) reason).getReason();
-            }
-            System.err.println("  referenced from " + reason);
-        }
-        return result;
     }
 
     /**
