@@ -104,7 +104,7 @@ final class DefaultIntegerExports {
     static float asFloat(Integer receiver) throws UnsupportedMessageException {
         int i = receiver;
         float f = i;
-        if (f == i) {
+        if ((int) f == i) {
             return f;
         }
         CompilerDirectives.transferToInterpreter();

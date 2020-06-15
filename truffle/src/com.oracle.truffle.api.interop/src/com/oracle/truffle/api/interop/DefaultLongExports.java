@@ -117,7 +117,7 @@ final class DefaultLongExports {
     static float asFloat(Long receiver) throws UnsupportedMessageException {
         long l = receiver;
         float f = l;
-        if (f == l) {
+        if ((long) f == l) {
             return f;
         }
         CompilerDirectives.transferToInterpreter();
