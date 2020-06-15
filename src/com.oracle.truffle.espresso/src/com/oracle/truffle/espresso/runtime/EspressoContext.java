@@ -540,6 +540,10 @@ public final class EspressoContext {
         return jimageLibrary;
     }
 
+    public int getJavaVersion() {
+        return getVmProperties().bootClassPathType().getJavaVersion();
+    }
+
     public Types getTypes() {
         return getLanguage().getTypes();
     }

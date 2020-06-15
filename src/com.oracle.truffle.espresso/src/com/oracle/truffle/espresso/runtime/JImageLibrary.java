@@ -24,11 +24,13 @@
 package com.oracle.truffle.espresso.runtime;
 
 import static com.oracle.truffle.espresso.jni.NativeLibrary.lookupAndBind;
+import static com.oracle.truffle.espresso.runtime.ModulesReaderHelper.JAVA_BASE;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.CharBuffer;
 import java.nio.charset.CharsetEncoder;
+import java.nio.charset.CoderResult;
 import java.nio.charset.StandardCharsets;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -45,6 +47,8 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 
 @SuppressWarnings("unused")
 class JImageLibrary extends NativeEnv implements ContextAccess {
+    private static final String VERSION_STRING = "11.0";
+
     private static final String LIBJIMAGE_NAME = "jimage";
     private static final String OPEN = "JIMAGE_Open";
     private static final String CLOSE = "JIMAGE_Close";
@@ -64,6 +68,10 @@ class JImageLibrary extends NativeEnv implements ContextAccess {
 
     // Library pointer
     private final TruffleObject jimageLibrary;
+    // Cache "java.base" native module name
+    private final TruffleObject encodedJavaBase;
+    // Cache the version sting.
+    private final TruffleObject encodedVersion;
 
     private static CharsetEncoder encoder = StandardCharsets.UTF_8.newEncoder();
 
@@ -109,6 +117,9 @@ class JImageLibrary extends NativeEnv implements ContextAccess {
             getResource = lookupAndBind(jimageLibrary, GET_RESOURCE, GET_RESOURCE_SIGNATURE);
             resourceIterator = lookupAndBind(jimageLibrary, RESOURCE_ITERATOR, RESOURCE_ITERATOR_SIGNATURE);
             resourcePath = lookupAndBind(jimageLibrary, RESOURCE_PATH, RESOURCE_PATH_SIGNATURE);
+
+            this.encodedJavaBase = getNativeString(JAVA_BASE);
+            this.encodedVersion = getNativeString(VERSION_STRING);
         } catch (UnknownIdentifierException e) {
             throw EspressoError.shouldNotReachHere(e);
         }
@@ -129,12 +140,13 @@ class JImageLibrary extends NativeEnv implements ContextAccess {
         // Prepare the call
         ByteBuffer sizeBuffer = allocateDirect(1, JavaKind.Long);
         TruffleObject sizePtr = byteBufferPointer(sizeBuffer);
-        TruffleObject moduleNamePtr = getNativeString(moduleName);
-        TruffleObject versionPtr = getNativeString("11.0");
+        TruffleObject moduleNamePtr = JAVA_BASE.equals(moduleName)
+                        ? encodedJavaBase
+                        : getNativeString(moduleName);
         TruffleObject namePtr = getNativeString(name);
 
         // Do the call
-        long location = (long) execute(findResource, jimage, moduleNamePtr, versionPtr, namePtr, sizePtr);
+        long location = (long) execute(findResource, jimage, moduleNamePtr, encodedVersion, namePtr, sizePtr);
         if (location == 0) {
             // Not found.
             return null;
@@ -163,20 +175,25 @@ class JImageLibrary extends NativeEnv implements ContextAccess {
     }
 
     private static TruffleObject getNativeString(String name) {
+        CharsetEncoder encoder = StandardCharsets.UTF_8.newEncoder();
         int length = ((int) (name.length() * encoder.averageBytesPerChar())) + 1;
         for (;;) {
             // Be super safe with the size of the buffer.
             ByteBuffer bb = allocateDirect(length);
             encoder.reset();
-            encoder.encode(CharBuffer.wrap(name), bb, false);
-            if (bb.position() < bb.capacity()) {
-                // We have at least one byte of leeway: null-terminate the string.
+            CoderResult result = encoder.encode(CharBuffer.wrap(name), bb, true);
+            if (result.isUnderflow() && (bb.position() < bb.capacity())) {
+                // Encoder encoded entire string, and we have one byte of leeway.
                 bb.put((byte) 0);
                 return byteBufferPointer(bb);
             }
             // Buffer was not big enough, retry with a bigger one.
-            length = 1;
+            length <<= 1;
+            if (length == 0) {
+                throw EspressoError.shouldNotReachHere();
+            }
             // TODO(garcia): introduce some kind of limitation on the size of the encoded string ?
+            // For now, expect shouldNotReachHere if the length would be close to MAX_INT
         }
     }
 
