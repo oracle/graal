@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser;
 
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionSymbol;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.runtime.ExternalLibrary;
@@ -45,6 +46,7 @@ public final class LLVMParserResult {
     private final List<GlobalVariable> definedGlobals;
     private final List<GlobalVariable> externalGlobals;
     private List<ExternalLibrary> dependencies;
+    private List<Source> dependenciesSource;
     private final DataLayout dataLayout;
     private final int symbolTableSize;
 
@@ -87,6 +89,10 @@ public final class LLVMParserResult {
         return dependencies;
     }
 
+    public List<Source> getDependenciesSource() {
+        return dependenciesSource;
+    }
+
     public DataLayout getDataLayout() {
         return dataLayout;
     }
@@ -103,5 +109,10 @@ public final class LLVMParserResult {
     public void setDependencies(ArrayList<ExternalLibrary> dependencies) {
         assert this.dependencies == null;
         this.dependencies = dependencies;
+    }
+
+    public void setSourceDependencies(ArrayList<Source> dependenciesSource) {
+        assert this.dependenciesSource == null;
+        this.dependenciesSource = dependenciesSource;
     }
 }

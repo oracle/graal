@@ -67,7 +67,7 @@ public abstract class PlatformCapabilityBase<S extends Enum<S> & LLVMSyscallEntr
         List<String> newDeps = null;
         boolean libSulongXXAdded = false;
         // inject libsulong++ dependency
-        if (ctx.isInternalLibrary(library) && library.hasFile()) {
+        /*if (ctx.isInternalLibrary(library) && library.hasFile()) {
             Path path = Paths.get(library.getFile().getPath());
             String remainder = ctx.getInternalLibraryPath().relativize(path).toString();
             if (remainder.startsWith(LIBCXXABI_PREFIX) || remainder.startsWith(LIBCXX_PREFIX)) {
@@ -75,7 +75,7 @@ public abstract class PlatformCapabilityBase<S extends Enum<S> & LLVMSyscallEntr
                 newDeps.add(getLibsulongxxFilename());
                 libSulongXXAdded = true;
             }
-        }
+        }*/
 
         // replace absolute dependencies to libc++* to relative ones (in the llvm home)
         for (int i = 0; i < dependencies.size(); i++) {
@@ -94,7 +94,7 @@ public abstract class PlatformCapabilityBase<S extends Enum<S> & LLVMSyscallEntr
                     }
                 }
             }
-            if (!libSulongXXAdded && (dep.startsWith(LIBCXXABI_PREFIX) || dep.startsWith(LIBCXX_PREFIX))) {
+            if (!libSulongXXAdded && ((dep.startsWith(LIBCXXABI_PREFIX) && !library.getName().contains(LIBCXX_PREFIX)) || dep.startsWith(LIBCXX_PREFIX))) {
                 // inject libsulong++ dependency
                 if (newDeps == null) {
                     newDeps = new ArrayList<>(dependencies);

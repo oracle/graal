@@ -87,6 +87,7 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.pthread.LLVMPThreadContext;
+import org.graalvm.collections.EconomicMap;
 
 public final class LLVMContext {
 
@@ -107,7 +108,7 @@ public final class LLVMContext {
     private final ConcurrentHashMap<LLVMPointer, List<LLVMSymbol>> symbolsReverseMap = new ConcurrentHashMap<>();
     // allocations used to store non-pointer globals (need to be freed when context is disposed)
     private final ArrayList<LLVMPointer> globalsNonPointerStore = new ArrayList<>();
-    private final ArrayList<LLVMPointer> globalsReadOnlyStore = new ArrayList<>();
+    private final EconomicMap<Integer, LLVMPointer> globalsReadOnlyStore = EconomicMap.create();
     private final Object globalsStoreLock = new Object();
 
     private final List<LLVMThread> runningThreads = new ArrayList<>();
@@ -138,6 +139,7 @@ public final class LLVMContext {
 
     // private for storing the globals of each bcode file;
     @CompilationFinal(dimensions = 2) private AssumedValue<LLVMPointer>[][] symbolStorage;
+    private boolean[] libraryLoaded;
 
     // signals
     private final LLVMNativePointer sigDfl;
@@ -211,6 +213,9 @@ public final class LLVMContext {
         pThreadContext = new LLVMPThreadContext(this);
 
         symbolStorage = new AssumedValue[10][];
+        libraryLoaded = new boolean[10];
+        Arrays.fill(libraryLoaded, Boolean.FALSE);
+
     }
 
     boolean patchContext(Env newEnv) {
@@ -748,6 +753,21 @@ public final class LLVMContext {
         }
     }
 
+    public boolean isLibraryAlreadyLoaded(int id) {
+        return libraryLoaded[id];
+    }
+
+    public void markLibraryLoaded(int id) {
+        if (id >= libraryLoaded.length) {
+            int newLength = (id + 1) + ((id + 1) / 2);
+            boolean[] temp = new boolean[newLength];
+            System.arraycopy(libraryLoaded, 0, temp, 0, libraryLoaded.length);
+            libraryLoaded = temp;
+        }
+        libraryLoaded[id] = true;
+    }
+
+
     public LLVMLanguage getLanguage() {
         return language;
     }
@@ -762,6 +782,15 @@ public final class LLVMContext {
 
     public void addLocalScope(LLVMLocalScope scope) {
         localScopes.add(scope);
+    }
+
+    public LLVMLocalScope getLocalScope(int id) {
+        for (LLVMLocalScope scope : localScopes) {
+            if (scope.containID(id)) {
+                return scope;
+            }
+        }
+        return null;
     }
 
     public AssumedValue<LLVMPointer>[] findSymbolTable(int id) {
@@ -949,10 +978,17 @@ public final class LLVMContext {
     }
 
     @TruffleBoundary
-    public void registerReadOnlyGlobals(LLVMPointer nonPointerStore, NodeFactory nodeFactory) {
+    public void registerReadOnlyGlobals(int id, LLVMPointer nonPointerStore, NodeFactory nodeFactory) {
         synchronized (globalsStoreLock) {
             initFreeGlobalBlocks(nodeFactory);
-            globalsReadOnlyStore.add(nonPointerStore);
+            globalsReadOnlyStore.put(id, nonPointerStore);
+        }
+    }
+
+    @TruffleBoundary
+    public LLVMPointer getReadOnlyGlobals(int id){
+        synchronized (globalsStoreLock) {
+            return globalsReadOnlyStore.get(id);
         }
     }
 

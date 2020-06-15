@@ -60,6 +60,7 @@ import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.toolchain.config.LLVMConfig;
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.options.OptionDescriptors;
 
 import java.util.Collection;
@@ -100,6 +101,10 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     @CompilationFinal private Configuration activeConfiguration = null;
 
     @CompilationFinal private LLVMMemory cachedLLVMMemory;
+
+    private final EconomicMap<String, LLVMScope> internalFileScopes = EconomicMap.create();
+
+    private final EconomicMap<Source, ExternalLibrary> internalExternalLibraries = EconomicMap.create();
 
     private final LLDBSupport lldbSupport = new LLDBSupport(this);
     private final Assumption noCommonHandleAssumption = Truffle.getRuntime().createAssumption("no common handle");
@@ -185,6 +190,26 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     public LLVMMemory getLLVMMemory() {
         assert cachedLLVMMemory != null;
         return cachedLLVMMemory;
+    }
+
+    public LLVMScope getInternalFileScopes(String libraryName) {
+        return internalFileScopes.get(libraryName);
+    }
+
+    public void addInternalFileScope(String libraryName, LLVMScope scope){
+        internalFileScopes.put(libraryName, scope);
+    }
+
+    public ExternalLibrary getinternalExternalLibrary(Source source) {
+        return internalExternalLibraries.get(source);
+    }
+
+    public void addInternalExternalLibrary(Source source, ExternalLibrary externalLibrary){
+        internalExternalLibraries.put(source, externalLibrary);
+    }
+
+    public boolean containsInternalExternalLibrary(Source source){
+        return internalExternalLibraries.containsKey(source);
     }
 
     @Override

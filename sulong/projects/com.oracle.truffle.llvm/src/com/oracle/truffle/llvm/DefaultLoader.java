@@ -48,7 +48,7 @@ public final class DefaultLoader extends Loader {
     public CallTarget load(LLVMContext context, Source source, AtomicInteger id) {
         // per context, only one thread must do any parsing
         synchronized (context.getGlobalScope()) {
-            return Runner.parse(context, this, id, source);
+            return Runner.parse(context, id, source);
         }
     }
 
