@@ -45,14 +45,13 @@ import com.oracle.truffle.api.Truffle;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import java.nio.file.Paths;
-import java.util.concurrent.Callable;
+import java.util.function.Consumer;
 import org.graalvm.polyglot.Context;
 import org.junit.Test;
 
@@ -66,12 +65,12 @@ public class RequireContextTest extends AbstractPolyglotTest {
     @Test
     public void testGetCurrentContext() {
         setupEnv(Context.create());
-        assertFails(() -> ProxyLanguage.getCurrentContext());
-        Object prev = languageEnv.getContext().enter();
+        assertFails(() -> ProxyLanguage.getCurrentContext(), IllegalStateException.class, NoCurrentContextVerifier.INSTANCE);
+        context.enter();
         try {
             assertEquals(languageEnv, ProxyLanguage.getCurrentContext().getEnv());
         } finally {
-            languageEnv.getContext().leave(prev);
+            context.leave();
         }
     }
 
@@ -83,12 +82,12 @@ public class RequireContextTest extends AbstractPolyglotTest {
                 return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(true));
             }
         });
-        assertFails(() -> instrumentEnv.getTruffleFile("file"));
-        assertFails(() -> instrumentEnv.getTruffleFile(Paths.get(".").toAbsolutePath().toUri()));
-        assertFails(() -> instrumentEnv.findTopScopes(ProxyLanguage.ID));
-        assertFails(() -> instrumentEnv.parse(Source.newBuilder(ProxyLanguage.ID, "", "test").build()));
-        assertFails(() -> instrumentEnv.lookup(instrumentEnv.getLanguages().get(LanguageWithService.ID), Service.class));
-        Object prev = languageEnv.getContext().enter();
+        assertFails(() -> instrumentEnv.getTruffleFile("file"), IllegalStateException.class, NoCurrentContextVerifier.INSTANCE);
+        assertFails(() -> instrumentEnv.getTruffleFile(Paths.get(".").toAbsolutePath().toUri()), IllegalStateException.class, NoCurrentContextVerifier.INSTANCE);
+        assertFails(() -> instrumentEnv.findTopScopes(ProxyLanguage.ID), IllegalStateException.class, NoCurrentContextVerifier.INSTANCE);
+        assertFails(() -> instrumentEnv.parse(Source.newBuilder(ProxyLanguage.ID, "", "test").build()), IllegalStateException.class, NoCurrentContextVerifier.INSTANCE);
+        assertFails(() -> instrumentEnv.lookup(instrumentEnv.getLanguages().get(LanguageWithService.ID), Service.class), IllegalStateException.class, NoCurrentContextVerifier.INSTANCE);
+        context.enter();
         try {
             assertNotNull(instrumentEnv.getTruffleFile("file"));
             assertNotNull(instrumentEnv.getTruffleFile(Paths.get(".").toAbsolutePath().toUri()));
@@ -96,22 +95,23 @@ public class RequireContextTest extends AbstractPolyglotTest {
             assertTrue((boolean) instrumentEnv.parse(Source.newBuilder(ProxyLanguage.ID, "", "test").build()).call());
             assertNotNull(instrumentEnv.lookup(instrumentEnv.getLanguages().get(LanguageWithService.ID), Service.class));
         } finally {
-            languageEnv.getContext().leave(prev);
+            context.leave();
         }
     }
 
-    private static void assertFails(Callable<?> callable) {
-        try {
-            callable.call();
-        } catch (IllegalStateException ise) {
+    private static final class NoCurrentContextVerifier implements Consumer<IllegalStateException> {
+
+        static final NoCurrentContextVerifier INSTANCE = new NoCurrentContextVerifier();
+
+        private NoCurrentContextVerifier() {
+        }
+
+        @Override
+        public void accept(IllegalStateException ise) {
             if (!"There is no current context available.".equals(ise.getMessage())) {
                 throw new AssertionError("Expected  'There is no current context available.' message but was " + ise.getMessage(), ise);
             }
-            return;
-        } catch (Throwable t) {
-            throw new AssertionError("Expected IllegalStateException but was " + t.getClass(), t);
         }
-        fail("Expected IllegalStateException but no exception was thrown");
     }
 
     public interface Service {
