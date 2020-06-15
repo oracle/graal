@@ -73,6 +73,8 @@ import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute
 import com.oracle.truffle.espresso.classfile.attributes.Local;
 import com.oracle.truffle.espresso.classfile.attributes.LocalVariableTable;
 import com.oracle.truffle.espresso.classfile.attributes.MethodParametersAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.NestHostAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.NestMembersAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SignatureAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SourceDebugExtensionAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SourceFileAttribute;
@@ -130,7 +132,7 @@ public final class ClassfileParser {
     public static final int DYNAMICCONSTANT_MAJOR_VERSION = JAVA_11_VERSION;
 
     public static final char JAVA_MIN_SUPPORTED_VERSION = JAVA_1_1_VERSION;
-    public static final char JAVA_MAX_SUPPORTED_VERSION = JAVA_8_VERSION;
+    public static final char JAVA_MAX_SUPPORTED_VERSION = JAVA_11_VERSION;
     public static final char JAVA_MAX_SUPPORTED_MINOR_VERSION = 0;
 
     private final ClasspathFile classfile;
@@ -660,6 +662,8 @@ public final class ClassfileParser {
         Attribute runtimeVisibleAnnotations = null;
         Attribute runtimeVisibleTypeAnnotations = null;
         Attribute runtimeInvisibleTypeAnnotations = null;
+        NestHostAttribute nestHost = null;
+        NestMembersAttribute nestMembers = null;
         EnclosingMethodAttribute enclosingMethod = null;
         BootstrapMethodsAttribute bootstrapMethods = null;
         InnerClassesAttribute innerClasses = null;
@@ -713,6 +717,19 @@ public final class ClassfileParser {
                         throw ConstantPool.classFormatError("Duplicate EnclosingMethod attribute");
                     }
                     classAttributes[i] = enclosingMethod = parseEnclosingMethodAttribute(attributeName);
+                } else if (majorVersion >= JAVA_11_VERSION && attributeName.equals(Name.NestHost)) {
+                    if (nestHost != null) {
+                        throw ConstantPool.classFormatError("Duplicate NestHost attribute");
+                    }
+                    if (attributeSize != 2) {
+                        throw ConstantPool.classFormatError("Attribute length of NestHost must be 2");
+                    }
+                    classAttributes[i] = nestHost = new NestHostAttribute(attributeName, stream.readU2());
+                } else if (majorVersion >= JAVA_11_VERSION && attributeName.equals(Name.NestMembers)) {
+                    if (nestMembers != null) {
+                        throw ConstantPool.classFormatError("Duplicate NestMembers attribute");
+                    }
+                    classAttributes[i] = nestMembers = parseNestMembers(attributeName);
                 } else {
                     // stream.skip(attributeSize);
                     classAttributes[i] = new Attribute(attributeName, stream.readByteArray(attributeSize));
@@ -910,6 +927,16 @@ public final class ClassfileParser {
             }
         }
         return new InnerClassesAttribute(name, innerClassInfos);
+    }
+
+    private NestMembersAttribute parseNestMembers(Symbol<Name> attributeName) {
+        assert NestMembersAttribute.NAME.equals(attributeName);
+        int numberOfClasses = stream.readU2();
+        int[] classes = new int[numberOfClasses];
+        for (int i = 0; i < numberOfClasses; i++) {
+            classes[i] = stream.readU2();
+        }
+        return new NestMembersAttribute(attributeName, classes);
     }
 
     private InnerClassesAttribute.Entry parseInnerClassEntry() {

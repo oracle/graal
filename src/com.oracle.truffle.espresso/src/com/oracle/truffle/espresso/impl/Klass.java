@@ -997,6 +997,15 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return mirror();
     }
 
+    public Klass nest() {
+        return this;
+    }
+
+    @SuppressWarnings("unused")
+    public boolean nestMembersCheck(Klass k) {
+        return false;
+    }
+
     @Override
     public int getMajorVersion() {
         return 0;
