@@ -40,10 +40,9 @@
  */
 package com.oracle.truffle.polyglot;
 
-import java.io.ByteArrayInputStream;
-import com.oracle.truffle.api.TruffleFile;
-import static com.oracle.truffle.api.CompilerAsserts.shouldNotReachHere;
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;

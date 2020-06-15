@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.object;
 
-import static com.oracle.truffle.api.CompilerAsserts.shouldNotReachHere;
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;

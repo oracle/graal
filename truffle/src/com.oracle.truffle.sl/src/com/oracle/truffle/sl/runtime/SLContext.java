@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.sl.runtime;
 
-import static com.oracle.truffle.api.CompilerAsserts.shouldNotReachHere;
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;

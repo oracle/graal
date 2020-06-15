@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.sl.nodes.util;
 
-import static com.oracle.truffle.api.CompilerAsserts.shouldNotReachHere;
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.GenerateUncached;

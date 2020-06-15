@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.sl.builtins;
 
-import static com.oracle.truffle.api.CompilerAsserts.shouldNotReachHere;
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;

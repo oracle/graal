@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.polyglot;
 
-import static com.oracle.truffle.api.CompilerAsserts.shouldNotReachHere;
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;

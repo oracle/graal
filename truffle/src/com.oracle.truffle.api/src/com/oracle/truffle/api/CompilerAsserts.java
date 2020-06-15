@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.api;
 
-import static com.oracle.truffle.api.CompilerDirectives.transferToInterpreterAndInvalidate;
-
 /**
  * Assertions about the code produced by the Truffle compiler. All operations, except
  * {@link #shouldNotReachHere()}, have no effect when either executed in the interpreter or in the
@@ -168,124 +166,6 @@ public final class CompilerAsserts {
      * @see CompilerAsserts#partialEvaluationConstant(Object)
      */
     public static <T> void partialEvaluationConstant(double value) {
-    }
-
-    /**
-     * Indicates a code path that is not supposed to be reached during compilation or
-     * interpretation. If it is reached then it is considered fatal internal error and execution
-     * typically should not continue. Transfers to interpreter and
-     * {@link CompilerDirectives#transferToInterpreterAndInvalidate() invalidates} the compiled code
-     * and throws an {@link AssertionError} when reached unexpectedly.
-     * <p>
-     * This method returns a runtime exception to be conveniently used in combination with Java
-     * throw statements, for example:
-     *
-     * <pre>
-     * if (expectedCondition) {
-     *     return 42;
-     * } else {
-     *     throw shouldNotReachHere();
-     * }
-     * </pre>
-     *
-     * @see #neverPartOfCompilation() to throw an assertion only on compiled code paths
-     * @since 20.2
-     */
-    public static RuntimeException shouldNotReachHere() {
-        transferToInterpreterAndInvalidate();
-        throw shouldNotReachHere(null, null);
-    }
-
-    /**
-     * Indicates a code path that is not supposed to be reached during compilation or
-     * interpretation. If it is reached then it is considered fatal internal error and execution
-     * typically should not continue. Transfers to interpreter and
-     * {@link CompilerDirectives#transferToInterpreterAndInvalidate() invalidates} the compiled code
-     * and throws an {@link AssertionError} when reached unexpectedly.
-     * <p>
-     * This method returns a runtime exception to be conveniently used in combination with Java
-     * throw statements, for example:
-     *
-     * <pre>
-     * if (expectedCondition) {
-     *     return 42;
-     * } else {
-     *     throw shouldNotReachHere("Additional message");
-     * }
-     * </pre>
-     *
-     * @param message an additional message for the exception thrown.
-     * @see #neverPartOfCompilation() to throw an assertion only on compiled code paths
-     * @since 20.2
-     */
-    public static RuntimeException shouldNotReachHere(String message) {
-        transferToInterpreterAndInvalidate();
-        throw shouldNotReachHere(message, null);
-    }
-
-    /**
-     * Indicates a code path that is not supposed to be reached during compilation or
-     * interpretation. If it is reached then it is considered fatal internal error and execution
-     * typically should not continue. Transfers to interpreter and
-     * {@link CompilerDirectives#transferToInterpreterAndInvalidate() invalidates} the compiled code
-     * and throws an {@link AssertionError} when reached unexpectedly.
-     * <p>
-     * This method returns a runtime exception to be conveniently used in combination with Java
-     * throw statements, for example:
-     *
-     * <pre>
-     * if (expectedCondition) {
-     *     return 42;
-     * } else {
-     *     throw shouldNotReachHere("Additional message");
-     * }
-     * </pre>
-     *
-     * @param cause the cause if an exception was responsible for the unexpected case.
-     * @see #neverPartOfCompilation() to throw an assertion only on compiled code paths
-     * @since 20.2
-     */
-    public static RuntimeException shouldNotReachHere(Throwable cause) {
-        transferToInterpreterAndInvalidate();
-        throw shouldNotReachHere(null, cause);
-    }
-
-    /**
-     * Indicates a code path that is not supposed to be reached during compilation or
-     * interpretation. If it is reached then it is considered fatal internal error and execution
-     * typically should not continue. Transfers to interpreter and
-     * {@link CompilerDirectives#transferToInterpreterAndInvalidate() invalidates} the compiled code
-     * and throws an {@link AssertionError} when reached unexpectedly.
-     * <p>
-     * This method returns a runtime exception to be conveniently used in combination with Java
-     * throw statements, for example:
-     *
-     * <pre>
-     * if (expectedCondition) {
-     *     return 42;
-     * } else {
-     *     throw shouldNotReachHere("Additional message");
-     * }
-     * </pre>
-     *
-     * @param message an additional message for the exception thrown.
-     * @param cause the cause if an exception was responsible for the unexpected case.
-     *
-     * @see #neverPartOfCompilation() to throw an assertion only on compiled code paths
-     * @since 20.2
-     */
-    public static RuntimeException shouldNotReachHere(String message, Throwable cause) {
-        transferToInterpreterAndInvalidate();
-        throw new ShouldNotReachHere(message, cause);
-    }
-
-    @SuppressWarnings("serial")
-    static class ShouldNotReachHere extends AssertionError {
-
-        ShouldNotReachHere(String message, Throwable cause) {
-            super(message, cause);
-        }
-
     }
 
 }

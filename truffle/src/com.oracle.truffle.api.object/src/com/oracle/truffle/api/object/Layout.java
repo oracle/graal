@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.api.object;
 
-import static com.oracle.truffle.api.CompilerAsserts.shouldNotReachHere;
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 
 import java.util.EnumSet;
 import java.util.ServiceLoader;

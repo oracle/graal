@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.api.interop;
 
-import static com.oracle.truffle.api.CompilerAsserts.shouldNotReachHere;
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 import static com.oracle.truffle.api.interop.AssertUtils.preCondition;
 import static com.oracle.truffle.api.interop.AssertUtils.validArgument;
 import static com.oracle.truffle.api.interop.AssertUtils.validArguments;
