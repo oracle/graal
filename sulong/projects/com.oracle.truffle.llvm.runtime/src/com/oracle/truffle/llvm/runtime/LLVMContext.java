@@ -500,8 +500,7 @@ public final class LLVMContext {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     // Executed in dispose(), therefore can read unsynchronized
-                    for (int i = 0; i < globalsReadOnlyStore.size(); i++) {
-                        LLVMPointer store = getElement(globalsReadOnlyStore, i);
+                    for (LLVMPointer store : globalsReadOnlyStore.getValues()) {
                         if (store != null) {
                             freeRo.execute(store);
                         }
