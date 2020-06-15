@@ -40,6 +40,10 @@
  */
 package com.oracle.truffle.api.interop;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 /**
  * Common super class for exceptions that can occur when sending {@link InteropLibrary interop
  * messages}. This super class is used to catch any kind of these exceptions.
@@ -49,12 +53,40 @@ package com.oracle.truffle.api.interop;
  */
 public abstract class InteropException extends Exception {
 
-    InteropException(String message) {
-        super(message, null);
+    InteropException(String message, Throwable cause) {
+        super(message, cause);
+        validateTruffleException(cause);
     }
 
-    InteropException() {
-        super(null, null);
+    InteropException(String message) {
+        super(message);
+    }
+
+    /**
+     * Returns the cause of an interop exception. The cas
+     *
+     * @since 20.2
+     */
+    @Override
+    @TruffleBoundary
+    // GR-23961 - after language adoption we should make this non-synchronized as initCause is not
+    // longer used
+    public final synchronized Throwable getCause() {
+        return super.getCause();
+    }
+
+    /**
+     * Initializes the casue for an interop exception. Will no longer be supported as of 20.3. Pass
+     * in the cause using the interop constructors instead.
+     *
+     * @deprecated Do no longer use the cause will be initialized finally.
+     * @since 20.2
+     */
+    @Override
+    @Deprecated
+    @TruffleBoundary
+    public final synchronized Throwable initCause(Throwable cause) {
+        return super.initCause(cause);
     }
 
     /**
@@ -64,8 +96,20 @@ public abstract class InteropException extends Exception {
      */
     @SuppressWarnings("sync-override")
     @Override
-    public Throwable fillInStackTrace() {
+    public final Throwable fillInStackTrace() {
         return this;
+    }
+
+    private static void validateTruffleException(Throwable t) {
+        if (CompilerDirectives.inCompiledCode()) {
+            return;
+        }
+        if (t == null) {
+            return;
+        }
+        if (!(t instanceof TruffleException)) {
+            throw new IllegalArgumentException("Cause exception must implement TruffleException but was " + t.getClass() + ".");
+        }
     }
 
     private static final long serialVersionUID = -5173354806966156285L;
