@@ -30,10 +30,18 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Objects;
 
+import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.replacements.test.MethodSubstitutionTest;
 import org.junit.Test;
+
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class CheckIndexTest extends MethodSubstitutionTest {
 
@@ -195,5 +203,21 @@ public class CheckIndexTest extends MethodSubstitutionTest {
     @Override
     protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
         return super.editGraphBuilderConfiguration(conf).withBytecodeExceptionMode(withExceptions ? BytecodeExceptionMode.CheckAll : BytecodeExceptionMode.OmitAll);
+    }
+
+    @Override
+    protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
+        super.registerInvocationPlugins(invocationPlugins);
+
+        // Cut off the Objects.requireNonNull exception path: might generate an unwanted invoke.
+        final InvocationPlugin requireNonNullPlugin = new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode obj) {
+                b.addPush(JavaKind.Object, b.addNonNullCast(obj));
+                return true;
+            }
+        };
+        final Registration objects = new Registration(invocationPlugins, Objects.class);
+        objects.register1("requireNonNull", Object.class, requireNonNullPlugin);
     }
 }
