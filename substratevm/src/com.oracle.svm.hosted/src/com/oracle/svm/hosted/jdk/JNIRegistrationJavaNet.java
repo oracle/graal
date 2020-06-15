@@ -46,8 +46,14 @@ import com.oracle.svm.core.util.VMError;
 @AutomaticFeature
 class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
 
+    private boolean hasExtendedOptionsImpl;
+    private boolean hasPlatformSocketOptions;
+
     @Override
     public void duringSetup(DuringSetupAccess a) {
+        hasExtendedOptionsImpl = a.findClassByName("sun.net.ExtendedOptionsImpl") != null;
+        hasPlatformSocketOptions = a.findClassByName("jdk.net.ExtendedSocketOptions$PlatformSocketOptions") != null;
+
         rerunClassInit(a, "java.net.NetworkInterface", "java.net.DefaultInterface",
                         "java.net.InetAddress", "java.net.Inet4AddressImpl", "java.net.Inet6AddressImpl",
                         "java.net.SocketInputStream", "java.net.SocketOutputStream",
@@ -55,7 +61,7 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
                         "java.net.AbstractPlainSocketImpl", "java.net.AbstractPlainDatagramSocketImpl");
         if (isPosix()) {
             rerunClassInit(a, "java.net.PlainSocketImpl", "java.net.PlainDatagramSocketImpl");
-            if (JavaVersionUtil.JAVA_SPEC <= 8) {
+            if (hasExtendedOptionsImpl) {
                 rerunClassInit(a, "sun.net.ExtendedOptionsImpl");
             }
         }
@@ -68,8 +74,17 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
             }
         }
 
-        if (JavaVersionUtil.JAVA_SPEC >= 11) {
-            rerunClassInit(a, "jdk.net.ExtendedSocketOptions", "sun.net.ext.ExtendedSocketOptions", "jdk.net.ExtendedSocketOptions$PlatformSocketOptions");
+        if (hasPlatformSocketOptions) {
+            rerunClassInit(a, "jdk.net.ExtendedSocketOptions", "jdk.net.ExtendedSocketOptions$PlatformSocketOptions");
+            /*
+             * Different JDK versions are not consistent about the "ext" in the package name. We
+             * need to support both variants.
+             */
+            if (a.findClassByName("sun.net.ext.ExtendedSocketOptions") != null) {
+                rerunClassInit(a, "sun.net.ext.ExtendedSocketOptions");
+            } else {
+                rerunClassInit(a, "sun.net.ExtendedSocketOptions");
+            }
         }
     }
 
@@ -126,7 +141,7 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
 
             a.registerReachabilityHandler(JNIRegistrationJavaNet::registerPlainSocketImplInitProto,
                             method(a, "java.net.PlainSocketImpl", "initProto"));
-            if (JavaVersionUtil.JAVA_SPEC <= 8) {
+            if (hasExtendedOptionsImpl) {
                 a.registerReachabilityHandler(JNIRegistrationJavaNet::registerExtendedOptionsImplInit,
                                 method(a, "sun.net.ExtendedOptionsImpl", "init"));
             }
@@ -141,7 +156,7 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
                             method(a, "java.net." + plainSocketImpl, "initIDs"));
         }
 
-        if (JavaVersionUtil.JAVA_SPEC >= 11) {
+        if (hasPlatformSocketOptions) {
             a.registerReachabilityHandler(JNIRegistrationJavaNet::registerPlatformSocketOptionsCreate,
                             method(a, "jdk.net.ExtendedSocketOptions$PlatformSocketOptions", "create"));
         }
@@ -242,8 +257,6 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
     }
 
     private static void registerPlatformSocketOptionsCreate(DuringAnalysisAccess a) {
-        assert JavaVersionUtil.JAVA_SPEC >= 11;
-
         String implClassName;
         if (isLinux()) {
             implClassName = "jdk.net.LinuxSocketOptions";
