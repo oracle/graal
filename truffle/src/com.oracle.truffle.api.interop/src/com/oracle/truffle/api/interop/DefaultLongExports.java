@@ -127,7 +127,8 @@ final class DefaultLongExports {
     @ExportMessage
     static double asDouble(Long receiver) throws UnsupportedMessageException {
         long l = receiver;
-        if (NumberUtils.inSafeDoubleRange(l)) {
+        double d = l;
+        if ((long) d == l) {
             return l;
         }
         CompilerDirectives.transferToInterpreter();
