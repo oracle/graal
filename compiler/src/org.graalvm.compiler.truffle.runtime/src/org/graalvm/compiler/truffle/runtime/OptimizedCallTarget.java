@@ -570,6 +570,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                 }
             }
             if (task != null) {
+                runtime().getListener().onCompilationQueued(this);
                 return maybeWaitForTask(task);
             }
         }
