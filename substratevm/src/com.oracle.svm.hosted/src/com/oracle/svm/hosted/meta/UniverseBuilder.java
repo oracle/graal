@@ -380,6 +380,8 @@ public class UniverseBuilder {
             arrayDepth++;
         } while (typeFound);
 
+        ImageSingletons.lookup(DynamicHubSupport.class).setMaxTypeId(orderedTypes.size());
+
         assert assertSame(orderedTypes, hUniverse.types.values());
         hUniverse.orderedTypes = orderedTypes;
     }
@@ -608,7 +610,8 @@ public class UniverseBuilder {
     /**
      * We want these types to be immutable so that they can be in the read-only part of the image
      * heap. Moreover, all of them except for String *must* be read-only because they contain
-     * relocatable pointers.
+     * relocatable pointers. Therefore these types will not get a monitor field and will always use
+     * the secondary storage for monitor slots.
      */
     private static final Set<Class<?>> IMMUTABLE_TYPES = new HashSet<>(Arrays.asList(
                     String.class,
@@ -623,25 +626,16 @@ public class UniverseBuilder {
             return;
         }
 
+        HostedConfiguration.instance().collectMonitorFieldInfo(bb, hUniverse, getImmutableTypes());
+    }
+
+    private Set<AnalysisType> getImmutableTypes() {
         Set<AnalysisType> immutableTypes = new HashSet<>();
         for (Class<?> immutableType : IMMUTABLE_TYPES) {
             Optional<AnalysisType> aType = aMetaAccess.optionalLookupJavaType(immutableType);
-            if (aType.isPresent()) {
-                immutableTypes.add(aType.get());
-            }
+            aType.ifPresent(immutableTypes::add);
         }
-
-        TypeState allSynchronizedTypeState = bb.getAllSynchronizedTypeState();
-        for (AnalysisType aType : allSynchronizedTypeState.types()) {
-            if (!aType.isArray() && !immutableTypes.contains(aType)) {
-                /*
-                 * Monitor fields on arrays would increase the array header too much. Also, types
-                 * that must be immutable cannot have a monitor field.
-                 */
-                final HostedInstanceClass hostedInstanceClass = (HostedInstanceClass) hUniverse.lookup(aType);
-                hostedInstanceClass.setNeedMonitorField();
-            }
-        }
+        return immutableTypes;
     }
 
     public static boolean isKnownImmutableType(Class<?> clazz) {
