@@ -154,7 +154,7 @@ public abstract class TRegexExecutorNode extends Node {
                     }
                 }
             }
-            int nBytes = Integer.numberOfLeadingZeros(~(c << 24));
+            int nBytes = inputUTF8NumberOfLeadingOnes(c);
             assert 1 < nBytes && nBytes < 5 : nBytes;
             if (isForward()) {
                 locals.setNextIndex(inputIncRaw(index));
@@ -194,6 +194,14 @@ public abstract class TRegexExecutorNode extends Node {
 
     public int inputUTF16ToCodePoint(int highSurrogate, int lowSurrogate) {
         return isForward() ? Character.toCodePoint((char) highSurrogate, (char) lowSurrogate) : Character.toCodePoint((char) lowSurrogate, (char) highSurrogate);
+    }
+
+    private static boolean inputUTF8IsTrailingByte(int c) {
+        return (c >> 6) == 2;
+    }
+
+    private static int inputUTF8NumberOfLeadingOnes(int c) {
+        return Integer.numberOfLeadingZeros(~(c << 24));
     }
 
     public int inputReadRaw(TRegexExecutorLocals locals) {
@@ -238,14 +246,14 @@ public abstract class TRegexExecutorNode extends Node {
                 if (getInputProfile().profile(c < 128)) {
                     inputIncRaw(locals, true);
                 } else {
-                    inputIncRaw(locals, Integer.numberOfLeadingZeros(~(c << 24)), true);
+                    inputIncRaw(locals, inputUTF8NumberOfLeadingOnes(c), true);
                 }
             } else {
                 int c;
                 do {
                     c = inputReadRaw(locals, false);
                     inputIncRaw(locals, false);
-                } while (inputHasNext(locals, false) && (c >> 6) == 2);
+                } while (inputHasNext(locals, false) && inputUTF8IsTrailingByte(c));
             }
         } else {
             assert getEncoding() == Encodings.UTF_16_RAW || getEncoding() == Encodings.UTF_32 || getEncoding() == Encodings.LATIN_1;

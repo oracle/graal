@@ -174,7 +174,8 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
         if (resultsEqual(result, btResult, getNumberOfCaptureGroups())) {
             return true;
         }
-        Loggers.LOG_INTERNAL_ERRORS.severe(() -> String.format("Regex: %s\nInput: %s\nfromIndex: %d\nBacktracker Result: %s\nDFA Result:         %s", getSource(), input, fromIndex, btResult, result));
+        Loggers.LOG_INTERNAL_ERRORS.severe(
+                        () -> String.format("Regex: %s\nInput: %s\nfromIndex: %d\nBacktracker Result: %s\nDFA Result:         %s", getSource().toStringEscaped(), input, fromIndex, btResult, result));
         return false;
     }
 
@@ -188,7 +189,7 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
             return true;
         }
         Loggers.LOG_INTERNAL_ERRORS.severe(
-                        () -> String.format("Regex: %s\nInput: %s\nfromIndex: %d\nNFA executor Result: %s\nDFA Result:         %s", getSource(), input, fromIndex, btResult, result));
+                        () -> String.format("Regex: %s\nInput: %s\nfromIndex: %d\nNFA executor Result: %s\nDFA Result:         %s", getSource().toStringEscaped(), input, fromIndex, btResult, result));
         return false;
     }
 
@@ -202,7 +203,8 @@ public class TRegexExecRootNode extends RegexExecRootNode implements RegexProfil
             return true;
         }
         Loggers.LOG_INTERNAL_ERRORS.severe(
-                        () -> String.format("Regex: %s\nInput: %s\nfromIndex: %d\nLazyDFA Result:    %s\nSimplCGDFA Result: %s", getSource(), input, fromIndex, noSimpleCGResult, result));
+                        () -> String.format("Regex: %s\nInput: %s\nfromIndex: %d\nLazyDFA Result:    %s\nSimplCGDFA Result: %s", getSource().toStringEscaped(), input, fromIndex, noSimpleCGResult,
+                                        result));
         return false;
     }
 

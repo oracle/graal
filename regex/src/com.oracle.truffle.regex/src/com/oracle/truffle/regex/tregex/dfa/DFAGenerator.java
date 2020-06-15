@@ -905,8 +905,12 @@ public final class DFAGenerator implements JsonConvertible {
         return DFASimpleCGTransition.create(nfaTransition, isForward() && nfaTransition != null && nfaTransition.getSource() == nfa.getInitialLoopBackTransition().getSource());
     }
 
+    /**
+     * Generate a new {@link AllTransitionsInOneTreeMatcher} from a given {@code state}.
+     */
     private AllTransitionsInOneTreeMatcher createAllTransitionsInOneTreeMatcher(DFAStateNodeBuilder state, boolean coversCharSpace) {
         DFAStateTransitionBuilder[] transitions = state.getSuccessors();
+        // convert all transition matchers to CompressedCodePointSets
         CompressedCodePointSet[] ccpss = new CompressedCodePointSet[coversCharSpace ? transitions.length - 1 : transitions.length];
         for (int i = 0; i < ccpss.length; i++) {
             ccpss[i] = CompressedCodePointSet.create(transitions[i].getCodePointSet(), compilationBuffer);
@@ -920,9 +924,11 @@ public final class DFAGenerator implements JsonConvertible {
         ObjectArrayBuffer<AllTransitionsInOneTreeMatcher.AllTransitionsInOneTreeLeafMatcher> byteMatchers = compilationBuffer.getObjectBuffer2();
         short noMatchSuccessor = (short) (coversCharSpace ? transitions.length - 1 : -1);
         int lastHi = 0;
+        // iterate all compressed code point sets in parallel, using the temporary "iterators" array
         while (true) {
             int minLo = Integer.MAX_VALUE;
             int minCPS = -1;
+            // find the next lowest range of all code point sets
             for (int i = 0; i < ccpss.length; i++) {
                 if (iterators.get(i) < ccpss[i].size() && ccpss[i].getLo(iterators.get(i)) < minLo) {
                     minLo = ccpss[i].getLo(iterators.get(i));
@@ -930,18 +936,25 @@ public final class DFAGenerator implements JsonConvertible {
                 }
             }
             if (minCPS == -1) {
+                // all code point sets are exhausted, finish
                 break;
             }
             if (minLo != lastHi) {
+                // there is a gap between the last and current processed range, add a no-match
+                // successor
                 successors.add(noMatchSuccessor);
                 ranges.add(minLo);
             }
             lastHi = ccpss[minCPS].getHi(iterators.get(minCPS)) + 1;
 
             if (ccpss[minCPS].hasBitSet(iterators.get(minCPS))) {
+                // the current range is subdivided into a bit set, generate a corresponding
+                // AllTransitionsInOneTreeLeafMatcher
                 byteRanges.clear();
                 byteSuccessors.clear();
                 byteBitSets.clear();
+                // find all bit-set ranges that intersect with the current range, and extend the
+                // current range to fit all of these interleaved bit sets.
                 for (int i = 0; i < ccpss.length; i++) {
                     if (iterators.get(i) < ccpss[i].size() && ccpss[i].hasBitSet(iterators.get(i)) && BitSets.highByte(ccpss[i].getLo(iterators.get(i))) == BitSets.highByte(lastHi - 1)) {
                         byteBitSets.add(ccpss[i].getBitSet(iterators.get(i)));
@@ -951,6 +964,8 @@ public final class DFAGenerator implements JsonConvertible {
                     }
                 }
                 int byteLastHi = minLo;
+                // find all regular ranges that are contained in the current bit-set range, and add
+                // them to the AllTransitionsInOneTreeLeafMatcher as well
                 while (true) {
                     int byteMinLo = lastHi;
                     int byteMinCPS = -1;
@@ -966,6 +981,8 @@ public final class DFAGenerator implements JsonConvertible {
                         break;
                     }
                     if (byteMinLo != byteLastHi) {
+                        // there is a gap between the last and current processed range, add a
+                        // no-match successor
                         byteSuccessors.add(noMatchSuccessor);
                         byteRanges.add(byteMinLo);
                     }
