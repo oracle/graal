@@ -203,7 +203,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
                     rethrowTruffleCompilerInitializationException();
                     initializationTask = localTask = getCompileQueue().submitTask(Priority.INITIALIZATION, firstCallTarget, new BackgroundCompileQueue.Request() {
                         @Override
-                        protected void execute(TruffleCompilationTask task, WeakReference<OptimizedCallTarget> targetRef) {
+                        protected void execute(CancellableCompileTask task, WeakReference<OptimizedCallTarget> targetRef) {
                             synchronized (lock) {
                                 initializeTruffleCompiler(firstCallTarget);
                                 assert truffleCompilerInitialized || truffleCompilerInitializationException != null;

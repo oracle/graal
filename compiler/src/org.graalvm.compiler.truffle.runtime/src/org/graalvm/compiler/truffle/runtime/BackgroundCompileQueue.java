@@ -109,7 +109,7 @@ public class BackgroundCompileQueue {
     }
 
     public CancellableCompileTask submitTask(Priority priority, OptimizedCallTarget target, Request request) {
-        CancellableCompileTask cancellable = new CancellableCompileTask(priority == Priority.LAST_TIER);
+        CancellableCompileTask cancellable = new CancellableCompileTask(target, priority == Priority.LAST_TIER);
         RequestImpl<Void> requestImpl = new RequestImpl<>(nextId(), priority, target, cancellable, request);
         cancellable.setFuture(getExecutorService(target).submit(requestImpl));
         return cancellable;
@@ -162,7 +162,7 @@ public class BackgroundCompileQueue {
 
     public abstract static class Request {
 
-        protected abstract void execute(TruffleCompilationTask task, WeakReference<OptimizedCallTarget> targetRef);
+        protected abstract void execute(CancellableCompileTask task, WeakReference<OptimizedCallTarget> targetRef);
 
     }
 
@@ -170,11 +170,11 @@ public class BackgroundCompileQueue {
 
         private final long id;
         private final Priority priority;
-        private final TruffleCompilationTask task;
+        private final CancellableCompileTask task;
         private final WeakReference<OptimizedCallTarget> targetRef;
         private final Request request;
 
-        RequestImpl(long id, Priority priority, OptimizedCallTarget callTarget, TruffleCompilationTask task, Request request) {
+        RequestImpl(long id, Priority priority, OptimizedCallTarget callTarget, CancellableCompileTask task, Request request) {
             this.id = id;
             this.priority = priority;
             this.targetRef = new WeakReference<>(callTarget);

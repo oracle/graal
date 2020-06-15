@@ -728,7 +728,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         Priority priority = lastTierCompilation ? Priority.LAST_TIER : Priority.FIRST_TIER;
         return getCompileQueue().submitTask(priority, optimizedCallTarget, new BackgroundCompileQueue.Request() {
             @Override
-            protected void execute(TruffleCompilationTask task, WeakReference<OptimizedCallTarget> targetRef) {
+            protected void execute(CancellableCompileTask task, WeakReference<OptimizedCallTarget> targetRef) {
                 OptimizedCallTarget callTarget = targetRef.get();
                 if (callTarget != null) {
                     try {
@@ -736,7 +736,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                             doCompile(callTarget, task);
                         }
                     } finally {
-                        callTarget.resetCompilationTask();
+                        task.finished();
                     }
                 }
             }
