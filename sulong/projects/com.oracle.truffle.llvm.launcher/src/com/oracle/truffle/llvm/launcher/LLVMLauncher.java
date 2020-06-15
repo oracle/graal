@@ -107,21 +107,21 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
                     toolchainAPI = ToolchainAPIFunction.PATHS;
                     toolchainAPIArg = "PATH";
                     break;
-                case "--toolchain-api-tool":
+                case "--print-toolchain-api-tool":
                     toolchainAPI = ToolchainAPIFunction.TOOL;
                     if (!iterator.hasNext()) {
                         throw abort("Missing argument for " + option);
                     }
                     toolchainAPIArg = iterator.next();
                     break;
-                case "--toolchain-api-paths":
+                case "--print-toolchain-api-paths":
                     toolchainAPI = ToolchainAPIFunction.PATHS;
                     if (!iterator.hasNext()) {
                         throw abort("Missing argument for " + option);
                     }
                     toolchainAPIArg = iterator.next();
                     break;
-                case "--toolchain-api-identifier":
+                case "--print-toolchain-api-identifier":
                     toolchainAPI = ToolchainAPIFunction.IDENTIFIER;
                     break;
                 default:
@@ -209,10 +209,10 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
         printOption("--lib <libraries>", "add library (*.bc or precompiled library *.so/*.dylib)");
         printOption("--version", "print the version and exit");
         printOption("--show-version", "print the version and continue");
-        printOption("--print-toolchain-path", "print the toolchain path and exit (shortcut for `--toolchain-api-paths PATH`)");
-        printOption("--toolchain-api-tool <name>", "print the location of a toolchain API tool and exit");
-        printOption("--toolchain-api-paths <name>", "print toolchain API paths and exit");
-        printOption("--toolchain-api-identifier", "print the toolchain API identifier and exit");
+        printOption("--print-toolchain-path", "print the toolchain path and exit (shortcut for `--print-toolchain-api-paths PATH`)");
+        printOption("--print-toolchain-api-tool <name>", "print the location of a toolchain API tool and exit");
+        printOption("--print-toolchain-api-paths <name>", "print toolchain API paths and exit");
+        printOption("--print-toolchain-api-identifier", "print the toolchain API identifier and exit");
     }
 
     @Override
@@ -222,9 +222,9 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
                         "--version",
                         "--show-version",
                         "--print-toolchain-path",
-                        "--toolchain-api-paths",
-                        "--toolchain-api-tool",
-                        "--toolchain-api-identifier"));
+                        "--print-toolchain-api-paths",
+                        "--print-toolchain-api-tool",
+                        "--print-toolchain-api-identifier"));
     }
 
     protected static void printOption(String option, String description) {
@@ -280,10 +280,10 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
                 break;
             default:
                 // should not reach here. this should be caught by the option parser
-                throw abort("Unknown --toolchain-api function: " + toolchainAPI);
+                throw abort("Unknown --print-toolchain-api function: " + toolchainAPI);
         }
         if (result.isNull()) {
-            throw abort("Unknown entry for --toolchain-api-" + toolchainAPI + ": " + toolchainAPIArg);
+            throw abort("Unknown entry for --print-toolchain-api-" + toolchainAPI + ": " + toolchainAPIArg);
         }
         if (result.hasArrayElements()) {
             for (int i = 0; i < result.getArraySize(); i++) {
