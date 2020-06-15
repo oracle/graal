@@ -673,7 +673,7 @@ public final class Function implements ParserListener {
             }
         }
         // the type may not exist if the value is not being used
-        return StructureType.createUnnamedByCopy(true, new Type[]{elementType, PrimitiveType.I1});
+        return StructureType.createUnnamed(true, elementType, PrimitiveType.I1);
     }
 
     private void parseDebugLocation(RecordBuffer buffer) {

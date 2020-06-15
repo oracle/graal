@@ -41,6 +41,7 @@ grammar InlineAssembly;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMInlineAssemblyRootNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import static com.oracle.truffle.llvm.runtime.types.Type.TypeArrayBuilder;
 }
 
 @lexer::header
@@ -66,7 +67,7 @@ private static final class BailoutErrorListener extends BaseErrorListener {
     }
 }
 
-public static LLVMInlineAssemblyRootNode parseInlineAssembly(LLVMLanguage language, String asmSnippet, String asmFlags, Type[] argTypes, Type retType, Type[] retTypes, long[] retOffsets) {
+public static LLVMInlineAssemblyRootNode parseInlineAssembly(LLVMLanguage language, String asmSnippet, String asmFlags, TypeArrayBuilder argTypes, Type retType, Type[] retTypes, long[] retOffsets) {
     InlineAssemblyLexer lexer = new InlineAssemblyLexer(CharStreams.fromString(asmSnippet));
     InlineAssemblyParser parser = new InlineAssemblyParser(new CommonTokenStream(lexer));
     lexer.removeErrorListeners();
