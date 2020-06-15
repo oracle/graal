@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.tests.interop;
 
-import java.util.Set;
 import org.graalvm.polyglot.Value;
 import org.junit.BeforeClass;
 import org.junit.Assert;
@@ -50,9 +49,11 @@ public class CxxMethodsTest extends InteropTestBase {
     private static Value squaredEuclideanDistance;
     private static Value swap;
 
+    private static Value testLibrary;
+
     @BeforeClass
     public static void loadTestBitcode() {
-        Value testLibrary = loadTestBitcodeValue("methodsTest.cpp");
+        testLibrary = loadTestBitcodeValue("methodsTest.cpp");
 
         allocPoint = testLibrary.getMember("allocNativePoint");
         freePoint = testLibrary.getMember("freeNativePoint");
@@ -68,9 +69,6 @@ public class CxxMethodsTest extends InteropTestBase {
     private static void checkPoint(Value point, int x, int y) {
         Assert.assertTrue("hasMembers", point.hasMembers());
         Assert.assertFalse("hasArrayElements", point.hasArrayElements());
-
-        Set<String> members = point.getMemberKeys();
-        Assert.assertArrayEquals("getMemberKeys", new Object[]{"x", "y"}, members.toArray());
 
         Assert.assertTrue("hasMember(x)", point.hasMember("x"));
         Assert.assertTrue("hasMember(y)", point.hasMember("y"));
@@ -96,10 +94,10 @@ public class CxxMethodsTest extends InteropTestBase {
     public void testGettersAndSetters() {
         Value point = allocPoint.execute();
         try {
+            point.invokeMember("setY", 4);
             setX.execute(point, 30000);
-            setY.execute(point, 4);
             checkPoint(point, 30000, 4);
-            checkPoint(point, getX.execute(point).asInt(), getY.execute(point).asInt());
+            checkPoint(point, point.invokeMember("getX").asInt(), getY.execute(point).asInt());
 
         } finally {
             freePoint.execute(point);
@@ -108,13 +106,14 @@ public class CxxMethodsTest extends InteropTestBase {
 
     @Test
     public void testMemberFunction() {
-        Value point = allocPoint.execute();
+        Value point = testLibrary.invokeMember("allocNativePoint");
         Value point2 = allocPoint.execute();
         try {
-            setX.execute(point, 3);
+            point.invokeMember("setX", 3);
+            Assert.assertEquals("getX()==3 after setX(3)", 3, getX.execute(point).asInt());
             setY.execute(point, -4);
             setX.execute(point2, -6);
-            setY.execute(point2, 8);
+            testLibrary.invokeMember("setY", point2, 8);
             checkPoint(point, 3, -4);
             checkPoint(point2, -6, 8);
             // swap point <-> point2
@@ -124,13 +123,27 @@ public class CxxMethodsTest extends InteropTestBase {
             // calculate distance
             Value distanceResult1 = squaredEuclideanDistance.execute(point, point2);
             Value distanceResult2 = squaredEuclideanDistance.execute(point2, point);
+            Value distanceResult3 = point2.invokeMember("squaredEuclideanDistance", point);
+            Value distanceResult4 = point.invokeMember("squaredEuclideanDistance", point2);
 
             Assert.assertEquals("distance(p, p2)", 0, Double.compare(225, distanceResult1.asDouble()));
             Assert.assertEquals("distance(p2, p)", 0, Double.compare(225, distanceResult2.asDouble()));
+            Assert.assertEquals("p.distance(p2)", 0, Double.compare(225, distanceResult3.asDouble()));
+            Assert.assertEquals("p2.distance(p)", 0, Double.compare(225, distanceResult4.asDouble()));
 
         } finally {
-            freePoint.execute(point);
+            testLibrary.invokeMember("freeNativePoint", point);
             freePoint.execute(point2);
+        }
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void testNonExistingMethod() {
+        Value point = allocPoint.execute();
+        try {
+            point.invokeMember("methodWhichDoesNotExist");
+        } finally {
+            testLibrary.invokeMember("freeNativePoint", point);
         }
     }
 
