@@ -29,10 +29,12 @@ import java.lang.invoke.VarHandle;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.truffle.test.PartialEvaluationTest;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.RootCallTarget;
@@ -60,6 +62,7 @@ public class VarHandlePartialEvaluationTest extends PartialEvaluationTest {
      */
     @Test
     public void byteBufferHandle() {
+        Assume.assumeTrue("GR-23778", JavaVersionUtil.JAVA_SPEC <= 11);
         AbstractTestNode result = new VarHandleTestNode(false);
         testCommon(result, "byteBufferHandle", ByteBuffer.allocate(42).order(ByteOrder.nativeOrder()).putInt(0, 42), 0);
     }

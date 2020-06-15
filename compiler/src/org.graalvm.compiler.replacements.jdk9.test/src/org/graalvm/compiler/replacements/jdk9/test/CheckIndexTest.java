@@ -39,6 +39,8 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.replacements.test.MethodSubstitutionTest;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.junit.Assume;
 import org.junit.Test;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -161,6 +163,7 @@ public class CheckIndexTest extends MethodSubstitutionTest {
 
     @Test
     public void testByteBufferViewVarHandleGetInt() {
+        Assume.assumeTrue("GR-23778", JavaVersionUtil.JAVA_SPEC <= 11);
         testGraph("byteBufferViewVarHandleGetInt");
         test("byteBufferViewVarHandleGetInt");
         testGraph("byteBufferViewVarHandleGetIntConstIndex");
