@@ -296,7 +296,7 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision>, Truff
     @Override
     public void dequeueTargets() {
         for (CompilableTruffleAST target : targets) {
-            target.cancelInstalledTask(null, "Target inlined into only caller");
+            target.cancelCompilation(null, "Target inlined into only caller");
         }
     }
 

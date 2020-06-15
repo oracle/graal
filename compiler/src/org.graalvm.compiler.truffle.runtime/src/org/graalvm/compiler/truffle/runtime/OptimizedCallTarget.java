@@ -624,7 +624,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             invalidateCode();
             runtime().getListener().onCompilationInvalidated(this, source, reason);
         }
-        cancelInstalledTask(source, reason);
+        cancelCompilation(source, reason);
     }
 
     final OptimizedCallTarget cloneUninitialized() {
@@ -677,7 +677,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     @Override
-    public boolean cancelInstalledTask(Object source, CharSequence reason) {
+    public boolean cancelCompilation(Object source, CharSequence reason) {
         if (cancelAndResetCompilationTask()) {
             runtime().getListener().onCompilationDequeued(this, source, reason);
             return true;
@@ -807,8 +807,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         invalidate(newNode, reason);
         /* Notify compiled method that have inlined this call target that the tree changed. */
         invalidateNodeRewritingAssumption();
-
-        cancelInstalledTask(newNode, reason);
         return false;
     }
 

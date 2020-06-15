@@ -713,7 +713,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 if (decision.shouldInline()) {
                     OptimizedCallTarget target = decision.getTarget();
                     if (target != optimizedCallTarget) {
-                        target.cancelInstalledTask(decision.getProfile().getCallNode(), "Inlining caller compiled.");
+                        target.cancelCompilation(decision.getProfile().getCallNode(), "Inlining caller compiled.");
                     }
                     dequeueInlinedCallSites(decision, optimizedCallTarget);
                 }
