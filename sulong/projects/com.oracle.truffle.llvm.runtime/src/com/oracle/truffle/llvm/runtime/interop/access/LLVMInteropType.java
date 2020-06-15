@@ -313,9 +313,9 @@ public abstract class LLVMInteropType implements TruffleObject {
         final LLVMInteropType returnType;
         @CompilationFinal(dimensions = 1) final LLVMInteropType[] parameterTypes;
 
-        Function(InteropTypeRegistry.Register returnType, LLVMInteropType[] parameterTypes) {
+        Function(InteropTypeRegistry.Register returnType, LLVMInteropType[] parameterTypes, boolean isMethod) {
             super(0);
-            this.returnType = returnType.get(this);
+            this.returnType = returnType.get(this, isMethod);
             this.parameterTypes = parameterTypes;
         }
 
@@ -350,7 +350,7 @@ public abstract class LLVMInteropType implements TruffleObject {
         private final String linkageName;
 
         Method(Clazz clazz, String name, String linkageName, InteropTypeRegistry.Register returnType, LLVMInteropType[] parameterTypes) {
-            super(returnType, parameterTypes);
+            super(returnType, parameterTypes, true);
             this.clazz = clazz;
             this.name = name;
             this.linkageName = linkageName;
@@ -398,8 +398,14 @@ public abstract class LLVMInteropType implements TruffleObject {
             }
 
             LLVMInteropType get(LLVMInteropType self) {
-                assert !typeCache.containsKey(source);
-                typeCache.put(source, self);
+                return get(self, false);
+            }
+
+            LLVMInteropType get(LLVMInteropType self, boolean isMethod) {
+                if (!isMethod) {
+                    assert !typeCache.containsKey(source);
+                    typeCache.put(source, self);
+                }
                 return InteropTypeRegistry.this.get(target);
             }
         }
@@ -498,7 +504,7 @@ public abstract class LLVMInteropType implements TruffleObject {
         private Function convertFunction(LLVMSourceFunctionType functionType) {
             List<LLVMSourceType> parameterTypes = functionType.getParameterTypes();
             LLVMInteropType[] interopParameterTypes = new LLVMInteropType[parameterTypes.size()];
-            Function interopFunctionType = new Function(new Register(functionType, functionType.getReturnType()), interopParameterTypes);
+            Function interopFunctionType = new Function(new Register(functionType, functionType.getReturnType()), interopParameterTypes, false);
             typeCache.put(functionType, interopFunctionType);
             for (int i = 0; i < interopParameterTypes.length; i++) {
                 interopParameterTypes[i] = get(parameterTypes.get(i));
