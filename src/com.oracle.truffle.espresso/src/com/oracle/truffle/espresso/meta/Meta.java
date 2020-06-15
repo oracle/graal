@@ -365,7 +365,7 @@ public final class Meta implements ContextAccess {
         java_lang_ref_Finalizer_register = java_lang_ref_Finalizer.lookupDeclaredMethod(Name.register, Signature._void_Object);
 
         java_lang_Object_wait = java_lang_Object.lookupDeclaredMethod(Name.wait, Signature._void_long);
-        java_lang_Object_toString = java_lang_Object.lookupDeclaredMethod(Name.toString, Signature._void);
+        java_lang_Object_toString = java_lang_Object.lookupDeclaredMethod(Name.toString, Signature.String);
 
         // References
         java_lang_ref_Reference = knownKlass(Type.java_lang_ref_Reference);
