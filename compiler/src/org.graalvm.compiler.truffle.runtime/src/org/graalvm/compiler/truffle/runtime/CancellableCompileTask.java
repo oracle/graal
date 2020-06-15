@@ -66,12 +66,18 @@ public final class CancellableCompileTask implements TruffleCompilationTask {
     public synchronized boolean cancel() {
         if (!cancelled) {
             cancelled = true;
-            if (future.cancel(false)) {
+            if (removeFromQueueBeforeStarting()) {
                 finished();
             }
             return true;
         }
         return false;
+    }
+
+    private boolean removeFromQueueBeforeStarting() {
+        // Successfully canceling the future (without interrupting if running) means we removed the
+        // task from the compilation queue before it started.
+        return future.cancel(false);
     }
 
     public synchronized void finished() {

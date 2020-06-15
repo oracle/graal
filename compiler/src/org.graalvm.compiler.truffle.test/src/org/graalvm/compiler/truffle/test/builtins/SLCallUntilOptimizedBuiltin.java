@@ -86,6 +86,6 @@ public abstract class SLCallUntilOptimizedBuiltin extends SLGraalRuntimeBuiltin 
 
     @TruffleBoundary
     private static boolean isCompiling(OptimizedCallTarget target) {
-        return ((GraalTruffleRuntime) Truffle.getRuntime()).isCompiling(target) || target.isValid();
+        return target.isSubmittedForCompilation() || target.isValid();
     }
 }

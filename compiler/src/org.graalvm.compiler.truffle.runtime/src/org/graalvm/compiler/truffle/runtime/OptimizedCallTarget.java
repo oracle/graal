@@ -222,18 +222,16 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     private volatile long initializedTimestamp;
 
     /**
-     * When this field is not null, this {@link OptimizedCallTarget} is {@linkplain #isCompiling()
-     * being compiled}.<br/>
+     * When this field is not null, this {@link OptimizedCallTarget} is
+     * {@linkplain #isSubmittedForCompilation() submited for compilation}.<br/>
      *
-     * It is only set to non-null in {@link #compile(boolean)} in a synchronized block. It is only
-     * {@linkplain #resetCompilationTask() set to null} by the compilation thread once the
-     * compilation is over.<br/>
+     * It is only set to non-null in {@link #compile(boolean)} in a synchronized block.
      *
-     * Note that {@link #resetCompilationTask()} waits for the field to have been set to a non-null
-     * value before resetting it.<br/>
-     *
-     * Once it has been set to a non-null value, the compilation <em>must</em> complete and call
-     * {@link #resetCompilationTask()} even if that compilation fails or is cancelled.
+     * It is only {@linkplain #resetCompilationTask() set to null} by the
+     * {@linkplain CancellableCompileTask task} itself when: 1) The task is canceled before the
+     * compilation has started, or 2) The compilation has finished (successfully or not). Canceling
+     * the task after the compilation has started does not reset the task until the compilation
+     * finishes.
      */
     private volatile CancellableCompileTask compilationTask;
 
@@ -443,7 +441,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         if (intCallCount >= engine.firstTierCallThreshold //
                         && intAndLoopCallCount >= engine.firstTierCallAndLoopThreshold //
                         && !compilationFailed //
-                        && !isCompiling()) {
+                        && !isSubmittedForCompilation()) {
             return compile(!engine.multiTier);
         }
         return false;
@@ -467,7 +465,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     public final boolean firstTierCall() {
         // this is partially evaluated so the second part should fold to a constant.
         int firstTierCallThreshold = ++callCount;
-        if (firstTierCallThreshold >= engine.lastTierCallThreshold && !isCompiling() && !compilationFailed) {
+        if (firstTierCallThreshold >= engine.lastTierCallThreshold && !isSubmittedForCompilation() && !compilationFailed) {
             return lastTierCompile(this);
         }
         return false;
@@ -540,13 +538,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     /**
      * Returns <code>true</code> if the call target was already compiled or was compiled
      * synchronously. Returns <code>false</code> if compilation was not scheduled or is happening in
-     * the background. Use {@link #isCompiling()} to find out whether it is actually compiling.
+     * the background. Use {@link #isSubmittedForCompilation()} to find out whether it is submitted for
+     * compilation.
      */
     public final boolean compile(boolean lastTierCompilation) {
         if (!needsCompile(lastTierCompilation)) {
             return true;
         }
-        if (!isCompiling()) {
+        if (!isSubmittedForCompilation()) {
             if (!engine.acceptForCompilation(getRootNode())) {
                 // do not try to compile again
                 compilationFailed = true;
@@ -561,7 +560,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                     return true;
                 }
                 ensureInitialized();
-                if (!isCompiling()) {
+                if (!isSubmittedForCompilation()) {
                     try {
                         this.compilationTask = task = runtime().submitForCompilation(this, lastTierCompilation);
                     } catch (RejectedExecutionException e) {
@@ -587,7 +586,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return !isValid() || (engine.multiTier && isLastTierCompilation && !isValidLastTier());
     }
 
-    public final boolean isCompiling() {
+    public final boolean isSubmittedForCompilation() {
         return compilationTask != null;
     }
 
@@ -1237,7 +1236,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return System.identityHashCode(this);
     }
 
-    // TODO: remove once GraalTruffleRuntime#waitForCompilation is removed
     final CancellableCompileTask getCompilationTask() {
         return compilationTask;
     }
