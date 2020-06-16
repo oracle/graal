@@ -48,7 +48,6 @@ import com.oracle.truffle.llvm.runtime.pthread.LLVMPThreadContext;
 import com.oracle.truffle.llvm.runtime.pthread.PThreadExitException;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
-import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class LLVMPThreadStart {
 
@@ -137,7 +136,7 @@ public final class LLVMPThreadStart {
                                             CommonNodeFactory.createFrameRead(PointerType.VOID, spSlot),
                                             CommonNodeFactory.createFrameRead(PointerType.VOID, argSlot)
                             },
-                            FunctionType.createByCopy(PointerType.VOID, new Type[]{PointerType.VOID}, false));
+                            FunctionType.create(PointerType.VOID, PointerType.VOID, false));
         }
 
         @Override

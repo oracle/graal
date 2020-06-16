@@ -44,8 +44,8 @@ import com.oracle.truffle.tck.common.inline.InlineVerifier;
 import java.io.IOException;
 import java.util.AbstractMap;
 import java.util.Collection;
-import java.util.LinkedHashSet;
 import java.util.Objects;
+import java.util.TreeSet;
 
 import org.junit.AfterClass;
 import org.junit.Assume;
@@ -66,7 +66,7 @@ public class InlineExecutionTest {
     @Parameterized.Parameters(name = "{0}")
     public static Collection<InlineTestRun> createScriptTests() {
         context = new TestContext(InlineExecutionTest.class);
-        final Collection<InlineTestRun> res = new LinkedHashSet<>();
+        final Collection<InlineTestRun> res = new TreeSet<>((a, b) -> a.toString().compareTo(b.toString()));
         for (String lang : TestUtil.getRequiredLanguages(context)) {
             for (InlineSnippet snippet : context.getInlineScripts(lang)) {
                 res.add(new InlineTestRun(new AbstractMap.SimpleImmutableEntry<>(lang, snippet.getScript()), snippet));

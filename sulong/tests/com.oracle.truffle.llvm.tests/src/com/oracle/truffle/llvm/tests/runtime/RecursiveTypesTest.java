@@ -114,11 +114,11 @@ public class RecursiveTypesTest {
                     new TypeFactory(PointerType.class, PointerType::new, (ptr, type) -> ((PointerType) ptr).setPointeeType(type)),
                     new TypeFactory(VectorType.class, (type) -> new VectorType(type, 1), (ptr, type) -> ((VectorType) ptr).setElementType(type)),
                     new TypeFactory(ArrayType.class, (type) -> new ArrayType(type, 1), (ptr, type) -> ((ArrayType) ptr).setElementType(type)),
-                    new TypeFactory(StructureType.class, (type) -> StructureType.createUnnamedByCopy(false, new Type[]{type}), (ptr, type) -> ((StructureType) ptr).setElementType(0, type)),
-                    new TypeFactory("Named", StructureType.class, (type) -> StructureType.createNamedByCopy(MYSTRUCT, false, new Type[]{type}),
+                    new TypeFactory(StructureType.class, (type) -> StructureType.createUnnamed(false, type), (ptr, type) -> ((StructureType) ptr).setElementType(0, type)),
+                    new TypeFactory("Named", StructureType.class, (type) -> StructureType.createNamed(MYSTRUCT, false, type),
                                     (ptr, type) -> ((StructureType) ptr).setElementType(0, type)),
-                    new TypeFactory("Packed", StructureType.class, (type) -> StructureType.createUnnamedByCopy(true, new Type[]{type}), (ptr, type) -> ((StructureType) ptr).setElementType(0, type)),
-                    new TypeFactory("PackedNamed", StructureType.class, (type) -> StructureType.createNamedByCopy(MYSTRUCT, true, new Type[]{type}),
+                    new TypeFactory("Packed", StructureType.class, (type) -> StructureType.createUnnamed(true, type), (ptr, type) -> ((StructureType) ptr).setElementType(0, type)),
+                    new TypeFactory("PackedNamed", StructureType.class, (type) -> StructureType.createNamed(MYSTRUCT, true, type),
                                     (ptr, type) -> ((StructureType) ptr).setElementType(0, type)),
                     new TypeFactory(FunctionType.class, (type) -> new FunctionType(type, 0, false), (ptr, type) -> ((FunctionType) ptr).setReturnType(type))
     };
