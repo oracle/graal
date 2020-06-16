@@ -63,6 +63,8 @@ if not "%~1"=="" (
     set "_tb=!u_arg!"
   ) else if "!u_arg!"=="ruby" (
     set "_tb=!u_arg!"
+  ) else if "!u_arg!"=="wasm" (
+    set "_tb=!u_arg!"
   ) else if "!u_arg!"=="--help" (
     set "_h=true"
   ) else if "!u_arg!"=="-h" (
@@ -114,6 +116,8 @@ for %%f in (%to_build%) do (
     call :launcher graalpython cmd_line
   ) else if "%%f"=="ruby" (
     call :launcher truffleruby cmd_line
+  ) else if "%%f"=="wasm" (
+    call :launcher wasm cmd_line
   ) else (
     echo Should not reach here
     exit /b 1
@@ -133,7 +137,7 @@ goto :eof
   exit /b 0
 
 :usage
-  echo Usage: "%~nx0 [-v|--verbose] polyglot|libpolyglot|js|llvm|python|ruby... [custom native-image args]..."
+  echo Usage: "%~nx0 [-v|--verbose] polyglot|libpolyglot|js|llvm|python|ruby|wasm... [custom native-image args]..."
   exit /b 0
 
 :common cmd_line
