@@ -1576,11 +1576,10 @@ public final class NodeParser extends AbstractParser<NodeData> {
         initializeUninitialized(node);
         initializeOrder(node);
         initializePolymorphism(node); // requires specializations
-        initializeUncached(node);
+        resolveReplaces(node);
         initializeReachability(node);
         initializeFallbackReachability(node);
         initializeCheckedExceptions(node);
-        resolveReplaces(node);
 
         List<SpecializationData> specializations = node.getSpecializations();
         for (SpecializationData cur : specializations) {
@@ -1719,6 +1718,11 @@ public final class NodeParser extends AbstractParser<NodeData> {
             if (specialization.getReplaces().isEmpty()) {
                 continue;
             }
+
+            for (SpecializationData replaced : specialization.getReplaces()) {
+                replaced.setReplaced(true);
+            }
+
             Set<SpecializationData> foundSpecializations = new HashSet<>();
             collectIncludes(specialization, foundSpecializations, new HashSet<SpecializationData>());
             specialization.getReplaces().addAll(foundSpecializations);
@@ -1746,13 +1750,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
         for (SpecializationData included : specialization.getReplaces()) {
             collectIncludes(included, found, new HashSet<>(visited));
             found.add(included);
-        }
-    }
-
-    private static void initializeUncached(final NodeData node) {
-        Collection<SpecializationData> uncachedSpecializations = node.computeUncachedSpecializations(node.getSpecializations());
-        for (SpecializationData specialization : uncachedSpecializations) {
-            specialization.setUncached(true);
         }
     }
 
