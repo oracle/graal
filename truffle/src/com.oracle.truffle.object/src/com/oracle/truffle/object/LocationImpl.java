@@ -49,6 +49,8 @@ import com.oracle.truffle.api.object.Shape;
 
 import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
+
 /** @since 0.17 or earlier */
 @SuppressWarnings("deprecation")
 public abstract class LocationImpl extends Location {
@@ -85,7 +87,7 @@ public abstract class LocationImpl extends Location {
     /** @since 0.17 or earlier */
     @Override
     public void set(DynamicObject store, Object value, Shape shape) throws IncompatibleLocationException, FinalLocationException {
-        setInternal(store, value);
+        setInternal(store, value, checkShape(store, shape));
     }
 
     @Override
@@ -108,9 +110,49 @@ public abstract class LocationImpl extends Location {
         throw new UnsupportedOperationException();
     }
 
+    /**
+     * Get object value as object at this location in store. For internal use only.
+     *
+     * @param condition the result of a shape check or {@code false}
+     */
+    @Override
+    public abstract Object get(DynamicObject store, boolean condition);
+
+    protected long getLong(DynamicObject store, boolean condition) throws UnexpectedResultException {
+        return expectLong(get(store, condition));
+    }
+
+    protected int getInt(DynamicObject store, boolean condition) throws UnexpectedResultException {
+        return expectInteger(get(store, condition));
+    }
+
+    protected double getDouble(DynamicObject store, boolean condition) throws UnexpectedResultException {
+        return expectDouble(get(store, condition));
+    }
+
+    protected boolean getBoolean(DynamicObject store, boolean condition) throws UnexpectedResultException {
+        return expectBoolean(get(store, condition));
+    }
+
+    @SuppressWarnings("unused")
+    protected void set(DynamicObject store, Object value, boolean condition) throws IncompatibleLocationException, FinalLocationException {
+        setInternal(store, value, condition);
+    }
+
+    protected abstract void setInternal(DynamicObject store, Object value, boolean condition) throws IncompatibleLocationException;
+
+    /**
+     * Equivalent to {@link Shape#check(DynamicObject)}.
+     */
+    protected static final boolean checkShape(DynamicObject store, Shape shape) {
+        return store.getShape() == shape;
+    }
+
     /** @since 0.17 or earlier */
     @Override
-    protected abstract void setInternal(DynamicObject store, Object value) throws IncompatibleLocationException;
+    protected final void setInternal(DynamicObject store, Object value) throws IncompatibleLocationException {
+        setInternal(store, value, false);
+    }
 
     /** @since 0.17 or earlier */
     @Override
@@ -244,5 +286,33 @@ public abstract class LocationImpl extends Location {
     @TruffleBoundary // equals is blacklisted
     public static boolean valueEquals(Object val1, Object val2) {
         return val1 == val2 || (val1 != null && val1.equals(val2));
+    }
+
+    static boolean expectBoolean(Object value) throws UnexpectedResultException {
+        if (value instanceof Boolean) {
+            return (boolean) value;
+        }
+        throw new UnexpectedResultException(value);
+    }
+
+    static int expectInteger(Object value) throws UnexpectedResultException {
+        if (value instanceof Integer) {
+            return (int) value;
+        }
+        throw new UnexpectedResultException(value);
+    }
+
+    static double expectDouble(Object value) throws UnexpectedResultException {
+        if (value instanceof Double) {
+            return (double) value;
+        }
+        throw new UnexpectedResultException(value);
+    }
+
+    static long expectLong(Object value) throws UnexpectedResultException {
+        if (value instanceof Long) {
+            return (long) value;
+        }
+        throw new UnexpectedResultException(value);
     }
 }

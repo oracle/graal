@@ -40,89 +40,21 @@
  */
 package com.oracle.truffle.object;
 
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.FinalLocationException;
 import com.oracle.truffle.api.object.IncompatibleLocationException;
-import com.oracle.truffle.api.object.Shape;
 
 abstract class CoreLocation extends LocationImpl {
     protected CoreLocation() {
     }
 
     @Override
-    public abstract Object get(DynamicObject store, boolean condition);
-
-    protected long getLong(DynamicObject store, boolean condition) throws UnexpectedResultException {
-        return expectLong(get(store, condition));
-    }
-
-    protected int getInt(DynamicObject store, boolean condition) throws UnexpectedResultException {
-        return expectInteger(get(store, condition));
-    }
-
-    protected double getDouble(DynamicObject store, boolean condition) throws UnexpectedResultException {
-        return expectDouble(get(store, condition));
-    }
-
-    protected boolean getBoolean(DynamicObject store, boolean condition) throws UnexpectedResultException {
-        return expectBoolean(get(store, condition));
-    }
-
     protected void set(DynamicObject store, Object value, boolean condition) throws IncompatibleLocationException {
         setInternal(store, value, condition);
-    }
-
-    protected abstract void setInternal(DynamicObject store, Object value, boolean condition) throws IncompatibleLocationException;
-
-    /**
-     * Equivalent to {@link Shape#check(DynamicObject)}.
-     */
-    protected static boolean checkShape(DynamicObject store, Shape shape) {
-        return store.getShape() == shape;
-    }
-
-    @Override
-    protected final void setInternal(DynamicObject store, Object value) throws IncompatibleLocationException {
-        setInternal(store, value, false);
-    }
-
-    @Override
-    public void set(DynamicObject store, Object value, Shape shape) throws IncompatibleLocationException, FinalLocationException {
-        setInternal(store, value, checkShape(store, shape));
     }
 
     @Override
     public String toString() {
         String typeString = (this instanceof CoreLocations.TypedLocation ? ((CoreLocations.TypedLocation) this).getType().getSimpleName() : "Object");
         return typeString + getWhereString();
-    }
-
-    static boolean expectBoolean(Object value) throws UnexpectedResultException {
-        if (value instanceof Boolean) {
-            return (boolean) value;
-        }
-        throw new UnexpectedResultException(value);
-    }
-
-    static int expectInteger(Object value) throws UnexpectedResultException {
-        if (value instanceof Integer) {
-            return (int) value;
-        }
-        throw new UnexpectedResultException(value);
-    }
-
-    static double expectDouble(Object value) throws UnexpectedResultException {
-        if (value instanceof Double) {
-            return (double) value;
-        }
-        throw new UnexpectedResultException(value);
-    }
-
-    static long expectLong(Object value) throws UnexpectedResultException {
-        if (value instanceof Long) {
-            return (long) value;
-        }
-        throw new UnexpectedResultException(value);
     }
 }

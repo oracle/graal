@@ -116,7 +116,7 @@ public abstract class Locations {
 
         /** @since 0.17 or earlier */
         @Override
-        public final void setInternal(DynamicObject store, Object value) throws IncompatibleLocationException {
+        public final void setInternal(DynamicObject store, Object value, boolean condition) throws IncompatibleLocationException {
             if (!canStore(value)) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw new UnsupportedOperationException();
