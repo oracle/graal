@@ -61,7 +61,6 @@ import java.time.zone.ZoneRules;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
@@ -166,6 +165,8 @@ import com.oracle.truffle.api.utilities.TriState;
 @DefaultExport(DefaultDoubleExports.class)
 @DefaultExport(DefaultCharacterExports.class)
 @DefaultExport(DefaultStringExports.class)
+@DefaultExport(DefaultTruffleExceptionExports.class)
+@DefaultExport(DefaultLegacyTruffleExceptionExports.class)
 @SuppressWarnings("unused")
 public abstract class InteropLibrary extends Library {
 
@@ -1196,14 +1197,15 @@ public abstract class InteropLibrary extends Library {
 
     /**
      * Returns <code>true</code> if the receiver value represents a throwable
-     * {@linkplain TruffleException#getExceptionObject() exception/error object}. Invoking this
-     * message does not cause any observable side-effects. Returns <code>false</code> by default.
+     * {@linkplain com.oracle.truffle.api.TruffleException#getExceptionObject() exception/error
+     * object}. Invoking this message does not cause any observable side-effects. Returns
+     * <code>false</code> by default.
      * <p>
      * Objects must only return <code>true</code> if they support {@link #throwException} as well.
      * If this method is implemented then also {@link #throwException(Object)} must be implemented.
      *
      * @see #throwException(Object)
-     * @see TruffleException#getExceptionObject()
+     * @see com.oracle.truffle.api.TruffleException#getExceptionObject()
      * @since 19.3
      */
     @Abstract(ifExported = {"throwException"})
@@ -1224,6 +1226,18 @@ public abstract class InteropLibrary extends Library {
      */
     @Abstract(ifExported = {"isException"})
     public RuntimeException throwException(Object receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    public boolean isExceptionCatchable(Object receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    public TruffleException.Kind getExceptionKind(Object receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    public int getExceptionExitStatus(Object receiver) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
     }
 
@@ -2837,6 +2851,27 @@ public abstract class InteropLibrary extends Library {
         public boolean isException(Object receiver) {
             assert preCondition(receiver);
             boolean result = delegate.isException(receiver);
+            return result;
+        }
+
+        @Override
+        public boolean isExceptionCatchable(Object receiver) throws UnsupportedMessageException {
+            assert preCondition(receiver);
+            boolean result = delegate.isExceptionCatchable(receiver);
+            return result;
+        }
+
+        @Override
+        public TruffleException.Kind getExceptionKind(Object receiver) throws UnsupportedMessageException {
+            assert preCondition(receiver);
+            TruffleException.Kind result = delegate.getExceptionKind(receiver);
+            return result;
+        }
+
+        @Override
+        public int getExceptionExitStatus(Object receiver) throws UnsupportedMessageException {
+            assert preCondition(receiver);
+            int result = delegate.getExceptionExitStatus(receiver);
             return result;
         }
 

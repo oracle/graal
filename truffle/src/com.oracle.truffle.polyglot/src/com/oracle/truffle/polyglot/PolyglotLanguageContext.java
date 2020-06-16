@@ -41,7 +41,6 @@
 package com.oracle.truffle.polyglot;
 
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
-import com.oracle.truffle.api.AbstractTruffleException;
 import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 
 import java.io.PrintStream;
@@ -651,7 +650,14 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                 LOG.log(Level.FINE, "Failed to patch context of language: {0}", this.language.getId());
                 return false;
             } catch (Throwable t) {
-                AbstractTruffleException.rethrowUnCatchable(t);
+                InteropLibrary interop = InteropLibrary.getUncached();
+                try {
+                    if (interop.isException(t) && !interop.isExceptionCatchable(t)) {
+                        throw interop.throwException(t);
+                    }
+                } catch (UnsupportedMessageException um) {
+                    t.addSuppressed(um);
+                }
                 LOG.log(Level.FINE, "Exception during patching context of language: {0}", this.language.getId());
                 // The conversion to the host exception happens in the
                 // PolyglotEngineImpl.createContext

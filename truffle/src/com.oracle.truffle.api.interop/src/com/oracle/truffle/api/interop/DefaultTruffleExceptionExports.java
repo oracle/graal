@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,46 +38,52 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.polyglot;
+package com.oracle.truffle.api.interop;
 
-import com.oracle.truffle.api.interop.TruffleException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.source.SourceSection;
 
-/**
- * Exception wrapper for an error occurred in the host language.
- */
-@SuppressWarnings("serial")
-final class HostException extends TruffleException {
+@SuppressWarnings("unused")
+@ExportLibrary(value = InteropLibrary.class, receiverType = TruffleException.class)
+final class DefaultTruffleExceptionExports {
 
-    private final Throwable original;
-
-    HostException(Throwable original) {
-        this.original = original;
+    @ExportMessage
+    static boolean isException(TruffleException receiver) {
+        return true;
     }
 
-    Throwable getOriginal() {
-        return original;
+    @ExportMessage
+    static RuntimeException throwException(TruffleException receiver) {
+        throw receiver;
     }
 
-    @Override
-    public String getMessage() {
-        return getOriginal().getMessage();
+    @ExportMessage
+    static boolean isExceptionCatchable(TruffleException receiver) {
+        return true;
     }
 
-// TODO:
-//    @Override
-//    public boolean isCancelled() {
-//        return getOriginal() instanceof InterruptedException;
-//    }
-//
-//    @Override
-//    public Object getExceptionObject() {
-//        Throwable exception = getOriginal();
-//        return HostObject.forException(exception, PolyglotContextImpl.currentNotEntered().getHostContext(), this);
-//    }
+    @ExportMessage
+    static TruffleException.Kind getExceptionKind(TruffleException receiver) {
+        return TruffleException.Kind.GUEST_LANGUAGE_ERROR;
+    }
 
-    @Override
-    public Node getLocation() {
-        return null;
+    @ExportMessage
+    static int getExceptionExitStatus(TruffleException receiver) {
+        return 0;
+    }
+
+    @ExportMessage
+    static boolean hasSourceLocation(TruffleException receiver) {
+        return receiver.getSourceLocation() != null;
+    }
+
+    @ExportMessage
+    static SourceSection getSourceLocation(TruffleException receiver) throws UnsupportedMessageException {
+        SourceSection sourceLocation = receiver.getSourceLocation();
+        if (sourceLocation == null) {
+            throw UnsupportedMessageException.create();
+        }
+        return sourceLocation;
     }
 }

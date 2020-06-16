@@ -41,12 +41,12 @@
 
 package com.oracle.truffle.sl.parser;
 
-import com.oracle.truffle.api.AbstractTruffleException;
+import com.oracle.truffle.api.interop.TruffleException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
-public class SLParseError extends AbstractTruffleException {
+public class SLParseError extends TruffleException {
 
     public static final long serialVersionUID = 1L;
     private final Source source;
@@ -72,8 +72,9 @@ public class SLParseError extends AbstractTruffleException {
         return null;
     }
 
-    @Override
-    public boolean isSyntaxError() {
-        return true;
-    }
+// TODO:
+// @Override
+// public boolean isSyntaxError() {
+// return true;
+// }
 }

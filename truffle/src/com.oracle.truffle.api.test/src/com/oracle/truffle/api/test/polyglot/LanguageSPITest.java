@@ -90,7 +90,7 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.truffle.api.AbstractTruffleException;
+import com.oracle.truffle.api.interop.TruffleException;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -99,7 +99,6 @@ import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -284,12 +283,13 @@ public class LanguageSPITest {
     }
 
     @SuppressWarnings("serial")
-    private static class Interrupted extends AbstractTruffleException {
+    private static class Interrupted extends TruffleException {
 
-        @Override
-        public boolean isCancelled() {
-            return true;
-        }
+// TODO
+// @Override
+// public boolean isCancelled() {
+// return true;
+// }
 
         @Override
         public Node getLocation() {
@@ -297,8 +297,8 @@ public class LanguageSPITest {
         }
     }
 
-    @SuppressWarnings("serial")
-    private static final class ParseException extends RuntimeException implements TruffleException {
+    @SuppressWarnings({"serial", "deprecation"})
+    private static final class ParseException extends RuntimeException implements com.oracle.truffle.api.TruffleException {
         private final Source source;
         private final int start;
         private final int length;
@@ -2012,8 +2012,8 @@ public class LanguageSPITest {
 
     static final Source TEST_SOURCE = Source.newBuilder("", "", "testLanguageErrorDuringInitialization").build();
 
-    @SuppressWarnings("serial")
-    static class TestError extends RuntimeException implements TruffleException {
+    @SuppressWarnings({"serial", "deprecation"})
+    static class TestError extends RuntimeException implements com.oracle.truffle.api.TruffleException {
 
         public SourceSection getSourceLocation() {
             return TEST_SOURCE.createSection(0, 0);

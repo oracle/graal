@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.tck.instrumentation;
 
-import com.oracle.truffle.api.AbstractTruffleException;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -61,6 +60,8 @@ import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.debug.SuspensionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -150,9 +151,9 @@ public class DebugALot extends TruffleInstrument implements SuspendedCallback {
                 logThrowable(t);
             } catch (Throwable lt) {
                 lt.printStackTrace(logger);
-                AbstractTruffleException.rethrowUnCatchable(lt);
+                rethrowUnCatchable(lt);
             }
-            AbstractTruffleException.rethrowUnCatchable(t);
+            rethrowUnCatchable(t);
             if (failFast) {
                 error = t;
             }
@@ -162,6 +163,17 @@ public class DebugALot extends TruffleInstrument implements SuspendedCallback {
             event.prepareContinue();
         } else {
             event.prepareStepInto(1);
+        }
+    }
+
+    private static void rethrowUnCatchable(Throwable t) {
+        InteropLibrary interop = InteropLibrary.getUncached();
+        try {
+            if (interop.isException(t) && !interop.isExceptionCatchable(t)) {
+                interop.throwException(t);
+            }
+        } catch (UnsupportedMessageException um) {
+            t.addSuppressed(um);
         }
     }
 

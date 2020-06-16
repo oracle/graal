@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api.debug;
 
-import com.oracle.truffle.api.AbstractTruffleException;
 import java.lang.ref.Reference;
 import java.lang.ref.WeakReference;
 import java.net.URI;
@@ -1173,8 +1172,11 @@ public class Breakpoint {
 
     private static class BreakpointAfterNode extends AbstractBreakpointNode {
 
+        @Child private InteropLibrary interop;
+
         BreakpointAfterNode(Breakpoint breakpoint, EventContext context) {
             super(breakpoint, context);
+            interop = InteropLibrary.getFactory().createDispatched(5);
         }
 
         @Override
@@ -1198,7 +1200,14 @@ public class Breakpoint {
 
         @Override
         protected void onReturnExceptional(VirtualFrame frame, Throwable exception) {
-            if (!(exception instanceof ControlFlowException || !AbstractTruffleException.isCatchable(exception))) {
+            boolean uncatchable = false;
+            try {
+                uncatchable = interop.isException(exception) && !interop.isExceptionCatchable(exception);
+            } catch (UnsupportedMessageException um) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                exception.addSuppressed(um);
+            }
+            if (!(exception instanceof ControlFlowException || uncatchable)) {
                 onNode(frame, false, null, exception);
             }
         }
@@ -1207,8 +1216,11 @@ public class Breakpoint {
 
     private static class BreakpointAfterNodeException extends AbstractBreakpointNode {
 
+        @Child private InteropLibrary interop;
+
         BreakpointAfterNodeException(Breakpoint breakpoint, EventContext context) {
             super(breakpoint, context);
+            interop = InteropLibrary.getFactory().createDispatched(5);
         }
 
         @Override
@@ -1233,7 +1245,14 @@ public class Breakpoint {
 
         @Override
         protected void onReturnExceptional(VirtualFrame frame, Throwable exception) {
-            if (!(exception instanceof ControlFlowException || !AbstractTruffleException.isCatchable(exception))) {
+            boolean uncatchable = false;
+            try {
+                uncatchable = interop.isException(exception) && !interop.isExceptionCatchable(exception);
+            } catch (UnsupportedMessageException um) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                exception.addSuppressed(um);
+            }
+            if (!(exception instanceof ControlFlowException || uncatchable)) {
                 SessionList sessions = computeUniqueActiveSessions();
                 if (sessions == null) {
                     return;

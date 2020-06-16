@@ -118,8 +118,8 @@ final class LanguageAccessor extends Accessor {
         }
 
         @Override
-        public Throwable getTruffleStackTrace(AbstractTruffleException t) {
-            return t.getLazyStackTrace();
+        public Throwable createLazyStackTrace() {
+            return new TruffleStackTrace.LazyStackTrace();
         }
 
         @Override

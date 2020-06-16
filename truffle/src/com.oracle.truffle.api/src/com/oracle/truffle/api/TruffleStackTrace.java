@@ -242,8 +242,9 @@ public final class TruffleStackTrace extends Exception {
 
     private static LazyStackTrace findImpl(Throwable t) {
         assert !(t instanceof ControlFlowException);
-        if (t instanceof AbstractTruffleException) {
-            return ((AbstractTruffleException) t).getLazyStackTrace();
+        LazyStackTrace lazyStackTrace = (LazyStackTrace) LanguageAccessor.interopAccess().getLazyStackTrace(t);
+        if (lazyStackTrace != null) {
+            return lazyStackTrace;
         }
         Throwable cause = getCause(t);
         while (cause != null) {
@@ -438,10 +439,8 @@ public final class TruffleStackTrace extends Exception {
         }
 
         int stackTraceElementLimit = ((TruffleException) t).getStackTraceElementLimit();
-        LazyStackTrace lazy;
-        if ((t instanceof AbstractTruffleException)) {
-            lazy = ((AbstractTruffleException) t).getLazyStackTrace();
-        } else {
+        LazyStackTrace lazy = (LazyStackTrace) LanguageAccessor.interopAccess().getLazyStackTrace(t);
+        if (lazy == null) {
             Throwable cause = getCause(t);
             if (cause == null) {
                 insert(t, lazy = new LazyStackTrace());

@@ -38,9 +38,9 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api;
+package com.oracle.truffle.api.interop;
 
-import com.oracle.truffle.api.TruffleStackTrace.LazyStackTrace;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -48,49 +48,44 @@ import com.oracle.truffle.api.source.SourceSection;
  * A base class for an exception thrown during the execution of a guest language program.
  *
  * The following simplified {@code TryCatchNode} shows how the
- * {@link AbstractTruffleException#isCatchable()} should be handled by languages.
+ * {@link TruffleException#isCatchable()} should be handled by languages.
  *
  * <pre>
- * private static class TryCatchNode extends StatementNode {
+ * public class TryCatchNode extends StatementNode {
  *
  *     &#64;Child private BlockNode block;
- *     &#64;Children private CatchNode[] catches;
- *     &#64;Child private BlockNode finalizer;
+ *     &#64;Child private BlockNode catchBlock;
+ *     &#64;Child private BlockNode finalizerBlock;
  *     &#64;Child private InteropLibrary interop = InteropLibrary.getFactory().createDispatched(5);
  *
- *     public TryCatchNode(BlockNode block, CatchNode[] catches, BlockNode finalizer) {
+ *     public TryCatchNode(BlockNode block, BlockNode catchBlock, BlockNode finalizerBlock) {
  *         this.block = block;
- *         this.catches = catches;
- *         this.finalizer = finalizer;
+ *         this.catchBlock = catchBlock;
+ *         this.finalizerBlock = finalizerBlock;
  *     }
  *
  *     &#64;Override
- *     &#64;ExplodeLoop
  *     Object execute(VirtualFrame frame) {
  *         boolean runFinalization = true;
  *         try {
  *             return block.execute(frame);
- *         } catch (AbstractTruffleException ex) {
- *             AbstractTruffleException tex = (AbstractTruffleException) ex;
- *             runFinalization = tex.isCatchable();
- *             if (tex.isCatchable() && catches.length > 0) {
- *                 Object exceptionObject = tex.getExceptionObject();
- *                 if (exceptionObject != null) {
- *                     for (CatchNode catchBlock : catches) {
- *                         try {
- *                             if (interop.isMetaInstance(catchBlock.getException(), exceptionObject)) {
- *                                 return catchBlock.execute(frame);
- *                             }
- *                         } catch (UnsupportedMessageException um) {
- *                             ex.addSuppressed(um);
- *                         }
+ *         } catch (Throwable ex) {
+ *             if (interop.isException(ex)) {
+ *                 try {
+ *                     runFinalization = interop.isExceptionCatchable(ex);
+ *                     if (runFinalization && catchBlock != null) {
+ *                         return catchBlock.execute(frame);
+ *                     } else {
+ *                         interop.throwException(ex);
  *                     }
+ *                 } catch (UnsupportedMessageException ume) {
+ *                     ex.addSuppressed(ume);
  *                 }
  *             }
  *             throw ex;
  *         } finally {
- *             if (runFinalization && finalizer != null) {
- *                 finalizer.execute(frame);
+ *             if (runFinalization && finalizerBlock != null) {
+ *                 finalizerBlock.execute(frame);
  *             }
  *         }
  *     }
@@ -99,25 +94,52 @@ import com.oracle.truffle.api.source.SourceSection;
  *
  * @since 20.2
  */
-@SuppressWarnings("serial")
-public abstract class AbstractTruffleException extends RuntimeException implements TruffleException {
+@SuppressWarnings({"serial", "deprecation"})
+public abstract class TruffleException extends RuntimeException implements TruffleObject, com.oracle.truffle.api.TruffleException {
 
-    private volatile LazyStackTrace lazy;
-
-    protected AbstractTruffleException() {
-        this(null, null);
+    public enum Kind implements TruffleObject {
+        GUEST_LANGUAGE_ERROR,
+        SYNTAX_ERROR,
+        INCOMPLETE_SOURCE,
+        INTERNAL_ERROR,
+        CANCEL,
+        EXIT
     }
 
-    protected AbstractTruffleException(String message) {
-        this(message, null);
+    private final int stackTraceElementLimit;
+    private volatile Throwable lazyStackTrace;
+
+    protected TruffleException() {
+        this(null, null, -1);
     }
 
-    protected AbstractTruffleException(Throwable internaCause) {
-        this(null, internaCause);
+    protected TruffleException(int stackTraceElementLimit) {
+        this(null, null, stackTraceElementLimit);
     }
 
-    protected AbstractTruffleException(String message, Throwable internalCause) {
+    protected TruffleException(String message) {
+        this(message, null, -1);
+    }
+
+    protected TruffleException(String message, int stackTraceElementLimit) {
+        this(message, null, stackTraceElementLimit);
+    }
+
+    protected TruffleException(Throwable internaCause) {
+        this(null, internaCause, -1);
+    }
+
+    protected TruffleException(Throwable internaCause, int stackTraceElementLimit) {
+        this(null, internaCause, stackTraceElementLimit);
+    }
+
+    protected TruffleException(String message, Throwable internalCause) {
+        this(message, internalCause, -1);
+    }
+
+    protected TruffleException(String message, Throwable internalCause, int stackTraceElementLimit) {
         super(message, checkCause(internalCause));
+        this.stackTraceElementLimit = stackTraceElementLimit;
     }
 
     @Override
@@ -134,14 +156,41 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
     public abstract Node getLocation();
 
     /**
+     * Returns a location where this exception occurred in the AST. This method may return
+     * <code>null</code> to indicate that the location is not available.
+     *
+     * @return the {@link SourceSection} or null
+     */
+    @Override
+    public SourceSection getSourceLocation() {
+        final Node node = getLocation();
+        return node == null ? null : node.getEncapsulatingSourceSection();
+    }
+
+    /**
+     * Returns the number of guest language frames that should be collected for this exception.
+     * Returns a negative integer by default for unlimited guest language frames. This is intended
+     * to be used by guest languages to limit the number of guest language stack frames. Languages
+     * might want to limit the number of frames for performance reasons. Frames that point to
+     * {@link RootNode#isInternal() internal} internal root nodes are not counted when the stack
+     * trace limit is computed.
+     *
+     */
+    @Override
+    public final int getStackTraceElementLimit() {
+        return stackTraceElementLimit;
+    }
+
+    /**
      * Returns an additional guest language object. The return object must be an interop exception
      * type, the {@link @link com.oracle.truffle.api.interop.InteropLibrary#isException(Object)} has
      * to return {@code true}. The default implementation returns <code>null</code> to indicate that
      * no object is available for this exception.
      */
+    @Deprecated
     @Override
-    public Object getExceptionObject() {
-        return null;
+    public final Object getExceptionObject() {
+        return this;
     }
 
     /**
@@ -151,9 +200,10 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
      * of guest language source code.
      *
      */
+    @Deprecated
     @Override
-    public boolean isSyntaxError() {
-        return false;
+    public final boolean isSyntaxError() {
+        return getKind() == Kind.SYNTAX_ERROR;
     }
 
     /**
@@ -170,9 +220,10 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
      * returns <code>true</code>.
      *
      */
+    @Deprecated
     @Override
-    public boolean isIncompleteSource() {
-        return false;
+    public final boolean isIncompleteSource() {
+        return getKind() == Kind.INCOMPLETE_SOURCE;
     }
 
     /**
@@ -182,9 +233,10 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
      *
      * @since 0.27
      */
+    @Deprecated
     @Override
-    public boolean isInternalError() {
-        return false;
+    public final boolean isInternalError() {
+        return getKind() == Kind.INTERNAL_ERROR;
     }
 
     /**
@@ -193,9 +245,10 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
      * not catch this exception, they must just rethrow it.
      *
      */
+    @Deprecated
     @Override
-    public boolean isCancelled() {
-        return false;
+    public final boolean isCancelled() {
+        return getKind() == Kind.CANCEL;
     }
 
     /**
@@ -205,9 +258,10 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
      *
      * @see #getExitStatus()
      */
+    @Deprecated
     @Override
-    public boolean isExit() {
-        return false;
+    public final boolean isExit() {
+        return getKind() == Kind.EXIT;
     }
 
     /**
@@ -216,84 +270,42 @@ public abstract class AbstractTruffleException extends RuntimeException implemen
      *
      * @see #isExit()
      */
+    @Deprecated
     @Override
-    public int getExitStatus() {
-        return 0;
-    }
-
-    /**
-     * Returns the number of guest language frames that should be collected for this exception.
-     * Returns a negative integer by default for unlimited guest language frames. This is intended
-     * to be used by guest languages to limit the number of guest language stack frames. Languages
-     * might want to limit the number of frames for performance reasons. Frames that point to
-     * {@link RootNode#isInternal() internal} internal root nodes are not counted when the stack
-     * trace limit is computed.
-     *
-     */
-    @Override
-    public int getStackTraceElementLimit() {
-        return -1;
-    }
-
-    /**
-     * Returns a location where this exception occurred in the AST. This method may return
-     * <code>null</code> to indicate that the location is not available.
-     *
-     * @return the {@link SourceSection} or null
-     */
-    @Override
-    public SourceSection getSourceLocation() {
-        final Node node = getLocation();
-        return node == null ? null : node.getEncapsulatingSourceSection();
-    }
-
-    /**
-     * Returns <code>true</code> if this exception can be safely caught by languages. If
-     * {@code isCatchable} returns {@code false} languages should not catch this exception, they
-     * must just rethrow it.
-     *
-     */
-    public final boolean isCatchable() {
-        return !(isCancelled() || isExit());
-    }
-
-    /**
-     * Re-throws the given exception if it's a {@link ThreadDeath} or a not {@link #isCatchable()
-     * catchable} {@link AbstractTruffleException}.
-     */
-    public static void rethrowUnCatchable(Throwable t) {
-        if (t instanceof ThreadDeath) {
-            throw (ThreadDeath) t;
-        }
-        if (t instanceof AbstractTruffleException && !((AbstractTruffleException) t).isCatchable()) {
-            throw (AbstractTruffleException) t;
+    public final int getExitStatus() {
+        try {
+            return InteropLibrary.getUncached().getExceptionExitStatus(this);
+        } catch (UnsupportedMessageException um) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new AssertionError("Unsupported message", um);
         }
     }
 
-    /**
-     * Returns {@code true} if the given exception is neither a {@link ThreadDeath} nor a non
-     * {@link #isCatchable() catchable} {@link AbstractTruffleException}.
-     */
-    public static boolean isCatchable(Throwable t) {
-        return !(t instanceof ThreadDeath || (t instanceof AbstractTruffleException && !((AbstractTruffleException) t).isCatchable()));
-    }
-
-    LazyStackTrace getLazyStackTrace() {
-        LazyStackTrace res = lazy;
+    Throwable getLazyStackTrace() {
+        Throwable res = lazyStackTrace;
         if (res == null) {
             synchronized (this) {
-                res = lazy;
+                res = lazyStackTrace;
                 if (res == null) {
-                    res = new LazyStackTrace();
-                    lazy = res;
+                    res = InteropAccessor.LANGUAGE.createLazyStackTrace();
+                    lazyStackTrace = res;
                 }
             }
         }
         return res;
     }
 
+    private Kind getKind() {
+        try {
+            return InteropLibrary.getUncached().getExceptionKind(this);
+        } catch (UnsupportedMessageException um) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new AssertionError("Unsupported message", um);
+        }
+    }
+
     private static Throwable checkCause(Throwable t) {
-        if (t != null && !(t instanceof TruffleException)) {
+        if (t != null && !(t instanceof com.oracle.truffle.api.TruffleException)) {
             throw new IllegalArgumentException("The " + t + " must be TruffleException subclass.");
         }
         return t;

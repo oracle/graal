@@ -67,7 +67,9 @@ import com.oracle.truffle.api.source.SourceSection;
  *
  * @since 0.27
  * @see TruffleStackTrace TruffleStackTrace to access the stack trace of an exception.
+ * @deprecated Use {@code com.oracle.truffle.api.interop.TruffleException}.
  */
+@Deprecated
 public interface TruffleException {
 
     /**

@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.polyglot;
 
-import com.oracle.truffle.api.AbstractTruffleException;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -62,7 +61,6 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExceptionImpl;
 import org.graalvm.polyglot.proxy.Proxy;
 
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.CancelExecution;
@@ -110,6 +108,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
         this(polyglot, null, null, original);
     }
 
+    @SuppressWarnings("deprecation")
     private PolyglotExceptionImpl(PolyglotImpl polyglot, PolyglotEngineImpl engine, PolyglotLanguageContext languageContext, Throwable original) {
         super(polyglot);
         this.polyglot = polyglot;
@@ -120,8 +119,8 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
         this.showInternalStackFrames = engine == null ? false : engine.engineOptionValues.get(PolyglotEngineOptions.ShowInternalStackFrames);
         this.resourceExhausted = isResourceLimit(exception);
 
-        if (exception instanceof TruffleException) {
-            TruffleException truffleException = (TruffleException) exception;
+        if (exception instanceof com.oracle.truffle.api.TruffleException) {
+            com.oracle.truffle.api.TruffleException truffleException = (com.oracle.truffle.api.TruffleException) exception;
             this.internal = truffleException.isInternalError();
             this.cancelled = truffleException.isCancelled();
             this.syntaxError = truffleException.isSyntaxError();
@@ -146,7 +145,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
                 this.sourceLocation = null;
             }
             Object exceptionObject;
-            if (languageContext != null && !(exception instanceof HostException) && (exceptionObject = ((TruffleException) exception).getExceptionObject()) != null) {
+            if (languageContext != null && !(exception instanceof HostException) && (exceptionObject = ((com.oracle.truffle.api.TruffleException) exception).getExceptionObject()) != null) {
                 /*
                  * Allow proxies in guest language objects. This is for legacy support. Ideally we
                  * should get rid of this if it is no longer relied upon.
@@ -507,10 +506,11 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
 
         private Throwable findCause(Throwable throwable) {
             Throwable cause = throwable;
+            Throwable stackTrace;
             if (cause instanceof HostException) {
                 return findCause(((HostException) cause).getOriginal());
-            } else if (cause instanceof AbstractTruffleException) {
-                return EngineAccessor.LANGUAGE.getTruffleStackTrace((AbstractTruffleException) cause);
+            } else if ((stackTrace = EngineAccessor.INTEROP.getLazyStackTrace(cause)) != null) {
+                return stackTrace;
             } else {
                 while (cause.getCause() != null && cause.getStackTrace().length == 0) {
                     if (cause instanceof HostException) {

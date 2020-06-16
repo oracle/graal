@@ -49,7 +49,6 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
 
-import com.oracle.truffle.api.AbstractTruffleException;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -63,6 +62,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.EngineInstrumenter;
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.InstrumentClientInstrumenter;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
@@ -152,6 +153,7 @@ public final class ProbeNode extends Node {
     @CompilationFinal private volatile EventContext context;
 
     @Child private volatile ProbeNode.EventChainNode chain;
+    @Child private volatile InteropLibrary interop;
 
     /*
      * We cache to ensure that the instrumented tags and source sections are always compilation
@@ -281,7 +283,18 @@ public final class ProbeNode extends Node {
             profileBranch(SEEN_UNWIND);
             unwind = (UnwindException) exception;
         } else {
-            AbstractTruffleException.rethrowUnCatchable(exception);
+            if (interop == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                interop = insert(InteropLibrary.getFactory().createDispatched(5));
+            }
+            try {
+                if (interop.isException(exception) && !interop.isExceptionCatchable(exception)) {
+                    interop.throwException(exception);
+                }
+            } catch (UnsupportedMessageException um) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                exception.addSuppressed(um);
+            }
         }
         EventChainNode localChain = lazyUpdate(frame);
         if (localChain != null) {
@@ -649,7 +662,15 @@ public final class ProbeNode extends Node {
      */
     @TruffleBoundary
     static void exceptionEventForClientInstrument(EventBinding.Source<?> b, String eventName, Throwable t) {
-        AbstractTruffleException.rethrowUnCatchable(t);
+        InteropLibrary interop = InteropLibrary.getUncached();
+        try {
+            if (interop.isException(t) && !interop.isExceptionCatchable(t)) {
+                interop.throwException(t);
+            }
+        } catch (UnsupportedMessageException um) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            t.addSuppressed(um);
+        }
         final Object polyglotEngine = InstrumentAccessor.engineAccess().getCurrentPolyglotEngine();
         if (b.getInstrumenter() instanceof EngineInstrumenter || (polyglotEngine != null && InstrumentAccessor.engineAccess().isInstrumentExceptionsAreThrown(polyglotEngine))) {
             throw sthrow(RuntimeException.class, t);

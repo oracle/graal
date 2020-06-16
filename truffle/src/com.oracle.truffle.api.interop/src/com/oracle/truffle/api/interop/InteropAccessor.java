@@ -50,6 +50,8 @@ final class InteropAccessor extends Accessor {
 
     static final InteropAccessor ACCESSOR = new InteropAccessor();
 
+    static final LanguageSupport LANGUAGE = ACCESSOR.languageSupport();
+
     private InteropAccessor() {
     }
 
@@ -121,6 +123,14 @@ final class InteropAccessor extends Accessor {
                 return ((LegacyMetaObjectWrapper) receiver).delegate;
             }
             return receiver;
+        }
+
+        @Override
+        public Throwable getLazyStackTrace(Throwable exception) {
+            if (exception instanceof TruffleException) {
+                return ((TruffleException) exception).getLazyStackTrace();
+            }
+            return null;
         }
 
     }
