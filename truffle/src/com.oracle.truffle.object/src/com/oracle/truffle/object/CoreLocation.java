@@ -41,16 +41,9 @@
 package com.oracle.truffle.object;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.IncompatibleLocationException;
 
 abstract class CoreLocation extends LocationImpl {
     protected CoreLocation() {
-    }
-
-    @Override
-    protected void set(DynamicObject store, Object value, boolean condition) throws IncompatibleLocationException {
-        setInternal(store, value, condition);
     }
 
     @Override

@@ -84,7 +84,7 @@ public abstract class LocationImpl extends Location {
     /** @since 0.17 or earlier */
     @Override
     public void set(DynamicObject store, Object value, Shape shape) throws IncompatibleLocationException, FinalLocationException {
-        setInternal(store, value, checkShape(store, shape));
+        set(store, value, checkShape(store, shape));
     }
 
     @Override

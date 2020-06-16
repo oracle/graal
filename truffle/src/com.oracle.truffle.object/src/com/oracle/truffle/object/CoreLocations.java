@@ -252,6 +252,13 @@ abstract class CoreLocations {
         }
 
         @Override
+        public final void set(DynamicObject store, Object value, boolean condition) throws IncompatibleLocationException, FinalLocationException {
+            if (!canStore(value)) {
+                throw finalLocation();
+            }
+        }
+
+        @Override
         public final void setInternal(DynamicObject store, Object value, boolean condition) throws IncompatibleLocationException {
             if (!canStore(value)) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -271,13 +278,6 @@ abstract class CoreLocations {
         @Override
         public final boolean isValue() {
             return true;
-        }
-
-        @Override
-        public final void set(DynamicObject store, Object value, Shape shape) throws IncompatibleLocationException, FinalLocationException {
-            if (!canStore(value)) {
-                throw finalLocation();
-            }
         }
     }
 
