@@ -126,6 +126,9 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
         assertNumber(Byte.MAX_VALUE + 1, false, true, true, true, true, true);
         assertNumber((int) Short.MAX_VALUE, false, true, true, true, true, true);
         assertNumber(Short.MAX_VALUE + 1, false, false, true, true, true, true);
+        assertNumber(1 << 24, false, false, true, true, true, true);
+        assertNumber((1 << 24) + 1, false, false, true, true, false, true);
+        assertNumber(1 << 25, false, false, true, true, true, true);
         assertNumber(Integer.MAX_VALUE, false, false, true, true, true, true);
     }
 
@@ -144,6 +147,11 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
         assertNumber((long) Short.MAX_VALUE, false, true, true, true, true, true);
         assertNumber((long) Short.MAX_VALUE + 1, false, false, true, true, true, true);
         assertNumber((long) Integer.MAX_VALUE, false, false, true, true, false, true);
+        assertNumber(1L << 24, false, false, true, true, true, true);
+        assertNumber((1L << 24) + 1, false, false, true, true, false, true);
+        assertNumber(1L << 25, false, false, true, true, true, true);
+        assertNumber((1L << 53) + 1, false, false, false, true, false, false);
+        assertNumber(1L << 54, false, false, false, true, true, true);
         assertNumber(Long.MAX_VALUE, false, false, false, true, true, true);
     }
 
