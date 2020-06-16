@@ -53,10 +53,13 @@ import com.oracle.truffle.api.TruffleException;
 public final class UnsupportedMessageException extends InteropException {
 
     private static final long serialVersionUID = 1857745390734085182L;
-    private static final UnsupportedMessageException SINGLETON = new UnsupportedMessageException(null);
 
     private UnsupportedMessageException(Throwable cause) {
         super(null, cause);
+    }
+
+    private UnsupportedMessageException() {
+        super(null);
     }
 
     /**
@@ -79,7 +82,7 @@ public final class UnsupportedMessageException extends InteropException {
      * @since 19.0
      */
     public static UnsupportedMessageException create() {
-        return SINGLETON;
+        return new UnsupportedMessageException();
     }
 
     /**
