@@ -345,10 +345,10 @@ public final class CompilerDirectives {
 
     /**
      * Indicates a code path that is not supposed to be reached during compilation or
-     * interpretation. If it is reached then it is considered fatal internal error and execution
-     * typically should not continue. Transfers to interpreter and
+     * interpretation. Reaching this method is considered a fatal internal error and execution
+     * should not continue. Transfers to interpreter and
      * {@link CompilerDirectives#transferToInterpreterAndInvalidate() invalidates} the compiled code
-     * and throws an {@link AssertionError} when reached unexpectedly.
+     * and throws an {@link AssertionError} when invoked.
      * <p>
      * This method returns a runtime exception to be conveniently used in combination with Java
      * throw statements, for example:
@@ -361,7 +361,6 @@ public final class CompilerDirectives {
      * }
      * </pre>
      *
-     * @see #neverPartOfCompilation() to throw an assertion only on compiled code paths
      * @since 20.2
      */
     public static RuntimeException shouldNotReachHere() {
@@ -388,7 +387,6 @@ public final class CompilerDirectives {
      * </pre>
      *
      * @param message an additional message for the exception thrown.
-     * @see #neverPartOfCompilation() to throw an assertion only on compiled code paths
      * @since 20.2
      */
     public static RuntimeException shouldNotReachHere(String message) {
@@ -415,7 +413,6 @@ public final class CompilerDirectives {
      * </pre>
      *
      * @param cause the cause if an exception was responsible for the unexpected case.
-     * @see #neverPartOfCompilation() to throw an assertion only on compiled code paths
      * @since 20.2
      */
     public static RuntimeException shouldNotReachHere(Throwable cause) {
@@ -444,7 +441,6 @@ public final class CompilerDirectives {
      * @param message an additional message for the exception thrown.
      * @param cause the cause if an exception was responsible for the unexpected case.
      *
-     * @see #neverPartOfCompilation() to throw an assertion only on compiled code paths
      * @since 20.2
      */
     public static RuntimeException shouldNotReachHere(String message, Throwable cause) {

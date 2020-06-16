@@ -41,11 +41,10 @@
 package com.oracle.truffle.api;
 
 /**
- * Assertions about the code produced by the Truffle compiler. All operations, except
- * {@link #shouldNotReachHere()}, have no effect when either executed in the interpreter or in the
- * compiled code. The assertions are checked during code generation and the Truffle compiler
- * produces for failing assertions a stack trace that identifies the code position of the assertion
- * in the context of the current compilation.
+ * Assertions about the code produced by the Truffle compiler. All operations have no effect when
+ * either executed in the interpreter or in the compiled code. The assertions are checked during
+ * code generation and the Truffle compiler produces for failing assertions a stack trace that
+ * identifies the code position of the assertion in the context of the current compilation.
  *
  * @since 0.8 or earlier
  */

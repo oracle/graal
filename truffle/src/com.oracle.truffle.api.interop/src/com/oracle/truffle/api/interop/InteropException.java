@@ -63,7 +63,9 @@ public abstract class InteropException extends Exception {
     }
 
     /**
-     * Returns the cause of an interop exception. The cas
+     * Returns the cause of an interop exception.
+     *
+     * {@inheritDoc}
      *
      * @since 20.2
      */
