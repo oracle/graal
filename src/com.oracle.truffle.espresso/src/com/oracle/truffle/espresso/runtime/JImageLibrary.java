@@ -73,8 +73,6 @@ class JImageLibrary extends NativeEnv implements ContextAccess {
     // Cache the version sting.
     private final TruffleObject encodedVersion;
 
-    private static CharsetEncoder encoder = StandardCharsets.UTF_8.newEncoder();
-
     // Function pointers
 
     // JImageFile* JIMAGE_Open(const char *name, jint* error);
@@ -178,22 +176,31 @@ class JImageLibrary extends NativeEnv implements ContextAccess {
         CharsetEncoder encoder = StandardCharsets.UTF_8.newEncoder();
         int length = ((int) (name.length() * encoder.averageBytesPerChar())) + 1;
         for (;;) {
+            if (length <= 0) {
+                throw EspressoError.shouldNotReachHere();
+            }
             // Be super safe with the size of the buffer.
             ByteBuffer bb = allocateDirect(length);
             encoder.reset();
             CoderResult result = encoder.encode(CharBuffer.wrap(name), bb, true);
-            if (result.isUnderflow() && (bb.position() < bb.capacity())) {
-                // Encoder encoded entire string, and we have one byte of leeway.
-                bb.put((byte) 0);
-                return byteBufferPointer(bb);
-            }
-            // Buffer was not big enough, retry with a bigger one.
-            length <<= 1;
-            if (length == 0) {
+            if (result.isOverflow()) {
+                // Not enough space in the buffer
+                length <<= 1;
+            } else if (result.isUnderflow()) {
+                result = encoder.flush(bb);
+                if (result.isUnderflow() && (bb.position() < bb.capacity())) {
+                    // Encoder encoded entire string, and we have one byte of leeway.
+                    bb.put((byte) 0);
+                    return byteBufferPointer(bb);
+                }
+                if (result.isOverflow() || result.isUnderflow()) {
+                    length += 1;
+                } else {
+                    throw EspressoError.shouldNotReachHere();
+                }
+            } else {
                 throw EspressoError.shouldNotReachHere();
             }
-            // TODO(garcia): introduce some kind of limitation on the size of the encoded string ?
-            // For now, expect shouldNotReachHere if the length would be close to MAX_INT
         }
     }
 
