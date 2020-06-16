@@ -249,7 +249,7 @@ class MultiLanguageShell {
                     if (e.isHostException()) {
                         console.println(e.asHostException().toString());
                     } else {
-                        console.println(e.getMessage());
+                        console.println(String.valueOf(e.getMessage()));
                     }
                     // no need to print stack traces with single entry
                     if (trace.size() > 1) {
