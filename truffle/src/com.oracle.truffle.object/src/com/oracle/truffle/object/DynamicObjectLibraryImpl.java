@@ -389,6 +389,7 @@ abstract class DynamicObjectLibraryImpl {
             } catch (IncompatibleLocationException e) {
                 throw shouldNotHappen(e);
             }
+            updateShapeImpl(object);
         } else {
             try {
                 getLocation(property).set(object, value, false);
@@ -590,7 +591,7 @@ abstract class DynamicObjectLibraryImpl {
             if (existing != null) {
                 return getLocation(existing).getInt(object, false);
             } else {
-                return CoreLocation.expectInteger(defaultValue);
+                return expectInteger(defaultValue);
             }
         }
 
@@ -601,7 +602,7 @@ abstract class DynamicObjectLibraryImpl {
             if (existing != null) {
                 return getLocation(existing).getLong(object, false);
             } else {
-                return CoreLocation.expectLong(defaultValue);
+                return expectLong(defaultValue);
             }
         }
 
@@ -612,7 +613,7 @@ abstract class DynamicObjectLibraryImpl {
             if (existing != null) {
                 return getLocation(existing).getDouble(object, false);
             } else {
-                return CoreLocation.expectDouble(defaultValue);
+                return expectDouble(defaultValue);
             }
         }
 
@@ -623,7 +624,7 @@ abstract class DynamicObjectLibraryImpl {
             if (existing != null) {
                 return getLocation(existing).getBoolean(object, false);
             } else {
-                return CoreLocation.expectBoolean(defaultValue);
+                return expectBoolean(defaultValue);
             }
         }
 
@@ -1148,20 +1149,23 @@ abstract class DynamicObjectLibraryImpl {
                     if (newProperty == null) {
                         assert Flags.isSetExisting(putFlags);
                         return false;
-                    } else if (newProperty.getLocation().canSet(value)) {
-                        Shape newShape = c.newShape;
-                        if (newShape != oldShape) {
-                            ACCESS.growAndSetShape(object, oldShape, newShape);
-                        } else if (newProperty.getLocation().isFinal()) {
-                            continue;
+                    } else {
+                        LocationImpl location = getLocation(newProperty);
+                        if (location.canStore(value)) {
+                            Shape newShape = c.newShape;
+                            if (newShape != oldShape) {
+                                ACCESS.growAndSetShape(object, oldShape, newShape);
+                            } else if (location.isFinal()) {
+                                continue;
+                            }
+                            try {
+                                location.set(object, value, object.getShape() == oldShape);
+                            } catch (IncompatibleLocationException | FinalLocationException e) {
+                                throw shouldNotHappen(e);
+                            }
+                            c.maybeUpdateShape(object);
+                            return true;
                         }
-                        try {
-                            getLocation(newProperty).set(object, value, object.getShape() == oldShape);
-                        } catch (IncompatibleLocationException | FinalLocationException e) {
-                            throw shouldNotHappen(e);
-                        }
-                        c.maybeUpdateShape(object);
-                        return true;
                     }
                 }
             }
@@ -1186,26 +1190,55 @@ abstract class DynamicObjectLibraryImpl {
                         assert Flags.isSetExisting(putFlags);
                         return false;
                     } else {
-                        Location location = newProperty.getLocation();
-                        if (location instanceof CoreLocations.IntLocation) {
-                            Shape newShape = c.newShape;
-                            if (newShape != oldShape) {
-                                ACCESS.growAndSetShape(object, oldShape, newShape);
-                            } else if (location.isFinal()) {
-                                continue;
-                            }
-                            ((CoreLocations.IntLocation) newProperty.getLocation()).setInt(object, value, object.getShape() == oldShape);
-                            c.maybeUpdateShape(object);
-                            return true;
-                        } else if (location.canStore(value)) {
-                            Shape newShape = c.newShape;
+                        LocationImpl location = getLocation(newProperty);
+                        Shape newShape = c.newShape;
+                        if (location.isIntLocation()) {
                             if (newShape != oldShape) {
                                 ACCESS.growAndSetShape(object, oldShape, newShape);
                             } else if (location.isFinal()) {
                                 continue;
                             }
                             try {
-                                getLocation(newProperty).set(object, value, object.getShape() == oldShape);
+                                location.setInt(object, value, object.getShape() == oldShape);
+                            } catch (IncompatibleLocationException | FinalLocationException e) {
+                                throw shouldNotHappen(e);
+                            }
+                            c.maybeUpdateShape(object);
+                            return true;
+                        } else if (location.isImplicitCastIntToLong()) {
+                            if (newShape != oldShape) {
+                                ACCESS.growAndSetShape(object, oldShape, newShape);
+                            } else if (location.isFinal()) {
+                                continue;
+                            }
+                            try {
+                                location.setLong(object, value, object.getShape() == oldShape);
+                            } catch (IncompatibleLocationException | FinalLocationException e) {
+                                throw shouldNotHappen(e);
+                            }
+                            c.maybeUpdateShape(object);
+                            return true;
+                        } else if (location.isImplicitCastIntToDouble()) {
+                            if (newShape != oldShape) {
+                                ACCESS.growAndSetShape(object, oldShape, newShape);
+                            } else if (location.isFinal()) {
+                                continue;
+                            }
+                            try {
+                                location.setDouble(object, value, object.getShape() == oldShape);
+                            } catch (IncompatibleLocationException | FinalLocationException e) {
+                                throw shouldNotHappen(e);
+                            }
+                            c.maybeUpdateShape(object);
+                            return true;
+                        } else if (location.canStore(value)) {
+                            if (newShape != oldShape) {
+                                ACCESS.growAndSetShape(object, oldShape, newShape);
+                            } else if (location.isFinal()) {
+                                continue;
+                            }
+                            try {
+                                location.set(object, value, object.getShape() == oldShape);
                             } catch (IncompatibleLocationException | FinalLocationException e) {
                                 throw shouldNotHappen(e);
                             }
@@ -1234,15 +1267,19 @@ abstract class DynamicObjectLibraryImpl {
                         assert Flags.isSetExisting(putFlags);
                         return false;
                     } else {
-                        Location location = newProperty.getLocation();
-                        if (location instanceof CoreLocations.LongLocation) {
+                        LocationImpl location = getLocation(newProperty);
+                        if (location.isLongLocation()) {
                             Shape newShape = c.newShape;
                             if (newShape != oldShape) {
                                 ACCESS.growAndSetShape(object, oldShape, newShape);
                             } else if (location.isFinal()) {
                                 continue;
                             }
-                            ((CoreLocations.LongLocation) newProperty.getLocation()).setLong(object, value, object.getShape() == oldShape);
+                            try {
+                                location.setLong(object, value, object.getShape() == oldShape);
+                            } catch (IncompatibleLocationException | FinalLocationException e) {
+                                throw shouldNotHappen(e);
+                            }
                             c.maybeUpdateShape(object);
                             return true;
                         } else if (location.canStore(value)) {
@@ -1253,7 +1290,7 @@ abstract class DynamicObjectLibraryImpl {
                                 continue;
                             }
                             try {
-                                getLocation(newProperty).set(object, value, object.getShape() == oldShape);
+                                location.set(object, value, object.getShape() == oldShape);
                             } catch (IncompatibleLocationException | FinalLocationException e) {
                                 throw shouldNotHappen(e);
                             }
@@ -1281,26 +1318,37 @@ abstract class DynamicObjectLibraryImpl {
                     if (newProperty == null) {
                         assert Flags.isSetExisting(putFlags);
                         return false;
-                    } else if (newProperty.getLocation() instanceof CoreLocations.DoubleLocation) {
-                        Shape newShape = c.newShape;
-                        if (newShape != oldShape) {
-                            ACCESS.growAndSetShape(object, oldShape, newShape);
+                    } else {
+                        LocationImpl location = getLocation(newProperty);
+                        if (location.isDoubleLocation()) {
+                            Shape newShape = c.newShape;
+                            if (newShape != oldShape) {
+                                ACCESS.growAndSetShape(object, oldShape, newShape);
+                            } else if (location.isFinal()) {
+                                continue;
+                            }
+                            try {
+                                location.setDouble(object, value, object.getShape() == oldShape);
+                            } catch (IncompatibleLocationException | FinalLocationException e) {
+                                throw shouldNotHappen(e);
+                            }
+                            c.maybeUpdateShape(object);
+                            return true;
+                        } else if (newProperty.getLocation().canStore(value)) {
+                            Shape newShape = c.newShape;
+                            if (newShape != oldShape) {
+                                ACCESS.growAndSetShape(object, oldShape, newShape);
+                            } else if (location.isFinal()) {
+                                continue;
+                            }
+                            try {
+                                location.set(object, value, object.getShape() == oldShape);
+                            } catch (IncompatibleLocationException | FinalLocationException e) {
+                                throw shouldNotHappen(e);
+                            }
+                            c.maybeUpdateShape(object);
+                            return true;
                         }
-                        ((CoreLocations.DoubleLocation) newProperty.getLocation()).setDouble(object, value, object.getShape() == oldShape);
-                        c.maybeUpdateShape(object);
-                        return true;
-                    } else if (newProperty.getLocation().canSet(value)) {
-                        Shape newShape = c.newShape;
-                        if (newShape != oldShape) {
-                            ACCESS.growAndSetShape(object, oldShape, newShape);
-                        }
-                        try {
-                            ((CoreLocation) newProperty.getLocation()).set(object, value, object.getShape() == oldShape);
-                        } catch (IncompatibleLocationException e) {
-                            throw shouldNotHappen(e);
-                        }
-                        c.maybeUpdateShape(object);
-                        return true;
                     }
                 }
             }
@@ -1322,26 +1370,23 @@ abstract class DynamicObjectLibraryImpl {
                     if (newProperty == null) {
                         assert Flags.isSetExisting(putFlags);
                         return false;
-                    } else if (newProperty.getLocation() instanceof CoreLocations.BooleanLocation) {
-                        Shape newShape = c.newShape;
-                        if (newShape != oldShape) {
-                            ACCESS.growAndSetShape(object, oldShape, newShape);
+                    } else {
+                        LocationImpl location = getLocation(newProperty);
+                        if (location.canStore(value)) {
+                            Shape newShape = c.newShape;
+                            if (newShape != oldShape) {
+                                ACCESS.growAndSetShape(object, oldShape, newShape);
+                            } else if (location.isFinal()) {
+                                continue;
+                            }
+                            try {
+                                location.set(object, value, object.getShape() == oldShape);
+                            } catch (IncompatibleLocationException | FinalLocationException e) {
+                                throw shouldNotHappen(e);
+                            }
+                            c.maybeUpdateShape(object);
+                            return true;
                         }
-                        ((CoreLocations.BooleanLocation) newProperty.getLocation()).setBoolean(object, value, object.getShape() == oldShape);
-                        c.maybeUpdateShape(object);
-                        return true;
-                    } else if (newProperty.getLocation().canSet(value)) {
-                        Shape newShape = c.newShape;
-                        if (newShape != oldShape) {
-                            ACCESS.growAndSetShape(object, oldShape, newShape);
-                        }
-                        try {
-                            ((CoreLocation) newProperty.getLocation()).set(object, value, object.getShape() == oldShape);
-                        } catch (IncompatibleLocationException e) {
-                            throw shouldNotHappen(e);
-                        }
-                        c.maybeUpdateShape(object);
-                        return true;
                     }
                 }
             }

@@ -125,9 +125,7 @@ abstract class CoreLocations {
             return long.class;
         }
 
-        default boolean isImplicitCastIntToLong() {
-            return false;
-        }
+        boolean isImplicitCastIntToLong();
 
         // --- deprecated methods below ---
 
@@ -552,6 +550,7 @@ abstract class CoreLocations {
             return super.equals(obj) && this.allowInt == ((LongArrayLocation) obj).allowInt;
         }
 
+        @Override
         public boolean isImplicitCastIntToLong() {
             return allowInt;
         }
@@ -620,6 +619,7 @@ abstract class CoreLocations {
             return super.equals(obj) && this.allowInt == ((LongLocationDecorator) obj).allowInt;
         }
 
+        @Override
         public boolean isImplicitCastIntToLong() {
             return allowInt;
         }
@@ -658,6 +658,7 @@ abstract class CoreLocations {
             return getLong(store, checkShape(store, shape));
         }
 
+        @Override
         public abstract void setLong(DynamicObject store, long value, boolean condition);
 
         @Override
@@ -673,6 +674,11 @@ abstract class CoreLocations {
         @Override
         public void accept(LocationVisitor locationVisitor) {
             locationVisitor.visitPrimitiveField(getIndex(), LONG_FIELD_SIZE);
+        }
+
+        @Override
+        public boolean isImplicitCastIntToLong() {
+            return false;
         }
     }
 

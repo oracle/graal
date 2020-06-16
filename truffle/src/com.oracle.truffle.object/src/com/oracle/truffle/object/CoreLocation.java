@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.object;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.IncompatibleLocationException;
 
@@ -56,5 +57,38 @@ abstract class CoreLocation extends LocationImpl {
     public String toString() {
         String typeString = (this instanceof CoreLocations.TypedLocation ? ((CoreLocations.TypedLocation) this).getType().getSimpleName() : "Object");
         return typeString + getWhereString();
+    }
+
+    @Override
+    protected final boolean isIntLocation() {
+        return this instanceof CoreLocations.IntLocation;
+    }
+
+    @Override
+    protected final boolean isDoubleLocation() {
+        return this instanceof CoreLocations.DoubleLocation;
+    }
+
+    @Override
+    protected final boolean isLongLocation() {
+        return this instanceof CoreLocations.LongLocation;
+    }
+
+    /**
+     * Boxed values need to be compared by value not by reference.
+     *
+     * The first parameter should be the one with the more precise type information.
+     *
+     * For sets to final locations, otherValue.equals(thisValue) seems more beneficial, since we
+     * usually know more about the value to be set.
+     */
+    @SuppressWarnings("deprecation")
+    static boolean valueEquals(Object val1, Object val2) {
+        return val1 == val2 || (val1 != null && equalsBoundary(val1, val2));
+    }
+
+    @TruffleBoundary // equals is blacklisted
+    private static boolean equalsBoundary(Object val1, Object val2) {
+        return val1.equals(val2);
     }
 }

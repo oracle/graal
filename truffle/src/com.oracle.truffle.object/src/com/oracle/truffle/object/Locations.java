@@ -111,7 +111,7 @@ public abstract class Locations {
         @SuppressWarnings("deprecation")
         @Override
         public boolean canStore(Object val) {
-            return valueEquals(this.value, val);
+            return CoreLocation.valueEquals(this.value, val);
         }
 
         /** @since 0.17 or earlier */

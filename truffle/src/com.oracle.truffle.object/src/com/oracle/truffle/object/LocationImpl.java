@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.object;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.FinalLocationException;
@@ -277,21 +276,39 @@ public abstract class LocationImpl extends Location {
         return loc1 == loc2 || loc1.getInternalLocation().equals(loc2.getInternalLocation());
     }
 
-    /**
-     * Boxed values need to be compared by value not by reference.
-     *
-     * The first parameter should be the one with the more precise type information.
-     *
-     * For sets to final locations, otherValue.equals(thisValue) seems more beneficial, since we
-     * usually know more about the value to be set.
-     *
-     * @since 0.17 or earlier
-     * @deprecated equivalent to {@link java.util.Objects#equals(Object, Object)}
-     */
-    @Deprecated
-    @TruffleBoundary // equals is blacklisted
-    public static boolean valueEquals(Object val1, Object val2) {
-        return val1 == val2 || (val1 != null && val1.equals(val2));
+    @SuppressWarnings("unused")
+    protected void setInt(DynamicObject store, int value, boolean condition) throws IncompatibleLocationException, FinalLocationException {
+        set(store, value, condition);
+    }
+
+    @SuppressWarnings("unused")
+    protected void setLong(DynamicObject store, long value, boolean condition) throws IncompatibleLocationException, FinalLocationException {
+        set(store, value, condition);
+    }
+
+    @SuppressWarnings("unused")
+    protected void setDouble(DynamicObject store, double value, boolean condition) throws IncompatibleLocationException, FinalLocationException {
+        set(store, value, condition);
+    }
+
+    protected boolean isIntLocation() {
+        return false;
+    }
+
+    protected boolean isLongLocation() {
+        return false;
+    }
+
+    protected boolean isDoubleLocation() {
+        return false;
+    }
+
+    protected boolean isImplicitCastIntToLong() {
+        return false;
+    }
+
+    protected boolean isImplicitCastIntToDouble() {
+        return false;
     }
 
     static boolean expectBoolean(Object value) throws UnexpectedResultException {
