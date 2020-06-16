@@ -115,4 +115,38 @@ public abstract class InductionVariable {
      * Deletes any nodes created within the scope of this object that have no usages.
      */
     public abstract void deleteUnusedNodes();
+
+    /**
+     * Range check predication support.
+     */
+
+    /**
+     * Is this = C * ref + n, C a constant?
+     */
+    public boolean isConstantScale(InductionVariable ref) {
+        return this == ref;
+    }
+
+    /**
+     * this = C * ref + n, returns C.
+     */
+    public long constantScale(InductionVariable ref) {
+        assert this == ref;
+        return 1;
+    }
+
+    /**
+     * Is this = n * ref + 0?
+     */
+    public boolean offsetIsZero(InductionVariable ref) {
+        return this == ref;
+    }
+
+    /**
+     * If this = n * ref + offset, returns offset or null otherwise.
+     */
+    public ValueNode offsetNode(InductionVariable ref) {
+        assert !offsetIsZero(ref);
+        return null;
+    }
 }
