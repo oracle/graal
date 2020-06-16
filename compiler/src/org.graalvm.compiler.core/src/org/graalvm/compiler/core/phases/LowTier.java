@@ -43,6 +43,7 @@ import org.graalvm.compiler.phases.common.UseTrappingNullChecksPhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
+import org.graalvm.compiler.virtual.phases.ea.EarlyReadEliminationPhase;
 
 public class LowTier extends BaseTier<LowTierContext> {
 
@@ -71,6 +72,10 @@ public class LowTier extends BaseTier<LowTierContext> {
                         new SchedulePhase(GraalOptions.StressTestEarlyReads.getValue(options) ? SchedulingStrategy.EARLIEST : SchedulingStrategy.LATEST_OUT_OF_LOOPS_IMPLICIT_NULL_CHECKS)));
 
         appendPhase(canonicalizerWithoutGVN);
+
+        if (GraalOptions.PartialUnroll.getValue(options)) {
+            appendPhase(new EarlyReadEliminationPhase(canonicalizerWithoutGVN));
+        }
 
         appendPhase(new UseTrappingNullChecksPhase());
 
