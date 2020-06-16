@@ -929,7 +929,9 @@ suite = {
                         "jdk.vm.ci.hotspot",
                     ],
                     "java.base": [
+                        "sun.reflect.annotation",
                         "sun.util.calendar",
+                        "sun.security.jca",
                         "sun.security.util",
                         "sun.security.provider",
                         "com.sun.crypto.provider",
