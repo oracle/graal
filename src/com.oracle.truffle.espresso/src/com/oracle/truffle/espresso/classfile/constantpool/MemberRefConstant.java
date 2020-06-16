@@ -115,7 +115,7 @@ public interface MemberRefConstant extends PoolConstant {
      * <li>R is private and is declared in D.
      * </ul>
      */
-    static boolean checkAccess(Klass accessingKlass, Klass resolvedKlass, Member member) {
+    static boolean checkAccess(Klass accessingKlass, Klass resolvedKlass, Member<? extends Descriptor> member) {
         if (member.isPublic()) {
             return true;
         }
@@ -139,7 +139,7 @@ public interface MemberRefConstant extends PoolConstant {
         if (member.isPrivate() && nestMateTest(accessingKlass, memberKlass)) {
             return true;
         }
-        // MagicAccessorImpl marks internal reflection classes that have access to eveything.
+        // MagicAccessorImpl marks internal reflection classes that have access to everything.
         if (accessingKlass.getMeta().sun_reflect_MagicAccessorImpl.isAssignableFrom(accessingKlass)) {
             return true;
         }
