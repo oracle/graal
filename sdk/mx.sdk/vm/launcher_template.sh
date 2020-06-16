@@ -54,7 +54,7 @@ launcher_args=()
 process_vm_arg() {
     local vm_arg="$1"
     if [[ "$vm_arg" == "cp" || "$vm_arg" == "classpath" ]]; then
-        >&2 echo "'--vm.${vm_arg}' argument must be of the form '--vm.${vm_arg}=<classpath>', not two separate arguments."
+        >&2 echo "'--vm.${vm_arg}' argument must be of the form '--vm.${vm_arg}=CLASSPATH', not two separate arguments."
         exit 1
     elif [[ "$vm_arg" == "cp="* || "$vm_arg" == "classpath="* ]]; then
         local prefix="${vm_arg%%=*}" # cp or classpath
