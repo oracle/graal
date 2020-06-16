@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,6 +55,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.replacements.test.ReplacementsTest;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.compiler.test.SubprocessUtil;
 import org.graalvm.compiler.test.SubprocessUtil.Subprocess;
 import org.junit.Assert;
 import org.junit.Test;
@@ -86,7 +87,7 @@ public class RedefineIntrinsicTest extends ReplacementsTest {
     @Override
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
         BytecodeProvider replacementBytecodeProvider = getSystemClassLoaderBytecodeProvider();
-        Registration r = new Registration(invocationPlugins, Original.class, replacementBytecodeProvider);
+        Registration r = new Registration(invocationPlugins, Original.class, getReplacements(), replacementBytecodeProvider);
         r.registerMethodSubstitution(Intrinsic.class, "getValue");
         super.registerInvocationPlugins(invocationPlugins);
     }
@@ -116,6 +117,7 @@ public class RedefineIntrinsicTest extends ReplacementsTest {
         } else {
             List<String> vmArgs = withoutDebuggerArguments(getVMCommandLine());
             vmArgs.add("-D" + recursionPropName + "=true");
+            vmArgs.add(SubprocessUtil.PACKAGE_OPENING_OPTIONS);
             vmArgs.add("-Djdk.attach.allowAttachSelf=true");
             Subprocess proc = java(vmArgs, "com.oracle.mxtool.junit.MxJUnitWrapper", getClass().getName());
             if (proc.exitCode != 0) {

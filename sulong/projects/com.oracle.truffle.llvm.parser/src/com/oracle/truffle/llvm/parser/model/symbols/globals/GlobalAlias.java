@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.model.symbols.globals;
 
+import com.oracle.truffle.llvm.parser.model.GlobalSymbol;
 import com.oracle.truffle.llvm.parser.model.SymbolTable;
 import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.enums.Visibility;
@@ -37,8 +38,8 @@ import com.oracle.truffle.llvm.runtime.types.PointerType;
 
 public final class GlobalAlias extends GlobalValueSymbol {
 
-    private GlobalAlias(PointerType type, Linkage linkage, Visibility visibility, SymbolTable symbolTable, int value) {
-        super(type, linkage, visibility, symbolTable, value);
+    private GlobalAlias(PointerType type, Linkage linkage, Visibility visibility, SymbolTable symbolTable, int value, int index) {
+        super(type, linkage, visibility, symbolTable, value, index);
     }
 
     @Override
@@ -49,6 +50,6 @@ public final class GlobalAlias extends GlobalValueSymbol {
     public static GlobalAlias create(PointerType type, long linkage, long visibility, SymbolTable symbolTable, int value) {
         // aliases always have a value so compensate for zero test in super class
         final int aliasedValue = value + 1;
-        return new GlobalAlias(type, Linkage.decode(linkage), Visibility.decode(visibility), symbolTable, aliasedValue);
+        return new GlobalAlias(type, Linkage.decode(linkage), Visibility.decode(visibility), symbolTable, aliasedValue, GlobalSymbol.ALIAS_INDEX);
     }
 }

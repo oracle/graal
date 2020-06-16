@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -69,6 +69,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.ShuffleVectorIn
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.StoreInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.SwitchInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.SwitchOldInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.UnaryOperationInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.UnreachableInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.VoidCallInstruction;
@@ -136,6 +137,7 @@ public final class Function implements ParserListener {
     private static final int INSTRUCTION_CLEANUPPAD = 51;
     private static final int INSTRUCTION_CATCHSWITCH = 52;
     private static final int INSTRUCTION_OPERAND_BUNDLE = 55;
+    private static final int INSTRUCTION_UNOP = 56;
 
     private final FunctionDefinition function;
 
@@ -166,7 +168,8 @@ public final class Function implements ParserListener {
     public void setupScope() {
         scope.startLocalScope(function);
         final FunctionType functionType = function.getType();
-        for (Type argType : functionType.getArgumentTypes()) {
+        for (int i = 0; i < functionType.getNumberOfArguments(); i++) {
+            Type argType = functionType.getArgumentType(i);
             scope.addSymbol(function.createParameter(argType), argType);
         }
     }
@@ -216,7 +219,7 @@ public final class Function implements ParserListener {
                 return;
 
             case INSTRUCTION_DECLAREBLOCKS:
-                function.allocateBlocks((int) buffer.read());
+                function.allocateBlocks(buffer.readInt());
                 return;
 
             default:
@@ -231,6 +234,10 @@ public final class Function implements ParserListener {
 
             case INSTRUCTION_BINOP:
                 createBinaryOperation(buffer);
+                break;
+
+            case INSTRUCTION_UNOP:
+                createUnaryOperation(buffer);
                 break;
 
             case INSTRUCTION_CAST:
@@ -419,7 +426,7 @@ public final class Function implements ParserListener {
         int[] args = new int[buffer.remaining()];
         int j = 0;
         // the formal parameters are read without forward types
-        while (j < functionType.getArgumentTypes().length && buffer.remaining() > 0) {
+        while (j < functionType.getNumberOfArguments() && buffer.remaining() > 0) {
             args[j++] = readIndex(buffer);
         }
         // now varargs are read with forward types
@@ -502,7 +509,7 @@ public final class Function implements ParserListener {
 
         int[] args = new int[buffer.remaining()];
         int j = 0;
-        while (j < functionType.getArgumentTypes().length && buffer.remaining() > 0) {
+        while (j < functionType.getNumberOfArguments() && buffer.remaining() > 0) {
             args[j++] = readIndex(buffer);
         }
         while (buffer.remaining() > 0) {
@@ -659,14 +666,14 @@ public final class Function implements ParserListener {
         // type table
         for (Type t : types) {
             if (t instanceof StructureType) {
-                final Type[] elts = ((StructureType) t).getElementTypes();
-                if (elts.length == CMPXCHG_TYPE_LENGTH && elementType == elts[CMPXCHG_TYPE_ELEMENTTYPE] && PrimitiveType.I1 == elts[CMPXCHG_TYPE_BOOLTYPE]) {
-                    return (AggregateType) t;
+                StructureType st = (StructureType) t;
+                if (st.getNumberOfElementsInt() == CMPXCHG_TYPE_LENGTH && elementType == st.getElementType(CMPXCHG_TYPE_ELEMENTTYPE) && PrimitiveType.I1 == st.getElementType(CMPXCHG_TYPE_BOOLTYPE)) {
+                    return st;
                 }
             }
         }
         // the type may not exist if the value is not being used
-        return new StructureType(true, new Type[]{elementType, PrimitiveType.I1});
+        return StructureType.createUnnamed(true, elementType, PrimitiveType.I1);
     }
 
     private void parseDebugLocation(RecordBuffer buffer) {
@@ -722,6 +729,15 @@ public final class Function implements ParserListener {
         emit(BinaryOperationInstruction.fromSymbols(scope.getSymbols(), type, opcode, flags, lhs, rhs));
     }
 
+    private void createUnaryOperation(RecordBuffer buffer) {
+        int operand = readIndex(buffer);
+        Type type = readValueType(buffer, operand);
+        int opcode = buffer.readInt();
+        int flags = buffer.remaining() > 0 ? buffer.readInt() : 0;
+
+        emit(UnaryOperationInstruction.fromSymbols(scope.getSymbols(), type, opcode, flags, operand));
+    }
+
     private void createBranch(RecordBuffer buffer) {
         if (buffer.size() == 1) {
             emit(BranchInstruction.fromTarget(function.getBlock(buffer.read())));
@@ -749,7 +765,7 @@ public final class Function implements ParserListener {
         int rhs = readIndex(buffer);
         int opcode = buffer.readInt();
 
-        Type type = operandType instanceof VectorType ? new VectorType(PrimitiveType.I1, Types.castToVector(operandType).getNumberOfElements()) : PrimitiveType.I1;
+        Type type = operandType instanceof VectorType ? new VectorType(PrimitiveType.I1, Types.castToVector(operandType).getNumberOfElementsInt()) : PrimitiveType.I1;
         emit(CompareInstruction.fromSymbols(scope.getSymbols(), type, opcode, lhs, rhs));
     }
 
@@ -778,8 +794,7 @@ public final class Function implements ParserListener {
         int pointer = readIndex(buffer);
         Type base = readValueType(buffer, pointer);
         int[] indices = readIndices(buffer);
-        Type type = new PointerType(getElementPointerType(base, indices));
-
+        Type type = getElementPointerType(base, indices);
         emit(GetElementPointerInstruction.fromSymbols(scope.getSymbols(), type, pointer, indices, isInbounds));
     }
 
@@ -787,8 +802,7 @@ public final class Function implements ParserListener {
         int pointer = readIndex(buffer);
         Type base = readValueType(buffer, pointer);
         int[] indices = readIndices(buffer);
-        Type type = new PointerType(getElementPointerType(base, indices));
-
+        Type type = getElementPointerType(base, indices);
         emit(GetElementPointerInstruction.fromSymbols(scope.getSymbols(), type, pointer, indices, isInbounds));
     }
 
@@ -862,7 +876,7 @@ public final class Function implements ParserListener {
         int mask = readIndex(buffer);
 
         Type subtype = Types.castToVector(vectorType).getElementType();
-        int length = Types.castToVector(scope.getValueType(mask)).getNumberOfElements();
+        int length = Types.castToVector(scope.getValueType(mask)).getNumberOfElementsInt();
         Type type = new VectorType(subtype, length);
 
         emit(ShuffleVectorInstruction.fromSymbols(scope.getSymbols(), type, vector1, vector2, mask));
@@ -896,8 +910,12 @@ public final class Function implements ParserListener {
     }
 
     private Type getElementPointerType(Type type, int[] indices) {
-        Type elementType = type;
+        boolean vectorized = type instanceof VectorType;
+        int length = vectorized ? ((VectorType) type).getNumberOfElementsInt() : 0;
+        Type elementType = vectorized ? ((VectorType) type).getElementType() : type;
         for (int indexIndex : indices) {
+            Type indexType = scope.getValueType(indexIndex);
+
             if (elementType instanceof PointerType) {
                 elementType = ((PointerType) elementType).getPointeeType();
             } else if (elementType instanceof ArrayType) {
@@ -906,7 +924,6 @@ public final class Function implements ParserListener {
                 elementType = ((VectorType) elementType).getElementType();
             } else if (elementType instanceof StructureType) {
                 StructureType structure = (StructureType) elementType;
-                Type indexType = scope.getValueType(indexIndex);
                 if (!(indexType instanceof PrimitiveType)) {
                     throw new LLVMParserException("Cannot infer structure element from " + indexType);
                 }
@@ -916,8 +933,26 @@ public final class Function implements ParserListener {
             } else {
                 throw new LLVMParserException("Cannot index type: " + elementType);
             }
+
+            if (indexType instanceof VectorType) {
+                int indexVectorLength = ((VectorType) indexType).getNumberOfElementsInt();
+                if (vectorized) {
+                    if (indexVectorLength != length) {
+                        throw new LLVMParserException(String.format("Vectors of different lengths are not supported: %d != %d", indexVectorLength, length));
+                    }
+                } else {
+                    vectorized = true;
+                    length = indexVectorLength;
+                }
+            }
         }
-        return elementType;
+
+        Type pointer = new PointerType(elementType);
+        if (vectorized) {
+            return new VectorType(pointer, length);
+        } else {
+            return pointer;
+        }
     }
 
     private int readIndex(RecordBuffer buffer) {

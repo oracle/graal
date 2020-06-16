@@ -61,4 +61,4 @@ On the other hand, full support of backreferences is out of scope for a finite-s
 
 ## License
 
-TRegex is licensed under the [GPL 2 with Classpath exception](./LICENSE.GPL.md).
+TRegex is licensed under the [Universal Permissive License](LICENSE.md).

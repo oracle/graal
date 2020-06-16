@@ -1,75 +1,125 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * The Universal Permissive License (UPL), Version 1.0
  *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
  *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ * (a) the Software, and
  *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 package com.oracle.truffle.regex.tregex.automaton;
 
-import com.oracle.truffle.regex.charset.CharSet;
+import java.util.Arrays;
+import java.util.Iterator;
+
+import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-
-import org.graalvm.collections.EconomicMap;
-
-import java.util.ArrayList;
-import java.util.List;
+import com.oracle.truffle.regex.tregex.buffer.ObjectArrayBuffer;
+import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 /**
  * This class provides an algorithm for converting a list of NFA transitions into a set of DFA
  * transitions.
  *
- * @param <TS> represents a set of NFA transitions.
  * @param <TB> represents a DFA transition fragment. This type is used for both intermediate and
  *            final results.
  *
- * @see TransitionSet
  * @see TransitionBuilder
+ * @see TransitionSet
  */
-public abstract class StateTransitionCanonicalizer<TS extends TransitionSet, TB extends TransitionBuilder<TS>> {
+public abstract class StateTransitionCanonicalizer<SI extends StateIndex<? super S>, S extends AbstractState<S, T>, T extends AbstractTransition<S, T>, TB extends TransitionBuilder<SI, S, T>> {
 
-    private final CharSet[] intersectionResult = new CharSet[3];
-    private final ArrayList<TB> disjointTransitions = new ArrayList<>();
-    private final EconomicMap<TS, TB> mergeSameTargetsMap = EconomicMap.create();
+    private final ObjectArrayBuffer<T> argTransitions = new ObjectArrayBuffer<>();
+    private final ObjectArrayBuffer<CodePointSet> argCharSets = new ObjectArrayBuffer<>();
+
+    private static final int INITIAL_CAPACITY = 8;
+    @SuppressWarnings("unchecked") private ObjectArrayBuffer<T>[] transitionLists = new ObjectArrayBuffer[INITIAL_CAPACITY];
+    @SuppressWarnings("unchecked") private StateSet<SI, S>[] targetStateSets = new StateSet[INITIAL_CAPACITY];
+    private CodePointSet[] matcherBuilders = new CodePointSet[INITIAL_CAPACITY];
+    private CompilationFinalBitSet leadsToFinalState = new CompilationFinalBitSet(INITIAL_CAPACITY);
+    private int resultLength = 0;
+
+    private final SI stateIndex;
+    private final boolean forward;
+    private final boolean prioritySensitive;
+
+    public StateTransitionCanonicalizer(SI stateIndex, boolean forward, boolean prioritySensitive) {
+        this.stateIndex = stateIndex;
+        this.forward = forward;
+        this.prioritySensitive = prioritySensitive;
+    }
 
     /**
-     * Runs the NFA to DFA transition conversion algorithm. This algorithm has two phases:
+     * If priority-sensitive mode, transition sets are pruned after transitions to final states.
+     * Also, target state sets are considered equal iff their order is equal as well.
+     */
+    protected boolean isPrioritySensitive() {
+        return prioritySensitive;
+    }
+
+    /**
+     * Submits an argument to be processed by {@link #run(CompilationBuffer)}.
+     */
+    public void addArgument(T transition, CodePointSet charSet) {
+        argTransitions.add(transition);
+        argCharSets.add(charSet);
+    }
+
+    /**
+     * Runs the NFA to DFA transition conversion algorithm on the NFA transitions given by previous
+     * calls to {@link #addArgument(AbstractTransition, CodePointSet)}. This algorithm has two
+     * phases:
      * <ol>
      * <li>Merge NFA transitions according to their expected character sets. The result of this
-     * phase is a list of {@link TransitionBuilder}s whose {@link CharSet}s have no more
+     * phase is a list of {@link TransitionBuilder}s whose {@link CodePointSet}s have no more
      * intersections.</li>
      * <li>Merge {@link TransitionBuilder}s generated by the first phase if their <em>target
-     * state</em> is equal and
-     * {@link #isSameTargetMergeAllowed(TransitionBuilder, TransitionBuilder)} returns {@code true}.
-     * </li>
+     * state</em> is equal and {@link #canMerge(TransitionBuilder, TransitionBuilder)} returns
+     * {@code true}.</li>
      * </ol>
      *
-     * @param transitions The list of NFA transitions to merge. Initially, all
-     *            {@link TransitionBuilder}s contained in this list should represent a single NFA
-     *            transition.
      * @return a set of transition builders representing the DFA transitions generated from the
      *         given NFA transitions.
      */
-    public TB[] run(List<TB> transitions, CompilationBuffer compilationBuffer) {
-        calcDisjointTransitions(transitions, compilationBuffer);
-        return mergeSameTargets(compilationBuffer);
+    public TB[] run(CompilationBuffer compilationBuffer) {
+        calcDisjointTransitions(compilationBuffer);
+        TB[] result = mergeSameTargets(compilationBuffer);
+        resultLength = 0;
+        leadsToFinalState.clear();
+        argTransitions.clear();
+        argCharSets.clear();
+        return result;
     }
 
     /**
@@ -86,12 +136,11 @@ public abstract class StateTransitionCanonicalizer<TS extends TransitionSet, TB 
      * an element <em>x</em> is denoted as <em>x.ts</em>:
      * <ul>
      * <li>If <em>e.cs</em> contains <em>r.cs</em>, <em>e.ts</em> is merged into <em>r.ts</em> using
-     * {@link TransitionSet#addAll(TransitionSet)}.</li>
+     * TransitionSet#addAll(TransitionSet).</li>
      * <li>Otherwise, a new transition containing <em>e.ts</em> and <em>r.ts</em> and the
      * intersection of <em>e.cs</em> and <em>r.cs</em> is added to the result list. This new
-     * transition is created using
-     * {@link TransitionBuilder#createMerged(TransitionBuilder, CharSet)}. The intersection of
-     * <em>e.cs</em> and <em>r.cs</em> is removed from <em>r.cs</em>.</li>
+     * transition is created using TransitionBuilder#createMerged(TransitionBuilder, CodePointSet).
+     * The intersection of <em>e.cs</em> and <em>r.cs</em> is removed from <em>r.cs</em>.</li>
      * </ul>
      * </li>
      * <li>Every time an intersection is found, that intersection is removed from <em>e.cs</em>. If
@@ -104,9 +153,8 @@ public abstract class StateTransitionCanonicalizer<TS extends TransitionSet, TB 
      * the elements it intersects with <em>in the order of the input list</em>. This means that
      * given an input list {@code [1, 2, 3]} where all elements intersect with each other, element
      * {@code 2} will be merged with {@code 1} before {@code 3} is merged with {@code 1}. This
-     * property is crucial for generating priority-sensitive DFAs with
-     * {@link com.oracle.truffle.regex.tregex.dfa.PrioritySensitiveNFATransitionSet}, since that
-     * transition set implementation tracks priorities of transitions by <em>insertion order</em>!
+     * property is crucial for generating priority-sensitive DFAs, since we track priorities of NFA
+     * transitions by their order!
      *
      * Example: <br>
      *
@@ -123,91 +171,145 @@ public abstract class StateTransitionCanonicalizer<TS extends TransitionSet, TB 
      * </pre>
      */
     @SuppressWarnings("unchecked")
-    private void calcDisjointTransitions(List<TB> transitions, CompilationBuffer compilationBuffer) {
-        for (TB e : transitions) {
-            for (int i = 0; i < disjointTransitions.size(); i++) {
-                TB r = disjointTransitions.get(i);
-                r.getMatcherBuilder().intersectAndSubtract(e.getMatcherBuilder(), compilationBuffer, intersectionResult);
-                CharSet rSubtractedMatcher = intersectionResult[0];
-                CharSet eSubtractedMatcher = intersectionResult[1];
-                CharSet intersection = intersectionResult[2];
+    private void calcDisjointTransitions(CompilationBuffer compilationBuffer) {
+        for (int i = 0; i < argTransitions.length(); i++) {
+            T argTransition = argTransitions.get(i);
+            CodePointSet argCharSet = argCharSets.get(i);
+            int currentResultLength = resultLength;
+            for (int j = 0; j < currentResultLength; j++) {
+                CodePointSet.IntersectAndSubtractResult<CodePointSet> result = matcherBuilders[j].intersectAndSubtract(argCharSet, compilationBuffer);
+                CodePointSet rSubtractedMatcher = result.subtractedA;
+                CodePointSet eSubtractedMatcher = result.subtractedB;
+                CodePointSet intersection = result.intersection;
                 if (intersection.matchesSomething()) {
                     if (rSubtractedMatcher.matchesNothing()) {
-                        r.getTransitionSet().addAll(e.getTransitionSet());
+                        addTransitionTo(j, argTransition);
                     } else {
-                        r.setMatcherBuilder(rSubtractedMatcher);
-                        disjointTransitions.add((TB) r.createMerged(e, intersection));
+                        createSlot();
+                        matcherBuilders[j] = rSubtractedMatcher;
+                        matcherBuilders[resultLength] = intersection;
+                        targetStateSets[resultLength] = targetStateSets[j].copy();
+                        transitionLists[resultLength].addAll(transitionLists[j]);
+                        if (isPrioritySensitive() && leadsToFinalState.get(j)) {
+                            leadsToFinalState.set(resultLength);
+                        }
+                        addTransitionTo(resultLength, argTransition);
+                        resultLength++;
                     }
-                    e.setMatcherBuilder(eSubtractedMatcher);
+                    argCharSet = eSubtractedMatcher;
                     if (eSubtractedMatcher.matchesNothing()) {
                         break;
                     }
                 }
             }
-            if (e.getMatcherBuilder().matchesSomething()) {
-                disjointTransitions.add(e);
+            if (argCharSet.matchesSomething()) {
+                createSlot();
+                targetStateSets[resultLength] = StateSet.create(stateIndex);
+                matcherBuilders[resultLength] = argCharSet;
+                addTransitionTo(resultLength, argTransition);
+                resultLength++;
+            }
+        }
+    }
+
+    private void createSlot() {
+        if (transitionLists.length <= resultLength) {
+            transitionLists = Arrays.copyOf(transitionLists, resultLength * 2);
+            targetStateSets = Arrays.copyOf(targetStateSets, resultLength * 2);
+            matcherBuilders = Arrays.copyOf(matcherBuilders, resultLength * 2);
+        }
+        if (transitionLists[resultLength] == null) {
+            transitionLists[resultLength] = new ObjectArrayBuffer<>();
+        }
+        transitionLists[resultLength].clear();
+    }
+
+    private void addTransitionTo(int i, T transition) {
+        if (isPrioritySensitive() && leadsToFinalState.get(i)) {
+            return;
+        }
+        if (targetStateSets[i].add(transition.getTarget(forward))) {
+            transitionLists[i].add(transition);
+            if (isPrioritySensitive() && ((BasicState<?, ?>) transition.getTarget(forward)).hasTransitionToUnAnchoredFinalState(forward)) {
+                leadsToFinalState.set(i);
             }
         }
     }
 
     /**
-     * Merges transitions calculated by {@link #calcDisjointTransitions(List, CompilationBuffer)} if
-     * their target state set is equal <strong>and</strong>
-     * {@link #isSameTargetMergeAllowed(TransitionBuilder, TransitionBuilder)} returns {@code true}.
-     * Equality of target state sets is checked by {@link TransitionSet#hashCode()} and
-     * {@link TransitionSet#equals(Object)}.
+     * Merges transitions calculated by {@link #calcDisjointTransitions(CompilationBuffer)} if their
+     * target state set is equal <strong>and</strong>
+     * {@link #canMerge(TransitionBuilder, TransitionBuilder)} returns {@code true}.
      */
     @SuppressWarnings("unchecked")
     private TB[] mergeSameTargets(CompilationBuffer compilationBuffer) {
-        int resultSize = 0;
-        for (TB tb : disjointTransitions) {
-            if (tb.getMatcherBuilder().matchesNothing()) {
-                continue;
+        ObjectArrayBuffer<TB> resultBuffer1 = compilationBuffer.getObjectBuffer1();
+        resultBuffer1.ensureCapacity(resultLength);
+        for (int i = 0; i < resultLength; i++) {
+            assert matcherBuilders[i].matchesSomething();
+            resultBuffer1.add(createTransitionBuilder(transitionLists[i].toArray(createTransitionArray(transitionLists[i].length())), targetStateSets[i], matcherBuilders[i]));
+        }
+        if (isPrioritySensitive() && leadsToFinalState.isEmpty()) {
+            // no transitions were pruned, so no equal transition sets are possible
+            return resultBuffer1.toArray(createResultArray(resultBuffer1.length()));
+        }
+        resultBuffer1.sort((TB o1, TB o2) -> {
+            TransitionSet<SI, S, T> t1 = o1.getTransitionSet();
+            TransitionSet<SI, S, T> t2 = o2.getTransitionSet();
+            int cmp = t1.size() - t2.size();
+            if (cmp != 0) {
+                return cmp;
             }
-            TB existingTransitions = mergeSameTargetsMap.get(tb.getTransitionSet());
-            if (existingTransitions == null) {
-                mergeSameTargetsMap.put(tb.getTransitionSet(), tb);
-                resultSize++;
-            } else {
-                boolean merged = false;
-                TB mergeCandidate = existingTransitions;
-                do {
-                    if (isSameTargetMergeAllowed(tb, mergeCandidate)) {
-                        mergeCandidate.setMatcherBuilder(mergeCandidate.getMatcherBuilder().union(tb.getMatcherBuilder(), compilationBuffer));
-                        merged = true;
-                        break;
+            if (isPrioritySensitive()) {
+                // Transition sets are equal iff they lead to the same target states in the same
+                // order.
+                for (int i = 0; i < t1.size(); i++) {
+                    cmp = t1.getTransition(i).getTarget(forward).getId() - t2.getTransition(i).getTarget(forward).getId();
+                    if (cmp != 0) {
+                        return cmp;
                     }
-                    mergeCandidate = (TB) mergeCandidate.getNext();
-                } while (mergeCandidate != null);
-                if (!merged) {
-                    tb.setNext(existingTransitions);
-                    mergeSameTargetsMap.put(tb.getTransitionSet(), tb);
-                    resultSize++;
                 }
+                return cmp;
+            } else {
+                // Transition sets are equal iff they lead to the same set of target states.
+                // Here, we abuse the fact that our state set iterators yield states ordered by id.
+                Iterator<S> i1 = t1.getTargetStateSet().iterator();
+                Iterator<S> i2 = t2.getTargetStateSet().iterator();
+                while (i1.hasNext()) {
+                    assert i2.hasNext();
+                    cmp = i1.next().getId() - i2.next().getId();
+                    if (cmp != 0) {
+                        return cmp;
+                    }
+                }
+                return cmp;
+            }
+        });
+        ObjectArrayBuffer<TB> resultBuffer2 = compilationBuffer.getObjectBuffer2();
+        TB last = null;
+        for (TB tb : resultBuffer1) {
+            if (last != null && canMerge(last, tb)) {
+                last.setMatcherBuilder(last.getMatcherBuilder().union(tb.getMatcherBuilder(), compilationBuffer));
+            } else {
+                resultBuffer2.add(tb);
+                last = tb;
             }
         }
-        TB[] resultArray = createResultArray(resultSize);
-        int i = 0;
-        for (TB list : mergeSameTargetsMap.getValues()) {
-            TB tb = list;
-            do {
-                resultArray[i++] = tb;
-                tb = (TB) tb.getNext();
-            } while (tb != null);
-        }
-        disjointTransitions.clear();
-        mergeSameTargetsMap.clear();
-        return resultArray;
+        return resultBuffer2.toArray(createResultArray(resultBuffer2.length()));
     }
 
-    /**
-     * Returns {@code true} if two DFA transitions leading to the same target state are allowed to
-     * be merged into one.
-     */
-    protected abstract boolean isSameTargetMergeAllowed(TB a, TB b);
+    protected abstract TB createTransitionBuilder(T[] transitions, StateSet<SI, S> targetStateSet, CodePointSet matcherBuilder);
 
     /**
-     * Returns an array suitable for holding the result of {@link #run(List, CompilationBuffer)}.
+     * Returns {@code true} if two DFA transitions are allowed to be merged into one.
+     */
+    protected abstract boolean canMerge(TB a, TB b);
+
+    protected abstract T[] createTransitionArray(int size);
+
+    /**
+     * Returns an array suitable for holding the result of {@link #run(CompilationBuffer)}.
      */
     protected abstract TB[] createResultArray(int size);
+
 }

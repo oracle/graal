@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,21 +40,21 @@ import jdk.vm.ci.code.InvalidInstalledCodeException;
  * {@link InstalledCode} to be an interface.
  */
 class SubstrateTruffleInstalledCodeBridge extends InstalledCode implements OptimizedAssumptionDependency.Access, SubstrateInstalledCode.Access {
-    private final SubstrateOptimizedCallTarget callTarget;
+    private final SubstrateCompilableTruffleAST callTarget;
 
-    SubstrateTruffleInstalledCodeBridge(SubstrateOptimizedCallTarget callTarget) {
+    SubstrateTruffleInstalledCodeBridge(SubstrateCompilableTruffleAST callTarget) {
         super(callTarget.getName());
         this.callTarget = callTarget;
     }
 
     @Override
     public SubstrateInstalledCode getSubstrateInstalledCode() {
-        return callTarget;
+        return callTarget.getSubstrateInstalledCode();
     }
 
     @Override
     public OptimizedAssumptionDependency getDependency() {
-        return callTarget;
+        return callTarget.getDependency();
     }
 
     @Override
@@ -66,7 +66,7 @@ class SubstrateTruffleInstalledCodeBridge extends InstalledCode implements Optim
 
     @Override
     public void invalidate() {
-        callTarget.invalidate();
+        getSubstrateInstalledCode().invalidate();
     }
 
     // All methods below should never be called in SVM. There are others defined

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,18 +24,10 @@
  */
 package org.graalvm.compiler.hotspot.meta;
 
-import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
-import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.doingUnsafeAccessOffset;
-
 import org.graalvm.compiler.api.replacements.ClassSubstitution;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
-import org.graalvm.compiler.hotspot.HotSpotBackend;
-import org.graalvm.compiler.hotspot.nodes.CurrentJavaThreadNode;
-import org.graalvm.compiler.nodes.ComputeObjectAddressNode;
+import org.graalvm.compiler.hotspot.replacements.UnsafeCopyMemoryNode;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.compiler.word.Word;
-import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.WordFactory;
 
 @ClassSubstitution(className = {"jdk.internal.misc.Unsafe", "sun.misc.Unsafe"})
 public class HotSpotUnsafeSubstitutions {
@@ -45,27 +37,12 @@ public class HotSpotUnsafeSubstitutions {
     @SuppressWarnings("unused")
     @MethodSubstitution(isStatic = false)
     static void copyMemory(Object receiver, Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes) {
-        Word srcAddr = WordFactory.unsigned(ComputeObjectAddressNode.get(srcBase, srcOffset));
-        Word dstAddr = WordFactory.unsigned(ComputeObjectAddressNode.get(destBase, destOffset));
-        Word size = WordFactory.signed(bytes);
-
-        HotSpotBackend.unsafeArraycopy(srcAddr, dstAddr, size);
+        UnsafeCopyMemoryNode.copyMemory(false, receiver, srcBase, srcOffset, destBase, destOffset, bytes);
     }
 
     @SuppressWarnings("unused")
     @MethodSubstitution(value = "copyMemory", isStatic = false)
     static void copyMemoryGuarded(Object receiver, Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes) {
-        Word srcAddr = WordFactory.unsigned(ComputeObjectAddressNode.get(srcBase, srcOffset));
-        Word dstAddr = WordFactory.unsigned(ComputeObjectAddressNode.get(destBase, destOffset));
-        Word size = WordFactory.signed(bytes);
-        Word javaThread = CurrentJavaThreadNode.get();
-        int offset = doingUnsafeAccessOffset(INJECTED_VMCONFIG);
-        LocationIdentity any = LocationIdentity.any();
-
-        /* Set doingUnsafeAccess to guard and handle unsafe memory access failures */
-        javaThread.writeByte(offset, (byte) 1, any);
-        HotSpotBackend.unsafeArraycopy(srcAddr, dstAddr, size);
-        /* Reset doingUnsafeAccess */
-        javaThread.writeByte(offset, (byte) 0, any);
+        UnsafeCopyMemoryNode.copyMemory(true, receiver, srcBase, srcOffset, destBase, destOffset, bytes);
     }
 }

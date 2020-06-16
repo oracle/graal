@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,8 +41,11 @@
 package com.oracle.truffle.api.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.source.SourceSection;
 
 @SuppressWarnings("unused")
 @ExportLibrary(value = InteropLibrary.class, receiverType = Float.class)
@@ -178,6 +181,46 @@ final class DefaultFloatExports {
     @ExportMessage
     static float asFloat(Float receiver) {
         return receiver;
+    }
+
+    /*
+     * We export these messages explicitly because the legacy default is very costly. Remove with
+     * the complicated legacy implementation in InteropLibrary.
+     */
+    @ExportMessage
+    static boolean hasLanguage(Float receiver) {
+        return false;
+    }
+
+    @ExportMessage
+    static Class<? extends TruffleLanguage<?>> getLanguage(Float receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    static boolean hasSourceLocation(Float receiver) {
+        return false;
+    }
+
+    @ExportMessage
+    static SourceSection getSourceLocation(Float receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    static boolean hasMetaObject(Float receiver) {
+        return false;
+    }
+
+    @ExportMessage
+    static Object getMetaObject(Float receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    static Object toDisplayString(Float receiver, boolean allowSideEffects) {
+        return receiver.toString();
     }
 
 }

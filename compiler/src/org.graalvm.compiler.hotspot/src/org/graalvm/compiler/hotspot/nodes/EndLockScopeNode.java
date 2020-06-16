@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,7 +33,6 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.extended.MonitorExit;
 import org.graalvm.compiler.nodes.memory.AbstractMemoryCheckpoint;
-import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.LocationIdentity;
@@ -43,7 +42,7 @@ import org.graalvm.word.LocationIdentity;
  * object.
  */
 @NodeInfo(allowedUsageTypes = Memory, cycles = CYCLES_0, size = SIZE_0)
-public final class EndLockScopeNode extends AbstractMemoryCheckpoint implements LIRLowerable, MonitorExit, MemoryCheckpoint.Single {
+public final class EndLockScopeNode extends AbstractMemoryCheckpoint implements LIRLowerable, MonitorExit {
     public static final NodeClass<EndLockScopeNode> TYPE = NodeClass.create(EndLockScopeNode.class);
 
     public EndLockScopeNode() {
@@ -56,7 +55,7 @@ public final class EndLockScopeNode extends AbstractMemoryCheckpoint implements 
     }
 
     @Override
-    public LocationIdentity getLocationIdentity() {
+    public LocationIdentity getKilledLocationIdentity() {
         return LocationIdentity.any();
     }
 

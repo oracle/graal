@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,15 +28,15 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int *func(int a, int *b) {
-  static int result = 0;
-  int i;
-  for (i = 0; i < a; i++) {
-    result += (*b)--;
-  }
-  return &result;
+    static int result = 0;
+    int i;
+    for (i = 0; i < a; i++) {
+        result += (*b)--;
+    }
+    return &result;
 }
 
 int main() {
-  int asdf = 3;
-  return *func(5, func(asdf, func(4, &asdf))) % 128;
+    int asdf = 3;
+    return *func(5, func(asdf, func(4, &asdf))) % 128;
 }

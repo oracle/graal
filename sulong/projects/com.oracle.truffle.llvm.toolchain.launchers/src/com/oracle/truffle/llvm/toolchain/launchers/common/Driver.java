@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,7 +29,8 @@
  */
 package com.oracle.truffle.llvm.toolchain.launchers.common;
 
-import org.graalvm.polyglot.Engine;
+import org.graalvm.home.HomeFinder;
+import org.graalvm.home.Version;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -51,6 +52,11 @@ public class Driver {
 
     public Driver(String exe) {
         this(exe, true);
+    }
+
+    public Driver() {
+        this.exe = null;
+        this.isBundledTool = false;
     }
 
     public enum OS {
@@ -76,37 +82,68 @@ public class Driver {
         }
     }
 
-    public Path getLLVMBinDir() {
-        String llvmDir = System.getProperty("llvm.bin.dir");
-        if (llvmDir == null) {
-            return Engine.findHome().resolve("jre").resolve("lib").resolve("llvm").resolve("bin");
+    private static final boolean hasJreDir = System.getProperty("java.specification.version").startsWith("1.");
+
+    private static Path getRuntimeDir() {
+        Path runtimeDir = HomeFinder.getInstance().getHomeFolder();
+        if (runtimeDir == null) {
+            throw new IllegalStateException("Could not find GraalVM home");
         }
-        return Paths.get(llvmDir);
+        if (hasJreDir) {
+            runtimeDir = runtimeDir.resolve("jre");
+        }
+        return runtimeDir;
+    }
+
+    public Path getLLVMBinDir() {
+        final String property = System.getProperty("llvm.bin.dir");
+        if (property != null) {
+            return Paths.get(property);
+        }
+
+        // TODO (GR-18389): Set only for standalones currently
+        Path toolchainHome = HomeFinder.getInstance().getLanguageHomes().get("llvm-toolchain");
+        if (toolchainHome != null) {
+            return toolchainHome.resolve("bin");
+        }
+
+        return getRuntimeDir().resolve("lib").resolve("llvm").resolve("bin");
     }
 
     public Path getSulongHome() {
-        String llvmDir = System.getProperty("llvm.home");
-        if (llvmDir == null) {
-            return Engine.findHome().resolve("jre").resolve("languages").resolve("llvm");
+        final Path sulongHome = HomeFinder.getInstance().getLanguageHomes().get("llvm");
+        if (sulongHome != null) {
+            return sulongHome;
         }
-        return Paths.get(llvmDir);
+
+        throw new IllegalStateException("Could not find the llvm home");
     }
 
     private static String getVersion() {
-        String version = System.getProperty("org.graalvm.version");
-        if (version == null) {
-            version = System.getProperty("graalvm.version");
-        }
-        if (version == null) {
+        Version version = Version.getCurrent();
+        if (version.isSnapshot()) {
             return "Development Build";
         } else {
-            return version;
+            return version.toString();
         }
     }
 
-    public static final String VERSIION = getVersion();
-
     public void runDriver(List<String> sulongArgs, List<String> userArgs, boolean verbose, boolean help, boolean earlyExit) {
+        runDriverExit(sulongArgs, userArgs, verbose, help, earlyExit);
+    }
+
+    public final void runDriverExit(List<String> sulongArgs, List<String> userArgs, boolean verbose, boolean help, boolean earlyExit) {
+        try {
+            System.exit(runDriverReturn(sulongArgs, userArgs, verbose, help, earlyExit));
+        } catch (IOException e) {
+            System.exit(1);
+        } catch (Exception e) {
+            System.err.println("Exception: " + e);
+            System.exit(1);
+        }
+    }
+
+    public final int runDriverReturn(List<String> sulongArgs, List<String> userArgs, boolean verbose, boolean help, boolean earlyExit) throws Exception {
         ArrayList<String> toolArgs = new ArrayList<>(sulongArgs.size() + userArgs.size());
         // add custom sulong flags
         toolArgs.addAll(sulongArgs);
@@ -114,7 +151,7 @@ public class Driver {
         toolArgs.addAll(userArgs);
         printInfos(verbose, help, earlyExit, toolArgs);
         if (earlyExit) {
-            System.exit(0);
+            return 0;
         }
         ProcessBuilder pb = new ProcessBuilder(toolArgs);
         if (verbose) {
@@ -134,19 +171,18 @@ public class Driver {
             // wait for process termination
             p.waitFor();
             // set exit code
-            System.exit(p.exitValue());
+            return p.exitValue();
         } catch (IOException ioe) {
             // can only occur on ProcessBuilder#start, no destroying necessary
             if (isBundledTool) {
                 printMissingToolMessage();
             }
-            System.exit(1);
+            throw ioe;
         } catch (Exception e) {
             if (p != null) {
                 p.destroyForcibly();
             }
-            System.err.println("Exception: " + e);
-            System.exit(1);
+            throw e;
         }
     }
 
@@ -162,7 +198,7 @@ public class Driver {
         return pb.inheritIO();
     }
 
-    private void printMissingToolMessage() {
+    public void printMissingToolMessage() {
         System.err.println("Tool execution failed. Are you sure the toolchain is available at " + getLLVMBinDir().getParent());
         System.err.println("You can install it via GraalVM updater: `gu install llvm-toolchain`");
         System.err.println();
@@ -174,17 +210,15 @@ public class Driver {
             System.out.println("##################################################");
             System.out.println("This it the the GraalVM wrapper script for " + getTool());
             System.out.println();
-            System.out.println(">>> WARNING: This tool is experimental. Functionality may be added, changed or removed without prior notice. <<<");
-            System.out.println();
             System.out.println("Its purpose is to make it easy to compile native projects to be used with");
             System.out.println("GraalVM's LLVM IR engine (bin/lli).");
             System.out.println("More infos: https://www.graalvm.org/docs/reference-manual/languages/llvm/");
             System.out.println("Wrapped executable: " + exe);
-            System.out.println("GraalVM version: " + VERSIION);
+            System.out.println("GraalVM version: " + getVersion());
         }
         if (verbose) {
             System.out.println("GraalVM wrapper script for " + getTool());
-            System.out.println("GraalVM version: " + VERSIION);
+            System.out.println("GraalVM version: " + getVersion());
             System.out.println("running: " + String.join(" ", toolArgs));
         }
         if (help) {

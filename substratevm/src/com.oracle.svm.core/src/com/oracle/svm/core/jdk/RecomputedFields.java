@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,12 +30,10 @@ import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.AtomicFieldU
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.FromAlias;
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Reset;
 
-import java.io.FileDescriptor;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.nio.MappedByteBuffer;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CoderResult;
 import java.util.Map;
@@ -55,6 +53,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
@@ -83,37 +82,6 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 final class Target_sun_util_calendar_ZoneInfoFile {
     @Alias @RecomputeFieldValue(kind = FromAlias) //
     private static Map<String, String> aliases = new java.util.HashMap<>();
-}
-
-/**
- * We disallow direct byte buffers ({@link MappedByteBuffer} instances) in the image heap, with one
- * exception: we allow 0-length non-file-based buffers. For example, Netty has a singleton empty
- * buffer referenced from a static field, and a lot of Netty classes reference this buffer
- * statically.
- *
- * Such buffers do actually have an address to memory that is allocated during image generation and
- * therefore no longer available at run time. But since the capacity is 0, no memory can ever be
- * accessed. We therefore allow this "dangling" address. However, we must never call free() for that
- * address, so we remove the Cleaner registered for the buffer by resetting the field
- * {@link #cleaner}.
- */
-@TargetClass(className = "java.nio.DirectByteBuffer")
-@SuppressWarnings("unused")
-final class Target_java_nio_DirectByteBuffer {
-    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
-    Target_jdk_internal_ref_Cleaner cleaner;
-
-    @Alias
-    protected Target_java_nio_DirectByteBuffer(int cap, long addr, FileDescriptor fd, Runnable unmapper) {
-    }
-}
-
-@TargetClass(className = "java.nio.DirectByteBufferR")
-@SuppressWarnings("unused")
-final class Target_java_nio_DirectByteBufferR {
-    @Alias
-    protected Target_java_nio_DirectByteBufferR(int cap, long addr, FileDescriptor fd, Runnable unmapper) {
-    }
 }
 
 @TargetClass(java.nio.charset.CharsetEncoder.class)
@@ -348,6 +316,15 @@ class AtomicFieldUpdaterFeature implements Feature {
     }
 }
 
+@AutomaticFeature
+class InnocuousForkJoinWorkerThreadFeature implements Feature {
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(access.findClassByName("java.util.concurrent.ForkJoinWorkerThread$InnocuousForkJoinWorkerThread"),
+                        "innocuousThreadGroup must be initialized at run time");
+    }
+}
+
 @TargetClass(java.util.concurrent.ForkJoinPool.class)
 @SuppressWarnings("unused") //
 final class Target_java_util_concurrent_ForkJoinPool {
@@ -467,11 +444,6 @@ final class Target_java_util_concurrent_ForkJoinTask {
          */
         exceptionTable = new Target_java_util_concurrent_ForkJoinTask_ExceptionNode[32];
     }
-
-    @Substitute
-    private Throwable getThrowableException() {
-        throw VMError.unimplemented();
-    }
 }
 
 @TargetClass(value = java.util.concurrent.ForkJoinTask.class, innerClass = "ExceptionNode")
@@ -522,23 +494,6 @@ class ExchangerABASEComputer implements RecomputeFieldValue.CustomFieldValueComp
 
         return abase;
     }
-}
-
-@TargetClass(className = "java.util.concurrent.ForkJoinWorkerThread$InnocuousForkJoinWorkerThread")
-final class Target_java_util_concurrent_ForkJoinWorkerThread_InnocuousForkJoinWorkerThread {
-
-    /**
-     * TODO: ForkJoinWorkerThread.InnocuousForkJoinWorkerThread.innocuousThreadGroup is initialized
-     * by calling ForkJoinWorkerThread.InnocuousForkJoinWorkerThread.createThreadGroup() which uses
-     * runtime reflection to (I think) create a ThreadGroup that is a child of the ThreadGroup of
-     * the current thread. I do not think I want the ThreadGroup that was created to initialize this
-     * field during native image generation. Since SubstrateVM does not implement runtime
-     * reflection, I can not call createThreadGroup() to initialize this field later. If it turns
-     * out that this field is used, then I will have to think about what to do here. For now, I
-     * annotate the field as being deleted to catch an attempts to use the field.
-     */
-    @Delete //
-    private static ThreadGroup innocuousThreadGroup;
 }
 
 /** Dummy class to have a class with the file's name. */

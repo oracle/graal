@@ -1,0 +1,37 @@
+{
+    "Polyglot_eval": {
+        "prefix": "Polyglot.eval",
+        "body": [
+          "Polyglot.eval('${1|R,ruby,python|}', ${2:''})"
+        ],
+        "description": "Executes code in a foreign language identified by its ID"
+    },
+    "Polyglot_evalFile": {
+        "prefix": "Polyglot.evalFile",
+        "body": [
+          "Polyglot.evalFile('${1|R,ruby,python|}', ${2:'path'})"
+        ],
+        "description": "Executes code in a foreign language from a file, identified by its language ID"
+    },
+    "Polyglot_export": {
+      "prefix": "Polyglot.export",
+      "body": [
+          "Polyglot.export('${1:name}', ${2:value})"
+      ],
+      "description": "Exports a value with a given name to other languages"
+    },
+    "Polyglot_import": {
+      "prefix": "Polyglot.import",
+      "body": [
+          "Polyglot.import('${1:name}')"
+      ],
+      "description": "Imports and returns a value with a given name exported by other languages"
+    },
+    "Java_type": {
+        "prefix": "Java.type",
+        "body": [
+          "Java.type('${1:name}')"
+        ],
+        "description": "Returns a Java class object, given its name"
+    }
+}

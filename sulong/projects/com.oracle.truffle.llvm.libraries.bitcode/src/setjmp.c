@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,19 +33,19 @@
 #include "unsupported.h"
 
 int setjmp(jmp_buf env) {
-  WARN_UNSUPPORTED(setjmp);
-  return 0;
+    WARN_UNSUPPORTED(setjmp);
+    return 0;
 }
 
 int sigsetjmp(sigjmp_buf env, int savesigs) {
-  WARN_UNSUPPORTED(sigsetjmp);
-  return 0;
+    WARN_UNSUPPORTED(sigsetjmp);
+    return 0;
 }
 
 void longjmp(jmp_buf env, int val) {
-  ERR_UNSUPPORTED(longjmp);
+    ERR_UNSUPPORTED(longjmp);
 }
 
 void siglongjmp(sigjmp_buf env, int val) {
-  ERR_UNSUPPORTED(siglongjmp);
+    ERR_UNSUPPORTED(siglongjmp);
 }

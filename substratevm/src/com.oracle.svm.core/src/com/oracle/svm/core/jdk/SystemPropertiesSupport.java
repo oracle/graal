@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.VM;
+import com.oracle.svm.core.config.ConfigurationValues;
 
 /**
  * This class maintains the system properties at run time.
@@ -97,6 +98,7 @@ public abstract class SystemPropertiesSupport {
         initializeProperty("java.endorsed.dirs", "");
         initializeProperty("java.ext.dirs", "");
         initializeProperty("java.library.path", "");
+        initializeProperty("sun.arch.data.model", Integer.toString(ConfigurationValues.getTarget().wordJavaKind.getBitCount()));
 
         String targetName = System.getProperty("svm.targetName");
         String targetArch = System.getProperty("svm.targetArch");
@@ -106,9 +108,9 @@ public abstract class SystemPropertiesSupport {
         initializeProperty(ImageInfo.PROPERTY_IMAGE_CODE_KEY, ImageInfo.PROPERTY_IMAGE_CODE_VALUE_RUNTIME);
 
         lazyRuntimeValues = new HashMap<>();
-        lazyRuntimeValues.put("user.name", this::userNameValue);
-        lazyRuntimeValues.put("user.home", this::userHomeValue);
-        lazyRuntimeValues.put("user.dir", this::userDirValue);
+        lazyRuntimeValues.put("user.name", this::userName);
+        lazyRuntimeValues.put("user.home", this::userHome);
+        lazyRuntimeValues.put("user.dir", this::userDir);
         lazyRuntimeValues.put("java.io.tmpdir", this::tmpdirValue);
         lazyRuntimeValues.put("os.version", this::osVersionValue);
         lazyRuntimeValues.put("java.vm.version", VM::getVersion);
@@ -194,6 +196,33 @@ public abstract class SystemPropertiesSupport {
                 // Checkstyle: resume
             }
         }
+    }
+
+    private String cachedUserName;
+
+    public String userName() {
+        if (cachedUserName == null) {
+            cachedUserName = userNameValue();
+        }
+        return cachedUserName;
+    }
+
+    private String cachedUserHome;
+
+    public String userHome() {
+        if (cachedUserHome == null) {
+            cachedUserHome = userHomeValue();
+        }
+        return cachedUserHome;
+    }
+
+    private String cachedUserDir;
+
+    public String userDir() {
+        if (cachedUserDir == null) {
+            cachedUserDir = userDirValue();
+        }
+        return cachedUserDir;
     }
 
     // Platform-specific subclasses compute the actual system property values lazily at run time.

@@ -1,0 +1,396 @@
+#
+# Copyright (c) 2018, Oracle and/or its affiliates.
+#
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without modification, are
+# permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this list of
+# conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice, this list of
+# conditions and the following disclaimer in the documentation and/or other materials provided
+# with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors may be used to
+# endorse or promote products derived from this software without specific prior written
+# permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS
+# OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+# COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+# GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+# AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+# NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+# OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+
+BREAK 30 STEP_OVER "@test"
+    OPEN_SCOPE partial
+        MEMBER int "i8" "%1" "48"
+
+
+STOP 31 STEP_OVER "@test"
+    OPEN_SCOPE partial
+        MEMBER int "i8" "%1" "48"
+        MEMBER int "i32" "%2" "48"
+
+
+STOP 32 STEP_OVER "@test"
+    OPEN_SCOPE partial
+        MEMBER int "i8" "%1" "48"
+        MEMBER int "i32" "%2" "48"
+        MEMBER int "i16" "%3" "1"
+
+
+STOP 33 STEP_OVER "@test"
+    OPEN_SCOPE partial
+        MEMBER int "i8" "%1" "48"
+        MEMBER int "i32" "%2" "48"
+        MEMBER int "i16" "%3" "1"
+        MEMBER int "i32" "%4" "1"
+
+
+STOP 34 STEP_OVER "@test"
+    OPEN_SCOPE partial
+        MEMBER int "i32" "%5" "49"
+        MEMBER int "i8" "%1" "48"
+        MEMBER int "i32" "%2" "48"
+        MEMBER int "i16" "%3" "1"
+        MEMBER int "i32" "%4" "1"
+
+
+STOP 35 STEP_OVER "@test"
+    OPEN_SCOPE partial
+        MEMBER int "i32" "%5" "49"
+        MEMBER int "i32" "%6" "2"
+        MEMBER int "i8" "%1" "48"
+        MEMBER int "i32" "%2" "48"
+        MEMBER int "i16" "%3" "1"
+        MEMBER int "i32" "%4" "1"
+
+
+STOP 36 STEP_OVER "@test"
+    OPEN_SCOPE partial
+        MEMBER int "i32" "%5" "49"
+        MEMBER int "i32" "%6" "2"
+        MEMBER int "i32" "%7" "51"
+        MEMBER int "i8" "%1" "48"
+        MEMBER int "i32" "%2" "48"
+        MEMBER int "i16" "%3" "1"
+        MEMBER int "i32" "%4" "1"
+
+
+STOP 37 STEP_OVER "@test"
+    OPEN_SCOPE partial
+        MEMBER int "i32" "%5" "49"
+        MEMBER int "i32" "%6" "2"
+        MEMBER int "i32" "%7" "51"
+        MEMBER int "i64" "%8" "51"
+        MEMBER int "i8" "%1" "48"
+        MEMBER int "i32" "%2" "48"
+        MEMBER int "i16" "%3" "1"
+        MEMBER int "i32" "%4" "1"
+
+
+STOP 38 STEP_OVER "@test"
+    OPEN_SCOPE partial
+        MEMBER int "i32" "%5" "49"
+        MEMBER int "i32" "%6" "2"
+        MEMBER int "i32" "%7" "51"
+        MEMBER int "i64" "%8" "51"
+        MEMBER int "i64" "%9" "3"
+        MEMBER int "i8" "%1" "48"
+        MEMBER int "i32" "%2" "48"
+        MEMBER int "i16" "%3" "1"
+        MEMBER int "i32" "%4" "1"
+
+
+STOP 39 STEP_OVER "@test"
+    OPEN_SCOPE partial
+        MEMBER int "i32" "%5" "49"
+        MEMBER int "i32" "%6" "2"
+        MEMBER int "i32" "%7" "51"
+        MEMBER int "i64" "%8" "51"
+        MEMBER int "i64" "%9" "3"
+        MEMBER int "i64" "%10" "54"
+        MEMBER int "i8" "%1" "48"
+        MEMBER int "i32" "%2" "48"
+        MEMBER int "i16" "%3" "1"
+        MEMBER int "i32" "%4" "1"
+
+
+STOP 40 STEP_OVER "@test"
+    OPEN_SCOPE partial
+        MEMBER int "i32" "%5" "49"
+        MEMBER int "i32" "%6" "2"
+        MEMBER int "i32" "%7" "51"
+        MEMBER int "i64" "%8" "51"
+        MEMBER int "i64" "%9" "3"
+        MEMBER int "i64" "%10" "54"
+        MEMBER float32 "float" "%11" "54.0"
+        MEMBER int "i8" "%1" "48"
+        MEMBER int "i32" "%2" "48"
+        MEMBER int "i16" "%3" "1"
+        MEMBER int "i32" "%4" "1"
+
+
+STOP 41 STEP_OVER "@test"
+    OPEN_SCOPE partial
+        MEMBER int "i32" "%5" "49"
+        MEMBER int "i32" "%6" "2"
+        MEMBER int "i32" "%7" "51"
+        MEMBER int "i64" "%8" "51"
+        MEMBER int "i64" "%9" "3"
+        MEMBER int "i64" "%10" "54"
+        MEMBER float32 "float" "%11" "54.0"
+        MEMBER float32 "float" "%12" "4.5"
+        MEMBER int "i8" "%1" "48"
+        MEMBER int "i32" "%2" "48"
+        MEMBER int "i16" "%3" "1"
+        MEMBER int "i32" "%4" "1"
+
+
+STOP 42 STEP_OVER "@test"
+    OPEN_SCOPE partial
+        MEMBER int "i64" "%10" "54"
+        MEMBER float32 "float" "%11" "54.0"
+        MEMBER float32 "float" "%12" "4.5"
+        MEMBER float32 "float" "%13" "58.5"
+        MEMBER int "i8" "%1" "48"
+        MEMBER int "i32" "%2" "48"
+        MEMBER int "i16" "%3" "1"
+        MEMBER int "i32" "%4" "1"
+        MEMBER int "i32" "%5" "49"
+        MEMBER int "i32" "%6" "2"
+        MEMBER int "i32" "%7" "51"
+        MEMBER int "i64" "%8" "51"
+        MEMBER int "i64" "%9" "3"
+
+
+STOP 43 STEP_OVER "@test"
+    OPEN_SCOPE partial
+        MEMBER int "i64" "%10" "54"
+        MEMBER float32 "float" "%11" "54.0"
+        MEMBER float32 "float" "%12" "4.5"
+        MEMBER float32 "float" "%13" "58.5"
+        MEMBER float64 "double" "%14" "58.5"
+        MEMBER int "i8" "%1" "48"
+        MEMBER int "i32" "%2" "48"
+        MEMBER int "i16" "%3" "1"
+        MEMBER int "i32" "%4" "1"
+        MEMBER int "i32" "%5" "49"
+        MEMBER int "i32" "%6" "2"
+        MEMBER int "i32" "%7" "51"
+        MEMBER int "i64" "%8" "51"
+        MEMBER int "i64" "%9" "3"
+
+
+STOP 44 STEP_OVER "@test"
+    OPEN_SCOPE partial
+        MEMBER int "i64" "%10" "54"
+        MEMBER float32 "float" "%11" "54.0"
+        MEMBER float32 "float" "%12" "4.5"
+        MEMBER float32 "float" "%13" "58.5"
+        MEMBER float64 "double" "%14" "58.5"
+        MEMBER float64 "double" "%15" "6.7"
+        MEMBER int "i8" "%1" "48"
+        MEMBER int "i32" "%2" "48"
+        MEMBER int "i16" "%3" "1"
+        MEMBER int "i32" "%4" "1"
+        MEMBER int "i32" "%5" "49"
+        MEMBER int "i32" "%6" "2"
+        MEMBER int "i32" "%7" "51"
+        MEMBER int "i64" "%8" "51"
+        MEMBER int "i64" "%9" "3"
+
+
+STOP 45 STEP_OVER "@test"
+    OPEN_SCOPE partial
+        MEMBER int "i64" "%10" "54"
+        MEMBER float32 "float" "%11" "54.0"
+        MEMBER float32 "float" "%12" "4.5"
+        MEMBER float32 "float" "%13" "58.5"
+        MEMBER float64 "double" "%14" "58.5"
+        MEMBER float64 "double" "%15" "6.7"
+        MEMBER float64 "double" "%16" "65.2"
+        MEMBER int "i8" "%1" "48"
+        MEMBER int "i32" "%2" "48"
+        MEMBER int "i16" "%3" "1"
+        MEMBER int "i32" "%4" "1"
+        MEMBER int "i32" "%5" "49"
+        MEMBER int "i32" "%6" "2"
+        MEMBER int "i32" "%7" "51"
+        MEMBER int "i64" "%8" "51"
+        MEMBER int "i64" "%9" "3"
+
+
+STOP 46 STEP_OVER "@test"
+    OPEN_SCOPE partial
+        MEMBER int "i64" "%10" "54"
+        MEMBER float32 "float" "%11" "54.0"
+        MEMBER float32 "float" "%12" "4.5"
+        MEMBER float32 "float" "%13" "58.5"
+        MEMBER float64 "double" "%14" "58.5"
+        MEMBER float64 "double" "%15" "6.7"
+        MEMBER float64 "double" "%16" "65.2"
+        MEMBER exact "i128" "%17" "8"
+        MEMBER int "i8" "%1" "48"
+        MEMBER int "i32" "%2" "48"
+        MEMBER int "i16" "%3" "1"
+        MEMBER int "i32" "%4" "1"
+        MEMBER int "i32" "%5" "49"
+        MEMBER int "i32" "%6" "2"
+        MEMBER int "i32" "%7" "51"
+        MEMBER int "i64" "%8" "51"
+        MEMBER int "i64" "%9" "3"
+
+
+STOP 47 STEP_OVER "@test"
+    OPEN_SCOPE partial
+        MEMBER int "i64" "%10" "54"
+        MEMBER float32 "float" "%11" "54.0"
+        MEMBER float32 "float" "%12" "4.5"
+        MEMBER float32 "float" "%13" "58.5"
+        MEMBER float64 "double" "%14" "58.5"
+        MEMBER float64 "double" "%15" "6.7"
+        MEMBER float64 "double" "%16" "65.2"
+        MEMBER int "i128" "%17" "8"
+        MEMBER int "i8" "%1" "48"
+        MEMBER int "i64" "%18" "8"
+        MEMBER int "i32" "%2" "48"
+        MEMBER int "i16" "%3" "1"
+        MEMBER int "i32" "%4" "1"
+        MEMBER int "i32" "%5" "49"
+        MEMBER int "i32" "%6" "2"
+        MEMBER int "i32" "%7" "51"
+        MEMBER int "i64" "%8" "51"
+        MEMBER int "i64" "%9" "3"
+
+
+STOP 48 STEP_OVER "@test"
+    OPEN_SCOPE partial
+        MEMBER int "i64" "%10" "54"
+        MEMBER float32 "float" "%11" "54.0"
+        MEMBER float32 "float" "%12" "4.5"
+        MEMBER float32 "float" "%13" "58.5"
+        MEMBER float64 "double" "%14" "58.5"
+        MEMBER float64 "double" "%15" "6.7"
+        MEMBER float64 "double" "%16" "65.2"
+        MEMBER int "i128" "%17" "8"
+        MEMBER int "i8" "%1" "48"
+        MEMBER int "i64" "%18" "8"
+        MEMBER int "i32" "%2" "48"
+        MEMBER float64 "double" "%19" "8.0"
+        MEMBER int "i16" "%3" "1"
+        MEMBER int "i32" "%4" "1"
+        MEMBER int "i32" "%5" "49"
+        MEMBER int "i32" "%6" "2"
+        MEMBER int "i32" "%7" "51"
+        MEMBER int "i64" "%8" "51"
+        MEMBER int "i64" "%9" "3"
+
+
+STOP 49 STEP_OVER "@test"
+    OPEN_SCOPE partial
+        MEMBER float64 "double" "%20" "73.2"
+        MEMBER int "i64" "%10" "54"
+        MEMBER float32 "float" "%11" "54.0"
+        MEMBER float32 "float" "%12" "4.5"
+        MEMBER float32 "float" "%13" "58.5"
+        MEMBER float64 "double" "%14" "58.5"
+        MEMBER float64 "double" "%15" "6.7"
+        MEMBER float64 "double" "%16" "65.2"
+        MEMBER int "i128" "%17" "8"
+        MEMBER int "i8" "%1" "48"
+        MEMBER int "i64" "%18" "8"
+        MEMBER int "i32" "%2" "48"
+        MEMBER float64 "double" "%19" "8.0"
+        MEMBER int "i16" "%3" "1"
+        MEMBER int "i32" "%4" "1"
+        MEMBER int "i32" "%5" "49"
+        MEMBER int "i32" "%6" "2"
+        MEMBER int "i32" "%7" "51"
+        MEMBER int "i64" "%8" "51"
+        MEMBER int "i64" "%9" "3"
+
+
+STOP 50 STEP_OVER "@test"
+    OPEN_SCOPE partial
+        MEMBER float64 "double" "%20" "73.2"
+        MEMBER int "i64" "%10" "54"
+        MEMBER exact "x86_fp80" "%21" "0xK40059266666666666800"
+        MEMBER float32 "float" "%11" "54.0"
+        MEMBER float32 "float" "%12" "4.5"
+        MEMBER float32 "float" "%13" "58.5"
+        MEMBER float64 "double" "%14" "58.5"
+        MEMBER float64 "double" "%15" "6.7"
+        MEMBER float64 "double" "%16" "65.2"
+        MEMBER int "i128" "%17" "8"
+        MEMBER int "i8" "%1" "48"
+        MEMBER int "i64" "%18" "8"
+        MEMBER int "i32" "%2" "48"
+        MEMBER float64 "double" "%19" "8.0"
+        MEMBER int "i16" "%3" "1"
+        MEMBER int "i32" "%4" "1"
+        MEMBER int "i32" "%5" "49"
+        MEMBER int "i32" "%6" "2"
+        MEMBER int "i32" "%7" "51"
+        MEMBER int "i64" "%8" "51"
+        MEMBER int "i64" "%9" "3"
+
+
+STOP 51 STEP_OVER "@test"
+    OPEN_SCOPE partial
+        MEMBER float64 "double" "%20" "73.2"
+        MEMBER int "i64" "%10" "54"
+        MEMBER exact "x86_fp80" "%21" "0xK40059266666666666800"
+        MEMBER float32 "float" "%11" "54.0"
+        MEMBER exact "x86_fp80" "%22" "0xK40029199999999999800"
+        MEMBER float32 "float" "%12" "4.5"
+        MEMBER float32 "float" "%13" "58.5"
+        MEMBER float64 "double" "%14" "58.5"
+        MEMBER float64 "double" "%15" "6.7"
+        MEMBER float64 "double" "%16" "65.2"
+        MEMBER int "i128" "%17" "8"
+        MEMBER int "i8" "%1" "48"
+        MEMBER int "i64" "%18" "8"
+        MEMBER int "i32" "%2" "48"
+        MEMBER float64 "double" "%19" "8.0"
+        MEMBER int "i16" "%3" "1"
+        MEMBER int "i32" "%4" "1"
+        MEMBER int "i32" "%5" "49"
+        MEMBER int "i32" "%6" "2"
+        MEMBER int "i32" "%7" "51"
+        MEMBER int "i64" "%8" "51"
+        MEMBER int "i64" "%9" "3"
+
+
+STOP 52 CONTINUE "@test"
+    OPEN_SCOPE partial
+        MEMBER float64 "double" "%20" "73.2"
+        MEMBER int "i64" "%10" "54"
+        MEMBER exact "x86_fp80" "%21" "0xK40059266666666666800"
+        MEMBER float32 "float" "%11" "54.0"
+        MEMBER exact "x86_fp80" "%22" "0xK40029199999999999800"
+        MEMBER float32 "float" "%12" "4.5"
+        MEMBER exact "x86_fp80" "%23" "0xK4005a499999999999b00"
+        MEMBER float32 "float" "%13" "58.5"
+        MEMBER float64 "double" "%14" "58.5"
+        MEMBER float64 "double" "%15" "6.7"
+        MEMBER float64 "double" "%16" "65.2"
+        MEMBER int "i128" "%17" "8"
+        MEMBER int "i8" "%1" "48"
+        MEMBER int "i64" "%18" "8"
+        MEMBER int "i32" "%2" "48"
+        MEMBER float64 "double" "%19" "8.0"
+        MEMBER int "i16" "%3" "1"
+        MEMBER int "i32" "%4" "1"
+        MEMBER int "i32" "%5" "49"
+        MEMBER int "i32" "%6" "2"
+        MEMBER int "i32" "%7" "51"
+        MEMBER int "i64" "%8" "51"
+        MEMBER int "i64" "%9" "3"

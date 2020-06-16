@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,7 +27,7 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
- 
+
 /*
  * The parser and lexer need to be generated using 'mx create-asm-parser';
  */
@@ -38,11 +38,10 @@ grammar InlineAssembly;
 {
 // DO NOT MODIFY - generated from InlineAssembly.g4 using "mx create-asm-parser"
 
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.llvm.nodes.func.LLVMInlineAssemblyRootNode;
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.nodes.func.LLVMInlineAssemblyRootNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import static com.oracle.truffle.llvm.runtime.types.Type.TypeArrayBuilder;
 }
 
 @lexer::header
@@ -68,7 +67,7 @@ private static final class BailoutErrorListener extends BaseErrorListener {
     }
 }
 
-public static LLVMInlineAssemblyRootNode parseInlineAssembly(LLVMLanguage language, LLVMSourceLocation sourceSection, String asmSnippet, String asmFlags, Type[] argTypes, Type retType, Type[] retTypes, int[] retOffsets) {
+public static LLVMInlineAssemblyRootNode parseInlineAssembly(LLVMLanguage language, String asmSnippet, String asmFlags, TypeArrayBuilder argTypes, Type retType, Type[] retTypes, long[] retOffsets) {
     InlineAssemblyLexer lexer = new InlineAssemblyLexer(CharStreams.fromString(asmSnippet));
     InlineAssemblyParser parser = new InlineAssemblyParser(new CommonTokenStream(lexer));
     lexer.removeErrorListeners();
@@ -77,7 +76,7 @@ public static LLVMInlineAssemblyRootNode parseInlineAssembly(LLVMLanguage langua
     lexer.addErrorListener(listener);
     parser.addErrorListener(listener);
     parser.snippet = asmSnippet;
-    parser.factory = new AsmFactory(language, sourceSection, argTypes, asmFlags, retType, retTypes, retOffsets);
+    parser.factory = new AsmFactory(language, argTypes, asmFlags, retType, retTypes, retOffsets);
     parser.inline_assembly();
     if (parser.root == null) {
         throw new IllegalStateException("no roots produced by inline assembly snippet");
@@ -119,7 +118,8 @@ prefix :
   ;
 
 assembly_instruction :
-  ( zero_op
+  ( directive
+  | zero_op
   | unary_op8
   | unary_op16
   | unary_op32
@@ -183,6 +183,10 @@ jump :
   | 'loopz'
   )
   bta=operand64
+  ;
+
+directive :
+  op='.p2align' low_order_bits=number (',' padding_byte=number (',' max_bytes=number)?)? /* no-op */
   ;
 
 zero_op :
@@ -696,7 +700,7 @@ memory_reference returns [AsmMemoryOperand op] :
     )
     ( '('
       ( operand
-      	                                         { base = $operand.op; } 
+      	                                         { base = $operand.op; }
       )?
       ( ',' operand                              { offset = $operand.op; }
         ( ',' number                             { scale = (int) $number.n; }
@@ -706,7 +710,7 @@ memory_reference returns [AsmMemoryOperand op] :
     )?
   | '('
     ( operand
-      	                                         { base = $operand.op; } 
+      	                                         { base = $operand.op; }
     )?
     ( ',' operand                                { offset = $operand.op; }
       ( ',' number                               { scale = (int) $number.n; }
@@ -899,3 +903,5 @@ HEX_NUMBER : '0x' HEX_DIGIT+;
 NUMBER : '-'? DIGIT+;
 
 WS : ( ' ' | '\t' )+ -> skip;
+COMMENT : '/*' .*? '*/' -> skip;
+LINE_COMMENT : '#' ~[\r\n]* -> skip;

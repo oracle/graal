@@ -47,9 +47,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.UnsupportedEncodingException;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -88,7 +88,7 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
         setupEnv(Context.newBuilder().allowIO(true).allowCreateProcess(true).build());
         Process p = languageEnv.newProcessBuilder(javaExecutable.toString()).start();
         if (!p.waitFor(5, TimeUnit.SECONDS)) {
-            p.destroy();
+            p.destroyForcibly().waitFor();
         }
     }
 
@@ -99,7 +99,7 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
         setupEnv(Context.newBuilder().allowAllAccess(true).build());
         Process p = languageEnv.newProcessBuilder(javaExecutable.toString()).start();
         if (!p.waitFor(5, TimeUnit.SECONDS)) {
-            p.destroy();
+            p.destroyForcibly().waitFor();
         }
     }
 
@@ -114,13 +114,13 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
         ByteArrayOutputStream stderr = new ByteArrayOutputStream();
         TruffleProcessBuilder builder = languageEnv.newProcessBuilder(javaExecutable.toString(), "-cp", cp.toString(), Main.class.getName());
         Process p = builder.redirectOutput(builder.createRedirectToStream(stdout)).redirectError(builder.createRedirectToStream(stderr)).start();
-        if (!p.waitFor(10, TimeUnit.SECONDS)) {
+        if (!p.waitFor(30, TimeUnit.SECONDS)) {
             p.destroy();
             Assert.fail("Process did not finish in expected time.");
         }
         Assert.assertEquals(0, p.exitValue());
-        Assert.assertArrayEquals(Main.expectedStdOut(), stdout.toByteArray());
-        Assert.assertArrayEquals(Main.expectedStdErr(), stderr.toByteArray());
+        Assert.assertEquals(Main.expectedStdOut(), new String(stdout.toByteArray(), StandardCharsets.UTF_8));
+        Assert.assertEquals(Main.expectedStdErr(), new String(stderr.toByteArray(), StandardCharsets.UTF_8));
     }
 
     @Test
@@ -483,16 +483,18 @@ public class ProcessBuilderTest extends AbstractPolyglotTest {
         private static final String STDERR = "stderr";
 
         public static void main(String[] args) throws IOException {
-            System.out.write(expectedStdOut());
-            System.err.write(expectedStdErr());
+            System.out.write(expectedStdOut().getBytes(StandardCharsets.UTF_8));
+            System.out.flush();
+            System.err.write(expectedStdErr().getBytes(StandardCharsets.UTF_8));
+            System.err.flush();
         }
 
-        static byte[] expectedStdOut() throws UnsupportedEncodingException {
-            return repeat(STDOUT, 10_000).getBytes("UTF-8");
+        static String expectedStdOut() {
+            return repeat(STDOUT, 10_000);
         }
 
-        static byte[] expectedStdErr() throws UnsupportedEncodingException {
-            return repeat(STDERR, 10_000).getBytes("UTF-8");
+        static String expectedStdErr() {
+            return repeat(STDERR, 10_000);
         }
 
         private static String repeat(String pattern, int count) {

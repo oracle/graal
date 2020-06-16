@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,8 +33,8 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.Node.NodeIntrinsicFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
@@ -51,7 +51,6 @@ import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 //JaCoCo Exclude
@@ -65,7 +64,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * also the scheduling restriction enforced by the guard, will go away.
  */
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
-public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtualizable, IterableNodeType, Canonicalizable, ValueProxy {
+@NodeIntrinsicFactory
+public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtualizable, Canonicalizable, ValueProxy {
 
     public static final NodeClass<PiNode> TYPE = NodeClass.create(PiNode.class);
     @Input ValueNode object;
@@ -125,8 +125,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         return new PiNode(object, stamp, guard);
     }
 
-    @SuppressWarnings("unused")
-    public static boolean intrinsify(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode object, ValueNode guard) {
+    public static boolean intrinsify(GraphBuilderContext b, ValueNode object, ValueNode guard) {
         Stamp stamp = AbstractPointerStamp.pointerNonNull(object.stamp(NodeView.DEFAULT));
         ValueNode value = canonical(object, stamp, (GuardingNode) guard, null);
         if (value == null) {
@@ -136,8 +135,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         return true;
     }
 
-    @SuppressWarnings("unused")
-    public static boolean intrinsify(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode object, ResolvedJavaType toType, boolean exactType, boolean nonNull) {
+    public static boolean intrinsify(GraphBuilderContext b, ValueNode object, ResolvedJavaType toType, boolean exactType, boolean nonNull) {
         Stamp stamp = StampFactory.object(exactType ? TypeReference.createExactTrusted(toType) : TypeReference.createWithoutAssumptions(toType),
                         nonNull || StampTool.isPointerNonNull(object.stamp(NodeView.DEFAULT)));
         ValueNode value = canonical(object, stamp, null, null);

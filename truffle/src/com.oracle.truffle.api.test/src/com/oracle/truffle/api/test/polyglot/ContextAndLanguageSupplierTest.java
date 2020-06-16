@@ -171,11 +171,6 @@ public class ContextAndLanguageSupplierTest extends AbstractPolyglotTest {
             return env;
         }
 
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
-
         public static <T extends TruffleLanguage<C>, C> C getContext(Class<T> language) {
             return getCurrentContext(language);
         }

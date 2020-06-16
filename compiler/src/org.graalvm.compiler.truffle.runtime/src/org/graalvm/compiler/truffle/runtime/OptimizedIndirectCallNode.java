@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,12 +35,18 @@ import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.profiles.ValueProfile;
 
 /**
- * A call node with a constant {@link CallTarget} that can be optimized by Graal.
+ * A call node with a dynamic {@link CallTarget} that can be optimized by Graal.
  */
 @NodeInfo
 public final class OptimizedIndirectCallNode extends IndirectCallNode {
 
     @CompilationFinal private ValueProfile exceptionProfile;
+
+    /*
+     * Should be instantiated with the runtime.
+     */
+    OptimizedIndirectCallNode() {
+    }
 
     @Override
     public Object call(CallTarget target, Object... arguments) {
@@ -52,7 +58,7 @@ public final class OptimizedIndirectCallNode extends IndirectCallNode {
                 exceptionProfile = ValueProfile.createClassProfile();
             }
             Throwable profiledT = exceptionProfile.profile(t);
-            OptimizedCallTarget.runtime().getTvmci().onThrowable(this, null, profiledT, null);
+            GraalRuntimeAccessor.LANGUAGE.onThrowable(this, null, profiledT, null);
             throw OptimizedCallTarget.rethrow(profiledT);
         }
     }

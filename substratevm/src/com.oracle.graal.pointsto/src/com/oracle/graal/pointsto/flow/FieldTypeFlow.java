@@ -72,6 +72,20 @@ public class FieldTypeFlow extends TypeFlow<AnalysisField> {
     }
 
     @Override
+    public boolean canSaturate() {
+        return false;
+    }
+
+    @Override
+    protected void onInputSaturated(BigBang bb, TypeFlow<?> input) {
+        /*
+         * When a field store is saturated conservativelly assume that the field state can contain
+         * any subtype of its declared type.
+         */
+        getDeclaredType().getTypeFlow(bb, true).addUse(bb, this);
+    }
+
+    @Override
     public String toString() {
         return "FieldFlow<" + source.format("%h.%n") + "\n" + getState() + ">";
     }

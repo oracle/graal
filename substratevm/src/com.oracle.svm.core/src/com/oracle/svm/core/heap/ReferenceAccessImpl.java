@@ -24,12 +24,13 @@
  */
 package com.oracle.svm.core.heap;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -95,8 +96,7 @@ public final class ReferenceAccessImpl implements ReferenceAccess {
     public native Object uncompressReference(UnsignedWord ref);
 
     @Override
-    @AlwaysInline("Performance")
-    @Uninterruptible(reason = "for uninterruptible callers", mayBeInlined = true)
+    @Fold
     public boolean haveCompressedReferences() {
         return SubstrateOptions.SpawnIsolates.getValue();
     }

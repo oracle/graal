@@ -40,7 +40,6 @@
  */
 
 #if !defined(_WIN32)
-#define _GNU_SOURCE
 #include <dlfcn.h>
 #endif
 

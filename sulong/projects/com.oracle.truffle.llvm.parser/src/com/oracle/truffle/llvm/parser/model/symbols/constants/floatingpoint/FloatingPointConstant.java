@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -40,7 +40,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 
 public abstract class FloatingPointConstant extends AbstractConstant {
 
-    private static final int X86_FP80_BYTES = PrimitiveType.X86_FP80.getBitSize() / Byte.SIZE;
+    private static final int X86_FP80_BYTES = Math.toIntExact(PrimitiveType.X86_FP80.getBitSize() / Byte.SIZE);
 
     FloatingPointConstant(Type type) {
         super(type);

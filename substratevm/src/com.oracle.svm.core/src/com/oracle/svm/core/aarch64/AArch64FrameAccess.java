@@ -33,12 +33,11 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.FrameAccess;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
 
 @AutomaticFeature
-@Platforms(Platform.AArch64.class)
+@Platforms(Platform.AARCH64.class)
 class AMD64FrameAccessFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
@@ -62,10 +61,14 @@ public class AArch64FrameAccess extends FrameAccess {
     @Fold
     @Override
     public int savedBasePointerSize() {
-        if (SubstrateOptions.PreserveFramePointer.getValue()) {
-            return wordSize();
-        } else {
-            return 0;
-        }
+        // The base pointer is always saved with stp instruction on method entry
+        return wordSize();
+    }
+
+    @Override
+    @Fold
+    public int stackPointerAdjustmentOnCall() {
+        // A call on AArch64 does not touch the SP.
+        return 0;
     }
 }

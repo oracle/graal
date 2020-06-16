@@ -25,7 +25,9 @@
 package com.oracle.truffle.tools.chromeinspector;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import com.oracle.truffle.api.debug.DebugValue;
 
@@ -37,6 +39,7 @@ public final class RemoteObjectsHandler {
     private final Map<DebugValue, RemoteObject> remotesByValue = new HashMap<>(100);
     private final Map<String, DebugValue> customPreviewBodies = new HashMap<>();
     private final Map<String, DebugValue> customPreviewConfigs = new HashMap<>();
+    private final Map<String, Set<String>> objectGroups = new HashMap<>();
     private final InspectorExecutionContext context;
 
     RemoteObjectsHandler(InspectorExecutionContext context) {
@@ -50,7 +53,9 @@ public final class RemoteObjectsHandler {
             if (remote == null) {
                 remote = new RemoteObject(value, false, context);
                 remotesByValue.put(value, remote);
-                remotesByIDs.put(remote.getId(), remote);
+                if (remote.getId() != null) {
+                    remotesByIDs.put(remote.getId(), remote);
+                }
             }
         }
         return remote;
@@ -63,17 +68,81 @@ public final class RemoteObjectsHandler {
     }
 
     void register(RemoteObject remote) {
-        synchronized (remotesByIDs) {
-            remotesByIDs.put(remote.getId(), remote);
+        register(remote, null);
+    }
+
+    void register(RemoteObject remote, String objectGroup) {
+        if (remote.getId() != null) {
+            synchronized (remotesByIDs) {
+                remotesByIDs.put(remote.getId(), remote);
+                if (objectGroup != null) {
+                    Set<String> group = objectGroups.get(objectGroup);
+                    if (group == null) {
+                        group = new HashSet<>();
+                        objectGroups.put(objectGroup, group);
+                    }
+                    group.add(remote.getId());
+                }
+            }
         }
+    }
+
+    String getObjectGroupOf(String objectId) {
+        synchronized (remotesByIDs) {
+            for (Map.Entry<String, Set<String>> groupEntry : objectGroups.entrySet()) {
+                if (groupEntry.getValue().contains(objectId)) {
+                    return groupEntry.getKey();
+                }
+            }
+        }
+        return null;
+    }
+
+    void releaseObject(String objectId) {
+        synchronized (remotesByIDs) {
+            remotesByIDs.remove(objectId);
+        }
+    }
+
+    void releaseObjectGroup(String objectGroup) {
+        synchronized (remotesByIDs) {
+            Set<String> group = objectGroups.remove(objectGroup);
+            if (group != null) {
+                for (String objectId : group) {
+                    remotesByIDs.remove(objectId);
+                }
+            }
+        }
+    }
+
+    // For tests only
+    public Set<String> getRegisteredIDs() {
+        Set<String> ids = new HashSet<>();
+        synchronized (remotesByIDs) {
+            ids.addAll(remotesByIDs.keySet());
+        }
+        return ids;
     }
 
     void reset() {
         synchronized (remotesByIDs) {
-            remotesByIDs.clear();
             remotesByValue.clear();
             customPreviewBodies.clear();
             customPreviewConfigs.clear();
+            if (objectGroups.isEmpty()) { // no groupped objects
+                remotesByIDs.clear();
+            } else { // some groupped objects, remove all that do not belong to a group.
+                Set<String> grouppedIds;
+                if (objectGroups.size() == 1) {
+                    grouppedIds = objectGroups.values().iterator().next();
+                } else {
+                    grouppedIds = new HashSet<>();
+                    for (Set<String> group : objectGroups.values()) {
+                        grouppedIds.addAll(group);
+                    }
+                }
+                remotesByIDs.keySet().retainAll(grouppedIds);
+            }
         }
     }
 

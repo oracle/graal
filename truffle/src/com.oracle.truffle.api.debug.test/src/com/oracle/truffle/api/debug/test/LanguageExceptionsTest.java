@@ -76,7 +76,7 @@ public class LanguageExceptionsTest extends AbstractDebugTest {
             }
         }, (SuspendedEvent event) -> {
             DebugValue value = event.getTopStackFrame().getScope().getDeclaredValue("a");
-            value.as(String.class);
+            value.toDisplayString();
         });
     }
 
@@ -145,7 +145,7 @@ public class LanguageExceptionsTest extends AbstractDebugTest {
         testBuggyLanguageCalls(new TestDebugBuggyLanguage(),
                         (SuspendedEvent event) -> {
                             DebugValue value = event.getTopStackFrame().getScope().getDeclaredValue("o");
-                            value.getProperty("A").as(String.class);
+                            value.getProperty("A").toDisplayString();
                         }, "READ");
     }
 

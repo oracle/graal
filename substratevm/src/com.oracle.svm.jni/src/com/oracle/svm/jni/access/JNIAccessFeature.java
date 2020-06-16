@@ -54,11 +54,13 @@ import com.oracle.svm.core.configure.ReflectionConfigurationParser;
 import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.CompilationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
+import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.meta.MaterializedConstantFields;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
@@ -91,6 +93,8 @@ public class JNIAccessFeature implements Feature {
     private JNICallTrampolineMethod arrayNonvirtualCallTrampolineMethod;
     private JNICallTrampolineMethod valistNonvirtualCallTrampolineMethod;
 
+    private int loadedConfigurations;
+
     private final Set<Class<?>> newClasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Set<Executable> newMethods = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Map<Field, Boolean> newFields = new ConcurrentHashMap<>();
@@ -119,7 +123,7 @@ public class JNIAccessFeature implements Feature {
         ImageSingletons.add(JNIRuntimeAccess.JNIRuntimeAccessibilitySupport.class, registry);
 
         ReflectionConfigurationParser<Class<?>> parser = ConfigurationParserUtils.create(registry, access.getImageClassLoader());
-        ConfigurationParserUtils.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "JNI",
+        loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "JNI",
                         ConfigurationFiles.Options.JNIConfigurationFiles, ConfigurationFiles.Options.JNIConfigurationResources, ConfigurationFiles.JNI_NAME);
     }
 
@@ -186,7 +190,8 @@ public class JNIAccessFeature implements Feature {
 
     public JNINativeLinkage makeLinkage(String declaringClass, String name, String descriptor) {
         UserError.guarantee(!sealed,
-                        "All linkages for JNI calls must be created before the analysis has completed.\nOffending class: " + declaringClass + " name: " + name + " descriptor: " + descriptor + "\n");
+                        "All linkages for JNI calls must be created before the analysis has completed.%nOffending class: %s name: %s descriptor: %s",
+                        declaringClass, name, descriptor);
 
         JNINativeLinkage key = new JNINativeLinkage(declaringClass, name, descriptor);
 
@@ -275,10 +280,11 @@ public class JNIAccessFeature implements Feature {
 
             JNIAccessibleMethod jniMethod = new JNIAccessibleMethod(d, method.getModifiers(), jniClass, varargsCallWrapper, arrayCallWrapper, valistCallWrapper,
                             varargsNonvirtualCallWrapper, arrayNonvirtualCallWrapper, valistNonvirtualCallWrapper);
+            CEntryPointData unpublished = CEntryPointData.createCustomUnpublished();
             wrappers.forEach(wrapper -> {
                 AnalysisMethod analysisWrapper = access.getUniverse().lookup(wrapper);
                 access.getBigBang().addRootMethod(analysisWrapper);
-                analysisWrapper.registerAsEntryPoint(jniMethod); // ensures C calling convention
+                analysisWrapper.registerAsEntryPoint(unpublished); // ensures C calling convention
             });
             return jniMethod;
         });
@@ -294,6 +300,13 @@ public class JNIAccessFeature implements Feature {
         field.registerAsRead(null);
         if (writable) {
             field.registerAsWritten(null);
+            AnalysisType fieldType = field.getType();
+            if (fieldType.isArray() && !access.isReachable(fieldType)) {
+                // For convenience, make the array type reachable if its elemental type becomes
+                // such, allowing the array creation via JNI without an explicit reflection config.
+                access.registerReachabilityHandler(a -> fieldType.registerAsAllocated(null),
+                                ((AnalysisType) fieldType.getElementalType()).getJavaClass());
+            }
         } else if (field.isStatic() && field.isFinal()) {
             MaterializedConstantFields.singleton().register(field);
         }
@@ -319,6 +332,13 @@ public class JNIAccessFeature implements Feature {
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess a) {
+        if (ImageSingletons.contains(FallbackFeature.class)) {
+            FallbackFeature.FallbackImageRequest jniFallback = ImageSingletons.lookup(FallbackFeature.class).jniFallback;
+            if (jniFallback != null && loadedConfigurations == 0) {
+                throw jniFallback;
+            }
+        }
+
         CompilationAccessImpl access = (CompilationAccessImpl) a;
         for (JNIAccessibleClass clazz : JNIReflectionDictionary.singleton().getClasses()) {
             for (JNIAccessibleField field : clazz.getFields()) {

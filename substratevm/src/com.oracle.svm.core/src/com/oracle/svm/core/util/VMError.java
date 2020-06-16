@@ -27,6 +27,8 @@ package com.oracle.svm.core.util;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
+
 /**
  * A collection of static methods for error reporting of fatal error. A fatal error leaves the VM in
  * an inconsistent state, so no meaningful recovery is possible.
@@ -74,20 +76,26 @@ public final class VMError {
         throw new HostedError(msg, cause);
     }
 
+    @Uninterruptible(reason = "Allow VMError to be used in uninterruptible code.", mayBeInlined = true)
     public static void guarantee(boolean condition) {
         if (!condition) {
-            throw new HostedError("guarantee failed");
+            throw shouldNotReachHere("guarantee failed");
         }
     }
 
+    @Uninterruptible(reason = "Allow VMError to be used in uninterruptible code.", mayBeInlined = true)
     public static void guarantee(boolean condition, String msg) {
         if (!condition) {
-            throw new HostedError(msg);
+            throw shouldNotReachHere(msg);
         }
     }
 
     public static RuntimeException unimplemented() {
-        throw new HostedError("unimplemented");
+        throw new UnsupportedOperationException("unimplemented");
+    }
+
+    public static RuntimeException unimplemented(String msg) {
+        throw new UnsupportedOperationException(msg);
     }
 
     public static RuntimeException unsupportedFeature(String msg) {

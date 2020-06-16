@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -108,10 +108,6 @@ public final class IRScope {
     }
 
     public void exitLocalScope() {
-        if (currentFunction != null) {
-            currentFunction.exitLocalScope();
-        }
-
         metadata.endScope();
         symbols.endScope();
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,35 +40,29 @@
  */
 package com.oracle.truffle.api.nodes;
 
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.impl.Accessor;
-
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.impl.Accessor;
+
 final class NodeAccessor extends Accessor {
 
-    static final NodeAccessor ACCESSOR = new NodeAccessor();
+    private static final NodeAccessor ACCESSOR = new NodeAccessor();
+
+    static final InteropSupport INTEROP = ACCESSOR.interopSupport();
+    static final EngineSupport ENGINE = ACCESSOR.engineSupport();
+    static final LanguageSupport LANGUAGE = ACCESSOR.languageSupport();
+    static final RuntimeSupport RUNTIME = ACCESSOR.runtimeSupport();
+    static final InstrumentSupport INSTRUMENT = ACCESSOR.instrumentSupport();
 
     private NodeAccessor() {
-    }
-
-    @Override
-    protected ThreadLocal<Object> createFastThreadLocal() {
-        return super.createFastThreadLocal();
-    }
-
-    @Override
-    protected void onLoopCount(Node source, int iterations) {
-        super.onLoopCount(source, iterations);
-    }
-
-    @Override
-    protected IndirectCallNode createUncachedIndirectCall() {
-        IndirectCallNode callNode = super.createUncachedIndirectCall();
-        assert !callNode.isAdoptable();
-        return callNode;
     }
 
     static final class AccessNodes extends NodeSupport {
@@ -81,12 +75,6 @@ final class NodeAccessor extends Accessor {
         @Override
         public void setCallTarget(RootNode rootNode, RootCallTarget callTarget) {
             rootNode.setCallTarget(callTarget);
-        }
-
-        @SuppressWarnings("deprecation")
-        @Override
-        public boolean isTaggedWith(Node node, Class<?> tag) {
-            return node.isTaggedWith(tag);
         }
 
         @Override
@@ -105,23 +93,29 @@ final class NodeAccessor extends Accessor {
         }
 
         @Override
-        public Object getEngineObject(LanguageInfo languageInfo) {
-            return languageInfo.getEngineObject();
+        public Object getPolyglotLanguage(LanguageInfo languageInfo) {
+            return languageInfo.getPolyglotLanguage();
         }
 
         @Override
-        public LanguageInfo createLanguage(Object vmObject, String id, String name, String version, String defaultMimeType, Set<String> mimeTypes, boolean internal, boolean interactive) {
-            return new LanguageInfo(vmObject, id, name, version, defaultMimeType, mimeTypes, internal, interactive);
+        public LanguageInfo createLanguage(Object polyglotLanguage, String id, String name, String version, String defaultMimeType, Set<String> mimeTypes, boolean internal, boolean interactive) {
+            return new LanguageInfo(polyglotLanguage, id, name, version, defaultMimeType, mimeTypes, internal, interactive);
         }
 
         @Override
-        public Object getSourceVM(RootNode rootNode) {
-            return rootNode.sourceVM;
+        public Object getPolyglotEngine(RootNode rootNode) {
+            return rootNode.getEngine();
         }
 
         @Override
         public TruffleLanguage<?> getLanguage(RootNode rootNode) {
-            return rootNode.language;
+            return rootNode.getLanguage();
+        }
+
+        @Override
+        public List<TruffleStackTraceElement> findAsynchronousFrames(CallTarget target, Frame frame) {
+            CompilerAsserts.neverPartOfCompilation();
+            return ((RootCallTarget) target).getRootNode().findAsynchronousFrames(frame);
         }
 
         @Override
@@ -141,9 +135,20 @@ final class NodeAccessor extends Accessor {
         }
 
         @Override
-        public void makeSharableRoot(RootNode rootNode) {
-            rootNode.sourceVM = null;
+        public void clearPolyglotEngine(RootNode rootNode) {
+            rootNode.clearEngineRef();
+        }
+
+        @Override
+        public void applyPolyglotEngine(RootNode from, RootNode to) {
+            to.applyEngineRef(from);
+        }
+
+        @Override
+        public void forceAdoption(Node parent, Node child) {
+            child.setParent(parent);
         }
 
     }
+
 }

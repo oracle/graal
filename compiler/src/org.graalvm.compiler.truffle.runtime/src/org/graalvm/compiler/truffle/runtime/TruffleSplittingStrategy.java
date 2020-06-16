@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,152 +24,137 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import static org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.getOptions;
-
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
+import java.util.function.BiFunction;
 
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeUtil;
-import com.oracle.truffle.api.nodes.NodeUtil.NodeCountFilter;
 import com.oracle.truffle.api.nodes.RootNode;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.util.logging.Level;
 
 final class TruffleSplittingStrategy {
 
-    private static Set<OptimizedCallTarget> waste = new HashSet<>();
-    private static final int LEGACY_RECURSIVE_SPLIT_DEPTH = 2;
+    private static final Set<OptimizedCallTarget> waste = Collections.synchronizedSet(new HashSet<>());
     private static final int RECURSIVE_SPLIT_DEPTH = 3;
 
-    static void beforeCall(OptimizedDirectCallNode call) {
-        final EngineData engineData = call.getCurrentCallTarget().engineData;
-        if (engineData.options.isTraceSplittingSummary()) {
-            if (call.getCurrentCallTarget().getCompilationProfile().getCallCount() == 0) {
-                engineData.reporter.totalExecutedNodeCount += call.getCurrentCallTarget().getUninitializedNodeCount();
-            }
-        }
-        if (engineData.options.isLegacySplitting()) {
-            if (call.getCallCount() == 2) {
-                if (legacyShouldSplit(call, engineData)) {
-                    engineData.splitCount += call.getCurrentCallTarget().getUninitializedNodeCount();
-                    doSplit(engineData, call);
+    static void beforeCall(OptimizedDirectCallNode call, OptimizedCallTarget currentTarget) {
+        final EngineData engineData = currentTarget.engine;
+        if (engineData.traceSplittingSummary) {
+            if (currentTarget.getCallCount() == 0) {
+                synchronized (engineData.splittingStatistics) {
+                    engineData.splittingStatistics.totalExecutedNodeCount += currentTarget.getUninitializedNodeCount();
                 }
             }
-            return;
         }
-        if (shouldSplit(engineData.options, call)) {
+        if (shouldSplit(engineData, call)) {
             engineData.splitCount += call.getCallTarget().getUninitializedNodeCount();
             doSplit(engineData, call);
         }
     }
 
-    private static EngineData getEngineData(OptimizedDirectCallNode callNode) {
-        return GraalTVMCI.getEngineData(callNode.getCallTarget().getRootNode());
-    }
-
     private static void doSplit(EngineData engineData, OptimizedDirectCallNode call) {
-        final RuntimeOptionsCache options = engineData.options;
-        if (options.isTraceSplittingSummary()) {
-            calculateSplitWasteImpl(call.getCurrentCallTarget());
+        if (engineData.traceSplittingSummary) {
+            synchronized (engineData.splittingStatistics) {
+                calculateSplitWasteImpl(call.getCurrentCallTarget());
+            }
         }
         call.split();
-        if (options.isTraceSplittingSummary()) {
-            engineData.reporter.splitNodeCount += call.getCurrentCallTarget().getUninitializedNodeCount();
-            engineData.reporter.splitCount++;
-            engineData.reporter.splitTargets.put(call.getCallTarget(), engineData.reporter.splitTargets.getOrDefault(call.getCallTarget(), 0) + 1);
+        if (engineData.traceSplittingSummary) {
+            synchronized (engineData.splittingStatistics) {
+                engineData.splittingStatistics.splitNodeCount += call.getCurrentCallTarget().getUninitializedNodeCount();
+                engineData.splittingStatistics.splitCount++;
+                engineData.splittingStatistics.splitTargets.put(call.getCallTarget(), engineData.splittingStatistics.splitTargets.getOrDefault(call.getCallTarget(), 0) + 1);
+            }
         }
     }
 
-    private static boolean shouldSplit(RuntimeOptionsCache options, OptimizedDirectCallNode call) {
+    private static boolean shouldSplit(EngineData engine, OptimizedDirectCallNode call) {
         OptimizedCallTarget callTarget = call.getCurrentCallTarget();
         if (!callTarget.isNeedsSplit()) {
             return false;
         }
-        final EngineData engineData = getEngineData(call);
-        if (!canSplit(options, call) || isRecursiveSplit(call, RECURSIVE_SPLIT_DEPTH) ||
-                        engineData.splitCount + call.getCallTarget().getUninitializedNodeCount() >= engineData.splitLimit) {
+        if (!canSplit(engine, call)) {
+            maybeTraceFail(engine, call, TruffleSplittingStrategy::splitNotPossibleMessageFactory);
             return false;
         }
-        if (callTarget.getUninitializedNodeCount() > options.getSplittingMaxCalleeSize()) {
+        if (isRecursiveSplit(call, RECURSIVE_SPLIT_DEPTH)) {
+            maybeTraceFail(engine, call, TruffleSplittingStrategy::recursiveSplitMessageFactory);
+            return false;
+        }
+        if (engine.splitCount + call.getCallTarget().getUninitializedNodeCount() >= engine.splitLimit) {
+            maybeTraceFail(engine, call, TruffleSplittingStrategy::notEnoughBudgetMessageFactory);
+            return false;
+        }
+        if (callTarget.getUninitializedNodeCount() > engine.splittingMaxCalleeSize) {
+            maybeTraceFail(engine, call, TruffleSplittingStrategy::targetTooBigMessageFactory);
             return false;
         }
         return true;
     }
 
+    private static String targetTooBigMessageFactory(OptimizedDirectCallNode call, EngineData engine) {
+        return "Target too big: " + call.getCallTarget().getUninitializedNodeCount() + " > " + engine.splittingMaxCalleeSize;
+    }
+
+    private static String notEnoughBudgetMessageFactory(OptimizedDirectCallNode call, EngineData engine) {
+        return "Not enough budget. " + (engine.splitCount + call.getCallTarget().getUninitializedNodeCount()) + " > " + engine.splitLimit;
+    }
+
+    @SuppressWarnings("unused")
+    private static String splitNotPossibleMessageFactory(OptimizedDirectCallNode node, EngineData data) {
+        return "Split not possible.";
+    }
+
+    @SuppressWarnings("unused")
+    private static String recursiveSplitMessageFactory(OptimizedDirectCallNode node, EngineData data) {
+        return "Recursive split.";
+    }
+
+    private static void maybeTraceFail(EngineData engine, OptimizedDirectCallNode call, BiFunction<OptimizedDirectCallNode, EngineData, String> messageFactory) {
+        if (engine.traceSplits) {
+            GraalTruffleRuntime.getRuntime().getListener().onCompilationSplitFailed(call, messageFactory.apply(call, engine));
+        }
+    }
+
     static void forceSplitting(OptimizedDirectCallNode call) {
-        final EngineData engineData = getEngineData(call);
-        final RuntimeOptionsCache options = engineData.options;
-        if (options.isLegacySplitting() || options.isSplittingAllowForcedSplits()) {
-            if (!canSplit(options, call) || isRecursiveSplit(call, LEGACY_RECURSIVE_SPLIT_DEPTH)) {
+        final EngineData engineData = call.getCallTarget().engine;
+        if (engineData.splittingAllowForcedSplits) {
+            if (!canSplit(engineData, call) || isRecursiveSplit(call, RECURSIVE_SPLIT_DEPTH)) {
                 return;
             }
             engineData.splitCount += call.getCurrentCallTarget().getUninitializedNodeCount();
             doSplit(engineData, call);
-            if (options.isTraceSplittingSummary()) {
-                engineData.reporter.forcedSplitCount++;
+            if (engineData.traceSplittingSummary) {
+                synchronized (engineData.splittingStatistics) {
+                    engineData.splittingStatistics.forcedSplitCount++;
+                }
             }
         }
     }
 
-    private static boolean canSplit(RuntimeOptionsCache options, OptimizedDirectCallNode call) {
+    private static boolean canSplit(EngineData engine, OptimizedDirectCallNode call) {
         if (call.isCallTargetCloned()) {
             return false;
         }
-        if (!options.isSplitting()) {
+        if (!engine.splitting) {
             return false;
         }
         if (!call.isCallTargetCloningAllowed()) {
             return false;
         }
         return true;
-    }
-
-    private static boolean legacyShouldSplit(OptimizedDirectCallNode call, EngineData engineData) {
-        // In general, splitting in multi-tier compilations could be useful,
-        // but enabling splitting as-is currently overflows the compiler with too many requests.
-        if (SharedTruffleRuntimeOptions.TruffleMultiTier.getValue(getOptions())) {
-            return false;
-        }
-
-        if (engineData.splitCount + call.getCurrentCallTarget().getUninitializedNodeCount() > engineData.splitLimit) {
-            return false;
-        }
-        if (!canSplit(engineData.options, call)) {
-            return false;
-        }
-
-        OptimizedCallTarget callTarget = call.getCallTarget();
-        int nodeCount = callTarget.getUninitializedNodeCount();
-        if (nodeCount > engineData.options.getSplittingMaxCalleeSize()) {
-            return false;
-        }
-
-        RootNode rootNode = call.getRootNode();
-        if (rootNode == null) {
-            return false;
-        }
-        // disable recursive splitting for now
-        OptimizedCallTarget root = (OptimizedCallTarget) rootNode.getCallTarget();
-        if (root == callTarget || (root != null && root.getSourceCallTarget() == callTarget)) {
-            // recursive call found
-            return false;
-        }
-
-        // Disable splitting if it will cause a deep split-only recursion
-        if (isRecursiveSplit(call, LEGACY_RECURSIVE_SPLIT_DEPTH)) {
-            return false;
-        }
-
-        // max one child call and callCount > 2 and kind of small number of nodes
-        if (isMaxSingleCall(call)) {
-            return true;
-        }
-        return countPolymorphic(call) >= 1;
     }
 
     private static boolean isRecursiveSplit(OptimizedDirectCallNode call, int allowedDepth) {
@@ -208,36 +193,17 @@ final class TruffleSplittingStrategy {
         return false;
     }
 
-    private static boolean isMaxSingleCall(OptimizedDirectCallNode call) {
-        return NodeUtil.countNodes(call.getCallTarget().getRootNode(), new NodeCountFilter() {
-            @Override
-            public boolean isCounted(Node node) {
-                return node instanceof DirectCallNode;
-            }
-        }) <= 1;
-    }
-
-    private static int countPolymorphic(OptimizedDirectCallNode call) {
-        return NodeUtil.countNodes(call.getCallTarget().getRootNode(), new NodeCountFilter() {
-            @Override
-            public boolean isCounted(Node node) {
-                NodeCost cost = node.getCost();
-                boolean polymorphic = cost == NodeCost.POLYMORPHIC || cost == NodeCost.MEGAMORPHIC;
-                return polymorphic;
-            }
-        });
-    }
-
     static void newTargetCreated(RootCallTarget target) {
         final OptimizedCallTarget callTarget = (OptimizedCallTarget) target;
-        final EngineData engineData = callTarget.engineData;
-        final RuntimeOptionsCache runtimeOptionsCache = engineData.options;
-        if (runtimeOptionsCache.isSplitting()) {
-            final int newLimit = (int) (engineData.splitLimit + runtimeOptionsCache.getSplittingGrowthLimit() * callTarget.getUninitializedNodeCount());
-            engineData.splitLimit = Math.min(newLimit, runtimeOptionsCache.getSplittingMaxNumberOfSplitNodes());
+        final EngineData engineData = callTarget.engine;
+        if (engineData.splitting) {
+            final int newLimit = (int) (engineData.splitLimit + engineData.splittingGrowthLimit * callTarget.getUninitializedNodeCount());
+            engineData.splitLimit = Math.min(newLimit, engineData.splittingMaxNumberOfSplitNodes);
         }
-        if (runtimeOptionsCache.isTraceSplittingSummary()) {
-            engineData.reporter.totalCreatedNodeCount += callTarget.getUninitializedNodeCount();
+        if (engineData.traceSplittingSummary) {
+            synchronized (engineData.splittingStatistics) {
+                engineData.splittingStatistics.totalCreatedNodeCount += callTarget.getUninitializedNodeCount();
+            }
         }
     }
 
@@ -247,34 +213,27 @@ final class TruffleSplittingStrategy {
         for (OptimizedDirectCallNode node : callNodes) {
             final OptimizedCallTarget clonedCallTarget = node.getClonedCallTarget();
             if (waste.add(clonedCallTarget)) {
-                final EngineData engineData = clonedCallTarget.engineData;
-                engineData.reporter.wastedTargetCount++;
-                engineData.reporter.wastedNodeCount += clonedCallTarget.getUninitializedNodeCount();
+                final EngineData engineData = clonedCallTarget.engine;
+                engineData.splittingStatistics.wastedTargetCount++;
+                engineData.splittingStatistics.wastedNodeCount += clonedCallTarget.getUninitializedNodeCount();
                 calculateSplitWasteImpl(clonedCallTarget);
             }
         }
     }
 
     static void newPolymorphicSpecialize(Node node, EngineData engineData) {
-        if (engineData.options.isTraceSplittingSummary()) {
-            final Map<Class<? extends Node>, Integer> polymorphicNodes = engineData.reporter.polymorphicNodes;
-            final Class<? extends Node> aClass = node.getClass();
-            polymorphicNodes.put(aClass, polymorphicNodes.getOrDefault(aClass, 0) + 1);
+        if (engineData.traceSplittingSummary) {
+            synchronized (engineData.splittingStatistics) {
+                final Map<Class<? extends Node>, Integer> polymorphicNodes = engineData.splittingStatistics.polymorphicNodes;
+                final Class<? extends Node> aClass = node.getClass();
+                polymorphicNodes.put(aClass, polymorphicNodes.getOrDefault(aClass, 0) + 1);
+            }
         }
     }
 
-    static void newDirectCallNodeCreated(OptimizedDirectCallNode directCallNode) {
-        final OptimizedCallTarget callTarget = directCallNode.getCallTarget();
-        if (callTarget.engineData.options.isLegacySplitting()) {
-            return;
-        }
-        callTarget.addKnownCallNode(directCallNode);
-    }
-
-    static class SplitStatisticsReporter extends Thread {
+    static class SplitStatisticsData {
         final Map<Class<? extends Node>, Integer> polymorphicNodes = new HashMap<>();
         final Map<OptimizedCallTarget, Integer> splitTargets = new HashMap<>();
-        private final EngineData engineData;
         int splitCount;
         int forcedSplitCount;
         int splitNodeCount;
@@ -283,43 +242,68 @@ final class TruffleSplittingStrategy {
         int wastedNodeCount;
         int wastedTargetCount;
 
-        static final String D_FORMAT = "[truffle] %-40s: %10d";
-        static final String D_LONG_FORMAT = "[truffle] %-120s: %10d";
-        static final String P_FORMAT = "[truffle] %-40s: %9.2f%%";
-        static final String DELIMITER_FORMAT = "%n[truffle] --- %s";
-
-        SplitStatisticsReporter(EngineData engineData) {
-            this.engineData = engineData;
-            if (engineData.options.isTraceSplittingSummary()) {
-                Runtime.getRuntime().addShutdownHook(this);
-            }
-        }
-
-        @Override
-        public void run() {
-            final GraalTruffleRuntime rt = GraalTruffleRuntime.getRuntime();
-            rt.log(String.format(D_FORMAT, "Split count", engineData.splitCount));
-            rt.log(String.format(D_FORMAT, "Split limit", engineData.splitLimit));
-            rt.log(String.format(D_FORMAT, "Splits", splitCount));
-            rt.log(String.format(D_FORMAT, "Forced splits", forcedSplitCount));
-            rt.log(String.format(D_FORMAT, "Nodes created through splitting", splitNodeCount));
-            rt.log(String.format(D_FORMAT, "Nodes created without splitting", totalCreatedNodeCount));
-            rt.log(String.format(P_FORMAT, "Increase in nodes", (splitNodeCount * 100.0) / (totalCreatedNodeCount)));
-            rt.log(String.format(D_FORMAT, "Split nodes wasted", wastedNodeCount));
-            rt.log(String.format(P_FORMAT, "Percent of split nodes wasted", (wastedNodeCount * 100.0) / (splitNodeCount)));
-            rt.log(String.format(D_FORMAT, "Targets wasted due to splitting", wastedTargetCount));
-            rt.log(String.format(D_FORMAT, "Total nodes executed", totalExecutedNodeCount));
-
-            rt.log(String.format(DELIMITER_FORMAT, "SPLIT TARGETS"));
-            for (Map.Entry<OptimizedCallTarget, Integer> entry : splitTargets.entrySet()) {
-                rt.log(String.format(D_FORMAT, entry.getKey(), entry.getValue()));
-            }
-
-            rt.log(String.format(DELIMITER_FORMAT, "NODES"));
-            for (Map.Entry<Class<? extends Node>, Integer> entry : polymorphicNodes.entrySet()) {
-                rt.log(String.format(D_LONG_FORMAT, entry.getKey(), entry.getValue()));
-            }
+        SplitStatisticsData() {
         }
     }
 
+    private static final class SplitStatisticsReporter implements GraalTruffleRuntimeListener {
+
+        private static final String D_FORMAT = "%n%-40s: %10d";
+        private static final String D_LONG_FORMAT = "%n%-120s: %10d";
+        private static final String P_FORMAT = "%n%-40s: %9.2f%%";
+        private static final String DELIMITER_FORMAT = "%n--- %s";
+
+        SplitStatisticsReporter() {
+        }
+
+        @Override
+        public void onEngineClosed(EngineData engineData) {
+            if (engineData.traceSplittingSummary) {
+                SplitStatisticsData stat = engineData.splittingStatistics;
+                StringWriter messageBuilder = new StringWriter();
+                try (PrintWriter out = new PrintWriter(messageBuilder)) {
+                    out.print("Splitting Statistics");
+                    out.printf(D_FORMAT, "Split count", engineData.splitCount);
+                    out.printf(D_FORMAT, "Split limit", engineData.splitLimit);
+                    out.printf(D_FORMAT, "Splits", stat.splitCount);
+                    out.printf(D_FORMAT, "Forced splits", stat.forcedSplitCount);
+                    out.printf(D_FORMAT, "Nodes created through splitting", stat.splitNodeCount);
+                    out.printf(D_FORMAT, "Nodes created without splitting", stat.totalCreatedNodeCount);
+                    out.printf(P_FORMAT, "Increase in nodes", (stat.splitNodeCount * 100.0) / (stat.totalCreatedNodeCount));
+                    out.printf(D_FORMAT, "Split nodes wasted", stat.wastedNodeCount);
+                    out.printf(P_FORMAT, "Percent of split nodes wasted", (stat.wastedNodeCount * 100.0) / (stat.splitNodeCount));
+                    out.printf(D_FORMAT, "Targets wasted due to splitting", stat.wastedTargetCount);
+                    out.printf(D_FORMAT, "Total nodes executed", stat.totalExecutedNodeCount);
+
+                    out.printf(DELIMITER_FORMAT, "SPLIT TARGETS");
+                    for (Map.Entry<OptimizedCallTarget, Integer> entry : sortByIntegerValue(stat.splitTargets).entrySet()) {
+                        out.printf(D_FORMAT, entry.getKey(), entry.getValue());
+                    }
+
+                    out.printf(DELIMITER_FORMAT, "NODES");
+                    for (Map.Entry<Class<? extends Node>, Integer> entry : sortByIntegerValue(stat.polymorphicNodes).entrySet()) {
+                        out.printf(D_LONG_FORMAT, entry.getKey(), entry.getValue());
+                    }
+                }
+                final TruffleLogger log = engineData.getLogger();
+                log.log(Level.INFO, messageBuilder.toString());
+            }
+        }
+
+        private static <K, T> Map<K, Integer> sortByIntegerValue(Map<K, Integer> map) {
+            List<Entry<K, Integer>> list = new ArrayList<>(map.entrySet());
+            list.sort((x, y) -> y.getValue().compareTo(x.getValue()));
+
+            Map<K, Integer> result = new LinkedHashMap<>();
+            for (Entry<K, Integer> entry : list) {
+                result.put(entry.getKey(), entry.getValue());
+            }
+
+            return result;
+        }
+    }
+
+    static void installListener(GraalTruffleRuntime runtime) {
+        runtime.addListener(new SplitStatisticsReporter());
+    }
 }

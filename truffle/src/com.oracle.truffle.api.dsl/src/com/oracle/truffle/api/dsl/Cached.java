@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -71,11 +71,12 @@ import com.oracle.truffle.api.nodes.Node;
  * </p>
  * <p>
  * The initializer expression of a cached parameter is defined using a subset of Java. This subset
- * includes field/parameter accesses, function calls, type exact infix comparisons (==, !=,
- * <, <=, >, >=) and integer literals. The return type of the initializer expression must be
- * assignable to the parameter type. If the annotated parameter type is derived from {@link Node}
- * then the {@link Node} instance is allowed to use the {@link Node#replace(Node)} method to replace
- * itself. Bound elements without receivers are resolved using the following order:
+ * includes field/parameter accesses, function calls, type exact infix comparisons (==, !=, <, <=,
+ * >, >=), logical negation (!), logical disjunction (||), null, true, false, and integer literals.
+ * The return type of the initializer expression must be assignable to the parameter type. If the
+ * annotated parameter type is derived from {@link Node} then the {@link Node} instance is allowed
+ * to use the {@link Node#replace(Node)} method to replace itself. Bound elements without receivers
+ * are resolved using the following order:
  * <ol>
  * <li>Dynamic and cached parameters of the enclosing specialization.</li>
  * <li>Fields defined using {@link NodeField} for the enclosing node.</li>
@@ -156,7 +157,7 @@ import com.oracle.truffle.api.nodes.Node;
  * instantiated. Alternatively if the <code>replaces</code> relation is omitted then all
  * <code>doCached</code> instances remain but no new instances are created.
  *
- * <code>
+ * <pre>
  * &#064;Specialization(guards = &quot;operand == cachedOperand&quot;)
  * void doCached(int operand, {@code @Cached}(&quot;operand&quot;) int cachedOperand) {
  *    CompilerAsserts.compilationConstant(cachedOperand);
@@ -182,7 +183,7 @@ import com.oracle.truffle.api.nodes.Node;
  * execute(3) => doNormal(3)    // new instantiation of doNormal due to limit overflow
  * execute(1) => doCached(1, 1)
  *
- * </code>
+ * </pre>
  *
  * </li>
  * <li>This next example shows how methods from the enclosing node can be used to initialize cached
@@ -298,6 +299,44 @@ public @interface Cached {
      * @since 19.0
      */
     String[] parameters() default {};
+
+    /**
+     * If set to <code>true</code> then weak references will be used to refer to this cached value
+     * in the generated node. The default value is <code>false</code>. The weak cached parameter is
+     * guaranteed to not become <code>null</code> in guards or specialization method invocations. If
+     * a weak cached parameter gets collected by the GC, then any compiled code remain unaffected
+     * and the specialization instance will not be removed. Specializations with collected cached
+     * references continue to count to the specialization limit. This is necessary to provide an
+     * upper bound for the number of invalidations that may happen for this specialization.
+     * <p>
+     * A weak cached parameter implicitly adds a <code>weakRef.get() != null</code> guard that is
+     * invoked before the cached value is referenced for the first time. This means that
+     * specializations which previously did not result in fall-through behavior may now
+     * fall-through. This is important if used in combination with {@link Fallback}. Weak cached
+     * parameters that are used as part of {@link GenerateUncached uncached} nodes, execute the
+     * cached initializer for each execution and therefore implicitly do not use a weak reference.
+     * <p>
+     * Example usage:
+     *
+     * <pre>
+     * &#64;GenerateUncached
+     * abstract class WeakInlineCacheNode extends Node {
+     *
+     *     abstract Object execute(Object arg0);
+     *
+     *     &#64;Specialization(guards = "cachedArg.equals(arg)", limit = "3")
+     *     Object s0(String arg,
+     *                     &#64;Cached(value = "arg", weak = true) String cachedArg) {
+     *         assertNotNull(cachedStorage);
+     *         return arg;
+     *     }
+     * }
+     * </pre>
+     *
+     * @see com.oracle.truffle.api.utilities.TruffleWeakReference
+     * @since 20.2
+     */
+    boolean weak() default false;
 
     /**
      * Allows sharing between multiple Cached parameters between multiple specializations or

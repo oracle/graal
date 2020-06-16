@@ -24,9 +24,12 @@
  */
 package com.oracle.svm.agent.restrict;
 
-import static com.oracle.svm.agent.Support.getClassNameOrNull;
+import static com.oracle.svm.jvmtiagentbase.Support.getClassNameOrNull;
+
+import org.graalvm.compiler.phases.common.LazyValue;
 
 import com.oracle.svm.configure.trace.AccessAdvisor;
+import com.oracle.svm.configure.trace.LazyValueUtils;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 
@@ -37,7 +40,15 @@ class AbstractAccessVerifier {
         this.accessAdvisor = advisor;
     }
 
-    protected boolean shouldApproveWithoutChecks(JNIEnvironment env, JNIObjectHandle callerClass) {
-        return accessAdvisor.shouldIgnore(() -> getClassNameOrNull(env, callerClass));
+    protected boolean shouldApproveWithoutChecks(JNIEnvironment env, JNIObjectHandle queriedClass, JNIObjectHandle callerClass) {
+        return shouldApproveWithoutChecks(lazyClassNameOrNull(env, queriedClass), lazyClassNameOrNull(env, callerClass));
+    }
+
+    protected boolean shouldApproveWithoutChecks(LazyValue<String> queriedClassName, LazyValue<String> callerClassName) {
+        return accessAdvisor.shouldIgnore(queriedClassName, callerClassName);
+    }
+
+    protected static LazyValue<String> lazyClassNameOrNull(JNIEnvironment env, JNIObjectHandle clazz) {
+        return LazyValueUtils.lazyGet(() -> getClassNameOrNull(env, clazz));
     }
 }

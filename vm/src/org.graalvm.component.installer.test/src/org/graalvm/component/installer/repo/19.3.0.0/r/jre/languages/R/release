@@ -1,0 +1,3 @@
+OS_NAME=macos
+OS_ARCH=amd64
+GRAALVM_VERSION=1.0.0-rc15-dev

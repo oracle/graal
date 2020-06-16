@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.hosted.phases;
 
+import static com.oracle.svm.core.graal.snippets.DeoptHostedSnippets.AnalysisSpeculation;
+import static com.oracle.svm.core.graal.snippets.DeoptHostedSnippets.AnalysisSpeculationReason;
+
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
@@ -62,6 +65,19 @@ public class DevirtualizeCallsPhase extends Phase {
         for (Invoke invoke : graph.getInvokes()) {
             if (invoke.callTarget() instanceof SubstrateMethodCallTargetNode) {
                 SubstrateMethodCallTargetNode callTarget = (SubstrateMethodCallTargetNode) invoke.callTarget();
+
+                if (callTarget.invokeKind().isDirect() && !((HostedMethod) callTarget.targetMethod()).getWrapped().isSimplyImplementationInvoked()) {
+                    /*
+                     * This is a direct call to a method that the static analysis did not see as
+                     * invoked. This can happen when the receiver is always null. In most cases, the
+                     * method profile also has a length of 0 and the below code to kill the invoke
+                     * would trigger. But not all methods have profiles, for example methods with
+                     * manually constructed graphs.
+                     */
+                    unreachableInvoke(graph, invoke, callTarget);
+                    continue;
+                }
+
                 JavaMethodProfile methodProfile = callTarget.getMethodProfile();
                 if (methodProfile != null) {
                     if (methodProfile.getMethods().length == 0) {
@@ -85,8 +101,9 @@ public class DevirtualizeCallsPhase extends Phase {
         if (!callTarget.isStatic()) {
             InliningUtil.nonNullReceiver(invoke);
         }
-        graph.addBeforeFixed(invoke.asNode(), graph.add(new FixedGuardNode(LogicConstantNode.forBoolean(true, graph), DeoptimizationReason.UnreachedCode, DeoptimizationAction.None, true)));
-
+        AnalysisSpeculation speculation = new AnalysisSpeculation(new AnalysisSpeculationReason("The call to " + callTarget.targetMethod().format("%H.%n(%P)") + " is not reachable."));
+        FixedGuardNode node = new FixedGuardNode(LogicConstantNode.forBoolean(true, graph), DeoptimizationReason.UnreachedCode, DeoptimizationAction.None, speculation, true);
+        graph.addBeforeFixed(invoke.asNode(), graph.add(node));
         graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After dead invoke %s", invoke);
     }
 

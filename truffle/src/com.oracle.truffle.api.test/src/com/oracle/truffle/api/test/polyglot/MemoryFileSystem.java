@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -121,15 +121,22 @@ public final class MemoryFileSystem implements FileSystem {
     private final Map<Long, FileInfo> inodes;
     private final Map<Long, byte[]> blocks;
     private final Path root;
+    private final Path tmpDir;
     private volatile Path userDir;
     private long nextInode = 0;
 
     public MemoryFileSystem() throws IOException {
+        this("/tmp");
+    }
+
+    public MemoryFileSystem(String tmpDirPath) throws IOException {
         this.inodes = new HashMap<>();
         this.blocks = new HashMap<>();
         root = MemoryPath.getRootDirectory();
         userDir = root;
         createDirectoryImpl();
+        tmpDir = root.resolve(tmpDirPath);
+        createDirectory(tmpDir);
     }
 
     @Override
@@ -407,6 +414,11 @@ public final class MemoryFileSystem implements FileSystem {
     @Override
     public String getSeparator() {
         return ((MemoryPath) root).delegate.getFileSystem().getSeparator();
+    }
+
+    @Override
+    public Path getTempDirectory() {
+        return tmpDir;
     }
 
     private static Object[] parse(String attributesSelector) {
@@ -1119,7 +1131,7 @@ public final class MemoryFileSystem implements FileSystem {
         }
 
         static Path getRootDirectory() {
-            List<? extends Path> rootDirectories = VirtualizedFileSystemTest.getRootDirectories();
+            List<? extends Path> rootDirectories = FileSystemsTest.getRootDirectories();
             if (rootDirectories.isEmpty()) {
                 throw new IllegalStateException("No root directory.");
             }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -321,7 +321,11 @@ public abstract class ValueProfile extends Profile {
             Class<?> clazz = cachedClass;
             if (clazz != Object.class) {
                 if (clazz != null && value != null && value.getClass() == clazz) {
-                    return (T) CompilerDirectives.castExact(value, clazz);
+                    if (CompilerDirectives.inInterpreter()) {
+                        return value;
+                    } else {
+                        return (T) CompilerDirectives.castExact(value, clazz);
+                    }
                 } else {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     if (clazz == null && value != null) {

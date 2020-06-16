@@ -82,6 +82,11 @@ public class PECoffSymtab extends ObjectFile.Element implements SymbolTable {
             return symType == IMAGE_SYMBOL.IMAGE_SYM_DTYPE_FUNCTION;
         }
 
+        @Override
+        public boolean isGlobal() {
+            return symClass == IMAGE_SYMBOL.IMAGE_SYM_CLASS_EXTERNAL;
+        }
+
         public boolean isNull() {
             return name.isEmpty() && value == 0 && size == 0 && symClass == 0 && symType == 0 && referencedSection == null && pseudoSection == null;
         }

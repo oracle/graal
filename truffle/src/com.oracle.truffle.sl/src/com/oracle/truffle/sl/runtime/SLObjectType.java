@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,8 +43,11 @@ package com.oracle.truffle.sl.runtime;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -60,7 +63,27 @@ import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.utilities.TriState;
+import com.oracle.truffle.sl.SLLanguage;
 
+/**
+ * This class defines operations that can be performed on SL Objects. While we could define all
+ * these operations as individual AST nodes, We opted to define those operations by using
+ * {@link com.oracle.truffle.api.library.Library a Truffle library}, or more concretely the
+ * {@link InteropLibrary}. This has several advantages, but the primary one is that it allows SL
+ * objects to be used in the interoperability message protocol, i.e. It allows other languages and
+ * tools to operate on SL objects without necessarily knowing they are SL objects.
+ *
+ * SL Objects are essentially instances of {@link DynamicObject} (objects whose members can be
+ * dynamically added and removed). Our {@link SLObjectType} class thus extends {@link ObjectType} an
+ * extensible object type descriptor for {@link DynamicObject}s. We also annotate the class with
+ * {@link ExportLibrary} with value {@link InteropLibrary InteropLibrary.class} and receiverType
+ * {@link DynamicObject DynamicObject.class}. This essentially ensures that the build system and
+ * runtime know that this class specifies the interop messages (i.e. operations) that SL can do on
+ * {@link DynamicObject} instances.
+ *
+ * {@see ExportLibrary} {@see ExportMessage} {@see InteropLibrary}
+ */
 @ExportLibrary(value = InteropLibrary.class, receiverType = DynamicObject.class)
 public final class SLObjectType extends ObjectType {
 
@@ -73,6 +96,57 @@ public final class SLObjectType extends ObjectType {
     @Override
     public Class<?> dispatch() {
         return SLObjectType.class;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("unused")
+    static boolean hasLanguage(DynamicObject receiver) {
+        return true;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("unused")
+    static Class<? extends TruffleLanguage<?>> getLanguage(DynamicObject receiver) {
+        return SLLanguage.class;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("unused")
+    static final class IsIdenticalOrUndefined {
+        @Specialization
+        static TriState doSLObject(DynamicObject receiver, DynamicObject other) {
+            return TriState.valueOf(receiver == other);
+        }
+
+        @Fallback
+        static TriState doOther(DynamicObject receiver, Object other) {
+            return TriState.UNDEFINED;
+        }
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    static int identityHashCode(DynamicObject receiver) {
+        return System.identityHashCode(receiver);
+    }
+
+    @ExportMessage
+    @SuppressWarnings("unused")
+    static boolean hasMetaObject(DynamicObject receiver) {
+        return true;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("unused")
+    static Object getMetaObject(DynamicObject receiver) {
+        return SLType.OBJECT;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    @SuppressWarnings("unused")
+    static Object toDisplayString(DynamicObject receiver, @SuppressWarnings("unused") boolean allowSideEffects) {
+        return "Object";
     }
 
     @ExportMessage
@@ -175,8 +249,19 @@ public final class SLObjectType extends ObjectType {
         }
     }
 
+    /**
+     * Since reading a member is potentially expensive (results in a truffle boundary call) if the
+     * node turns megamorphic (i.e. cache limit is exceeded) we annotate it with
+     * {@ReportPolymorphism}. This ensures that the runtime is notified when this node turns
+     * polymorphic. This, in turn, may, under certain conditions, cause the runtime to attempt to
+     * make node monomorphic again by duplicating the entire AST containing that node and
+     * specialising it for a particular call site.
+     *
+     * {@see ReportPolymorphism}
+     */
     @GenerateUncached
     @ExportMessage
+    @ReportPolymorphism
     abstract static class ReadMember {
 
         /**
@@ -231,8 +316,19 @@ public final class SLObjectType extends ObjectType {
         }
     }
 
+    /**
+     * Since writing a member is potentially expensive (results in a truffle boundary call) if the
+     * node turns megamorphic (i.e. cache limit is exceeded) we annotate it with
+     * {@ReportPolymorphism}. This ensures that the runtime is notified when this node turns
+     * polymorphic. This, in turn, may, under certain conditions, cause the runtime to attempt to
+     * make node monomorphic again by duplicating the entire AST containing that node and
+     * specialising it for a particular call site.
+     *
+     * {@see ReportPolymorphism}
+     */
     @GenerateUncached
     @ExportMessage
+    @ReportPolymorphism
     abstract static class WriteMember {
 
         /**
@@ -279,7 +375,7 @@ public final class SLObjectType extends ObjectType {
                         })
         @SuppressWarnings("unused")
         static void writeNewPropertyCached(DynamicObject receiver, String name, Object value,
-                        @Cached("name") Object cachedName,
+                        @Cached("name") String cachedName,
                         @Cached("receiver.getShape()") Shape oldShape,
                         @Cached("lookupLocation(oldShape, name, value)") Location oldLocation,
                         @Cached("defineProperty(oldShape, name, value)") Shape newShape,

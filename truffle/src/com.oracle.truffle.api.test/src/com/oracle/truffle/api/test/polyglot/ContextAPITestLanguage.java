@@ -103,9 +103,4 @@ public class ContextAPITestLanguage extends TruffleLanguage<LanguageContext> {
         context.disposeCalled++;
     }
 
-    @Override
-    protected boolean isObjectOfLanguage(Object object) {
-        return false;
-    }
-
 }

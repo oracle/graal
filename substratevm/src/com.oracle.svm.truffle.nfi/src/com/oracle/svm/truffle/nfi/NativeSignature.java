@@ -139,9 +139,20 @@ final class NativeSignature {
                 try (NativeErrnoContext mirror = new NativeErrnoContext()) {
                     LibFFI.ffi_call(cif, WordFactory.pointer(functionPointer), ret, argPtrs);
                 }
+
+                Throwable pending = NativeClosure.pendingException.get();
+                if (pending != null) {
+                    NativeClosure.pendingException.set(null);
+                    throw rethrow(pending);
+                }
             } finally {
                 UnmanagedMemory.free(argPtrs);
             }
         }
+    }
+
+    @SuppressWarnings({"unchecked"})
+    private static <E extends Throwable> RuntimeException rethrow(Throwable ex) throws E {
+        throw (E) ex;
     }
 }

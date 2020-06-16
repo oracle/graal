@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,12 +28,9 @@ import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
-import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.BeforeClass;
+import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -44,18 +41,11 @@ import org.graalvm.compiler.truffle.common.TruffleCompilation;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
 
-public class TransferToInterpreterTest {
+public class TransferToInterpreterTest extends TestWithPolyglotOptions {
 
-    private static TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope immediateCompilationScope;
-
-    @BeforeClass
-    public static void setup() {
-        immediateCompilationScope = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TruffleCompileImmediately, false);
-    }
-
-    @AfterClass
-    public static void tearDown() {
-        immediateCompilationScope.close();
+    @Before
+    public void setup() {
+        setupContext("engine.CompileImmediately", Boolean.FALSE.toString());
     }
 
     private final class TestRootNode extends RootNode {
@@ -84,7 +74,7 @@ public class TransferToInterpreterTest {
         target.call(0);
         Assert.assertFalse(target.isValid());
         final OptimizedCallTarget compilable = target;
-        TruffleCompiler compiler = runtime.newTruffleCompiler();
+        TruffleCompiler compiler = runtime.getTruffleCompiler(compilable);
         Map<String, Object> options = runtime.getOptions();
         try (TruffleCompilation compilation = compiler.openCompilation(compilable)) {
             TruffleDebugContext debug = compiler.openDebugContext(options, compilation);

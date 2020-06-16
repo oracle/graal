@@ -29,10 +29,21 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URLDecoder;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.channels.SeekableByteChannel;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.AclFileAttributeView;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.PosixFileAttributeView;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -387,5 +398,299 @@ public class SystemUtils {
             }
         }
         return s.substring(0, q);
+    }
+
+    public static int getJavaMajorVersion(CommandInput cmd) {
+        String v = cmd.getLocalRegistry() != null ? cmd.getLocalRegistry().getJavaVersion() : null;
+        if (v == null) {
+            cmd.getParameter(CommonConstants.SYSPROP_JAVA_VERSION, true);
+        } // NOI18N
+        if (v != null) {
+            return interpretJavaMajorVersion(v);
+        } else {
+            return getJavaMajorVersion();
+        }
+    }
+
+    public static int getJavaMajorVersion() {
+        String v = System.getProperty(CommonConstants.SYSPROP_JAVA_VERSION); // NOI18N
+        return interpretJavaMajorVersion(v);
+    }
+
+    /**
+     * Interprets String as a java version, returning the major version number.
+     * 
+     * @param v the version string
+     * @return the major version number, or zero if unknown
+     */
+    public static int interpretJavaMajorVersion(String v) {
+        String s;
+        if (v.startsWith("1.")) { // NOI18N
+            s = v.substring(2);
+        } else {
+            s = v;
+        }
+        try {
+            return Integer.parseInt(s);
+        } catch (NumberFormatException ex) {
+            return 0;
+        }
+    }
+
+    /**
+     * Provides the location of jre lib path, optionally the arch-dependent dir. The location
+     * depends on JDK version.
+     * 
+     * @param graalPath graalVM installation root
+     * @param archDir if true, returns the arch-dependent path.
+     * @return jre lib dir
+     */
+    public static Path getRuntimeLibDir(Path graalPath, boolean archDir) {
+        Path newLibPath;
+        Path base = getRuntimeBaseDir(graalPath);
+        switch (OS.get()) {
+            case LINUX:
+                String arch = System.getProperty("os.arch"); // NOI18N
+                Path temp = base.resolve(Paths.get("lib")); // NOI18N
+                if (!archDir || SystemUtils.getJavaMajorVersion() >= 10) {
+                    newLibPath = temp;
+                } else {
+                    newLibPath = temp.resolve(Paths.get(arch));
+                }
+                break;
+            case MAC:
+                newLibPath = base.resolve(Paths.get("lib")); // NOI18N
+                break;
+            case WINDOWS:
+                newLibPath = base.resolve(Paths.get("bin")); // NOI18N
+                break;
+            case UNKNOWN:
+            default:
+                return null;
+        }
+        return newLibPath;
+    }
+
+    /**
+     * Returns the JDK's runtime root dir. May be jre or ., depending on Java version
+     * 
+     * @param jdkInstallDir installation path
+     * @return runtime path
+     */
+    public static Path getRuntimeBaseDir(Path jdkInstallDir) {
+        int v = getJavaMajorVersion();
+        if (v >= 10) {
+            return jdkInstallDir;
+        } else if (v > 0) {
+            return jdkInstallDir.resolve("jre");  // NOI18N
+        }
+        // use fallback:
+        Path jre = jdkInstallDir.resolve("jre");  // NOI18N
+        if (Files.exists(jre) && Files.isDirectory(jre)) {
+            return jre;
+        } else {
+            return jdkInstallDir;
+        }
+    }
+
+    public static Path copySubtree(Path from, Path to) throws IOException {
+        Files.walkFileTree(from, new CopyDirVisitor(from, to));
+        return to;
+    }
+
+    public static class CopyDirVisitor extends SimpleFileVisitor<Path> {
+
+        private Path fromPath;
+        private Path toPath;
+        private StandardCopyOption copyOption;
+
+        public CopyDirVisitor(Path fromPath, Path toPath, StandardCopyOption copyOption) {
+            this.fromPath = fromPath;
+            this.toPath = toPath;
+            this.copyOption = copyOption;
+        }
+
+        public CopyDirVisitor(Path fromPath, Path toPath) {
+            this(fromPath, toPath, StandardCopyOption.REPLACE_EXISTING);
+        }
+
+        @Override
+        public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs)
+                        throws IOException {
+
+            Path targetPath = toPath.resolve(fromPath.relativize(dir));
+            if (!Files.exists(targetPath)) {
+                Files.createDirectory(targetPath);
+            }
+            return FileVisitResult.CONTINUE;
+        }
+
+        @Override
+        public FileVisitResult visitFile(Path file, BasicFileAttributes attrs)
+                        throws IOException {
+
+            Files.copy(file, toPath.resolve(fromPath.relativize(file)), copyOption);
+            return FileVisitResult.CONTINUE;
+        }
+    }
+
+    public static byte[] toHashBytes(String hashS) {
+        String val = hashS.trim();
+        if (val.length() < 4) {
+            return null;
+        }
+        char c = val.charAt(2);
+        boolean divided = !((c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f')); // NOI18N
+        boolean lenOK;
+        int s;
+        if (divided) {
+            lenOK = (val.length() + 1) % 3 == 0;
+            s = (val.length() + 1) / 3;
+        } else {
+            lenOK = (val.length()) % 2 == 0;
+            s = (val.length() + 1) / 2;
+        }
+        if (!lenOK) {
+            return null;
+        }
+        byte[] digest = new byte[s];
+        int dI = 0;
+        for (int i = 0; i + 1 < val.length(); i += 2) {
+            int b;
+            try {
+                b = Integer.parseInt(val.substring(i, i + 2), 16);
+            } catch (NumberFormatException ex) {
+                return null;
+            }
+            if (b < 0) {
+                return null;
+            }
+            digest[dI++] = (byte) b;
+            if (divided) {
+                i++;
+            }
+        }
+        return digest;
+    }
+
+    /**
+     * Formats a digest into a String representation. Prints digest bytes in hex, separates bytes by
+     * doublecolon.
+     * 
+     * @param digest digest bytes
+     * @return Strign representation.
+     */
+    public static String fingerPrint(byte[] digest) {
+        return fingerPrint(digest, true);
+    }
+
+    /**
+     * Formats a digest into a String representation. Prints digest bytes in hex, separates bytes by
+     * doublecolon.
+     * 
+     * @param digest digest bytes
+     * @param delimiter if true, put ':' between each two hex digits
+     * @return Strign representation.
+     */
+    public static String fingerPrint(byte[] digest, boolean delimiter) {
+        if (digest == null) {
+            return null;
+        }
+        StringBuilder sb = new StringBuilder(digest.length * 3);
+        for (int i = 0; i < digest.length; i++) {
+            if (delimiter && i > 0) {
+                sb.append(':');
+            }
+            sb.append(String.format("%02x", (digest[i] & 0xff)));
+        }
+        return sb.toString();
+    }
+
+    /**
+     * Hashes a string contents.
+     * 
+     * @param s the input text
+     * @param delimiters use : delimiters in the fingerprint
+     * @return hex fingerprint of the input text
+     */
+    public static String digestString(String s, boolean delimiters) {
+        try {
+            MessageDigest dg = MessageDigest.getInstance("SHA-256"); // NOI18N
+            dg.update(s.getBytes());
+            byte[] digest = dg.digest();
+            return SystemUtils.fingerPrint(digest, delimiters);
+        } catch (NoSuchAlgorithmException ex) {
+            throw new FailedOperationException(ex.getLocalizedMessage(), ex);
+        }
+    }
+
+    /**
+     * Normalizes architecture string.
+     * 
+     * @param os OS name
+     * @param arch arch name
+     * @return normalized arch name, or {@code null}.
+     */
+    public static String normalizeArchitecture(String os, String arch) {
+        if (arch == null) {
+            return null;
+        }
+        switch (arch.toLowerCase(Locale.ENGLISH)) {
+            case CommonConstants.ARCH_X8664:
+                return CommonConstants.ARCH_AMD64;
+            default:
+                return arch.toLowerCase(Locale.ENGLISH);
+        }
+    }
+
+    /**
+     * Normalizes OS name string.
+     * 
+     * @param os OS name
+     * @param arch arch name
+     * @return normalized os name, or {@code null}.
+     */
+    public static String normalizeOSName(String os, String arch) {
+        if (os == null) {
+            return null;
+        }
+        switch (os.toLowerCase(Locale.ENGLISH)) {
+            case CommonConstants.OS_MACOS_DARWIN:
+                return CommonConstants.OS_TOKEN_MACOS;
+            default:
+                return os.toLowerCase(Locale.ENGLISH);
+        }
+    }
+
+    /**
+     * Computes file digest. The default algorithm is SHA-256
+     * 
+     * @param localFile local file path
+     * @param digestAlgo the hash algorithm
+     * @return digest bytes
+     * @throws java.io.IOException in the case of I/O failure, or a digest failure/not found
+     */
+    public static byte[] computeFileDigest(Path localFile, String digestAlgo) throws IOException {
+        try (SeekableByteChannel s = FileChannel.open(localFile, StandardOpenOption.READ)) {
+            ByteBuffer bb = ByteBuffer.allocate(4096);
+            long size = Files.size(localFile);
+            MessageDigest dg = MessageDigest.getInstance("SHA-256"); // NOI18N
+            while (size > 0) {
+                if (bb.limit() > size) {
+                    bb.limit((int) size);
+                }
+                int r = s.read(bb);
+                if (r < 0) {
+                    break;
+                }
+                bb.flip();
+                dg.update(bb);
+                bb.clear();
+                size -= r;
+            }
+            return dg.digest();
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IOException(ex);
+        }
     }
 }

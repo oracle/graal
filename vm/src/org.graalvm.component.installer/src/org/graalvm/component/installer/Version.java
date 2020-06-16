@@ -308,6 +308,10 @@ public final class Version implements Comparable<Version> {
                 if (WILDCARD.equals(sA)) {
                     return 0;
                 }
+                // special case: if there's just one part and that one is zero, define it the same
+                if (pB.size() == 1 && "0".equals(pB.get(0))) {
+                    return 0;
+                }
             }
             return -1;
         }

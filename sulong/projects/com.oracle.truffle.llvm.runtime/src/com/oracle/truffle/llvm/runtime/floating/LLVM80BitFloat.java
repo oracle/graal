@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,13 +33,12 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 
-import javax.xml.bind.DatatypeConverter;
-
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -61,7 +60,6 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
     private static final int BIT_TO_HEX_FACTOR = 4;
     public static final int BIT_WIDTH = 80;
     public static final int BYTE_WIDTH = BIT_WIDTH / Byte.SIZE;
-    private static final int HEX_WIDTH = BIT_WIDTH / BIT_TO_HEX_FACTOR;
 
     private static final int EXPONENT_BIT_WIDTH = 15;
     private static final int FRACTION_BIT_WIDTH = 64;
@@ -484,25 +482,27 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
     }
 
     public byte[] getBytesBigEndian() {
-        ByteBuffer bb = ByteBuffer.allocate(BYTE_WIDTH);
+        byte[] array = new byte[BYTE_WIDTH];
+        ByteBuffer bb = ByteBuffer.wrap(array);
         bb.order(ByteOrder.BIG_ENDIAN);
         short signWithExponent = getExponent();
         short signBit = sign ? (short) bit(Short.SIZE - 1) : 0;
         signWithExponent |= signBit;
         bb.putShort(signWithExponent);
         bb.putLong(getFraction());
-        return bb.array();
+        return array;
     }
 
     public byte[] getBytes() {
-        ByteBuffer bb = ByteBuffer.allocate(BYTE_WIDTH);
+        byte[] array = new byte[BYTE_WIDTH];
+        ByteBuffer bb = ByteBuffer.wrap(array);
         bb.order(ByteOrder.LITTLE_ENDIAN);
         short signWithExponent = getExponent();
         short signBit = sign ? (short) bit(Short.SIZE - 1) : 0;
         signWithExponent |= signBit;
         bb.putLong(getFraction());
         bb.putShort(signWithExponent);
-        return bb.array();
+        return array;
     }
 
     public static LLVM80BitFloat fromBytesBigEndian(byte[] bytes) {
@@ -616,7 +616,11 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
     }
 
     public static LLVM80BitFloat fromUnsignedByte(byte from) {
-        return fromInt(from & Byte.MIN_VALUE);
+        return fromInt(from & 0xFF);
+    }
+
+    public static LLVM80BitFloat fromUnsignedShort(short from) {
+        return fromUnsignedInt(from & 0xFFFF);
     }
 
     public static LLVM80BitFloat fromShort(short from) {
@@ -642,13 +646,6 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
         return val1.compareOrdered(val2);
     }
 
-    public static LLVM80BitFloat fromString(String stringValue) {
-        if (stringValue.length() != HEX_WIDTH) {
-            throw new IllegalArgumentException("unexpected length of input string!");
-        }
-        return fromBytesBigEndian(DatatypeConverter.parseHexBinary(stringValue));
-    }
-
     protected abstract static class LLVM80BitFloatNativeCallNode extends LLVMNode {
         private final String name;
 
@@ -658,7 +655,7 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
 
         protected TruffleObject createFunction() {
             LLVMContext context = lookupContextReference(LLVMLanguage.class).get();
-            NFIContextExtension nfiContextExtension = context.getLanguage().getContextExtensionOrNull(NFIContextExtension.class);
+            NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
             return nfiContextExtension == null ? null : nfiContextExtension.getNativeFunction(context, "__sulong_fp80_" + name, "(UINT64,UINT64,UINT64):VOID");
         }
 
@@ -668,7 +665,8 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
         protected LLVM80BitFloat doCall(LLVM80BitFloat x, LLVM80BitFloat y,
                         @Cached("createFunction()") TruffleObject function,
                         @CachedLibrary("function") InteropLibrary nativeExecute,
-                        @Cached("getLLVMMemory()") LLVMMemory memory) {
+                        @CachedLanguage LLVMLanguage language) {
+            LLVMMemory memory = language.getLLVMMemory();
             LLVMNativePointer mem = memory.allocateMemory(3 * 16);
             LLVMNativePointer ptrX = mem;
             LLVMNativePointer ptrY = ptrX.increment(16);

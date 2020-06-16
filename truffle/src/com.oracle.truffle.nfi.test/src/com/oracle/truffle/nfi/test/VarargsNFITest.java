@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -216,7 +216,8 @@ public class VarargsNFITest extends NFITest {
                             new FormatSpec("x (nil)", "([sint8], uint64, string, ...string, pointer) : sint32", "%s %p", new BoxedPrimitive("x"), new NullObject()),
                             new FormatSpec("x (nil) 42.00", "([sint8], uint64, string, ...string, pointer, double) : sint32", "%s %p %f", new BoxedPrimitive("x"), new NullObject(), 42),
                             new FormatSpec("x (nil) 42.00 42", "([sint8], uint64, string, ...string, pointer, double, sint64) : sint32", "%s %p %f %d", new BoxedPrimitive("x"), new NullObject(), 42,
-                                            42));
+                                            42),
+                            new FormatSpec("x (nil)", "([sint8], uint64, string, ...string, nullable) : sint32", "%s %p", new BoxedPrimitive("x"), new NullObject()));
         }
     }
 

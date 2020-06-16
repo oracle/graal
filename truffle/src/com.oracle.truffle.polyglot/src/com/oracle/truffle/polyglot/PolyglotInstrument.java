@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,8 @@ import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractInstrumentImpl;
 
 import com.oracle.truffle.api.InstrumentInfo;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import java.util.function.Supplier;
 
 class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
@@ -60,6 +62,7 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
     private volatile OptionValuesImpl optionValues;
     private volatile boolean initialized;
     private volatile boolean created;
+    int requestedAsyncStackDepth = 0;
 
     PolyglotInstrument(PolyglotEngineImpl engine, InstrumentCache cache) {
         super(engine.impl);
@@ -69,7 +72,15 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
 
     @Override
     public OptionDescriptors getOptions() {
-        engine.checkState();
+        try {
+            engine.checkState();
+            return getOptionsInternal();
+        } catch (Throwable t) {
+            throw PolyglotImpl.guestToHostException(engine, t);
+        }
+    }
+
+    OptionDescriptors getOptionsInternal() {
         ensureInitialized();
         return options;
     }
@@ -78,10 +89,14 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
         if (optionValues == null) {
             synchronized (instrumentLock) {
                 if (optionValues == null) {
-                    optionValues = new OptionValuesImpl(engine, getOptions());
+                    optionValues = new OptionValuesImpl(engine, getOptionsInternal(), false);
                 }
             }
         }
+        return optionValues;
+    }
+
+    OptionValuesImpl getOptionValuesIfExists() {
         return optionValues;
     }
 
@@ -95,8 +110,12 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
             synchronized (instrumentLock) {
                 if (!initialized) {
                     try {
-                        Class<?> loadedInstrument = cache.getInstrumentationClass();
-                        INSTRUMENT.initializeInstrument(engine.instrumentationHandler, this, loadedInstrument);
+                        INSTRUMENT.initializeInstrument(engine.instrumentationHandler, this, cache.getClassName(), new Supplier<TruffleInstrument>() {
+                            @Override
+                            public TruffleInstrument get() {
+                                return cache.loadInstrument();
+                            }
+                        });
                         this.options = INSTRUMENT.describeOptions(engine.instrumentationHandler, this, cache.getId());
                     } catch (Exception e) {
                         throw new IllegalStateException(String.format("Error initializing instrument '%s' using class '%s'.", cache.getId(), cache.getClassName()), e);
@@ -148,21 +167,17 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
 
     @Override
     public <T> T lookup(Class<T> serviceClass) {
-        return lookup(serviceClass, true);
+        try {
+            engine.checkState();
+            return lookupInternal(serviceClass);
+        } catch (Throwable t) {
+            throw PolyglotImpl.guestToHostException(engine, t);
+        }
     }
 
-    <T> T lookup(Class<T> serviceClass, boolean wrapExceptions) {
-        engine.checkState();
+    <T> T lookupInternal(Class<T> serviceClass) {
         if (cache.supportsService(serviceClass)) {
-            try {
-                ensureCreated();
-            } catch (Throwable t) {
-                if (wrapExceptions) {
-                    throw PolyglotImpl.wrapGuestException(engine, t);
-                } else {
-                    throw t;
-                }
-            }
+            ensureCreated();
             return INSTRUMENT.getInstrumentationHandlerService(engine.instrumentationHandler, this, serviceClass);
         } else {
             return null;
@@ -183,7 +198,7 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
     public String getVersion() {
         final String version = cache.getVersion();
         if (version.equals("inherit")) {
-            return engine.getVersion();
+            return engine.creatorApi.getVersion();
         } else {
             return version;
         }

@@ -1,87 +1,102 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * The Universal Permissive License (UPL), Version 1.0
  *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
  *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ * (a) the Software, and
  *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 package com.oracle.truffle.regex.tregex.dfa;
 
+import java.util.Arrays;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.regex.charset.CharSet;
+import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.tregex.automaton.BasicState;
+import com.oracle.truffle.regex.tregex.automaton.TransitionSet;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.buffer.IntArrayBuffer;
+import com.oracle.truffle.regex.tregex.nfa.NFA;
 import com.oracle.truffle.regex.tregex.nfa.NFAState;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
-import com.oracle.truffle.regex.tregex.nodes.TraceFinderDFAStateNode;
+import com.oracle.truffle.regex.tregex.nodes.dfa.TraceFinderDFAStateNode;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+public final class DFAStateNodeBuilder extends BasicState<DFAStateNodeBuilder, DFAStateTransitionBuilder> implements JsonConvertible {
 
-public final class DFAStateNodeBuilder implements JsonConvertible {
+    private static final byte FLAG_OVERRIDE_FINAL_STATE = 1 << (N_FLAGS + 0);
+    private static final byte FLAG_FINAL_STATE_SUCCESSOR = 1 << (N_FLAGS + 1);
+    private static final byte FLAG_BACKWARD_PREFIX_STATE = 1 << (N_FLAGS + 2);
+    private static final byte FLAG_FORWARD = (byte) (1 << (N_FLAGS + 3));
 
-    private static final List<DFACaptureGroupTransitionBuilder> NODE_SPLIT_TAINTED = new ArrayList<>();
+    private static final DFAStateTransitionBuilder[] EMPTY_TRANSITIONS = new DFAStateTransitionBuilder[0];
+    private static final DFAStateTransitionBuilder[] NODE_SPLIT_TAINTED = new DFAStateTransitionBuilder[0];
     private static final String NODE_SPLIT_UNINITIALIZED_PRECEDING_TRANSITIONS_ERROR_MSG = "this state node builder was altered by the node splitter and does not have valid information about preceding transitions!";
 
-    private final short id;
-    private NFATransitionSet nfaStateSet;
-    private boolean initialState = false;
-    private boolean overrideFinalState = false;
-    private boolean isFinalStateSuccessor = false;
-    private boolean isBackwardPrefixState;
+    private TransitionSet<NFA, NFAState, NFAStateTransition> nfaTransitionSet;
     private short backwardPrefixState = -1;
-    private DFAStateTransitionBuilder[] transitions;
-    private List<DFACaptureGroupTransitionBuilder> precedingTransitions;
     private NFAStateTransition anchoredFinalStateTransition;
     private NFAStateTransition unAnchoredFinalStateTransition;
     private byte preCalculatedUnAnchoredResult = TraceFinderDFAStateNode.NO_PRE_CALC_RESULT;
     private byte preCalculatedAnchoredResult = TraceFinderDFAStateNode.NO_PRE_CALC_RESULT;
 
-    DFAStateNodeBuilder(short id, NFATransitionSet nfaStateSet, boolean isBackwardPrefixState) {
-        this.id = id;
-        this.nfaStateSet = nfaStateSet;
-        this.isBackwardPrefixState = isBackwardPrefixState;
+    DFAStateNodeBuilder(int id, TransitionSet<NFA, NFAState, NFAStateTransition> nfaStateSet, boolean isBackwardPrefixState, boolean isInitialState, boolean forward) {
+        super(id, EMPTY_TRANSITIONS);
+        assert id <= Short.MAX_VALUE;
+        this.nfaTransitionSet = nfaStateSet;
+        setFlag(FLAG_BACKWARD_PREFIX_STATE, isBackwardPrefixState);
+        setFlag(FLAG_FORWARD, forward);
+        setUnAnchoredInitialState(isInitialState);
         if (isBackwardPrefixState) {
-            this.backwardPrefixState = this.id;
+            this.backwardPrefixState = (short) id;
         }
     }
 
     private DFAStateNodeBuilder(DFAStateNodeBuilder copy, short copyID) {
-        id = copyID;
-        nfaStateSet = copy.nfaStateSet;
-        initialState = copy.initialState;
-        overrideFinalState = copy.overrideFinalState;
-        isFinalStateSuccessor = copy.isFinalStateSuccessor;
-        isBackwardPrefixState = copy.isBackwardPrefixState;
+        super(copyID, copy.getFlags(), EMPTY_TRANSITIONS);
+        nfaTransitionSet = copy.nfaTransitionSet;
         backwardPrefixState = copy.backwardPrefixState;
-        transitions = new DFAStateTransitionBuilder[copy.transitions.length];
+        DFAStateTransitionBuilder[] transitions = new DFAStateTransitionBuilder[copy.getSuccessors().length];
         for (int i = 0; i < transitions.length; i++) {
-            transitions[i] = copy.transitions[i].createNodeSplitCopy();
+            transitions[i] = copy.getSuccessors()[i].createNodeSplitCopy();
         }
-        precedingTransitions = NODE_SPLIT_TAINTED;
+        setSuccessors(transitions);
+        setPredecessors(NODE_SPLIT_TAINTED);
         anchoredFinalStateTransition = copy.anchoredFinalStateTransition;
         unAnchoredFinalStateTransition = copy.unAnchoredFinalStateTransition;
         preCalculatedAnchoredResult = copy.preCalculatedAnchoredResult;
@@ -93,60 +108,28 @@ public final class DFAStateNodeBuilder implements JsonConvertible {
     }
 
     public void nodeSplitUpdateSuccessors(short[] newSuccessors, DFAStateNodeBuilder[] stateIndexMap) {
-        for (int i = 0; i < transitions.length; i++) {
+        for (int i = 0; i < getSuccessors().length; i++) {
             DFAStateNodeBuilder successor = stateIndexMap[newSuccessors[i]];
             assert successor != null;
-            successor.precedingTransitions = NODE_SPLIT_TAINTED;
-            transitions[i].setTarget(successor);
+            successor.setPredecessors(NODE_SPLIT_TAINTED);
+            getSuccessors()[i].setTarget(successor);
         }
         if (hasBackwardPrefixState()) {
-            assert newSuccessors.length == transitions.length + 1;
+            assert newSuccessors.length == getSuccessors().length + 1;
             backwardPrefixState = newSuccessors[newSuccessors.length - 1];
         }
     }
 
-    public short getId() {
-        return id;
+    public void setNfaTransitionSet(TransitionSet<NFA, NFAState, NFAStateTransition> nfaTransitionSet) {
+        this.nfaTransitionSet = nfaTransitionSet;
     }
 
-    public void setNfaStateSet(NFATransitionSet nfaStateSet) {
-        this.nfaStateSet = nfaStateSet;
-    }
-
-    public NFATransitionSet getNfaStateSet() {
-        return nfaStateSet;
-    }
-
-    public void setInitialState(boolean initialState) {
-        this.initialState = initialState;
-    }
-
-    public boolean isInitialState() {
-        return initialState;
-    }
-
-    public boolean isFinalState() {
-        return unAnchoredFinalStateTransition != null || overrideFinalState;
+    public TransitionSet<NFA, NFAState, NFAStateTransition> getNfaTransitionSet() {
+        return nfaTransitionSet;
     }
 
     public void setOverrideFinalState(boolean overrideFinalState) {
-        this.overrideFinalState = overrideFinalState;
-    }
-
-    public boolean isAnchoredFinalState() {
-        return anchoredFinalStateTransition != null;
-    }
-
-    public int getNumberOfSuccessors() {
-        return transitions.length + (hasBackwardPrefixState() ? 1 : 0);
-    }
-
-    public DFAStateTransitionBuilder[] getTransitions() {
-        return transitions;
-    }
-
-    public void setTransitions(DFAStateTransitionBuilder[] transitions) {
-        this.transitions = transitions;
+        setFlag(FLAG_OVERRIDE_FINAL_STATE, overrideFinalState);
     }
 
     /**
@@ -154,77 +137,92 @@ public final class DFAStateNodeBuilder implements JsonConvertible {
      * states may have their last matcher replaced with an AnyMatcher.
      */
     public boolean isFinalStateSuccessor() {
-        return isFinalStateSuccessor;
+        return getFlag(FLAG_FINAL_STATE_SUCCESSOR);
     }
 
     public void setFinalStateSuccessor() {
-        isFinalStateSuccessor = true;
+        setFlag(FLAG_FINAL_STATE_SUCCESSOR);
+    }
+
+    public boolean isBackwardPrefixState() {
+        return getFlag(FLAG_BACKWARD_PREFIX_STATE);
+    }
+
+    public void setIsBackwardPrefixState(boolean backwardPrefixState) {
+        setFlag(FLAG_BACKWARD_PREFIX_STATE, backwardPrefixState);
+    }
+
+    @Override
+    public boolean isUnAnchoredFinalState() {
+        return getFlag((byte) (FLAG_OVERRIDE_FINAL_STATE | FLAG_UN_ANCHORED_FINAL_STATE));
+    }
+
+    @Override
+    public boolean isFinalState() {
+        return getFlag((byte) (FLAG_OVERRIDE_FINAL_STATE | FLAG_ANY_FINAL_STATE));
+    }
+
+    public boolean isForward() {
+        return getFlag(FLAG_FORWARD);
+    }
+
+    public boolean isPrioritySensitive() {
+        return getFlag(FLAG_FORWARD);
+    }
+
+    public int getNumberOfSuccessors() {
+        return getSuccessors().length + (hasBackwardPrefixState() ? 1 : 0);
+    }
+
+    @Override
+    protected DFAStateTransitionBuilder[] createTransitionsArray(int length) {
+        return new DFAStateTransitionBuilder[length];
     }
 
     /**
      * Returns {@code true} iff the union of the
      * {@link DFAStateTransitionBuilder#getMatcherBuilder()} of all transitions in this state is
-     * equal to {@link CharSet#getFull()}.
+     * equal to {@link CodePointSet#getFull()}.
      */
     public boolean coversFullCharSpace(CompilationBuffer compilationBuffer) {
         IntArrayBuffer indicesBuf = compilationBuffer.getIntRangesBuffer1();
-        indicesBuf.ensureCapacity(transitions.length);
+        indicesBuf.ensureCapacity(getSuccessors().length);
         int[] indices = indicesBuf.getBuffer();
-        Arrays.fill(indices, 0, transitions.length, 0);
-        int nextLo = Character.MIN_VALUE;
+        Arrays.fill(indices, 0, getSuccessors().length, 0);
+        int nextLo = CodePointSet.MIN_VALUE;
         while (true) {
             int i = findNextLo(indices, nextLo);
             if (i < 0) {
                 return false;
             }
-            CharSet mb = transitions[i].getMatcherBuilder();
-            if (mb.getHi(indices[i]) == Character.MAX_VALUE) {
+            CodePointSet ranges = getSuccessors()[i].getMatcherBuilder();
+            if (ranges.getHi(indices[i]) == CodePointSet.MAX_VALUE) {
                 return true;
             }
-            nextLo = mb.getHi(indices[i]) + 1;
+            nextLo = ranges.getHi(indices[i]) + 1;
             indices[i]++;
         }
     }
 
     private int findNextLo(int[] indices, int findLo) {
-        for (int i = 0; i < transitions.length; i++) {
-            CharSet mb = transitions[i].getMatcherBuilder();
-            if (indices[i] == mb.size()) {
+        for (int i = 0; i < getSuccessors().length; i++) {
+            CodePointSet ranges = getSuccessors()[i].getMatcherBuilder();
+            if (indices[i] == ranges.size()) {
                 continue;
             }
-            if (mb.getLo(indices[i]) == findLo) {
+            if (ranges.getLo(indices[i]) == findLo) {
                 return i;
             }
         }
         return -1;
     }
 
-    public void addPrecedingTransition(DFACaptureGroupTransitionBuilder transitionBuilder) {
-        if (precedingTransitions == NODE_SPLIT_TAINTED) {
+    @Override
+    public DFAStateTransitionBuilder[] getPredecessors() {
+        if (super.getPredecessors() == NODE_SPLIT_TAINTED) {
             throw new IllegalStateException(NODE_SPLIT_UNINITIALIZED_PRECEDING_TRANSITIONS_ERROR_MSG);
         }
-        if (precedingTransitions == null) {
-            precedingTransitions = new ArrayList<>();
-        }
-        precedingTransitions.add(transitionBuilder);
-    }
-
-    public List<DFACaptureGroupTransitionBuilder> getPrecedingTransitions() {
-        if (precedingTransitions == NODE_SPLIT_TAINTED) {
-            throw new IllegalStateException(NODE_SPLIT_UNINITIALIZED_PRECEDING_TRANSITIONS_ERROR_MSG);
-        }
-        if (precedingTransitions == null) {
-            return Collections.emptyList();
-        }
-        return precedingTransitions;
-    }
-
-    public boolean isBackwardPrefixState() {
-        return isBackwardPrefixState;
-    }
-
-    public void setIsBackwardPrefixState(boolean backwardPrefixState) {
-        isBackwardPrefixState = backwardPrefixState;
+        return super.getPredecessors();
     }
 
     public boolean hasBackwardPrefixState() {
@@ -285,30 +283,32 @@ public final class DFAStateNodeBuilder implements JsonConvertible {
     }
 
     public void updateFinalStateData(DFAGenerator dfaGenerator) {
-        boolean forward = nfaStateSet.isForward();
-        for (NFAStateTransition t : nfaStateSet) {
+        boolean forward = dfaGenerator.isForward();
+        for (NFAStateTransition t : nfaTransitionSet.getTransitions()) {
             NFAState target = t.getTarget(forward);
             if (target.hasTransitionToAnchoredFinalState(forward)) {
                 if (anchoredFinalStateTransition == null) {
+                    setAnchoredFinalState();
                     setAnchoredFinalStateTransition(target.getTransitionToAnchoredFinalState(forward));
                 }
             }
             if (target.hasTransitionToUnAnchoredFinalState(forward)) {
+                setUnAnchoredFinalState();
                 setUnAnchoredFinalStateTransition(target.getTransitionToUnAnchoredFinalState(forward));
                 if (forward) {
                     return;
                 }
             }
             if (dfaGenerator.getNfa().isTraceFinderNFA()) {
-                for (NFAStateTransition t2 : target.getNext(forward)) {
+                for (NFAStateTransition t2 : target.getSuccessors(forward)) {
                     NFAState target2 = t2.getTarget(forward);
                     if (target2.isAnchoredFinalState(forward)) {
-                        assert target2.hasPossibleResults() && target2.getPossibleResults().size() == 1;
-                        updatePreCalcAnchoredResult(target2.getPossibleResults().get(0));
+                        assert target2.hasPossibleResults() && target2.getPossibleResults().numberOfSetBits() == 1;
+                        updatePreCalcAnchoredResult(target2.getPossibleResults().iterator().nextInt());
                     }
                     if (target2.isUnAnchoredFinalState(forward)) {
-                        assert target2.hasPossibleResults() && target2.getPossibleResults().size() == 1;
-                        updatePreCalcUnAnchoredResult(target2.getPossibleResults().get(0));
+                        assert target2.hasPossibleResults() && target2.getPossibleResults().numberOfSetBits() == 1;
+                        updatePreCalcUnAnchoredResult(target2.getPossibleResults().iterator().nextInt());
                     }
                 }
             }
@@ -316,7 +316,7 @@ public final class DFAStateNodeBuilder implements JsonConvertible {
     }
 
     public String stateSetToString() {
-        StringBuilder sb = new StringBuilder(nfaStateSet.toString());
+        StringBuilder sb = new StringBuilder(nfaTransitionSet.toString());
         if (preCalculatedUnAnchoredResult != TraceFinderDFAStateNode.NO_PRE_CALC_RESULT) {
             sb.append("_r").append(preCalculatedUnAnchoredResult);
         }
@@ -328,8 +328,16 @@ public final class DFAStateNodeBuilder implements JsonConvertible {
 
     @Override
     public int hashCode() {
-        int hashCode = nfaStateSet.hashCode();
-        if (isBackwardPrefixState) {
+        int hashCode;
+        if (isPrioritySensitive()) {
+            hashCode = 1;
+            for (int i = 0; i < nfaTransitionSet.size(); i++) {
+                hashCode = 31 * hashCode + nfaTransitionSet.getTransition(i).getTarget().hashCode();
+            }
+        } else {
+            hashCode = nfaTransitionSet.getTargetStateSet().hashCode();
+        }
+        if (isBackwardPrefixState()) {
             hashCode *= 31;
         }
         return hashCode;
@@ -344,23 +352,43 @@ public final class DFAStateNodeBuilder implements JsonConvertible {
             return false;
         }
         DFAStateNodeBuilder o = (DFAStateNodeBuilder) obj;
-        return nfaStateSet.equals(o.nfaStateSet) && isBackwardPrefixState == o.isBackwardPrefixState;
+        if (isBackwardPrefixState() != o.isBackwardPrefixState()) {
+            return false;
+        }
+        if (isPrioritySensitive()) {
+            if (nfaTransitionSet.size() != o.nfaTransitionSet.size()) {
+                return false;
+            }
+            for (int i = 0; i < nfaTransitionSet.size(); i++) {
+                if (!nfaTransitionSet.getTransition(i).getTarget(isForward()).equals(o.nfaTransitionSet.getTransition(i).getTarget())) {
+                    return false;
+                }
+            }
+            return true;
+        } else {
+            return nfaTransitionSet.getTargetStateSet().equals(o.nfaTransitionSet.getTargetStateSet());
+        }
+    }
+
+    @Override
+    protected boolean hasTransitionToUnAnchoredFinalState(boolean forward) {
+        throw new UnsupportedOperationException();
     }
 
     @TruffleBoundary
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        return DebugUtil.appendNodeId(sb, id).append(": ").append(stateSetToString()).toString();
+        return DebugUtil.appendNodeId(sb, getId()).append(": ").append(stateSetToString()).toString();
     }
 
     @TruffleBoundary
     @Override
     public JsonValue toJson() {
-        return Json.obj(Json.prop("id", id),
-                        Json.prop("stateSet", Json.array(nfaStateSet.stream().map(x -> Json.val(x.getTarget().getId())))),
-                        Json.prop("finalState", isFinalState()),
+        return Json.obj(Json.prop("id", getId()),
+                        Json.prop("stateSet", Json.array(Arrays.stream(nfaTransitionSet.getTransitions()).map(x -> Json.val(x.getTarget().getId())))),
+                        Json.prop("finalState", isUnAnchoredFinalState()),
                         Json.prop("anchoredFinalState", isAnchoredFinalState()),
-                        Json.prop("transitions", Arrays.stream(transitions).map(x -> Json.val(x.getId()))));
+                        Json.prop("transitions", Arrays.stream(getSuccessors()).map(x -> Json.val(x.getId()))));
     }
 }

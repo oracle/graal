@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.interop.access;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -44,6 +45,7 @@ import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropAccessNode.Acce
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
+@GenerateUncached
 public abstract class LLVMInteropWriteNode extends LLVMNode {
 
     public static LLVMInteropWriteNode create() {
@@ -104,6 +106,7 @@ public abstract class LLVMInteropWriteNode extends LLVMNode {
         }
     }
 
+    @GenerateUncached
     abstract static class ConvertOutgoingNode extends LLVMNode {
 
         abstract Object execute(Object value, LLVMInteropType.Value outgoingType, ForeignToLLVMType writeType);

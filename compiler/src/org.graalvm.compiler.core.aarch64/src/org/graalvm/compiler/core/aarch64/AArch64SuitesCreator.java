@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,6 +43,11 @@ public class AArch64SuitesCreator extends DefaultSuitesCreator {
 
     public AArch64SuitesCreator(CompilerConfiguration compilerConfiguration, Plugins plugins, List<Class<? extends Phase>> insertReadReplacementBeforePositions) {
         super(compilerConfiguration, plugins);
+        this.insertReadReplacementBeforePositions = insertReadReplacementBeforePositions;
+    }
+
+    public AArch64SuitesCreator(CompilerConfiguration compilerConfiguration, List<Class<? extends Phase>> insertReadReplacementBeforePositions) {
+        super(compilerConfiguration);
         this.insertReadReplacementBeforePositions = insertReadReplacementBeforePositions;
     }
 

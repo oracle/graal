@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,10 +45,13 @@ import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.debug.SuspendedEvent.DebugAsyncStackFrameLists;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
@@ -76,6 +79,7 @@ public final class DebugException extends RuntimeException {
     private volatile CatchLocation catchLocation; // the catch location, or null
     private SuspendedEvent suspendedEvent;    // the SuspendedEvent when from breakpoint, or null
     private List<DebugStackTraceElement> debugStackTrace;
+    private List<List<DebugStackTraceElement>> debugAsyncStacks;
     private StackTraceElement[] javaLikeStackTrace;
 
     DebugException(DebuggerSession session, String message, Node throwLocation, boolean isCatchNodeComputed, CatchLocation catchLocation) {
@@ -190,6 +194,31 @@ public final class DebugException extends RuntimeException {
             }
         }
         return debugStackTrace;
+    }
+
+    /**
+     * Get a list of asynchronous stack traces that led to scheduling of the exception's execution.
+     * Returns an empty list if no asynchronous stack is known. The first asynchronous stack is at
+     * the first index in the list. A possible next asynchronous stack (that scheduled execution of
+     * the previous one) is at the next index in the list.
+     * <p>
+     * Languages might not provide asynchronous stack traces by default for performance reasons.
+     * Call {@link DebuggerSession#setAsynchronousStackDepth(int)} to request asynchronous stacks.
+     * Languages may provide asynchronous stacks if it's of no performance penalty, or if requested
+     * by other options.
+     *
+     * @see DebuggerSession#setAsynchronousStackDepth(int)
+     * @since 20.1.0
+     */
+    public List<List<DebugStackTraceElement>> getDebugAsynchronousStacks() {
+        if (debugAsyncStacks == null) {
+            int size = getDebugStackTrace().size();
+            if (size == 0) {
+                return Collections.emptyList();
+            }
+            debugAsyncStacks = new DebugAsyncStackFrameLists(session, getDebugStackTrace());
+        }
+        return debugAsyncStacks;
     }
 
     /**
@@ -312,6 +341,34 @@ public final class DebugException extends RuntimeException {
             }
         }
         return catchLocation;
+    }
+
+    /**
+     * Returns the guest language representation of the exception, or <code>null</code> if the
+     * requesting language class does not match the root node language at the throw location.
+     *
+     * This method is permitted only if the guest language class is available. This is the case if
+     * you want to utilize the Debugger API directly from within a guest language, or if you are an
+     * instrument bound/dependent on a specific language.
+     *
+     * @param languageClass the Truffle language class for a given guest language
+     * @return the throwable guest language exception object
+     *
+     * @since 20.1
+     */
+    public Throwable getRawException(Class<? extends TruffleLanguage<?>> languageClass) {
+        Objects.requireNonNull(languageClass);
+        RootNode rootNode = getThrowLocationNode().getRootNode();
+        if (rootNode == null) {
+            return null;
+        }
+        // check if language class of the root node corresponds to the input language
+        TruffleLanguage<?> language = Debugger.ACCESSOR.nodeSupport().getLanguage(rootNode);
+        return language != null && language.getClass() == languageClass ? getRawException() : null;
+    }
+
+    Node getThrowLocationNode() {
+        return throwLocation;
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,8 +31,8 @@
 #include <ctype.h>
 
 int main() {
-  printf("%d\n", isalpha(-128));
-#ifdef __linux__ 
-  printf("%d\n", isalpha(255));
+    printf("%d\n", isalpha(-128));
+#ifdef __linux__
+    printf("%d\n", isalpha(255));
 #endif
 }

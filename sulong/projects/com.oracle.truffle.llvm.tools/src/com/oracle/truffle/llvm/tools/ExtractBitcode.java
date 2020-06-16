@@ -38,28 +38,50 @@ import java.io.PrintStream;
 
 import com.oracle.truffle.llvm.parser.binary.BinaryParser;
 import com.oracle.truffle.llvm.parser.binary.BinaryParserResult;
+import java.util.Arrays;
 import org.graalvm.polyglot.io.ByteSequence;
-import sun.misc.IOUtils;
 
 public final class ExtractBitcode {
 
     private static class ArrayByteSequence implements ByteSequence {
 
         private final byte[] bytes;
+        private final int length;
 
-        ArrayByteSequence(byte[] bytes) {
+        ArrayByteSequence(byte[] bytes, int length) {
             this.bytes = bytes;
+            this.length = length;
+            assert bytes.length >= length;
         }
 
         @Override
         public int length() {
-            return bytes.length;
+            return length;
         }
 
         @Override
         public byte byteAt(int index) {
             return bytes[index];
         }
+    }
+
+    private static ByteSequence readFully(InputStream in) throws IOException {
+        byte[] buffer = new byte[1024];
+        int length = 0;
+
+        for (;;) {
+            if (length == buffer.length) {
+                buffer = Arrays.copyOf(buffer, length * 2);
+            }
+            int read = in.read(buffer, length, buffer.length - length);
+            if (read < 0) {
+                break;
+            }
+
+            length += read;
+        }
+
+        return new ArrayByteSequence(buffer, length);
     }
 
     public static void main(String[] args) {
@@ -72,7 +94,7 @@ public final class ExtractBitcode {
             String outName = args[1];
             InputStream in = inName.equals("-") ? System.in : new FileInputStream(inName);
             OutputStream out = outName.equals("-") ? System.out : new FileOutputStream(outName);
-            ByteSequence bytes = new ArrayByteSequence(IOUtils.readFully(in, -1, false));
+            ByteSequence bytes = readFully(in);
             BinaryParserResult result = BinaryParser.parse(bytes, null, null);
             if (result == null) {
                 throw new IOException("No bitcode found in file '" + inName + "'");

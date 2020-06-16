@@ -133,4 +133,8 @@ public class CompilationInfo {
     public CompileFunction getCustomCompileFunction() {
         return customCompileFunction;
     }
+
+    public boolean hasDefaultParseFunction() {
+        return customCompileFunction == null;
+    }
 }

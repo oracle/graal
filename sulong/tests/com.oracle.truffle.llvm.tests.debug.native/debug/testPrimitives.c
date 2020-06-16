@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -42,7 +42,7 @@ char C1 = 'A';
 char C2 = 'a';
 char C3 = '0';
 char C4 = '+';
-    
+
 short S1 = SHORT_MSB_SET;
 short S2 = SHORT_LSB_SET;
 unsigned short S3 = SHORT_MSB_SET;
@@ -70,13 +70,12 @@ double D3 = -1.0;
 double D4 = 1.25;
 double D5 = -1.25;
 
-int start() __attribute__((constructor))
-{
+int start() __attribute__((constructor)) {
     char c1 = 'A';
     char c2 = 'a';
     char c3 = '0';
     char c4 = '+';
-    
+
     short s1 = SHORT_MSB_SET;
     short s2 = SHORT_LSB_SET;
     unsigned short s3 = SHORT_MSB_SET;

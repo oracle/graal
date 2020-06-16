@@ -53,6 +53,7 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.code.SimpleSignature;
 import com.oracle.svm.jni.access.JNIAccessFeature;
@@ -173,7 +174,7 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
         kit.getFrameState().clearLocals();
 
         Signature jniSignature = new SimpleSignature(jniArgumentTypes, jniReturnType);
-        ValueNode returnValue = kit.createCFunctionCall(callAddress, jniArguments, jniSignature, true, false);
+        ValueNode returnValue = kit.createCFunctionCall(callAddress, jniArguments, jniSignature, StatusSupport.STATUS_IN_NATIVE, false);
 
         if (getOriginal().isSynchronized()) {
             MonitorIdNode monitorId = kit.getFrameState().peekMonitorId();
@@ -193,10 +194,7 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
         }
         kit.createReturn(returnValue, javaReturnType.getJavaKind());
 
-        kit.mergeUnwinds();
-
-        assert graph.verify();
-        return graph;
+        return kit.finalizeGraph();
     }
 
     private static ValueNode castObject(JNIGraphKit kit, ValueNode object, ResolvedJavaType type, Purpose purpose) {

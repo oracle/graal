@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -453,7 +453,7 @@ public class SLNodeFactory {
                         argumentIndex,
                         FrameSlotKind.Illegal);
         lexicalScope.locals.put(name, frameSlot);
-        final SLExpressionNode result = SLWriteLocalVariableNodeGen.create(valueNode, frameSlot);
+        final SLExpressionNode result = SLWriteLocalVariableNodeGen.create(valueNode, frameSlot, nameNode);
 
         if (valueNode.hasSource()) {
             final int start = nameNode.getSourceCharIndex();
@@ -491,7 +491,7 @@ public class SLNodeFactory {
             result = SLReadLocalVariableNodeGen.create(frameSlot);
         } else {
             /* Read of a global name. In our language, the only global names are functions. */
-            result = new SLFunctionLiteralNode(language, name);
+            result = new SLFunctionLiteralNode(name);
         }
         result.setSourceSection(nameNode.getSourceCharIndex(), nameNode.getSourceLength());
         result.addExpressionTag();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,11 +46,7 @@ import java.util.Set;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
-import javax.lang.model.type.TypeMirror;
 
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 
 public final class LibraryMessage extends MessageContainer {
@@ -70,16 +66,6 @@ public final class LibraryMessage extends MessageContainer {
 
     public LibraryData getLibrary() {
         return library;
-    }
-
-    public boolean hasUnexpectedValue() {
-        TypeMirror unexpectedType = ProcessorContext.getInstance().getType(UnexpectedResultException.class);
-        for (TypeMirror thrownType : executable.getThrownTypes()) {
-            if (ElementUtils.typeEquals(thrownType, unexpectedType)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     public void setAbstract(boolean isAbstract) {

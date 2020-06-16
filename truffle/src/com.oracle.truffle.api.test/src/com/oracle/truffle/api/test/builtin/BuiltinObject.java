@@ -67,7 +67,6 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 
@@ -107,7 +106,6 @@ public abstract class BuiltinObject implements TruffleObject {
     @SuppressWarnings("unused")
     static class ReadMember {
 
-        @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
         @Specialization(guards = "cachedMember.equals(member)", limit = "MEMBER_NAME_CACHE_SIZE")
         static Object doCached(BuiltinObject receiver, String member,
                         @Cached("member") String cachedMember,
@@ -121,7 +119,7 @@ public abstract class BuiltinObject implements TruffleObject {
         }
 
         @Specialization(replaces = "doCached")
-        @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+        @ExplodeLoop
         static Object doDefault(BuiltinObject receiver, String member,
                         @Shared("descriptor") @Cached(value = "getDescriptorImpl(receiver)", allowUncached = true) BuiltinDescriptor descriptor)
                         throws UnknownIdentifierException {
@@ -139,7 +137,7 @@ public abstract class BuiltinObject implements TruffleObject {
 
     @ExportMessage(name = "isMemberReadable")
     @ExportMessage(name = "isMemberInvocable")
-    @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+    @ExplodeLoop
     final boolean isMemberExisting(String member,
                     @Shared("descriptor") @Cached(value = "getDescriptorImpl(this)", allowUncached = true) BuiltinDescriptor descriptor) {
         int hash = member.hashCode();
@@ -335,7 +333,7 @@ public abstract class BuiltinObject implements TruffleObject {
             this.membersArray = new MembersArray(members);
         }
 
-        @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+        @ExplodeLoop
         MemberEntry lookup(String member) {
             int hash = member.hashCode();
             for (int i = 0; i < members.length; i++) {

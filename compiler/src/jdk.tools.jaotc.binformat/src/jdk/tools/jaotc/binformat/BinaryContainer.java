@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,26 +31,29 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import jdk.tools.jaotc.binformat.Symbol.Binding;
 import jdk.tools.jaotc.binformat.Symbol.Kind;
 import jdk.tools.jaotc.binformat.elf.JELFRelocObject;
 import jdk.tools.jaotc.binformat.macho.JMachORelocObject;
 import jdk.tools.jaotc.binformat.pecoff.JPECoffRelocObject;
-import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import org.graalvm.compiler.options.OptionValues;
 
 /**
  * A format-agnostic container class that holds various components of a binary.
  *
  * <p>
  * This class holds information necessary to create platform-specific binary containers such as
- * ELFContainer for Linux and Solaris operating systems or MachOContainer for Mac OS or PEContainer
- * for MS Windows operating systems.
+ * ELFContainer for Linux or MachOContainer for Mac OS or PEContainer for MS Windows operating
+ * systems.
  *
  * <p>
  * Method APIs provided by this class are used to construct and populate platform-independent
@@ -143,6 +146,7 @@ public final class BinaryContainer implements SymbolTable {
     private static final String[][] map = {
         {"CompilerToVM::Data::SharedRuntime_deopt_blob_unpack",         "_aot_deopt_blob_unpack"},
         {"CompilerToVM::Data::SharedRuntime_deopt_blob_uncommon_trap",  "_aot_deopt_blob_uncommon_trap"},
+        {"CompilerToVM::Data::SharedRuntime_deopt_blob_unpack_with_exception_in_tls",  "_aot_deopt_blob_unpack_with_exception_in_tls"},
         {"CompilerToVM::Data::SharedRuntime_ic_miss_stub",              "_aot_ic_miss_stub"},
         {"CompilerToVM::Data::SharedRuntime_handle_wrong_method_stub",  "_aot_handle_wrong_method_stub"},
         {"SharedRuntime::exception_handler_for_return_address",         "_aot_exception_handler_for_return_address"},
@@ -203,6 +207,8 @@ public final class BinaryContainer implements SymbolTable {
         {"StubRoutines::_aescrypt_decryptBlock", "_aot_stub_routines_aescrypt_decryptBlock"},
         {"StubRoutines::_cipherBlockChaining_encryptAESCrypt", "_aot_stub_routines_cipherBlockChaining_encryptAESCrypt"},
         {"StubRoutines::_cipherBlockChaining_decryptAESCrypt", "_aot_stub_routines_cipherBlockChaining_decryptAESCrypt"},
+        {"StubRoutines::_electronicCodeBook_encryptAESCrypt", "_aot_stub_routines_electronicCodeBook_encryptAESCrypt"},
+        {"StubRoutines::_electronicCodeBook_decryptAESCrypt", "_aot_stub_routines_electronicCodeBook_decryptAESCrypt"},
         {"StubRoutines::_updateBytesCRC32", "_aot_stub_routines_update_bytes_crc32"},
         {"StubRoutines::_crc_table_adr", "_aot_stub_routines_crc_table_adr"},
 
@@ -225,6 +231,8 @@ public final class BinaryContainer implements SymbolTable {
         {"StubRoutines::_montgomeryMultiply", "_aot_stub_routines_montgomeryMultiply" },
         {"StubRoutines::_montgomerySquare", "_aot_stub_routines_montgomerySquare" },
         {"StubRoutines::_vectorizedMismatch", "_aot_stub_routines_vectorizedMismatch" },
+        {"StubRoutines::_bigIntegerRightShiftWorker", "_aot_stub_routines_bigIntegerRightShiftWorker" },
+        {"StubRoutines::_bigIntegerLeftShiftWorker", "_aot_stub_routines_bigIntegerLeftShiftWorker" },
 
         {"StubRoutines::_throw_delayed_StackOverflowError_entry", "_aot_stub_routines_throw_delayed_StackOverflowError_entry" },
 
@@ -292,7 +300,7 @@ public final class BinaryContainer implements SymbolTable {
 
         this.codeEntryAlignment = graalHotSpotVMConfig.codeEntryAlignment;
 
-        this.threadLocalHandshakes = graalHotSpotVMConfig.threadLocalHandshakes;
+        this.threadLocalHandshakes = graalHotSpotVMConfig.useThreadLocalPolling;
 
         // Section unique name is limited to 8 characters due to limitation on Windows.
         // Name could be longer but only first 8 characters are stored on Windows.
@@ -329,31 +337,43 @@ public final class BinaryContainer implements SymbolTable {
     private void recordConfiguration(GraalHotSpotVMConfig graalHotSpotVMConfig, GraphBuilderConfiguration graphBuilderConfig, int gc) {
         // @Checkstyle: stop
         // @formatter:off
-        boolean[] booleanFlags = { graalHotSpotVMConfig.cAssertions, // Debug VM
-                                   graalHotSpotVMConfig.useCompressedOops,
-                                   graalHotSpotVMConfig.useCompressedClassPointers,
-                                   graalHotSpotVMConfig.compactFields,
-                                   graalHotSpotVMConfig.useTLAB,
-                                   graalHotSpotVMConfig.useBiasedLocking,
-                                   TieredAOT.getValue(graalOptions),
-                                   graalHotSpotVMConfig.enableContended,
-                                   graalHotSpotVMConfig.restrictContended,
-                                   graphBuilderConfig.omitAssertions(),
-                                   graalHotSpotVMConfig.threadLocalHandshakes
-        };
+        ArrayList<Boolean> booleanFlagsList = new ArrayList<>();
 
-        int[] intFlags         = { graalHotSpotVMConfig.getOopEncoding().getShift(),
-                                   graalHotSpotVMConfig.getKlassEncoding().getShift(),
-                                   graalHotSpotVMConfig.contendedPaddingWidth,
-                                   graalHotSpotVMConfig.fieldsAllocationStyle,
-                                   1 << graalHotSpotVMConfig.logMinObjAlignment(),
-                                   graalHotSpotVMConfig.codeSegmentSize,
-                                   gc
-        };
+        booleanFlagsList.addAll(Arrays.asList(graalHotSpotVMConfig.cAssertions, // Debug VM
+                                              graalHotSpotVMConfig.useCompressedOops,
+                                              graalHotSpotVMConfig.useCompressedClassPointers));
+        if (JavaVersionUtil.JAVA_SPEC < 15) {
+            // See JDK-8236224. FieldsAllocationStyle and CompactFields flags were removed in JDK15.
+            booleanFlagsList.add(graalHotSpotVMConfig.compactFields);
+        }
+        booleanFlagsList.addAll(Arrays.asList(graalHotSpotVMConfig.useTLAB,
+                                              graalHotSpotVMConfig.useBiasedLocking,
+                                              TieredAOT.getValue(graalOptions),
+                                              graalHotSpotVMConfig.enableContended,
+                                              graalHotSpotVMConfig.restrictContended,
+                                              graphBuilderConfig.omitAssertions()));
+        if (JavaVersionUtil.JAVA_SPEC < 14) {
+            // See JDK-8220049. Thread local handshakes are on by default since JDK14, the command line option has been removed.
+            booleanFlagsList.add(graalHotSpotVMConfig.useThreadLocalPolling);
+        }
+
+        ArrayList<Integer> intFlagsList = new ArrayList<>();
+        intFlagsList.addAll(Arrays.asList(graalHotSpotVMConfig.getOopEncoding().getShift(),
+                                          graalHotSpotVMConfig.getKlassEncoding().getShift(),
+                                          graalHotSpotVMConfig.contendedPaddingWidth));
+        if (JavaVersionUtil.JAVA_SPEC < 15) {
+            // See JDK-8236224. FieldsAllocationStyle and CompactFields flags were removed in JDK15.
+            intFlagsList.add(graalHotSpotVMConfig.fieldsAllocationStyle);
+        }
+        intFlagsList.addAll(Arrays.asList(1 << graalHotSpotVMConfig.logMinObjAlignment(),
+                                          graalHotSpotVMConfig.codeSegmentSize,
+                                          gc));
+
         // @formatter:on
         // @Checkstyle: resume
 
-        byte[] booleanFlagsAsBytes = flagsToByteArray(booleanFlags);
+        byte[] booleanFlagsAsBytes = booleanListToByteArray(booleanFlagsList);
+        int[] intFlags = intFlagsList.stream().mapToInt(i -> i).toArray();
         int size0 = configContainer.getByteStreamSize();
 
         // @formatter:off
@@ -370,10 +390,10 @@ public final class BinaryContainer implements SymbolTable {
         assert size == computedSize;
     }
 
-    private static byte[] flagsToByteArray(boolean[] flags) {
-        byte[] byteArray = new byte[flags.length];
-        for (int i = 0; i < flags.length; ++i) {
-            byteArray[i] = boolToByte(flags[i]);
+    private static byte[] booleanListToByteArray(ArrayList<Boolean> list) {
+        byte[] byteArray = new byte[list.size()];
+        for (int i = 0; i < list.size(); ++i) {
+            byteArray[i] = boolToByte(list.get(i));
         }
         return byteArray;
     }
@@ -537,7 +557,6 @@ public final class BinaryContainer implements SymbolTable {
         String osName = System.getProperty("os.name");
         switch (osName) {
             case "Linux":
-            case "SunOS":
                 JELFRelocObject elfobj = JELFRelocObject.newInstance(this, outputFileName);
                 elfobj.createELFRelocObject(relocationTable, symbolTable.values());
                 break;

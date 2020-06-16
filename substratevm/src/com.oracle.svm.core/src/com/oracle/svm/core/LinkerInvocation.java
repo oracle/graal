@@ -26,21 +26,14 @@ package com.oracle.svm.core;
 
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Map;
-
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public interface LinkerInvocation {
 
-    List<String> getInputFiles();
+    List<Path> getInputFiles();
 
-    void addInputFile(String filename);
+    void addInputFile(Path filename);
 
-    void addInputFile(int index, String filename);
-
-    Map<ResolvedJavaMethod, String> getSymbolAliases();
-
-    void addSymbolAlias(ResolvedJavaMethod definition, String alias);
+    void addInputFile(int index, Path filename);
 
     List<String> getLibPaths();
 
@@ -64,11 +57,9 @@ public interface LinkerInvocation {
 
     void addLinkedLibrary(int index, String libname);
 
-    String getCompilerCommand();
-
-    void setCompilerCommand(String command);
-
     List<String> getCommand();
 
     void addAdditionalPreOption(String option);
+
+    List<String> getImageSymbols(boolean onlyGlobal);
 }

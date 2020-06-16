@@ -31,9 +31,14 @@ import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 
-//Checkstyle: stop
+import com.oracle.svm.core.posix.linux.libc.GLibC;
+import com.oracle.svm.core.c.libc.LibC;
 
-/** Declarations of method from <locale.h>. */
+// Checkstyle: stop
+
+/**
+ * Declarations of method from the C header file locale.h.
+ */
 @CContext(PosixDirectives.class)
 public class Locale {
     @CConstant
@@ -57,26 +62,32 @@ public class Locale {
     @CConstant
     public static native int LC_MESSAGES();
 
+    @LibC(value = GLibC.class)
     @Platforms(Platform.LINUX.class)
     @CConstant
     public static native int LC_PAPER();
 
+    @LibC(value = GLibC.class)
     @Platforms(Platform.LINUX.class)
     @CConstant
     public static native int LC_NAME();
 
+    @LibC(value = GLibC.class)
     @Platforms(Platform.LINUX.class)
     @CConstant
     public static native int LC_ADDRESS();
 
+    @LibC(value = GLibC.class)
     @Platforms(Platform.LINUX.class)
     @CConstant
     public static native int LC_TELEPHONE();
 
+    @LibC(value = GLibC.class)
     @Platforms(Platform.LINUX.class)
     @CConstant
     public static native int LC_MEASUREMENT();
 
+    @LibC(value = GLibC.class)
     @Platforms(Platform.LINUX.class)
     @CConstant
     public static native int LC_IDENTIFICATION();

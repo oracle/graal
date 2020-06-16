@@ -27,12 +27,10 @@ package org.graalvm.compiler.microbenchmarks.graal;
 import java.util.StringTokenizer;
 
 import org.openjdk.jmh.annotations.Benchmark;
-import org.openjdk.jmh.annotations.Warmup;
 
 import org.graalvm.compiler.microbenchmarks.graal.util.FrameStateAssignmentState;
 import org.graalvm.compiler.microbenchmarks.graal.util.MethodSpec;
 
-@Warmup(iterations = 15)
 public class FrameStateAssigmentPhaseBenchmark extends GraalBenchmark {
 
     @MethodSpec(declaringClass = StringTokenizer.class, name = "nextToken", parameters = {String.class})

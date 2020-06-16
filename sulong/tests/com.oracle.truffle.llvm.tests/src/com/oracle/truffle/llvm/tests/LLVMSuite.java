@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,7 +31,10 @@ package com.oracle.truffle.llvm.tests;
 
 import java.io.File;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.junit.AfterClass;
 import org.junit.runner.RunWith;
@@ -53,7 +56,53 @@ public final class LLVMSuite extends BaseSuiteHarness {
 
     @Parameters(name = "{1}")
     public static Collection<Object[]> data() {
-        return collectTestCases(LLVM_CONFIG_DIR, LLVM_SUITE_DIR, LLVM_SOURCE_DIR);
+        Set<String> blacklist = getBlacklist();
+        Collection<Object[]> testlist = collectTestCases(LLVM_CONFIG_DIR, LLVM_SUITE_DIR, LLVM_SOURCE_DIR);
+        testlist.removeIf(t -> blacklist.contains(t[1]));
+        return testlist;
+    }
+
+    protected static Set<String> getBlacklist() {
+        Set<String> filenameBlacklist = new HashSet<>();
+
+        if (Platform.isAArch64()) {
+            // Tests that cause the JVM to crash.
+            filenameBlacklist.addAll(Arrays.asList(
+                            "test-suite-3.2.src/SingleSource/Regression/C/PR640.c",
+                            "test-suite-3.2.src/SingleSource/UnitTests/2003-05-07-VarArgs.c",
+                            "test-suite-3.2.src/SingleSource/UnitTests/2003-07-09-SignedArgs.c",
+                            "test-suite-3.2.src/SingleSource/UnitTests/2003-08-11-VaListArg.c",
+                            "test-suite-3.2.src/SingleSource/UnitTests/2007-03-02-VaCopy.c",
+                            "test-suite-3.2.src/SingleSource/UnitTests/2009-12-07-StructReturn.c"));
+            // Tests that fail.
+            filenameBlacklist.addAll(Arrays.asList(
+                            "test-suite-3.2.src/SingleSource/Regression/C++/2008-01-29-ParamAliasesReturn.cpp",
+                            "test-suite-3.2.src/SingleSource/Regression/C/globalrefs.c",
+                            "test-suite-3.2.src/SingleSource/UnitTests/2006-01-23-UnionInit.c"));
+            // Bitcode libc++ causes a segfault during a destructor (atexit) call.
+            // See https://github.com/oracle/graal/issues/2276
+            // Blacklist all c++ tests for now
+            filenameBlacklist.addAll(Arrays.asList(
+                            "test-suite-3.2.src/SingleSource/Regression/C++/pointer_member.cpp",
+                            "test-suite-3.2.src/SingleSource/Regression/C++/2003-05-14-array-init.cpp",
+                            "test-suite-3.2.src/SingleSource/Regression/C++/2011-03-28-Bitfield.cpp",
+                            "test-suite-3.2.src/SingleSource/Regression/C++/global_type.cpp",
+                            "test-suite-3.2.src/SingleSource/Regression/C++/2003-05-14-expr_stmt.cpp",
+                            "test-suite-3.2.src/SingleSource/Regression/C++/2003-08-20-EnumSizeProblem.cpp",
+                            "test-suite-3.2.src/SingleSource/Regression/C++/2003-06-13-Crasher.cpp",
+                            "test-suite-3.2.src/SingleSource/Regression/C++/2008-01-29-ParamAliasesReturn.cpp",
+                            "test-suite-3.2.src/SingleSource/Regression/C++/2003-06-08-BaseType.cpp",
+                            "test-suite-3.2.src/SingleSource/Regression/C++/2003-06-08-VirtualFunctions.cpp",
+                            "test-suite-3.2.src/SingleSource/UnitTests/conditional-gnu-ext-cxx.cpp",
+                            "test-suite-3.2.src/SingleSource/UnitTests/SignlessTypes/cast2.cpp",
+                            "test-suite-3.2.src/SingleSource/UnitTests/Integer/enum.cpp",
+                            "test-suite-3.2.src/SingleSource/UnitTests/Integer/cppfield.cpp",
+                            "test-suite-3.2.src/SingleSource/UnitTests/2006-12-04-DynAllocAndRestore.cpp",
+                            "test-suite-3.2.src/SingleSource/UnitTests/Integer/template2.cpp",
+                            "test-suite-3.2.src/SingleSource/UnitTests/initp1.cpp"));
+        }
+
+        return filenameBlacklist;
     }
 
     @Override

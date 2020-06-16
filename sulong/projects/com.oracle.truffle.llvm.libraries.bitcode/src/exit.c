@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,85 +27,80 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include <unistd.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include "syscall.h"
-
-#ifndef __linux__
-#define SYS_exit_group 231
-#endif
+#include "exit.h"
 
 struct entry {
-  struct entry *next;
-  void (*func)(void *);
-  void *arg;
+    struct entry *next;
+    void (*func)(void *);
+    void *arg;
 };
 
 static struct entry head = { NULL, NULL, NULL };
 
 void __sulong_funcs_on_exit() {
-  struct entry *entry = head.next;
-  while (entry) {
-    struct entry *old = entry;
-    entry->func(entry->arg);
-    entry = entry->next;
-    head.next = entry;
-    free(old);
-  }
-  head.next = NULL;
+    struct entry *entry = head.next;
+    while (entry) {
+        struct entry *old = entry;
+        entry->func(entry->arg);
+        entry = entry->next;
+        head.next = entry;
+        free(old);
+    }
+    head.next = NULL;
 }
 
 void __clear_exit_handlers() {
-  struct entry *entry = head.next;
-  while (entry) {
-    struct entry *old = entry;
-    entry = entry->next;
-    free(old);
-  }
-  head.next = NULL;
+    struct entry *entry = head.next;
+    while (entry) {
+        struct entry *old = entry;
+        entry = entry->next;
+        free(old);
+    }
+    head.next = NULL;
 }
 
 // for now, treat everything running under Sulong as a single dynamic shared object
 void *__dso_handle = NULL;
 
 int __cxa_atexit(void (*func)(void *), void *arg, void *dso) {
-  struct entry *entry = entry = (struct entry *)malloc(sizeof(struct entry));
-  entry->func = func;
-  entry->arg = arg;
-  entry->next = head.next;
-  head.next = entry;
-  return 0;
+    struct entry *entry = entry = (struct entry *) malloc(sizeof(struct entry));
+    entry->func = func;
+    entry->arg = arg;
+    entry->next = head.next;
+    head.next = entry;
+    return 0;
 }
 
 static void caller(void *arg) {
-  void (*func)(void) = (void *)(void *)arg;
-  func();
+    void (*func)(void) = (void *) (void *) arg;
+    func();
 }
 
 int atexit(void (*func)(void)) {
-  return __cxa_atexit(caller, func, NULL);
+    return __cxa_atexit(caller, func, NULL);
 }
 
 void __sulong_destructor_functions();
 
 void exit(int status) {
-  int64_t result;
-  __sulong_funcs_on_exit();
-  __sulong_destructor_functions();
-  __SYSCALL_1(result, SYS_exit_group, status);
-  for (;;) { // this should never be executed
-    __SYSCALL_1(result, SYS_exit_group, status);
-  }
+    __sulong_funcs_on_exit();
+    __sulong_destructor_functions();
+    _EXIT(status);
+    for (;;) { // this should never be executed
+        _EXIT(status);
+    }
 }
 
 void _exit(int status) {
-  int64_t result;
-  __SYSCALL_1(result, SYS_exit_group, status);
-  for (;;) { // this should never be executed
-    __SYSCALL_1(result, SYS_exit_group, status);
-  }
+    _EXIT(status);
+    for (;;) { // this should never be executed
+        _EXIT(status);
+    }
 }
 
 void _Exit(int status) {
-  _exit(status);
+    _exit(status);
 }

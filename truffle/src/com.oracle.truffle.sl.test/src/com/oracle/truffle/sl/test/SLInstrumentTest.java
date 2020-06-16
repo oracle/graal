@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -814,6 +814,9 @@ public class SLInstrumentTest {
      */
     @Test
     public void testReplaceNodeReturnValue() throws Exception {
+        if (System.getProperty("java.vm.name").contains("Graal:graal-enterprise")) {
+            return; // GR-16755
+        }
         String code = "function main() {\n" +
                         "  a = new();\n" +
                         "  b = a.rp1;\n" +

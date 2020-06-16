@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,9 +31,8 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
+import org.graalvm.options.OptionValues;
 
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -65,8 +64,11 @@ import jdk.vm.ci.meta.JavaConstant;
  */
 public class InstrumentTruffleBoundariesPhase extends InstrumentPhase {
 
-    public InstrumentTruffleBoundariesPhase(OptionValues options, SnippetReflectionProvider snippetReflection, Instrumentation instrumentation) {
+    private final boolean isInstrumentPerInlineSite;
+
+    public InstrumentTruffleBoundariesPhase(OptionValues options, SnippetReflectionProvider snippetReflection, Instrumentation instrumentation, boolean instrumentPerInlineSite) {
         super(options, snippetReflection, instrumentation);
+        isInstrumentPerInlineSite = instrumentPerInlineSite;
     }
 
     @Override
@@ -88,8 +90,8 @@ public class InstrumentTruffleBoundariesPhase extends InstrumentPhase {
     }
 
     @Override
-    protected boolean instrumentPerInlineSite(OptionValues options) {
-        return TruffleCompilerOptions.TruffleInstrumentBoundariesPerInlineSite.getValue(options);
+    protected boolean instrumentPerInlineSite() {
+        return isInstrumentPerInlineSite;
     }
 
     @Override
@@ -108,8 +110,8 @@ public class InstrumentTruffleBoundariesPhase extends InstrumentPhase {
         }
 
         @Override
-        public boolean isPrettified(OptionValues options) {
-            return TruffleCompilerOptions.TruffleInstrumentBoundariesPerInlineSite.getValue(options);
+        public boolean isPrettified() {
+            return isInstrumentPerInlineSite;
         }
 
         @Override

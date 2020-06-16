@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -118,6 +118,7 @@ public class ExportLibraryTest {
                     "To resolve this use one of the following strategies:%n" +
                     "  - Make the receiver type implicit by applying '@ExportLibrary(TestLibrary.class)' to the receiver type 'PrimitiveInt' instead.%n" +
                     "  - Declare a default export on the 'TestLibrary' library with '@DefaultExport(TestReceiver.class)'%n" +
+                    "  - Enable default exports with service providers using @GenerateLibrary(defaultExportLookupEnabled=true) on the library and specify an export priority%n" +
                     "  - Enable dynamic dispatch by annotating the receiver type with '@ExportLibrary(DynamicDispatchLibrary.class)'.")
     @ExportLibrary(value = TestLibrary.class, receiverType = PrimitiveInt.class)
     static class TestReceiver {

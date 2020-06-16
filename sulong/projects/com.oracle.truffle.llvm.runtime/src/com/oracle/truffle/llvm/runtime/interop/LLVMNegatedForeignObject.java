@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -38,7 +38,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 
 @ValueType
 @ExportLibrary(InteropLibrary.class)
-public final class LLVMNegatedForeignObject implements LLVMInternalTruffleObject {
+public final class LLVMNegatedForeignObject extends LLVMInternalTruffleObject {
 
     final Object foreign;
 
@@ -91,4 +91,5 @@ public final class LLVMNegatedForeignObject implements LLVMInternalTruffleObject
     void toNative(@CachedLibrary("this.foreign") InteropLibrary interop) {
         interop.toNative(getForeign());
     }
+
 }

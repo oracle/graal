@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,21 +28,21 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int main() {
-  volatile double a = 0.125;
-  if (__builtin_fabs(a) != 0.125) {
-    return 1;
-  }
-  volatile double b = -0.125;
-  if (__builtin_fabs(b) != 0.125) {
-    return 1;
-  }
-  volatile double c = 0.;
-  if (__builtin_fabs(c) != 0.) {
-    return 1;
-  }
-  volatile double d = -0.;
-  if (__builtin_fabs(d) != 0.) {
-    return 1;
-  }
-  return 0;
+    volatile double a = 0.125;
+    if (__builtin_fabs(a) != 0.125) {
+        return 1;
+    }
+    volatile double b = -0.125;
+    if (__builtin_fabs(b) != 0.125) {
+        return 1;
+    }
+    volatile double c = 0.;
+    if (__builtin_fabs(c) != 0.) {
+        return 1;
+    }
+    volatile double d = -0.;
+    if (__builtin_fabs(d) != 0.) {
+        return 1;
+    }
+    return 0;
 }

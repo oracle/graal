@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.runtime.except;
 
+import com.oracle.truffle.api.nodes.Node;
+
 /**
  * Exception during resolving or linking of external symbols.
  */
@@ -38,6 +40,10 @@ public final class LLVMLinkerException extends LLVMException {
 
     public LLVMLinkerException(String message) {
         super(null, message);
+    }
+
+    public LLVMLinkerException(Node location, String message) {
+        super(location, message);
     }
 
     @Override

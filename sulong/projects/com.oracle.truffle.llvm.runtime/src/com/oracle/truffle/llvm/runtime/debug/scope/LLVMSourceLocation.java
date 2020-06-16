@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -60,28 +60,43 @@ public abstract class LLVMSourceLocation {
     private static final int DEFAULT_SCOPE_CAPACITY = 2;
 
     private static final SourceSection UNAVAILABLE_SECTION;
+    private static final LLVMSourceLocation UNAVAILABLE_LOCATION;
 
     static {
         final Source source = Source.newBuilder("llvm", "Source unavailable!", "<unavailable>").mimeType("text/plain").build();
         UNAVAILABLE_SECTION = source.createUnavailableSection();
+        UNAVAILABLE_LOCATION = new DefaultScope(null, Kind.UNKNOWN, "<unavailable>", UNAVAILABLE_SECTION);
     }
 
     private static final List<LLVMSourceSymbol> NO_SYMBOLS = Collections.emptyList();
 
     public enum Kind {
-        TYPE,
-        LINE,
-        MODULE,
-        COMMON_BLOCK,
-        BLOCK,
-        FUNCTION,
-        NAMESPACE,
-        COMPILEUNIT,
-        FILE,
-        GLOBAL,
-        LOCAL,
-        IR_MODULE,
-        UNKNOWN
+        TYPE("<type>"),
+        LINE("<line>"),
+        MODULE("<module>", "module "),
+        COMMON_BLOCK("<common block>"),
+        BLOCK("<block>"),
+        FUNCTION("<function>"),
+        NAMESPACE("<namespace>", "namespace "),
+        COMPILEUNIT("<static>"),
+        FILE("<file>"),
+        GLOBAL("<global symbol>"),
+        LOCAL("<local symbol>"),
+        IR_MODULE("<module>", "module "),
+        LABEL("<label>"),
+        UNKNOWN("<scope>");
+
+        private final String anonymousDescription;
+        private final String namePrefix;
+
+        Kind(String anonymousDescription) {
+            this(anonymousDescription, null);
+        }
+
+        Kind(String anonymousDescription, String namePrefix) {
+            this.anonymousDescription = anonymousDescription;
+            this.namePrefix = namePrefix;
+        }
     }
 
     private final LLVMSourceLocation parent;
@@ -131,7 +146,7 @@ public abstract class LLVMSourceLocation {
         return name;
     }
 
-    private String describeFile() {
+    public String describeFile() {
         CompilerAsserts.neverPartOfCompilation();
         if (lazySourceSection != null) {
             return asFileName(lazySourceSection.getPath());
@@ -142,7 +157,7 @@ public abstract class LLVMSourceLocation {
         }
     }
 
-    private int getLine() {
+    public int getLine() {
         CompilerAsserts.neverPartOfCompilation();
         if (lazySourceSection != null) {
             return lazySourceSection.getLine();
@@ -161,6 +176,17 @@ public abstract class LLVMSourceLocation {
             return sourceSection.getStartColumn();
         } else {
             return UNAVAILABLE_SECTION.getStartColumn();
+        }
+    }
+
+    private String getPath() {
+        CompilerAsserts.neverPartOfCompilation();
+        if (lazySourceSection != null) {
+            return lazySourceSection.getPath();
+        } else if (sourceSection != null) {
+            return sourceSection.getSource().getPath();
+        } else {
+            return UNAVAILABLE_SECTION.getSource().getPath();
         }
     }
 
@@ -212,69 +238,17 @@ public abstract class LLVMSourceLocation {
 
     @TruffleBoundary
     public String getName() {
-        switch (kind) {
-            case NAMESPACE: {
-                if (name != null) {
-                    return "namespace " + name;
-                } else {
-                    return "namespace";
-                }
-            }
-
-            case FILE: {
-                return String.format("<%s>", describeFile());
-            }
-
-            case COMPILEUNIT:
-                return "<static>";
-
-            case IR_MODULE:
-            case MODULE:
-                if (name != null) {
-                    return "module " + name;
-                } else {
-                    return "<module>";
-                }
-
-            case COMMON_BLOCK:
-                if (name != null) {
-                    return name;
-                } else {
-                    return "<common block>";
-                }
-
-            case FUNCTION: {
-                if (name != null) {
-                    return name;
-                } else {
-                    return "<function>";
-                }
-            }
-
-            case BLOCK:
-                return "<block>";
-
-            case LINE:
-                return String.format("<%s>", describeLocation());
-
-            case TYPE: {
-                if (name != null) {
-                    return name;
-                } else {
-                    return "<type>";
-                }
-            }
-
-            case GLOBAL:
-            case LOCAL:
-                if (name != null) {
-                    return name;
-                } else {
-                    return "<symbol>";
-                }
-
-            default:
-                return "<scope>";
+        if (kind == Kind.FILE) {
+            return String.format("<%s>", describeFile());
+        } else if (kind == Kind.LINE) {
+            return String.format("<%s>", describeLocation());
+        } else if (kind == null || kind == Kind.UNKNOWN) {
+            return Kind.UNKNOWN.anonymousDescription;
+        } else if (name != null) {
+            final String prefix = kind.namePrefix;
+            return prefix != null ? prefix + name : name;
+        } else {
+            return kind.anonymousDescription;
         }
     }
 
@@ -296,7 +270,7 @@ public abstract class LLVMSourceLocation {
                 return false;
             }
 
-            if (!Objects.equals(describeFile(), that.describeFile())) {
+            if (!Objects.equals(getPath(), that.getPath())) {
                 return false;
             }
 
@@ -313,7 +287,9 @@ public abstract class LLVMSourceLocation {
     @Override
     public int hashCode() {
         int result = getKind().hashCode();
-        result = 31 * result + (getName() != null ? getName().hashCode() : 0);
+        result = 31 * result + Objects.hashCode(getPath());
+        result = 31 * result + getLine();
+        result = 31 * result + getColumn();
         return result;
     }
 
@@ -441,5 +417,13 @@ public abstract class LLVMSourceLocation {
 
     public static LLVMSourceLocation createUnknown(SourceSection sourceSection) {
         return new LineScope(null, Kind.UNKNOWN, "<unknown>", sourceSection != null ? sourceSection : UNAVAILABLE_SECTION);
+    }
+
+    /**
+     * Returns the given location if it's non-null, otherwise a default "unavailable" location. This
+     * is useful, e.g., if a non-null location is required to enable instrumentation.
+     */
+    public static LLVMSourceLocation orDefault(LLVMSourceLocation location) {
+        return location != null ? location : UNAVAILABLE_LOCATION;
     }
 }

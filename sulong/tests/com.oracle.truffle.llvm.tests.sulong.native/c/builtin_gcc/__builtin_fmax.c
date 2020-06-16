@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,23 +28,23 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int main() {
-  volatile double nan = __builtin_nan("");
-  volatile double a = 0.1;
-  if (__builtin_isnan(__builtin_fmax(nan, a))) {
-    return 1;
-  }
-  if (__builtin_isnan(__builtin_fmax(a, nan))) {
-    return 1;
-  }
-  if (!__builtin_isnan(__builtin_fmax(nan, nan))) {
-    return 1;
-  }
-  volatile double b = 0.2;
-  if (__builtin_fmax(a, b) != 0.2) {
-    return 1;
-  }
-  if (__builtin_fmax(b, a) != 0.2) {
-    return 1;
-  }
-  return 0;
+    volatile double nan = __builtin_nan("");
+    volatile double a = 0.1;
+    if (__builtin_isnan(__builtin_fmax(nan, a))) {
+        return 1;
+    }
+    if (__builtin_isnan(__builtin_fmax(a, nan))) {
+        return 1;
+    }
+    if (!__builtin_isnan(__builtin_fmax(nan, nan))) {
+        return 1;
+    }
+    volatile double b = 0.2;
+    if (__builtin_fmax(a, b) != 0.2) {
+        return 1;
+    }
+    if (__builtin_fmax(b, a) != 0.2) {
+        return 1;
+    }
+    return 0;
 }

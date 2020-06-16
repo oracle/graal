@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,16 +29,16 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
+@GenerateUncached
 public abstract class LLVMToPointerNode extends LLVMNode {
-    public abstract LLVMPointer executeWithTarget(Object obj);
 
-    @Child private LLVMToNativeNode toNative;
+    public abstract LLVMPointer executeWithTarget(Object obj);
 
     @Specialization
     protected LLVMPointer doPointer(LLVMPointer obj) {
@@ -50,16 +50,13 @@ public abstract class LLVMToPointerNode extends LLVMNode {
         return LLVMNativePointer.create(obj);
     }
 
-    @Fallback
-    protected LLVMNativePointer doFallback(Object obj) {
-        return getToNative().executeWithTarget(obj);
-    }
-
-    private LLVMToNativeNode getToNative() {
-        if (toNative == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            toNative = insert(LLVMToNativeNodeGen.createToNativeWithTarget());
+    @Specialization(replaces = {"doPointer", "doLong"})
+    protected LLVMPointer doGeneric(Object obj,
+                    @Cached LLVMToNativeNode toNative) {
+        if (LLVMPointer.isInstance(obj)) {
+            return LLVMPointer.cast(obj);
+        } else {
+            return toNative.executeWithTarget(obj);
         }
-        return toNative;
     }
 }

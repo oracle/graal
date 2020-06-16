@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -73,6 +73,7 @@ import com.oracle.truffle.api.library.test.CachedLibraryTestFactory.FromCached2N
 import com.oracle.truffle.api.library.test.CachedLibraryTestFactory.SimpleDispatchedNodeGen;
 import com.oracle.truffle.api.library.test.CachedLibraryTestFactory.SimpleNodeGen;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.test.AbstractLibraryTest;
 import com.oracle.truffle.api.test.ExpectError;
 
 public class CachedLibraryTest extends AbstractLibraryTest {

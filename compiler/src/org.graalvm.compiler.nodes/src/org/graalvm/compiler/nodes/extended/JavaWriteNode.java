@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,17 +25,16 @@
 package org.graalvm.compiler.nodes.extended;
 
 import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.memory.AbstractWriteNode;
 import org.graalvm.compiler.nodes.memory.MemoryAccess;
-import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -45,21 +44,25 @@ import jdk.vm.ci.meta.JavaKind;
  * write barriers, implicit conversions and optionally oop compression.
  */
 @NodeInfo(nameTemplate = "JavaWrite#{p#location/s}")
-public final class JavaWriteNode extends AbstractWriteNode implements Lowerable, StateSplit, MemoryAccess, MemoryCheckpoint.Single {
+public final class JavaWriteNode extends AbstractWriteNode implements Lowerable, StateSplit, MemoryAccess, SingleMemoryKill {
 
     public static final NodeClass<JavaWriteNode> TYPE = NodeClass.create(JavaWriteNode.class);
     protected final JavaKind writeKind;
     protected final boolean compressible;
+    protected final boolean hasSideEffect;
+
+    public JavaWriteNode(JavaKind writeKind, AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType, boolean compressible, boolean hasSideEffect) {
+        super(TYPE, address, location, value, barrierType);
+        this.writeKind = writeKind;
+        this.compressible = compressible;
+        this.hasSideEffect = hasSideEffect;
+    }
 
     public JavaWriteNode(JavaKind writeKind, AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType, boolean compressible) {
         super(TYPE, address, location, value, barrierType);
         this.writeKind = writeKind;
         this.compressible = compressible;
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
+        this.hasSideEffect = true;
     }
 
     @Override
@@ -76,7 +79,17 @@ public final class JavaWriteNode extends AbstractWriteNode implements Lowerable,
     }
 
     @Override
-    public Stamp getAccessStamp() {
-        return StampFactory.forKind(writeKind);
+    public LocationIdentity getKilledLocationIdentity() {
+        return getLocationIdentity();
+    }
+
+    @Override
+    public Stamp getAccessStamp(NodeView view) {
+        return value().stamp(view);
+    }
+
+    @Override
+    public boolean hasSideEffect() {
+        return hasSideEffect;
     }
 }

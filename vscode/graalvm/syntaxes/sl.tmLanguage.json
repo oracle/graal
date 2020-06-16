@@ -1,0 +1,253 @@
+{
+	"scopeName": "source.sl",
+	"patterns": [
+		{ "include": "#comment" },
+		{ "include": "#function" }
+	],
+	"repository": {
+		"function": {
+			"name": "meta.function.sl",
+			"begin": "\\b(function)\\b(?:\\s+)([_$[:alpha:]][_$[:alnum:]]*)\\s*",
+			"beginCaptures": {
+				"1": { "name": "storage.type.function.sl" },
+				"2": { "name": "meta.definition.function.sl entity.name.function.sl" }
+			},
+			"end": "(?<=\\})",
+			"patterns": [
+				{ "include": "#comment"},
+				{ "include": "#function-parameters" },
+				{ "include": "#block" }
+			]
+		},
+		"function-parameters": {
+			"name": "meta.parameters.sl",
+			"begin": "\\(",
+			"beginCaptures": {
+				"0": { "name": "punctuation.definition.parameters.begin.sl" }
+			},
+			"end": "\\)",
+			"endCaptures": {
+				"0": { "name": "punctuation.definition.parameters.end.sl" }
+			},
+			"patterns": [
+				{ "include": "#comment" },
+				{
+					"name": "variable.parameter.sl",
+					"match": "([_$[:alpha:]][_$[:alnum:]]*)"
+				},
+				{
+					"name": "punctuation.separator.parameter.sl",
+					"match": ","
+				}
+			]
+		},
+		"block": {
+			"name": "meta.block.sl",
+			"begin": "\\{",
+			"beginCaptures": {
+				"0": { "name": "punctuation.definition.block.sl" }
+			},
+			"end": "\\}",
+			"endCaptures": {
+				"0": { "name": "punctuation.definition.block.sl" }
+			},
+			"patterns": [
+				{ "include": "#statement" }
+			]
+		},
+		"statement": {
+			"patterns": [
+				{ "include": "#comment" },
+				{ "include": "#while-statement" },
+				{
+					"name": "keyword.control.loop.sl",
+					"match": "\\b(break|continue)\\b"
+				},
+				{ "include": "#if-statement" },
+				{
+					"name": "keyword.control.flow.sl",
+					"match": "\\breturn\\b"
+				},
+				{ "include": "#expression" },
+				{
+					"name": "keyword.other.debugger.sl",
+					"match": "\\bdebugger\\b"
+				},
+				{
+					"name": "punctuation.terminator.statement.sl",
+					"match": ";"
+				}
+			]
+		},
+		"while-statement": {
+			"begin": "(?=\\bwhile\\b\\s*(\\(([^\\(\\)]|(\\([^\\(\\)]*\\)))*\\))\\s*(?!\\{))",
+			"end": "(?=;|$|\\})",
+			"patterns": [
+				{ "include": "#comment" },
+				{
+					"begin": "\\b(while)\\b\\s*(\\()",
+					"beginCaptures": {
+						"1": { "name": "keyword.control.loop.sl" },
+						"2": { "name": "meta.brace.round.sl" }
+					},
+					"end": "\\)",
+					"endCaptures": {
+						"0": { "name": "meta.brace.round.sl" }
+					},
+					"patterns": [
+						{ "include": "#expression" }
+					]
+				},
+				{ "include": "#block" }
+			]
+		},
+		"if-statement": {
+			"begin": "(?=\\bif\\b\\s*(\\(([^\\(\\)]|(\\([^\\(\\)]*\\)))*\\))\\s*(?!\\{))",
+			"end": "(?=;|$|\\})",
+			"patterns": [
+				{ "include": "#comment" },
+				{
+					"begin": "\\b(if)\\b\\s*(\\()",
+					"beginCaptures": {
+						"1": { "name": "keyword.control.conditional.sl" },
+						"2": { "name": "meta.brace.round.sl" }
+					},
+					"end": "\\)",
+					"endCaptures": {
+						"0": { "name": "meta.brace.round.sl" }
+					},
+					"patterns": [
+						{ "include": "#expression" }
+					]
+				},
+				{ "include": "#block" }
+			]
+		},
+		"expression": {
+			"patterns": [
+				{ "include": "#comment" },
+				{ "include": "#member-expression" },
+				{
+					"name": "variable.other.readwrite.sl",
+					"match": "[_$[:alpha:]][_$[:alnum:]]*"
+				},
+				{ "include": "#array-literal"},
+				{ "include": "#string-literal" },
+				{ "include": "#numeric-literal" },
+				{ "include": "#paren-expression"},
+				{ "include": "#operator" }
+			]
+		},
+		"member-expression": {
+			"patterns": [
+				{ "include": "#comment" },
+				{
+					"name": "meta.function-call.sl",
+					"begin": "([_$[:alpha:]][_$[:alnum:]]*)?\\s*(\\()",
+					"beginCaptures": {
+						"1": { "name": "entity.name.function.sl" },
+						"2": { "name": "meta.brace.round.sl" }
+					},
+					"end": "\\)",
+					"endCaptures": {
+						"0": { "name": "meta.brace.round.sl" }
+					},
+					"patterns": [
+						{ "include": "#expression" },
+						{
+							"name": "punctuation.separator.comma.sl",
+							"match": ","
+						}
+					]
+				},
+				{
+					"name": "meta.property-access.sl",
+					"begin": "([_$[:alpha:]][_$[:alnum:]]*)?\\s*(\\[)",
+					"beginCaptures": {
+						"1": { "name": "variable.other.object.sl" },
+						"2": { "name": "meta.brace.square.sl" }
+					},
+					"end": "\\]",
+					"endCaptures": {
+						"0": { "name": "meta.brace.square.js" }
+					},
+					"patterns": [
+						{ "include": "#expression" }
+					]
+				},
+				{
+					"match": "([_$[:alpha:]][_$[:alnum:]]*)?\\s*(\\.)\\s*(?:([_$[:alpha:]][_$[:alnum:]]*)\\s*(?=\\()|([_$[:alpha:]][_$[:alnum:]]*)\\s*(?!\\())",
+					"captures": {
+						"1": { "name": "variable.other.object.sl" },
+						"2": { "name": "punctuation.accessor.sl" },
+						"3": { "name": "meta.function-call.sl entity.name.function.sl" },
+						"4": { "name": "variable.other.property.sl" }
+					}
+				}
+			]
+		},
+		"operator": {
+			"patterns": [
+				{
+					"name": "keyword.operator.logical.sl",
+					"match": "&&|\\|\\|"
+				},
+				{
+					"name": "keyword.operator.comparison.sl",
+					"match": "==|!="
+				},
+				{
+					"name": "keyword.operator.relational.sl",
+					"match": "<=|>=|<>|<|>"
+				},
+				{
+					"name": "keyword.operator.arithmetic.sl",
+					"match": "\\*|/|-|\\+"
+				},
+				{
+					"name": "keyword.operator.assignment.sl",
+					"match": "\\="
+				}
+			]
+		},
+		"numeric-literal": {
+			"name": "constant.numeric.decimal.sl",
+			"match": "\\b(?<!\\$)0|[1-9][0-9]*\\b(?!\\$)"
+		},
+		"string-literal": {
+			"name": "string.quoted.double.sl",
+			"begin": "\"",
+			"beginCaptures": {
+				"0": { "name": "punctuation.definition.string.begin.sl" }
+			},
+			"end": "(\")|((?:[^\\\\\\n])$)",
+			"endCaptures": {
+				"1": { "name": "punctuation.definition.string.end.sl" },
+				"2": { "name": "invalid.illegal.newline.sl" }
+			}
+		},
+		"comment": {
+			"patterns": [
+				{
+					"name": "comment.block.sl",
+					"begin": "/\\*(?!/)",
+					"beginCaptures": {
+						"0": { "name": "punctuation.definition.comment.sl" }
+					},
+					"end": "\\*/",
+					"endCaptures": {
+						"0": { "name": "punctuation.definition.comment.sl" }
+					}
+				},
+				{
+					"name": "comment.line.sl",
+					"begin": "//",
+					"beginCaptures": {
+						"0": { "name": "punctuation.definition.comment.sl" }
+					},
+					"end": "(?=$)"
+				}
+			]
+		}
+	}
+}

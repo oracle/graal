@@ -28,9 +28,11 @@ import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.framemap.ReferenceMapBuilder;
 
+import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.ReferenceMap;
+import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.common.JVMCIError;
@@ -48,34 +50,38 @@ public class SubstrateReferenceMapBuilder extends ReferenceMapBuilder {
 
     @Override
     public void addLiveValue(Value value) {
+        int offset;
         if (ValueUtil.isStackSlot(value)) {
             StackSlot stackSlot = ValueUtil.asStackSlot(value);
-            int offset = stackSlot.getOffset(totalFrameSize);
+            offset = stackSlot.getOffset(totalFrameSize);
             assert referenceMap.debugMarkStackSlot(offset, stackSlot);
 
-            LIRKind kind = (LIRKind) value.getValueKind();
-            if (!kind.isValue()) {
+        } else if (CalleeSavedRegisters.supportedByPlatform() && ValueUtil.isRegister(value)) {
+            Register register = ValueUtil.asRegister(value);
+            offset = CalleeSavedRegisters.singleton().getOffsetInFrame(register);
+            assert referenceMap.debugMarkRegister(ValueUtil.asRegister(value).number, value);
 
-                if (kind.isUnknownReference()) {
-                    throw JVMCIError.shouldNotReachHere("unknown reference alive across safepoint");
-                } else if (kind.isDerivedReference()) {
-                    throw JVMCIError.shouldNotReachHere("derived references not supported yet on Substrate VM");
+        } else {
+            throw VMError.shouldNotReachHere(value.toString());
+        }
 
-                } else {
-                    int bytes = bytesPerElement(kind);
-                    for (int i = 0; i < kind.getPlatformKind().getVectorLength(); i++) {
-                        if (kind.isReference(i)) {
-                            boolean compressed = kind.isCompressedReference(i);
-                            referenceMap.markReferenceAtOffset(offset + i * bytes, compressed);
-                        }
+        LIRKind kind = (LIRKind) value.getValueKind();
+        if (!kind.isValue()) {
+
+            if (kind.isUnknownReference()) {
+                throw JVMCIError.shouldNotReachHere("unknown reference alive across safepoint");
+            } else if (kind.isDerivedReference()) {
+                throw JVMCIError.shouldNotReachHere("derived references not supported yet on Substrate VM");
+
+            } else {
+                int bytes = bytesPerElement(kind);
+                for (int i = 0; i < kind.getPlatformKind().getVectorLength(); i++) {
+                    if (kind.isReference(i)) {
+                        boolean compressed = kind.isCompressedReference(i);
+                        referenceMap.markReferenceAtOffset(offset + i * bytes, compressed);
                     }
                 }
             }
-
-        } else if (ValueUtil.isRegister(value)) {
-            assert referenceMap.debugMarkRegister(ValueUtil.asRegister(value).number, value);
-        } else {
-            throw VMError.shouldNotReachHere(value.toString());
         }
     }
 

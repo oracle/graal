@@ -94,6 +94,8 @@ public class DirectoryStorageTest extends TestBase {
         registryPath = workDir.newFolder("registry").toPath();
 
         storage = new DirectoryStorage(this, registryPath, graalVMPath);
+        // the default assumed by most test data.
+        storage.setJavaVersion("8");
     }
 
     @After
@@ -109,7 +111,7 @@ public class DirectoryStorageTest extends TestBase {
             Files.copy(is, graalVMPath.resolve(SystemUtils.fileName("release")));
         }
         Map<String, String> result = storage.loadGraalVersionInfo();
-        assertEquals(6, result.size());
+        assertEquals(7, result.size());
         assertEquals(CommonConstants.EDITION_CE, result.get(CommonConstants.CAP_EDITION));
     }
 
@@ -119,7 +121,7 @@ public class DirectoryStorageTest extends TestBase {
             Files.copy(is, graalVMPath.resolve(SystemUtils.fileName("release")));
         }
         Map<String, String> result = storage.loadGraalVersionInfo();
-        assertEquals(6, result.size());
+        assertEquals(7, result.size());
         assertEquals("ee", result.get(CommonConstants.CAP_EDITION));
     }
 

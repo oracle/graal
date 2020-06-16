@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,9 +33,9 @@ volatile int l = 29;
 
 int main() {
 
-  int j;
-  for (j = l + 1; j < 33; j++) {
-    printf("j = %d\n", j);
-    printf("j - 1 = %d\n", j - 1);
-  }
+    int j;
+    for (j = l + 1; j < 33; j++) {
+        printf("j = %d\n", j);
+        printf("j - 1 = %d\n", j - 1);
+    }
 }

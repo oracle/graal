@@ -48,17 +48,17 @@ To run the TCK tests on the GraalVM it's enough to set the mx `--java-home` to p
 
 `mx --java-home=<path_to_graalvm> tck`
 
-To enable output and error output use the `tck.verbose` property:
+To disable output and error output use the `tck.verbose` property:
 
-`mx tck -Dtck.verbose=true`
+`mx tck -Dtck.verbose=false`
 
-To enable output and error output only for a certain test use the `tck.{TestSimpleName}.verbose` property:
+To disable output and error output only for a certain test use the `tck.{TestSimpleName}.verbose` property:
 
-`mx tck -Dtck.ErrorTypeTest.verbose=true`
+`mx tck -Dtck.ErrorTypeTest.verbose=false`
 
-You can also enable output and error output for all tests but one:
+You can also disable output and error output for all tests but one:
 
-`mx tck -Dtck.verbose=true -Dtck.ErrorTypeTest.verbose=false`
+`mx tck -Dtck.verbose=false -Dtck.ErrorTypeTest.verbose=true`
 
 ## Running TCK tests without mx
 The python [TCK runner](../mx.truffle/tck.py) can be used to execute the Truffle TCK on top of the GraalVM. The script requires

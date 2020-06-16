@@ -1,0 +1,152 @@
+#
+# Copyright (c) 2018, Oracle and/or its affiliates.
+#
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without modification, are
+# permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this list of
+# conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice, this list of
+# conditions and the following disclaimer in the documentation and/or other materials provided
+# with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors may be used to
+# endorse or promote products derived from this software without specific prior written
+# permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS
+# OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+# COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+# GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+# AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+# NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+# OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+
+BREAK 87 CONTINUE "test"
+    OPEN_SCOPE
+        MEMBER structured "struct <anonymous>" "uiBool"
+            MEMBER int "unsigned int" "a" "1"
+            MEMBER int "unsigned int" "b" "0"
+            MEMBER int "unsigned int" "c" "1"
+            MEMBER int "unsigned int" "d" "0"
+            MEMBER int "unsigned int" "e" "1"
+            MEMBER int "unsigned int" "f" "0"
+            MEMBER int "unsigned int" "g" "1"
+            MEMBER int "unsigned int" "h" "0"
+        END_MEMBERS
+        MEMBER structured "struct <anonymous>" "siBool"
+            MEMBER int "int" "a" "-1"
+            MEMBER int "int" "b" "0"
+            MEMBER int "int" "c" "-1"
+            MEMBER int "int" "d" "0"
+            MEMBER int "int" "e" "-1"
+            MEMBER int "int" "f" "0"
+            MEMBER int "int" "g" "-1"
+            MEMBER int "int" "h" "0"
+        END_MEMBERS
+        MEMBER structured "struct <anonymous>" "uiPackedBool"
+            MEMBER int "unsigned int" "a" "1"
+            MEMBER int "unsigned int" "b" "0"
+            MEMBER int "unsigned int" "c" "1"
+            MEMBER int "unsigned int" "d" "0"
+            MEMBER int "unsigned int" "e" "1"
+            MEMBER int "unsigned int" "f" "0"
+            MEMBER int "unsigned int" "g" "1"
+            MEMBER int "unsigned int" "h" "0"
+        END_MEMBERS
+        MEMBER structured "struct <anonymous>" "siPackedBool"
+            MEMBER int "int" "a" "-1"
+            MEMBER int "int" "b" "0"
+            MEMBER int "int" "c" "-1"
+            MEMBER int "int" "d" "0"
+            MEMBER int "int" "e" "-1"
+            MEMBER int "int" "f" "0"
+            MEMBER int "int" "g" "-1"
+            MEMBER int "int" "h" "0"
+        END_MEMBERS
+        MEMBER structured "struct <anonymous>" "uiTriple"
+            MEMBER int "unsigned int" "a" "0"
+            MEMBER int "unsigned int" "b" "1"
+            MEMBER int "unsigned int" "c" "2"
+            MEMBER int "unsigned int" "d" "3"
+            MEMBER int "unsigned int" "e" "4"
+            MEMBER int "unsigned int" "f" "5"
+            MEMBER int "unsigned int" "g" "6"
+            MEMBER int "unsigned int" "h" "7"
+        END_MEMBERS
+        MEMBER structured "struct <anonymous>" "siTriple"
+            MEMBER int "int" "a" "0"
+            MEMBER int "int" "b" "1"
+            MEMBER int "int" "c" "2"
+            MEMBER int "int" "d" "3"
+            MEMBER int "int" "e" "-4"
+            MEMBER int "int" "f" "-3"
+            MEMBER int "int" "g" "-2"
+            MEMBER int "int" "h" "-1"
+        END_MEMBERS
+        MEMBER structured "struct <anonymous>" "uiPackedTriple"
+            MEMBER int "unsigned int" "a" "0"
+            MEMBER int "unsigned int" "b" "1"
+            MEMBER int "unsigned int" "c" "2"
+            MEMBER int "unsigned int" "d" "3"
+            MEMBER int "unsigned int" "e" "4"
+            MEMBER int "unsigned int" "f" "5"
+            MEMBER int "unsigned int" "g" "6"
+            MEMBER int "unsigned int" "h" "7"
+        END_MEMBERS
+        MEMBER structured "struct <anonymous>" "siPackedTriple"
+            MEMBER int "int" "a" "0"
+            MEMBER int "int" "b" "1"
+            MEMBER int "int" "c" "2"
+            MEMBER int "int" "d" "3"
+            MEMBER int "int" "e" "-4"
+            MEMBER int "int" "f" "-3"
+            MEMBER int "int" "g" "-2"
+            MEMBER int "int" "h" "-1"
+        END_MEMBERS
+        MEMBER structured "struct <anonymous>" "ui48Long"
+            MEMBER int "long unsigned int" "a" "140737488355328"
+            MEMBER int "long unsigned int" "b" "1"
+            MEMBER int "long unsigned int" "c" "0"
+            MEMBER int "long unsigned int" "d" "211106232532992"
+            MEMBER int "long unsigned int" "e" "150119987579016"
+            MEMBER int "long unsigned int" "f" "18764998447377"
+            MEMBER int "long unsigned int" "g" "56294995342134"
+            MEMBER int "long unsigned int" "h" "225179981368521"
+        END_MEMBERS
+        MEMBER structured "struct <anonymous>" "si48Long"
+            MEMBER int "long int" "a" "-140737488355328"
+            MEMBER int "long int" "b" "1"
+            MEMBER int "long int" "c" "0"
+            MEMBER int "long int" "d" "-70368744177664"
+            MEMBER int "long int" "e" "-131354989131640"
+            MEMBER int "long int" "f" "18764998447377"
+            MEMBER int "long int" "g" "56294995342134"
+            MEMBER int "long int" "h" "-56294995342135"
+        END_MEMBERS
+        MEMBER structured "struct <anonymous>" "uiPacked48Long"
+            MEMBER int "long unsigned int" "a" "140737488355328"
+            MEMBER int "long unsigned int" "b" "1"
+            MEMBER int "long unsigned int" "c" "0"
+            MEMBER int "long unsigned int" "d" "211106232532992"
+            MEMBER int "long unsigned int" "e" "150119987579016"
+            MEMBER int "long unsigned int" "f" "18764998447377"
+            MEMBER int "long unsigned int" "g" "56294995342134"
+            MEMBER int "long unsigned int" "h" "225179981368521"
+        END_MEMBERS
+        MEMBER structured "struct <anonymous>" "siPacked48Long"
+            MEMBER int "long int" "a" "-140737488355328"
+            MEMBER int "long int" "b" "1"
+            MEMBER int "long int" "c" "0"
+            MEMBER int "long int" "d" "-70368744177664"
+            MEMBER int "long int" "e" "-131354989131640"
+            MEMBER int "long int" "f" "18764998447377"
+            MEMBER int "long int" "g" "56294995342134"
+            MEMBER int "long int" "h" "-56294995342135"
+        END_MEMBERS

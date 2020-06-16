@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,13 +46,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
 
-import org.graalvm.polyglot.proxy.Proxy;
-
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
@@ -64,6 +63,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
@@ -106,7 +106,9 @@ class HostLanguage extends TruffleLanguage<HostContext> {
 
         private HostClassLoader getClassloader() {
             if (classloader == null) {
-                classloader = new HostClassLoader(this, internalContext.getEngine().contextClassLoader);
+                ClassLoader parentClassLoader = internalContext.context.config.hostClassLoader != null ? internalContext.context.config.hostClassLoader
+                                : internalContext.getEngine().contextClassLoader;
+                classloader = new HostClassLoader(this, parentClassLoader);
             }
             return classloader;
         }
@@ -122,7 +124,14 @@ class HostLanguage extends TruffleLanguage<HostContext> {
                 return primitiveType;
             }
             try {
-                return getClassloader().loadClass(className);
+                ClassLoader classLoader = getClassloader();
+                Class<?> foundClass = classLoader.loadClass(className);
+                Object currentModule = EngineAccessor.JDKSERVICES.getUnnamedModule(classLoader);
+                if (EngineAccessor.JDKSERVICES.verifyModuleVisibility(currentModule, foundClass)) {
+                    return foundClass;
+                } else {
+                    throw new HostLanguageException(String.format("Access to host class %s is not allowed or does not exist.", className));
+                }
             } catch (ClassNotFoundException e) {
                 throw new HostLanguageException(String.format("Access to host class %s is not allowed or does not exist.", className));
             }
@@ -183,29 +192,41 @@ class HostLanguage extends TruffleLanguage<HostContext> {
         public Node getLocation() {
             return null;
         }
-
     }
 
     @Override
-    protected boolean isObjectOfLanguage(Object object) {
-        if (object instanceof TruffleObject) {
-            return PolyglotProxy.isProxyGuestObject((TruffleObject) object) || HostObject.isInstance(object) || isHostFunction(object);
+    @TruffleBoundary
+    protected Object getLanguageView(HostContext context, Object value) {
+        Object wrapped;
+        if (value instanceof TruffleObject) {
+            InteropLibrary lib = InteropLibrary.getFactory().getUncached(value);
+            try {
+                assert !lib.hasLanguage(value) || lib.getLanguage(value) != HostLanguage.class;
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError(e);
+            }
+            wrapped = ToHostNode.convertToObject(value, context.internalContext, lib);
         } else {
-            return false;
+            wrapped = value;
         }
-    }
-
-    private static boolean isHostFunction(Object object) {
-        return HostFunction.isInstance(object);
+        return HostObject.forObject(wrapped, context.internalContext);
     }
 
     @Override
-    protected CallTarget parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest request) throws Exception {
+    protected CallTarget parse(ParsingRequest request) throws Exception {
         String sourceString = request.getSource().getCharacters().toString();
         return Truffle.getRuntime().createCallTarget(new RootNode(this) {
+
+            @CompilationFinal ContextReference<HostContext> contextRef;
+
             @Override
             public Object execute(VirtualFrame frame) {
-                HostContext context = getContextReference().get();
+                if (contextRef == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    contextRef = lookupContextReference(HostLanguage.class);
+                }
+                HostContext context = contextRef.get();
                 Class<?> allTarget = context.findClass(sourceString);
                 return context.internalContext.toGuestValue(allTarget);
             }
@@ -249,96 +270,6 @@ class HostLanguage extends TruffleLanguage<HostContext> {
     @Override
     protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
         return true;
-    }
-
-    private String arrayToString(HostContext context, Object array, int level) {
-        if (array == null) {
-            return "null";
-        }
-        if (level > 0) {
-            // avoid recursions all together
-            return "[...]";
-        }
-        int iMax = Array.getLength(array) - 1;
-        if (iMax == -1) {
-            return "[]";
-        }
-
-        StringBuilder b = new StringBuilder();
-        b.append('[');
-        for (int i = 0;; i++) {
-            b.append(toStringImpl(context, Array.get(array, i), level + 1));
-            if (i == iMax) {
-                return b.append(']').toString();
-            }
-            b.append(", ");
-        }
-    }
-
-    @Override
-    protected String toString(HostContext context, Object value) {
-        return toStringImpl(context, value, 0);
-    }
-
-    private String toStringImpl(HostContext context, Object value, int level) {
-        if (value instanceof TruffleObject) {
-            TruffleObject to = (TruffleObject) value;
-            if (HostObject.isInstance(to)) {
-                Object javaObject = ((HostObject) to).obj;
-                try {
-                    if (javaObject == null) {
-                        return "null";
-                    } else if (javaObject.getClass().isArray()) {
-                        return arrayToString(context, javaObject, level);
-                    } else if (javaObject instanceof Class) {
-                        return ((Class<?>) javaObject).getTypeName();
-                    } else {
-                        return Objects.toString(javaObject);
-                    }
-                } catch (Throwable t) {
-                    throw PolyglotImpl.wrapHostException(context.internalContext, t);
-                }
-            } else if (PolyglotProxy.isProxyGuestObject(to)) {
-                Proxy proxy = PolyglotProxy.toProxyHostObject(to);
-                try {
-                    return proxy.toString();
-                } catch (Throwable t) {
-                    throw PolyglotImpl.wrapHostException(context.internalContext, t);
-                }
-            } else if (isHostFunction(value)) {
-                return ((HostFunction) value).getDescription();
-            } else {
-                return "Foreign Object";
-            }
-        } else {
-            return value.toString();
-        }
-    }
-
-    @Override
-    protected Object findMetaObject(HostContext context, Object value) {
-        if (value instanceof TruffleObject) {
-            TruffleObject to = (TruffleObject) value;
-            if (HostObject.isInstance(to)) {
-                Object javaObject = ((HostObject) to).obj;
-                Class<?> javaType;
-                if (javaObject == null) {
-                    javaType = Void.class;
-                } else {
-                    javaType = javaObject.getClass();
-                }
-                return context.internalContext.toGuestValue(javaType);
-            } else if (PolyglotProxy.isProxyGuestObject(to)) {
-                Proxy proxy = PolyglotProxy.toProxyHostObject(to);
-                return context.internalContext.toGuestValue(proxy.getClass());
-            } else if (isHostFunction(to)) {
-                return "Bound Method";
-            } else {
-                return "Foreign Object";
-            }
-        } else {
-            return context.internalContext.toGuestValue(value.getClass());
-        }
     }
 
     @ExportLibrary(InteropLibrary.class)

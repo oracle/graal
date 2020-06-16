@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,7 +55,7 @@ import com.oracle.truffle.api.Truffle;
  */
 public abstract class IndirectCallNode extends Node {
 
-    static final ThreadLocal<Object> CURRENT_CALL_NODE = NodeAccessor.ACCESSOR.createFastThreadLocal();
+    static final ThreadLocal<Object> CURRENT_CALL_NODE = new ThreadLocal<>();
 
     /**
      * Constructor for implementation subclasses.
@@ -80,7 +80,7 @@ public abstract class IndirectCallNode extends Node {
         return Truffle.getRuntime().createIndirectCallNode();
     }
 
-    private static final IndirectCallNode UNCACHED = NodeAccessor.ACCESSOR.createUncachedIndirectCall();
+    private static final IndirectCallNode UNCACHED = NodeAccessor.RUNTIME.createUncachedIndirectCall();
 
     /**
      * Returns an uncached version of an indirect call node. Uncached versions of an indirect call
@@ -90,6 +90,7 @@ public abstract class IndirectCallNode extends Node {
      * @since 19.0
      */
     public static IndirectCallNode getUncached() {
+        assert !UNCACHED.isAdoptable();
         return UNCACHED;
     }
 

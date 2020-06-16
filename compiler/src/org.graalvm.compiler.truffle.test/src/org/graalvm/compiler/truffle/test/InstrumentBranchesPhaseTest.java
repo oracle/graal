@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,20 +24,22 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleInstrumentBranches;
-
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleOptionsOverrideScope;
+import com.oracle.truffle.api.test.ReflectionUtils;
+import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.phases.InstrumentPhase;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
-import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import org.graalvm.polyglot.Context;
+
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 
 public class InstrumentBranchesPhaseTest extends PartialEvaluationTest {
 
@@ -81,37 +83,45 @@ public class InstrumentBranchesPhaseTest extends PartialEvaluationTest {
         }
     }
 
-    private TruffleOptionsOverrideScope overrides;
-
-    @Override
-    protected void beforeInitialization() {
-        overrides = TruffleCompilerOptions.overrideOptions(TruffleInstrumentBranches, true);
-    }
-
-    @After
-    public void disableInstrumentAfterTests() {
-        overrides.close();
+    @Before
+    public void setUp() {
+        setupContext(Context.newBuilder().allowExperimentalOptions(true).allowAllAccess(true).option("engine.InstrumentBranches", "true").build());
     }
 
     @Test
     public void simpleIfTest() {
-        InstrumentPhase.Instrumentation instrumentation = truffleCompiler.getPartialEvaluator().getInstrumentation();
         FrameDescriptor descriptor = new FrameDescriptor();
         SimpleIfTestNode result = new SimpleIfTestNode(5);
         RootTestNode rootNode = new RootTestNode(descriptor, "simpleIfRoot", result);
         OptimizedCallTarget target = compileHelper("simpleIfRoot", rootNode, new Object[0]);
+        InstrumentPhase.Instrumentation instrumentation = getInstrumentation(target);
         Assert.assertTrue(target.isValid());
         target.call();
-        String stackOutput = instrumentation.accessTableToList(getOptions()).get(0);
+        String stackOutput = instrumentation.accessTableToList().get(0);
         Assert.assertTrue(stackOutput, stackOutput.contains("org.graalvm.compiler.truffle.test.InstrumentBranchesPhaseTest$SimpleIfTestNode.execute(InstrumentBranchesPhaseTest.java"));
         Assert.assertTrue(stackOutput, stackOutput.contains(String.format("[bci: 4]%n[0] state = ELSE(if=0#, else=1#)")));
         String histogramOutput = instrumentation.accessTableToHistogram().get(0);
         Assert.assertEquals("  0: ********************************************************************************", histogramOutput);
     }
 
+    private InstrumentPhase.Instrumentation getInstrumentation(OptimizedCallTarget target) {
+        final PartialEvaluator partialEvaluator = getTruffleCompiler(target).getPartialEvaluator();
+        final Method getInstrumentation;
+        try {
+            getInstrumentation = PartialEvaluator.class.getDeclaredMethod("getInstrumentation");
+        } catch (NoSuchMethodException e) {
+            throw new AssertionError(e);
+        }
+        ReflectionUtils.setAccessible(getInstrumentation, true);
+        try {
+            return (InstrumentPhase.Instrumentation) getInstrumentation.invoke(partialEvaluator);
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            throw new AssertionError(e);
+        }
+    }
+
     @Test
     public void twoIfsTest() {
-        InstrumentPhase.Instrumentation instrumentation = truffleCompiler.getPartialEvaluator().getInstrumentation();
         FrameDescriptor descriptor = new FrameDescriptor();
         TwoIfsTestNode result = new TwoIfsTestNode(5, -1);
         RootTestNode rootNode = new RootTestNode(descriptor, "twoIfsRoot", result);
@@ -120,10 +130,11 @@ public class InstrumentBranchesPhaseTest extends PartialEvaluationTest {
         // We run this twice to make sure that it comes first in the sorted access list.
         target.call();
         target.call();
-        String stackOutput1 = instrumentation.accessTableToList(getOptions()).get(0);
+        InstrumentPhase.Instrumentation instrumentation = getInstrumentation(target);
+        String stackOutput1 = instrumentation.accessTableToList().get(0);
         Assert.assertTrue(stackOutput1, stackOutput1.contains("org.graalvm.compiler.truffle.test.InstrumentBranchesPhaseTest$TwoIfsTestNode.execute(InstrumentBranchesPhaseTest.java"));
         Assert.assertTrue(stackOutput1, stackOutput1.contains(String.format("[bci: 4]%n[0] state = ELSE(if=0#, else=2#)")));
-        String stackOutput2 = instrumentation.accessTableToList(getOptions()).get(1);
+        String stackOutput2 = instrumentation.accessTableToList().get(1);
         Assert.assertTrue(stackOutput2, stackOutput2.contains("org.graalvm.compiler.truffle.test.InstrumentBranchesPhaseTest$TwoIfsTestNode.execute(InstrumentBranchesPhaseTest.java"));
         Assert.assertTrue(stackOutput2, stackOutput2.contains(String.format("[bci: 18]%n[1] state = IF(if=2#, else=0#)")));
     }

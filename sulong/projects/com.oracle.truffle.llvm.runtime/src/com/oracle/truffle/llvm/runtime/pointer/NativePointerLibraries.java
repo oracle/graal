@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -44,9 +44,11 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.library.LLVMNativeLibrary;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
 
 @ExportLibrary(value = LLVMNativeLibrary.class, receiverType = LLVMPointerImpl.class)
+@ExportLibrary(value = LLVMAsForeignLibrary.class, receiverType = LLVMPointerImpl.class)
 @ExportLibrary(value = InteropLibrary.class, receiverType = LLVMPointerImpl.class)
 abstract class NativePointerLibraries extends CommonPointerLibraries {
 
@@ -74,7 +76,7 @@ abstract class NativePointerLibraries extends CommonPointerLibraries {
         @Specialization(limit = "5", guards = {"value.asNative() == cachedAddress", "cachedDescriptor != null"})
         static Object doNativeCached(@SuppressWarnings("unused") LLVMPointerImpl value, Object[] args,
                         @Cached("value.asNative()") @SuppressWarnings("unused") long cachedAddress,
-                        @Cached("getLLVMContextReference()") ContextReference<LLVMContext> ctxRef,
+                        @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> ctxRef,
                         @Cached("getDescriptor(ctxRef, value)") LLVMFunctionDescriptor cachedDescriptor,
                         @CachedLibrary("cachedDescriptor") InteropLibrary interop) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
             return interop.execute(cachedDescriptor, args);
@@ -114,4 +116,5 @@ abstract class NativePointerLibraries extends CommonPointerLibraries {
     static LLVMNativePointer toNativePointer(LLVMPointerImpl receiver) {
         return receiver;
     }
+
 }

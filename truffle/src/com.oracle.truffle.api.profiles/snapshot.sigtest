@@ -23,6 +23,7 @@ hcls Disabled,Enabled
 
 CLSS public abstract com.oracle.truffle.api.profiles.ConditionProfile
 meth public abstract boolean profile(boolean)
+meth public static com.oracle.truffle.api.profiles.ConditionProfile create()
 meth public static com.oracle.truffle.api.profiles.ConditionProfile createBinaryProfile()
 meth public static com.oracle.truffle.api.profiles.ConditionProfile createCountingProfile()
 meth public static com.oracle.truffle.api.profiles.ConditionProfile getUncached()
@@ -92,6 +93,8 @@ meth public static com.oracle.truffle.api.profiles.ValueProfile createIdentityPr
 meth public static com.oracle.truffle.api.profiles.ValueProfile getUncached()
 supr com.oracle.truffle.api.profiles.Profile
 hcls Disabled,Equality,ExactClass,Identity
+
+CLSS abstract interface com.oracle.truffle.api.profiles.package-info
 
 CLSS public abstract interface java.lang.Cloneable
 

@@ -24,7 +24,8 @@
  */
 package com.oracle.svm.jni.nativeapi;
 
-import org.graalvm.nativeimage.ObjectHandle;
+import org.graalvm.word.ComparableWord;
 
-public interface JNIObjectHandle extends ObjectHandle {
+/** @see com.oracle.svm.jni.JNIObjectHandles */
+public interface JNIObjectHandle extends ComparableWord {
 }

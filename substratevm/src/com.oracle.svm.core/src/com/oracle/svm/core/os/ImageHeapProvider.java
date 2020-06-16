@@ -27,13 +27,15 @@ package com.oracle.svm.core.os;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 
 /**
- * Provides new instances of the image heap for creating isolates.
+ * Provides new instances of the image heap for creating isolates. The same image heap provider
+ * implementation can be shared by different garbage collectors.
  */
 public interface ImageHeapProvider {
     @Fold
@@ -44,25 +46,23 @@ public interface ImageHeapProvider {
     /**
      * Creates a new instance of the image heap.
      *
-     * @param begin If non-null, a specific address where the image heap instance should be created.
-     *            If null, the image heap instance is created at an arbitrary address.
-     * @param reservedSize If {@code begin} is non-null, the reserved bytes at that address.
+     * @param reservedAddressSpace If non-null, this specifies the address of a contiguous block of
+     *            memory in which the image heap and the Java heap should be placed. If null, the
+     *            {@link ImageHeapProvider} is responsible for allocating sufficient memory for the
+     *            image heap at an arbitrary address.
+     * @param reservedSize If {@code reservedAddressSpace} is non-null, the number of reserved bytes
+     *            at that address.
      * @param basePointer An address where a pointer to the start address of the image heap instance
      *            will be written. Must not be null.
      * @param endPointer An address where a pointer to the end of the image heap instance will be
      *            written. May be null if this value is not required.
      * @return a result code from {@link CEntryPointErrors}.
      */
-    int initialize(PointerBase begin, UnsignedWord reservedSize, WordPointer basePointer, WordPointer endPointer);
+    int initialize(Pointer reservedAddressSpace, UnsignedWord reservedSize, WordPointer basePointer, WordPointer endPointer);
 
     /**
-     * Determines whether instead of calling {@link #tearDown(PointerBase)}, a heap instance that
-     * can simply be {@linkplain VirtualMemoryProvider#free(PointerBase, UnsignedWord) unmapped}.
+     * Disposes an instance of the image heap that was created with this provider. This method must
+     * only be called if the image heap memory was allocated by the {@link ImageHeapProvider}.
      */
-    boolean canUnmapInsteadOfTearDown(PointerBase heapBase);
-
-    /**
-     * Disposes an instance of the image heap that was created with this provider.
-     */
-    int tearDown(PointerBase heapBase);
+    int freeImageHeap(PointerBase heapBase);
 }

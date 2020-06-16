@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -59,7 +59,6 @@ import org.graalvm.compiler.asm.sparc.SPARCMacroAssembler.ScratchRegister;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.DataSection;
 import org.graalvm.compiler.code.DataSection.Data;
-import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.core.gen.LIRGenerationProvider;
@@ -71,6 +70,7 @@ import org.graalvm.compiler.hotspot.HotSpotDataBuilder;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.hotspot.HotSpotHostBackend;
 import org.graalvm.compiler.hotspot.HotSpotLIRGenerationResult;
+import org.graalvm.compiler.hotspot.HotSpotMarkId;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.stubs.Stub;
@@ -132,7 +132,8 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend implements LIRGenera
         }
     }
 
-    private FrameMapBuilder newFrameMapBuilder(RegisterConfig registerConfig) {
+    @Override
+    protected FrameMapBuilder newFrameMapBuilder(RegisterConfig registerConfig) {
         RegisterConfig registerConfigNonNull = registerConfig == null ? getCodeCache().getRegisterConfig() : registerConfig;
         FrameMap frameMap = new SPARCFrameMap(getCodeCache(), registerConfigNonNull, this);
         return new SPARCFrameMapBuilder(frameMap, getCodeCache(), registerConfigNonNull);
@@ -141,12 +142,6 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend implements LIRGenera
     @Override
     public LIRGeneratorTool newLIRGenerator(LIRGenerationResult lirGenRes) {
         return new SPARCHotSpotLIRGenerator(getProviders(), getRuntime().getVMConfig(), lirGenRes);
-    }
-
-    @Override
-    public LIRGenerationResult newLIRGenerationResult(CompilationIdentifier compilationId, LIR lir, RegisterConfig registerConfig, StructuredGraph graph, Object stub) {
-        return new HotSpotLIRGenerationResult(compilationId, lir, newFrameMapBuilder(registerConfig), makeCallingConvention(graph, (Stub) stub), stub,
-                        config.requiresReservedStackCheck(graph.getMethods()));
     }
 
     @Override
@@ -202,6 +197,9 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend implements LIRGenera
                     masm.setx(stackpointerChange, scratch, false);
                     masm.save(sp, scratch, sp);
                 }
+            }
+            if (HotSpotMarkId.FRAME_COMPLETE.isAvailable()) {
+                crb.recordMark(HotSpotMarkId.FRAME_COMPLETE);
             }
 
             if (ZapStackOnMethodEntry.getValue(crb.getOptions())) {
@@ -323,7 +321,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend implements LIRGenera
 
             // Emit the prefix
             if (unverifiedStub != null) {
-                crb.recordMark(config.MARKID_UNVERIFIED_ENTRY);
+                crb.recordMark(HotSpotMarkId.UNVERIFIED_ENTRY);
                 // We need to use JavaCall here because we haven't entered the frame yet.
                 CallingConvention cc = regConfig.getCallingConvention(HotSpotCallingConventionType.JavaCall, null, new JavaType[]{getProviders().getMetaAccess().lookupJavaType(Object.class)}, this);
                 Register inlineCacheKlass = g5; // see MacroAssembler::ic_call
@@ -341,8 +339,7 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend implements LIRGenera
             }
 
             masm.align(config.codeEntryAlignment);
-            crb.recordMark(config.MARKID_OSR_ENTRY);
-            crb.recordMark(config.MARKID_VERIFIED_ENTRY);
+            crb.recordMark(crb.compilationResult.getEntryBCI() != -1 ? HotSpotMarkId.OSR_ENTRY : HotSpotMarkId.VERIFIED_ENTRY);
 
             // Emit code for the LIR
             crb.emit(lir);
@@ -352,10 +349,10 @@ public class SPARCHotSpotBackend extends HotSpotHostBackend implements LIRGenera
         HotSpotFrameContext frameContext = (HotSpotFrameContext) crb.frameContext;
         HotSpotForeignCallsProvider foreignCalls = getProviders().getForeignCalls();
         if (!frameContext.isStub) {
-            crb.recordMark(config.MARKID_EXCEPTION_HANDLER_ENTRY);
+            crb.recordMark(HotSpotMarkId.EXCEPTION_HANDLER_ENTRY);
             SPARCCall.directCall(crb, masm, foreignCalls.lookupForeignCall(EXCEPTION_HANDLER), null, null);
-            crb.recordMark(config.MARKID_DEOPT_HANDLER_ENTRY);
-            SPARCCall.directCall(crb, masm, foreignCalls.lookupForeignCall(DEOPTIMIZATION_HANDLER), null, null);
+            crb.recordMark(HotSpotMarkId.DEOPT_HANDLER_ENTRY);
+            SPARCCall.directCall(crb, masm, foreignCalls.lookupForeignCall(DEOPT_BLOB_UNPACK), null, null);
         } else {
             // No need to emit the stubs for entries back into the method since
             // it has no calls that can cause such "return" entries

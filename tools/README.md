@@ -47,4 +47,4 @@ and start a [pull request](https://help.github.com/articles/using-pull-requests/
 
 ## License
 
-The Tools are is licensed under the [GPL 2 with Classpath exception](LICENSE.GPL.md).
+The Tools are is licensed under the GPL 2 with Classpath Exception.

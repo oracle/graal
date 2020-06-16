@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,7 @@ import static org.graalvm.compiler.core.GraalCompilerOptions.CompilationBailoutA
 import static org.graalvm.compiler.core.GraalCompilerOptions.CompilationFailureAction;
 import static org.graalvm.compiler.core.GraalCompilerOptions.ExitVMOnException;
 import static org.graalvm.compiler.core.GraalCompilerOptions.MaxCompilationProblemsPerAction;
-import static org.graalvm.compiler.debug.DebugContext.VERBOSE_LEVEL;
+import static org.graalvm.compiler.core.common.GraalOptions.TrackNodeSourcePosition;
 import static org.graalvm.compiler.debug.DebugOptions.Dump;
 import static org.graalvm.compiler.debug.DebugOptions.DumpPath;
 import static org.graalvm.compiler.debug.DebugOptions.MethodFilter;
@@ -42,6 +42,7 @@ import java.io.PrintStream;
 import java.util.Map;
 
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.DiagnosticsOutputDirectory;
 import org.graalvm.compiler.debug.PathUtilities;
 import org.graalvm.compiler.debug.TTY;
@@ -242,6 +243,9 @@ public abstract class CompilationWrapper<T> {
                 String message;
                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
                 try (PrintStream ps = new PrintStream(baos)) {
+                    // This output is used by external tools to detect compilation failures.
+                    ps.println("[[[Graal compilation failure]]]");
+
                     ps.printf("%s: Compilation of %s failed:%n", Thread.currentThread(), this);
                     cause.printStackTrace(ps);
                     ps.printf("To disable compilation failure notifications, set %s to %s (e.g., -Dgraal.%s=%s).%n",
@@ -272,9 +276,10 @@ public abstract class CompilationWrapper<T> {
                 }
 
                 OptionValues retryOptions = new OptionValues(initialOptions,
-                                Dump, ":" + VERBOSE_LEVEL,
+                                Dump, ":" + DebugOptions.DiagnoseDumpLevel.getValue(initialOptions),
                                 MethodFilter, null,
-                                DumpPath, dumpPath.getPath());
+                                DumpPath, dumpPath.getPath(),
+                                TrackNodeSourcePosition, true);
 
                 ByteArrayOutputStream logBaos = new ByteArrayOutputStream();
                 PrintStream ps = new PrintStream(logBaos);

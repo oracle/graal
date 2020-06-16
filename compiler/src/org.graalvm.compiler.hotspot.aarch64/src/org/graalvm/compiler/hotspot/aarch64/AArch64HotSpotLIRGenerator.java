@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2018, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -63,6 +63,7 @@ import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage;
 import org.graalvm.compiler.hotspot.HotSpotLIRGenerationResult;
 import org.graalvm.compiler.hotspot.HotSpotLIRGenerator;
 import org.graalvm.compiler.hotspot.HotSpotLockStack;
+import org.graalvm.compiler.hotspot.HotSpotMarkId;
 import org.graalvm.compiler.hotspot.meta.HotSpotConstantLoadAction;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.meta.HotSpotRegistersProvider;
@@ -84,7 +85,6 @@ import org.graalvm.compiler.lir.aarch64.AArch64Move.StoreOp;
 import org.graalvm.compiler.lir.aarch64.AArch64PrefetchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64RestoreRegistersOp;
 import org.graalvm.compiler.lir.aarch64.AArch64SaveRegistersOp;
-import org.graalvm.compiler.lir.aarch64.AArch64ZeroMemoryOp;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.options.OptionValues;
 
@@ -271,7 +271,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
             if (encoding.hasBase() || GeneratePIC.getValue(options)) {
                 if (GeneratePIC.getValue(options)) {
                     Variable baseAddress = newVariable(lirKindTool.getWordKind());
-                    AArch64HotSpotMove.BaseMove move = new AArch64HotSpotMove.BaseMove(baseAddress, config);
+                    AArch64HotSpotMove.BaseMove move = new AArch64HotSpotMove.BaseMove(baseAddress);
                     append(move);
                     base = baseAddress;
                 } else {
@@ -300,7 +300,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
             if (encoding.hasBase() || GeneratePIC.getValue(options)) {
                 if (GeneratePIC.getValue(options)) {
                     Variable baseAddress = newVariable(LIRKind.value(AArch64Kind.QWORD));
-                    AArch64HotSpotMove.BaseMove move = new AArch64HotSpotMove.BaseMove(baseAddress, config);
+                    AArch64HotSpotMove.BaseMove move = new AArch64HotSpotMove.BaseMove(baseAddress);
                     append(move);
                     base = baseAddress;
                 } else {
@@ -401,6 +401,12 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
     }
 
     @Override
+    public void emitDeoptimizeWithExceptionInCaller(Value exception) {
+        Register thread = getProviders().getRegisters().getThreadRegister();
+        append(new AArch64HotSpotDeoptimizeWithExceptionCallerOp(config, exception, thread));
+    }
+
+    @Override
     public void emitDeoptimize(Value actionAndReason, Value failedSpeculation, LIRFrameState state) {
         moveDeoptValuesToThread(actionAndReason, failedSpeculation);
         append(new AArch64HotSpotDeoptimizeOp(state));
@@ -467,7 +473,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
     }
 
     @Override
-    public Value emitLoadConfigValue(int markId, LIRKind kind) {
+    public Value emitLoadConfigValue(HotSpotMarkId markId, LIRKind kind) {
         Variable result = newVariable(kind);
         append(new AArch64HotSpotLoadConfigValueOp(markId, result));
         return result;
@@ -544,7 +550,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
     }
 
     @Override
-    public void emitZeroMemory(Value address, Value length) {
+    public void emitZeroMemory(Value address, Value length, boolean isAligned) {
         int dczidValue = config.psrInfoDczidValue;
         EnumSet<AArch64.Flag> flags = ((AArch64) target().arch).getFlags();
 
@@ -563,7 +569,6 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
             useDcZva = false;
         }
 
-        // Value address is 8-byte aligned; Value length is multiple of 8.
-        append(new AArch64ZeroMemoryOp(asAllocatable(address), asAllocatable(length), useDcZva, zvaLength));
+        emitZeroMemory(address, length, isAligned, useDcZva, zvaLength);
     }
 }

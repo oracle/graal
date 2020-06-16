@@ -33,6 +33,8 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.java.FrameStateBuilder;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
@@ -40,7 +42,7 @@ import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.java.NewArrayNode;
 import org.graalvm.nativeimage.c.function.CEntryPoint.FatalExceptionHandler;
-import org.graalvm.nativeimage.c.type.CIntPointer;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
@@ -135,7 +137,7 @@ public final class JNIPrimitiveArrayOperationMethod extends JNIGeneratedMethod {
         } else {
             args.add(objectHandleType); // j<PrimitiveType>Array array;
             if (operation == Operation.GET_ELEMENTS) {
-                args.add(metaAccess.lookupJavaType(CIntPointer.class)); // jboolean *isCopy;
+                args.add(metaAccess.lookupJavaType(CCharPointer.class)); // jboolean *isCopy;
                 returnType = metaAccess.lookupJavaType(WordPointer.class);
             } else if (operation == Operation.RELEASE_ELEMENTS) {
                 args.add(metaAccess.lookupJavaType(WordPointer.class)); // NativeType *elems;
@@ -189,21 +191,27 @@ public final class JNIPrimitiveArrayOperationMethod extends JNIGeneratedMethod {
                 ValueNode start = arguments.get(2);
                 ValueNode count = arguments.get(3);
                 ValueNode buffer = arguments.get(4);
+                FixedWithNextNode fwn;
                 if (operation == Operation.GET_REGION) {
-                    kit.getPrimitiveArrayRegionRetainException(elementKind, array, start, count, buffer);
+                    fwn = kit.getPrimitiveArrayRegionRetainException(elementKind, array, start, count, buffer);
                 } else {
-                    kit.setPrimitiveArrayRegionRetainException(elementKind, array, start, count, buffer);
+                    fwn = kit.setPrimitiveArrayRegionRetainException(elementKind, array, start, count, buffer);
+                }
+                if (fwn instanceof MergeNode) {
+                    MergeNode merge = (MergeNode) fwn;
+                    ((MergeNode) fwn).setStateAfter(state.create(kit.bci(), merge));
                 }
                 break;
             }
             default:
                 throw VMError.shouldNotReachHere();
         }
-
-        kit.append(new CEntryPointLeaveNode(LeaveAction.Leave));
+        kit.appendStateSplitProxy(state);
+        CEntryPointLeaveNode leave = new CEntryPointLeaveNode(LeaveAction.Leave);
+        kit.append(leave);
         kit.createReturn(result, (result != null) ? result.getStackKind() : JavaKind.Void);
-        assert graph.verify();
-        return graph;
+
+        return kit.finalizeGraph();
     }
 
     private ValueNode newArray(HostedProviders providers, JNIGraphKit kit, List<ValueNode> arguments) {
@@ -217,6 +225,7 @@ public final class JNIPrimitiveArrayOperationMethod extends JNIGeneratedMethod {
         ValueNode array = kit.append(new NewArrayNode(elementType, length, true));
         ValueNode arrayHandle = kit.boxObjectInLocalHandle(array);
         AbstractMergeNode merge = kit.endIf();
+        merge.setStateAfter(kit.getFrameState().create(kit.bci(), merge));
         Stamp handleStamp = providers.getWordTypes().getWordStamp(providers.getMetaAccess().lookupJavaType(JNIObjectHandle.class));
         return kit.unique(new ValuePhiNode(handleStamp, merge, new ValueNode[]{nullHandle, arrayHandle}));
     }

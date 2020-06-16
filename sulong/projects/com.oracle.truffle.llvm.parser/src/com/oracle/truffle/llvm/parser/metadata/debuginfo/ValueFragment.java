@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,13 +29,13 @@
  */
 package com.oracle.truffle.llvm.parser.metadata.debuginfo;
 
-import com.oracle.truffle.llvm.parser.metadata.MDExpression;
-
-import java.util.List;
-
 import static com.oracle.truffle.llvm.parser.metadata.DwarfOpcode.LLVM_FRAGMENT;
 import static com.oracle.truffle.llvm.parser.metadata.DwarfOpcode.hasOp;
 import static com.oracle.truffle.llvm.parser.metadata.DwarfOpcode.numElements;
+
+import java.util.List;
+
+import com.oracle.truffle.llvm.parser.metadata.MDExpression;
 
 public final class ValueFragment implements Comparable<ValueFragment> {
 
@@ -108,6 +108,10 @@ public final class ValueFragment implements Comparable<ValueFragment> {
 
     public int getEnd() {
         return offset + length;
+    }
+
+    public boolean isComplete() {
+        return COMPLETE_VALUE.equals(this);
     }
 
     private boolean hides(ValueFragment other) {

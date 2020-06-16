@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -90,7 +90,7 @@ import java.lang.annotation.Target;
  * @see Abstract to make messages abstract if they have a default implemetnation
  * @since 19.0
  */
-@Retention(RetentionPolicy.CLASS)
+@Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
 public @interface GenerateLibrary {
 
@@ -258,5 +258,29 @@ public @interface GenerateLibrary {
         String[] ifExported() default {};
 
     }
+
+    /**
+     * Allows the library to lookup additional default exports using a service provider interface.
+     * {@link ExportLibrary Exports} for this library with explicit receiver type will automatically
+     * be interpreted as additional default exports. External default exports may specify with the
+     * {@link ExportLibrary#priority() priority} whether they are looked up before or after existing
+     * default exports specified for the library. Default exports always have a lower priority than
+     * explicit exports on the receiver type or exports that use dynamic dispatch.
+     *
+     * @see ExportLibrary#priority()
+     * @since 20.1
+     */
+    boolean defaultExportLookupEnabled() default false;
+
+    /**
+     * Allows the use of {@link DynamicDispatchLibrary} with this library. By default dynamic
+     * dispatch is enabled. If this flag is set to <code>false</code> then the
+     * {@link DynamicDispatchLibrary#dispatch(Object) dispatch} method will not be used for this
+     * library. Only default exports and exports declared with the receiver type will be used
+     * instead for this library.
+     *
+     * @since 20.1
+     */
+    boolean dynamicDispatchEnabled() default true;
 
 }

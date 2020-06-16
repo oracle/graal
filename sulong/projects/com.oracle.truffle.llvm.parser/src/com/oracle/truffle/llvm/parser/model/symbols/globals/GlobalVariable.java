@@ -41,8 +41,8 @@ public final class GlobalVariable extends GlobalValueSymbol {
 
     private final int align;
 
-    private GlobalVariable(boolean isReadOnly, PointerType type, int align, Linkage linkage, Visibility visibility, SymbolTable symbolTable, int value) {
-        super(type, linkage, visibility, symbolTable, value);
+    private GlobalVariable(boolean isReadOnly, PointerType type, int align, Linkage linkage, Visibility visibility, SymbolTable symbolTable, int value, int index) {
+        super(type, linkage, visibility, symbolTable, value, index);
         this.isReadOnly = isReadOnly;
         this.align = align;
     }
@@ -60,7 +60,7 @@ public final class GlobalVariable extends GlobalValueSymbol {
         return isReadOnly;
     }
 
-    public static GlobalVariable create(boolean isReadOnly, PointerType type, int align, long linkage, long visibility, SymbolTable symbolTable, int value) {
-        return new GlobalVariable(isReadOnly, type, align, Linkage.decode(linkage), Visibility.decode(visibility), symbolTable, value);
+    public static GlobalVariable create(boolean isReadOnly, PointerType type, int align, long linkage, long visibility, SymbolTable symbolTable, int value, int index) {
+        return new GlobalVariable(isReadOnly, type, align, Linkage.decode(linkage), Visibility.decode(visibility), symbolTable, value, index);
     }
 }

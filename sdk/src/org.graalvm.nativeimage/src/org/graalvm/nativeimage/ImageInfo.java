@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -148,6 +148,7 @@ public final class ImageInfo {
      * @since 19.0
      */
     public static boolean isExecutable() {
+        ensureKindAvailable();
         return PROPERTY_IMAGE_KIND_VALUE_EXECUTABLE.equals(System.getProperty(PROPERTY_IMAGE_KIND_KEY));
     }
 
@@ -157,6 +158,14 @@ public final class ImageInfo {
      * @since 19.0
      */
     public static boolean isSharedLibrary() {
+        ensureKindAvailable();
         return PROPERTY_IMAGE_KIND_VALUE_SHARED_LIBRARY.equals(System.getProperty(PROPERTY_IMAGE_KIND_KEY));
+    }
+
+    private static void ensureKindAvailable() {
+        if (inImageCode() && System.getProperty(PROPERTY_IMAGE_KIND_KEY) == null) {
+            throw new UnsupportedOperationException(
+                            "The kind of image that is built (executable or shared library) is not available yet because the relevant command line option has not been parsed yet.");
+        }
     }
 }

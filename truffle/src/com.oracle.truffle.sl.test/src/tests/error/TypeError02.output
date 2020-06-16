@@ -1,1 +1,1 @@
-Type error at TypeError02.sl line 2 col 3: operation "if" not defined for String "4"
+Type error at TypeError02.sl line 7 col 3: operation "if" not defined for String "4"

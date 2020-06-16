@@ -28,9 +28,11 @@ import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -88,6 +90,7 @@ public class CastExactPartialEvaluationTest extends PartialEvaluationTest {
      */
     @Test
     public void byteBufferAccess() {
+        Assume.assumeTrue("GR-23778", JavaVersionUtil.JAVA_SPEC <= 11);
         AbstractTestNode result = new BufferGetPutTestNode(newBuffer().getClass());
         testCommon(result, "byteBufferAccess");
     }

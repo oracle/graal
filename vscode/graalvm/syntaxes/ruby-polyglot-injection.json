@@ -1,0 +1,376 @@
+{
+    "injectionSelector": "L:source.ruby -comment -(string - meta.embedded), L:source.js meta.embedded.inline.ruby, L:source.r meta.embedded.inline.ruby, L:source.python meta.embedded.inline.ruby, L:source.sl meta.embedded.inline.ruby",
+    "scopeName": "ruby-inline.polyglot-langauges",
+    "patterns": [
+        {
+            "begin": "(Polyglot)\\s*(\\.)\\s*((eval)\\s*(\\())",
+            "beginCaptures": {
+                "1": {
+                    "name": "support.class.ruby"
+                },
+                "2": {
+                    "name": "punctuation.separator.method.ruby"
+                },
+                "3": {
+                    "name": "meta.function-call.ruby"
+                },
+                "4": {
+                    "name": "entity.name.function.ruby"
+                },
+                "5": {
+                    "name": "punctuation.section.function.ruby"
+                }
+            },
+            "contentName": "meta.function-call.ruby",
+            "end": "\\)",
+            "endCaptures": {
+                "0": {
+                    "name": "meta.function-call.ruby punctuation.section.function.ruby"
+                }
+            },
+            "patterns": [
+                {
+                    "include": "#polyglot-call-js"
+                },
+                {
+                    "include": "#polyglot-call-r"
+                },
+                {
+                    "include": "#polyglot-call-python"
+                },
+                {
+                    "include": "#polyglot-call-sl"
+                },
+                {
+                    "include": "source.ruby"
+                }
+           ]
+        }
+    ],
+    "repository": {
+        "polyglot-call-js": {
+            "begin": "(?:((')js('))|((\")js(\")))\\s*(,)\\s*",
+            "beginCaptures": {
+                "1": {
+                    "name": "string.quoted.single.ruby"
+                },
+                "2": {
+                    "name": "punctuation.definition.string.begin.ruby"
+                },
+                "3": {
+                    "name": "punctuation.definition.string.end.ruby"
+                },
+                "4": {
+                    "name": "string.quoted.double.interpolated.ruby"
+                },
+                "5": {
+                    "name": "punctuation.definition.string.begin.ruby"
+                },
+                "6": {
+                    "name": "punctuation.definition.string.end.ruby"
+                },
+                "7": {
+                    "name": "punctuation.separator.object.ruby"
+                }
+            },
+            "end": "(?=\\))",
+            "patterns": [
+                {
+                    "include": "#strings-inline-js"
+                },
+                {
+                    "include": "source.ruby"
+                }
+            ]
+        },
+        "strings-inline-js": {
+            "patterns": [
+                {
+                    "name": "string.quoted.double.interpolated.ruby",
+                    "contentName": "meta.embedded.inline.js",
+                    "begin": "\"",
+                    "beginCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.begin.ruby"
+                        }
+                    },
+                    "end": "\"",
+                    "endCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.end.ruby"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "source.js"
+                        }
+                    ]
+                },
+                {
+                    "name": "string.quoted.single.ruby",
+                    "contentName": "meta.embedded.inline.js",
+                    "begin": "'",
+                    "beginCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.begin.ruby"
+                        }
+                    },
+                    "end": "'",
+                    "endCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.end.ruby"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "source.js"
+                        }
+                    ]
+                }
+            ]
+        },
+        "polyglot-call-r": {
+            "begin": "(?:((')R('))|((\")R(\")))\\s*(,)\\s*",
+            "beginCaptures": {
+                "1": {
+                    "name": "string.quoted.single.ruby"
+                },
+                "2": {
+                    "name": "punctuation.definition.string.begin.ruby"
+                },
+                "3": {
+                    "name": "punctuation.definition.string.end.ruby"
+                },
+                "4": {
+                    "name": "string.quoted.double.interpolated.ruby"
+                },
+                "5": {
+                    "name": "punctuation.definition.string.begin.ruby"
+                },
+                "6": {
+                    "name": "punctuation.definition.string.end.ruby"
+                },
+                "7": {
+                    "name": "punctuation.separator.object.ruby"
+                }
+            },
+            "end": "(?=\\))",
+            "patterns": [
+                {
+                    "include": "#strings-inline-r"
+                },
+                {
+                    "include": "source.ruby"
+                }
+            ]
+        },
+        "strings-inline-r": {
+            "patterns": [
+                {
+                    "name": "string.quoted.double.interpolated.ruby",
+                    "contentName": "meta.embedded.inline.r",
+                    "begin": "\"",
+                    "beginCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.begin.ruby"
+                        }
+                    },
+                    "end": "\"",
+                    "endCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.end.ruby"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "source.r"
+                        }
+                    ]
+                },
+                {
+                    "name": "string.quoted.single.ruby",
+                    "contentName": "meta.embedded.inline.r",
+                    "begin": "'",
+                    "beginCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.begin.ruby"
+                        }
+                    },
+                    "end": "'",
+                    "endCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.end.ruby"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "source.r"
+                        }
+                    ]
+                }
+            ]
+        },
+        "polyglot-call-python": {
+            "begin": "(?:((')python('))|((\")python(\")))\\s*(,)\\s*",
+            "beginCaptures": {
+                "1": {
+                    "name": "string.quoted.single.ruby"
+                },
+                "2": {
+                    "name": "punctuation.definition.string.begin.ruby"
+                },
+                "3": {
+                    "name": "punctuation.definition.string.end.ruby"
+                },
+                "4": {
+                    "name": "string.quoted.double.interpolated.ruby"
+                },
+                "5": {
+                    "name": "punctuation.definition.string.begin.ruby"
+                },
+                "6": {
+                    "name": "punctuation.definition.string.end.ruby"
+                },
+                "7": {
+                    "name": "punctuation.separator.object.ruby"
+                }
+            },
+            "end": "(?=\\))",
+            "patterns": [
+                {
+                    "include": "#strings-inline-python"
+                },
+                {
+                    "include": "source.ruby"
+                }
+            ]
+        },
+        "strings-inline-python": {
+            "patterns": [
+                {
+                    "name": "string.quoted.double.interpolated.ruby",
+                    "contentName": "meta.embedded.inline.python",
+                    "begin": "\"",
+                    "beginCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.begin.ruby"
+                        }
+                    },
+                    "end": "\"",
+                    "endCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.end.ruby"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "source.python"
+                        }
+                    ]
+                },
+                {
+                    "name": "string.quoted.single.ruby",
+                    "contentName": "meta.embedded.inline.python",
+                    "begin": "'",
+                    "beginCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.begin.ruby"
+                        }
+                    },
+                    "end": "'",
+                    "endCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.end.ruby"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "source.python"
+                        }
+                    ]
+                }
+            ]
+        },
+        "polyglot-call-sl": {
+            "begin": "(?:((')sl('))|((\")sl(\")))\\s*(,)\\s*",
+            "beginCaptures": {
+                "1": {
+                    "name": "string.quoted.single.ruby"
+                },
+                "2": {
+                    "name": "punctuation.definition.string.begin.ruby"
+                },
+                "3": {
+                    "name": "punctuation.definition.string.end.ruby"
+                },
+                "4": {
+                    "name": "string.quoted.double.interpolated.ruby"
+                },
+                "5": {
+                    "name": "punctuation.definition.string.begin.ruby"
+                },
+                "6": {
+                    "name": "punctuation.definition.string.end.ruby"
+                },
+                "7": {
+                    "name": "punctuation.separator.object.ruby"
+                }
+            },
+            "end": "(?=\\))",
+            "patterns": [
+                {
+                    "include": "#strings-inline-sl"
+                },
+                {
+                    "include": "source.ruby"
+                }
+            ]
+        },
+        "strings-inline-sl": {
+            "patterns": [
+                {
+                    "name": "string.quoted.double.interpolated.ruby",
+                    "contentName": "meta.embedded.inline.sl",
+                    "begin": "\"",
+                    "beginCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.begin.ruby"
+                        }
+                    },
+                    "end": "\"",
+                    "endCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.end.ruby"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "source.sl"
+                        }
+                    ]
+                },
+                {
+                    "name": "string.quoted.single.ruby",
+                    "contentName": "meta.embedded.inline.sl",
+                    "begin": "'",
+                    "beginCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.begin.ruby"
+                        }
+                    },
+                    "end": "'",
+                    "endCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.end.ruby"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "source.sl"
+                        }
+                    ]
+                }
+            ]
+        }
+    }
+}

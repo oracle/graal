@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugContext.CompilerPhaseScope;
 import org.graalvm.compiler.debug.MethodFilter;
 import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
@@ -181,11 +182,9 @@ public class GraalCompiler {
             }
             if (crashLabel == null) {
                 ResolvedJavaMethod method = graph.method();
-                MethodFilter[] filters = MethodFilter.parse(methodPattern);
-                for (MethodFilter filter : filters) {
-                    if (filter.matches(method)) {
-                        crashLabel = method.format("%H.%n(%p)");
-                    }
+                MethodFilter filter = MethodFilter.parse(methodPattern);
+                if (filter.matches(method)) {
+                    crashLabel = method.format("%H.%n(%p)");
                 }
             }
             if (crashLabel != null) {
@@ -210,9 +209,11 @@ public class GraalCompiler {
         try (DebugContext.Scope s = debug.scope("FrontEnd"); DebugCloseable a = FrontEnd.start(debug)) {
             HighTierContext highTierContext = new HighTierContext(providers, graphBuilderSuite, optimisticOpts);
             if (graph.start().next() == null) {
-                graphBuilderSuite.apply(graph, highTierContext);
-                new DeadCodeEliminationPhase(DeadCodeEliminationPhase.Optionality.Optional).apply(graph);
-                debug.dump(DebugContext.BASIC_LEVEL, graph, "After parsing");
+                try (CompilerPhaseScope cps = debug.enterCompilerPhase("Parsing")) {
+                    graphBuilderSuite.apply(graph, highTierContext);
+                    new DeadCodeEliminationPhase(DeadCodeEliminationPhase.Optionality.Optional).apply(graph);
+                    debug.dump(DebugContext.BASIC_LEVEL, graph, "After parsing");
+                }
             } else {
                 debug.dump(DebugContext.INFO_LEVEL, graph, "initial state");
             }

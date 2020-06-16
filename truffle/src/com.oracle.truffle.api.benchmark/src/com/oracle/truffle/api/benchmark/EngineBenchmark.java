@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,11 @@
  */
 package com.oracle.truffle.api.benchmark;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Source;
@@ -47,6 +52,7 @@ import org.graalvm.polyglot.Value;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Measurement;
+import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
@@ -56,9 +62,11 @@ import org.openjdk.jmh.annotations.Warmup;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.benchmark.InterpreterCallBenchmark.BenchmarkState;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -73,7 +81,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 @Measurement(iterations = 5)
 public class EngineBenchmark extends TruffleBenchmark {
 
-    private static final String TEST_LANGUAGE = "benchmark-test-language";
+    static final String TEST_LANGUAGE = "benchmark-test-language";
 
     private static final String CONTEXT_LOOKUP = "contextLookup";
 
@@ -267,8 +275,8 @@ public class EngineBenchmark extends TruffleBenchmark {
     }
 
     @Benchmark
-    public Object executePolyglot1CallTarget(CallTargetCallState state) {
-        return state.callTarget.call(state.internalContext.object);
+    public Object executeCallTarget1(CallTargetCallState state) {
+        return state.callTarget.call();
     }
 
     @Benchmark
@@ -282,6 +290,16 @@ public class EngineBenchmark extends TruffleBenchmark {
         return result;
     }
 
+    @Benchmark
+    public Object executeCallTarget2(CallTargetCallState state) {
+        int result = 0;
+        result += (int) state.callTarget.call(state.intValue);
+        result += (int) state.callTarget.call(state.intValue, state.intValue);
+        result += (int) state.callTarget.call(state.intValue, state.intValue, state.intValue);
+        result += (int) state.callTarget.call(state.intValue, state.intValue, state.intValue, state.intValue);
+        return result;
+    }
+
     @State(org.openjdk.jmh.annotations.Scope.Thread)
     public static class CallTargetCallState {
         final Source source = Source.create(TEST_LANGUAGE, "");
@@ -289,8 +307,6 @@ public class EngineBenchmark extends TruffleBenchmark {
         {
             context.initialize(TEST_LANGUAGE);
         }
-        final Value hostValue = context.asValue(new Object());
-        final BenchmarkContext internalContext = hostValue.asHostObject();
         final Integer intValue = 42;
         final CallTarget callTarget = Truffle.getRuntime().createCallTarget(new RootNode(null) {
 
@@ -306,17 +322,6 @@ public class EngineBenchmark extends TruffleBenchmark {
         public void tearDown() {
             context.close();
         }
-    }
-
-    @Benchmark
-    public Object executeCallTarget2(CallTargetCallState state) {
-        CallTarget callTarget = state.callTarget;
-        int result = 0;
-        result += (int) callTarget.call(state.internalContext.object, state.intValue);
-        result += (int) callTarget.call(state.internalContext.object, state.intValue, state.intValue);
-        result += (int) callTarget.call(state.internalContext.object, state.intValue, state.intValue, state.intValue);
-        result += (int) callTarget.call(state.internalContext.object, state.intValue, state.intValue, state.intValue, state.intValue);
-        return result;
     }
 
     @Benchmark
@@ -374,6 +379,63 @@ public class EngineBenchmark extends TruffleBenchmark {
         return state.hostValue.asHostObject();
     }
 
+    @State(Scope.Thread)
+    public static class SourceEmbedderCreate extends BenchmarkState {
+
+        final File file;
+
+        public SourceEmbedderCreate() {
+            try {
+                Path p = Files.createTempFile("embedder_create", "js");
+                Files.write(p, "Foobarbazz".getBytes());
+                file = p.toFile();
+                file.deleteOnExit();
+            } catch (IOException e) {
+                throw new AssertionError(e);
+            }
+        }
+
+    }
+
+    @Benchmark
+    public Object sourceEmbedderCreate(SourceEmbedderCreate state) throws IOException {
+        return org.graalvm.polyglot.Source.newBuilder(TEST_LANGUAGE, state.file).build();
+    }
+
+    @State(Scope.Thread)
+    public static class SourceLanguageCreate {
+
+        TruffleFile file;
+
+        final Context context;
+
+        public SourceLanguageCreate() {
+            try {
+                context = Context.newBuilder().allowIO(true).build();
+                context.initialize(TEST_LANGUAGE);
+                context.enter();
+                Path p = Files.createTempFile("embedder_create", "js");
+                Files.write(p, "Foobarbazz".getBytes());
+                p.toFile().deleteOnExit();
+                file = BenchmarkTestLanguage.getCurrentEnv().getInternalTruffleFile(p.toString());
+            } catch (IOException e) {
+                throw new AssertionError(e);
+            }
+        }
+
+        @TearDown
+        public void tearDown() {
+            context.leave();
+            context.close();
+        }
+
+    }
+
+    @Benchmark
+    public Object sourceLanguageCreate(SourceLanguageCreate state) throws IOException {
+        return com.oracle.truffle.api.source.Source.newBuilder(TEST_LANGUAGE, state.file).build();
+    }
+
     /*
      * Test language that ensures that only engine overhead is tested.
      */
@@ -394,6 +456,10 @@ public class EngineBenchmark extends TruffleBenchmark {
             return true;
         }
 
+        public static Env getCurrentEnv() {
+            return getCurrentContext(BenchmarkTestLanguage.class).env;
+        }
+
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             Object result;
@@ -403,11 +469,6 @@ public class EngineBenchmark extends TruffleBenchmark {
                 result = getCurrentContext(BenchmarkTestLanguage.class).object;
             }
             return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(result));
-        }
-
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return object instanceof BenchmarkObjectConstant;
         }
 
     }
@@ -548,6 +609,21 @@ public class EngineBenchmark extends TruffleBenchmark {
         @ExportMessage
         protected final long asPointer() {
             return longValue;
+        }
+
+        @ExportMessage
+        protected final boolean hasLanguage() {
+            return true;
+        }
+
+        @ExportMessage
+        protected final Class<? extends TruffleLanguage<?>> getLanguage() {
+            return BenchmarkTestLanguage.class;
+        }
+
+        @ExportMessage
+        protected final Object toDisplayString(boolean allowSideEffects) {
+            return "displayString";
         }
 
     }

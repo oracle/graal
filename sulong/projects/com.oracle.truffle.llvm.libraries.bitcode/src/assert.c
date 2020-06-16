@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,20 +34,20 @@
 extern const char *__progname;
 
 __attribute__((weak)) void __assert_fail(const char *__assertion, const char *__file, unsigned int __line, const char *__function) {
-  fprintf(stderr, "%s: %s:%d: %s: Assertion `%s' failed.\n", __progname, __file, __line, __function, __assertion);
-  fflush(NULL);
-  abort();
+    fprintf(stderr, "%s: %s:%d: %s: Assertion `%s' failed.\n", __progname, __file, __line, __function, __assertion);
+    fflush(NULL);
+    abort();
 }
 
 __attribute__((weak)) void __assert_perror_fail(int __errnum, const char *__file, unsigned int __line, const char *__function) {
-  const char *str = strerror(__errnum);
-  fprintf(stderr, "%s: %s:%d: %s: Assertion `%s' failed.\n", __progname, __file, __line, __function, str);
-  fflush(NULL);
-  abort();
+    const char *str = strerror(__errnum);
+    fprintf(stderr, "%s: %s:%d: %s: Assertion `%s' failed.\n", __progname, __file, __line, __function, str);
+    fflush(NULL);
+    abort();
 }
 
 __attribute__((weak)) void __assert(const char *__assertion, const char *__file, int __line) {
-  fprintf(stderr, "%s: %s:%d: Assertion `%s' failed.\n", __progname, __file, __line, __assertion);
-  fflush(NULL);
-  abort();
+    fprintf(stderr, "%s: %s:%d: Assertion `%s' failed.\n", __progname, __file, __line, __assertion);
+    fflush(NULL);
+    abort();
 }

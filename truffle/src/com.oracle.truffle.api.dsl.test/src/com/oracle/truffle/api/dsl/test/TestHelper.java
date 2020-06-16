@@ -219,7 +219,7 @@ class TestHelper {
                 } else {
                     actualResult = executeWith(root, value);
                 }
-                fail(String.format("Exception %s  expected but not occured.", result.getClass()));
+                fail(String.format("Exception %s  expected but not occurred.", result.getClass()));
             } catch (Throwable e) {
                 actualResult = e;
                 if (!e.getClass().isAssignableFrom(((Class<?>) result))) {

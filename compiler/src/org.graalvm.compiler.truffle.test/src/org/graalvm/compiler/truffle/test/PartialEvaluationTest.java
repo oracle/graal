@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,10 +38,10 @@ import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.PhaseSuite;
-import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
+import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.CancellableCompileTask;
 import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
@@ -58,10 +58,10 @@ import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.SpeculationLog;
 
 public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
-    private final PhaseSuite<HighTierContext> suite;
+
+    private volatile PhaseSuite<HighTierContext> suite;
 
     public PartialEvaluationTest() {
-        this.suite = truffleCompiler.createGraphBuilderSuite();
     }
 
     protected OptimizedCallTarget assertPartialEvalEquals(String methodName, RootNode root) {
@@ -69,7 +69,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
     }
 
     private CompilationIdentifier getCompilationId(final OptimizedCallTarget compilable) {
-        return this.truffleCompiler.createCompilationIdentifier(compilable);
+        return this.getTruffleCompiler(compilable).createCompilationIdentifier(compilable);
     }
 
     protected OptimizedCallTarget compileHelper(String methodName, RootNode root, Object[] arguments) {
@@ -81,11 +81,44 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
     protected OptimizedCallTarget compileHelper(String methodName, RootNode root, Object[] arguments, boolean lastTierCompilation) {
         final OptimizedCallTarget compilable = (OptimizedCallTarget) (Truffle.getRuntime()).createCallTarget(root);
         CompilationIdentifier compilationId = getCompilationId(compilable);
-        StructuredGraph graph = partialEval(compilable, arguments, AllowAssumptions.YES, compilationId);
-        this.lastCompilationResult = truffleCompiler.compilePEGraph(graph, methodName, null, compilable, asCompilationRequest(compilationId), null,
+        StructuredGraph graph = partialEval(compilable, arguments, compilationId);
+        this.lastCompilationResult = getTruffleCompiler(compilable).compilePEGraph(graph, methodName, null, compilable, asCompilationRequest(compilationId), null,
                         new CancellableCompileTask(lastTierCompilation));
         this.lastCompiledGraph = graph;
         return compilable;
+    }
+
+    protected void assertPartialEvalEquals(RootNode expected, RootNode actual, Object[] arguments) {
+        final OptimizedCallTarget expectedTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(expected);
+        final OptimizedCallTarget actualTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(actual);
+
+        BailoutException lastBailout = null;
+        for (int i = 0; i < 10; i++) {
+            try {
+                CompilationIdentifier expectedId = getCompilationId(expectedTarget);
+                StructuredGraph expectedGraph = partialEval(expectedTarget, arguments, expectedId);
+                getTruffleCompiler(expectedTarget).compilePEGraph(expectedGraph, "expectedTest", getSuite(expectedTarget), expectedTarget, asCompilationRequest(expectedId), null,
+                                new CancellableCompileTask(true));
+                removeFrameStates(expectedGraph);
+
+                CompilationIdentifier actualId = getCompilationId(actualTarget);
+                StructuredGraph actualGraph = partialEval(actualTarget, arguments, actualId);
+                getTruffleCompiler(actualTarget).compilePEGraph(actualGraph, "actualTest", getSuite(actualTarget), actualTarget, asCompilationRequest(actualId), null,
+                                new CancellableCompileTask(true));
+                removeFrameStates(actualGraph);
+                assertEquals(expectedGraph, actualGraph, true, true);
+                return;
+            } catch (BailoutException e) {
+                if (e.isPermanent()) {
+                    throw e;
+                }
+                lastBailout = e;
+                continue;
+            }
+        }
+        if (lastBailout != null) {
+            throw lastBailout;
+        }
     }
 
     protected OptimizedCallTarget assertPartialEvalEquals(String methodName, RootNode root, Object[] arguments) {
@@ -95,8 +128,8 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
         for (int i = 0; i < 10; i++) {
             try {
                 CompilationIdentifier compilationId = getCompilationId(compilable);
-                StructuredGraph actual = partialEval(compilable, arguments, AllowAssumptions.YES, compilationId);
-                truffleCompiler.compilePEGraph(actual, methodName, suite, compilable, asCompilationRequest(compilationId), null, new CancellableCompileTask(true));
+                StructuredGraph actual = partialEval(compilable, arguments, compilationId);
+                getTruffleCompiler(compilable).compilePEGraph(actual, methodName, getSuite(compilable), compilable, asCompilationRequest(compilationId), null, new CancellableCompileTask(true));
                 removeFrameStates(actual);
                 StructuredGraph expected = parseForComparison(methodName, actual.getDebug());
                 removeFrameStates(expected);
@@ -127,14 +160,26 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
     }
 
     protected void assertPartialEvalNoInvokes(CallTarget callTarget, Object[] arguments) {
-        StructuredGraph actual = partialEval((OptimizedCallTarget) callTarget, arguments, AllowAssumptions.YES, INVALID_COMPILATION_ID);
+        StructuredGraph actual = partialEval((OptimizedCallTarget) callTarget, arguments, INVALID_COMPILATION_ID);
         for (MethodCallTargetNode node : actual.getNodes(MethodCallTargetNode.TYPE)) {
             Assert.fail("Found invalid method call target node: " + node + " (" + node.targetMethod() + ")");
         }
     }
 
+    protected StructuredGraph partialEval(OptimizedCallTarget compilable, Object[] arguments) {
+        return partialEval(compilable, arguments, INVALID_COMPILATION_ID);
+    }
+
+    protected void compile(OptimizedCallTarget compilable, StructuredGraph graph) {
+        String methodName = "test";
+        CompilationIdentifier compilationId = getCompilationId(compilable);
+        getTruffleCompiler(compilable).compilePEGraph(graph, methodName, getSuite(compilable), compilable, asCompilationRequest(compilationId), null, new CancellableCompileTask(true));
+    }
+
+    DebugContext lastDebug;
+
     @SuppressWarnings("try")
-    protected StructuredGraph partialEval(OptimizedCallTarget compilable, Object[] arguments, AllowAssumptions allowAssumptions, CompilationIdentifier compilationId) {
+    protected StructuredGraph partialEval(OptimizedCallTarget compilable, Object[] arguments, CompilationIdentifier compilationId) {
         // Executed AST so that all classes are loaded and initialized.
         try {
             compilable.call(arguments);
@@ -148,16 +193,19 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
             compilable.call(arguments);
         } catch (IgnoreError e) {
         }
-
         OptionValues options = getOptions();
         DebugContext debug = getDebugContext(options);
+        lastDebug = debug;
         try (DebugContext.Scope s = debug.scope("TruffleCompilation", new TruffleDebugJavaMethod(compilable))) {
             TruffleInlining inliningDecision = new TruffleInlining(compilable, new DefaultInliningPolicy());
             SpeculationLog speculationLog = compilable.getCompilationSpeculationLog();
             if (speculationLog != null) {
                 speculationLog.collectFailedSpeculations();
             }
-            return truffleCompiler.getPartialEvaluator().createGraph(debug, compilable, inliningDecision, allowAssumptions, compilationId, speculationLog, null);
+            final PartialEvaluator partialEvaluator = getTruffleCompiler(compilable).getPartialEvaluator();
+            final PartialEvaluator.Request request = partialEvaluator.new Request(compilable.getOptionValues(), debug, compilable, partialEvaluator.rootForCallTarget(compilable), inliningDecision,
+                            compilationId, speculationLog, null);
+            return partialEvaluator.evaluate(request);
         } catch (Throwable e) {
             throw debug.handle(e);
         }
@@ -192,7 +240,7 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
             frameState.replaceAtUsages(null);
             frameState.safeDelete();
         }
-        new CanonicalizerPhase().apply(graph, getProviders());
+        createCanonicalizerPhase().apply(graph, getProviders());
         new DeadCodeEliminationPhase().apply(graph);
     }
 
@@ -205,6 +253,20 @@ public abstract class PartialEvaluationTest extends TruffleCompilerImplTest {
         } catch (Throwable e) {
             throw debug.handle(e);
         }
+    }
+
+    private PhaseSuite<HighTierContext> getSuite(OptimizedCallTarget callTarget) {
+        PhaseSuite<HighTierContext> result = suite;
+        if (result == null) {
+            synchronized (this) {
+                result = suite;
+                if (result == null) {
+                    result = getTruffleCompiler(callTarget).createGraphBuilderSuite();
+                    suite = result;
+                }
+            }
+        }
+        return result;
     }
 
     /**

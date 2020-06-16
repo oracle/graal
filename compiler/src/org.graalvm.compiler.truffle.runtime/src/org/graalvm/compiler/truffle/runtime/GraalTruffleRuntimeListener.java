@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -60,6 +60,16 @@ public interface GraalTruffleRuntimeListener {
      *            target} has just been cloned
      */
     default void onCompilationSplit(OptimizedDirectCallNode callNode) {
+    }
+
+    /**
+     * Notifies this object when the target of a Truffle call node should be split but, for given
+     * reason, could not be.
+     *
+     * @param callNode the call node whose where splitting could not occur.
+     * @param reason why splitting of this node could not occur
+     */
+    default void onCompilationSplitFailed(OptimizedDirectCallNode callNode, CharSequence reason) {
     }
 
     /**
@@ -166,6 +176,14 @@ public interface GraalTruffleRuntimeListener {
     default void onShutdown() {
     }
 
+    /**
+     * Notifies this object an engine using the {@link GraalTruffleRuntime} was closed.
+     *
+     * @param runtimeData the engine's compiler configuration
+     */
+    default void onEngineClosed(EngineData runtimeData) {
+    }
+
     static void addASTSizeProperty(OptimizedCallTarget target, TruffleInlining inliningDecision, Map<String, Object> properties) {
         int nodeCount = target.getNonTrivialNodeCount();
         int deepNodeCount = nodeCount;
@@ -173,5 +191,12 @@ public interface GraalTruffleRuntimeListener {
             deepNodeCount += inliningDecision.getInlinedNodeCount();
         }
         properties.put("ASTSize", String.format("%5d/%5d", nodeCount, deepNodeCount));
+    }
+
+    /**
+     * Determines if a failure is permanent.
+     */
+    static boolean isPermanentFailure(boolean bailout, boolean permanentBailout) {
+        return !bailout || permanentBailout;
     }
 }

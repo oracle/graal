@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,67 +29,108 @@
  */
 package com.oracle.truffle.llvm.toolchain.launchers.darwin;
 
-import java.io.BufferedReader;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
+import com.oracle.truffle.llvm.toolchain.launchers.common.ClangLike;
+import com.oracle.truffle.llvm.toolchain.launchers.common.Driver;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
-
-import com.oracle.truffle.llvm.toolchain.launchers.common.Driver;
 
 public final class DarwinLinker extends Driver {
 
-    public DarwinLinker() {
-        super("ld", false);
+    public static final String LD = "/usr/bin/ld";
+
+    private DarwinLinker() {
+        super(LD, false);
     }
 
-    public static List<String> getLinkerFlags(Driver driver) {
-        return Arrays.asList("-bitcode_bundle", "-lto_library", getLibLTO(driver).toString());
+    public static void link(String[] args) {
+        new DarwinLinker().doLink(args);
     }
 
-    private static Path getLibLTO(Driver driver) {
-        return driver.getLLVMBinDir().resolve("..").resolve("lib").resolve("libLTO.dylib").toAbsolutePath();
-    }
-
-    public void link(String[] args) {
+    private void doLink(String[] args) {
         List<String> sulongArgs = new ArrayList<>();
         sulongArgs.add(exe);
-        sulongArgs.add("-fembed-bitcode");
-        sulongArgs.add("-Wl," + String.join(",", getLinkerFlags(this)));
-        runDriver(sulongArgs, Arrays.asList(args), false, false, false);
+        sulongArgs.add("-L" + getSulongHome().resolve(ClangLike.NATIVE_PLATFORM).resolve("lib"));
+        sulongArgs.add("-lto_library");
+        sulongArgs.add(getLLVMBinDir().resolve("..").resolve("lib").resolve("libLTO.dylib").toString());
+        List<String> userArgs = Arrays.asList(args);
+        boolean verbose = userArgs.contains("-v");
+        runDriver(sulongArgs, userArgs, verbose, false, false);
     }
 
     @Override
-    protected ProcessBuilder setupRedirects(ProcessBuilder pb) {
-        return setupRedirectsInternal(pb);
+    public void runDriver(List<String> sulongArgs, List<String> userArgs, boolean verb, boolean hlp, boolean earlyexit) {
+        runDriverWithSaveTemps(this, sulongArgs, userArgs, verb, hlp, earlyexit, "", true, userArgs.indexOf("-o"));
     }
 
-    @Override
-    protected void processIO(InputStream inputStream, OutputStream outputStream, InputStream errorStream) {
-        processIO(errorStream);
+    static void runDriverWithSaveTemps(Driver driver, List<String> sulongArgs, List<String> userArgs, boolean verb, boolean hlp, boolean earlyexit, String linkerOptionPrefix, boolean needLinkerFlags,
+                    int outputFlagPos) {
+        Path tempDir = null;
+        int returnCode;
+        try {
+            if (needLinkerFlags && !earlyexit) {
+                try {
+                    tempDir = Files.createTempDirectory("graalvm-clang-wrapper");
+                    String newOutput = tempDir.resolve("temp.out").toString();
+                    List<String> newUserArgs = newUserArgs(userArgs, newOutput, linkerOptionPrefix, outputFlagPos);
+                    driver.runDriverReturn(sulongArgs, newUserArgs, verb, hlp, earlyexit);
+                    String bcFile = newOutput + ".lto.bc";
+                    if (Files.exists(Paths.get(bcFile))) {
+                        sulongArgs.add(linkerOptionPrefix + "-sectcreate");
+                        sulongArgs.add(linkerOptionPrefix + "__LLVM");
+                        sulongArgs.add(linkerOptionPrefix + "__bundle");
+                        sulongArgs.add(linkerOptionPrefix + bcFile);
+                    }
+                } catch (Exception e) {
+                    // something went wrong -- let the normal driver run fail
+                    if (verb) {
+                        System.err.println("Running clang with `-save-temps` failed: " + e);
+                    }
+                }
+            }
+            returnCode = driver.runDriverReturn(sulongArgs, userArgs, verb, hlp, earlyexit);
+        } catch (IOException e) {
+            returnCode = 1;
+        } catch (Exception e) {
+            System.err.println("Exception: " + e);
+            returnCode = 1;
+        } finally {
+            if (tempDir != null) {
+                try {
+                    Files.walk(tempDir).sorted(Comparator.reverseOrder()).map(Path::toFile).forEach(File::delete);
+                } catch (IOException e) {
+                    if (verb) {
+                        System.err.println("Deleting the temporary directory (" + tempDir + ") failed: " + e);
+                    }
+                }
+            }
+        }
+        // Do not call System.exit from withing the try block, otherwise finally is not executed
+        System.exit(returnCode);
     }
 
-    static ProcessBuilder setupRedirectsInternal(ProcessBuilder pb) {
-        return pb.redirectInput(ProcessBuilder.Redirect.INHERIT).//
-                        redirectOutput(ProcessBuilder.Redirect.INHERIT).//
-                        redirectError(ProcessBuilder.Redirect.PIPE);
-    }
-
-    static void processIO(InputStream errorStream) {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(errorStream));
-        reader.lines().filter(DarwinLinker::keepLine).forEachOrdered(System.err::println);
-    }
-
-    static boolean keepLine(String s) {
-        /*
-         * The darwin linker refuses bundle bitcode if any of the dependencies do not have a bundle
-         * section. However, it does include the bundle if linked with -flto, although it still
-         * issues the warning below. Until there is a better option, we will just swallow the
-         * warning. (GR-15723)
-         */
-        return !s.contains("warning: all bitcode will be dropped because");
+    private static List<String> newUserArgs(List<String> userArgs, String newOutput, String linkerOptionPrefix, int outputFlagPos) {
+        List<String> newUserArgs = new ArrayList<>(userArgs.size() + 2);
+        if (outputFlagPos == -1) {
+            newUserArgs.addAll(userArgs);
+        } else {
+            for (int i = 0; i < outputFlagPos; i++) {
+                newUserArgs.add(userArgs.get(i));
+            }
+            for (int i = outputFlagPos + 2; i < userArgs.size(); i++) {
+                newUserArgs.add(userArgs.get(i));
+            }
+        }
+        newUserArgs.add("-o");
+        newUserArgs.add(newOutput);
+        newUserArgs.add(linkerOptionPrefix + "-save-temps");
+        return newUserArgs;
     }
 }

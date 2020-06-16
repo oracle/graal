@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,7 +51,7 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotException;
 
-public abstract class AbstractLanguageLauncher extends Launcher {
+public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
 
     /**
      * This starts the launcher. it should be called from the main method:
@@ -96,12 +96,12 @@ public abstract class AbstractLanguageLauncher extends Launcher {
 
         if (isAOT() && doNativeSetup && !IS_LIBPOLYGLOT) {
             assert nativeAccess != null;
-            nativeAccess.maybeExec(args, false, polyglotOptions, getDefaultVMType());
+            maybeNativeExec(args, false, polyglotOptions);
         }
 
-        parsePolyglotOptions(getLanguageId(), polyglotOptions, unrecognizedArgs);
+        parseUnrecognizedOptions(getLanguageId(), polyglotOptions, unrecognizedArgs);
 
-        if (runPolyglotAction()) {
+        if (runLauncherAction()) {
             return;
         }
 
@@ -116,7 +116,7 @@ public abstract class AbstractLanguageLauncher extends Launcher {
         }
 
         builder.allowAllAccess(true);
-        setupLogHandler(builder);
+        setupContextBuilder(builder);
 
         launch(builder);
     }

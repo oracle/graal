@@ -169,7 +169,6 @@ public class FileTypeDetectorTest extends AbstractPolyglotTest {
     }
 
     @Test
-    @SuppressWarnings("deprecation")
     public void testSourceBulderNoIO() throws IOException {
         setupEnv(Context.create());
         TruffleFile truffleFile1 = languageEnv.getPublicTruffleFile(testFile1.getAbsolutePath());
@@ -201,30 +200,9 @@ public class FileTypeDetectorTest extends AbstractPolyglotTest {
             Assert.fail("Expected SecurityException");
         } catch (SecurityException se) {
         }
-        try {
-            com.oracle.truffle.api.source.Source.newBuilder(testFile1).build();
-            Assert.fail("Expected SecurityException");
-        } catch (SecurityException se) {
-        }
-        try {
-            com.oracle.truffle.api.source.Source.newBuilder(testFile3).build();
-            Assert.fail("Expected SecurityException");
-        } catch (SecurityException se) {
-        }
-        try {
-            com.oracle.truffle.api.source.Source.newBuilder(testFile1.toURI().toURL()).build();
-            Assert.fail("Expected SecurityException");
-        } catch (SecurityException se) {
-        }
-        try {
-            com.oracle.truffle.api.source.Source.newBuilder(testFile3.toURI().toURL()).build();
-            Assert.fail("Expected SecurityException");
-        } catch (SecurityException se) {
-        }
     }
 
     @Test
-    @SuppressWarnings("deprecation")
     public void testSourceBulderFullIO() throws IOException {
         setupEnv(Context.newBuilder().allowIO(true).build());
         TruffleFile truffleFile1 = languageEnv.getPublicTruffleFile(testFile1.getAbsolutePath());
@@ -240,15 +218,6 @@ public class FileTypeDetectorTest extends AbstractPolyglotTest {
         truffleSource = com.oracle.truffle.api.source.Source.newBuilder("TestFooXML", truffleFile3).build();
         Assert.assertEquals("text/foo+xml", truffleSource.getMimeType());
 
-        truffleSource = com.oracle.truffle.api.source.Source.newBuilder(testFile1).build();
-        Assert.assertEquals("application/test-js", truffleSource.getMimeType());
-        truffleSource = com.oracle.truffle.api.source.Source.newBuilder(testFile3).build();
-        Assert.assertEquals("text/foo+xml", truffleSource.getMimeType());
-
-        truffleSource = com.oracle.truffle.api.source.Source.newBuilder(testFile1.toURI().toURL()).build();
-        Assert.assertEquals("application/test-js", truffleSource.getMimeType());
-        truffleSource = com.oracle.truffle.api.source.Source.newBuilder(testFile3.toURI().toURL()).build();
-        Assert.assertEquals("text/foo+xml", truffleSource.getMimeType());
     }
 
     @Test

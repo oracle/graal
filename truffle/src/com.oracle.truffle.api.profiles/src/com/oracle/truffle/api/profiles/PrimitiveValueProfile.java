@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -362,7 +362,7 @@ public abstract class PrimitiveValueProfile extends ValueProfile {
 
     static final class Disabled extends PrimitiveValueProfile {
 
-        static final PrimitiveValueProfile INSTANCE = new Disabled();
+        static final PrimitiveValueProfile INSTANCE = new PrimitiveValueProfile.Disabled();
 
         @Override
         public <T> T profile(T value) {

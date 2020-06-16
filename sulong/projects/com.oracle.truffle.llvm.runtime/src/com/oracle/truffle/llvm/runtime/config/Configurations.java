@@ -90,7 +90,7 @@ public final class Configurations {
             Object key1 = factory.parseOptions(o1);
             Object key2 = factory.parseOptions(o2);
             if (key1 != null || key2 != null) {
-                return Objects.equals(key2, key2);
+                return Objects.equals(key1, key2);
             }
         }
         return false;

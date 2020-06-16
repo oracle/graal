@@ -39,17 +39,8 @@ public final class AllInstantiatedTypeFlow extends TypeFlow<AnalysisType> {
     }
 
     @Override
-    public void update(BigBang bb) {
-        assert checkUsages();
-        super.update(bb);
-    }
-
-    private boolean checkUsages() {
-        for (TypeFlow<?> use : getUses()) {
-            assert !use.isClone() || use instanceof ProxyTypeFlow || use instanceof SourceTypeFlowBase || use instanceof DynamicNewInstanceTypeFlow ||
-                            use instanceof FilterTypeFlow || use instanceof ActualReturnTypeFlow : use.getClass();
-        }
-        return true;
+    public boolean canSaturate() {
+        return false;
     }
 
     @Override

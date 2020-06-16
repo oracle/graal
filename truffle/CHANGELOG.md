@@ -2,10 +2,108 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 20.2.0
+* Added new internal engine option `ShowInternalStackFrames` to show internal frames specific to the language implementation in stack traces.
+* Added new identity APIs to `InteropLibrary`:
+    * `hasIdentity(Object receiver)` to find out whether an object specifies identity
+	* `isIdentical(Object receiver, Object other, InteropLibrary otherLib)` to compare the identity of two object
+	* `isIdenticalOrUndefined(Object receiver, Object other)` export to specify the identity of an object.
+	* `identityHashCode(Object receiver)` useful to implement maps that depend on identity.
+* Added `TriState` utility class represents three states TRUE, FALSE and UNDEFINED.
+* Added `InteropLibrary.getUncached()` and `InteropLibrary.getUncached(Object)` short-cut methods for convenience.
+* Enabled by default the new inlining heuristic in which inlining budgets are based on Graal IR node counts and not Truffle Node counts.
+* Added `ConditionProfile#create()` as an alias of `createBinaryProfile()` so it can be used like `@Cached ConditionProfile myProfile`. 
+* Improved `AssumedValue` utility class: Code that reads the value but can not constant fold it does not need to deopt when the value changes.
+* A `TruffleFile` for an empty path is no more resolved to the current working directory.
+* Added [`SourceBuilder.canonicalizePath(boolean)`](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/Source.SourceBuilder.html) to control whether the `Source#getPath()` should be canonicalized.
+* Deprecated and renamed `TruffleFile.getMimeType` to [TruffleFile.detectMimeType](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#detectMimeType--). The new method no longer throws `IOException` but returns `null` instead.
+* The languages are responsible for stopping and joining the stopped `Thread`s in the [TruffleLanguage.finalizeContext](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html#finalizeContext-C-).
+* Added Truffle DSL `@Bind` annotation to common out expression for use in guards and specialization methods.
+* Added support for @Cached annotations to be weak using `@Cached(value ="...", weak = true)`. 
+* Added `TruffleWeakReference` utility to be used on partial evaluated code paths instead of the default JDK `WeakReference`.
+* Removed deprecated API in `com.oracle.truffle.api.source.Source`. The APIs were deprecated in 19.0.
+
+## Version 20.1.0
+* Added `@GenerateLibrary(dynamicDispatchEnabled = false)` that allows to disable dynamic dispatch semantics for a library. The default is `true`.
+* Added ability to load external default exports for libraries using a service provider. See `GenerateLibrary(defaultExportLookupEnabled = true)`.
+* The use of `@NodeField` is now permitted in combination with `@GenerateUncached`, but it throws UnsupportedOperationException when it is used.
+* It is now possible to specify a setter with `@NodeField`. The generated field then will be mutable.
+* Removed deprecated interoperability APIs that were deprecated in 19.0.0. 
+* Removed deprecated instrumentation APIs that were deprecated in 0.33
+* The `PerformanceWarningsAreFatal` and `TracePerformanceWarnings` engine options take a comma separated list of performance warning types. Allowed warning types are `call` to enable virtual call warnings, `instanceof` to enable virtual instance of warnings and `store` to enables virtual store warnings. There are also `all` and `none` types to enable (disable) all performance warnings.
+* Added [DebugValue#getRawValue()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebugValue.html) for raw guest language object lookup from same language.
+* Added [DebugStackFrame#getRawNode()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebugStackFrame.html) for root node lookup from same language.
+* Added [DebugException#getRawException()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebugException.html) for raw guest language exception lookup from same language.
+* Added [DebugStackFrame#getRawFrame()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebugStackFrame.html) for underlying frame lookup from same language.
+* Added `TruffleInstrument.Env.getPolyglotBindings()` that replaces now deprecated `TruffleInstrument.Env.getExportedSymbols()`.
+* Added `@ExportLibrary(transitionLimit="3")` that allows the accepts condition of exported libraries to transition from true to false for a library created for a receiver instance. This is for example useful to export messages for array strategies. 
+* Added `CompilationFailureAction` engine option which deprecates `CompilationExceptionsArePrinted `, `CompilationExceptionsAreThrown`, `CompilationExceptionsAreFatal` and `PerformanceWarningsAreFatal` options.
+* Added `TreatPerformanceWarningsAsErrors` engine option which deprecates the `PerformanceWarningsAreFatal` option. To replace the `PerformanceWarningsAreFatal` option use the `TreatPerformanceWarningsAsErrors` with `CompilationFailureAction` set to `ExitVM`.
+* Added `bailout` into performance warning kinds used by `TracePerformanceWarnings`, `PerformanceWarningsAreFatal` and `CompilationExceptionsAreFatal` options.
+* Added [Option.deprecationMessage](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/Option.html#deprecationMessage--) to set the option deprecation reason.
+* `engine.Mode` is now a supported option and no longer experimental.
+* Added new meta-data APIs to `InteropLibrary`:
+	* `has/getLanguage(Object receiver)` to access the original language of an object.
+	* `has/getSourceLocation(Object receiver)` to access the source location of an object (e.g. of function or classes).
+	* `toDisplayString(Object receiver, boolean allowsSideEffect)` to produce a human readable string.
+	* `has/getMetaObject(Object receiver)` to access the meta-object of an object.
+	* `isMetaObject(Object receiver)` to find out whether an object is a meta-object (e.g. Java class)
+	* `getMetaQualifiedName(Object receiver)` to get the qualified name of the meta-object
+	* `getMetaSimpleName(Object receiver)` to get the simple name of a the meta-object
+	* `isMetaInstance(Object receiver, Object instance)` to check whether an object is an instance of a meta-object.
+* Added `TruffleLanguage.getLanguageView` that allows to wrap values to add language specific information for primitive and foreign values.
+* Added `TruffleLanguage.getScopedView` that allows to wrap values to add scoping and visibility to language values.
+* Added `TruffleInstrument.Env.getScopedView` and `TruffleInstrument.Env.getLanguageView` to access language and scoped views from instruments.
+* Added `TruffleInstrument.Env.getLanguageInfo` to convert language classes to `LanguageInfo`.
+* Deprecated `TruffleLanguage.findMetaObject`, `TruffleLanguage.findSourceLocation`, `TruffleLanguage.toString` and `TruffleLanguage.isObjectOfLanguage`. Use the new interop APIs and language views as replacement.
+* Added support for the value conversions of [DebugValue](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebugValue.html) that provide the same functionality as value conversions on [Value](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html).
+* Added [DebugValue#toDisplayString](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebugValue.html#toDisplayString--) to convert the value to a language-specific string representation.
+* Deprecated `DebugValue#as`, other conversion methods should be used instead.
+* Clarify [InteropLibrary](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/InteropLibrary.html) javadoc documentation of message exceptions. [UnsupportedMessageException](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/UnsupportedMessageException.html) is thrown when the operation is never supported for the given receiver type. In other cases [UnknownIdentifierException](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/UnknownIdentifierException.html) or [InvalidArrayIndexException](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/InvalidArrayIndexException.html) are thrown.
+* Added [TruffleLanguage.Env.initializeLanguage](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#initializeLanguage-com.oracle.truffle.api.nodes.LanguageInfo-) method to force language initialization.
+* Values of `NAME` properties of [ReadVariableTag](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/StandardTags.ReadVariableTag.html#NAME) and [WriteVariableTag](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/StandardTags.WriteVariableTag.html#NAME) extended to allow an object or an array of objects with name and source location.
+* Added support for asynchronous stack traces: [TruffleLanguage.Env.getAsynchronousStackDepth()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#getAsynchronousStackDepth--), [RootNode.findAsynchronousFrames()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/RootNode.html#findAsynchronousFrames-com.oracle.truffle.api.frame.Frame-), [TruffleInstrument.Env.setAsynchronousStackDepth()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.Env.html#setAsynchronousStackDepth-int-), [TruffleStackTrace.getAsynchronousStackTrace()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleStackTrace.html#getAsynchronousStackTrace-com.oracle.truffle.api.CallTarget-com.oracle.truffle.api.frame.Frame-), [DebuggerSession.setAsynchronousStackDepth()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebuggerSession.html#setAsynchronousStackDepth-int-), [SuspendedEvent.getAsynchronousStacks()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/SuspendedEvent.html#getAsynchronousStacks--), [DebugException.getDebugAsynchronousStacks()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebugException.html#getDebugAsynchronousStacks--).
+
+## Version 20.0.0
+* Add [Layout#dispatch()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/dsl/Layout.html#dispatch--) to be able to generate override of `ObjectType#dispatch()` method in the generated inner \*Type class.
+* Deprecated engine options engine.InvalidationReprofileCount and engine.ReplaceReprofileCount. They no longer have any effect. There is no longer reprofiling after compilation. 
+* Added [DebuggerSession.{suspend(), suspendAll,resume()}](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebuggerSession.html) to allow suspending and resuming threads.
+* Add new loop explosion mode [LoopExplosionKind#FULL_UNROLL_UNTIL_RETURN](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/ExplodeLoop.LoopExplosionKind.html#FULL_UNROLL_UNTIL_RETURN), which can be used to duplicate loop exits during unrolling until function returns.
+* The default [LoopExplosionKind](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/ExplodeLoop.LoopExplosionKind.html) for `@ExplodeLoop` changed from `FULL_UNROLL` to `FULL_UNROLL_UNTIL_RETURN`, which we believe is more intuitive. We recommend reviewing your usages of `@ExplodeLoop`, especially those with `return`, `break` and `try/catch` in the loop body as those might duplicate more code than before.
+* The `TruffleCheckNeverPartOfCompilation` option when building a native image is now enabled by default, ensuring `neverPartOfCompilation()` is not reachable for runtime compilation. Use `CompilerDirectives.bailout()` if you want to test when a compilation fails, otherwise avoid `neverPartOfCompilation()` in code reachable for runtime compilation (e.g., by using `@TruffleBoundary`).
+* The `DirectoryStream` created by a relative `TruffleFile` passes relative `TruffleFile`s into the `FileVisitor`, even when an explicit [current working directory was set](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#setCurrentWorkingDirectory-com.oracle.truffle.api.TruffleFile-).
+* Added `DebuggerTester.startExecute()` that allows to execute an arbitrary sequence of commands on the background thread.
+* Time specification in `InteropLibrary` relaxed to allow a fixed timezone when no date is present.
+* `TruffleLogger.getLogger` throws an `IllegalArgumentException` when given `id` is not a valid language or instrument id.
+* [Node#getEncapsulatingSourceSection()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/Node.html#getEncapsulatingSourceSection--) is no longer a fast-path method, because `getSourceSection()` is not fast-path.
+* The algorithm used to generate a unique [URI](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/Source.html#getURI--) for a `Source` built without an `URI` was changed to SHA-256.
+* Added [ExportLibrary.delegateTo](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/library/ExportLibrary.html#delegateTo--) attribute that allows to delegate all messages of a library to value of a final delegate field. This can be used in combination with `ReflectionLibrary` to improve the ability to build wrappers.
+* `ReadVariableTag` and `WriteVariableTag` added to [StandardTags](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/StandardTags.html).
+
+* Truffle TCK now checks that instrumentable nodes are not used in the context of a Library.
+* Getter to check whether [TruffleContext](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleContext.html#isEntered--) is activated or not.
+* All Truffle Graal runtime options (-Dgraal.) will be deprecated with 20.1. The Truffle runtime options are no longer specified as Graal options (-Dgraal.). The Graal options must be replaced by corresponding engine options specified using [polyglot API](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/Engine.Builder.html#option-java.lang.String-java.lang.String-). The `TRUFFLE_STRICT_OPTION_DEPRECATION` environment variable can be used to detect usages of deprecated Graal options. When the `TRUFFLE_STRICT_OPTION_DEPRECATION` is set to `true` and the deprecated Graal option is used the Truffle runtime throws an exception listing the used deprecated options and corresponding replacements.
+
+
 ## Version 19.3.0
 * Added ability to obtain an [Internal Truffle File](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#getInternalTruffleFile-java.lang.String-). The internal file is located in the language home directories and it's readable even when IO is not allowed by the Context.
 * Deprecated `TruffleLanguage.Env.getTruffleFile` use [getInternalTruffleFile](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#getInternalTruffleFile-java.lang.String-) for language standard library files located in language home or [getPublicTruffleFile](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#getPublicTruffleFile-java.lang.String-) for user files.
 * Added primitive specializations to `CompilerAsserts.partialEvaluationConstant()`.
+* Added the new `execute` method to `LoopNode`, which allows loops to return values.
+* Added support for temporary [files](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#createTempFile-com.oracle.truffle.api.TruffleFile-java.lang.String-java.lang.String-java.nio.file.attribute.FileAttribute...-) and [directories](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Env.html#createTempDirectory-com.oracle.truffle.api.TruffleFile-java.lang.String-java.nio.file.attribute.FileAttribute...-).
+* Threads created by the embedder may now be collected by the GC before they can be [disposed](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html#disposeThread-C-java.lang.Thread-). If languages hold onto thread objects exposed via `initializeThread` they now need to do so with `WeakReference` to avoid leaking thread instances.
+* Support boolean literals in DSL expressions used in [@Specialization](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/Specialization) and [@Cached](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/dsl/Cached) fields.
+* Added standard [block node](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/BlockNode.html) for language implementations. Using the block node allows the optimizing runtime to split big blocks into multiple compilation units. This optimization may be enabled using `--engine.PartialBlockCompilation` (on by default) and configured using `--engine.PartialBlockCompilationSize` (default 3000).
+* Added new experimental inlining heuristic in which inlining budgets are based on Graal IR node counts and not Truffle Node counts. Enable with `-Dgraal.TruffleLanguageAgnosticInlining=true`.
+* Deprecated `DynamicObject#isEmpty()`, `DynamicObject#size()`; use `Shape#getPropertyCount()` instead.
+* Deprecated `Shape#getPropertyList(Pred)`, `Shape#getKeyList(Pred)`, `Shape#hasTransitionWithKey(Object)`, `Shape.Allocator#locationForValue(Object, EnumSet)` without replacement.
+* Added [Scope.Builder#rootInstance(Object)](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/Scope.Builder.html#rootInstance-java.lang.Object-), [Scope#getRootInstance()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/Scope.html#getRootInstance--) and [DebugScope#getRootInstance()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebugScope.html#getRootInstance--) to provide an instance of guest language representation of the root node (e.g. a guest language function).
+* Debugger breakpoints can be restricted to a particular root instance via [Breakpoint.Builder#rootInstance(DebugValue)](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/Breakpoint.Builder.html#rootInstance-com.oracle.truffle.api.debug.DebugValue-) and found later on via [DebugValue#getRootInstanceBreakpoints()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebugValue.html#getRootInstanceBreakpoints--).
+* Deprecated `TruffleLanguage.getContextReference()` as this method is inefficient in many situations. The most efficient context lookup can be achieved knowing the current AST in which it is used by calling `Node.lookupContextReference(Class)`.
+* Truffle languages and instruments no longer create `META-INF/truffle` files, but generate service implementations for [TruffleLanguage.Provider](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Provider.html) and [TruffleInstrument.Provider](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.Provider.html) automatically. Recompiling the TruffleLanguage using the Truffle annotation processor automatically migrates the language.
+* The Truffle DSL processor jar no longer requires the Truffle API or Graal SDK as a dependency. 
+* Added interop messages for guest language exception objects: [InteropLibrary#isException(Object)](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/InteropLibrary.html#isException-java.lang.Object-) and [InteropLibrary#throwException(Object)](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/interop/InteropLibrary.html#throwException-java.lang.Object-).
+* [TruffleLanguage.patchContext](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html#patchContext-C-com.oracle.truffle.api.TruffleLanguage.Env-) is invoked for all languages whose contexts were created during context pre-initialization. Originally the `patchContext`  was invoked only for languages with initialized contexts.
 
 ## Version 19.2.0
 * Added sub-process output (error output) [redirection into OutputStream](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/io/ProcessHandler.Redirect.html#stream-java.io.OutputStream-).

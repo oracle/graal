@@ -19,10 +19,7 @@ Alternatively `http` and `https` can be enabled using the `--enable-http` and `-
 #### HTTPS support
 Support for the `https` URL protocol relies on the Java Cryptography Architecture (JCA) framework.
 Thus when `https` is enabled `--enable-all-security-services` is set by default.
-This adds to the generated image the code required by the JCA.
-It also enables JNI by default since some providers like SunEC are implemented in native code.
-However, it doesn't include the corresponding native library in the image, i.e., `libsunec.so` for SunEC.
-You need to ship that with the image and set the `java.library.path` system property accordingly.
+This adds to the generated image the code required by the JCA, including statically linking native libraries that the JCA may depend on.
 See the [documentation on security services](JCA-SECURITY-SERVICES.md) for more details.
 
 ### Not tested

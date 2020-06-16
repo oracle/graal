@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,7 +48,7 @@ import org.graalvm.compiler.nodes.calc.UnsignedDivNode;
 import org.graalvm.compiler.nodes.calc.UnsignedRemNode;
 import org.graalvm.compiler.nodes.calc.UnsignedRightShiftNode;
 import org.graalvm.compiler.nodes.calc.XorNode;
-import org.graalvm.compiler.nodes.memory.HeapAccess.BarrierType;
+import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.AddressNode.Address;
 import org.graalvm.word.ComparableWord;
 import org.graalvm.word.LocationIdentity;
@@ -104,6 +104,7 @@ public abstract class Word implements SignedWord, UnsignedWord, Pointer {
         READ_BARRIERED,
         READ_HEAP,
         WRITE_POINTER,
+        WRITE_POINTER_SIDE_EFFECT_FREE,
         WRITE_OBJECT,
         WRITE_BARRIERED,
         CAS_POINTER,

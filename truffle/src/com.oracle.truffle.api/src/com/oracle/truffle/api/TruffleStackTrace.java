@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,9 +40,11 @@
  */
 package com.oracle.truffle.api;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 import org.graalvm.polyglot.PolyglotException;
 
@@ -54,6 +56,9 @@ import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
+
+import sun.misc.Unsafe;
 
 /**
  * Represents a guest language stack trace.
@@ -77,6 +82,52 @@ import com.oracle.truffle.api.nodes.Node;
  */
 @SuppressWarnings("serial")
 public final class TruffleStackTrace extends Exception {
+
+    private static final long causeFieldIndex;
+    private static final sun.misc.Unsafe UNSAFE;
+
+    static {
+        Unsafe unsafe;
+        try {
+            unsafe = Unsafe.getUnsafe();
+        } catch (SecurityException e) {
+            try {
+                Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
+                theUnsafeInstance.setAccessible(true);
+                unsafe = (Unsafe) theUnsafeInstance.get(Unsafe.class);
+            } catch (Exception e2) {
+                throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e2);
+            }
+        }
+        UNSAFE = unsafe;
+
+        try {
+            Field causeField = Throwable.class.getDeclaredField("cause");
+            causeFieldIndex = UNSAFE.objectFieldOffset(causeField);
+        } catch (NoSuchFieldException | SecurityException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static Throwable getCause(Throwable t) {
+        try {
+            Throwable result = (Throwable) UNSAFE.getObject(t, causeFieldIndex);
+            return result == t ? null : result;
+        } catch (IllegalArgumentException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static void initCause(Throwable t, Throwable value) {
+        try {
+            UNSAFE.putObject(t, causeFieldIndex, value);
+        } catch (IllegalArgumentException e) {
+            CompilerDirectives.transferToInterpreter();
+            throw new RuntimeException(e);
+        }
+    }
+
     private static final TruffleStackTrace EMPTY = new TruffleStackTrace(Collections.emptyList(), 0);
 
     private List<TruffleStackTraceElement> frames;
@@ -156,6 +207,32 @@ public final class TruffleStackTrace extends Exception {
         return null;
     }
 
+    /**
+     * Returns asynchronous guest language stack frames that led to the execution of given
+     * {@link CallTarget} on the given {@link Frame}. Returns <code>null</code> if no asynchronous
+     * stack is known. Call this with a context entered only.
+     * <p>
+     * Languages might not provide asynchronous stack frames by default for performance reasons.
+     * Instruments might need to instruct languages to provide the asynchronous stacks.
+     *
+     * @return a list of asynchronous frames, or <code>null</code>.
+     * @since 20.1.0
+     */
+    @TruffleBoundary
+    public static List<TruffleStackTraceElement> getAsynchronousStackTrace(CallTarget target, Frame frame) {
+        Objects.requireNonNull(target, "CallTarget must not be null");
+        Objects.requireNonNull(frame, "Frame must not be null");
+        assert hasContext(target);
+        return LanguageAccessor.ACCESSOR.nodeSupport().findAsynchronousFrames(target, frame);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static boolean hasContext(CallTarget target) {
+        RootNode root = ((RootCallTarget) target).getRootNode();
+        Object polyglotLanguage = LanguageAccessor.ACCESSOR.nodeSupport().getPolyglotLanguage(root.getLanguageInfo());
+        return LanguageAccessor.ACCESSOR.engineSupport().getCurrentContextReference(polyglotLanguage).get() != null;
+    }
+
     static void materializeHostFrames(Throwable t) {
         TruffleStackTrace stack = fillIn(t);
         if (stack != null) {
@@ -165,12 +242,12 @@ public final class TruffleStackTrace extends Exception {
 
     private static LazyStackTrace findImpl(Throwable t) {
         assert !(t instanceof ControlFlowException);
-        Throwable cause = t.getCause();
+        Throwable cause = getCause(t);
         while (cause != null) {
             if (cause instanceof LazyStackTrace) {
                 return ((LazyStackTrace) cause);
             }
-            cause = cause.getCause();
+            cause = getCause(cause);
         }
         return null;
     }
@@ -178,25 +255,22 @@ public final class TruffleStackTrace extends Exception {
     private static Throwable findInsertCause(Throwable t) {
         Throwable lastException = t;
         while (lastException != null) {
-            Throwable parentCause = lastException.getCause();
+            Throwable parentCause = getCause(lastException);
             if (parentCause == null) {
                 break;
             }
             lastException = parentCause;
         }
-        if (lastException != null && !(lastException instanceof StackOverflowError)) {
-            return lastException;
-        }
-        return null;
+        return lastException;
     }
 
     private static void insert(Throwable t, LazyStackTrace trace) {
-        try {
-            t.initCause(trace);
-        } catch (IllegalStateException e) {
+        if (getCause(t) != null) {
             CompilerDirectives.transferToInterpreter();
             // if the cause is initialized to null we have no chance of attaching guest language
             // stack traces
+        } else {
+            initCause(t, trace);
         }
     }
 
@@ -215,7 +289,6 @@ public final class TruffleStackTrace extends Exception {
         if (throwable instanceof ControlFlowException) {
             return EMPTY;
         }
-
         LazyStackTrace lazy = findImpl(throwable);
         if (lazy == null) {
             Throwable insertCause = findInsertCause(throwable);
@@ -322,7 +395,7 @@ public final class TruffleStackTrace extends Exception {
         }
     }
 
-    static void addStackFrameInfo(Node callNode, Throwable t, RootCallTarget root, Frame currentFrame) {
+    static void addStackFrameInfo(Node callNode, RootCallTarget root, Throwable t, Frame currentFrame) {
         if (t instanceof ControlFlowException) {
             // control flow exceptions should never have to get a stack trace.
             return;
@@ -332,29 +405,52 @@ public final class TruffleStackTrace extends Exception {
             // those thrown by Value call targets. In any case, we do not want to attach a cause.
             return;
         }
+
+        boolean isTProfiled = CompilerDirectives.isPartialEvaluationConstant(t.getClass());
+        if (currentFrame != null && root.getRootNode().isCaptureFramesForTrace()) {
+            callInnerAddStackFrameInfo(isTProfiled, callNode, root, t, currentFrame.materialize());
+        } else {
+            callInnerAddStackFrameInfo(isTProfiled, callNode, root, t, null);
+        }
+    }
+
+    private static void callInnerAddStackFrameInfo(boolean isTProfiled, Node callNode, RootCallTarget root, Throwable t, MaterializedFrame currentFrame) {
+        if (isTProfiled) {
+            innerAddStackFrameInfo(callNode, root, t, currentFrame);
+        } else {
+            innerAddStackFrameInfoBoundary(callNode, root, t, currentFrame);
+        }
+    }
+
+    @TruffleBoundary
+    private static void innerAddStackFrameInfoBoundary(Node callNode, RootCallTarget root, Throwable t, MaterializedFrame currentFrame) {
+        innerAddStackFrameInfo(callNode, root, t, currentFrame);
+    }
+
+    private static void innerAddStackFrameInfo(Node callNode, RootCallTarget root, Throwable t, MaterializedFrame currentFrame) {
         if (!(t instanceof TruffleException) || ((TruffleException) t).isInternalError()) {
             // capture as much information as possible for host and internal errors
             fillIn(t);
             return;
         }
 
-        int stackTraceElementLimit = t instanceof TruffleException ? ((TruffleException) t).getStackTraceElementLimit() : -1;
+        int stackTraceElementLimit = ((TruffleException) t).getStackTraceElementLimit();
 
-        Throwable cause = t.getCause();
+        Throwable cause = getCause(t);
         LazyStackTrace lazy;
         if (cause == null) {
             insert(t, lazy = new LazyStackTrace());
         } else if (cause instanceof LazyStackTrace) {
             lazy = (LazyStackTrace) cause;
         } else {
-            addStackFrameInfoSlowPath(callNode, cause, root, currentFrame == null ? null : currentFrame.materialize(), stackTraceElementLimit);
+            addStackFrameInfoSlowPath(callNode, root, cause, currentFrame, stackTraceElementLimit);
             return;
         }
         appendLazyStackTrace(callNode, root, currentFrame, lazy, stackTraceElementLimit);
     }
 
     @TruffleBoundary
-    private static void addStackFrameInfoSlowPath(Node callNode, Throwable t, RootCallTarget root, MaterializedFrame currentFrame, int stackTraceElementLimit) {
+    private static void addStackFrameInfoSlowPath(Node callNode, RootCallTarget root, Throwable t, MaterializedFrame currentFrame, int stackTraceElementLimit) {
         LazyStackTrace lazy = findImpl(t);
         if (lazy == null) {
             Throwable insertCause = findInsertCause(t);
@@ -367,13 +463,12 @@ public final class TruffleStackTrace extends Exception {
         appendLazyStackTrace(callNode, root, currentFrame, lazy, stackTraceElementLimit);
     }
 
-    private static void appendLazyStackTrace(Node callNode, RootCallTarget root, Frame currentFrame, LazyStackTrace lazy, int stackTraceElementLimit) {
+    private static void appendLazyStackTrace(Node callNode, RootCallTarget root, MaterializedFrame currentFrame, LazyStackTrace lazy, int stackTraceElementLimit) {
         if (lazy.stackTrace == null) {
             if (stackTraceElementLimit >= 0 && lazy.frameCount >= stackTraceElementLimit) {
                 return;
             }
-            boolean captureFrames = root != null && root.getRootNode().isCaptureFramesForTrace();
-            lazy.current = new TracebackElement(lazy.current, callNode, root, captureFrames ? currentFrame.materialize() : null);
+            lazy.current = new TracebackElement(lazy.current, callNode, root, currentFrame);
             if (root != null && !root.getRootNode().isInternal()) {
                 lazy.frameCount++;
             }

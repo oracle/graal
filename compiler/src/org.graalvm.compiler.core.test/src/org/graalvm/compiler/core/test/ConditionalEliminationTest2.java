@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -109,7 +109,7 @@ public class ConditionalEliminationTest2 extends ConditionalEliminationTestBase 
     @Test
     public void testRedundantCompares() {
         StructuredGraph graph = parseEager("testRedundantComparesSnippet", AllowAssumptions.YES);
-        CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
+        CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
         CoreProviders context = getProviders();
 
         new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
@@ -132,7 +132,7 @@ public class ConditionalEliminationTest2 extends ConditionalEliminationTestBase 
     public void testInstanceOfCheckCastLowered() {
         StructuredGraph graph = parseEager("testInstanceOfCheckCastSnippet", AllowAssumptions.YES);
 
-        CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
+        CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
         CoreProviders context = getProviders();
 
         new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
@@ -146,7 +146,7 @@ public class ConditionalEliminationTest2 extends ConditionalEliminationTestBase 
     private void checkInstanceOfCount(String methodName, int count) {
         StructuredGraph graph = parseEager(methodName, AllowAssumptions.YES);
 
-        CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
+        CanonicalizerPhase canonicalizer = this.createCanonicalizerPhase();
         CoreProviders context = getProviders();
 
         canonicalizer.apply(graph, context);

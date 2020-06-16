@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,13 +30,13 @@
 #include <stdlib.h>
 
 struct test {
-  int *ptr;
-  int val;
+    int *ptr;
+    int val;
 };
 
 int main() {
-  struct test *t = calloc(1, sizeof(struct test));
-  if (t->ptr != NULL) {
-    abort();
-  }
+    struct test *t = calloc(1, sizeof(struct test));
+    if (t->ptr != NULL) {
+        abort();
+    }
 }

@@ -45,11 +45,10 @@ import com.oracle.svm.core.MemoryUtil;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
+import com.oracle.svm.core.heap.ObjectHeader.HeapKind;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
-import com.oracle.svm.core.heap.ObjectReferenceWalker;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -78,6 +77,8 @@ public final class NonmovableArrays {
 
     private static final UninterruptibleUtils.AtomicLong runtimeArraysInExistence = new UninterruptibleUtils.AtomicLong(0);
 
+    private static final OutOfMemoryError OUT_OF_MEMORY_ERROR = new OutOfMemoryError("Could not allocate nonmovable array");
+
     @SuppressWarnings("unchecked")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static <T extends NonmovableArray<?>> T createArray(int length, Class<?> arrayType) {
@@ -90,18 +91,33 @@ public final class NonmovableArrays {
         assert LayoutEncoding.isArray(hub.getLayoutEncoding());
         UnsignedWord size = LayoutEncoding.getArraySize(hub.getLayoutEncoding(), length);
         Pointer array = ImageSingletons.lookup(UnmanagedMemorySupport.class).calloc(size);
-        WordBase header = Heap.getHeap().getObjectHeader().formatHubRaw(hub);
-        ObjectHeader.initializeHeaderOfNewObject(array, header);
+        if (array.isNull()) {
+            throw OUT_OF_MEMORY_ERROR;
+        }
+        Heap.getHeap().getObjectHeader().initializeHeaderOfNewObject(array, hub, HeapKind.Unmanaged);
         array.writeInt(ConfigurationValues.getObjectLayout().getArrayLengthOffset(), length);
         // already zero-initialized thanks to calloc()
-        assert runtimeArraysInExistence.incrementAndGet() > 0 : "overflow";
+        trackUnmanagedArray((NonmovableArray<?>) array);
         return (T) array;
+    }
+
+    @Uninterruptible(reason = "Cast to object might not be valid.")
+    private static boolean isInImageHeap(NonmovableArray<?> array) {
+        Object obj = KnownIntrinsics.convertUnknownValue(((Word) array).toObject(), Object.class);
+        return obj != null && Heap.getHeap().isInImageHeap(obj);
+    }
+
+    /** Begins tracking an array, e.g. when it is handed over from a different isolate. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void trackUnmanagedArray(@SuppressWarnings("unused") NonmovableArray<?> array) {
+        assert !Heap.getHeap().isInImageHeap((Pointer) array) : "must not track image heap objects";
+        assert array.isNull() || runtimeArraysInExistence.incrementAndGet() > 0 : "overflow";
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static DynamicHub readHub(NonmovableArray<?> array) {
-        UnsignedWord header = ObjectHeader.readHeaderFromPointer((Pointer) array);
-        return ObjectHeader.dynamicHubFromObjectHeader(header);
+        ObjectHeader objectHeader = Heap.getHeap().getObjectHeader();
+        return objectHeader.readDynamicHubFromPointer((Pointer) array);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -195,9 +211,8 @@ public final class NonmovableArrays {
     /**
      * Allocates an array of the specified length to hold references to objects on the Java heap. In
      * order to ensure that the referenced objects are reachable for garbage collection, the owner
-     * of an instance must call {@link #walkUnmanagedObjectArray} on each array from
-     * {@linkplain GC#registerObjectReferenceWalker a GC-registered reference walker}. The array
-     * must be released manually with {@link #releaseUnmanagedArray}.
+     * of an instance must call {@link #walkUnmanagedObjectArray} on each array from a GC-registered
+     * reference walker. The array must be released manually with {@link #releaseUnmanagedArray}.
      * <p>
      * The returned array must be accessed via methods of {@link NonmovableArrays} only, such as
      * {@link #getObject} and {@link #setObject}. Although the array's memory layout might resemble
@@ -229,6 +244,13 @@ public final class NonmovableArrays {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void releaseUnmanagedArray(NonmovableArray<?> array) {
         ImageSingletons.lookup(UnmanagedMemorySupport.class).free(array);
+        untrackUnmanagedArray(array);
+    }
+
+    /** Untracks an array created at runtime, e.g. before it is handed over to another isolate. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void untrackUnmanagedArray(NonmovableArray<?> array) {
+        assert !Heap.getHeap().isInImageHeap((Pointer) array) : "must not track image heap objects";
         assert array.isNull() || runtimeArraysInExistence.getAndDecrement() > 0;
     }
 
@@ -243,7 +265,7 @@ public final class NonmovableArrays {
             VMError.guarantee(array.getClass().getComponentType().isPrimitive(), "Must call the method for Object[]");
             return new HostedNonmovableArray<>(array);
         }
-        assert array == null || Heap.getHeap().getObjectHeader().isNonHeapAllocatedHeader(ObjectHeader.readHeaderFromObject(array));
+        assert array == null || Heap.getHeap().isInImageHeap(array);
         return (array != null) ? (NonmovableArray<T>) Word.objectToUntrackedPointer(array) : WordFactory.nullPointer();
     }
 
@@ -329,7 +351,14 @@ public final class NonmovableArrays {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <T extends PointerBase> T addressOf(NonmovableArray<?> array, int index) {
         assert index >= 0 && index <= lengthOf(array);
-        return (T) ((Pointer) array).add(readArrayBase(array) + (index << readElementShift(array)));
+        return (T) getArrayBase(array).add(index << readElementShift(array));
+    }
+
+    /** Reads the value at the given index in an object array. */
+    @SuppressWarnings("unchecked")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static <T extends Pointer> T getArrayBase(NonmovableArray<?> array) {
+        return (T) ((Pointer) array).add(readArrayBase(array));
     }
 
     /** Reads the value at the given index in an object array. */
@@ -358,21 +387,33 @@ public final class NonmovableArrays {
 
     /**
      * Visits all array elements with the provided {@link ObjectReferenceVisitor}.
-     *
-     * @see ObjectReferenceWalker
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true, calleeMustBe = false)
-    public static void walkUnmanagedObjectArray(NonmovableObjectArray<?> array, ObjectReferenceVisitor visitor) {
+    public static boolean walkUnmanagedObjectArray(NonmovableObjectArray<?> array, ObjectReferenceVisitor visitor) {
         if (array.isNonNull()) {
+            return walkUnmanagedObjectArray(array, visitor, 0, lengthOf(array));
+        }
+        return true;
+    }
+
+    /**
+     * Visits all array elements with the provided {@link ObjectReferenceVisitor}.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true, calleeMustBe = false)
+    public static boolean walkUnmanagedObjectArray(NonmovableObjectArray<?> array, ObjectReferenceVisitor visitor, int startIndex, int count) {
+        if (array.isNonNull()) {
+            assert startIndex >= 0 && count <= lengthOf(array) - startIndex;
             int refSize = ConfigurationValues.getObjectLayout().getReferenceSize();
             assert refSize == (1 << readElementShift(array));
-            int length = lengthOf(array);
-            Pointer p = ((Pointer) array).add(readArrayBase(array));
-            for (int i = 0; i < length; i++) {
-                visitor.visitObjectReference(p, true);
+            Pointer p = ((Pointer) array).add(readArrayBase(array)).add(startIndex * refSize);
+            for (int i = 0; i < count; i++) {
+                if (!visitor.visitObjectReference(p, true)) {
+                    return false;
+                }
                 p = p.add(refSize);
             }
         }
+        return true;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

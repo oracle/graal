@@ -81,7 +81,6 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -356,7 +355,7 @@ final class Sequence4<T, A, B, C, D> extends SequenceBase<T> {
 
 final class Alternative<T> extends Element<T> {
     @Children private final Element<? extends T>[] options;
-    private final ConditionProfile seenEof = ConditionProfile.createBinaryProfile();
+    private final ConditionProfile seenEof = ConditionProfile.create();
 
     Alternative(Element<? extends T>[] options) {
         this.options = options;
@@ -380,7 +379,7 @@ final class Alternative<T> extends Element<T> {
     }
 
     @Override
-    @ExplodeLoop(kind = LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+    @ExplodeLoop
     public T consume(PELexer lexer) {
         byte lookahead = lexer.peek(seenEof);
         for (Element<? extends T> element : options) {
@@ -399,7 +398,7 @@ final class Repetition<T, ListT, R> extends Element<R> {
     private final Supplier<ListT> createList;
     private final BiFunction<ListT, T, ListT> addToList;
     private final Function<ListT, R> createResult;
-    private final ConditionProfile seenEof = ConditionProfile.createBinaryProfile();
+    private final ConditionProfile seenEof = ConditionProfile.create();
 
     Repetition(Element<T> element, Supplier<ListT> createList, BiFunction<ListT, T, ListT> addToList, Function<ListT, R> createResult) {
         this.element = element;
@@ -434,7 +433,7 @@ final class Repetition<T, ListT, R> extends Element<R> {
 
 final class StackRepetition<T> extends Element<LexerList<T>> {
     @Child private Element<T> element;
-    private final ConditionProfile seenEof = ConditionProfile.createBinaryProfile();
+    private final ConditionProfile seenEof = ConditionProfile.create();
 
     StackRepetition(Element<T> element) {
         this.element = element;
@@ -470,7 +469,7 @@ final class OptionalElement<T, R> extends Element<R> {
     @Child Element<T> element;
     private final Function<T, R> hasValueAction;
     private final Supplier<R> hasNoValueAction;
-    private final ConditionProfile seenEof = ConditionProfile.createBinaryProfile();
+    private final ConditionProfile seenEof = ConditionProfile.create();
 
     OptionalElement(Element<T> element, Function<T, R> hasValueAction, Supplier<R> hasNoValueAction) {
         this.element = element;
@@ -502,7 +501,7 @@ final class OptionalElement<T, R> extends Element<R> {
 final class TokenReference<T> extends Element<T> {
     private final byte token;
     private final TokenFunction<T> action;
-    private final ConditionProfile seenEof = ConditionProfile.createBinaryProfile();
+    private final ConditionProfile seenEof = ConditionProfile.create();
 
     TokenReference(byte token, TokenFunction<T> action) {
         this.token = token;

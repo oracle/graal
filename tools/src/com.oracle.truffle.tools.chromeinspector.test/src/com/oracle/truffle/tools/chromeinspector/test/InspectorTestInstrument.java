@@ -48,11 +48,12 @@ public final class InspectorTestInstrument extends TruffleInstrument {
                 return new InspectSessionInfo() {
 
                     private InspectServerSession iss;
+                    private InspectorExecutionContext context;
                     private ConnectionWatcher connectionWatcher;
                     private long id;
 
                     InspectSessionInfo init() {
-                        InspectorExecutionContext context = new InspectorExecutionContext("test", inspectInternal, inspectInitialization, env, sourcePath, new PrintWriter(env.err(), true));
+                        this.context = new InspectorExecutionContext("test", inspectInternal, inspectInitialization, env, sourcePath, new PrintWriter(env.err(), true));
                         this.connectionWatcher = new ConnectionWatcher();
                         this.iss = InspectServerSession.create(context, suspend, connectionWatcher);
                         this.id = context.getId();
@@ -64,6 +65,11 @@ public final class InspectorTestInstrument extends TruffleInstrument {
                     @Override
                     public InspectServerSession getInspectServerSession() {
                         return iss;
+                    }
+
+                    @Override
+                    public InspectorExecutionContext getInspectorContext() {
+                        return context;
                     }
 
                     @Override
@@ -88,6 +94,8 @@ interface InspectSessionInfoProvider {
 
 interface InspectSessionInfo {
     InspectServerSession getInspectServerSession();
+
+    InspectorExecutionContext getInspectorContext();
 
     ConnectionWatcher getConnectionWatcher();
 

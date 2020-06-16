@@ -45,19 +45,19 @@ public class TimeUtils {
     }
 
     /** Convert the given number of seconds to nanoseconds. */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long secondsToNanos(long seconds) {
         return multiplyOrMaxValue(seconds, nanosPerSecond);
     }
 
     /** Convert the given number of milliseconds to nanoseconds. */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long millisToNanos(long millis) {
         return multiplyOrMaxValue(millis, nanosPerMilli);
     }
 
     /** Convert the given number of microseconds to nanoseconds. */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long microsToNanos(long micros) {
         return multiplyOrMaxValue(micros, microsPerNano);
     }
@@ -96,13 +96,13 @@ public class TimeUtils {
     }
 
     /** Return the number of seconds in the given number of nanoseconds. */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long divideNanosToSeconds(long nanos) {
         return (nanos / nanosPerSecond);
     }
 
     /** Return the nanoseconds remaining after taking out all the seconds. */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long remainderNanosToSeconds(long nanos) {
         return (nanos % nanosPerSecond);
     }
@@ -112,21 +112,33 @@ public class TimeUtils {
         return (nanos / nanosPerMilli);
     }
 
-    /** Round the number of nanoseconds to a number of milliseconds. */
+    /** Round the number of nanoseconds to milliseconds. */
     public static long roundNanosToMillis(long nanos) {
         return roundedDivide(nanos, nanosPerMilli);
     }
 
-    /** Round the number of nanoseconds to a number of seconds. */
+    /** Round the number of nanoseconds up to the next-highest number of milliseconds. */
+    public static long roundUpNanosToMillis(long nanos) {
+        return roundedUpDivide(nanos, nanosPerMilli);
+    }
+
+    /** Round the number of nanoseconds to seconds. */
     public static long roundNanosToSeconds(long nanos) {
         return roundedDivide(nanos, nanosPerSecond);
     }
 
-    /* Divide, rounding to the next higher long. */
+    /* Divide, rounding to the nearest long. */
     public static long roundedDivide(long numerator, long denominator) {
         final long halfStep = denominator / 2L;
         final long addition = addOrMaxValue(numerator, halfStep);
         return (addition / denominator);
+    }
+
+    /* Divide, rounding to the next-highest long. */
+    public static long roundedUpDivide(long numerator, long denominator) {
+        long almostStep = denominator - 1L;
+        long sum = addOrMaxValue(numerator, almostStep);
+        return (sum / denominator);
     }
 
     /** Weight a nanosecond value by a percentage between 0 and 100. */
@@ -137,7 +149,7 @@ public class TimeUtils {
     }
 
     /** Add two long values, or return Long.MAX_VALUE if the sum overflows. */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long addOrMaxValue(long x, long y) {
         /* Not using Math.addExact because it allocates. */
         long r = x + y;
@@ -149,7 +161,7 @@ public class TimeUtils {
     }
 
     /** Multiply two long values, or result Long.MAX_VALUE if the product overflows. */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long multiplyOrMaxValue(long x, long y) {
         /* Not using Math.multiplyExact because it allocates. */
         long r = x * y;

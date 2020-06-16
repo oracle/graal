@@ -59,6 +59,7 @@ import java.util.stream.Collectors;
 import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.hosted.server.NativeImageBuildClient;
@@ -413,7 +414,8 @@ final class NativeImageServer extends NativeImage {
                 if (config.useJavaModules()) {
                     builderPaths.addAll(Arrays.asList(config.getBuilderModulePath(), config.getBuilderUpgradeModulePath()));
                 }
-                String serverUID = imageServerUID(javaArgs, builderPaths);
+                Path javaExePath = canonicalize(config.getJavaExecutable());
+                String serverUID = imageServerUID(javaExePath, javaArgs, builderPaths);
                 Path serverDir = sessionDir.resolve(serverDirPrefix + serverUID);
                 Optional<Server> reusableServer = aliveServers.stream().filter(s -> s.serverDir.equals(serverDir)).findFirst();
                 if (reusableServer.isPresent()) {
@@ -438,7 +440,7 @@ final class NativeImageServer extends NativeImage {
                         }
                     }
                     /* Instantiate new server and write properties file */
-                    Server server = startServer(serverDir, 0, classpath, bootClasspath, javaArgs);
+                    Server server = startServer(javaExePath, serverDir, 0, classpath, bootClasspath, javaArgs);
                     if (server == null) {
                         showWarning("Creating image-build server failed. Fallback to one-shot image building ...");
                     }
@@ -546,23 +548,25 @@ final class NativeImageServer extends NativeImage {
         return aliveServers;
     }
 
-    private Server startServer(Path serverDir, int serverPort, LinkedHashSet<Path> classpath, LinkedHashSet<Path> bootClasspath, List<String> javaArgs) {
+    private Server startServer(Path javaExePath, Path serverDir, int serverPort, LinkedHashSet<Path> classpath, LinkedHashSet<Path> bootClasspath, List<String> javaArgs) {
         ProcessBuilder pb = new ProcessBuilder();
         pb.directory(serverDir.toFile());
         pb.redirectErrorStream(true);
         List<String> command = pb.command();
-        command.add(canonicalize(config.getJavaExecutable()).toString());
+        command.add(javaExePath.toString());
         if (!bootClasspath.isEmpty()) {
             command.add(bootClasspath.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator, "-Xbootclasspath/a:", "")));
         }
         command.addAll(Arrays.asList("-cp", classpath.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator))));
         command.addAll(javaArgs);
+        // Ensure Graal logs to System.err so users can see log output during server-based building.
+        command.add("-Dgraal.LogFile=%e");
         command.add("com.oracle.svm.hosted.server.NativeImageBuildServer");
         command.add(NativeImageBuildServer.PORT_PREFIX + serverPort);
         Path logFilePath = serverDir.resolve("server.log");
         command.add(NativeImageBuildServer.LOG_PREFIX + logFilePath);
         showVerboseMessage(isVerbose(), "StartServer [");
-        showVerboseMessage(isVerbose(), String.join(" \\\n", command));
+        showVerboseMessage(isVerbose(), SubstrateUtil.getShellCommandString(command, true));
         showVerboseMessage(isVerbose(), "]");
         int childPid = NativeImageServerHelper.daemonize(() -> {
             try {
@@ -735,8 +739,8 @@ final class NativeImageServer extends NativeImage {
 
     @Override
     protected int buildImage(List<String> javaArgs, LinkedHashSet<Path> bcp, LinkedHashSet<Path> cp, LinkedHashSet<String> imageArgs, LinkedHashSet<Path> imagecp) {
-        boolean printFlags = imageArgs.stream().anyMatch(arg -> arg.contains(enablePrintFlags));
-        if (useServer && !printFlags && !javaArgs.contains("-Xdebug")) {
+        boolean printFlags = imageArgs.stream().anyMatch(arg -> arg.contains(enablePrintFlags) || arg.contains(enablePrintFlagsWithExtraHelp));
+        if (useServer && !printFlags && !useDebugAttach()) {
             AbortBuildSignalHandler signalHandler = new AbortBuildSignalHandler();
             sun.misc.Signal.handle(new sun.misc.Signal("TERM"), signalHandler);
             sun.misc.Signal.handle(new sun.misc.Signal("INT"), signalHandler);
@@ -758,13 +762,14 @@ final class NativeImageServer extends NativeImage {
         return super.buildImage(javaArgs, bcp, cp, imageArgs, imagecp);
     }
 
-    private static String imageServerUID(List<String> vmArgs, List<Collection<Path>> builderPaths) {
+    private static String imageServerUID(Path javaExecutable, List<String> vmArgs, List<Collection<Path>> builderPaths) {
         MessageDigest digest;
         try {
             digest = MessageDigest.getInstance("SHA-512");
         } catch (NoSuchAlgorithmException e) {
             throw showError("SHA-512 digest is not available", e);
         }
+        digest.update(javaExecutable.toString().getBytes());
         for (Collection<Path> paths : builderPaths) {
             for (Path path : paths) {
                 digest.update(path.toString().getBytes());

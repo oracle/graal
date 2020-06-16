@@ -44,11 +44,21 @@ public class InterruptImageBuilding extends RuntimeException {
     }
 
     /**
+     * Used to construct rethrowable InterruptImageBuilding exceptions in
+     * java.util.concurrent.ForkJoinTask#getThrowableException().
+     *
+     * @param cause original exception that got raised in a worker thread.
+     */
+    public InterruptImageBuilding(Throwable cause) {
+        super(cause);
+        this.hasMessage = cause != null && cause.getMessage() != null;
+    }
+
+    /**
      * Print nothing upon exit.
      */
     public InterruptImageBuilding() {
-        super("");
-        hasMessage = false;
+        this((Throwable) null);
     }
 
     public Optional<String> getReason() {

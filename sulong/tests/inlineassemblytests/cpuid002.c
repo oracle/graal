@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,30 +31,30 @@
 #include <string.h>
 
 typedef union {
-  struct {
-    unsigned int b, d, c;
-  };
-  char str[13];
+    struct {
+        unsigned int b, d, c;
+    };
+    char str[13];
 } VENDOR;
 
 int main(void) {
-  VENDOR vendor;
-  unsigned int a, b, c, d;
+    VENDOR vendor;
+    unsigned int a, b, c, d;
 
-  __cpuid(0, a, vendor.b, vendor.c, vendor.d);
-  vendor.str[12] = 0;
-  if (!strcmp(vendor.str, "GenuineIntel")) {
-    return 1;
-  }
-  if (!strcmp(vendor.str, "AuthenticAMD")) {
-    return 1;
-  }
-  if (!strcmp(vendor.str, "KVMKVMKVM")) {
-    return 1;
-  }
-  if (!strcmp(vendor.str, "SulongLLVM64")) {
-    return 1;
-  }
+    __cpuid(0, a, vendor.b, vendor.c, vendor.d);
+    vendor.str[12] = 0;
+    if (!strcmp(vendor.str, "GenuineIntel")) {
+        return 1;
+    }
+    if (!strcmp(vendor.str, "AuthenticAMD")) {
+        return 1;
+    }
+    if (!strcmp(vendor.str, "KVMKVMKVM")) {
+        return 1;
+    }
+    if (!strcmp(vendor.str, "SulongLLVM64")) {
+        return 1;
+    }
 
-  return 0;
+    return 0;
 }

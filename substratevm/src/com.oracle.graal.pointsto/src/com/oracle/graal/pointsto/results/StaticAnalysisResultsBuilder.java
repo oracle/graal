@@ -35,6 +35,7 @@ import java.util.stream.StreamSupport;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.PointstoOptions;
+import com.oracle.graal.pointsto.flow.FormalParamTypeFlow;
 import com.oracle.graal.pointsto.flow.InstanceOfTypeFlow;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
@@ -97,7 +98,23 @@ public class StaticAnalysisResultsBuilder {
 
         ArrayList<JavaTypeProfile> paramProfiles = new ArrayList<>(originalFlows.getParameters().length);
         for (int i = 0; i < originalFlows.getParameters().length; i++) {
-            JavaTypeProfile paramProfile = makeTypeProfile(methodFlow.foldTypeFlow(bb, originalFlows.getParameter(i)));
+            FormalParamTypeFlow parameter = originalFlows.getParameter(i);
+            if (parameter == null) {
+                /*
+                 * The paramater can be `null` at this point if it doesn't have any usages inside
+                 * the method, i.e., its TypeFlowBuilder was never materialized. This is an
+                 * optimization carried out by the TypeFlowGraphBuilder. This means that it will not
+                 * have a corresponding type profile.
+                 */
+                continue;
+            }
+            if (methodFlow.isSaturated(bb, parameter)) {
+                /* The parameter type flow is saturated, it's type state doesn't matter. */
+                continue;
+            }
+
+            TypeState paramTypeState = methodFlow.foldTypeFlow(bb, parameter);
+            JavaTypeProfile paramProfile = makeTypeProfile(paramTypeState);
             if (paramProfile != null) {
                 ensureSize(paramProfiles, i);
                 paramProfiles.set(i, paramProfile);
@@ -117,6 +134,14 @@ public class StaticAnalysisResultsBuilder {
                 int bci = (int) entry.getKey();
                 InstanceOfTypeFlow originalInstanceOf = entry.getValue();
 
+                if (methodFlow.isSaturated(bb, originalInstanceOf)) {
+                    /*
+                     * If the instance flow is saturated its exact type state doesn't matter. This
+                     * instanceof cannot be optimized.
+                     */
+                    continue;
+                }
+
                 /* Fold the instanceof flows. */
                 TypeState instanceOfTypeState = methodFlow.foldTypeFlow(bb, originalInstanceOf);
                 originalInstanceOf.setState(bb, instanceOfTypeState);
@@ -135,15 +160,17 @@ public class StaticAnalysisResultsBuilder {
                 int bci = (int) entry.getKey();
                 InvokeTypeFlow originalInvoke = entry.getValue();
 
-                TypeState invokeTypeState = TypeState.forEmpty();
-                if (originalInvoke.getTargetMethod().hasReceiver()) {
+                TypeState invokeTypeState = null;
+                /* If the receiver flow is saturated its exact type state doesn't matter. */
+                if (originalInvoke.getTargetMethod().hasReceiver() && !methodFlow.isSaturated(bb, originalInvoke.getReceiver())) {
                     invokeTypeState = methodFlow.foldTypeFlow(bb, originalInvoke.getReceiver());
                     originalInvoke.setState(bb, invokeTypeState);
                 }
 
                 TypeFlow<?> originalReturn = originalInvoke.getActualReturn();
                 TypeState returnTypeState = null;
-                if (originalReturn != null) {
+                /* If the return flow is saturated its exact type state doesn't matter. */
+                if (originalReturn != null && !methodFlow.isSaturated(bb, originalReturn)) {
                     returnTypeState = methodFlow.foldTypeFlow(bb, originalReturn);
                     originalReturn.setState(bb, returnTypeState);
                 }

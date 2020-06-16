@@ -79,6 +79,14 @@ final class Target_java_lang_reflect_Proxy {
     public static boolean isProxyClass(Class<?> cl) {
         return Proxy.class.isAssignableFrom(cl) && ImageSingletons.lookup(DynamicProxyRegistry.class).isProxyClass(cl);
     }
+
+    /*
+     * We are defensive and handle native methods by marking them as deleted. If they are reachable,
+     * the user is certainly doing something wrong. But we do not want to fail with a linking error.
+     */
+    @Delete //
+    @TargetElement(onlyWith = JDK8OrEarlier.class) //
+    private static native Class<?> defineClass0(ClassLoader loader, String name, byte[] b, int off, int len);
 }
 
 @TargetClass(className = "java.lang.reflect.WeakCache", onlyWith = JDK8OrEarlier.class)

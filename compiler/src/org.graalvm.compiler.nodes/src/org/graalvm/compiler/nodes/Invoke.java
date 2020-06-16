@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,23 +27,20 @@ package org.graalvm.compiler.nodes;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
-import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.type.StampTool;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public interface Invoke extends StateSplit, Lowerable, MemoryCheckpoint.Single, DeoptimizingNode.DeoptDuring, FixedNodeInterface, Invokable {
+public interface Invoke extends StateSplit, Lowerable, SingleMemoryKill, DeoptimizingNode.DeoptDuring, FixedNodeInterface, Invokable {
 
     FixedNode next();
 
     void setNext(FixedNode x);
 
     CallTargetNode callTarget();
-
-    @Override
-    int bci();
 
     Node predecessor();
 
@@ -67,13 +64,7 @@ public interface Invoke extends StateSplit, Lowerable, MemoryCheckpoint.Single, 
         return callTarget() != null ? callTarget().targetMethod() : null;
     }
 
-    /**
-     * Returns the {@linkplain ResolvedJavaMethod method} from which this invoke is executed. This
-     * is the caller method and in the case of inlining may be different from the method of the
-     * graph this node is in.
-     *
-     * @return the method from which this invoke is executed.
-     */
+    @Override
     default ResolvedJavaMethod getContextMethod() {
         FrameState state = stateAfter();
         if (state == null) {
@@ -119,5 +110,4 @@ public interface Invoke extends StateSplit, Lowerable, MemoryCheckpoint.Single, 
         return callTarget().invokeKind();
     }
 
-    void replaceBci(int newBci);
 }

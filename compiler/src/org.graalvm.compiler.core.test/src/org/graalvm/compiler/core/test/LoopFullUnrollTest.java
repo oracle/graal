@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,7 +32,6 @@ import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.junit.Test;
 
 public class LoopFullUnrollTest extends GraalCompilerTest {
@@ -89,7 +88,7 @@ public class LoopFullUnrollTest extends GraalCompilerTest {
             final StructuredGraph graph = parseEager(snippet, AllowAssumptions.NO, debug);
 
             CoreProviders context = getProviders();
-            new LoopFullUnrollPhase(new CanonicalizerPhase(), new DefaultLoopPolicies()).apply(graph, context);
+            new LoopFullUnrollPhase(createCanonicalizerPhase(), new DefaultLoopPolicies()).apply(graph, context);
 
             assertTrue(graph.getNodes().filter(LoopBeginNode.class).count() == loopCount);
         } catch (Throwable e) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,6 @@ package com.oracle.truffle.dsl.processor.java;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.lang.annotation.Annotation;
 import java.lang.annotation.Repeatable;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -85,6 +84,7 @@ import com.oracle.truffle.dsl.processor.CompileErrorException;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
+import com.oracle.truffle.dsl.processor.java.model.GeneratedElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
 
 /**
@@ -93,6 +93,12 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTy
 public class ElementUtils {
 
     public static ExecutableElement findMethod(Class<?> type, String methodName) {
+        ProcessorContext context = ProcessorContext.getInstance();
+        DeclaredType typeElement = context.getDeclaredType(type);
+        return findMethod(typeElement, methodName);
+    }
+
+    public static ExecutableElement findMethod(DeclaredType type, String methodName) {
         ProcessorContext context = ProcessorContext.getInstance();
         TypeElement typeElement = context.getTypeElement(type);
         for (ExecutableElement method : ElementFilter.methodsIn(typeElement.getEnclosedElements())) {
@@ -179,7 +185,7 @@ public class ElementUtils {
     public static ExecutableElement findExecutableElement(DeclaredType type, String name) {
         List<? extends ExecutableElement> elements = ElementFilter.methodsIn(type.asElement().getEnclosedElements());
         for (ExecutableElement executableElement : elements) {
-            if (executableElement.getSimpleName().toString().equals(name)) {
+            if (executableElement.getSimpleName().toString().equals(name) && !isDeprecated(executableElement)) {
                 return executableElement;
             }
         }
@@ -241,13 +247,12 @@ public class ElementUtils {
         return new DeclaredCodeTypeMirror(typeElem, Arrays.asList(typeArgs));
     }
 
-    public static List<AnnotationMirror> collectAnnotations(ProcessorContext context, AnnotationMirror markerAnnotation, String elementName, Element element,
-                    Class<? extends Annotation> annotationClass) {
+    public static List<AnnotationMirror> collectAnnotations(AnnotationMirror markerAnnotation, String elementName, Element element, DeclaredType annotationClass) {
         List<AnnotationMirror> result = new ArrayList<>();
         if (markerAnnotation != null) {
             result.addAll(ElementUtils.getAnnotationValueList(AnnotationMirror.class, markerAnnotation, elementName));
         }
-        AnnotationMirror explicit = ElementUtils.findAnnotationMirror(context.getEnvironment(), element, annotationClass);
+        AnnotationMirror explicit = ElementUtils.findAnnotationMirror(element, annotationClass);
         if (explicit != null) {
             result.add(explicit);
         }
@@ -468,11 +473,11 @@ public class ElementUtils {
             return false;
         }
 
-        if (from instanceof ArrayType && to instanceof ArrayType) {
+        if (from.getKind() == TypeKind.ARRAY && to.getKind() == TypeKind.ARRAY) {
             return isAssignable(((ArrayType) from).getComponentType(), ((ArrayType) to).getComponentType());
         }
 
-        if (from instanceof ArrayType || to instanceof ArrayType) {
+        if (from.getKind() == TypeKind.ARRAY || to.getKind() == TypeKind.ARRAY) {
             return false;
         }
 
@@ -811,13 +816,13 @@ public class ElementUtils {
     }
 
     public static boolean isDeprecated(TypeMirror baseType) {
-        if (baseType instanceof DeclaredType) {
-            return isDeprecated((TypeElement) ((DeclaredType) baseType).asElement());
+        if (baseType != null && baseType.getKind() == TypeKind.DECLARED) {
+            return isDeprecated(((DeclaredType) baseType).asElement());
         }
         return false;
     }
 
-    public static boolean isDeprecated(TypeElement baseType) {
+    public static boolean isDeprecated(Element baseType) {
         DeclaredType deprecated = ProcessorContext.getInstance().getDeclaredType(Deprecated.class);
         return ElementUtils.findAnnotationMirror(baseType.getAnnotationMirrors(), deprecated) != null;
     }
@@ -1019,8 +1024,7 @@ public class ElementUtils {
         if (value == null) {
             return null;
         }
-
-        Object unboxedValue = value.accept(new AnnotationValueVisitorImpl(), null);
+        Object unboxedValue = unboxAnnotationValue(value);
         if (unboxedValue != null) {
             if (expectedType == TypeMirror.class && unboxedValue instanceof String) {
                 return null;
@@ -1030,6 +1034,10 @@ public class ElementUtils {
             }
         }
         return expectedType.cast(unboxedValue);
+    }
+
+    public static Object unboxAnnotationValue(AnnotationValue value) {
+        return value.accept(new AnnotationValueVisitorImpl(), null);
     }
 
     private static class AnnotationValueVisitorImpl extends AbstractAnnotationValueVisitor8<Object, Void> {
@@ -1108,19 +1116,6 @@ public class ElementUtils {
         writer.flush();
         string.flush();
         return e.getMessage() + System.lineSeparator() + string.toString();
-    }
-
-    public static AnnotationMirror findAnnotationMirror(ProcessingEnvironment processingEnv, Element element, Class<?> annotationClass) {
-        return findAnnotationMirror(processingEnv, element.getAnnotationMirrors(), annotationClass);
-    }
-
-    public static AnnotationMirror findAnnotationMirror(ProcessingEnvironment processingEnv, List<? extends AnnotationMirror> mirrors, Class<?> annotationClass) {
-        TypeElement expectedAnnotationType = getTypeElement(processingEnv, annotationClass.getCanonicalName());
-        return findAnnotationMirror(mirrors, expectedAnnotationType.asType());
-    }
-
-    public static AnnotationMirror findAnnotationMirror(List<? extends AnnotationMirror> mirrors, TypeElement expectedAnnotationType) {
-        return findAnnotationMirror(mirrors, expectedAnnotationType.asType());
     }
 
     public static AnnotationMirror findAnnotationMirror(Element element, Class<?> expectedAnnotationType) {
@@ -1366,14 +1361,6 @@ public class ElementUtils {
         return false;
     }
 
-    public static boolean isTopLevelClass(TypeMirror importType) {
-        TypeElement type = fromTypeMirror(importType);
-        if (type != null && type.getEnclosingElement() != null) {
-            return !type.getEnclosingElement().getKind().isClass() && !type.getEnclosingElement().getKind().isInterface();
-        }
-        return true;
-    }
-
     public static boolean isObject(TypeMirror actualType) {
         return actualType.getKind() == TypeKind.DECLARED && getQualifiedName(actualType).equals("java.lang.Object");
     }
@@ -1563,31 +1550,9 @@ public class ElementUtils {
         return result;
     }
 
-    public static boolean isAbstract(ExecutableElement method) {
-        if (method.getEnclosingElement().getKind().isInterface()) {
-            for (Modifier modifier : method.getModifiers()) {
-                if (modifier.toString().equals("default")) {
-                    return false;
-                }
-            }
-            if (method.getModifiers().contains(Modifier.STATIC)) {
-                return false;
-            }
-            return true;
-        } else if (method.getEnclosingElement().getKind().isClass()) {
-            if (!method.getEnclosingElement().getModifiers().contains(Modifier.ABSTRACT)) {
-                return false;
-            }
-            return method.getModifiers().contains(Modifier.ABSTRACT);
-        }
-        return false;
-    }
-
-    public static List<AnnotationMirror> getRepeatedAnnotation(List<? extends AnnotationMirror> mirrors, Class<? extends Annotation> repeatedAnnotation) {
-        ProcessorContext context = ProcessorContext.getInstance();
-        DeclaredType base = context.getDeclaredType(repeatedAnnotation);
-
-        AnnotationMirror repeatable = findAnnotationMirror(context.getEnvironment(), base.asElement().getAnnotationMirrors(), Repeatable.class);
+    public static List<AnnotationMirror> getRepeatedAnnotation(List<? extends AnnotationMirror> mirrors, DeclaredType base) {
+        DeclaredType repeatableType = ProcessorContext.getInstance().getDeclaredType(Repeatable.class);
+        AnnotationMirror repeatable = findAnnotationMirror(base.asElement(), repeatableType);
         TypeMirror repeat = null;
         if (repeatable != null) {
             repeat = ElementUtils.getAnnotationValue(TypeMirror.class, repeatable, "value");
@@ -1655,36 +1620,75 @@ public class ElementUtils {
         return null;
     }
 
-    public static String getReadableReference(Element element, boolean qualifiedType) {
+    public static String getReadableReference(Element relativeTo, Element element) {
         String parent;
         switch (element.getKind()) {
             case CLASS:
             case INTERFACE:
             case ENUM:
-                if (qualifiedType) {
-                    return getQualifiedName((TypeElement) element);
+                // same package
+                TypeElement type = (TypeElement) element;
+                if (ElementUtils.elementEquals(findPackageElement(relativeTo),
+                                findPackageElement(element))) {
+                    if (!isDeclaredIn(relativeTo, type)) {
+                        Element enclosing = element.getEnclosingElement();
+                        if (enclosing.getKind().isClass() || enclosing.getKind().isInterface()) {
+                            return getReadableReference(relativeTo, enclosing) + "." + getSimpleName(type);
+                        }
+                    }
+                    return getSimpleName(type);
                 } else {
-                    return getSimpleName((TypeElement) element);
+                    return getQualifiedName(type);
                 }
             case PACKAGE:
                 return ((PackageElement) element).getQualifiedName().toString();
             case CONSTRUCTOR:
             case METHOD:
-                parent = getReadableReference(element.getEnclosingElement(), qualifiedType);
+                parent = getReadableReference(relativeTo, element.getEnclosingElement());
                 return parent + "." + getReadableSignature((ExecutableElement) element);
             case PARAMETER:
-                parent = getReadableReference(element.getEnclosingElement(), qualifiedType);
+                parent = getReadableReference(relativeTo, element.getEnclosingElement());
                 return parent + " parameter " + element.getSimpleName().toString();
             case FIELD:
-                parent = getReadableReference(element.getEnclosingElement(), qualifiedType);
+                parent = getReadableReference(relativeTo, element.getEnclosingElement());
                 return parent + "." + element.getSimpleName().toString();
             default:
                 return "Unknown Element";
         }
     }
 
-    public static String getReadableReference(Element element) {
-        return getReadableReference(element, true);
+    public static boolean isDeclaredIn(Element search, Element elementHierarchy) {
+        Element searchEnclosing = search.getEnclosingElement();
+        while (searchEnclosing != null) {
+            if (ElementUtils.elementEquals(searchEnclosing, elementHierarchy)) {
+                return true;
+            }
+            searchEnclosing = searchEnclosing.getEnclosingElement();
+        }
+        return false;
+
+    }
+
+    public static String getBinaryName(TypeElement provider) {
+        if (provider instanceof GeneratedElement) {
+            String packageName = getPackageName(provider);
+            Element enclosing = provider.getEnclosingElement();
+            StringBuilder b = new StringBuilder();
+            b.append(provider.getSimpleName().toString());
+            while (enclosing != null) {
+                ElementKind kind = enclosing.getKind();
+                if ((kind.isClass() || kind.isInterface()) && enclosing instanceof TypeElement) {
+                    b.insert(0, enclosing.getSimpleName().toString() + "$");
+                } else {
+                    break;
+                }
+                enclosing = enclosing.getEnclosingElement();
+            }
+            b.insert(0, packageName + ".");
+            return b.toString();
+        } else {
+            return ProcessorContext.getInstance().getEnvironment().getElementUtils().getBinaryName(provider).toString();
+        }
     }
 
 }

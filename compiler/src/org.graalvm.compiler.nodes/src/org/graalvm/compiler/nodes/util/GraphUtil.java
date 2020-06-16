@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,7 +39,6 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.code.SourceStackTraceBailoutException;
-import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Graph;
@@ -54,11 +53,13 @@ import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractEndNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.ControlSinkNode;
 import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.GuardNode;
+import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
@@ -71,13 +72,15 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.ValueProxyNode;
+import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
 import org.graalvm.compiler.nodes.spi.ArrayLengthProvider;
 import org.graalvm.compiler.nodes.spi.ArrayLengthProvider.FindLengthMode;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
+import org.graalvm.compiler.nodes.spi.CoreProvidersDelegate;
 import org.graalvm.compiler.nodes.spi.LimitedValueProxy;
-import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.ValueProxy;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.type.StampTool;
@@ -94,7 +97,6 @@ import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -104,6 +106,8 @@ public class GraphUtil {
         @Option(help = "Verify that there are no new unused nodes when performing killCFG", type = OptionType.Debug)//
         public static final OptionKey<Boolean> VerifyKillCFGUnusedNodes = new OptionKey<>(false);
     }
+
+    public static final int MAX_FRAMESTATE_SEARCH_DEPTH = 4;
 
     private static void killCFGInner(FixedNode node) {
         EconomicSet<Node> markedNodes = EconomicSet.create();
@@ -395,6 +399,14 @@ public class GraphUtil {
         FixedNode next = fixed.next();
         fixed.setNext(null);
         fixed.replaceAtPredecessor(next);
+    }
+
+    public static void unlinkAndKillExceptionEdge(WithExceptionNode withException) {
+        assert withException.next() != null && withException.predecessor() != null && withException.isAlive() : withException;
+        FixedNode next = withException.next();
+        withException.setNext(null);
+        withException.replaceAtPredecessor(next);
+        withException.killExceptionEdge();
     }
 
     public static void checkRedundantPhi(PhiNode phiNode) {
@@ -742,19 +754,22 @@ public class GraphUtil {
 
     /**
      * Tries to find an original value of the given node by traversing through proxies and
-     * unambiguous phis. Note that this method will perform an exhaustive search through phis. It is
-     * intended to be used during graph building, when phi nodes aren't yet canonicalized.
+     * unambiguous phis. Note that this method will perform an exhaustive search through phis.
      *
-     * @param value The node whose original value should be determined.
-     * @return The original value (which might be the input value itself).
+     * @param value the node whose original value should be determined
+     * @param abortOnLoopPhi specifies if the traversal through phis should stop and return
+     *            {@code value} if it hits a {@linkplain PhiNode#isLoopPhi loop phi}. This argument
+     *            must be {@code true} if used during graph building as loop phi nodes may not yet
+     *            have all their inputs computed.
+     * @return the original value (which might be {@code value} itself)
      */
-    public static ValueNode originalValue(ValueNode value) {
-        ValueNode result = originalValueSimple(value);
+    public static ValueNode originalValue(ValueNode value, boolean abortOnLoopPhi) {
+        ValueNode result = originalValueSimple(value, abortOnLoopPhi);
         assert result != null;
         return result;
     }
 
-    private static ValueNode originalValueSimple(ValueNode value) {
+    private static ValueNode originalValueSimple(ValueNode value, boolean abortOnLoopPhi) {
         /* The very simple case: look through proxies. */
         ValueNode cur = originalValueForProxy(value);
 
@@ -764,6 +779,10 @@ public class GraphUtil {
              * structures.
              */
             PhiNode phi = (PhiNode) cur;
+
+            if (abortOnLoopPhi && phi.isLoopPhi()) {
+                return value;
+            }
 
             ValueNode phiSingleValue = null;
             int count = phi.valueCount();
@@ -783,7 +802,7 @@ public class GraphUtil {
                          * of the inputs is another phi function. We need to do a complicated
                          * exhaustive check.
                          */
-                        return originalValueForComplicatedPhi(phi, new NodeBitMap(value.graph()));
+                        return originalValueForComplicatedPhi(value, phi, new NodeBitMap(value.graph()), abortOnLoopPhi);
                     } else {
                         /*
                          * We have two different input values for the phi function, but none of them
@@ -819,8 +838,12 @@ public class GraphUtil {
     /**
      * Handling for complicated nestings of phi functions. We need to reduce phi functions
      * recursively, and need a temporary map of visited nodes to avoid endless recursion of cycles.
+     *
+     * @param value the node whose original value is being determined
+     * @param abortOnLoopPhi specifies if the traversal through phis should stop and return
+     *            {@code value} if it hits a {@linkplain PhiNode#isLoopPhi loop phi}
      */
-    private static ValueNode originalValueForComplicatedPhi(PhiNode phi, NodeBitMap visited) {
+    private static ValueNode originalValueForComplicatedPhi(ValueNode value, PhiNode phi, NodeBitMap visited, boolean abortOnLoopPhi) {
         if (visited.isMarked(phi)) {
             /*
              * Found a phi function that was already seen. Either a cycle, or just a second phi
@@ -836,7 +859,16 @@ public class GraphUtil {
             ValueNode phiCurValue = originalValueForProxy(phi.valueAt(i));
             if (phiCurValue instanceof PhiNode) {
                 /* Recursively process a phi function input. */
-                phiCurValue = originalValueForComplicatedPhi((PhiNode) phiCurValue, visited);
+                PhiNode curPhi = (PhiNode) phiCurValue;
+                if (abortOnLoopPhi && curPhi.isLoopPhi()) {
+                    return value;
+                }
+                phiCurValue = originalValueForComplicatedPhi(value, curPhi, visited, abortOnLoopPhi);
+                if (phiCurValue == value) {
+                    // Hit a loop phi
+                    assert abortOnLoopPhi;
+                    return value;
+                }
             }
 
             if (phiCurValue == null) {
@@ -895,39 +927,16 @@ public class GraphUtil {
         };
     }
 
-    private static final class DefaultSimplifierTool implements SimplifierTool {
-        private final MetaAccessProvider metaAccess;
-        private final ConstantReflectionProvider constantReflection;
-        private final ConstantFieldProvider constantFieldProvider;
+    private static final class DefaultSimplifierTool extends CoreProvidersDelegate implements SimplifierTool {
         private final boolean canonicalizeReads;
         private final Assumptions assumptions;
         private final OptionValues options;
-        private final LoweringProvider loweringProvider;
 
-        DefaultSimplifierTool(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider, boolean canonicalizeReads,
-                        Assumptions assumptions, OptionValues options, LoweringProvider loweringProvider) {
-            this.metaAccess = metaAccess;
-            this.constantReflection = constantReflection;
-            this.constantFieldProvider = constantFieldProvider;
+        DefaultSimplifierTool(CoreProviders providers, boolean canonicalizeReads, Assumptions assumptions, OptionValues options) {
+            super(providers);
             this.canonicalizeReads = canonicalizeReads;
             this.assumptions = assumptions;
             this.options = options;
-            this.loweringProvider = loweringProvider;
-        }
-
-        @Override
-        public MetaAccessProvider getMetaAccess() {
-            return metaAccess;
-        }
-
-        @Override
-        public ConstantReflectionProvider getConstantReflection() {
-            return constantReflection;
-        }
-
-        @Override
-        public ConstantFieldProvider getConstantFieldProvider() {
-            return constantFieldProvider;
         }
 
         @Override
@@ -972,22 +981,16 @@ public class GraphUtil {
 
         @Override
         public Integer smallestCompareWidth() {
-            if (loweringProvider != null) {
-                return loweringProvider.smallestCompareWidth();
+            if (getLowerer() != null) {
+                return getLowerer().smallestCompareWidth();
             } else {
                 return null;
             }
         }
     }
 
-    public static SimplifierTool getDefaultSimplifier(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,
-                    boolean canonicalizeReads, Assumptions assumptions, OptionValues options) {
-        return getDefaultSimplifier(metaAccess, constantReflection, constantFieldProvider, canonicalizeReads, assumptions, options, null);
-    }
-
-    public static SimplifierTool getDefaultSimplifier(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,
-                    boolean canonicalizeReads, Assumptions assumptions, OptionValues options, LoweringProvider loweringProvider) {
-        return new DefaultSimplifierTool(metaAccess, constantReflection, constantFieldProvider, canonicalizeReads, assumptions, options, loweringProvider);
+    public static SimplifierTool getDefaultSimplifier(CoreProviders providers, boolean canonicalizeReads, Assumptions assumptions, OptionValues options) {
+        return new DefaultSimplifierTool(providers, canonicalizeReads, assumptions, options);
     }
 
     public static Constant foldIfConstantAndRemove(ValueNode node, ValueNode constant) {
@@ -1089,5 +1092,56 @@ public class GraphUtil {
         VirtualArrayNode newVirtualArray = virtualArrayProvider.apply(newComponentType, newLengthInt);
         tool.createVirtualObject(newVirtualArray, newEntryState, Collections.<MonitorIdNode> emptyList(), false);
         tool.replaceWithVirtual(newVirtualArray);
+    }
+
+    /**
+     * Snippet lowerings may produce patterns without a frame state on the merge. We need to take
+     * extra care when optimizing these patterns.
+     */
+    public static boolean checkFrameState(FixedNode start, int maxDepth) {
+        if (maxDepth == 0) {
+            return false;
+        }
+        FixedNode node = start;
+        while (true) {
+            if (node instanceof AbstractMergeNode) {
+                AbstractMergeNode mergeNode = (AbstractMergeNode) node;
+                if (mergeNode.stateAfter() == null) {
+                    return false;
+                } else {
+                    return true;
+                }
+            } else if (node instanceof StateSplit) {
+                StateSplit stateSplitNode = (StateSplit) node;
+                if (stateSplitNode.stateAfter() != null) {
+                    return true;
+                }
+            }
+
+            if (node instanceof ControlSplitNode) {
+                ControlSplitNode controlSplitNode = (ControlSplitNode) node;
+                for (Node succ : controlSplitNode.cfgSuccessors()) {
+                    if (checkFrameState((FixedNode) succ, maxDepth - 1)) {
+                        return true;
+                    }
+                }
+                return false;
+            } else if (node instanceof FixedWithNextNode) {
+                FixedWithNextNode fixedWithNextNode = (FixedWithNextNode) node;
+                node = fixedWithNextNode.next();
+            } else if (node instanceof AbstractEndNode) {
+                AbstractEndNode endNode = (AbstractEndNode) node;
+                node = endNode.merge();
+            } else if (node instanceof ControlSinkNode) {
+                return true;
+            } else {
+                assert false : "unexpected node";
+                return false;
+            }
+        }
+    }
+
+    public static boolean mayRemoveSplit(IfNode ifNode) {
+        return GraphUtil.checkFrameState(ifNode.trueSuccessor(), MAX_FRAMESTATE_SEARCH_DEPTH) && GraphUtil.checkFrameState(ifNode.falseSuccessor(), MAX_FRAMESTATE_SEARCH_DEPTH);
     }
 }

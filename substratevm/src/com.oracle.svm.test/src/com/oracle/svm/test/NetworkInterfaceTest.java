@@ -56,4 +56,14 @@ public class NetworkInterfaceTest {
         Assert.assertTrue("At least one interface is up", somethingIsUp);
     }
 
+    @Test
+    public void testIsP2P() throws SocketException {
+        Enumeration<NetworkInterface> ifaces = NetworkInterface.getNetworkInterfaces();
+        boolean somethingIsP2p = false;
+        while (ifaces.hasMoreElements()) {
+            NetworkInterface each = ifaces.nextElement();
+            somethingIsP2p = somethingIsP2p || each.isPointToPoint();
+        }
+    }
+
 }

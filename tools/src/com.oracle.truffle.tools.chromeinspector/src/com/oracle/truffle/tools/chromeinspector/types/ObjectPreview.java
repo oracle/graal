@@ -43,7 +43,7 @@ final class ObjectPreview {
     private ObjectPreview() {
     }
 
-    static JSONObject create(DebugValue debugValue, String type, String subtype, LanguageInfo language, PrintWriter err) {
+    static JSONObject create(DebugValue debugValue, String type, String subtype, boolean allowToStringSideEffects, LanguageInfo language, PrintWriter err) {
         JSONObject json = new JSONObject();
         json.put("type", type);
         json.put("subtype", subtype);
@@ -52,7 +52,7 @@ final class ObjectPreview {
         DebugValue metaObject = RemoteObject.getMetaObject(debugValue, language, err);
         String metaType = null;
         if (metaObject != null) {
-            metaType = RemoteObject.toString(metaObject, err);
+            metaType = RemoteObject.toMetaName(metaObject, err);
             if (isArray) {
                 metaType += "(" + debugValue.getArray().size() + ")";
             }
@@ -67,7 +67,7 @@ final class ObjectPreview {
             int n = Math.min(size, OVERFLOW_LIMIT_ARRAY_ELEMENTS);
             for (int i = 0; i < n; i++) {
                 try {
-                    properties.put(createPropertyPreview(array.get(i), language, err));
+                    properties.put(createPropertyPreview(array.get(i), allowToStringSideEffects, language, err));
                 } catch (DebugException ex) {
                     overflow = true;
                     break;
@@ -80,13 +80,13 @@ final class ObjectPreview {
                 overflow = false;
                 while (propertyIterator.hasNext()) {
                     DebugValue property = propertyIterator.next();
-                    if (!property.isInternal()) {
+                    if (!property.isInternal() && !property.hasReadSideEffects() && property.isReadable()) {
                         if (properties.length() == OVERFLOW_LIMIT_PROPERTIES) {
                             overflow = true;
                             break;
                         }
                         try {
-                            properties.put(createPropertyPreview(property, language, err));
+                            properties.put(createPropertyPreview(property, allowToStringSideEffects, language, err));
                         } catch (DebugException ex) {
                             overflow = true;
                             break;
@@ -102,7 +102,7 @@ final class ObjectPreview {
         return json;
     }
 
-    private static JSONObject createPropertyPreview(DebugValue origProperty, LanguageInfo language, PrintWriter err) {
+    private static JSONObject createPropertyPreview(DebugValue origProperty, boolean allowToStringSideEffects, LanguageInfo language, PrintWriter err) {
         DebugValue property = origProperty;
         // Setup the object with a language-specific value
         if (language != null) {
@@ -119,7 +119,7 @@ final class ObjectPreview {
             String size = "(" + property.getArray().size() + ")";
             value = typeInfo.descriptionType != null ? typeInfo.descriptionType + size : size;
         } else {
-            value = RemoteObject.toString(property, err);
+            value = RemoteObject.toString(property, allowToStringSideEffects, err);
         }
         json.putOpt("value", value);
         return json;

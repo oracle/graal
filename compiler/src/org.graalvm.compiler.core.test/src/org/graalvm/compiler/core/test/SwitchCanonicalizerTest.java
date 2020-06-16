@@ -26,7 +26,6 @@ package org.graalvm.compiler.core.test;
 
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
-import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.junit.Test;
 
 public class SwitchCanonicalizerTest extends GraalCompilerTest {
@@ -119,8 +118,8 @@ public class SwitchCanonicalizerTest extends GraalCompilerTest {
 
     private void shouldFoldSwitch(String methodName) {
         StructuredGraph graph = parseForCompile(getResolvedJavaMethod(methodName));
-        new CanonicalizerPhase().apply(graph, getDefaultHighTierContext());
-        assertFalse(graph.hasNode(IntegerSwitchNode.TYPE));
+        createCanonicalizerPhase().apply(graph, getDefaultHighTierContext());
+        assertTrue(graph.getNodes().filter(IntegerSwitchNode.class).isEmpty());
     }
 
 }

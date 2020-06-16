@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,6 +30,6 @@
 #include <stdio.h>
 
 int main() {
-  char *str = "asdfasdf";
-  printf("char: %f %s %d %d %c\n", 3.1231233252435, str, 4, 5, 'a');
+    char *str = "asdfasdf";
+    printf("char: %f %s %d %d %c\n", 3.1231233252435, str, 4, 5, 'a');
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,16 +34,16 @@ import com.oracle.truffle.api.CompilerDirectives.ValueType;
 @ValueType
 public final class LLVMVarArgCompoundValue {
     private final Object addr;
-    private final int size;
+    private final long size;
     private final int alignment;
 
-    private LLVMVarArgCompoundValue(Object val, int size, int alignment) {
+    private LLVMVarArgCompoundValue(Object val, long size, int alignment) {
         this.addr = val;
         this.size = size;
         this.alignment = alignment;
     }
 
-    public static LLVMVarArgCompoundValue create(Object val, int size, int alignment) {
+    public static LLVMVarArgCompoundValue create(Object val, long size, int alignment) {
         return new LLVMVarArgCompoundValue(val, size, alignment);
     }
 
@@ -51,7 +51,7 @@ public final class LLVMVarArgCompoundValue {
         return addr;
     }
 
-    public int getSize() {
+    public long getSize() {
         return size;
     }
 
@@ -71,11 +71,11 @@ public final class LLVMVarArgCompoundValue {
 
     @Override
     public int hashCode() {
-        return addr.hashCode() + 11 * Integer.hashCode(size) + 23 * Integer.hashCode(alignment);
+        return addr.hashCode() + 11 * Long.hashCode(size) + 23 * Integer.hashCode(alignment);
     }
 
     @Override
     public String toString() {
-        return String.format("0x%x (%d align %d)", getAddr(), getSize(), getAlignment());
+        return String.format("%s (%d align %d)", getAddr(), getSize(), getAlignment());
     }
 }

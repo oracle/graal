@@ -41,6 +41,7 @@ import static jdk.vm.ci.aarch64.AArch64.r27;
 import static jdk.vm.ci.aarch64.AArch64.r28;
 import static jdk.vm.ci.aarch64.AArch64.r29;
 import static jdk.vm.ci.aarch64.AArch64.r3;
+import static jdk.vm.ci.aarch64.AArch64.r31;
 import static jdk.vm.ci.aarch64.AArch64.r4;
 import static jdk.vm.ci.aarch64.AArch64.r5;
 import static jdk.vm.ci.aarch64.AArch64.r6;
@@ -87,6 +88,9 @@ import jdk.vm.ci.meta.ValueKind;
 
 public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
 
+    public static final Register HEAP_BASE_REGISTER_CANDIDATE = r27;
+    public static final Register THREAD_REGISTER_CANDIDATE = r28;
+
     private final TargetDescription target;
     private final int nativeParamsStackOffset;
     private final RegisterArray generalParameterRegs;
@@ -111,8 +115,8 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
 
         nativeParamsStackOffset = 0;
 
-        heapBaseRegister = SubstrateOptions.SpawnIsolates.getValue() ? r27 : null;
-        threadRegister = SubstrateOptions.MultiThreaded.getValue() ? r28 : null;
+        heapBaseRegister = SubstrateOptions.SpawnIsolates.getValue() ? HEAP_BASE_REGISTER_CANDIDATE : null;
+        threadRegister = SubstrateOptions.MultiThreaded.getValue() ? THREAD_REGISTER_CANDIDATE : null;
 
         ArrayList<Register> regs = new ArrayList<>(allRegisters.asList());
         regs.remove(sp);
@@ -120,6 +124,7 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
         regs.remove(r8);
         regs.remove(r9);
         regs.remove(r29);
+        regs.remove(r31);
         regs.remove(heapBaseRegister);
         regs.remove(threadRegister);
         allocatableRegs = new RegisterArray(regs);

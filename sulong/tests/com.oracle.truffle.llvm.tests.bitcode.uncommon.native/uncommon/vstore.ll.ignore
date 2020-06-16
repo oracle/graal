@@ -1,0 +1,262 @@
+; Copyright (c) 2019, Oracle and/or its affiliates.
+;
+; All rights reserved.
+;
+; Redistribution and use in source and binary forms, with or without modification, are
+; permitted provided that the following conditions are met:
+;
+; 1. Redistributions of source code must retain the above copyright notice, this list of
+; conditions and the following disclaimer.
+;
+; 2. Redistributions in binary form must reproduce the above copyright notice, this list of
+; conditions and the following disclaimer in the documentation and/or other materials provided
+; with the distribution.
+;
+; 3. Neither the name of the copyright holder nor the names of its contributors may be used to
+; endorse or promote products derived from this software without specific prior written
+; permission.
+;
+; THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS
+; OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+; MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+; COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+; EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+; GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+; AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+; NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+; OF THE POSSIBILITY OF SUCH DAMAGE.
+
+; ModuleID = 'vstore.bc'
+target triple = "x86_64-pc-linux-gnu"
+
+; This test is intentionally disabled since the output differs between
+; the native execution and Sulong's execution. We think that Sulong's
+; behavior is more accurate than the native behavior of rounding up to
+; the nearest byte. This test should be kept ignored until a
+; reasonable solution to this issue in general is reached.
+
+@_input = common global [64 x i8] zeroinitializer, align 16
+@input = local_unnamed_addr global i8* getelementptr inbounds ([64 x i8], [64 x i8]* @_input, i64 0, i64 0), align 8
+@_output = common global [32 x i8] zeroinitializer, align 16
+@output = local_unnamed_addr global i8* getelementptr inbounds ([32 x i8], [32 x i8]* @_output, i64 0, i64 0), align 8
+@.str = private unnamed_addr constant [33 x i8] c"%016lx %016lx %016lx %016lx: %s\0A\00", align 1
+@.str.1 = private unnamed_addr constant [62 x i8] c"\0A===========================\0A%016lx %016lx %016lx %016lx: %s\0A\00", align 1
+@.str.2 = private unnamed_addr constant [10 x i8] c"input/lhs\00", align 1
+@.str.3 = private unnamed_addr constant [34 x i8] c"%016lx %016lx %016lx %016lx: %s\0A\0A\00", align 1
+@.str.4 = private unnamed_addr constant [4 x i8] c"rhs\00", align 1
+
+; Function Attrs: nounwind ssp uwtable
+define void @print_output(i8*) local_unnamed_addr #0 {
+  %2 = load i64*, i64** bitcast (i8** @output to i64**), align 8
+  %3 = load i64, i64* %2, align 8
+  %4 = getelementptr inbounds i64, i64* %2, i64 1
+  %5 = load i64, i64* %4, align 8
+  %6 = getelementptr inbounds i64, i64* %2, i64 2
+  %7 = load i64, i64* %6, align 8
+  %8 = getelementptr inbounds i64, i64* %2, i64 3
+  %9 = load i64, i64* %8, align 8
+  %10 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([33 x i8], [33 x i8]* @.str, i64 0, i64 0), i64 %3, i64 %5, i64 %7, i64 %9, i8* %0)
+  %11 = load i8*, i8** @output, align 8
+  %12 = tail call i64 @llvm.objectsize.i64.p0i8(i8* %11, i1 false, i1 true)
+  %13 = tail call i8* @__memset_chk(i8* %11, i32 0, i64 32, i64 %12) #5
+  ret void
+}
+
+; Function Attrs: nounwind
+declare i32 @printf(i8* nocapture readonly, ...) local_unnamed_addr #1
+
+; Function Attrs: nounwind
+declare i8* @__memset_chk(i8*, i32, i64, i64) local_unnamed_addr #1
+
+; Function Attrs: nounwind readnone speculatable
+declare i64 @llvm.objectsize.i64.p0i8(i8*, i1, i1) #2
+
+; Function Attrs: nounwind ssp uwtable
+define void @print_input() local_unnamed_addr #0 {
+  %1 = load i64*, i64** bitcast (i8** @input to i64**), align 8
+  %2 = load i64, i64* %1, align 8
+  %3 = getelementptr inbounds i64, i64* %1, i64 1
+  %4 = load i64, i64* %3, align 8
+  %5 = getelementptr inbounds i64, i64* %1, i64 2
+  %6 = load i64, i64* %5, align 8
+  %7 = getelementptr inbounds i64, i64* %1, i64 3
+  %8 = load i64, i64* %7, align 8
+  %9 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([62 x i8], [62 x i8]* @.str.1, i64 0, i64 0), i64 %2, i64 %4, i64 %6, i64 %8, i8* getelementptr inbounds ([10 x i8], [10 x i8]* @.str.2, i64 0, i64 0))
+  %10 = load i64*, i64** bitcast (i8** @input to i64**), align 8
+  %11 = getelementptr inbounds i64, i64* %10, i64 4
+  %12 = load i64, i64* %11, align 8
+  %13 = getelementptr inbounds i64, i64* %10, i64 5
+  %14 = load i64, i64* %13, align 8
+  %15 = getelementptr inbounds i64, i64* %10, i64 6
+  %16 = load i64, i64* %15, align 8
+  %17 = getelementptr inbounds i64, i64* %10, i64 7
+  %18 = load i64, i64* %17, align 8
+  %19 = tail call i32 (i8*, ...) @printf(i8* getelementptr inbounds ([34 x i8], [34 x i8]* @.str.3, i64 0, i64 0), i64 %12, i64 %14, i64 %16, i64 %18, i8* getelementptr inbounds ([4 x i8], [4 x i8]* @.str.4, i64 0, i64 0))
+  ret void
+}
+
+; Function Attrs: norecurse nounwind ssp uwtable
+define void @fill(i64, i64) local_unnamed_addr #3 {
+  %3 = load i64*, i64** bitcast (i8** @input to i64**), align 8
+  br label %5
+
+; <label>:4:                                      ; preds = %5
+  ret void
+
+; <label>:5:                                      ; preds = %5, %2
+  %6 = phi i64 [ 0, %2 ], [ %10, %5 ]
+  %7 = mul nsw i64 %6, %1
+  %8 = add nsw i64 %7, %0
+  %9 = getelementptr inbounds i64, i64* %3, i64 %6
+  store i64 %8, i64* %9, align 8
+  %10 = add nuw nsw i64 %6, 1
+  %11 = icmp eq i64 %10, 16
+  br i1 %11, label %4, label %5
+}
+
+; Function Attrs: nounwind ssp uwtable
+define i32 @main(i32, i8** nocapture readnone) local_unnamed_addr #0 {
+  tail call void @print_input()
+  %3 = load i8*, i8** @input, align 8
+  %4 = getelementptr i8, i8* %3, i64 32
+  %5 = load i8*, i8** @output, align 8
+  tail call void @run(i8* %3, i8* %5) #5
+  tail call void @fill(i64 -1, i64 0)
+  tail call void @print_input()
+  %6 = load i8*, i8** @input, align 8
+  %7 = getelementptr i8, i8* %6, i64 32
+  %8 = load i8*, i8** @output, align 8
+  tail call void @run(i8* %6, i8* %8) #5
+  tail call void @fill(i64 -1085102592571150096, i64 0)
+  tail call void @print_input()
+  %9 = load i8*, i8** @input, align 8
+  %10 = getelementptr i8, i8* %9, i64 32
+  %11 = load i8*, i8** @output, align 8
+  tail call void @run(i8* %9, i8* %11) #5
+  tail call void @fill(i64 72340172838076673, i64 -7758012204275662591)
+  tail call void @print_input()
+  %12 = load i8*, i8** @input, align 8
+  %13 = getelementptr i8, i8* %12, i64 32
+  %14 = load i8*, i8** @output, align 8
+  tail call void @run(i8* %12, i8* %14) #5
+  tail call void @fill(i64 -1, i64 -72340172838076673)
+  tail call void @print_input()
+  %15 = load i8*, i8** @input, align 8
+  %16 = getelementptr i8, i8* %15, i64 32
+  %17 = load i8*, i8** @output, align 8
+  tail call void @run(i8* %15, i8* %17) #5
+  tail call void @fill(i64 0, i64 72340172838076673)
+  tail call void @print_input()
+  %18 = load i8*, i8** @input, align 8
+  %19 = getelementptr i8, i8* %18, i64 32
+  %20 = load i8*, i8** @output, align 8
+  tail call void @run(i8* %18, i8* %20) #5
+  ret i32 0
+}
+
+@.strstring1893 = private unnamed_addr constant [15 x i8] c"store <1 x i1>\00", align 1
+@string1893 = local_unnamed_addr global i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.strstring1893, i64 0, i64 0), align 8
+@.strstring2111 = private unnamed_addr constant [15 x i8] c"store <2 x i1>\00", align 1
+@string2111 = local_unnamed_addr global i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.strstring2111, i64 0, i64 0), align 8
+@.strstring2329 = private unnamed_addr constant [15 x i8] c"store <3 x i1>\00", align 1
+@string2329 = local_unnamed_addr global i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.strstring2329, i64 0, i64 0), align 8
+@.strstring2547 = private unnamed_addr constant [15 x i8] c"store <4 x i1>\00", align 1
+@string2547 = local_unnamed_addr global i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.strstring2547, i64 0, i64 0), align 8
+@.strstring25475 = private unnamed_addr constant [15 x i8] c"store <5 x i1>\00", align 1
+@string25475 = local_unnamed_addr global i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.strstring25475, i64 0, i64 0), align 8
+@.strstring25476 = private unnamed_addr constant [15 x i8] c"store <6 x i1>\00", align 1
+@string25476 = local_unnamed_addr global i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.strstring25476, i64 0, i64 0), align 8
+@.strstring25477 = private unnamed_addr constant [15 x i8] c"store <7 x i1>\00", align 1
+@string25477 = local_unnamed_addr global i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.strstring25477, i64 0, i64 0), align 8
+@.strstring2765 = private unnamed_addr constant [15 x i8] c"store <8 x i1>\00", align 1
+@string2765 = local_unnamed_addr global i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.strstring2765, i64 0, i64 0), align 8
+@.strstring2983 = private unnamed_addr constant [16 x i8] c"store <16 x i1>\00", align 1
+@string2983 = local_unnamed_addr global i8* getelementptr inbounds ([16 x i8], [16 x i8]* @.strstring2983, i64 0, i64 0), align 8
+@.strstring3202 = private unnamed_addr constant [16 x i8] c"store <32 x i1>\00", align 1
+@string3202 = local_unnamed_addr global i8* getelementptr inbounds ([16 x i8], [16 x i8]* @.strstring3202, i64 0, i64 0), align 8
+
+define void @run(i8*,i8*) {
+  %v32 = bitcast i8* %0 to <1 x i1>*
+  %v34 = load <1 x i1>, <1 x i1>* %v32, align 8
+
+  %v36 = bitcast i8* %0 to <2 x i1>*
+  %v38 = load <2 x i1>, <2 x i1>* %v36, align 8
+
+  %v40 = bitcast i8* %0 to <3 x i1>*
+  %v42 = load <3 x i1>, <3 x i1>* %v40, align 8
+
+  %v44 = bitcast i8* %0 to <4 x i1>*
+  %v46 = load <4 x i1>, <4 x i1>* %v44, align 8
+
+  %v445 = bitcast i8* %0 to <5 x i1>*
+  %v465 = load <5 x i1>, <5 x i1>* %v445, align 8
+
+  %v446 = bitcast i8* %0 to <6 x i1>*
+  %v466 = load <6 x i1>, <6 x i1>* %v446, align 8
+
+  %v447 = bitcast i8* %0 to <7 x i1>*
+  %v467 = load <7 x i1>, <7 x i1>* %v447, align 8
+
+  %v48 = bitcast i8* %0 to <8 x i1>*
+  %v50 = load <8 x i1>, <8 x i1>* %v48, align 8
+
+  %v52 = bitcast i8* %0 to <16 x i1>*
+  %v54 = load <16 x i1>, <16 x i1>* %v52, align 8
+
+  %v56 = bitcast i8* %0 to <32 x i1>*
+  %v58 = load <32 x i1>, <32 x i1>* %v56, align 8
+
+  ;;;;;;;;;;;;
+
+  %v201 = bitcast i8* %1 to <1 x i1>*
+  store <1 x i1> %v34, <1 x i1>* %v201, align 64
+  %v202 = load i8*, i8** @string1893, align 8
+  tail call void @print_output(i8* %v202)
+
+  %v203 = bitcast i8* %1 to <2 x i1>*
+  store <2 x i1> %v38, <2 x i1>* %v203, align 64
+  %v204 = load i8*, i8** @string2111, align 8
+  tail call void @print_output(i8* %v204)
+
+  %v205 = bitcast i8* %1 to <3 x i1>*
+  store <3 x i1> %v42, <3 x i1>* %v205, align 64
+  %v206 = load i8*, i8** @string2329, align 8
+  tail call void @print_output(i8* %v206)
+
+  %v207 = bitcast i8* %1 to <4 x i1>*
+  store <4 x i1> %v46, <4 x i1>* %v207, align 64
+  %v208 = load i8*, i8** @string2547, align 8
+  tail call void @print_output(i8* %v208)
+
+  %v2075 = bitcast i8* %1 to <5 x i1>*
+  store <5 x i1> %v465, <5 x i1>* %v2075, align 64
+  %v2085 = load i8*, i8** @string25475, align 8
+  tail call void @print_output(i8* %v2085)
+
+  %v2076 = bitcast i8* %1 to <6 x i1>*
+  store <6 x i1> %v466, <6 x i1>* %v2076, align 64
+  %v2086 = load i8*, i8** @string25476, align 8
+  tail call void @print_output(i8* %v2086)
+
+  %v2077 = bitcast i8* %1 to <7 x i1>*
+  store <7 x i1> %v467, <7 x i1>* %v2077, align 64
+  %v2087 = load i8*, i8** @string25477, align 8
+  tail call void @print_output(i8* %v2087)
+
+  %v209 = bitcast i8* %1 to <8 x i1>*
+  store <8 x i1> %v50, <8 x i1>* %v209, align 64
+  %v210 = load i8*, i8** @string2765, align 8
+  tail call void @print_output(i8* %v210)
+
+  %v211 = bitcast i8* %1 to <16 x i1>*
+  store <16 x i1> %v54, <16 x i1>* %v211, align 64
+  %v212 = load i8*, i8** @string2983, align 8
+  tail call void @print_output(i8* %v212)
+
+  %v213 = bitcast i8* %1 to <32 x i1>*
+  store <32 x i1> %v58, <32 x i1>* %v213, align 64
+  %v214 = load i8*, i8** @string3202, align 8
+  tail call void @print_output(i8* %v214)
+
+  ret void
+}

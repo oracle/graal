@@ -24,14 +24,14 @@
  */
 package com.oracle.svm.core.genscavenge.graal;
 
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Snippet;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
@@ -52,37 +52,33 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.genscavenge.AlignedHeapChunk;
 import com.oracle.svm.core.genscavenge.CardTable;
-import com.oracle.svm.core.genscavenge.HeapOptions;
 import com.oracle.svm.core.genscavenge.ObjectHeaderImpl;
 import com.oracle.svm.core.genscavenge.UnalignedHeapChunk;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
-import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.CounterFeature;
 
-/** Methods in this class are snippets. */
 public class BarrierSnippets extends SubstrateTemplates implements Snippets {
-
     public static class Options {
         @Option(help = "Instrument write barriers with counters")//
         public static final HostedOptionKey<Boolean> CountWriteBarriers = new HostedOptionKey<>(false);
     }
 
     @Fold
-    protected static BarrierSnippetCounters counters() {
+    static BarrierSnippetCounters counters() {
         return ImageSingletons.lookup(BarrierSnippetCounters.class);
     }
 
-    protected static BarrierSnippets factory(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection) {
-        return new BarrierSnippets(options, factories, providers, snippetReflection);
+    BarrierSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection) {
+        super(options, factories, providers, snippetReflection);
     }
 
-    /** The entry point for registering lowerings. */
     public void registerLowerings(Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
         PostWriteBarrierLowering lowering = new PostWriteBarrierLowering();
         lowerings.put(SerialWriteBarrier.class, lowering);
@@ -94,32 +90,23 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
     public static void postWriteBarrierSnippet(Object object, @ConstantParameter boolean verifyOnly) {
         counters().postWriteBarrier.inc();
 
-        final Object fixedObject = FixedValueAnchorNode.getObject(object);
-        final UnsignedWord objectHeader = ObjectHeader.readHeaderFromObject(fixedObject);
-        final boolean needsBarrier = ObjectHeaderImpl.hasRememberedSet(objectHeader);
+        Object fixedObject = FixedValueAnchorNode.getObject(object);
+        UnsignedWord objectHeader = ObjectHeaderImpl.readHeaderFromObject(fixedObject);
+        boolean needsBarrier = ObjectHeaderImpl.hasRememberedSet(objectHeader);
         if (BranchProbabilityNode.probability(BranchProbabilityNode.FREQUENT_PROBABILITY, !needsBarrier)) {
-            // Most likely (?): expect that no barrier is needed.
             return;
         }
-        // The object needs a write-barrier. Is it aligned or unaligned?
-        final boolean unaligned = ObjectHeaderImpl.isHeapObjectUnaligned(objectHeader);
-        if (BranchProbabilityNode.probability(BranchProbabilityNode.LIKELY_PROBABILITY, !unaligned)) {
-            // Next most likely (?): aligned objects.
+        boolean aligned = ObjectHeaderImpl.isAlignedHeaderUnsafe(objectHeader);
+        if (BranchProbabilityNode.probability(BranchProbabilityNode.LIKELY_PROBABILITY, aligned)) {
             counters().postWriteBarrierAligned.inc();
-            AlignedHeapChunk.dirtyCardForObjectOfAlignedHeapChunk(fixedObject, verifyOnly);
+            AlignedHeapChunk.dirtyCardForObject(fixedObject, verifyOnly);
             return;
         }
-        // Least likely (?): object needs a write-barrier and is unaligned.
         counters().postWriteBarrierUnaligned.inc();
-        UnalignedHeapChunk.dirtyCardForObjectOfUnalignedHeapChunk(fixedObject, verifyOnly);
-        return;
+        UnalignedHeapChunk.dirtyCardForObject(fixedObject, verifyOnly);
     }
 
-    protected BarrierSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection) {
-        super(options, factories, providers, snippetReflection);
-    }
-
-    protected class PostWriteBarrierLowering implements NodeLoweringProvider<WriteBarrier> {
+    private class PostWriteBarrierLowering implements NodeLoweringProvider<WriteBarrier> {
         private final SnippetInfo postWriteBarrierSnippet = snippet(BarrierSnippets.class, "postWriteBarrierSnippet", CardTable.CARD_REMEMBERED_SET_LOCATION);
 
         @Override
@@ -169,12 +156,12 @@ class BarrierSnippetCounters {
 class BarrierSnippetCountersFeature implements Feature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return HeapOptions.UseCardRememberedSetHeap.getValue();
+        return SubstrateOptions.UseCardRememberedSetHeap.getValue();
     }
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Arrays.asList(CounterFeature.class);
+        return Collections.singletonList(CounterFeature.class);
     }
 
     @Override

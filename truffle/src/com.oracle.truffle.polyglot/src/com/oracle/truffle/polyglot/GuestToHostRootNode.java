@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.polyglot;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.impl.Accessor.CallInlined;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
@@ -55,13 +54,11 @@ abstract class GuestToHostRootNode extends RootNode {
 
     private final String boundaryName;
 
-    static final CallInlined CALL_INLINED = EngineAccessor.ACCESSOR.getCallInlined();
-
     protected GuestToHostRootNode(Class<?> targetType, String methodName) {
         super(null);
         this.boundaryName = targetType.getName() + "." + methodName;
         // this avoids a memory leak with the root node if it is shared globally
-        EngineAccessor.NODES.makeSharableRoot(this);
+        EngineAccessor.NODES.clearPolyglotEngine(this);
     }
 
     @Override
@@ -88,7 +85,7 @@ abstract class GuestToHostRootNode extends RootNode {
         } catch (InteropException e) {
             throw silenceException(RuntimeException.class, e);
         } catch (Throwable e) {
-            throw PolyglotImpl.wrapHostException((PolyglotLanguageContext) arguments[0], e);
+            throw PolyglotImpl.hostToGuestException((PolyglotLanguageContext) arguments[0], e);
         }
     }
 
@@ -110,7 +107,7 @@ abstract class GuestToHostRootNode extends RootNode {
         } else {
             encapsulatingNode = NodeUtil.getCurrentEncapsulatingNode();
         }
-        return CALL_INLINED.call(encapsulatingNode, target, arguments);
+        return EngineAccessor.RUNTIME.callInlined(encapsulatingNode, target, arguments);
     }
 
 }

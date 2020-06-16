@@ -25,17 +25,14 @@
 package com.oracle.svm.hosted.meta;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 
-import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.infrastructure.WrappedConstantPool;
@@ -72,7 +69,6 @@ public class HostedUniverse implements Universe {
     protected final Map<AnalysisMethod, HostedMethod> methods = new HashMap<>();
     protected final Map<Signature, WrappedSignature> signatures = new HashMap<>();
     protected final Map<ConstantPool, WrappedConstantPool> constantPools = new HashMap<>();
-    private volatile ConcurrentHashMap<AnalysisMethod, Boolean> methodsWithStackValues = new ConcurrentHashMap<>();
 
     protected EnumMap<JavaKind, HostedType> kindToType = new EnumMap<>(JavaKind.class);
 
@@ -84,7 +80,6 @@ public class HostedUniverse implements Universe {
      * Number of allocated bits for instanceof checks.
      */
     protected int numInterfaceBits;
-    private boolean postParseCanonicalized;
 
     public HostedUniverse(Inflation bb) {
         this.bb = bb;
@@ -229,7 +224,7 @@ public class HostedUniverse implements Universe {
         return orderedMethods;
     }
 
-    public BigBang getBigBang() {
+    public Inflation getBigBang() {
         return bb;
     }
 
@@ -241,14 +236,6 @@ public class HostedUniverse implements Universe {
         return bb.getConstantFieldProvider();
     }
 
-    public void recordMethodWithStackValues(AnalysisMethod analysisMethod) {
-        methodsWithStackValues.put(analysisMethod, Boolean.TRUE);
-    }
-
-    public Collection<AnalysisMethod> getMethodsWithStackValues() {
-        return Collections.unmodifiableCollection(methodsWithStackValues.keySet());
-    }
-
     @Override
     public ResolvedJavaMethod resolveSubstitution(ResolvedJavaMethod method) {
         return method;
@@ -257,13 +244,5 @@ public class HostedUniverse implements Universe {
     @Override
     public HostedType objectType() {
         return types.get(bb.getUniverse().objectType());
-    }
-
-    public boolean isPostParseCanonicalized() {
-        return postParseCanonicalized;
-    }
-
-    public void setPostParseCanonicalized() {
-        postParseCanonicalized = true;
     }
 }

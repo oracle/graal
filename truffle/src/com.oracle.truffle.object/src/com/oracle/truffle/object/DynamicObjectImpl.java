@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,6 @@ import java.util.Iterator;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.LocationFactory;
-import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 
@@ -137,7 +136,7 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
     /** @since 0.17 or earlier */
     protected abstract void growPrimitiveStore(Shape oldShape, Shape newShape);
 
-    private void resizeStore(Shape oldShape, Shape newShape) {
+    protected void resizeStore(Shape oldShape, Shape newShape) {
         resizeObjectStore(oldShape, newShape);
         if (((ShapeImpl) newShape).hasPrimitiveArray) {
             resizePrimitiveStore(oldShape, newShape);
@@ -313,18 +312,6 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
 
     /** @since 0.17 or earlier */
     @Override
-    public int size() {
-        return getShape().getPropertyCount();
-    }
-
-    /** @since 0.17 or earlier */
-    @Override
-    public boolean isEmpty() {
-        return size() == 0;
-    }
-
-    /** @since 0.17 or earlier */
-    @Override
     public final boolean updateShape() {
         return getShapeImpl().getLayout().getStrategy().updateShape(this);
     }
@@ -333,18 +320,6 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
     @Override
     public final DynamicObject copy(Shape currentShape) {
         return cloneWithShape(currentShape);
-    }
-
-    /**
-     * @since 0.17 or earlier
-     *
-     * @deprecated use {@link ObjectType#dispatch()} instead
-     */
-    @SuppressWarnings("deprecation")
-    @Override
-    @Deprecated
-    public com.oracle.truffle.api.interop.ForeignAccess getForeignAccess() {
-        return getShapeImpl().getForeignAccessFactory(this);
     }
 
 }

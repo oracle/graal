@@ -44,10 +44,9 @@ import java.util.stream.Collectors;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
+import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
-import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.Invoke;
@@ -61,12 +60,10 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
-import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
@@ -86,9 +83,8 @@ import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.c.GraalAccess;
+import com.oracle.svm.hosted.classinitialization.ClassInitializerGraphBuilderPhase;
 import com.oracle.svm.hosted.phases.NoClassInitializationPlugin;
-import com.oracle.svm.hosted.phases.SharedGraphBuilderPhase;
-import com.oracle.svm.hosted.phases.SharedGraphBuilderPhase.SharedBytecodeParser;
 import com.oracle.svm.hosted.snippets.ReflectionPlugins;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -170,6 +166,18 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             Method fieldGet = Field.class.getMethod("get", Object.class);
             fieldGetMethod = originalMetaAccess.lookupJavaMethod(fieldGet);
             neverInlineSet.add(fieldGetMethod);
+
+            if (JavaVersionUtil.JAVA_SPEC > 8) {
+                /*
+                 * Various factory methods in VarHandle query the array base/index or field offsets.
+                 * There is no need to analyze these calls because VarHandle accesses are
+                 * intrinsified to simple array and field access nodes in
+                 * IntrinsifyMethodHandlesInvocationPlugin.
+                 */
+                for (Method method : loader.findClassByName("java.lang.invoke.VarHandles", true).getDeclaredMethods()) {
+                    neverInlineSet.add(originalMetaAccess.lookupJavaMethod(method));
+                }
+            }
 
             Class<?> unsafeClass;
 
@@ -264,7 +272,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
      * Post-process computed value fields during analysis, e.g, like registering the target field of
      * field offset computation as unsafe accessed. Operations that lookup fields/methods/types in
      * the analysis universe cannot be executed while the substitution is computed. The call to
-     * {@link #computeSubstitutions(ResolvedJavaType, OptionValues)} is made from
+     * {@link #computeSubstitutions} is made from
      * com.oracle.graal.pointsto.meta.AnalysisUniverse#createType(ResolvedJavaType), before the type
      * is published. Thus if there is a circular dependency between the processed type and one of
      * the fields/methods/types that it needs to access it might lead to a deadlock in
@@ -303,10 +311,26 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
     }
 
     @SuppressWarnings("try")
-    public void computeSubstitutions(ResolvedJavaType hostType, OptionValues options) {
+    public void computeSubstitutions(SVMHost hostVM, ResolvedJavaType hostType, OptionValues options) {
         if (hostType.isArray()) {
             return;
         }
+        if (hostVM.getClassInitializationSupport().shouldInitializeAtRuntime(hostType)) {
+            /*
+             * The class initializer of this type is executed at run time. The methods in Unsafe are
+             * substituted to return the correct value at image run time, or fail if the field was
+             * not registered for unsafe access.
+             *
+             * Calls to Unsafe.objectFieldOffset() with a constant field parameter are automatically
+             * registered for unsafe access in SubstrateGraphBuilderPlugins. While that logic is a
+             * bit less powerful compared to the parsing in this class (because this class performs
+             * inlining during parsing), it should be sufficient for most cases to automatically
+             * perform the unsafe access registration. And if not, the user needs to provide a
+             * proper manual configuration file.
+             */
+            return;
+        }
+
 
         if (annotationSubstitutions.findSubstitution(hostType).isPresent()) {
             // Class is substituted, clinit will be eliminated, so bail early.
@@ -325,7 +349,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
                 /* This code should be non-intrusive so we just ignore. */
                 return;
             }
-            DebugContext debug = DebugContext.create(options, DebugHandlersFactory.LOADER);
+            DebugContext debug = new Builder(options).build();
             try (DebugContext.Scope s = debug.scope("Field offset computation", clinit)) {
                 StructuredGraph clinitGraph = getStaticInitializerGraph(clinit, options, debug);
 
@@ -668,7 +692,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         if (xValueNode.isJavaConstant() && xValueNode.asJavaConstant().getJavaKind() == JavaKind.Int) {
             PrimitiveConstant xValueConstant = (PrimitiveConstant) xValueNode.asJavaConstant();
             if (xValueConstant.asInt() == 31) {
-                assert yValueNode.equals(numberOfLeadingZerosInvokeNode);
+                assert yValueNode.equals(numberOfLeadingZerosInvokeNode.asNode());
                 return true;
             }
         }
@@ -676,7 +700,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         if (yValueNode.isJavaConstant() && yValueNode.asJavaConstant().getJavaKind() == JavaKind.Int) {
             PrimitiveConstant yValueConstant = (PrimitiveConstant) yValueNode.asJavaConstant();
             if (yValueConstant.asInt() == 31) {
-                assert xValueNode.equals(numberOfLeadingZerosInvokeNode);
+                assert xValueNode.equals(numberOfLeadingZerosInvokeNode.asNode());
                 return true;
             }
         }
@@ -966,7 +990,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
                 invoke.replaceWithInvoke();
             }
         }
-        new CanonicalizerPhase().apply(graph, context);
+        CanonicalizerPhase.create().apply(graph, context);
 
         return graph;
     }
@@ -1002,29 +1026,6 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             }
 
             return null;
-        }
-    }
-
-    static class ClassInitializerGraphBuilderPhase extends SharedGraphBuilderPhase {
-        ClassInitializerGraphBuilderPhase(CoreProviders providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts) {
-            /*
-             * We do not want any word-type checking when parsing the class initializers, because we
-             * do not have the graph builder plugins for word types installed either. Passing null
-             * as the WordTypes disables the word type checks in the bytecode parser.
-             */
-            super(providers, graphBuilderConfig, optimisticOpts, null, null);
-        }
-
-        @Override
-        protected BytecodeParser createBytecodeParser(StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI, IntrinsicContext intrinsicContext) {
-            return new ClassInitializerBytecodeParser(this, graph, parent, method, entryBCI, intrinsicContext);
-        }
-    }
-
-    static class ClassInitializerBytecodeParser extends SharedBytecodeParser {
-        ClassInitializerBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
-                        IntrinsicContext intrinsicContext) {
-            super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext, true, true);
         }
     }
 }

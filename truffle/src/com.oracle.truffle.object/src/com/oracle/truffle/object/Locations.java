@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,6 +59,7 @@ import com.oracle.truffle.api.object.Shape;
  * @see DynamicObject
  * @since 0.17 or earlier
  */
+@Deprecated
 public abstract class Locations {
     /**
      * @since 0.17 or earlier
@@ -107,6 +108,7 @@ public abstract class Locations {
         }
 
         /** @since 0.17 or earlier */
+        @SuppressWarnings("deprecation")
         @Override
         public boolean canStore(Object val) {
             return valueEquals(this.value, val);

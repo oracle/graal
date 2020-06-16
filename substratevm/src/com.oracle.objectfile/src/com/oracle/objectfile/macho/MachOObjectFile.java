@@ -79,14 +79,21 @@ public final class MachOObjectFile extends ObjectFile {
     /**
      * Create an empty Mach-O object file.
      */
-    public MachOObjectFile() {
-        if ("arm".equals(System.getProperty("svm.targetArch"))) {
-            cpuType = MachOCpuType.ARM64;
-            cpuSubType = 0;
-        } else {
-            cpuType = MachOCpuType.X86_64;
-            cpuSubType = 3;
+    public MachOObjectFile(int pageSize) {
+        this(pageSize, MachOCpuType.from(System.getProperty("svm.targetArch") == null ? System.getProperty("os.arch") : System.getProperty("svm.targetArch")));
+    }
+
+    public MachOObjectFile(int pageSize, MachOCpuType cpuType) {
+        super(pageSize);
+        this.cpuType = cpuType;
+        switch (cpuType) {
+            case X86_64:
+                cpuSubType = 3;
+                break;
+            default:
+                cpuSubType = 0;
         }
+
         header = new MachOHeader("MachOHeader");
         setByteOrder(ByteOrder.nativeOrder());
 
@@ -143,10 +150,6 @@ public final class MachOObjectFile extends ObjectFile {
     @Override
     public void setByteOrder(ByteOrder byteOrder) {
         this.fileByteOrder = byteOrder;
-    }
-
-    @Override
-    public void setMainEntryPoint(String name) {
     }
 
     @Override
@@ -1893,7 +1896,9 @@ public final class MachOObjectFile extends ObjectFile {
             // our constituent loadable sections.
             Map<Element, LayoutDecisionMap> decidedAboutOurElements = new HashMap<>();
             for (Element e : elementsInSegment) {
-                decidedAboutOurElements.put(e, alreadyDecided.get(e));
+                if (e instanceof MachOSection) {
+                    decidedAboutOurElements.put(e, alreadyDecided.get(e));
+                }
             }
             List<LayoutDecision> minVaddrDecisions = ObjectFile.minimalDecisionValues(decidedAboutOurElements, LayoutDecision.Kind.VADDR, new IntegerDecisionComparator(true));
             int minVaddr = (minVaddrDecisions == null || minVaddrDecisions.size() == 0) ? 0 : (int) minVaddrDecisions.get(0).getValue();

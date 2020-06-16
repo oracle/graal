@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -84,6 +84,10 @@ final class LibFFIClosure implements TruffleObject {
         if (retType instanceof LibFFIType.ObjectType) {
             // shortcut for simple object return values
             CallTarget executeCallTarget = Truffle.getRuntime().createCallTarget(new ObjectRetClosureRootNode(signature, executable));
+            this.nativePointer = context.allocateClosureObjectRet(signature, executeCallTarget);
+        } else if (retType instanceof LibFFIType.NullableType) {
+            // shortcut for simple object return values
+            CallTarget executeCallTarget = Truffle.getRuntime().createCallTarget(new NullableRetClosureRootNode(signature, executable));
             this.nativePointer = context.allocateClosureObjectRet(signature, executeCallTarget);
         } else if (retType instanceof LibFFIType.StringType) {
             // shortcut for simple string return values
@@ -227,6 +231,27 @@ final class LibFFIClosure implements TruffleObject {
         }
     }
 
+    private static final class NullableRetClosureRootNode extends RootNode {
+
+        @Child private CallClosureNode callClosure;
+        @Child private InteropLibrary interopLibrary;
+
+        private NullableRetClosureRootNode(LibFFISignature signature, Object receiver) {
+            super(null);
+            callClosure = new CallClosureNode(signature, receiver);
+            interopLibrary = InteropLibrary.getFactory().createDispatched(4);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            Object ret = callClosure.execute(frame.getArguments());
+            if (interopLibrary.isNull(ret)) {
+                return null;
+            }
+            return ret;
+        }
+    }
+
     static final class RetStringBuffer extends NativeArgumentBuffer {
 
         Object ret;
@@ -237,7 +262,7 @@ final class LibFFIClosure implements TruffleObject {
 
         @Override
         protected ByteBuffer getPrimBuffer() {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new IllegalStateException("should not reach here");
         }
 
@@ -250,6 +275,78 @@ final class LibFFIClosure implements TruffleObject {
         public void putObject(TypeTag tag, Object o, int size) {
             assert tag == TypeTag.STRING;
             ret = o;
+        }
+
+        @Override
+        public byte getInt8() {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new IllegalStateException("should not reach here");
+        }
+
+        @Override
+        public void putInt8(byte b) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new IllegalStateException("should not reach here");
+        }
+
+        @Override
+        public short getInt16() {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new IllegalStateException("should not reach here");
+        }
+
+        @Override
+        public void putInt16(short s) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new IllegalStateException("should not reach here");
+        }
+
+        @Override
+        public int getInt32() {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new IllegalStateException("should not reach here");
+        }
+
+        @Override
+        public void putInt32(int i) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new IllegalStateException("should not reach here");
+        }
+
+        @Override
+        public long getInt64() {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new IllegalStateException("should not reach here");
+        }
+
+        @Override
+        public void putInt64(long l) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new IllegalStateException("should not reach here");
+        }
+
+        @Override
+        public float getFloat() {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new IllegalStateException("should not reach here");
+        }
+
+        @Override
+        public void putFloat(float f) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new IllegalStateException("should not reach here");
+        }
+
+        @Override
+        public double getDouble() {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new IllegalStateException("should not reach here");
+        }
+
+        @Override
+        public void putDouble(double d) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new IllegalStateException("should not reach here");
         }
     }
 

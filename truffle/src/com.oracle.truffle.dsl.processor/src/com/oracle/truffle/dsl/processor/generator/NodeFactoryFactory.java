@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,9 +55,8 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;
 
-import com.oracle.truffle.api.dsl.NodeFactory;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeExecutableElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeNames;
@@ -72,11 +71,13 @@ public class NodeFactoryFactory {
     private final ProcessorContext context;
     private final NodeData node;
     private final CodeTypeElement createdFactoryElement;
+    private final TruffleTypes types;
 
     NodeFactoryFactory(ProcessorContext context, NodeData node, CodeTypeElement createdClass) {
         this.context = context;
         this.node = node;
         this.createdFactoryElement = createdClass;
+        this.types = context.getTypes();
     }
 
     public static String factoryClassName(Element type) {
@@ -85,7 +86,7 @@ public class NodeFactoryFactory {
 
     public CodeTypeElement create() {
         Modifier visibility = ElementUtils.getVisibility(node.getTemplateType().getModifiers());
-        TypeMirror nodeFactory = ElementUtils.getDeclaredType(ElementUtils.fromTypeMirror(context.getType(NodeFactory.class)), node.getNodeType());
+        TypeMirror nodeFactory = ElementUtils.getDeclaredType(ElementUtils.fromTypeMirror(context.getTypes().NodeFactory), node.getNodeType());
 
         CodeTypeElement clazz = GeneratorUtils.createClass(node, null, modifiers(), factoryClassName(node.getTemplateType()), null);
         if (visibility != null) {
@@ -127,7 +128,7 @@ public class NodeFactoryFactory {
     }
 
     private CodeExecutableElement createCreateGetNodeSignatures() {
-        TypeMirror returnType = ElementUtils.findMethod(NodeFactory.class, "getNodeSignatures").getReturnType();
+        TypeMirror returnType = ElementUtils.findMethod(types.NodeFactory, "getNodeSignatures").getReturnType();
         CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), returnType, "getNodeSignatures");
         CodeTreeBuilder builder = method.createBuilder();
         builder.startReturn();
@@ -152,7 +153,7 @@ public class NodeFactoryFactory {
     }
 
     private CodeExecutableElement createCreateGetExecutionSignature() {
-        ExecutableElement overriddenMethod = ElementUtils.findMethod(NodeFactory.class, "getExecutionSignature");
+        ExecutableElement overriddenMethod = ElementUtils.findMethod(types.NodeFactory, "getExecutionSignature");
         CodeExecutableElement method = new CodeExecutableElement(modifiers(PUBLIC), overriddenMethod.getReturnType(), "getExecutionSignature");
         CodeTreeBuilder builder = method.createBuilder();
         builder.startReturn();
@@ -163,7 +164,7 @@ public class NodeFactoryFactory {
             if (nodeType != null) {
                 builder.typeLiteral(nodeType);
             } else {
-                builder.typeLiteral(context.getType(Node.class));
+                builder.typeLiteral(types.Node);
             }
         }
         builder.end();
@@ -251,7 +252,7 @@ public class NodeFactoryFactory {
     }
 
     private ExecutableElement createGetInstanceMethod(Modifier visibility) {
-        TypeElement nodeFactoryType = ElementUtils.fromTypeMirror(context.getType(NodeFactory.class));
+        TypeElement nodeFactoryType = ElementUtils.fromTypeMirror(types.NodeFactory);
         TypeMirror returnType = ElementUtils.getDeclaredType(nodeFactoryType, node.getNodeType());
 
         CodeExecutableElement method = new CodeExecutableElement(modifiers(), returnType, "getInstance");

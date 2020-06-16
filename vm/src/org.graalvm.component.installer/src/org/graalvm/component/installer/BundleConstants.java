@@ -33,10 +33,17 @@ public class BundleConstants {
     public static final String BUNDLE_VERSION = "Bundle-Version"; // NOI18N
     public static final String BUNDLE_REQUIRED = "Bundle-RequireCapability"; // NOI18N
     public static final String BUNDLE_PROVIDED = "Bundle-ProvideCapability"; // NOI18N
+    public static final String BUNDLE_DEPENDENCY = "Require-Bundle"; // NOI18N
     public static final String GRAALVM_CAPABILITY = "org.graalvm"; // NOI18N
     public static final String BUNDLE_POLYGLOT_PART = "x-GraalVM-Polyglot-Part"; // NOI18N
     public static final String BUNDLE_LICENSE_TYPE = "x-GraalVM-License-Type"; // NOI18N
     public static final String BUNDLE_LICENSE_PATH = "x-GraalVM-License-Path"; // NOI18N
+
+    /**
+     * In manifests, can specify the serial/hashtag for a component. Used mainly in installed
+     * component storage, copied from download hash or ComponentInfo.
+     */
+    public static final String BUNDLE_SERIAL = "x-GraalVM-Serial"; // NOI18N
 
     /**
      * Extended optional attribute; marks directories, which should be removed completely without
@@ -59,4 +66,17 @@ public class BundleConstants {
      * Version key in the release file.
      */
     public static final String GRAAL_VERSION = "graalvm_version"; // NOI18N
+
+    /**
+     * Component distribution tag. Can be one of:
+     * <ul>
+     * <li>bundled - installed by a base package. Cannot be removed.
+     * <li>optional - installed as an add-on, can be removed. The default.
+     * </ul>
+     * Further values may be added in the future.
+     * 
+     * @since 20.0
+     */
+    public static final String BUNDLE_COMPONENT_DISTRIBUTION = "x-GraalVM-Component-Distribution"; // NOI18N
+
 }

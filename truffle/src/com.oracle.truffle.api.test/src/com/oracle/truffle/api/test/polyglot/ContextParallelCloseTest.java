@@ -101,7 +101,7 @@ public class ContextParallelCloseTest {
                     context.eval(ReuseLanguage.ID, "");
                     fail();
                 } catch (IllegalStateException e) {
-                    assertEquals("Engine is already closed.", e.getMessage());
+                    assertEquals("The Context is already closed.", e.getMessage());
                 }
             }
         } finally {

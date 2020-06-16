@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,19 +29,23 @@
  */
 package com.oracle.truffle.llvm.tests.debug;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Collection;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
 import com.oracle.truffle.llvm.tests.options.TestOptions;
+import com.oracle.truffle.llvm.tests.Platform;
 import org.graalvm.polyglot.Context;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.Set;
 
 @RunWith(Parameterized.class)
 public final class LLVMIRDebugTest extends LLVMDebugTestBase {
@@ -58,10 +62,32 @@ public final class LLVMIRDebugTest extends LLVMDebugTestBase {
     @Parameters(name = "{0}")
     public static Collection<Object[]> getConfigurations() {
         try (Stream<Path> dirs = Files.walk(BC_DIR_PATH)) {
-            return dirs.filter(path -> path.endsWith(CONFIGURATION)).map(path -> new Object[]{path.getParent().getFileName().toString(), CONFIGURATION}).collect(Collectors.toSet());
+            Set<String> blacklist = getBlacklist();
+            Collection<Object[]> testlist = dirs.filter(path -> path.endsWith(CONFIGURATION)).map(path -> new Object[]{getTestSource(path), CONFIGURATION}).collect(Collectors.toSet());
+            testlist.removeIf(t -> blacklist.contains(t[0]));
+            return testlist;
         } catch (IOException e) {
             throw new AssertionError("Error while finding tests!", e);
         }
+    }
+
+    protected static Set<String> getBlacklist() {
+        Set<String> filenameBlacklist = new HashSet<>();
+
+        if (Platform.isAArch64()) {
+            // Tests that fail.
+            filenameBlacklist.addAll(Arrays.asList("primitives.ll"));
+        }
+
+        return filenameBlacklist;
+    }
+
+    private static String getTestSource(Path path) {
+        String filename = path.getParent().getFileName().toString();
+        if (filename.endsWith(TEST_FOLDER_EXT)) {
+            return filename.substring(0, filename.length() - TEST_FOLDER_EXT.length());
+        }
+        return filename;
     }
 
     public LLVMIRDebugTest(String testName, String configuration) {
@@ -71,9 +97,7 @@ public final class LLVMIRDebugTest extends LLVMDebugTestBase {
     @Override
     void setContextOptions(Context.Builder contextBuilder) {
         contextBuilder.option(OPTION_LLDEBUG, String.valueOf(true));
-
-        final String testName = getTestName();
-        final String sourceMapping = String.format("%s=%s", BC_DIR_PATH.resolve(testName).resolve(CONFIGURATION), SRC_DIR_PATH.resolve(testName + ".ll"));
+        final String sourceMapping = String.format("%s=%s", loadBitcodeSource().getPath(), loadOriginalSource().getPath());
         contextBuilder.option(OPTION_LLDEBUG_SOURCES, sourceMapping);
     }
 

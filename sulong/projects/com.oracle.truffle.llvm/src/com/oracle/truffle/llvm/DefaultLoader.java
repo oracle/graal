@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,44 +29,39 @@
  */
 package com.oracle.truffle.llvm;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
+import com.oracle.truffle.llvm.runtime.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage.Loader;
+
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public final class DefaultLoader extends Loader {
 
     private volatile List<LLVMParserResult> cachedDefaultDependencies;
     private volatile ExternalLibrary[] cachedSulongLibraries;
 
-    private synchronized void parseDefaultDependencies(Runner runner) {
-        if (cachedDefaultDependencies == null) {
-            ArrayList<LLVMParserResult> parserResults = new ArrayList<>();
-            cachedSulongLibraries = runner.parseDefaultLibraries(parserResults);
-            parserResults.trimToSize();
-            cachedDefaultDependencies = Collections.unmodifiableList(parserResults);
+    @Override
+    public CallTarget load(LLVMContext context, Source source, AtomicInteger id) {
+        // per context, only one thread must do any parsing
+        synchronized (context.getGlobalScope()) {
+            return Runner.parse(context, this, id, source);
         }
     }
 
-    ExternalLibrary[] getDefaultDependencies(Runner runner, List<LLVMParserResult> parserResults) {
-        if (cachedDefaultDependencies == null) {
-            parseDefaultDependencies(runner);
-        }
-        parserResults.addAll(cachedDefaultDependencies);
+    List<LLVMParserResult> getCachedDefaultDependencies() {
+        return cachedDefaultDependencies;
+    }
+
+    ExternalLibrary[] getCachedSulongLibraries() {
         return cachedSulongLibraries;
     }
 
-    @Override
-    public CallTarget load(LLVMContext context, Source source) {
-        // per context, only one thread must do any parsing
-        synchronized (context.getGlobalScope()) {
-            return new Runner(context, this).parse(source);
-        }
+    void setDefaultLibraries(ExternalLibrary[] defaultLibraries, List<LLVMParserResult> parserResults) {
+        cachedDefaultDependencies = parserResults;
+        cachedSulongLibraries = defaultLibraries;
     }
 }

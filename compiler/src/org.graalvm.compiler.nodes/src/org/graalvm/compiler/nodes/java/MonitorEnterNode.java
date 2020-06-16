@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,9 +32,8 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.MonitorEnter;
-import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
@@ -44,7 +43,7 @@ import org.graalvm.word.LocationIdentity;
  * The {@code MonitorEnterNode} represents the acquisition of a monitor.
  */
 @NodeInfo(cycles = CYCLES_64, size = SIZE_64)
-public class MonitorEnterNode extends AccessMonitorNode implements Virtualizable, Lowerable, IterableNodeType, MonitorEnter, MemoryCheckpoint.Single {
+public class MonitorEnterNode extends AccessMonitorNode implements Virtualizable, Lowerable, IterableNodeType, MonitorEnter, SingleMemoryKill {
 
     public static final NodeClass<MonitorEnterNode> TYPE = NodeClass.create(MonitorEnterNode.class);
 
@@ -57,13 +56,8 @@ public class MonitorEnterNode extends AccessMonitorNode implements Virtualizable
     }
 
     @Override
-    public LocationIdentity getLocationIdentity() {
+    public LocationIdentity getKilledLocationIdentity() {
         return LocationIdentity.any();
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
     }
 
     @Override
@@ -77,4 +71,5 @@ public class MonitorEnterNode extends AccessMonitorNode implements Virtualizable
             }
         }
     }
+
 }

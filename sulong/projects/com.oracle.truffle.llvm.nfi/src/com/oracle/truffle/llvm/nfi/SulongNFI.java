@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -85,7 +85,7 @@ public final class SulongNFI extends TruffleLanguage<Env> {
 
         @Override
         public CallTarget parse(NativeLibraryDescriptor descriptor) {
-            Env env = getContextReference().get();
+            Env env = getCurrentContext(SulongNFI.class);
             TruffleFile file = env.getInternalTruffleFile(descriptor.getFilename());
             try {
                 Source source = Source.newBuilder("llvm", file).build();
@@ -121,8 +121,4 @@ public final class SulongNFI extends TruffleLanguage<Env> {
         });
     }
 
-    @Override
-    protected boolean isObjectOfLanguage(Object object) {
-        return false;
-    }
 }

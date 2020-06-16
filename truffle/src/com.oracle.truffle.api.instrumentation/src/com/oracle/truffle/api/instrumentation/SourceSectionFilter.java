@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -131,7 +131,7 @@ public final class SourceSectionFilter {
      * @since 19.0.
      */
     public boolean includes(Node node) {
-        if (!InstrumentationHandler.isInstrumentableNode(node, node.getSourceSection())) {
+        if (!InstrumentationHandler.isInstrumentableNode(node)) {
             return false;
         }
         Set<Class<?>> tags = getProvidedTags(node);
@@ -149,11 +149,11 @@ public final class SourceSectionFilter {
         if (root == null) {
             return Collections.emptySet();
         }
-        Object sourceVM = InstrumentAccessor.nodesAccess().getSourceVM(root);
-        if (sourceVM == null) {
+        Object polyglotEngine = InstrumentAccessor.nodesAccess().getPolyglotEngine(root);
+        if (polyglotEngine == null) {
             return Collections.emptySet();
         }
-        InstrumentationHandler handler = (InstrumentationHandler) InstrumentAccessor.engineAccess().getInstrumentationHandler(sourceVM);
+        InstrumentationHandler handler = (InstrumentationHandler) InstrumentAccessor.engineAccess().getInstrumentationHandler(polyglotEngine);
         return handler.getProvidedTags(node);
     }
 
@@ -202,7 +202,7 @@ public final class SourceSectionFilter {
     }
 
     boolean isInstrumentedNode(Set<Class<?>> providedTags, Node instrumentedNode, SourceSection sourceSection) {
-        assert InstrumentationHandler.isInstrumentableNode(instrumentedNode, sourceSection);
+        assert InstrumentationHandler.isInstrumentableNode(instrumentedNode);
         for (EventFilterExpression exp : expressions) {
             if (!exp.isIncluded(providedTags, instrumentedNode, sourceSection)) {
                 return false;

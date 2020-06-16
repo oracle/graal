@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,28 +30,28 @@
 #include <stdio.h>
 
 struct A {
-  A() {
-    printf("CONSTRUCT\n");
-  }
-  A(const A &a) {
-    printf("COPY CONSTRUCT\n");
-  }
-  ~A() {
-    printf("DESTRUCT\n");
-  }
+    A() {
+        printf("CONSTRUCT\n");
+    }
+    A(const A &a) {
+        printf("COPY CONSTRUCT\n");
+    }
+    ~A() {
+        printf("DESTRUCT\n");
+    }
 };
 
 void foo() {
-  A a;
-  throw a;
+    A a;
+    throw a;
 }
 
 int main() {
-  try {
-    foo();
-    return 1;
-  } catch (...) {
-    printf("CATCH\n");
-    return 0;
-  }
+    try {
+        foo();
+        return 1;
+    } catch (...) {
+        printf("CATCH\n");
+        return 0;
+    }
 }

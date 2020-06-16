@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,11 +56,13 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.utilities.NeverValidAssumption;
+import java.lang.ref.WeakReference;
 
 final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
@@ -68,7 +70,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
     final LanguageCache cache;
     final LanguageInfo info;
 
-    Language api; // effectivley final
+    Language api; // effectively final
     final int index;
     private final boolean host;
     final RuntimeException initError;
@@ -78,7 +80,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
     private volatile boolean initialized;
 
     private volatile PolyglotLanguageInstance initLanguage;
-    private final LinkedList<PolyglotLanguageInstance> instancePool = new LinkedList<>();
+    private final LinkedList<PolyglotLanguageInstance> instancePool;
 
     final ContextProfile profile;
     private final LanguageReference<TruffleLanguage<Object>> multiLanguageReference;
@@ -98,11 +100,29 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
         this.index = index;
         this.host = host;
         this.profile = new ContextProfile(this);
+        this.instancePool = new LinkedList<>();
         this.info = NODES.createLanguage(this, cache.getId(), cache.getName(), cache.getVersion(), cache.getDefaultMimeType(), cache.getMimeTypes(), cache.isInternal(), cache.isInteractive());
         this.multiLanguageReference = PolyglotReferences.createAlwaysMultiLanguage(this);
         this.multiContextReference = PolyglotReferences.createAlwaysMultiContext(this);
-        this.singleOrMultiContextReference = PolyglotReferences.createAssumeSingleContext(this, engine.singleContext, null, multiContextReference);
+
+        this.singleOrMultiContextReference = PolyglotReferences.createAssumeSingleContext(this, engine.singleContext, null, multiContextReference, false);
         this.singleOrMultiLanguageReference = PolyglotReferences.createAssumeSingleLanguage(this, null, singleInstance, multiLanguageReference);
+    }
+
+    ContextPolicy getEffectiveContextPolicy(PolyglotLanguage inLanguage) {
+        ContextPolicy sourcePolicy;
+        if (engine.boundEngine) {
+            // with a bound engine context policy is effectively always exclusive
+            sourcePolicy = ContextPolicy.EXCLUSIVE;
+        } else {
+            if (inLanguage != null) {
+                sourcePolicy = inLanguage.cache.getPolicy();
+            } else {
+                // we don't know which language we are in so null language means shared policy
+                sourcePolicy = ContextPolicy.SHARED;
+            }
+        }
+        return sourcePolicy;
     }
 
     PolyglotLanguageContext getCurrentLanguageContext() {
@@ -140,19 +160,20 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
 
     @Override
     public OptionDescriptors getOptions() {
-        engine.checkState();
-        if (!initialized) {
+        try {
+            engine.checkState();
+            return getOptionsInternal();
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException(this.engine, e);
+        }
+    }
+
+    OptionDescriptors getOptionsInternal() {
+        if (!this.initialized) {
             synchronized (engine) {
-                if (!initialized) {
-                    try {
-                        this.initLanguage = ensureInitialized(new PolyglotLanguageInstance(this));
-                    } catch (Throwable e) {
-                        // failing to initialize the language for getting the option descriptors
-                        // should not be a fatal error. this typically happens when an invalid
-                        // language is on the classpath.
-                        return OptionDescriptors.EMPTY;
-                    }
-                    initialized = true;
+                if (!this.initialized) {
+                    this.initLanguage = ensureInitialized(new PolyglotLanguageInstance(this));
+                    this.initialized = true;
                 }
             }
         }
@@ -251,7 +272,6 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
                     // nothing to do
                     break;
                 case REUSE:
-                    profile.notifyLanguageFreed();
                     instancePool.addFirst(instance);
                     break;
                 case SHARED:
@@ -263,11 +283,16 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
         }
     }
 
+    void close() {
+        assert Thread.holdsLock(engine);
+        instancePool.clear();
+    }
+
     /**
      * Returns a context reference sharable within this engine.
      */
     ContextReference<Object> getContextReference() {
-        if (singleInstance.isValid()) {
+        if (singleInstance.isValid() && !engine.conservativeContextReferences) {
             return singleOrMultiContextReference;
         } else {
             return multiContextReference;
@@ -303,10 +328,14 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
         if (optionValues == null) {
             synchronized (engine) {
                 if (optionValues == null) {
-                    optionValues = new OptionValuesImpl(engine, getOptions());
+                    optionValues = new OptionValuesImpl(engine, getOptionsInternal(), false);
                 }
             }
         }
+        return optionValues;
+    }
+
+    OptionValuesImpl getOptionValuesIfExists() {
         return optionValues;
     }
 
@@ -343,7 +372,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
     public String getVersion() {
         final String version = cache.getVersion();
         if (version.equals("inherit")) {
-            return engine.getVersion();
+            return engine.creatorApi.getVersion();
         } else {
             return version;
         }
@@ -361,11 +390,9 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
 
     static final class ContextProfile {
 
-        private static final Object UNSET_CONTEXT = new Object();
-
         private final Assumption singleContext;
-        @CompilationFinal private volatile Object cachedSingleContext = UNSET_CONTEXT;
-        @CompilationFinal private volatile Object cachedSingleLanguageContext = UNSET_CONTEXT;
+        @CompilationFinal private volatile WeakReference<Object> cachedSingleContext;
+        @CompilationFinal private volatile WeakReference<PolyglotLanguageContext> cachedSingleLanguageContext;
 
         ContextProfile(PolyglotLanguage language) {
             this.singleContext = language.engine.boundEngine ? Truffle.getRuntime().createAssumption("Language single context.") : NeverValidAssumption.INSTANCE;
@@ -377,10 +404,11 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
 
         PolyglotLanguageContext profile(Object context) {
             if (singleContext.isValid()) {
-                Object cachedSingle = cachedSingleLanguageContext;
+                WeakReference<PolyglotLanguageContext> ref = cachedSingleLanguageContext;
+                PolyglotLanguageContext cachedSingle = ref == null ? null : ref.get();
                 if (singleContext.isValid()) {
                     assert cachedSingle == context : assertionError(cachedSingle, context);
-                    return (PolyglotLanguageContext) cachedSingle;
+                    return cachedSingle;
                 }
             }
             return (PolyglotLanguageContext) context;
@@ -392,26 +420,19 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
 
         void notifyContextCreate(PolyglotLanguageContext context, Env env) {
             if (singleContext.isValid()) {
-                Object cachedSingle = this.cachedSingleContext;
+                WeakReference<Object> ref = this.cachedSingleContext;
+                Object cachedSingle = ref == null ? null : ref.get();
                 assert cachedSingle != LANGUAGE.getContext(env) || cachedSingle == null : "Non-null context objects should be distinct";
-                if (cachedSingle == UNSET_CONTEXT) {
+                if (ref == null) {
                     if (singleContext.isValid()) {
-                        this.cachedSingleContext = LANGUAGE.getContext(env);
-                        this.cachedSingleLanguageContext = context;
+                        this.cachedSingleContext = new WeakReference<>(LANGUAGE.getContext(env));
+                        this.cachedSingleLanguageContext = new WeakReference<>(context);
                     }
                 } else {
                     singleContext.invalidate();
-                    cachedSingleContext = UNSET_CONTEXT;
-                    cachedSingleLanguageContext = UNSET_CONTEXT;
+                    cachedSingleContext = null;
+                    cachedSingleLanguageContext = null;
                 }
-            }
-        }
-
-        void notifyLanguageFreed() {
-            if (singleContext.isValid()) {
-                // do not invalidate assumptions if engine is disposed anyway
-                cachedSingleContext = UNSET_CONTEXT;
-                cachedSingleLanguageContext = UNSET_CONTEXT;
             }
         }
     }

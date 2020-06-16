@@ -29,18 +29,22 @@
 # ----------------------------------------------------------------------------------------------------
 
 import os
-from os.path import exists
+from os.path import exists, join
 import re
+import tempfile
+import shutil
+import glob
 
 import mx
 
+from mx_sigtest import sigtest
 from mx_unittest import unittest
 from mx_jackpot import jackpot
 from mx_gate import Task
 import mx_gate
 import mx_unittest
 import mx_benchmark
-import mx_sdk
+import mx_sdk_vm
 
 import sys
 
@@ -134,6 +138,31 @@ def checkLinks(javadocDir):
     if err:
         mx.abort('There are wrong references in Javadoc')
 
+def lsp_types_gen(args):
+    generators_dir = join(_suite.dir, 'generators')
+    out = join(_suite.get_output_root(), 'lsp-types')
+    if exists(out):
+        mx.rmtree(out)
+    mx.run(['npm', 'install'], nonZeroIsFatal=True, cwd=generators_dir)
+    mx.run(['npm', 'run', 'compile'], nonZeroIsFatal=True, cwd=generators_dir)
+    repository = open(join(generators_dir, 'resources', 'REPOSITORY'), 'r').read()
+    branch = open(join(generators_dir, 'resources', 'VERSION'), 'r').read()
+    tmpdir = tempfile.mkdtemp()
+    catfile = open(join(tmpdir, 'lsp.ts'), 'w')
+    mx.run(['git', 'clone', '-b', branch, repository, 'lib'], nonZeroIsFatal=True, cwd=tmpdir)
+    spec_files = glob.glob(join(tmpdir, 'lib/types/src/*.ts'))
+    spec_files.extend(glob.glob(join(tmpdir, 'lib/jsonrpc/src/*.ts')))
+    spec_files.extend(glob.glob(join(tmpdir, 'lib/protocol/src/*.ts')))
+    for file_name in spec_files:
+        with open(file_name, 'r') as input_file:
+            shutil.copyfileobj(input_file, catfile)
+        catfile.flush()
+    pkg = open(join(generators_dir, 'resources', 'PACKAGE'), 'r').read()
+    mx.run(['node', 'out/generator.js', '--source', catfile.name, '--target', out, '--suffixNested', '--pkg', pkg, '--license', 'resources/license.txt'], nonZeroIsFatal=True, cwd=generators_dir)
+    mx.rmtree(tmpdir)
+    mx.run(['patch', '-p1', '-s', '-i', join(generators_dir, 'resources', 'patch.diff')], nonZeroIsFatal=True, cwd=out)
+    mx.log('LSP types generated to: ' + out)
+
 def _unittest_config_participant(config):
     vmArgs, mainClass, mainClassArgs = config
     if mx.get_jdk(tag='default').javaCompliance > '1.8':
@@ -151,54 +180,99 @@ mx_unittest.add_config_participant(_unittest_config_participant)
 def _tools_gate_runner(args, tasks):
     with Task('Jackpot check', tasks) as t:
         if t: jackpot(['--fail-on-warnings'], suite=None, nonZeroIsFatal=True)
+    with Task('Tools Signature Tests', tasks) as t:
+        if t: sigtest(['--check', 'binary'])
     with Task('Tools UnitTests', tasks) as t:
         if t: unittest(['--suite', 'tools', '--enable-timing', '--verbose', '--fail-fast'])
 
 mx_gate.add_gate_runner(_suite, _tools_gate_runner)
 
-mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
+    suite=_suite,
+    name='GraalVM Language Server',
+    short_name='lsp',
+    dir_name='lsp',
+    license_files=[],
+    third_party_license_files=[],
+    truffle_jars=['tools:LSP_API', 'tools:LSP'],
+    support_distributions=['tools:LSP_GRAALVM_SUPPORT'],
+    include_by_default=True,
+))
+
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
     suite=_suite,
     name='GraalVM Chrome Inspector',
     short_name='ins',
     dir_name='chromeinspector',
     license_files=[],
     third_party_license_files=[],
+    dependencies=['Truffle'],
     truffle_jars=['tools:CHROMEINSPECTOR'],
     support_distributions=['tools:CHROMEINSPECTOR_GRAALVM_SUPPORT'],
     include_by_default=True,
 ))
 
-mx_sdk.register_graalvm_component(mx_sdk.GraalVmTool(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
+    suite=_suite,
+    name='AgentScript',
+    short_name='ats',
+    dir_name='agentscript',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['Truffle'],
+    truffle_jars=['tools:AGENTSCRIPT'],
+    support_distributions=['tools:AGENTSCRIPT_GRAALVM_SUPPORT'],
+    priority=10,
+    include_by_default=True,
+))
+
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
     suite=_suite,
     name='GraalVM Profiler',
     short_name='pro',
     dir_name='profiler',
     license_files=[],
     third_party_license_files=[],
+    dependencies=['Truffle'],
     truffle_jars=['tools:TRUFFLE_PROFILER'],
     support_distributions=['tools:TRUFFLE_PROFILER_GRAALVM_SUPPORT'],
     include_by_default=True,
 ))
 
-mx_sdk.register_graalvm_component(mx_sdk.GraalVmJdkComponent(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
+    suite=_suite,
+    name='GraalVM Coverage',
+    short_name='cov',
+    dir_name='coverage',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['Truffle'],
+    truffle_jars=['tools:TRUFFLE_COVERAGE'],
+    support_distributions=['tools:TRUFFLE_COVERAGE_GRAALVM_SUPPORT'],
+    include_by_default=True,
+))
+
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJdkComponent(
     suite=_suite,
     name='VisualVM',
     short_name='vvm',
     dir_name='visualvm',
     license_files=[],
     third_party_license_files=[],
+    dependencies=[],
     support_distributions=['tools:VISUALVM_GRAALVM_SUPPORT'],
-    provided_executables=['bin/<exe:jvisualvm>']
+    provided_executables=[('tools:VISUALVM_PLATFORM_SPECIFIC', './bin/<exe:jvisualvm>')]
 ))
 
 for mode in ['jvm', 'native']:
-    mx_sdk.add_graalvm_hostvm_config(mode + '-cpusampler-exclude-inlined-roots', launcher_args=['--' + mode, '--cpusampler', '--cpusampler.Mode=exclude_inlined_roots'])
-    mx_sdk.add_graalvm_hostvm_config(mode + '-cpusampler-roots', launcher_args=['--' + mode, '--cpusampler', '--cpusampler.Mode=roots'])
-    mx_sdk.add_graalvm_hostvm_config(mode + '-cpusampler-statements', launcher_args=['--' + mode, '--cpusampler', '--cpusampler.Mode=statements'])
-    mx_sdk.add_graalvm_hostvm_config(mode + '-cputracer-roots', launcher_args=['--' + mode, '--cputracer', '--cputracer.TraceRoots=true'])
-    mx_sdk.add_graalvm_hostvm_config(mode + '-cputracer-statements', launcher_args=['--' + mode, '--cputracer', '--cputracer.TraceStatements=true'])
+    mx_sdk_vm.add_graalvm_hostvm_config(mode + '-cpusampler-exclude-inlined-roots', launcher_args=['--' + mode, '--cpusampler', '--cpusampler.Mode=exclude_inlined_roots'])
+    mx_sdk_vm.add_graalvm_hostvm_config(mode + '-cpusampler-roots', launcher_args=['--' + mode, '--cpusampler', '--cpusampler.Mode=roots'])
+    mx_sdk_vm.add_graalvm_hostvm_config(mode + '-cpusampler-statements', launcher_args=['--' + mode, '--cpusampler', '--cpusampler.Mode=statements'])
+    mx_sdk_vm.add_graalvm_hostvm_config(mode + '-cputracer-roots', launcher_args=['--' + mode, '--cputracer', '--cputracer.TraceRoots=true'])
+    mx_sdk_vm.add_graalvm_hostvm_config(mode + '-cputracer-statements', launcher_args=['--' + mode, '--cputracer', '--cputracer.TraceStatements=true'])
 
 mx.update_commands(_suite, {
     'javadoc' : [javadoc, ''],
     'gate' : [mx_gate.gate, ''],
+    'lsp-types-gen' : [lsp_types_gen, ''],
 })

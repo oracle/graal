@@ -36,6 +36,7 @@ import java.util.Map.Entry;
 import java.util.NavigableMap;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.ForkJoinPool;
 
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.DataSection;
@@ -46,6 +47,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.code.CodeInfo;
@@ -55,6 +57,8 @@ import com.oracle.svm.core.code.CodeInfoQueryResult;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoDecoder;
 import com.oracle.svm.core.code.FrameInfoEncoder;
+import com.oracle.svm.core.code.ImageCodeInfo.HostedImageCodeInfo;
+import com.oracle.svm.core.code.InstantReferenceAdjuster;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
 import com.oracle.svm.core.graal.code.SubstrateDataBuilder;
@@ -129,7 +133,7 @@ public abstract class NativeImageCodeCache {
         }
     }
 
-    public abstract void layoutMethods(DebugContext debug, String imageName);
+    public abstract void layoutMethods(DebugContext debug, String imageName, BigBang bb, ForkJoinPool threadPool);
 
     public void layoutConstants() {
         for (CompilationResult compilation : compilations.values()) {
@@ -206,10 +210,10 @@ public abstract class NativeImageCodeCache {
             System.out.println("encoded during call entry points           ; " + frameInfoCustomization.numDuringCallEntryPoints);
         }
 
-        CodeInfo codeInfo = CodeInfoTable.getImageCodeCache().getHostedImageCodeInfo();
-        codeInfoEncoder.encodeAllAndInstall(codeInfo);
-        codeInfo.setCodeStart(firstMethod);
-        codeInfo.setCodeSize(codeSize);
+        HostedImageCodeInfo imageCodeInfo = CodeInfoTable.getImageCodeCache().getHostedImageCodeInfo();
+        codeInfoEncoder.encodeAllAndInstall(imageCodeInfo, new InstantReferenceAdjuster());
+        imageCodeInfo.setCodeStart(firstMethod);
+        imageCodeInfo.setCodeSize(codeSize);
 
         if (CodeInfoEncoder.Options.CodeInfoEncoderCounters.getValue()) {
             for (Counter counter : ImageSingletons.lookup(CodeInfoEncoder.Counters.class).group.getCounters()) {
@@ -222,10 +226,10 @@ public abstract class NativeImageCodeCache {
              * Missing deoptimization entry points lead to hard-to-debug transient failures, so we
              * want the verification on all the time and not just when assertions are on.
              */
-            verifyDeoptEntries(codeInfo);
+            verifyDeoptEntries(imageCodeInfo);
         }
 
-        assert verifyMethods(codeInfo);
+        assert verifyMethods(codeInfoEncoder, imageCodeInfo);
     }
 
     private void verifyDeoptEntries(CodeInfo codeInfo) {
@@ -269,10 +273,11 @@ public abstract class NativeImageCodeCache {
         return true;
     }
 
-    private boolean verifyMethods(CodeInfo codeInfo) {
+    private boolean verifyMethods(CodeInfoEncoder codeInfoEncoder, CodeInfo codeInfo) {
         for (Entry<HostedMethod, CompilationResult> entry : compilations.entrySet()) {
-            CodeInfoEncoder.verifyMethod(entry.getValue(), entry.getKey().getCodeAddressOffset(), codeInfo);
+            CodeInfoEncoder.verifyMethod(entry.getKey(), entry.getValue(), entry.getKey().getCodeAddressOffset(), codeInfo);
         }
+        codeInfoEncoder.verifyFrameInfo(codeInfo);
         return true;
     }
 
@@ -286,16 +291,20 @@ public abstract class NativeImageCodeCache {
 
     public abstract void writeCode(RelocatableBuffer buffer);
 
-    public void writeConstants(RelocatableBuffer buffer) {
+    public void writeConstants(NativeImageHeapWriter writer, RelocatableBuffer buffer) {
         ByteBuffer bb = buffer.getBuffer();
         dataSection.buildDataSection(bb, (position, constant) -> {
-            imageHeap.writeReference(buffer, position, SubstrateObjectConstant.asObject(constant), "VMConstant: " + constant);
+            writer.writeReference(buffer, position, SubstrateObjectConstant.asObject(constant), "VMConstant: " + constant);
         });
     }
 
     public abstract NativeTextSectionImpl getTextSectionImpl(RelocatableBuffer buffer, ObjectFile objectFile, NativeImageCodeCache codeCache);
 
-    public abstract String[] getCCInputFiles(Path tempDirectory, String imageName);
+    public Path[] getCCInputFiles(Path tempDirectory, String imageName) {
+        return new Path[]{tempDirectory.resolve(imageName + ObjectFile.getFilenameSuffix())};
+    }
+
+    public abstract List<ObjectFile.Symbol> getSymbols(ObjectFile objectFile, boolean onlyGlobal);
 
     public Map<HostedMethod, CompilationResult> getCompilations() {
         return compilations;

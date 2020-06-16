@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,6 +56,7 @@ import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.test.otherPackage.OtherPackageNode;
 import com.oracle.truffle.api.library.test.otherPackage.OtherPackageNode.InnerDSLNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.test.AbstractLibraryTest;
 import com.oracle.truffle.api.test.ExpectError;
 
 @SuppressWarnings({"unused", "static-method"})
@@ -256,7 +257,7 @@ public class ExportMethodTest extends AbstractLibraryTest {
     @Test
     public void testExportsInstanceWithCachedNode() {
         ExportsTestInstanceWithCachedNode obj = new ExportsTestInstanceWithCachedNode();
-        assertEquals("cached", AbstractLibraryTest.adopt(createCached(ExportsTestLibrary1.class, obj)).foo(obj, 42));
+        assertEquals("cached", adoptNode(createCached(ExportsTestLibrary1.class, obj)).get().foo(obj, 42));
         assertEquals("uncached", getUncached(ExportsTestLibrary1.class, obj).foo(obj, 42));
     }
 

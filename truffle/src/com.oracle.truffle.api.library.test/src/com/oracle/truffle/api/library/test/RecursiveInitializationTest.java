@@ -45,6 +45,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryFactory;
+import com.oracle.truffle.api.test.AbstractLibraryTest;
 
 public class RecursiveInitializationTest extends AbstractLibraryTest {
 

@@ -103,9 +103,6 @@ public class CEnumCallWrapperMethod extends CustomSubstitutionMethod {
         kit.getFrameState().push(pushKind, returnValue);
         kit.createReturn(returnValue, pushKind);
 
-        kit.mergeUnwinds();
-
-        assert graph.verify();
-        return graph;
+        return kit.finalizeGraph();
     }
 }

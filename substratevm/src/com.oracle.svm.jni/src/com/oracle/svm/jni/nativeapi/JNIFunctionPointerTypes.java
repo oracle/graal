@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,9 +27,7 @@ package com.oracle.svm.jni.nativeapi;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.word.PointerBase;
-import org.graalvm.word.WordBase;
 
 public final class JNIFunctionPointerTypes {
     public interface GetEnvFunctionPointer extends CFunctionPointer {
@@ -47,7 +45,7 @@ public final class JNIFunctionPointerTypes {
         JNIObjectHandle invoke(JNIEnvironment env, CCharPointer name);
     }
 
-    public interface GetMemberIDFunctionPointer extends CFunctionPointer {
+    public interface GetMethodIDFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
         JNIMethodId invoke(JNIEnvironment env, JNIObjectHandle clazz, CCharPointer name, CCharPointer signature);
     }
@@ -62,53 +60,39 @@ public final class JNIFunctionPointerTypes {
         JNIObjectHandle invoke(JNIEnvironment env, JNIObjectHandle obj);
     }
 
-    public interface CallObjectMethodFunctionPointer extends CFunctionPointer {
-    }
-
-    public interface CallObjectMethod0FunctionPointer extends CallObjectMethodFunctionPointer {
+    public interface CallObjectMethodAFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
-        JNIObjectHandle invoke(JNIEnvironment env, JNIObjectHandle objOrClass, JNIMethodId methodID);
+        JNIObjectHandle invoke(JNIEnvironment env, JNIObjectHandle objOrClass, JNIMethodId methodID, JNIValue args);
     }
 
-    public interface CallObjectMethod1FunctionPointer extends CallObjectMethodFunctionPointer {
+    public interface CallBooleanMethodAFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
-        JNIObjectHandle invoke(JNIEnvironment env, JNIObjectHandle objOrClass, JNIMethodId methodID, WordBase arg0);
+        boolean invoke(JNIEnvironment env, JNIObjectHandle objOrClass, JNIMethodId methodID, JNIValue args);
     }
 
-    public interface CallObjectMethod2FunctionPointer extends CallObjectMethodFunctionPointer {
+    public interface CallLongMethodAFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
-        JNIObjectHandle invoke(JNIEnvironment env, JNIObjectHandle objOrClass, JNIMethodId methodID, WordBase arg0, WordBase arg1);
+        long invoke(JNIEnvironment env, JNIObjectHandle objOrClass, JNIMethodId methodID, JNIValue args);
     }
 
-    public interface CallObjectMethod3FunctionPointer extends CallObjectMethodFunctionPointer {
+    public interface CallIntMethodAFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
-        JNIObjectHandle invoke(JNIEnvironment env, JNIObjectHandle objOrClass, JNIMethodId methodID, WordBase arg0, WordBase arg1, WordBase arg2);
+        int invoke(JNIEnvironment env, JNIObjectHandle objOrClass, JNIMethodId methodId, JNIValue args);
     }
 
-    public interface CallBooleanMethodFunctionPointer extends CFunctionPointer {
-    }
-
-    public interface CallBooleanMethod0FunctionPointer extends CallBooleanMethodFunctionPointer {
+    public interface NewObjectAFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
-        boolean invoke(JNIEnvironment env, JNIObjectHandle objOrClass, JNIMethodId methodID);
+        JNIObjectHandle invoke(JNIEnvironment env, JNIObjectHandle clazz, JNIMethodId ctor, JNIValue args);
     }
 
-    public interface CallLongMethodFunctionPointer extends CFunctionPointer {
-    }
-
-    public interface CallLongMethod1FunctionPointer extends CallLongMethodFunctionPointer {
+    public interface NewStringUTFFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
-        long invoke(JNIEnvironment env, JNIObjectHandle objOrClass, JNIMethodId methodID, WordBase arg0);
-    }
-
-    public interface CallLongMethod2FunctionPointer extends CallLongMethodFunctionPointer {
-        @InvokeCFunctionPointer
-        long invoke(JNIEnvironment env, JNIObjectHandle objOrClass, JNIMethodId methodID, WordBase arg0, WordBase arg1);
+        JNIObjectHandle invoke(JNIEnvironment env, CCharPointer bytes);
     }
 
     public interface GetStringUTFCharsFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
-        CCharPointer invoke(JNIEnvironment env, JNIObjectHandle str, CIntPointer isCopy);
+        CCharPointer invoke(JNIEnvironment env, JNIObjectHandle str, CCharPointer isCopy);
     }
 
     public interface ReleaseStringUTFCharsFunctionPointer extends CFunctionPointer {
@@ -204,6 +188,23 @@ public final class JNIFunctionPointerTypes {
     public interface RegisterNativesFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
         int invoke(JNIEnvironment env, JNIObjectHandle clazz, JNINativeMethod methods, int nMethods);
+    }
+
+    public interface NewByteArrayFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JNIObjectHandle invoke(JNIEnvironment env, int length);
+    }
+
+    public interface GetByteArrayElementsFunctionPointer extends CFunctionPointer {
+        // isCopy is actually a boolean
+        @InvokeCFunctionPointer
+        CCharPointer invoke(JNIEnvironment env, JNIObjectHandle byteArray, CCharPointer isCopy);
+    }
+
+    public interface ReleaseByteArrayElementsFunctionPointer extends CFunctionPointer {
+        // isCopy is actually a boolean
+        @InvokeCFunctionPointer
+        CCharPointer invoke(JNIEnvironment env, JNIObjectHandle byteArray, CCharPointer elements, int mode);
     }
 
     private JNIFunctionPointerTypes() {

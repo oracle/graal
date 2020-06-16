@@ -41,4 +41,6 @@ public interface CodeGenProviders {
     ForeignCallsProvider getForeignCalls();
 
     ConstantReflectionProvider getConstantReflection();
+
+    MetaAccessExtensionProvider getMetaAccessExtensionProvider();
 }

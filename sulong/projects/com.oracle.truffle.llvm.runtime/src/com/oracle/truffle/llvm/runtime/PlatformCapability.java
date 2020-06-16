@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,16 +29,71 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import java.lang.reflect.Array;
+import java.nio.file.Path;
+import java.util.List;
+
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 
-import java.nio.file.Path;
-
-public abstract class PlatformCapability implements LLVMCapability {
+public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> implements LLVMCapability {
 
     public abstract Path getSulongLibrariesPath();
 
     public abstract String[] getSulongDefaultLibraries();
 
     public abstract LLVMSyscallOperationNode createSyscallNode(long index);
+
+    public abstract String getPolyglotMockLibrary();
+
+    @CompilerDirectives.CompilationFinal(dimensions = 1) private final S[] valueToSysCall;
+
+    protected PlatformCapability(Class<S> cls) {
+        valueToSysCall = initTable(cls);
+    }
+
+    @SuppressWarnings("unchecked")
+    private S[] initTable(Class<S> cls) {
+        S[] constants = cls.getEnumConstants();
+        if (constants == null) {
+            // cls is an empty enum
+            return (S[]) Array.newInstance(cls, 0);
+        }
+        int max = -1;
+        for (S syscall : constants) {
+            max = Math.max(max, syscall.value());
+        }
+        S[] syscalls = (S[]) Array.newInstance(cls, max + 1);
+        for (S syscall : constants) {
+            syscalls[syscall.value()] = syscall;
+        }
+        return syscalls;
+    }
+
+    protected S getSyscall(long value) {
+        if (value >= 0 && value < valueToSysCall.length) {
+            S syscall = valueToSysCall[(int) value];
+            if (syscall != null) {
+                return syscall;
+            }
+        }
+        throw error(value);
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static IllegalArgumentException error(long value) {
+        return new IllegalArgumentException("Unknown syscall number: " + value);
+    }
+
+    /**
+     * Inject implicit or modify explicit dependencies for a {@code library}.
+     * 
+     * @param context the {@link LLVMContext}
+     * @param library the library for which dependencies might be injected
+     * @param dependencies (unmodifiable) list of dependencies specified by the library
+     */
+    public List<String> preprocessDependencies(LLVMContext context, ExternalLibrary library, List<String> dependencies) {
+        return dependencies;
+    }
 }

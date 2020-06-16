@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,12 +24,7 @@
  */
 package org.graalvm.compiler.core.test;
 
-import jdk.vm.ci.meta.JavaConstant;
-
-import org.junit.Assert;
-import org.junit.Test;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
-import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -37,10 +32,13 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.extended.OpaqueNode;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.junit.Assert;
+import org.junit.Test;
+
+import jdk.vm.ci.meta.JavaConstant;
 
 public class LongNodeChainTest extends GraalCompilerTest {
 
@@ -57,7 +55,7 @@ public class LongNodeChainTest extends GraalCompilerTest {
     private void longAddChain(boolean reverse) {
         HighTierContext context = getDefaultHighTierContext();
         OptionValues options = getInitialOptions();
-        StructuredGraph graph = new StructuredGraph.Builder(options, DebugContext.create(options, DebugHandlersFactory.LOADER)).build();
+        StructuredGraph graph = new StructuredGraph.Builder(options, new Builder(options).build()).build();
         ValueNode constant = graph.unique(ConstantNode.forPrimitive(JavaConstant.INT_1));
         ValueNode value = null;
         if (reverse) {
@@ -85,7 +83,7 @@ public class LongNodeChainTest extends GraalCompilerTest {
             new SchedulePhase(s).apply(graph);
         }
 
-        new CanonicalizerPhase().apply(graph, context);
+        this.createCanonicalizerPhase().apply(graph, context);
         JavaConstant asConstant = (JavaConstant) returnNode.result().asConstant();
         Assert.assertEquals(N + 1, asConstant.asInt());
     }

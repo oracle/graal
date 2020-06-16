@@ -20,7 +20,8 @@ private boolean inTruffleButNotInTest() {
             pkg.startsWith("com.oracle.truffle.regex") ||
             pkg.contains(".test.") ||
             pkg.equals("com.oracle.truffle.tck") ||
-            pkg.startsWith("com.oracle.truffle.tools.")
+            pkg.startsWith("com.oracle.truffle.tools.") ||
+            pkg.startsWith("com.oracle.truffle.sl.")
         ) && pkg.startsWith("com.oracle.truffle.");
 }
 ?>

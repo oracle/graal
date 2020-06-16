@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,8 +36,8 @@ int sixtyfour = 64;
 int large = 234213235;
 
 int main() {
-  printf("%f\n", log2(eight));
-  printf("%f\n", log2(five));
-  printf("%f\n", log2(sixtyfour));
-  printf("%f\n", log2(large));
+    printf("%f\n", log2(eight));
+    printf("%f\n", log2(five));
+    printf("%f\n", log2(sixtyfour));
+    printf("%f\n", log2(large));
 }

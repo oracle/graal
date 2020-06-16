@@ -46,7 +46,6 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
-import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.CachedNodeTestFactory.Cached1NodeGen;
 import com.oracle.truffle.api.dsl.test.CachedNodeTestFactory.Cached2NodeGen;
@@ -408,18 +407,6 @@ public class CachedNodeTest {
         static Object s0(Object arg0,
                         @ExpectError("Failed to generate code for @GenerateUncached:%") @Cached InvalidNode7 foo) {
             return foo.execute(arg0);
-        }
-    }
-
-    @ExpectError("Failed to generate code for @GenerateUncached: The node must not declare any @NodeField annotations. Remove these annotations to resolve this.")
-    @GenerateUncached
-    @NodeField(name = "foo", type = int.class)
-    public abstract static class ErrorNode8 extends Node {
-        abstract Object execute(Object arg0);
-
-        @Specialization
-        static Object s0(int foo, Object arg0) {
-            return "s0";
         }
     }
 

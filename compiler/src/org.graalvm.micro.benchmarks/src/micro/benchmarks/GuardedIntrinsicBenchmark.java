@@ -29,7 +29,6 @@ import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
-import org.openjdk.jmh.annotations.Warmup;
 
 /**
  * Benchmarks cost of guarded intrinsics at indirect call sites.
@@ -74,7 +73,6 @@ public class GuardedIntrinsicBenchmark extends BenchmarkBase {
     }
 
     @Benchmark
-    @Warmup(iterations = 10)
     public int overrideHashCode(OverrideHashcode state) {
         return state.getNextHashCode();
     }
@@ -95,7 +93,6 @@ public class GuardedIntrinsicBenchmark extends BenchmarkBase {
     }
 
     @Benchmark
-    @Warmup(iterations = 10)
     public int inheritHashCode(InheritHashcode state) {
         return state.getNextHashCode();
     }
@@ -116,7 +113,6 @@ public class GuardedIntrinsicBenchmark extends BenchmarkBase {
     }
 
     @Benchmark
-    @Warmup(iterations = 10)
     public int mixedHashCode(MixedHashcode state) {
         return state.getNextHashCode();
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,7 +38,7 @@ import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValueNodeUtil;
 import org.graalvm.compiler.nodes.memory.MemoryAccess;
-import org.graalvm.compiler.nodes.memory.MemoryNode;
+import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.LocationIdentity;
@@ -70,7 +70,7 @@ public final class ArrayRegionEqualsNode extends FixedWithNextNode implements LI
     /** Length of the array region. */
     @Input private ValueNode length;
 
-    @OptionalInput(Memory) private MemoryNode lastLocationAccess;
+    @OptionalInput(Memory) private MemoryKill lastLocationAccess;
 
     public ArrayRegionEqualsNode(ValueNode array1, ValueNode array2, ValueNode length, @ConstantNodeParameter JavaKind kind1, @ConstantNodeParameter JavaKind kind2) {
         super(TYPE, StampFactory.forKind(JavaKind.Boolean));
@@ -110,16 +110,11 @@ public final class ArrayRegionEqualsNode extends FixedWithNextNode implements LI
                 return;
             }
         }
-
-        int constantLength = -1;
-        if (length.isConstant()) {
-            constantLength = length.asJavaConstant().asInt();
-        }
         Value result;
         if (kind1 == kind2) {
-            result = gen.getLIRGeneratorTool().emitArrayEquals(kind1, gen.operand(array1), gen.operand(array2), gen.operand(length), constantLength, true);
+            result = gen.getLIRGeneratorTool().emitArrayEquals(kind1, gen.operand(array1), gen.operand(array2), gen.operand(length), true);
         } else {
-            result = gen.getLIRGeneratorTool().emitArrayEquals(kind1, kind2, gen.operand(array1), gen.operand(array2), gen.operand(length), constantLength, true);
+            result = gen.getLIRGeneratorTool().emitArrayEquals(kind1, kind2, gen.operand(array1), gen.operand(array2), gen.operand(length), true);
         }
         gen.setResult(this, result);
     }
@@ -130,13 +125,14 @@ public final class ArrayRegionEqualsNode extends FixedWithNextNode implements LI
     }
 
     @Override
-    public MemoryNode getLastLocationAccess() {
+    public MemoryKill getLastLocationAccess() {
         return lastLocationAccess;
     }
 
     @Override
-    public void setLastLocationAccess(MemoryNode lla) {
+    public void setLastLocationAccess(MemoryKill lla) {
         updateUsages(ValueNodeUtil.asNode(lastLocationAccess), ValueNodeUtil.asNode(lla));
         lastLocationAccess = lla;
     }
+
 }

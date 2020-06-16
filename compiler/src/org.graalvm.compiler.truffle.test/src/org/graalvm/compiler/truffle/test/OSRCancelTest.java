@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -119,11 +119,6 @@ public class OSRCancelTest {
             });
         }
 
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
-
     }
 
     @GenerateWrapper
@@ -174,7 +169,7 @@ public class OSRCancelTest {
 
         @Override
         void execute(VirtualFrame frame) {
-            loop.executeLoop(frame);
+            loop.execute(frame);
         }
 
     }
@@ -194,7 +189,7 @@ public class OSRCancelTest {
 
         @Override
         void execute(VirtualFrame frame) {
-            loop.executeLoop(frame);
+            loop.execute(frame);
         }
 
     }

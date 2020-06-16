@@ -1,0 +1,394 @@
+{
+    "injectionSelector": "L:source.r -comment -(string - meta.embedded), L:source.js meta.embedded.inline.r, L:source.ruby meta.embedded.inline.r, L:source.python meta.embedded.inline.r, L:source.sl meta.embedded.inline.r",
+    "scopeName": "r-inline.polyglot-langauges",
+    "patterns": [
+        {
+            "begin": "(eval\\s*\\.\\s*polyglot)\\s*(\\()",
+            "beginCaptures": {
+                "1": {
+                    "name": "variable.function.r"
+                },
+                "2": {
+                    "name": "punctuation.section.parens.begin.r"
+                }
+            },
+            "contentName": "meta.function-call.arguments.r",
+            "end": "\\)",
+            "endCaptures": {
+                "0": {
+                    "name": "punctuation.section.parens.end.r"
+                }
+            },
+            "name": "meta.function-call.r",
+            "patterns": [
+                {
+                    "include": "#polyglot-call-js"
+                },
+                {
+                    "include": "#polyglot-call-ruby"
+                },
+                {
+                    "include": "#polyglot-call-python"
+                },
+                {
+                    "include": "#polyglot-call-sl"
+                },
+                {
+                    "include": "source.r#function-parameters"
+                }
+           ]
+        }
+    ],
+    "repository": {
+        "polyglot-call-js": {
+            "begin": "(?:((')js('))|((\")js(\")))\\s*(,)\\s*",
+            "beginCaptures": {
+                "1": {
+                    "name": "string.quoted.single.r"
+                },
+                "2": {
+                    "name": "punctuation.definition.string.begin.r"
+                },
+                "3": {
+                    "name": "punctuation.definition.string.end.r"
+                },
+                "4": {
+                    "name": "string.quoted.double.r"
+                },
+                "5": {
+                    "name": "punctuation.definition.string.begin.r"
+                },
+                "6": {
+                    "name": "punctuation.definition.string.end.r"
+                },
+                "7": {
+                    "name": "punctuation.separator.parameters.r"
+                }
+            },
+            "end": "(?=\\))",
+            "patterns": [
+                {
+                    "include": "#var-arg"
+                },
+                {
+                    "include": "#strings-inline-js"
+                },
+                {
+                    "include": "source.r#function-parameters"
+                }
+            ]
+        },
+        "var-arg": {
+            "begin": "(?:[a-zA-Z._][\\w.]*|`[^`]+`)",
+            "beginCaptures": {
+                "0": {
+                    "name": "variable.parameter.r"
+                }
+            },
+            "end": "(?=[,)])",
+            "patterns": [
+                {
+                    "include": "source.r"
+                }
+            ]
+        },
+        "strings-inline-js": {
+            "patterns": [
+                {
+                    "name": "string.quoted.double.r",
+                    "contentName": "meta.embedded.inline.js",
+                    "begin": "\"",
+                    "beginCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.begin.r"
+                        }
+                    },
+                    "end": "\"",
+                    "endCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.end.r"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "source.js"
+                        }
+                    ]
+                },
+                {
+                    "name": "string.quoted.single.r",
+                    "contentName": "meta.embedded.inline.js",
+                    "begin": "'",
+                    "beginCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.begin.r"
+                        }
+                    },
+                    "end": "'",
+                    "endCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.end.r"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "source.js"
+                        }
+                    ]
+                }
+            ]
+        },
+        "polyglot-call-ruby": {
+            "begin": "(?:((')ruby('))|((\")ruby(\")))\\s*(,)\\s*",
+            "beginCaptures": {
+                "1": {
+                    "name": "string.quoted.single.r"
+                },
+                "2": {
+                    "name": "punctuation.definition.string.begin.r"
+                },
+                "3": {
+                    "name": "punctuation.definition.string.end.r"
+                },
+                "4": {
+                    "name": "string.quoted.double.r"
+                },
+                "5": {
+                    "name": "punctuation.definition.string.begin.r"
+                },
+                "6": {
+                    "name": "punctuation.definition.string.end.r"
+                },
+                "7": {
+                    "name": "punctuation.separator.parameters.r"
+                }
+            },
+            "end": "(?=\\))",
+            "patterns": [
+                {
+                    "include": "#var-arg"
+                },
+                {
+                    "include": "#strings-inline-ruby"
+                },
+                {
+                    "include": "source.r#function-parameters"
+                }
+            ]
+        },
+        "strings-inline-ruby": {
+            "patterns": [
+                {
+                    "name": "string.quoted.double.r",
+                    "contentName": "meta.embedded.inline.ruby",
+                    "begin": "\"",
+                    "beginCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.begin.r"
+                        }
+                    },
+                    "end": "\"",
+                    "endCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.end.r"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "source.ruby"
+                        }
+                    ]
+                },
+                {
+                    "name": "string.quoted.single.r",
+                    "contentName": "meta.embedded.inline.ruby",
+                    "begin": "'",
+                    "beginCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.begin.r"
+                        }
+                    },
+                    "end": "'",
+                    "endCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.end.r"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "source.ruby"
+                        }
+                    ]
+                }
+            ]
+        },
+        "polyglot-call-python": {
+            "begin": "(?:((')python('))|((\")python(\")))\\s*(,)\\s*",
+            "beginCaptures": {
+                "1": {
+                    "name": "string.quoted.single.r"
+                },
+                "2": {
+                    "name": "punctuation.definition.string.begin.r"
+                },
+                "3": {
+                    "name": "punctuation.definition.string.end.r"
+                },
+                "4": {
+                    "name": "string.quoted.double.r"
+                },
+                "5": {
+                    "name": "punctuation.definition.string.begin.r"
+                },
+                "6": {
+                    "name": "punctuation.definition.string.end.r"
+                },
+                "7": {
+                    "name": "punctuation.separator.parameters.r"
+                }
+            },
+            "end": "(?=\\))",
+            "patterns": [
+                {
+                    "include": "#var-arg"
+                },
+                {
+                    "include": "#strings-inline-python"
+                },
+                {
+                    "include": "source.r#function-parameters"
+                }
+            ]
+        },
+        "strings-inline-python": {
+            "patterns": [
+                {
+                    "name": "string.quoted.double.r",
+                    "contentName": "meta.embedded.inline.python",
+                    "begin": "\"",
+                    "beginCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.begin.r"
+                        }
+                    },
+                    "end": "\"",
+                    "endCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.end.r"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "source.python"
+                        }
+                    ]
+                },
+                {
+                    "name": "string.quoted.single.r",
+                    "contentName": "meta.embedded.inline.python",
+                    "begin": "'",
+                    "beginCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.begin.r"
+                        }
+                    },
+                    "end": "'",
+                    "endCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.end.r"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "source.python"
+                        }
+                    ]
+                }
+            ]
+        },
+        "polyglot-call-sl": {
+            "begin": "(?:((')sl('))|((\")sl(\")))\\s*(,)\\s*",
+            "beginCaptures": {
+                "1": {
+                    "name": "string.quoted.single.r"
+                },
+                "2": {
+                    "name": "punctuation.definition.string.begin.r"
+                },
+                "3": {
+                    "name": "punctuation.definition.string.end.r"
+                },
+                "4": {
+                    "name": "string.quoted.double.r"
+                },
+                "5": {
+                    "name": "punctuation.definition.string.begin.r"
+                },
+                "6": {
+                    "name": "punctuation.definition.string.end.r"
+                },
+                "7": {
+                    "name": "punctuation.separator.parameters.r"
+                }
+            },
+            "end": "(?=\\))",
+            "patterns": [
+                {
+                    "include": "#var-arg"
+                },
+                {
+                    "include": "#strings-inline-sl"
+                },
+                {
+                    "include": "source.r#function-parameters"
+                }
+            ]
+        },
+        "strings-inline-sl": {
+            "patterns": [
+                {
+                    "name": "string.quoted.double.r",
+                    "contentName": "meta.embedded.inline.sl",
+                    "begin": "\"",
+                    "beginCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.begin.r"
+                        }
+                    },
+                    "end": "\"",
+                    "endCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.end.r"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "source.sl"
+                        }
+                    ]
+                },
+                {
+                    "name": "string.quoted.single.r",
+                    "contentName": "meta.embedded.inline.sl",
+                    "begin": "'",
+                    "beginCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.begin.r"
+                        }
+                    },
+                    "end": "'",
+                    "endCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.end.r"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "source.sl"
+                        }
+                    ]
+                }
+            ]
+        }
+    }
+}

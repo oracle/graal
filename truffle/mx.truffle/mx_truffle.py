@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -52,6 +52,7 @@ import mx_benchmark
 import mx_gate
 import mx_native
 import mx_sdk
+import mx_sdk_vm
 import mx_unittest
 import tck
 from mx_gate import Task
@@ -178,18 +179,34 @@ def _path_args(depNames=None):
 
 def _unittest_config_participant(config):
     vmArgs, mainClass, mainClassArgs = config
-    if mx.get_jdk(tag='default').javaCompliance > '1.8':
+    jdk = mx.get_jdk(tag='default')
+    if jdk.javaCompliance > '1.8':
         # This is required to access jdk.internal.module.Modules which
         # in turn allows us to dynamically open fields/methods to reflection.
         vmArgs = vmArgs + ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED']
 
-        # Needed for om.oracle.truffle.api.dsl.test.TestHelper#instrumentSlowPath
+        # The arguments below are only actually needed if Truffle is deployed as a
+        # module. However, that's determined by the compiler suite which may not
+        # be present. In that case, adding these options results in annoying
+        # but harmless messages from the VM:
+        #
+        #  WARNING: Unknown module: org.graalvm.truffle specified to --add-opens
+        #
+
+        # Needed for com.oracle.truffle.api.dsl.test.TestHelper#instrumentSlowPath
         vmArgs = vmArgs + ['--add-opens=org.graalvm.truffle/com.oracle.truffle.api.nodes=ALL-UNNAMED']
 
         # This is required for the call to setAccessible in
         # TruffleTCK.testValueWithSource to work.
         vmArgs = vmArgs + ['--add-opens=org.graalvm.truffle/com.oracle.truffle.polyglot=ALL-UNNAMED', '--add-modules=ALL-MODULE-PATH']
-    return (vmArgs, mainClass, mainClassArgs)
+
+        # Needed for object model tests.
+        vmArgs = vmArgs + ['--add-opens=org.graalvm.truffle/com.oracle.truffle.object=ALL-UNNAMED']
+
+    config = (vmArgs, mainClass, mainClassArgs)
+    if _shouldRunTCKParticipant:
+        config = _unittest_config_participant_tck(config)
+    return config
 
 mx_unittest.add_config_participant(_unittest_config_participant)
 
@@ -244,7 +261,7 @@ def _collect_class_path_entries(cp_entries_filter, entries_collector, properties
             if predicate(dist):
                 for distCpEntry in mx.classpath_entries(dist):
                     if hasattr(distCpEntry, "getJavaProperties"):
-                        for key, value in dist.getJavaProperties().items():
+                        for key, value in distCpEntry.getJavaProperties().items():
                             javaProperties[key] = value
                     if distCpEntry.isJdkLibrary() or distCpEntry.isJreLibrary():
                         cpPath = distCpEntry.classpath_repr(mx.get_jdk(), resolve=True)
@@ -254,16 +271,26 @@ def _collect_class_path_entries(cp_entries_filter, entries_collector, properties
                         collector[cpPath] = None
     suite_collector(mx.primary_suite(), cp_entries_filter, entries_collector, properties_collector, set())
 
-def _collect_class_path_entries_by_resource(requiredResource, entries_collector, properties_collector):
+def _collect_class_path_entries_by_resource(requiredResources, entries_collector, properties_collector):
+    """
+    Collects class path for JAR distributions containing any resource from requiredResources.
+
+    :param requiredResources: an iterable of resources. At least one of them has to exist to include the
+            distribution class path entries.
+    :param entries_collector: the list to add the class paths entries into.
+    :properties_collector: the list to add the distribution Java properties into.
+    """
     def has_resource(dist):
         if dist.isJARDistribution() and exists(dist.path):
             with zipfile.ZipFile(dist.path, "r") as zf:
-                try:
-                    zf.getinfo(requiredResource)
-                except KeyError:
-                    return False
-                else:
-                    return True
+                for requiredResource in requiredResources:
+                    try:
+                        zf.getinfo(requiredResource)
+                    except KeyError:
+                        pass
+                    else:
+                        return True
+                return False
         else:
             return False
     _collect_class_path_entries(has_resource, entries_collector, properties_collector)
@@ -273,10 +300,10 @@ def _collect_class_path_entries_by_name(distributionName, entries_collector, pro
     _collect_class_path_entries(cp_filter, entries_collector, properties_collector)
 
 def _collect_languages(entries_collector, properties_collector):
-    _collect_class_path_entries_by_resource("META-INF/truffle/language", entries_collector, properties_collector)
+    _collect_class_path_entries_by_resource(["META-INF/truffle/language", "META-INF/services/com.oracle.truffle.api.TruffleLanguage$Provider"], entries_collector, properties_collector)
 
 def _collect_tck_providers(entries_collector, properties_collector):
-    _collect_class_path_entries_by_resource("META-INF/services/org.graalvm.polyglot.tck.LanguageProvider", entries_collector, properties_collector)
+    _collect_class_path_entries_by_resource(["META-INF/services/org.graalvm.polyglot.tck.LanguageProvider"], entries_collector, properties_collector)
 
 def _unittest_config_participant_tck(config):
 
@@ -355,59 +382,30 @@ This code is tightly coupled with the file format generated by
 LanguageRegistrationProcessor and InstrumentRegistrationProcessor.
 """
 class TruffleArchiveParticipant:
-    PROPERTY_RE = re.compile(r'(language\d+|instrument\d+)(\..+)')
-
-    def _truffle_metainf_file(self, arcname):
-        if arcname == 'META-INF/truffle/language':
-            return 'language'
-        if arcname == 'META-INF/truffle/instrument':
-            return 'instrument'
-        return None
+    providersRE = re.compile(r'(?:META-INF/versions/([1-9][0-9]*)/)?META-INF/truffle-registrations/(.+)')
 
     def __opened__(self, arc, srcArc, services):
-        self.settings = {}
+        self.services = services
         self.arc = arc
 
     def __add__(self, arcname, contents): # pylint: disable=unexpected-special-method-signature
-        metainfFile = self._truffle_metainf_file(arcname)
-        if metainfFile:
-            propertyRe = TruffleArchiveParticipant.PROPERTY_RE
-            properties = {}
-            for line in _decode(contents).strip().split('\n'):
-                if not line.startswith('#'):
-                    m = propertyRe.match(line)
-                    assert m, 'line in ' + arcname + ' does not match ' + propertyRe.pattern + ': ' + line
-                    enum = m.group(1)
-                    prop = m.group(2)
-                    properties.setdefault(enum, []).append(prop)
-
-            self.settings.setdefault(metainfFile, []).append(properties)
+        m = TruffleArchiveParticipant.providersRE.match(arcname)
+        if m:
+            provider = m.group(2)
+            for service in _decode(contents).strip().split(os.linesep):
+                assert service
+                version = m.group(1)
+                if version is None:
+                    # Non-versioned service
+                    self.services.setdefault(service, []).append(provider)
+                else:
+                    # Versioned service
+                    services = self.services.setdefault(int(version), {})
+                    services.setdefault(service, []).append(provider)
             return True
         return False
 
-    def __addsrc__(self, arcname, contents):
-        return False
-
-    def __closing__(self):
-        for metainfFile, propertiesList in self.settings.items():
-            arcname = 'META-INF/truffle/' + metainfFile
-            lines = []
-            counter = 1
-            for properties in propertiesList:
-                for enum in sorted(properties.keys()):
-                    assert enum.startswith(metainfFile)
-                    newEnum = metainfFile + str(counter)
-                    counter += 1
-                    for prop in properties[enum]:
-                        lines.append(newEnum + prop)
-
-            content = os.linesep.join(lines)
-            self.arc.zf.writestr(arcname, content + os.linesep)
-
 def mx_post_parse_cmd_line(opts):
-
-    if _shouldRunTCKParticipant:
-        mx_unittest.add_config_participant(_unittest_config_participant_tck)
 
     def _uses_truffle_dsl_processor(dist):
         for dep in dist.deps:
@@ -745,7 +743,7 @@ class LibffiBuildTask(mx.AbstractNativeBuildTask):
         mx.Extractor.create(self.subject.sources.get_path(False)).extract(self.subject.out_dir)
 
         mx.log('Applying patches...')
-        git_apply = ['git', 'apply', '--whitespace=nowarn', '--directory',
+        git_apply = ['git', 'apply', '--whitespace=nowarn', '--unsafe-paths', '--directory',
                      os.path.relpath(self.subject.delegate.dir, self.subject.suite.vc_dir)]
         for patch in self.subject.patches:
             mx.run(git_apply + [patch], cwd=self.subject.suite.vc_dir)
@@ -757,26 +755,50 @@ class LibffiBuildTask(mx.AbstractNativeBuildTask):
         mx.rmtree(self.subject.out_dir, ignore_errors=True)
 
 
-mx_sdk.register_graalvm_component(mx_sdk.GraalVMSvmMacro(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,
     name='Truffle',
     short_name='tfl',
     dir_name='truffle',
     license_files=[],
     third_party_license_files=[],
+    dependencies=['Graal SDK'],
+    jar_distributions=[
+        'truffle:TRUFFLE_DSL_PROCESSOR',
+        'truffle:TRUFFLE_TCK',
+    ],
+    jvmci_parent_jars=[
+        'truffle:TRUFFLE_API',
+        'truffle:LOCATOR',
+    ],
+))
+
+
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
+    suite=_suite,
+    name='Truffle Macro',
+    short_name='tflm',
+    dir_name='truffle',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['Truffle'],
     support_distributions=['truffle:TRUFFLE_GRAALVM_SUPPORT']
 ))
 
 
-mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     suite=_suite,
     name='Truffle NFI',
     short_name='nfi',
     dir_name='nfi',
     license_files=[],
     third_party_license_files=[],
+    dependencies=['Truffle'],
     truffle_jars=['truffle:TRUFFLE_NFI'],
-    support_distributions=['truffle:TRUFFLE_NFI_GRAALVM_SUPPORT']
+    support_distributions=['truffle:TRUFFLE_NFI_GRAALVM_SUPPORT'],
+    support_headers_distributions=['truffle:TRUFFLE_NFI_GRAALVM_HEADERS_SUPPORT'],
+    support_libraries_distributions=['truffle:TRUFFLE_NFI_NATIVE_GRAALVM_SUPPORT'],
+    installable=False,
 ))
 
 

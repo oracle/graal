@@ -32,9 +32,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.graalvm.compiler.nodes.Invoke;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -46,6 +45,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.meta.HostedMethod;
 
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -150,7 +150,7 @@ public class RestrictHeapAccessCalleesImpl implements RestrictHeapAccessCallees 
 
         /** Visit a method and add it to the set of methods that should not allocate. */
         @Override
-        public VisitResult visitMethod(AnalysisMethod callee, AnalysisMethod caller, Invoke invoke, int depth) {
+        public VisitResult visitMethod(AnalysisMethod callee, AnalysisMethod caller, BytecodePosition invokePosition, int depth) {
             Access access = Access.UNRESTRICTED;
             boolean overridesCallers = false;
             boolean fromUninterruptible = false;
@@ -194,7 +194,7 @@ public class RestrictHeapAccessCalleesImpl implements RestrictHeapAccessCallees 
                 /* Earlier traversal with same or higher level of restriction, so stop here. */
                 return VisitResult.CUT;
             }
-            StackTraceElement callerStackTraceElement = (caller != null) ? caller.asStackTraceElement(invoke.bci()) : null;
+            StackTraceElement callerStackTraceElement = (invokePosition != null) ? invokePosition.getMethod().asStackTraceElement(invokePosition.getBCI()) : null;
             restrictionInfo = new RestrictionInfo(access, caller, callerStackTraceElement, callee, fromUninterruptible);
             calleeToCallerMap.put(callee, restrictionInfo);
             return VisitResult.CONTINUE;

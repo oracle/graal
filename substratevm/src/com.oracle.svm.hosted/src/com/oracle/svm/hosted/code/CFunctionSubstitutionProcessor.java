@@ -28,10 +28,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.function.CFunction.Transition;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
+import com.oracle.svm.core.c.function.CFunctionOptions;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
+import com.oracle.svm.core.thread.VMThreads.StatusSupport;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -44,11 +46,24 @@ public class CFunctionSubstitutionProcessor extends SubstitutionProcessor {
         if (method.isNative() && method.isAnnotationPresent(CFunction.class)) {
             wrapper = callWrappers.computeIfAbsent(method, m -> {
                 CGlobalDataInfo linkage = CFunctionLinkages.singleton().addOrLookupMethod(m);
-                boolean needsTransition = (method.getAnnotation(CFunction.class).transition() != Transition.NO_TRANSITION);
-                return new CFunctionCallStubMethod(m, linkage, needsTransition);
+                return new CFunctionCallStubMethod(m, linkage, getNewThreadStatus(method));
             });
         }
         return wrapper;
+    }
+
+    private static int getNewThreadStatus(ResolvedJavaMethod method) {
+        CFunctionOptions cFunctionOptions = method.getAnnotation(CFunctionOptions.class);
+        if (cFunctionOptions != null) {
+            return StatusSupport.getNewThreadStatus(cFunctionOptions.transition());
+        }
+
+        CFunction cFunctionAnnotation = method.getAnnotation(CFunction.class);
+        if (cFunctionAnnotation != null) {
+            return StatusSupport.getNewThreadStatus(cFunctionAnnotation.transition());
+        }
+
+        throw VMError.shouldNotReachHere("Method is not annotated with " + CFunction.class.getSimpleName());
     }
 
     @Override

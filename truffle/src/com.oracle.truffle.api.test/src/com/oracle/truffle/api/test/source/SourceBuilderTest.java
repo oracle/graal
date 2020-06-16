@@ -142,7 +142,7 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
         assertEquals(sequence, source.getBytes());
         assertEquals("Unnamed", source.getName());
         assertNull(source.getURL());
-        assertEquals("truffle:239e496366395062c28730b535d8286f/Unnamed", source.getURI().toString());
+        assertEquals("truffle:9f64a747e1b97f131fabb6b447296c9b6f0201e79fb3c5356e6c77e89b6a806a/Unnamed", source.getURI().toString());
     }
 
     @Test
@@ -930,42 +930,6 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
     public static class TestTxtLanguage extends ProxyLanguage {
     }
 
-    @SuppressWarnings("deprecation")
-    @Test
-    public void testLegacyEquivalence() throws IOException, RuntimeException {
-        setupEnv();
-
-        File file = File.createTempFile("ChangeMe", ".java");
-        file.deleteOnExit();
-
-        String text;
-        try (FileWriter w = new FileWriter(file)) {
-            text = "// Hello";
-            w.write(text);
-        }
-        String path = file.getPath();
-        File compareFile = new File(path);
-
-        final TruffleFile truffleFile = languageEnv.getPublicTruffleFile(path);
-
-        String name = "foobar";
-        String mimeType = "text/x-java";
-        String lang = "TestJava";
-        boolean internal = true;
-
-        final Source.Builder<IOException, RuntimeException, RuntimeException> builder = Source.newBuilder(compareFile).language(lang).name(name.intern()).mimeType(mimeType);
-        final Source source1;
-
-        if (internal) {
-            source1 = builder.internal().build();
-        } else {
-            source1 = builder.build();
-        }
-        final Source source2 = Source.newBuilder(lang, truffleFile).name(name.intern()).mimeType(mimeType).internal(internal).build();
-
-        assertTrue(source1.equals(source2));
-    }
-
     @Test
     public void testFindLaguage() throws IOException {
         setupEnv();
@@ -1038,6 +1002,100 @@ public class SourceBuilderTest extends AbstractPolyglotTest {
             fail("Expected SecurityException");
         } catch (SecurityException se) {
             // expected SecurityException
+        }
+    }
+
+    @Test
+    public void testCanonicalizedSourcePathByDefault() throws IOException {
+        Assume.assumeFalse("Link creation requires a special privilege on Windows", OSUtils.isWindows());
+        setupEnv();
+        TruffleFile tempDir = languageEnv.createTempDirectory(null, "sourcePathCanonicalizationDefault").getCanonicalFile();
+        try {
+            TruffleFile sourceFile = tempDir.resolve("sourceFile");
+            sourceFile.createFile();
+
+            TruffleFile symlink = tempDir.resolve("symlink");
+            symlink.createSymbolicLink(sourceFile);
+
+            Source source = Source.newBuilder("TestJava", symlink).content("hello").build();
+            assertEquals(sourceFile.getPath(), source.getPath());
+        } finally {
+            for (TruffleFile f : tempDir.list()) {
+                f.delete();
+            }
+            tempDir.delete();
+        }
+    }
+
+    @Test
+    public void testNotCanonicalizedSymlinkSourcePath() throws IOException {
+        Assume.assumeFalse("Link creation requires a special privilege on Windows", OSUtils.isWindows());
+        setupEnv();
+        TruffleFile tempDir = languageEnv.createTempDirectory(null, "sourcePathCanonicalizationSymlink").getCanonicalFile();
+        try {
+            TruffleFile sourceFile = tempDir.resolve("sourceFile");
+            sourceFile.createFile();
+
+            TruffleFile symlink = tempDir.resolve("symlink");
+            symlink.createSymbolicLink(sourceFile);
+
+            Source source = Source.newBuilder("TestJava", symlink).canonicalizePath(false).content("hello").build();
+            assertEquals(symlink.getPath(), source.getPath());
+        } finally {
+            for (TruffleFile f : tempDir.list()) {
+                f.delete();
+            }
+            tempDir.delete();
+        }
+    }
+
+    @Test
+    public void testNotCanonicalizedSymlinkRelativeSourcePath() throws IOException {
+        Assume.assumeFalse("Link creation requires a special privilege on Windows", OSUtils.isWindows());
+        setupEnv();
+        TruffleFile oldCWD = languageEnv.getCurrentWorkingDirectory();
+        TruffleFile tempDir = languageEnv.createTempDirectory(null, "sourcePathCanonicalizationRelative").getCanonicalFile();
+        try {
+            languageEnv.setCurrentWorkingDirectory(tempDir);
+
+            TruffleFile sourceFile = languageEnv.getInternalTruffleFile("sourceFile");
+            sourceFile.createFile();
+
+            TruffleFile symlink = languageEnv.getInternalTruffleFile("symlink");
+            symlink.createSymbolicLink(sourceFile);
+
+            Source source = Source.newBuilder("TestJava", symlink).canonicalizePath(false).content("hello").build();
+            assertEquals("symlink", source.getPath());
+        } finally {
+            languageEnv.setCurrentWorkingDirectory(oldCWD);
+            for (TruffleFile f : tempDir.list()) {
+                f.delete();
+            }
+            tempDir.delete();
+        }
+    }
+
+    @Test
+    public void testNotCanonicalizedNotExistingSourcePath() throws IOException {
+        Assume.assumeFalse("Link creation requires a special privilege on Windows", OSUtils.isWindows());
+        setupEnv();
+        TruffleFile tempDir = languageEnv.createTempDirectory(null, "sourcePathCanonicalizationNotExist").getCanonicalFile();
+        try {
+            TruffleFile sourceFile = tempDir.resolve("sourceFile");
+
+            TruffleFile symlink = tempDir.resolve("symlink");
+            symlink.createSymbolicLink(sourceFile);
+
+            Assert.assertFalse(sourceFile.exists());
+            Assert.assertFalse(symlink.exists());
+
+            Source source = Source.newBuilder("TestJava", symlink).canonicalizePath(false).content("hello").build();
+            assertEquals(symlink.getPath(), source.getPath());
+        } finally {
+            for (TruffleFile f : tempDir.list()) {
+                f.delete();
+            }
+            tempDir.delete();
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,10 +44,12 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.StandardTags.ReadVariableTag;
+import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
+import com.oracle.truffle.sl.nodes.interop.NodeObjectDescriptor;
 
 /**
  * Node to read a local variable from a function's {@link VirtualFrame frame}. The Truffle frame API
@@ -68,7 +70,7 @@ public abstract class SLReadLocalVariableNode extends SLExpressionNode {
      */
     protected abstract FrameSlot getSlot();
 
-    @Specialization(guards = "isLong(frame)")
+    @Specialization(guards = "frame.isLong(getSlot())")
     protected long readLong(VirtualFrame frame) {
         /*
          * When the FrameSlotKind is Long, we know that only primitive long values have ever been
@@ -78,7 +80,7 @@ public abstract class SLReadLocalVariableNode extends SLExpressionNode {
         return FrameUtil.getLongSafe(frame, getSlot());
     }
 
-    @Specialization(guards = "isBoolean(frame)")
+    @Specialization(guards = "frame.isBoolean(getSlot())")
     protected boolean readBoolean(VirtualFrame frame) {
         return FrameUtil.getBooleanSafe(frame, getSlot());
     }
@@ -102,19 +104,13 @@ public abstract class SLReadLocalVariableNode extends SLExpressionNode {
         return FrameUtil.getObjectSafe(frame, getSlot());
     }
 
-    /**
-     * Guard function that the local variable has the type {@code long}.
-     *
-     * @param frame The parameter seems unnecessary, but it is required: Without the parameter, the
-     *            Truffle DSL would not check the guard on every execution of the specialization.
-     *            Guards without parameters are assumed to be pure, but our guard depends on the
-     *            slot kind which can change.
-     */
-    protected boolean isLong(VirtualFrame frame) {
-        return frame.getFrameDescriptor().getFrameSlotKind(getSlot()) == FrameSlotKind.Long;
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        return tag == ReadVariableTag.class || super.hasTag(tag);
     }
 
-    protected boolean isBoolean(VirtualFrame frame) {
-        return frame.getFrameDescriptor().getFrameSlotKind(getSlot()) == FrameSlotKind.Boolean;
+    @Override
+    public Object getNodeObject() {
+        return NodeObjectDescriptor.readVariable(getSlot().getIdentifier().toString());
     }
 }

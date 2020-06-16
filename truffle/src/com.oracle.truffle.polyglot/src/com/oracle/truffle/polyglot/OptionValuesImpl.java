@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -67,12 +67,14 @@ final class OptionValuesImpl implements OptionValues {
     private final PolyglotEngineImpl engine;
     private final OptionDescriptors descriptors;
     private final Map<OptionKey<?>, Object> values;
+    private final Map<OptionKey<?>, String> unparsedValues;
 
-    OptionValuesImpl(PolyglotEngineImpl engine, OptionDescriptors descriptors) {
+    OptionValuesImpl(PolyglotEngineImpl engine, OptionDescriptors descriptors, boolean preserveUnparsedValues) {
         Objects.requireNonNull(descriptors);
         this.engine = engine;
         this.descriptors = descriptors;
         this.values = new HashMap<>();
+        this.unparsedValues = preserveUnparsedValues ? new HashMap<>() : null;
     }
 
     @Override
@@ -154,13 +156,23 @@ final class OptionValuesImpl implements OptionValues {
                 suffix = suffix.substring(1);
             }
         }
-        values.put(descriptor.getKey(), optionKey.getType().convert(previousValue, suffix, value));
+        Object convertedValue;
+        try {
+            convertedValue = optionKey.getType().convert(previousValue, suffix, value);
+        } catch (IllegalArgumentException e) {
+            throw PolyglotEngineException.illegalArgument(e);
+        }
+        values.put(descriptor.getKey(), convertedValue);
+        if (unparsedValues != null) {
+            unparsedValues.put(descriptor.getKey(), value);
+        }
     }
 
     private OptionValuesImpl(OptionValuesImpl copy) {
         this.engine = copy.engine;
         this.values = new HashMap<>(copy.values);
         this.descriptors = copy.descriptors;
+        this.unparsedValues = copy.unparsedValues;
     }
 
     private <T> boolean contains(OptionKey<T> optionKey) {
@@ -182,6 +194,13 @@ final class OptionValuesImpl implements OptionValues {
         return new OptionValuesImpl(this);
     }
 
+    void copyInto(OptionValuesImpl target) {
+        if (!target.values.isEmpty()) {
+            throw new IllegalStateException("Values must be empty.");
+        }
+        target.values.putAll(values);
+    }
+
     public OptionDescriptors getDescriptors() {
         return descriptors;
     }
@@ -200,14 +219,19 @@ final class OptionValuesImpl implements OptionValues {
     @SuppressWarnings("deprecation")
     @Override
     public <T> void set(OptionKey<T> optionKey, T value) {
-        assert contains(optionKey);
-        optionKey.getType().validate(value);
-        values.put(optionKey, value);
+        throw new UnsupportedOperationException("OptionValues#set() is no longer supported");
     }
 
     @Override
     public boolean hasSetOptions() {
         return !values.isEmpty();
+    }
+
+    String getUnparsedOptionValue(OptionKey<?> key) {
+        if (unparsedValues == null) {
+            throw new IllegalStateException("Unparsed values are not supported");
+        }
+        return unparsedValues.get(key);
     }
 
     private OptionDescriptor findDescriptor(String key, boolean allowExperimentalOptions) {
@@ -224,7 +248,7 @@ final class OptionValuesImpl implements OptionValues {
     private static RuntimeException failExperimental(String key) {
         final String message = String.format("Option '%s' is experimental and must be enabled with allowExperimentalOptions(). ", key) +
                         "Do not use experimental options in production environments.";
-        return new IllegalArgumentException(message);
+        return PolyglotEngineException.illegalArgument(message);
     }
 
     private RuntimeException failNotFound(String key) {
@@ -256,7 +280,7 @@ final class OptionValuesImpl implements OptionValues {
                 msg.format("%n    %s=<%s>", match.getName(), match.getKey().getType().getName());
             }
         }
-        throw new IllegalArgumentException(msg.toString());
+        throw PolyglotEngineException.illegalArgument(msg.toString());
     }
 
     /**

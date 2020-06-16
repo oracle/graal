@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,13 +31,13 @@
 #include <sys/syscall.h>
 
 int main(void) {
-  long error = 0;
-  char buf[257];
-  __asm__("syscall" : "=a"(error) : "a"(SYS_getcwd), "D"(buf), "S"(sizeof(buf)));
-  printf("len: %d\n", error);
-  if (error < 0) {
-    return 1;
-  }
-  printf("value: '%s'\n", buf);
-  return 0;
+    long error = 0;
+    char buf[257];
+    __asm__("syscall" : "=a"(error) : "a"(SYS_getcwd), "D"(buf), "S"(sizeof(buf)));
+    printf("len: %d\n", error);
+    if (error < 0) {
+        return 1;
+    }
+    printf("value: '%s'\n", buf);
+    return 0;
 }

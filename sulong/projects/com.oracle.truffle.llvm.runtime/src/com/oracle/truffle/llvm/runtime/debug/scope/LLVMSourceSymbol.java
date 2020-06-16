@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -96,7 +96,7 @@ public abstract class LLVMSourceSymbol {
     @Override
     @TruffleBoundary
     public int hashCode() {
-        return name.hashCode();
+        return name.hashCode() ^ Objects.hashCode(location);
     }
 
     private static final class Static extends LLVMSourceSymbol {

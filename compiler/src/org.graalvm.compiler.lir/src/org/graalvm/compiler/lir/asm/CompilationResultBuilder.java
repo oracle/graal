@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,6 +41,7 @@ import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
+import org.graalvm.compiler.code.CompilationResult.JumpTable;
 import org.graalvm.compiler.code.DataSection.Data;
 import org.graalvm.compiler.code.DataSection.RawData;
 import org.graalvm.compiler.core.common.NumUtil;
@@ -53,6 +54,7 @@ import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstruction;
+import org.graalvm.compiler.lir.LIRInstructionVerifier;
 import org.graalvm.compiler.lir.LabelRef;
 import org.graalvm.compiler.lir.StandardOp.LabelHoldingOp;
 import org.graalvm.compiler.lir.framemap.FrameMap;
@@ -60,6 +62,7 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -67,10 +70,11 @@ import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.ConstantReference;
 import jdk.vm.ci.code.site.DataSectionReference;
+import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.code.site.InfopointReason;
-import jdk.vm.ci.code.site.Mark;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.InvokeTarget;
 import jdk.vm.ci.meta.JavaConstant;
@@ -84,6 +88,16 @@ import jdk.vm.ci.meta.Value;
  * @see CompilationResultBuilderFactory
  */
 public class CompilationResultBuilder {
+
+    private static final List<LIRInstructionVerifier> LIR_INSTRUCTION_VERIFIERS = new ArrayList<>();
+
+    static {
+        for (LIRInstructionVerifier verifier : GraalServices.load(LIRInstructionVerifier.class)) {
+            if (verifier.isEnabled()) {
+                LIR_INSTRUCTION_VERIFIERS.add(verifier);
+            }
+        }
+    }
 
     public static class Options {
         @Option(help = "Include the LIR as comments with the final assembly.", type = OptionType.Debug) //
@@ -232,8 +246,12 @@ public class CompilationResultBuilder {
         compilationResult.setMaxInterpreterFrameSize(maxInterpreterFrameSize);
     }
 
-    public Mark recordMark(Object id) {
-        return compilationResult.recordMark(asm.position(), id);
+    public CompilationResult.CodeMark recordMark(CompilationResult.MarkId id) {
+        CompilationResult.CodeMark mark = compilationResult.recordMark(asm.position(), id);
+        if (currentCallContext != null) {
+            currentCallContext.recordMark(mark);
+        }
+        return mark;
     }
 
     public void blockComment(String s) {
@@ -282,9 +300,22 @@ public class CompilationResultBuilder {
         assert info.exceptionEdge == null;
     }
 
+    public boolean isImplicitExceptionExist(int pcOffset) {
+        List<Infopoint> infopoints = compilationResult.getInfopoints();
+        for (Infopoint infopoint : infopoints) {
+            if (infopoint.pcOffset == pcOffset && infopoint.reason == InfopointReason.IMPLICIT_EXCEPTION) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public void recordDirectCall(int posBefore, int posAfter, InvokeTarget callTarget, LIRFrameState info) {
         DebugInfo debugInfo = info != null ? info.debugInfo() : null;
-        compilationResult.recordCall(posBefore, posAfter - posBefore, callTarget, debugInfo, true);
+        Call call = compilationResult.recordCall(posBefore, posAfter - posBefore, callTarget, debugInfo, true);
+        if (currentCallContext != null) {
+            currentCallContext.recordCall(call);
+        }
     }
 
     public void recordIndirectCall(int posBefore, int posAfter, InvokeTarget callTarget, LIRFrameState info) {
@@ -365,35 +396,6 @@ public class CompilationResultBuilder {
             debug.log("Data reference in code: pos = %d, data = %s", asm.position(), Arrays.toString(data));
         }
         return recordDataSectionReference(new RawData(data, alignment));
-    }
-
-    /**
-     * Notifies this object of a branch instruction at offset {@code pcOffset} in the code.
-     *
-     * @param isNegated negation status of the branch's condition.
-     */
-    @SuppressWarnings("unused")
-    public void recordBranch(int pcOffset, boolean isNegated) {
-    }
-
-    /**
-     * Notifies this object of a call instruction belonging to an INVOKEVIRTUAL or INVOKEINTERFACE
-     * at offset {@code pcOffset} in the code.
-     *
-     * @param nodeSourcePosition source position of the corresponding invoke.
-     */
-    @SuppressWarnings("unused")
-    public void recordInvokeVirtualOrInterfaceCallOp(int pcOffset, NodeSourcePosition nodeSourcePosition) {
-    }
-
-    /**
-     * Notifies this object of a call instruction belonging to an INLINE_INVOKE at offset
-     * {@code pcOffset} in the code.
-     *
-     * @param nodeSourcePosition source position of the corresponding invoke.
-     */
-    @SuppressWarnings("unused")
-    public void recordInlineInvokeCallOp(int pcOffset, NodeSourcePosition nodeSourcePosition) {
     }
 
     /**
@@ -561,7 +563,7 @@ public class CompilationResultBuilder {
                 if (beforeOp != null) {
                     beforeOp.accept(op);
                 }
-                emitOp(this, op);
+                emitOp(op);
                 if (afterOp != null) {
                     afterOp.accept(op);
                 }
@@ -571,12 +573,29 @@ public class CompilationResultBuilder {
         }
     }
 
-    private static void emitOp(CompilationResultBuilder crb, LIRInstruction op) {
+    private void emitOp(LIRInstruction op) {
         try {
-            int start = crb.asm.position();
-            op.emitCode(crb);
+            int start = asm.position();
+            op.emitCode(this);
             if (op.getPosition() != null) {
-                crb.recordSourceMapping(start, crb.asm.position(), op.getPosition());
+                recordSourceMapping(start, asm.position(), op.getPosition());
+            }
+            if (LIR_INSTRUCTION_VERIFIERS.size() > 0 && start < asm.position()) {
+                int end = asm.position();
+                for (CodeAnnotation codeAnnotation : compilationResult.getCodeAnnotations()) {
+                    if (codeAnnotation instanceof JumpTable) {
+                        // Skip jump table. Here we assume the jump table is at the tail of the
+                        // emitted code.
+                        int jumpTableStart = codeAnnotation.getPosition();
+                        if (jumpTableStart >= start && jumpTableStart < end) {
+                            end = jumpTableStart;
+                        }
+                    }
+                }
+                byte[] emittedCode = asm.copy(start, end);
+                for (LIRInstructionVerifier verifier : LIR_INSTRUCTION_VERIFIERS) {
+                    verifier.verify(op, emittedCode);
+                }
             }
         } catch (BailoutException e) {
             throw e;
@@ -661,5 +680,53 @@ public class CompilationResultBuilder {
      */
     public void setConservativeLabelRanges() {
         this.conservativeLabelOffsets = true;
+    }
+
+    public final boolean needsClearUpperVectorRegisters() {
+        for (AbstractBlockBase<?> block : lir.codeEmittingOrder()) {
+            if (block == null) {
+                continue;
+            }
+            for (LIRInstruction op : lir.getLIRforBlock(block)) {
+                if (op.needsClearUpperVectorRegisters()) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private CallContext currentCallContext;
+
+    public final class CallContext implements AutoCloseable {
+        private CompilationResult.CodeMark mark;
+        private Call call;
+
+        @Override
+        public void close() {
+            currentCallContext = null;
+            compilationResult.recordCallContext(mark, call);
+        }
+
+        void recordCall(Call c) {
+            assert this.call == null : "Recording call twice";
+            this.call = c;
+        }
+
+        void recordMark(CompilationResult.CodeMark m) {
+            assert this.mark == null : "Recording mark twice";
+            this.mark = m;
+        }
+    }
+
+    public CallContext openCallContext(boolean direct) {
+        if (currentCallContext != null) {
+            throw GraalError.shouldNotReachHere("Call context already open");
+        }
+        // Currently only AOT requires call context information and only for direct calls.
+        if (compilationResult.isImmutablePIC() && direct) {
+            currentCallContext = new CallContext();
+        }
+        return currentCallContext;
     }
 }

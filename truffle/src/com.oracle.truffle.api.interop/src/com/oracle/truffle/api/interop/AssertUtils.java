@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,8 +39,6 @@
  * SOFTWARE.
  */
 package com.oracle.truffle.api.interop;
-
-import java.util.concurrent.Callable;
 
 final class AssertUtils {
 
@@ -101,10 +99,6 @@ final class AssertUtils {
         return String.format("Invariant contract violation for receiver %s and arguments %s.", formatValue(receiver), formatArgs(args));
     }
 
-    static String violationInvariant(Object receiver, Object arg) {
-        return String.format("Invariant contract violation for receiver %s and argument %s.", formatValue(receiver), formatValue(arg));
-    }
-
     static String violationInvariant(Object receiver, String arg) {
         return String.format("Invariant contract violation for receiver %s and identifier %s.", formatValue(receiver), arg);
     }
@@ -120,7 +114,7 @@ final class AssertUtils {
 
     private static String violationArgument(Object receiver, Object arg) {
         return String.format("Pre-condition contract violation for receiver %s and argument %s. " +
-                        "Valid arguments must be of type Boolean, Byte, Short, Integer, Long,  Float, Double, Character, String or implement TruffleObject.",
+                        "Valid arguments must be of type Boolean, Byte, Short, Integer, Long, Float, Double, Character, String or implement TruffleObject.",
                         formatValue(receiver), formatValue(arg));
     }
 
@@ -139,6 +133,19 @@ final class AssertUtils {
         return true;
     }
 
+    static boolean validNonInteropArgument(Object receiver, Object arg) {
+        if (arg == null) {
+            throw new NullPointerException(violationNonInteropArgument(receiver, arg));
+        }
+        return true;
+    }
+
+    private static String violationNonInteropArgument(Object receiver, Object arg) {
+        return String.format("Pre-condition contract violation for receiver %s and argument %s. " +
+                        "Argument must not be null.",
+                        formatValue(receiver), formatValue(arg));
+    }
+
     static boolean isInteropValue(Object o) {
         return o instanceof TruffleObject || o instanceof Boolean || o instanceof Byte || o instanceof Short || o instanceof Integer || o instanceof Long || o instanceof Float ||
                         o instanceof Double || o instanceof Character || o instanceof String;
@@ -153,20 +160,11 @@ final class AssertUtils {
     }
 
     static boolean preCondition(Object receiver) {
-        assert receiver != null : violationPre(receiver);
+        if (receiver == null) {
+            throw new NullPointerException(violationPre(receiver));
+        }
         assert validArgument(receiver, receiver);
         return true;
-    }
-
-    static boolean notThrows(Callable<?> r) {
-        try {
-            r.call();
-            return true;
-        } catch (InteropException e) {
-            return false;
-        } catch (Exception e) {
-            return true;
-        }
     }
 
 }

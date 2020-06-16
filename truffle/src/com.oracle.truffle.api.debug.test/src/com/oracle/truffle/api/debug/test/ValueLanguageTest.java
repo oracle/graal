@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,6 +55,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -119,21 +120,21 @@ public class ValueLanguageTest extends AbstractDebugTest {
 
                 DebugValue value = frame.getScope().getDeclaredValue("i");
                 assertNull(value.getOriginalLanguage());
-                assertEquals("L1:10", value.as(String.class));
+                assertEquals("L1:10", value.toDisplayString());
 
                 value = frame.getScope().getDeclaredValue("s");
                 assertNull(value.getOriginalLanguage());
-                assertEquals("L1:test", value.as(String.class));
+                assertEquals("L1:test", value.toDisplayString());
 
                 value = frame.getScope().getDeclaredValue("a");
                 assertNull(value.getOriginalLanguage());
-                assertEquals("null", value.as(String.class));
+                assertEquals("null", value.toDisplayString());
 
                 value = frame.getScope().getDeclaredValue("b");
                 LanguageInfo lang = value.getOriginalLanguage();
                 assertNotNull(lang);
                 assertEquals(ValuesLanguage1.NAME, lang.getName());
-                assertEquals("{a={}, j=100}", value.as(String.class));
+                assertEquals("{a={}, j=100}", value.toDisplayString());
 
                 event.prepareContinue();
             });
@@ -149,17 +150,17 @@ public class ValueLanguageTest extends AbstractDebugTest {
 
                 DebugValue value = frame.getScope().getDeclaredValue("j");
                 assertNull(value.getOriginalLanguage());
-                assertEquals("L2:20", value.as(String.class));
+                assertEquals("L2:20", value.toDisplayString());
 
                 value = frame.getScope().getDeclaredValue("s");
                 assertNull(value.getOriginalLanguage());
-                assertEquals("L2:test2", value.as(String.class));
+                assertEquals("L2:test2", value.toDisplayString());
 
                 value = frame.getScope().getDeclaredValue("e");
                 LanguageInfo lang2 = value.getOriginalLanguage();
                 assertNotNull(lang2);
                 assertEquals(ValuesLanguage2.NAME, lang2.getName());
-                assertEquals("{d={}}", value.as(String.class));
+                assertEquals("{d={}}", value.toDisplayString());
 
                 value = frame.getScope().getDeclaredValue("b");
                 LanguageInfo lang1 = value.getOriginalLanguage();
@@ -167,14 +168,14 @@ public class ValueLanguageTest extends AbstractDebugTest {
                 assertNotEquals(lang1, lang2);
                 assertEquals(ValuesLanguage1.NAME, lang1.getName());
                 // info from current lang2:
-                assertEquals("Object", value.as(String.class));
-                assertEquals("L2:Object", value.getMetaObject().as(String.class));
+                assertEquals("Object", value.toDisplayString());
+                assertEquals("L2:Object", value.getMetaObject().toDisplayString());
                 // info from original lang1:
                 value = value.asInLanguage(lang1);
-                assertEquals("{a={}, j=100, k=200, c={}}", value.as(String.class));
-                assertEquals("L1:Map", value.getMetaObject().as(String.class));
+                assertEquals("{a={}, j=100, k=200, c={}}", value.toDisplayString());
+                assertEquals("L1:Map", value.getMetaObject().getMetaQualifiedName());
                 // The String value of meta object can not be changed by a different language
-                assertEquals("L1:Map", value.getMetaObject().asInLanguage(lang2).as(String.class));
+                assertEquals("L1:Map", value.getMetaObject().asInLanguage(lang2).getMetaQualifiedName());
 
                 // Properties are always in the original language:
                 value = frame.getScope().getDeclaredValue("b");
@@ -199,13 +200,13 @@ public class ValueLanguageTest extends AbstractDebugTest {
                 value = frame.getScope().getDeclaredValue("j");
                 assertNull(value.getSourceLocation());
                 value = value.asInLanguage(lang1);
-                assertEquals("L1:20", value.as(String.class));
+                assertEquals("L1:20", value.toDisplayString());
                 assertNull(value.getSourceLocation());
 
                 value = frame.getScope().getDeclaredValue("d");
-                assertEquals("null", value.as(String.class));
+                assertEquals("null", value.toDisplayString());
                 value = value.asInLanguage(lang1);
-                assertEquals("null", value.as(String.class));
+                assertEquals("null", value.toDisplayString());
 
                 value = frame.getScope().getDeclaredValue("e");
                 assertEquals(getSourceImpl(source2).createSection(4, 3, 2), value.getSourceLocation());
@@ -318,13 +319,13 @@ public class ValueLanguageTest extends AbstractDebugTest {
             if (op == '=') {
                 String valueStr = variable.substring(2);
                 Object value = getValue(var, valueStr, sourceSection.getSource().createSection(sourceSection.getCharIndex() + 2, valueStr.length()));
-                return new VarNode(new String(new char[]{var}), value, sourceSection, getContextReference());
+                return new VarNode(this, new String(new char[]{var}), value, sourceSection);
             } else {
                 char p = variable.charAt(2);
                 assert variable.charAt(3) == '=';
                 String valueStr = variable.substring(4);
                 Object value = getValue(p, valueStr, sourceSection.getSource().createSection(sourceSection.getCharIndex() + 4, valueStr.length()));
-                return new PropNode(new String(new char[]{var}), new String(new char[]{p}), value, sourceSection, getContextReference());
+                return new PropNode(this, new String(new char[]{var}), new String(new char[]{p}), value, sourceSection);
             }
         }
 
@@ -346,98 +347,15 @@ public class ValueLanguageTest extends AbstractDebugTest {
                     if ("null".equals(valueStr)) {
                         value = new NullObject();
                     } else {
-                        value = new PropertiesMapObject(id, sourceSection);
+                        value = new PropertiesMapObject(this, sourceSection);
                     }
             }
             return value;
         }
 
         @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            if (!(object instanceof PropertiesMapObject)) {
-                return false;
-            }
-            PropertiesMapObject pmo = (PropertiesMapObject) object;
-            return id.equals(pmo.getLanguageId());
-        }
-
-        @Override
-        protected String toString(Context context, Object value) {
-            if (value instanceof Number) {
-                return "L" + id + ":" + ((Number) value).toString();
-            }
-            if (value instanceof String) {
-                return "L" + id + ":" + value.toString();
-            }
-            if (InteropLibrary.getFactory().getUncached().isNull(value)) {
-                return "null";
-            }
-            PropertiesMapObject pmo = (PropertiesMapObject) value;
-            if (id.equals(pmo.getLanguageId())) {
-                return toString(pmo);
-            } else {
-                return "Object";
-            }
-        }
-
-        private static String toString(PropertiesMapObject pmo) {
-            Iterator<Map.Entry<String, Object>> i = pmo.map.entrySet().iterator();
-            if (!i.hasNext()) {
-                return "{}";
-            }
-            StringBuilder sb = new StringBuilder();
-            sb.append('{');
-            for (;;) {
-                Map.Entry<String, Object> e = i.next();
-                String key = e.getKey();
-                Object value = e.getValue();
-                if (value instanceof PropertiesMapObject) {
-                    if (value == pmo) {
-                        value = "(this Map)";
-                    } else {
-                        value = toString((PropertiesMapObject) value);
-                    }
-                }
-                sb.append(key);
-                sb.append('=');
-                sb.append(value);
-                if (!i.hasNext()) {
-                    return sb.append('}').toString();
-                }
-                sb.append(',').append(' ');
-            }
-        }
-
-        @Override
-        protected Object findMetaObject(Context context, Object value) {
-            if (value instanceof Number) {
-                return "L" + id + ":Number";
-            }
-            if (value instanceof String) {
-                return "L" + id + ":String";
-            }
-            if (InteropLibrary.getFactory().getUncached().isNull(value)) {
-                return "Null";
-            }
-            PropertiesMapObject pmo = (PropertiesMapObject) value;
-            if (id.equals(pmo.getLanguageId())) {
-                return "L" + id + ":Map";
-            } else {
-                return "L" + id + ":Object";
-            }
-        }
-
-        @Override
-        protected SourceSection findSourceLocation(Context context, Object value) {
-            if (!(value instanceof TruffleObject)) {
-                return null;
-            }
-            PropertiesMapObject pmo = (PropertiesMapObject) value;
-            if (id.equals(pmo.getLanguageId())) {
-                return pmo.getSourceSection();
-            } else {
-                return null;
-            }
+        protected Object getLanguageView(Context context, Object value) {
+            return new ValuesLanguageView(value, this);
         }
 
         private static final class BlockNode extends Node {
@@ -472,24 +390,25 @@ public class ValueLanguageTest extends AbstractDebugTest {
         public static class VarNode extends Node implements InstrumentableNode {
 
             private final SourceSection sourceSection;
+            private final ValuesLanguage language;
             private final String name;
             protected final Object value;
-            protected final ContextReference<Context> contextReference;
+            @CompilationFinal private ContextReference<Context> contextReference;
             @Child private InteropLibrary interop = InteropLibrary.getFactory().createDispatched(5);
-            @CompilerDirectives.CompilationFinal protected FrameSlot slot;
+            @CompilationFinal protected FrameSlot slot;
 
-            VarNode(String name, Object value, SourceSection sourceSection, ContextReference<Context> contextReference) {
+            VarNode(ValuesLanguage language, String name, Object value, SourceSection sourceSection) {
+                this.language = language;
                 this.name = name;
                 this.value = value;
                 this.sourceSection = sourceSection;
-                this.contextReference = contextReference;
             }
 
             public VarNode(VarNode node) {
+                this.language = node.language;
                 this.name = node.name;
                 this.value = node.value;
                 this.sourceSection = node.sourceSection;
-                this.contextReference = node.contextReference;
             }
 
             public WrapperNode createWrapper(ProbeNode probe) {
@@ -521,13 +440,21 @@ public class ValueLanguageTest extends AbstractDebugTest {
                     frame.setObject(slot, value);
                 }
                 try {
-                    interop.writeMember(contextReference.get().getEnv().getPolyglotBindings(), name, value);
+                    interop.writeMember(getContextReference().get().getEnv().getPolyglotBindings(), name, value);
                 } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
                     CompilerDirectives.transferToInterpreter();
                     // should not happen for polyglot bindings.
                     throw new AssertionError(e);
                 }
                 return value;
+            }
+
+            protected final ContextReference<Context> getContextReference() {
+                if (contextReference == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    this.contextReference = lookupContextReference(language.getClass());
+                }
+                return this.contextReference;
             }
 
             @Override
@@ -543,8 +470,8 @@ public class ValueLanguageTest extends AbstractDebugTest {
             private final String prop;
             @Child private InteropLibrary interop = InteropLibrary.getFactory().createDispatched(5);
 
-            PropNode(String var, String prop, Object value, SourceSection sourceSection, ContextReference<Context> contextReference) {
-                super(null, value, sourceSection, contextReference);
+            PropNode(ValuesLanguage language, String var, String prop, Object value, SourceSection sourceSection) {
+                super(language, null, value, sourceSection);
                 this.var = var;
                 this.prop = prop;
             }
@@ -581,7 +508,7 @@ public class ValueLanguageTest extends AbstractDebugTest {
                     slot = frame.getFrameDescriptor().findFrameSlot(var);
                     if (slot == null) {
                         try {
-                            varObj = interop.readMember(contextReference.get().getEnv().getPolyglotBindings(), var);
+                            varObj = interop.readMember(getContextReference().get().getEnv().getPolyglotBindings(), var);
                         } catch (UnknownIdentifierException e) {
                             varObj = null;
                         } catch (UnsupportedMessageException e) {
@@ -605,23 +532,217 @@ public class ValueLanguageTest extends AbstractDebugTest {
         }
 
         @ExportLibrary(InteropLibrary.class)
+        static final class ValuesMetaObject implements TruffleObject {
+
+            private final ValuesLanguage language;
+            private final Object original;
+            private final String name;
+
+            ValuesMetaObject(ValuesLanguage language, Object original, String name) {
+                this.language = language;
+                this.original = original;
+                this.name = name;
+            }
+
+            @ExportMessage
+            boolean isMetaObject() {
+                return true;
+            }
+
+            @ExportMessage
+            boolean hasLanguage() {
+                return true;
+            }
+
+            @ExportMessage
+            Class<? extends TruffleLanguage<?>> getLanguage() {
+                return language.getClass();
+            }
+
+            @ExportMessage
+            Object getMetaQualifiedName() {
+                return name;
+            }
+
+            @ExportMessage
+            Object getMetaSimpleName() {
+                return name;
+            }
+
+            @ExportMessage
+            @TruffleBoundary
+            boolean isMetaInstance(Object instance) {
+                return instance.equals(original);
+            }
+
+            @ExportMessage
+            @TruffleBoundary
+            Object toDisplayString(@SuppressWarnings("unused") boolean config) {
+                return name;
+            }
+
+        }
+
+        /**
+         * Default implementation for the instrumentation view in {@link TruffleLanguage}. Should be
+         * removed with deprecated methods in {@link TruffleLanguage}.
+         */
+        @ExportLibrary(value = InteropLibrary.class, delegateTo = "delegate")
+        @SuppressWarnings("static-method")
+        static final class ValuesLanguageView implements TruffleObject {
+
+            protected final ValuesLanguage language;
+            protected final Object delegate;
+
+            ValuesLanguageView(Object delegate, ValuesLanguage language) {
+                this.delegate = delegate;
+                this.language = language;
+            }
+
+            @ExportMessage
+            boolean hasLanguage() {
+                return true;
+            }
+
+            @ExportMessage
+            Class<? extends TruffleLanguage<?>> getLanguage() {
+                return language.getClass();
+            }
+
+            @ExportMessage
+            boolean hasSourceLocation() {
+                return false;
+            }
+
+            /*
+             * The test expects that language views never propagate source locations.
+             */
+            @ExportMessage
+            SourceSection getSourceLocation() throws UnsupportedMessageException {
+                throw UnsupportedMessageException.create();
+            }
+
+            @ExportMessage
+            @TruffleBoundary
+            Object toDisplayString(@SuppressWarnings("unused") boolean config) {
+                if (delegate instanceof Number) {
+                    return "L" + language.id + ":" + ((Number) delegate).toString();
+                }
+                if (delegate instanceof String) {
+                    return "L" + language.id + ":" + delegate.toString();
+                }
+                if (InteropLibrary.getFactory().getUncached().isNull(delegate)) {
+                    return "null";
+                }
+                return "Object";
+            }
+
+            @ExportMessage
+            boolean hasMetaObject() {
+                return true;
+            }
+
+            private String getTypeName() {
+                if (delegate instanceof Number) {
+                    return "L" + language.id + ":Number";
+                }
+                if (delegate instanceof String) {
+                    return "L" + language.id + ":String";
+                }
+                if (InteropLibrary.getFactory().getUncached().isNull(delegate)) {
+                    return "Null";
+                }
+                return "L" + language.id + ":Object";
+            }
+
+            @ExportMessage
+            @TruffleBoundary
+            Object getMetaObject() {
+                return new ValuesMetaObject(language, this, getTypeName());
+            }
+
+        }
+
+        @ExportLibrary(InteropLibrary.class)
         static final class PropertiesMapObject implements TruffleObject {
 
             private final Map<String, Object> map = new LinkedHashMap<>();
-            private final String languageId;
+            protected final ValuesLanguage language;
             private final SourceSection sourceSection;
 
-            private PropertiesMapObject(String languageId, SourceSection sourceSection) {
-                this.languageId = languageId;
+            private PropertiesMapObject(ValuesLanguage language, SourceSection sourceSection) {
+                this.language = language;
                 this.sourceSection = sourceSection;
             }
 
-            public String getLanguageId() {
-                return languageId;
+            SourceSection getSourceSection() {
+                return sourceSection;
             }
 
-            public SourceSection getSourceSection() {
-                return sourceSection;
+            @ExportMessage
+            boolean hasSourceLocation() {
+                return true;
+            }
+
+            @ExportMessage
+            SourceSection getSourceLocation() {
+                return this.sourceSection;
+            }
+
+            @ExportMessage
+            boolean hasMetaObject() {
+                return true;
+            }
+
+            @ExportMessage
+            @TruffleBoundary
+            Object getMetaObject() {
+                return new ValuesMetaObject(language, this, "L" + language.id + ":Map");
+            }
+
+            @SuppressWarnings("static-method")
+            @ExportMessage
+            boolean hasLanguage() {
+                return true;
+            }
+
+            String getLanguageId() {
+                return language.id;
+            }
+
+            @ExportMessage
+            Class<? extends TruffleLanguage<?>> getLanguage() {
+                return language.getClass();
+            }
+
+            @ExportMessage
+            @TruffleBoundary
+            Object toDisplayString(boolean allowSideEffects) {
+                Iterator<Map.Entry<String, Object>> i = map.entrySet().iterator();
+                if (!i.hasNext()) {
+                    return "{}";
+                }
+                StringBuilder sb = new StringBuilder();
+                sb.append('{');
+                for (;;) {
+                    Map.Entry<String, Object> e = i.next();
+                    String key = e.getKey();
+                    Object value = e.getValue();
+                    if (value instanceof PropertiesMapObject) {
+                        if (value == this) {
+                            value = "(this Map)";
+                        } else {
+                            value = ((PropertiesMapObject) value).toDisplayString(allowSideEffects);
+                        }
+                    }
+                    sb.append(key);
+                    sb.append('=');
+                    sb.append(value);
+                    if (!i.hasNext()) {
+                        return sb.append('}').toString();
+                    }
+                    sb.append(',').append(' ');
+                }
             }
 
             @SuppressWarnings("static-method")
@@ -670,6 +791,7 @@ public class ValueLanguageTest extends AbstractDebugTest {
                     return object;
                 }
             }
+
         }
 
         @ExportLibrary(InteropLibrary.class)
@@ -710,6 +832,7 @@ public class ValueLanguageTest extends AbstractDebugTest {
             boolean isArrayElementReadable(long index) {
                 return index >= 0 && index < getArraySize();
             }
+
         }
 
     }

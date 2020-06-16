@@ -38,10 +38,10 @@ public final class Linker {
 
     public static void main(String[] args) {
         OS os = OS.getCurrent();
-        if (os == OS.LINUX) {
-            new LinuxLinker().link(args);
-        } else if (os == OS.DARWIN) {
-            new DarwinLinker().link(args);
+        if (os == OS.DARWIN) {
+            DarwinLinker.link(args);
+        } else {
+            LinuxLinker.link(args);
         }
     }
 }

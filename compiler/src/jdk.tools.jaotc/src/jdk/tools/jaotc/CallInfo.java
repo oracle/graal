@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@
 package jdk.tools.jaotc;
 
 import org.graalvm.compiler.bytecode.Bytecodes;
+import org.graalvm.compiler.hotspot.HotSpotMarkId;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.code.site.Call;
@@ -40,7 +41,8 @@ final class CallInfo {
 
     private static boolean isStaticOpcode(Call call) {
         int opcode = getByteCode(call) & 0xFF;
-        return opcode == Bytecodes.INVOKESTATIC || opcode == Bytecodes.INVOKEDYNAMIC || opcode == Bytecodes.INVOKEVIRTUAL /* invokehandle */;
+        return opcode == Bytecodes.INVOKESTATIC || opcode == Bytecodes.INVOKEDYNAMIC ||
+                        opcode == Bytecodes.INVOKEVIRTUAL /* invokehandle */;
     }
 
     static boolean isStaticCall(Call call) {
@@ -66,11 +68,11 @@ final class CallInfo {
     }
 
     static boolean isVirtualCall(CompiledMethodInfo methodInfo, Call call) {
-        return isInvokeVirtual(call) && !methodInfo.hasMark(call, MarkId.INVOKESPECIAL) && !isStaticTarget(call);
+        return isInvokeVirtual(call) && !methodInfo.hasMark(call, HotSpotMarkId.INVOKESPECIAL) && !isStaticTarget(call);
     }
 
     static boolean isOptVirtualCall(CompiledMethodInfo methodInfo, Call call) {
-        return isInvokeVirtual(call) && methodInfo.hasMark(call, MarkId.INVOKESPECIAL);
+        return isInvokeVirtual(call) && methodInfo.hasMark(call, HotSpotMarkId.INVOKESPECIAL);
     }
 
     private static boolean isJavaCall(Call call) {

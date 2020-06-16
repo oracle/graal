@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,10 +29,37 @@
  */
 package com.oracle.truffle.llvm.runtime.interop;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 
 /**
- * Marker interface to mark {@link TruffleObject} implementors that are not considered foreign.
+ * Base class to mark {@link TruffleObject} implementors that are not considered foreign.
  */
-public interface LLVMInternalTruffleObject extends TruffleObject {
+@ExportLibrary(InteropLibrary.class)
+@ExportLibrary(LLVMAsForeignLibrary.class)
+public abstract class LLVMInternalTruffleObject implements TruffleObject {
+
+    @ExportMessage
+    @SuppressWarnings({"unused", "static-method"})
+    public final boolean hasLanguage() {
+        return true;
+    }
+
+    @ExportMessage
+    @SuppressWarnings({"static-method"})
+    public final Class<? extends TruffleLanguage<?>> getLanguage() {
+        return LLVMLanguage.class;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    public final String toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        return toString();
+    }
 }

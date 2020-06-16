@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package org.graalvm.compiler.truffle.test.nodes;
 
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import java.util.Objects;
 import java.util.logging.Level;
 
@@ -38,7 +39,7 @@ public class LoggingNode extends AbstractTestNode {
     public LoggingNode(final Level level, final String message, final int result) {
         Objects.requireNonNull(level, "Level must be non null.");
         Objects.requireNonNull(message, "Message must be non null.");
-        this.log = TruffleLogger.getLogger("test", "testLogger");
+        this.log = TruffleLogger.getLogger(ProxyLanguage.ID, "testLogger");
         this.level = level;
         this.message = message;
         this.result = result;

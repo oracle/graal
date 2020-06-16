@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,13 +49,16 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.junit.Test;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Introspectable;
@@ -63,6 +66,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.dsl.test.CachedContextTestFactory.CachedWithFallbackNodeGen;
+import com.oracle.truffle.api.dsl.test.CachedContextTestFactory.TestContextCachingNodeGen;
 import com.oracle.truffle.api.dsl.test.CachedContextTestFactory.TransitiveCachedLibraryNodeGen;
 import com.oracle.truffle.api.dsl.test.CachedContextTestFactory.Valid1NodeGen;
 import com.oracle.truffle.api.dsl.test.CachedContextTestFactory.Valid2NodeGen;
@@ -245,6 +249,106 @@ public class CachedContextTest extends AbstractPolyglotTest {
         }
     }
 
+    @Test
+    public void testContextCaching() {
+        TestContextCaching node;
+        Engine engine = Engine.create();
+        Context c = Context.newBuilder().engine(engine).build();
+        c.initialize(TEST_LANGUAGE);
+        c.enter();
+        node = adoptNode(TestContextCachingNodeGen.create()).get();
+        assertEquals("s0", node.execute(""));
+        c.leave();
+        c.close();
+
+        c = Context.newBuilder().engine(engine).build();
+        c.initialize(TEST_LANGUAGE);
+        c.enter();
+        assertEquals("s0", node.execute(""));
+        c.leave();
+        c.close();
+
+        c = Context.newBuilder().engine(engine).build();
+        c.initialize(TEST_LANGUAGE);
+        c.enter();
+        try {
+            node.execute("");
+            fail();
+        } catch (UnsupportedSpecializationException e) {
+        }
+        c.leave();
+        c.close();
+    }
+
+    @SuppressWarnings("static-method")
+    abstract static class TestContextCaching extends Node {
+
+        public abstract String execute(Object o);
+
+        @Specialization(guards = {"ref.get() == cachedContext"}, limit = "2")
+        String s0(String o,
+                        @CachedContext(CachedContextTestLanguage.class) ContextReference<Env> ref,
+                        @Cached("ref.get()") Env cachedContext) {
+            return "s0";
+        }
+
+    }
+
+    @SuppressWarnings("static-method")
+    abstract static class DynamicBindingError1 extends Node {
+
+        public abstract String execute(Object o);
+
+        @ExpectError("Limit expressions must not bind dynamic parameter values.")
+        @Specialization(guards = {"ref.get() == cachedContext"}, limit = "computeLimit(ref.get())")
+        String s0(String o,
+                        @CachedContext(CachedContextTestLanguage.class) ContextReference<Env> ref,
+                        @Cached("ref.get()") Env cachedContext) {
+            return "s0";
+        }
+
+        static int computeLimit(Object o) {
+            return 1;
+        }
+
+    }
+
+    @SuppressWarnings("static-method")
+    abstract static class DynamicBindingError2 extends Node {
+
+        public abstract String execute(Object o);
+
+        @ExpectError("Assumption expressions must not bind dynamic parameter values.")
+        @Specialization(assumptions = "computeLimit(ref.get())")
+        String s0(String o,
+                        @CachedContext(CachedContextTestLanguage.class) ContextReference<Env> ref) {
+            return "s0";
+        }
+
+        static Assumption computeLimit(Env o) {
+            return null;
+        }
+
+    }
+
+    @SuppressWarnings("static-method")
+    abstract static class DynamicBindingError3 extends Node {
+
+        public abstract String execute(Object o);
+
+        @ExpectError("Assumption expressions must not bind dynamic parameter values.")
+        @Specialization(assumptions = "computeLimit(ref.get())")
+        String s0(String o,
+                        @CachedLanguage LanguageReference<CachedContextTestLanguage> ref) {
+            return "s0";
+        }
+
+        static Assumption computeLimit(CachedContextTestLanguage o) {
+            return null;
+        }
+
+    }
+
     private static final String TEST_LANGUAGE = "CachedContextTestLanguage";
 
     @Registration(id = TEST_LANGUAGE, name = TEST_LANGUAGE, contextPolicy = ContextPolicy.SHARED)
@@ -253,11 +357,6 @@ public class CachedContextTest extends AbstractPolyglotTest {
         @Override
         protected Env createContext(Env env) {
             return env;
-        }
-
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
         }
 
         public static Env getCurrentContext() {
@@ -277,10 +376,6 @@ public class CachedContextTest extends AbstractPolyglotTest {
             return env;
         }
 
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
     }
 
     /*
@@ -296,10 +391,6 @@ public class CachedContextTest extends AbstractPolyglotTest {
             return null;
         }
 
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
     }
 
     abstract static class CachedLanguageError1Node extends Node {
@@ -374,6 +465,22 @@ public class CachedContextTest extends AbstractPolyglotTest {
         }
     }
 
+    abstract static class CachedLanguageError7Node extends Node {
+
+        abstract Object execute(Object argument);
+
+        /*
+         * Warning expected here as cachedEnv does not bind any dynamic parameter.
+         */
+        @ExpectError("The limit expression has no effect. %")
+        @Specialization(guards = "cachedEnv != null", limit = "3")
+        static String s0(Object value,
+                        @CachedContext(CachedContextTestLanguage.class) Env env,
+                        @Cached("env") Env cachedEnv) {
+            throw new AssertionError();
+        }
+    }
+
     @GenerateLibrary
     public abstract static class CachedContextTestLibrary extends Library {
 
@@ -392,7 +499,7 @@ public class CachedContextTest extends AbstractPolyglotTest {
         }
 
         @ExportMessage
-        final Object m1(@CachedContext(CachedContextTestLanguage.class) ContextReference<Env> env) {
+        final Object m1(@CachedContext(CachedContextTestLanguage.class) Env env) {
             return "m1";
         }
     }
@@ -410,6 +517,23 @@ public class CachedContextTest extends AbstractPolyglotTest {
         @Specialization
         Object doSomething(@CachedContext(CachedContextTestLanguage.class) Env ctx) {
             return null;
+        }
+    }
+
+    public abstract static class CacheCachedContextTest extends Node {
+
+        protected abstract boolean executeMatch(Object arg0);
+
+        @ExpectError("The limit expression has no effect.%")
+        @Specialization(guards = {"cachedGuard"}, limit = "1")
+        boolean s0(Object arg0,
+                        @CachedContext(CachedContextTestLanguage.class) Env env,
+                        @Cached("getBoolean(env)") boolean cachedGuard) {
+            return false;
+        }
+
+        static boolean getBoolean(Env context) {
+            return context != null;
         }
     }
 

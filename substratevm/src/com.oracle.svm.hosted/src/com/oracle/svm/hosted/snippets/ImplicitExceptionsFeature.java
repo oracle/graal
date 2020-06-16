@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted.snippets;
 
-import java.util.Map;
-
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.phases.util.Providers;
 
@@ -33,7 +31,8 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
-import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
+import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
+import com.oracle.svm.core.snippets.ExceptionUnwind;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
@@ -48,14 +47,14 @@ final class ImplicitExceptionsFeature implements GraalFeature {
         for (SubstrateForeignCallDescriptor descriptor : ImplicitExceptions.FOREIGN_CALLS) {
             access.getBigBang().addRootMethod((AnalysisMethod) descriptor.findMethod(access.getMetaAccess()));
         }
+        for (SubstrateForeignCallDescriptor descriptor : ExceptionUnwind.FOREIGN_CALLS) {
+            access.getBigBang().addRootMethod((AnalysisMethod) descriptor.findMethod(access.getMetaAccess()));
+        }
     }
 
     @Override
-    public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection,
-                    Map<SubstrateForeignCallDescriptor, SubstrateForeignCallLinkage> foreignCalls, boolean hosted) {
-
-        for (SubstrateForeignCallDescriptor descriptor : ImplicitExceptions.FOREIGN_CALLS) {
-            foreignCalls.put(descriptor, new SubstrateForeignCallLinkage(providers, descriptor));
-        }
+    public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection, SubstrateForeignCallsProvider foreignCalls, boolean hosted) {
+        foreignCalls.register(providers, ImplicitExceptions.FOREIGN_CALLS);
+        foreignCalls.register(providers, ExceptionUnwind.FOREIGN_CALLS);
     }
 }

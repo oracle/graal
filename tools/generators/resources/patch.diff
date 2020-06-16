@@ -1,0 +1,567 @@
+diff --git a/CodeAction.java b/CodeAction.java
+index 8a4355b..44dda35 100644
+--- a/CodeAction.java
++++ b/CodeAction.java
+@@ -214,7 +214,7 @@ public class CodeAction extends JSONBase {
+      * Creates a new code action.
+      *
+      * @param title The title of the code action.
+-     * @param command The command to execute.
++     * @param edit The workspace edit to perform.
+      * @param kind The kind of the code action.
+      */
+     public static CodeAction create(String title, WorkspaceEdit edit, CodeActionKind kind) {
+@@ -229,6 +229,11 @@ public class CodeAction extends JSONBase {
+         final JSONObject json = new JSONObject();
+         json.put("title", title);
+         json.putOpt("kind", kind != null ? kind.getStringValue() : null);
++        if (commandOrEdit instanceof WorkspaceEdit) {
++            json.put("edit", ((WorkspaceEdit) commandOrEdit).jsonData);
++        } else if (commandOrEdit instanceof Command) {
++            json.put("command", ((Command) commandOrEdit).jsonData);
++        }
+         return new CodeAction(json);
+     }
+ }
+diff --git a/CodeActionKind.java b/CodeActionKind.java
+index 1a1ff07..7a758e4 100644
+--- a/CodeActionKind.java
++++ b/CodeActionKind.java
+@@ -45,7 +45,7 @@ public enum CodeActionKind {
+      */
+     Refactor("refactor"),
+     /**
+-     * Base kind for refactoring extraction actions: 'refactor.extract'
++     * Base kind for refactoring extraction actions: 'refactor.extract'.
+      *
+      * Example extract actions:
+      *
+@@ -57,7 +57,7 @@ public enum CodeActionKind {
+      */
+     RefactorExtract("refactor.extract"),
+     /**
+-     * Base kind for refactoring inline actions: 'refactor.inline'
++     * Base kind for refactoring inline actions: 'refactor.inline'.
+      *
+      * Example inline actions:
+      *
+@@ -68,7 +68,7 @@ public enum CodeActionKind {
+      */
+     RefactorInline("refactor.inline"),
+     /**
+-     * Base kind for refactoring rewrite actions: 'refactor.rewrite'
++     * Base kind for refactoring rewrite actions: 'refactor.rewrite'.
+      *
+      * Example rewrite actions:
+      *
+@@ -81,13 +81,13 @@ public enum CodeActionKind {
+      */
+     RefactorRewrite("refactor.rewrite"),
+     /**
+-     * Base kind for source actions: `source`
++     * Base kind for source actions: `source`.
+      *
+      * Source code actions apply to the entire file.
+      */
+     Source("source"),
+     /**
+-     * Base kind for an organize imports source action: `source.organizeImports`
++     * Base kind for an organize imports source action: `source.organizeImports`.
+      */
+     SourceOrganizeImports("source.organizeImports"),
+     /**
+diff --git a/ColorPresentation.java b/ColorPresentation.java
+index 29bcfe0..987f7f7 100644
+--- a/ColorPresentation.java
++++ b/ColorPresentation.java
+@@ -138,8 +138,8 @@ public class ColorPresentation extends JSONBase {
+         json.putOpt("textEdit", textEdit != null ? textEdit.jsonData : null);
+         if (additionalTextEdits != null) {
+             JSONArray additionalTextEditsJsonArr = new JSONArray();
+-            for(TextEdit textEdit: additionalTextEdits) {
+-                additionalTextEditsJsonArr.put(textEdit.jsonData);
++            for(TextEdit additionalTextEdit: additionalTextEdits) {
++                additionalTextEditsJsonArr.put(additionalTextEdit.jsonData);
+             }
+             json.put("additionalTextEdits", additionalTextEditsJsonArr);
+         }
+diff --git a/Command.java b/Command.java
+index 9de95a4..286db08 100644
+--- a/Command.java
++++ b/Command.java
+@@ -136,6 +136,13 @@ public class Command extends JSONBase {
+         final JSONObject json = new JSONObject();
+         json.put("title", title);
+         json.put("command", command);
++        if (args != null) {
++            JSONArray jsonArr = new JSONArray();
++            for (Object arg : args) {
++                jsonArr.put(arg);
++            }
++            json.put("arguments", jsonArr);
++        }
+         return new Command(json);
+     }
+ }
+diff --git a/DeclarationClientCapabilities.java b/DeclarationClientCapabilities.java
+index e202a63..5ad2708 100644
+--- a/DeclarationClientCapabilities.java
++++ b/DeclarationClientCapabilities.java
+@@ -28,6 +28,8 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
+ import java.util.Objects;
+ 
+ /**
++ * The client capabilities of a [DeclarationRequest](#DeclarationRequest).
++ *
+  * Since 3.14.0
+  */
+ public class DeclarationClientCapabilities extends JSONBase {
+diff --git a/DocumentFilter.java b/DocumentFilter.java
+index 4e11f73..6057491 100644
+--- a/DocumentFilter.java
++++ b/DocumentFilter.java
+@@ -33,15 +33,20 @@ import java.util.Objects;
+  * its resource, or a glob-pattern that is applied to the [path](#TextDocument.fileName).
+  *
+  * Glob patterns can have the following syntax:
+- * - `*` to match one or more characters in a path segment
+- * - `?` to match on one character in a path segment
+- * - `**` to match any number of path segments, including none
+- * - `{}` to group conditions (e.g. `**​/*.{ts,js}` matches all TypeScript and JavaScript files)
+- * - `[]` to declare a range of characters to match in a path segment (e.g., `example.[0-9]` to match on `example.0`, `example.1`, …)
+- * - `[!...]` to negate a range of characters to match in a path segment (e.g., `example.[!0-9]` to match on `example.a`, `example.b`, but not `example.0`)
++ * <ul>
++ *  <li>`*` to match one or more characters in a path segment</li>
++ *  <li>`?` to match on one character in a path segment</li>
++ *  <li>`**` to match any number of path segments, including none</li>
++ *  <li>`{}` to group conditions (e.g. `**&#47;*.{ts,js}` matches all TypeScript and JavaScript files)</li>
++ *  <li>`[]` to declare a range of characters to match in a path segment (e.g., `example.[0-9]` to match on `example.0`, `example.1`, ...)</li>
++ *  <li>`[!...]` to negate a range of characters to match in a path segment (e.g., `example.[!0-9]` to match on `example.a`, `example.b`, but not `example.0`)</li>
++ * </ul>
+  *
+- * @sample A language filter that applies to typescript files on disk: `{ language: 'typescript', scheme: 'file' }`
+- * @sample A language filter that applies to all package.json paths: `{ language: 'json', pattern: '**package.json' }`
++ * Samples:
++ * <ul>
++ *  <li>A language filter that applies to typescript files on disk: `{ language: 'typescript', scheme: 'file' }`</li>
++ *  <li>A language filter that applies to all package.json paths: `{ language: 'json', pattern: '**package.json' }`</li>
++ * </ul>
+  */
+ public class DocumentFilter extends JSONBase {
+ 
+diff --git a/Hover.java b/Hover.java
+index 453e4c2..8f9b38d 100644
+--- a/Hover.java
++++ b/Hover.java
+@@ -24,7 +24,11 @@
+  */
+ package org.graalvm.tools.lsp.server.types;
+ 
++import com.oracle.truffle.tools.utils.json.JSONArray;
+ import com.oracle.truffle.tools.utils.json.JSONObject;
++import java.util.ArrayList;
++import java.util.Collections;
++import java.util.List;
+ import java.util.Objects;
+ 
+ /**
+@@ -39,10 +43,41 @@ public class Hover extends JSONBase {
+     /**
+      * The hover's content.
+      */
++    @SuppressWarnings("deprecation")
+     public Object getContents() {
++        Object obj = jsonData.get("contents");
++        if (obj instanceof JSONArray) {
++            final List<Object> list = new ArrayList<>(((JSONArray) obj).length());
++            for (int i = 0; i < ((JSONArray) obj).length(); i++) {
++                Object o = ((JSONArray) obj).get(i);
++                list.add(o instanceof JSONObject ? new MarkedString((JSONObject) o) : o);
++            }
++            return Collections.unmodifiableList(list);
++        }
++        if (obj instanceof JSONObject) {
++            if (((JSONObject) obj).has("kind")) {
++                return new MarkupContent((JSONObject) obj);
++            }
++            return new MarkedString((JSONObject) obj);
++        }
++        return obj;
+     }
+ 
++    @SuppressWarnings("deprecation")
+     public Hover setContents(Object contents) {
++        if (contents instanceof List) {
++            final JSONArray json = new JSONArray();
++            for (Object obj : (List<?>) contents) {
++                json.put(obj instanceof MarkedString ? ((MarkedString) obj).jsonData : obj);
++            }
++            jsonData.put("contents", json);
++        } else if (contents instanceof MarkupContent) {
++            jsonData.put("contents", ((MarkupContent) contents).jsonData);
++        } else if (contents instanceof MarkedString) {
++            jsonData.put("contents", ((MarkedString) contents).jsonData);
++        } else {
++            jsonData.put("contents", contents);
++        }
+         return this;
+     }
+ 
+@@ -89,8 +124,22 @@ public class Hover extends JSONBase {
+         return hash;
+     }
+ 
++    @SuppressWarnings("deprecation")
+     public static Hover create(Object contents) {
+         final JSONObject json = new JSONObject();
++        if (contents instanceof List) {
++            final JSONArray jsonArr = new JSONArray();
++            for (Object obj : (List<?>) contents) {
++                jsonArr.put(obj instanceof MarkedString ? ((MarkedString) obj).jsonData : obj);
++            }
++            json.put("contents", jsonArr);
++        } else if (contents instanceof MarkupContent) {
++            json.put("contents", ((MarkupContent) contents).jsonData);
++        } else if (contents instanceof MarkedString) {
++            json.put("contents", ((MarkedString) contents).jsonData);
++        } else {
++            json.put("contents", contents);
++        }
+         return new Hover(json);
+     }
+ }
+diff --git a/ImplementationClientCapabilities.java b/ImplementationClientCapabilities.java
+index 4eb28e2..9f04aea 100644
+--- a/ImplementationClientCapabilities.java
++++ b/ImplementationClientCapabilities.java
+@@ -28,6 +28,8 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
+ import java.util.Objects;
+ 
+ /**
++ * The client capabilities of a [ImplementationRequest](#ImplementationRequest).
++ *
+  * Since 3.6.0
+  */
+ public class ImplementationClientCapabilities extends JSONBase {
+diff --git a/InitializeParams.java b/InitializeParams.java
+index 845d19e..962addc 100644
+--- a/InitializeParams.java
++++ b/InitializeParams.java
+@@ -55,7 +55,7 @@ public class InitializeParams extends WorkDoneProgressParams {
+     }
+ 
+     /**
+-     * Information about the client
++     * Information about the client.
+      *
+      * @since 3.15.0
+      */
+diff --git a/InsertTextFormat.java b/InsertTextFormat.java
+index 5e9f5a1..12eea97 100644
+--- a/InsertTextFormat.java
++++ b/InsertTextFormat.java
+@@ -45,7 +45,10 @@ public enum InsertTextFormat {
+      * the end of the snippet. Placeholders with equal identifiers are linked,
+      * that is typing in one will update others too.
+      *
+-     * See also: https://github.com/Microsoft/vscode/blob/master/src/vs/editor/contrib/snippet/common/snippet.md
++     * @see <a href=
++     *      "https://github.com/Microsoft/vscode/blob/master/src/vs/editor/contrib/snippet/common/snippet.md">
++     *      https://github.com/Microsoft/vscode/blob/master/src/vs/editor/contrib/snippet/common/
++     *      snippet.md</a>
+      */
+     Snippet(2);
+ 
+diff --git a/Position.java b/Position.java
+index 114cf8a..d321258 100644
+--- a/Position.java
++++ b/Position.java
+@@ -28,10 +28,7 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
+ 
+ /**
+  * Position in a text document expressed as zero-based line and character offset.
+- * The offsets are based on a UTF-16 string representation. So a string of the form
+- * `a𐐀b` the character offset of the character `a` is 0, the character offset of `𐐀`
+- * is 1 and the character offset of b is 3 since `𐐀` is represented using two code
+- * units in UTF-16.
++ * The offsets are based on a UTF-16 string representation.
+  *
+  * Positions are line end character agnostic. So you can not specify a position that
+  * denotes `\r|\n` or `\n|` where `|` represents the character offset.
+diff --git a/Range.java b/Range.java
+index 473f3e8..c379236 100644
+--- a/Range.java
++++ b/Range.java
+@@ -119,8 +119,16 @@ public class Range extends JSONBase {
+      * @param endCharacter The end character.
+      */
+     public static Range create(Integer startLine, Integer startCharacter, Integer endLine, Integer endCharacter) {
++        return create(Position.create(startLine, startCharacter), Position.create(endLine, endCharacter));
+     }
+ 
+     public static Range create(Object one, Object two, Integer three, Integer four) {
++       if (one instanceof Integer && two instanceof Integer && three != null && four != null) {
++            return create((Integer) one, (Integer) two, three, four);
++        }
++        if (one instanceof Position && two instanceof Position) {
++            return create((Position) one, (Position) two);
++        }
++        throw new IllegalArgumentException("Range.create called with invalid arguments");
+     }
+ }
+diff --git a/SelectionRange.java b/SelectionRange.java
+index 14260f6..11f8f33 100644
+--- a/SelectionRange.java
++++ b/SelectionRange.java
+@@ -93,7 +93,7 @@ public class SelectionRange extends JSONBase {
+     }
+ 
+     /**
+-     * Creates a new SelectionRange
++     * Creates a new SelectionRange.
+      * @param range the range.
+      * @param parent an optional parent.
+      */
+diff --git a/ServerCapabilities.java b/ServerCapabilities.java
+index e64bbdf..654d255 100644
+--- a/ServerCapabilities.java
++++ b/ServerCapabilities.java
+@@ -109,9 +109,21 @@ public class ServerCapabilities extends JSONBase {
+      * The server provides Goto Declaration support.
+      */
+     public Object getDeclarationProvider() {
++        Object obj = jsonData.opt("declarationProvider");
++        if (obj instanceof JSONObject) {
++            return ((JSONObject) obj).has("documentSelector") ? new DeclarationRegistrationOptions((JSONObject) obj) : new DeclarationOptions((JSONObject) obj);
++        }
++        return obj;
+     }
+ 
+     public ServerCapabilities setDeclarationProvider(Object declarationProvider) {
++        if (declarationProvider instanceof DeclarationRegistrationOptions) {
++            jsonData.put("declarationProvider", ((DeclarationRegistrationOptions) declarationProvider).jsonData);
++        } else if (declarationProvider instanceof DeclarationOptions) {
++            jsonData.put("declarationProvider", ((DeclarationOptions) declarationProvider).jsonData);
++        } else {
++            jsonData.putOpt("declarationProvider", declarationProvider);
++        }
+         return this;
+     }
+ 
+@@ -139,9 +151,21 @@ public class ServerCapabilities extends JSONBase {
+      * The server provides Goto Type Definition support.
+      */
+     public Object getTypeDefinitionProvider() {
++        Object obj = jsonData.opt("typeDefinitionProvider");
++        if (obj instanceof JSONObject) {
++            return ((JSONObject) obj).has("documentSelector") ? new TypeDefinitionRegistrationOptions((JSONObject) obj) : new TypeDefinitionOptions((JSONObject) obj);
++        }
++        return obj;
+     }
+ 
+     public ServerCapabilities setTypeDefinitionProvider(Object typeDefinitionProvider) {
++        if (typeDefinitionProvider instanceof TypeDefinitionRegistrationOptions) {
++            jsonData.put("typeDefinitionProvider", ((TypeDefinitionRegistrationOptions) typeDefinitionProvider).jsonData);
++        } else if (typeDefinitionProvider instanceof TypeDefinitionOptions) {
++            jsonData.put("typeDefinitionProvider", ((TypeDefinitionOptions) typeDefinitionProvider).jsonData);
++        } else {
++            jsonData.putOpt("typeDefinitionProvider", typeDefinitionProvider);
++        }
+         return this;
+     }
+ 
+@@ -149,9 +173,21 @@ public class ServerCapabilities extends JSONBase {
+      * The server provides Goto Implementation support.
+      */
+     public Object getImplementationProvider() {
++        Object obj = jsonData.opt("implementationProvider");
++        if (obj instanceof JSONObject) {
++            return ((JSONObject) obj).has("implementationProvider") ? new ImplementationRegistrationOptions((JSONObject) obj) : new ImplementationOptions((JSONObject) obj);
++        }
++        return obj;
+     }
+ 
+     public ServerCapabilities setImplementationProvider(Object implementationProvider) {
++        if (implementationProvider instanceof ImplementationRegistrationOptions) {
++            jsonData.put("implementationProvider", ((ImplementationRegistrationOptions) implementationProvider).jsonData);
++        } else if (implementationProvider instanceof ImplementationOptions) {
++            jsonData.put("implementationProvider", ((ImplementationOptions) implementationProvider).jsonData);
++        } else {
++            jsonData.putOpt("implementationProvider", implementationProvider);
++        }
+         return this;
+     }
+ 
+@@ -265,9 +301,21 @@ public class ServerCapabilities extends JSONBase {
+      * The server provides color provider support.
+      */
+     public Object getColorProvider() {
++        Object obj = jsonData.opt("colorProvider");
++        if (obj instanceof JSONObject) {
++            return ((JSONObject) obj).has("documentSelector") ? new DocumentColorRegistrationOptions((JSONObject) obj) : new DocumentColorOptions((JSONObject) obj);
++        }
++        return obj;
+     }
+ 
+     public ServerCapabilities setColorProvider(Object colorProvider) {
++        if (colorProvider instanceof DocumentColorRegistrationOptions) {
++            jsonData.put("colorProvider", ((DocumentColorRegistrationOptions) colorProvider).jsonData);
++        } else if (colorProvider instanceof DocumentColorOptions) {
++            jsonData.put("colorProvider", ((DocumentColorOptions) colorProvider).jsonData);
++        } else {
++            jsonData.putOpt("colorProvider", colorProvider);
++        }
+         return this;
+     }
+ 
+@@ -369,9 +417,21 @@ public class ServerCapabilities extends JSONBase {
+      * The server provides folding provider support.
+      */
+     public Object getFoldingRangeProvider() {
++        Object obj = jsonData.opt("foldingRangeProvider");
++        if (obj instanceof JSONObject) {
++            return ((JSONObject) obj).has("documentSelector") ? new FoldingRangeRegistrationOptions((JSONObject) obj) : new FoldingRangeOptions((JSONObject) obj);
++        }
++        return obj;
+     }
+ 
+     public ServerCapabilities setFoldingRangeProvider(Object foldingRangeProvider) {
++        if (foldingRangeProvider instanceof FoldingRangeRegistrationOptions) {
++            jsonData.put("foldingRangeProvider", ((FoldingRangeRegistrationOptions) foldingRangeProvider).jsonData);
++        } else if (foldingRangeProvider instanceof FoldingRangeOptions) {
++            jsonData.put("foldingRangeProvider", ((FoldingRangeOptions) foldingRangeProvider).jsonData);
++        } else {
++            jsonData.putOpt("foldingRangeProvider", foldingRangeProvider);
++        }
+         return this;
+     }
+ 
+@@ -379,9 +439,21 @@ public class ServerCapabilities extends JSONBase {
+      * The server provides selection range support.
+      */
+     public Object getSelectionRangeProvider() {
++        Object obj = jsonData.opt("selectionRangeProvider");
++        if (obj instanceof JSONObject) {
++            return ((JSONObject) obj).has("documentSelector") ? new SelectionRangeRegistrationOptions((JSONObject) obj) : new SelectionRangeOptions((JSONObject) obj);
++        }
++        return obj;
+     }
+ 
+     public ServerCapabilities setSelectionRangeProvider(Object selectionRangeProvider) {
++        if (selectionRangeProvider instanceof SelectionRangeRegistrationOptions) {
++            jsonData.put("selectionRangeProvider", ((SelectionRangeRegistrationOptions) selectionRangeProvider).jsonData);
++        } else if (selectionRangeProvider instanceof SelectionRangeOptions) {
++            jsonData.put("selectionRangeProvider", ((SelectionRangeOptions) selectionRangeProvider).jsonData);
++        } else {
++            jsonData.putOpt("selectionRangeProvider", selectionRangeProvider);
++        }
+         return this;
+     }
+ 
+diff --git a/SymbolInformation.java b/SymbolInformation.java
+index e6bfa48..20397e4 100644
+--- a/SymbolInformation.java
++++ b/SymbolInformation.java
+@@ -164,5 +164,11 @@ public class SymbolInformation extends JSONBase {
+      * @param containerName The name of the symbol containing the symbol.
+      */
+     public static SymbolInformation create(String name, SymbolKind kind, Range range, String uri, String containerName) {
++        final JSONObject json = new JSONObject();
++        json.put("name", name);
++        json.put("kind", kind.getIntValue());
++        json.put("location", Location.create(uri, range).jsonData);
++        json.putOpt("containerName", containerName);
++        return new SymbolInformation(json);
+     }
+ }
+diff --git a/TextDocumentClientCapabilities.java b/TextDocumentClientCapabilities.java
+index 3beae38..4764b5b 100644
+--- a/TextDocumentClientCapabilities.java
++++ b/TextDocumentClientCapabilities.java
+@@ -85,7 +85,7 @@ public class TextDocumentClientCapabilities extends JSONBase {
+     }
+ 
+     /**
+-     * Capabilities specific to the `textDocument/declaration`
++     * Capabilities specific to the `textDocument/declaration`.
+      *
+      * @since 3.14.0
+      */
+@@ -111,7 +111,7 @@ public class TextDocumentClientCapabilities extends JSONBase {
+     }
+ 
+     /**
+-     * Capabilities specific to the `textDocument/typeDefinition`
++     * Capabilities specific to the `textDocument/typeDefinition`.
+      *
+      * @since 3.6.0
+      */
+@@ -125,7 +125,7 @@ public class TextDocumentClientCapabilities extends JSONBase {
+     }
+ 
+     /**
+-     * Capabilities specific to the `textDocument/implementation`
++     * Capabilities specific to the `textDocument/implementation`.
+      *
+      * @since 3.6.0
+      */
+@@ -285,7 +285,7 @@ public class TextDocumentClientCapabilities extends JSONBase {
+     }
+ 
+     /**
+-     * Capabilities specific to `textDocument/selectionRange` requests
++     * Capabilities specific to `textDocument/selectionRange` requests.
+      *
+      * @since 3.15.0
+      */
+diff --git a/TextEdit.java b/TextEdit.java
+index 822f760..1680af3 100644
+--- a/TextEdit.java
++++ b/TextEdit.java
+@@ -109,6 +109,10 @@ public class TextEdit extends JSONBase {
+      * @param newText The text to be inserted.
+      */
+     public static TextEdit insert(Position position, String newText) {
++        final JSONObject json = new JSONObject();
++        json.put("range", Range.create(position, position).jsonData);
++        json.put("newText", newText);
++        return new TextEdit(json);
+     }
+ 
+     /**
+@@ -116,5 +120,9 @@ public class TextEdit extends JSONBase {
+      * @param range The range of text to be deleted.
+      */
+     public static TextEdit del(Range range) {
++        final JSONObject json = new JSONObject();
++        json.put("range", range.jsonData);
++        json.put("newText", "");
++        return new TextEdit(json);
+     }
+ }
+diff --git a/TypeDefinitionClientCapabilities.java b/TypeDefinitionClientCapabilities.java
+index 9af515d..db1a734 100644
+--- a/TypeDefinitionClientCapabilities.java
++++ b/TypeDefinitionClientCapabilities.java
+@@ -28,6 +28,8 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
+ import java.util.Objects;
+ 
+ /**
++ * The client capabilities of a [TypeDefinitionRequest](#TypeDefinitionRequest).
++ *
+  * Since 3.6.0
+  */
+ public class TypeDefinitionClientCapabilities extends JSONBase {
+diff --git a/VersionedTextDocumentIdentifier.java b/VersionedTextDocumentIdentifier.java
+index ddaa06b..045dc0e 100644
+--- a/VersionedTextDocumentIdentifier.java
++++ b/VersionedTextDocumentIdentifier.java
+@@ -87,7 +87,7 @@ public class VersionedTextDocumentIdentifier extends TextDocumentIdentifier {
+     /**
+      * Creates a new VersionedTextDocumentIdentifier literal.
+      * @param uri The document's uri.
+-     * @param uri The document's text.
++     * @param version The document's version.
+      */
+     public static VersionedTextDocumentIdentifier create(String uri, Integer version) {
+         final JSONObject json = new JSONObject();

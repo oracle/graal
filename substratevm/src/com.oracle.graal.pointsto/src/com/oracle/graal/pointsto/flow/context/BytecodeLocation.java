@@ -36,6 +36,7 @@ public class BytecodeLocation {
     public static final int DYNAMIC_ALLOCATION_BCI = -3;
 
     public static final BytecodeLocation EMPTY_BYTECODE_LOCATION = BytecodeLocation.create(EMPTY_BCI, null);
+    public static final BytecodeLocation UNKNOWN_BYTECODE_LOCATION = BytecodeLocation.create(UNKNOWN_BCI, null);
 
     /**
      * Transform the Object key into a BCI. The BCI might be duplicated due to Graal method

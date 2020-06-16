@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,7 +33,9 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.EnumSet;
+import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
@@ -61,22 +63,31 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
         super(clazz);
     }
 
-    protected static class Values extends Fields {
+    protected static final class Values extends Fields {
         private final int directCount;
         private final EnumSet<OperandFlag>[] flags;
 
-        public Values(OperandModeAnnotation mode) {
-            this(mode.directCount, mode.values);
-        }
+        private static final Values EMPTY_VALUES = new Values(0, Collections.emptyList());
 
         @SuppressWarnings({"unchecked"})
-        public Values(int directCount, ArrayList<ValueFieldInfo> fields) {
+        private Values(int directCount, List<ValueFieldInfo> fields) {
             super(fields);
             this.directCount = directCount;
             flags = (EnumSet<OperandFlag>[]) new EnumSet<?>[fields.size()];
             for (int i = 0; i < fields.size(); i++) {
                 flags[i] = fields.get(i).flags;
             }
+        }
+
+        public static Values create(int directCount, ArrayList<ValueFieldInfo> fields) {
+            if (directCount == 0 && fields.size() == 0) {
+                return EMPTY_VALUES;
+            }
+            return new Values(directCount, fields);
+        }
+
+        public static Values create(OperandModeAnnotation mode) {
+            return create(mode.directCount, mode.values);
         }
 
         public int getDirectCount() {
@@ -214,6 +225,23 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
         }
     }
 
+    private static boolean verifyAssignment(LIRInstruction inst, Value newValue, EnumSet<OperandFlag> flags) {
+        Class<?> type = newValue.getClass();
+        if (!flags.contains(REG)) {
+            assert !type.isAssignableFrom(REGISTER_VALUE_CLASS) && !type.isAssignableFrom(VARIABLE_CLASS) : "Cannot assign RegisterValue / Variable to field without REG flag: " + inst + " newValue=" +
+                            newValue;
+        }
+        if (!flags.contains(STACK)) {
+            assert !type.isAssignableFrom(STACK_SLOT_CLASS) : "Cannot assign StackSlot to field without STACK flag: " + inst + " newValue=" +
+                            newValue;
+        }
+        if (!flags.contains(CONST)) {
+            assert !type.isAssignableFrom(CONSTANT_VALUE_CLASS) : "Cannot assign Constant to field without CONST flag: " + inst + " newValue=" +
+                            newValue;
+        }
+        return true;
+    }
+
     protected static void forEach(LIRInstruction inst, Values values, OperandMode mode, InstructionValueProcedure proc) {
         for (int i = 0; i < values.getCount(); i++) {
             assert LIRInstruction.ALLOWED_FLAGS.get(mode).containsAll(values.getFlags(i));
@@ -228,6 +256,9 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
                     newValue = proc.doValue(inst, value, mode, values.getFlags(i));
                 }
                 if (!value.identityEquals(newValue)) {
+                    if (!(value instanceof CompositeValue)) {
+                        assert verifyAssignment(inst, newValue, values.getFlags(i));
+                    }
                     values.setValue(inst, i, newValue);
                 }
             } else {

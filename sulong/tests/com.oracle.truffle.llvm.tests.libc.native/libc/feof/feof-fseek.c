@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,28 +31,28 @@
 #include <stdlib.h>
 
 int main() {
-  char name[L_tmpnam];
-  FILE *file = fopen(tmpnam(name), "w");
-  if (file == NULL) {
-    printf("Failed to open file\n");
-    abort();
-  }
-  fputs("a asd a xdfasdf abn asdfasdf asdfdfaa", file);
-  fclose(file);
-  FILE *read = fopen(name, "r");
-  if (read == NULL) {
-    printf("Failed to open file\n");
-    abort();
-  }
-  fseek(read, 0, SEEK_END);
-  while (1) {
-    int c = fgetc(read);
-    if (feof(read)) {
-      break;
+    char name[L_tmpnam];
+    FILE *file = fopen(tmpnam(name), "w");
+    if (file == NULL) {
+        printf("Failed to open file\n");
+        abort();
     }
-    putchar(c);
-  }
-  putchar('\n');
-  fclose(read);
-  unlink(name);
+    fputs("a asd a xdfasdf abn asdfasdf asdfdfaa", file);
+    fclose(file);
+    FILE *read = fopen(name, "r");
+    if (read == NULL) {
+        printf("Failed to open file\n");
+        abort();
+    }
+    fseek(read, 0, SEEK_END);
+    while (1) {
+        int c = fgetc(read);
+        if (feof(read)) {
+            break;
+        }
+        putchar(c);
+    }
+    putchar('\n');
+    fclose(read);
+    unlink(name);
 }

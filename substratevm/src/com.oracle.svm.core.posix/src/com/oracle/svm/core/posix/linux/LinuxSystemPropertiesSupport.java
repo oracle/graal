@@ -24,25 +24,26 @@
  */
 package com.oracle.svm.core.posix.linux;
 
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.SystemPropertiesSupport;
 import com.oracle.svm.core.posix.PosixSystemPropertiesSupport;
-import com.oracle.svm.core.posix.headers.Paths;
 import com.oracle.svm.core.posix.headers.Utsname;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 
-@Platforms({InternalPlatform.LINUX_AND_JNI.class})
 public class LinuxSystemPropertiesSupport extends PosixSystemPropertiesSupport {
 
     @Override
     protected String tmpdirValue() {
-        return Paths._PATH_VARTMP();
+        /*
+         * The initial value of `java.io.tmpdir` is hard coded in libjava when building the JDK. So
+         * to be completely correct, we would have to use the value from libjava, but since it is
+         * normally initialized to `/tmp` via `P_tmpdir`, this should be fine for now.
+         */
+        return "/tmp";
     }
 
     @Override
@@ -55,7 +56,6 @@ public class LinuxSystemPropertiesSupport extends PosixSystemPropertiesSupport {
     }
 }
 
-@Platforms({InternalPlatform.LINUX_AND_JNI.class})
 @AutomaticFeature
 class LinuxSystemPropertiesFeature implements Feature {
     @Override

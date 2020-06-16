@@ -25,9 +25,12 @@
 package com.oracle.graal.pointsto.flow;
 
 import org.graalvm.compiler.nodes.ValueNode;
+
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+
+import jdk.vm.ci.code.BytecodePosition;
 
 public class BoxTypeFlow extends NewInstanceTypeFlow {
 
@@ -40,7 +43,7 @@ public class BoxTypeFlow extends NewInstanceTypeFlow {
     }
 
     @Override
-    public TypeFlow<ValueNode> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+    public TypeFlow<BytecodePosition> copy(BigBang bb, MethodFlowsGraph methodFlows) {
         return new BoxTypeFlow(bb, this, methodFlows);
     }
 

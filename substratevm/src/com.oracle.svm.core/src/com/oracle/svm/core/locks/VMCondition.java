@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.locks;
 
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -40,15 +41,14 @@ import com.oracle.svm.core.util.VMError;
  * consumes resources and contributes to VM startup time.
  */
 public class VMCondition {
-
-    private final VMMutex mutex;
+    protected final VMMutex mutex;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public VMCondition(VMMutex mutex) {
         this.mutex = mutex;
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public VMMutex getMutex() {
         return mutex;
     }
@@ -60,6 +60,12 @@ public class VMCondition {
         throw VMError.shouldNotReachHere("VMCondition cannot be used during native image generation");
     }
 
+    /**
+     * Like {@linkplain #block()}, but without a thread status transition. This method can only be
+     * called from uninterruptible code that did an <b>explicit</b> to-native transition before, as
+     * blocking while still in Java-mode could result in a deadlock.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
     public void blockNoTransition() {
         throw VMError.shouldNotReachHere("VMCondition cannot be used during native image generation");
     }
@@ -72,7 +78,20 @@ public class VMCondition {
         throw VMError.shouldNotReachHere("VMCondition cannot be used during native image generation");
     }
 
+    /**
+     * Like {@linkplain #blockNoTransition()} but with a timeout (see {@linkplain #block(long)}).
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
     public long blockNoTransition(@SuppressWarnings("unused") long nanoseconds) {
+        throw VMError.shouldNotReachHere("VMCondition cannot be used during native image generation");
+    }
+
+    /**
+     * Like {@linkplain #blockNoTransition()}, but an unspecified lock owner is used. Only use this
+     * method in places where {@linkplain CurrentIsolate#getCurrentThread()} can return null.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
+    public void blockNoTransitionUnspecifiedOwner() {
         throw VMError.shouldNotReachHere("VMCondition cannot be used during native image generation");
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,7 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 
+import com.oracle.truffle.dsl.processor.java.model.GeneratedElement;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 import com.oracle.truffle.dsl.processor.model.NodeData;
 
@@ -62,11 +63,30 @@ public class ExportMessageData extends MessageContainer {
     private final AnnotationMirror annotation;
     private NodeData specializedNode;
 
+    private boolean overriden;
+    private boolean abstractImpl;
+
     ExportMessageData(ExportsLibrary exports, LibraryMessage resolvedMessage, Element element, AnnotationMirror annotation) {
         this.exports = exports;
         this.resolvedMessage = resolvedMessage;
         this.element = element;
         this.annotation = annotation;
+    }
+
+    public boolean isAbstract() {
+        return abstractImpl;
+    }
+
+    public void setAbstract(boolean abstractImpl) {
+        this.abstractImpl = abstractImpl;
+    }
+
+    public void setOverriden(boolean overriden) {
+        this.overriden = overriden;
+    }
+
+    public boolean isOverriden() {
+        return overriden;
     }
 
     @Override
@@ -128,6 +148,15 @@ public class ExportMessageData extends MessageContainer {
     @Override
     public AnnotationMirror getMessageAnnotation() {
         return annotation;
+    }
+
+    public boolean isGenerated() {
+        return element instanceof GeneratedElement;
+    }
+
+    @Override
+    public String toString() {
+        return "ExportMessageData [element=" + element + ", exports=" + exports + ", message=" + resolvedMessage + "]";
     }
 
 }

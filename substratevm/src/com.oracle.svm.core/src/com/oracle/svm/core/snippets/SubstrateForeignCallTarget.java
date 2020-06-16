@@ -29,6 +29,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import com.oracle.svm.core.annotate.StubCallingConvention;
+
 /**
  * Used for methods that are targets for foreign calls.
  *
@@ -38,4 +40,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
 public @interface SubstrateForeignCallTarget {
+
+    /** When true, use {@link StubCallingConvention}. */
+    boolean stubCallingConvention();
 }

@@ -243,6 +243,22 @@ public @interface Layout {
     /** @since 0.12 */
     boolean implicitCastIntToDouble() default false;
 
+    /**
+     * Non-instantiable class representing default value for {@link #dispatch()}.
+     *
+     * @since 20.0
+     */
+    final class DispatchDefaultValue {
+        private DispatchDefaultValue() {
+        }
+    }
+
+    /**
+     * Generate override of {@link ObjectType#dispatch()} method in the generated inner *Type class.
+     *
+     * @since 20.0
+     */
+    Class<?> dispatch() default DispatchDefaultValue.class;
 }
 
 class Snippets {

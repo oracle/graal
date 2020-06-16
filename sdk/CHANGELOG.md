@@ -2,6 +2,43 @@
 
 This changelog summarizes major changes between GraalVM SDK versions. The main focus is on APIs exported by GraalVM SDK.
 
+## Version 20.2.0
+* Added `-Dpolyglot.engine.AllowExperimentalOptions=true` to allow experimental options for all polyglot engines of a host VM. This system property is intended to be used for testing only and should not be enabled in production environments.
+* Added [a factory method](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/FileSystem.html#newDefaultFileSystem--) creating a FileSystem based on the host Java NIO. The obtained instance can be used as a delegate in a decorating filesystem.
+* Added `PolyglotException.isResourceExhausted()` to determine if an error was caused by a resource limit (e.g. OutOfMemoryError) that was exceeded.
+* Added `Context.parse(Source)` to parse but not evaluate a source. Parsing a source allows to trigger e.g. syntax validation prior to executing the code.
+
+## Version 20.1.0
+* The `PerformanceWarningsAreFatal` and `TracePerformanceWarnings` engine options take a comma separated list of performance warning types. Allowed warning types are `call` to enable virtual call warnings, `instanceof` to enable virtual instance of warnings and `store` to enables virtual store warnings. There are also `all` and `none` types to enable (disable) all performance warnings.
+* The `<language-id>.home` system property that can be used in some development scenarios to specify a language's directory is deprecated. The `org.graalvm.language.<language-uid>.home` property should be used instead. Setting this new system property is reflected by the `HomeFinder` API.
+* Added `CompilationFailureAction` engine option which deprecates `CompilationExceptionsArePrinted `, `CompilationExceptionsAreThrown`, `CompilationExceptionsAreFatal` and `PerformanceWarningsAreFatal` options.
+* Added `TreatPerformanceWarningsAsErrors` engine option which deprecates the `PerformanceWarningsAreFatal` option. To replace the `PerformanceWarningsAreFatal` option use the `TreatPerformanceWarningsAsErrors` with `CompilationFailureAction` set to `ExitVM`.
+* Added `bailout` into performance warning kinds used by `TracePerformanceWarnings`, `PerformanceWarningsAreFatal` and `CompilationExceptionsAreFatal` options.
+* Added [OptionDescriptor.getDeprecationMessage](https://www.graalvm.org/sdk/javadoc/org/graalvm/options/OptionDescriptor.html#getDeprecationMessage--) returning the option deprecation reason. Added [OptionDescriptor.Builder.deprecationMessage()](https://www.graalvm.org/sdk/javadoc/org/graalvm/options/OptionDescriptor.Builder.html#deprecationMessage-java.lang.String-) to set the option deprecation reason.
+* Added `Value.isMetaObject()`, `Value.getMetaQualifiedName()`, `Value.getMetaSimpleName()` and `Value.isMetaInstance(Object)` to allow language agnostic access to meta-objects like classes or types.  
+* The result of `Value.getMetaObject()` will now return always [meta-objects](Value.isMetaObject). It is recommended but not required to change uses of meta-objects to use `Value.getMetaQualifiedName()` instead of `Value.toString()` to return a type name. 
+* Added [Context.Builder.hostClassLoader](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#hostClassLoader-java.lang.ClassLoader-) to allow an embedder to specify a context ClassLoader for code execution.
+
+
+## Version 20.0.0
+* The deprecated `graalvm.home` and `graalvm.version` system properties have been removed, use the [HomeFinder](https://www.graalvm.org/sdk/javadoc/org/graalvm/home/HomeFinder.html) instead.
+* Added `EventContext.createError` which allows to introduce guest application errors in execution listeners/nodes.
+* Deprecated `Instrumenter.attachExecutionEventListener` and `ExecutionEventListener.onInputValue` as explicit input filters are not supported by event listeners. Use ExecutionEventNodes instead.
+* Added [Context.Builder.currentWorkingDirectory](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#currentWorkingDirectory-java.nio.file.Path-) to set the current working directory used by the guest application to resolve relative paths.
+* The algorithm used to generate a unique [URI](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Source.html#getURI--) for a `Source` built without an `URI` was changed to SHA-256.
+* All Truffle Graal runtime options (-Dgraal.) will be deprecated with 20.1. The Truffle runtime options are no longer specified as Graal options (-Dgraal.). The Graal options must be replaced by corresponding engine options specified using [polyglot API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.Builder.html#option-java.lang.String-java.lang.String-). The `TRUFFLE_STRICT_OPTION_DEPRECATION` environment variable can be used to detect usages of deprecated Graal options. When the `TRUFFLE_STRICT_OPTION_DEPRECATION` is set to `true` and the deprecated Graal option is used the engine throws a `PolyglotException` listing the used deprecated options and corresponding replacements.
+
+
+## Version 19.3.0
+* The default temporary directory can be configured by [FileSystem](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/FileSystem.html#getTempDirectory--).
+* Added `org.graalvm.polyglot.ResourceLimits` that allows to specify context specific time and statement count execution limits.
+* Added [HomeFinder](http://www.graalvm.org/sdk/javadoc/org/graalvm/home/HomeFinder.html), a utility class to find various paths of the running GraalVM.
+* Contexts can now be closed if they are still explicitly entered using `Context.enter` on the current thread. This allows for simpler error recovery code.
+* Added `Value.getContext()` to access the context a value is associated with.
+* Added `org.graalvm.home.Version` version utility that allows to create, validate and compare GraalVM versions.
+* Added Value API methods for interacting with exception objects: [Value#isException](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#isException--) and [Value#throwException](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#throwException--).
+* Added target type mapping from exception objects to [PolyglotException](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#as-java.lang.Class-).
+
 ## Version 19.2.0
 * Added support for date, time, timezone and duration values in polyglot
 	* Added methods to identify polyglot date, time, timezone and duration values in `Value`. See `Value.isDate`, `Value.isTime`, `Value.isTimeZone`, `Value.isDuration`. 
@@ -14,7 +51,7 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 ## Version 19.1.0
 * Restricting guest languages from sub-process creation by [Context.Builder.allowCreateProcess](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#allowCreateProcess-boolean-). Use `Context.newBuilder().allowCreateProcess(true)` to allow guest languages to create a new sub-process.
 * Added a possibility to control sub-process creation using a custom [ProcessHandler](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/ProcessHandler.html) implementation. Use `Context.newBuilder().processHandler(handler)` to install a custom `ProcessHandler`.
-* Restricting access to the host environment variables via [EnvironmentAccess](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/EnvironmentAccess.html) configurations. Use `EnvironmentAccess.INHERIT` to allow guest langauges to read process environment variables.
+* Restricting access to the host environment variables via [EnvironmentAccess](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/EnvironmentAccess.html) configurations. Use `EnvironmentAccess.INHERIT` to allow guest languages to read process environment variables.
 * Deprecated `OptionValues#set`, [OptionValues](https://www.graalvm.org/sdk/javadoc/org/graalvm/options/OptionValues.html) should be read-only. If the value needs to be changed, it can be stored in the language or instrument and read from there.
 * Removed deprecated `OptionCategory.DEBUG` (use `OptionCategory.INTERNAL` instead).
 * The path separator can now be configured by [FileSystem](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/FileSystem.html#getPathSeparator--).

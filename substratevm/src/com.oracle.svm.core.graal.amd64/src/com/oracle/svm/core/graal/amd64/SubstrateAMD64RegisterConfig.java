@@ -41,12 +41,20 @@ import static jdk.vm.ci.amd64.AMD64.rsp;
 import static jdk.vm.ci.amd64.AMD64.valueRegistersSSE;
 import static jdk.vm.ci.amd64.AMD64.xmm0;
 import static jdk.vm.ci.amd64.AMD64.xmm1;
+import static jdk.vm.ci.amd64.AMD64.xmm10;
+import static jdk.vm.ci.amd64.AMD64.xmm11;
+import static jdk.vm.ci.amd64.AMD64.xmm12;
+import static jdk.vm.ci.amd64.AMD64.xmm13;
+import static jdk.vm.ci.amd64.AMD64.xmm14;
+import static jdk.vm.ci.amd64.AMD64.xmm15;
 import static jdk.vm.ci.amd64.AMD64.xmm2;
 import static jdk.vm.ci.amd64.AMD64.xmm3;
 import static jdk.vm.ci.amd64.AMD64.xmm4;
 import static jdk.vm.ci.amd64.AMD64.xmm5;
 import static jdk.vm.ci.amd64.AMD64.xmm6;
 import static jdk.vm.ci.amd64.AMD64.xmm7;
+import static jdk.vm.ci.amd64.AMD64.xmm8;
+import static jdk.vm.ci.amd64.AMD64.xmm9;
 
 import java.util.ArrayList;
 
@@ -78,6 +86,9 @@ import jdk.vm.ci.meta.ValueKind;
 
 public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
 
+    public static final Register HEAP_BASE_REGISTER_CANDIDATE = r14;
+    public static final Register THREAD_REGISTER_CANDIDATE = r15;
+
     private final TargetDescription target;
     private final int nativeParamsStackOffset;
     private final RegisterArray javaGeneralParameterRegs;
@@ -98,6 +109,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
 
         if (OS.getCurrent() == OS.WINDOWS) {
             // This is the Windows 64-bit ABI for parameters.
+            // Note that float parameters also "consume" a general register and vice versa.
             nativeGeneralParameterRegs = new RegisterArray(rcx, rdx, r8, r9);
             javaGeneralParameterRegs = new RegisterArray(rdx, r8, r9, rdi, rsi, rcx);
             xmmParameterRegs = new RegisterArray(xmm0, xmm1, xmm2, xmm3);
@@ -106,8 +118,8 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
             // even though they are passed in registers.
             nativeParamsStackOffset = 4 * target.wordSize;
 
-            heapBaseRegister = SubstrateOptions.SpawnIsolates.getValue() ? r14 : null;
-            threadRegister = SubstrateOptions.MultiThreaded.getValue() ? r15 : null;
+            heapBaseRegister = SubstrateOptions.SpawnIsolates.getValue() ? HEAP_BASE_REGISTER_CANDIDATE : null;
+            threadRegister = SubstrateOptions.MultiThreaded.getValue() ? THREAD_REGISTER_CANDIDATE : null;
 
             ArrayList<Register> regs = new ArrayList<>(valueRegistersSSE.asList());
             regs.remove(rsp);
@@ -123,8 +135,8 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
 
             nativeParamsStackOffset = 0;
 
-            heapBaseRegister = SubstrateOptions.SpawnIsolates.getValue() ? r14 : null;
-            threadRegister = SubstrateOptions.MultiThreaded.getValue() ? r15 : null;
+            heapBaseRegister = SubstrateOptions.SpawnIsolates.getValue() ? HEAP_BASE_REGISTER_CANDIDATE : null;
+            threadRegister = SubstrateOptions.MultiThreaded.getValue() ? THREAD_REGISTER_CANDIDATE : null;
 
             ArrayList<Register> regs = new ArrayList<>(valueRegistersSSE.asList());
             regs.remove(rsp);
@@ -147,7 +159,8 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
                  * return address.
                  */
                 if (OS.getCurrent() == OS.WINDOWS) {
-                    calleeSaveRegisters = new RegisterArray(rbx, rdi, rsi, r12, r13, r14, r15, rbp);
+                    calleeSaveRegisters = new RegisterArray(rbx, rdi, rsi, r12, r13, r14, r15, rbp,
+                                    xmm6, xmm7, xmm8, xmm9, xmm10, xmm11, xmm12, xmm13, xmm14, xmm15);
                 } else {
                     calleeSaveRegisters = new RegisterArray(rbx, r12, r13, r14, r15, rbp);
                 }
@@ -266,6 +279,11 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
             JavaKind kind = ObjectLayout.getCallSignatureKind(isEntryPoint, (ResolvedJavaType) parameterTypes[i], metaAccess, target);
             kinds[i] = kind;
 
+            if (type.nativeABI && OS.getCurrent() == OS.WINDOWS) {
+                // Strictly positional: float parameters consume a general register and vice versa
+                currentGeneral = i;
+                currentXMM = i;
+            }
             switch (kind) {
                 case Byte:
                 case Boolean:

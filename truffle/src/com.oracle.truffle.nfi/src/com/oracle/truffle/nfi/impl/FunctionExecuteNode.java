@@ -42,6 +42,7 @@ package com.oracle.truffle.nfi.impl;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
@@ -239,15 +240,19 @@ abstract class FunctionExecuteNode extends Node {
 
     static class SlowPathExecuteNode extends RootNode {
 
-        final ContextReference<NFIContext> ctxRef;
+        @CompilationFinal ContextReference<NFIContext> ctxRef;
 
         SlowPathExecuteNode(NFILanguageImpl language) {
             super(language);
-            ctxRef = language.getContextReference();
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
+            if (ctxRef == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                ctxRef = lookupContextReference(NFILanguageImpl.class);
+            }
+
             NativePointer receiver = (NativePointer) frame.getArguments()[0];
             LibFFISignature signature = (LibFFISignature) frame.getArguments()[1];
             NativeArgumentBuffer.Array buffer = (NativeArgumentBuffer.Array) frame.getArguments()[2];

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,8 +32,6 @@ import static org.graalvm.compiler.core.phases.HighTier.Options.Inline;
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsing;
 
 import java.io.PrintStream;
-import java.util.Collections;
-import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -44,6 +42,7 @@ import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.DebugDumpScope;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
@@ -92,8 +91,8 @@ public class CompilationTask {
         protected DebugContext createRetryDebugContext(DebugContext initialDebug, OptionValues retryOptions, PrintStream logStream) {
             SnippetReflectionProvider snippetReflection = compiler.getGraalRuntime().getHostProviders().getSnippetReflection();
             Description description = initialDebug.getDescription();
-            List<DebugHandlersFactory> factories = Collections.singletonList(new GraalDebugHandlersFactory(snippetReflection));
-            return DebugContext.create(retryOptions, description, initialDebug.getGlobalMetrics(), logStream, factories);
+            DebugHandlersFactory factory = new GraalDebugHandlersFactory(snippetReflection);
+            return new Builder(retryOptions, factory).globalMetrics(initialDebug.getGlobalMetrics()).description(description).logStream(logStream).build();
         }
 
         @Override
@@ -278,7 +277,7 @@ public class CompilationTask {
     /**
      * Time spent in compilation.
      */
-    private static final TimerKey CompilationTime = DebugContext.timer("CompilationTime").doc("Time spent in compilation and code installation.");
+    public static final TimerKey CompilationTime = DebugContext.timer("CompilationTime").doc("Time spent in compilation and code installation.");
 
     /**
      * Counts the number of compiled {@linkplain CompilationResult#getBytecodeSize() bytecodes}.
@@ -289,7 +288,7 @@ public class CompilationTask {
      * Counts the number of compiled {@linkplain CompilationResult#getBytecodeSize() bytecodes} for
      * which {@linkplain CompilationResult#getTargetCode()} code was installed.
      */
-    private static final CounterKey CompiledAndInstalledBytecodes = DebugContext.counter("CompiledAndInstalledBytecodes");
+    public static final CounterKey CompiledAndInstalledBytecodes = DebugContext.counter("CompiledAndInstalledBytecodes");
 
     /**
      * Counts the number of installed {@linkplain CompilationResult#getTargetCodeSize()} bytes.
@@ -303,8 +302,8 @@ public class CompilationTask {
 
     public HotSpotCompilationRequestResult runCompilation(OptionValues initialOptions) {
         OptionValues options = filterOptions(initialOptions);
-        SnippetReflectionProvider snippetReflection = compiler.getGraalRuntime().getHostProviders().getSnippetReflection();
-        try (DebugContext debug = DebugContext.create(options, new GraalDebugHandlersFactory(snippetReflection))) {
+        HotSpotGraalRuntimeProvider graalRuntime = compiler.getGraalRuntime();
+        try (DebugContext debug = graalRuntime.openDebugContext(options, compilationId, getMethod(), compiler.getDebugHandlersFactories(), DebugContext.getDefaultLogStream())) {
             return runCompilation(debug);
         }
     }

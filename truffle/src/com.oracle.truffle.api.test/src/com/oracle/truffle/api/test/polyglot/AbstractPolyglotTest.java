@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
 import java.util.concurrent.Callable;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import org.graalvm.polyglot.Context;
@@ -55,6 +56,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -68,11 +70,14 @@ import com.oracle.truffle.api.nodes.RootNode;
  */
 public abstract class AbstractPolyglotTest {
 
+    protected static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
+
     protected Context context;
     protected TruffleLanguage.Env languageEnv;
     protected TruffleLanguage<?> language;
     protected TruffleInstrument.Env instrumentEnv;
     protected boolean cleanupOnSetup = true;
+    protected boolean enterContext = true;
 
     protected final void setupEnv(Context newContext, ProxyInstrument instrument) {
         setupEnv(newContext, null, instrument);
@@ -129,7 +134,9 @@ public abstract class AbstractPolyglotTest {
 
         newContext.initialize(languageId);
         // enter current context
-        newContext.enter();
+        if (enterContext) {
+            newContext.enter();
+        }
 
         assertNotNull(this.languageEnv);
         assertNotNull(this.language);
@@ -167,19 +174,55 @@ public abstract class AbstractPolyglotTest {
     @After
     public final void cleanup() {
         if (context != null) {
-            context.leave();
+            if (enterContext) {
+                context.leave();
+            }
+
             context.close();
             context = null;
         }
     }
 
-    protected static void assertFails(Callable<?> callable, Class<? extends Throwable> exceptionType) {
+    public static void assertFails(Runnable callable, Class<? extends Throwable> exceptionType) {
+        assertFails((Callable<?>) () -> {
+            callable.run();
+            return null;
+        }, exceptionType);
+    }
+
+    public static void assertFails(Callable<?> callable, Class<? extends Throwable> exceptionType) {
         try {
             callable.call();
         } catch (Throwable t) {
             if (!exceptionType.isInstance(t)) {
                 throw new AssertionError("expected instanceof " + exceptionType.getName() + " was " + t.getClass().getName(), t);
             }
+            return;
+        }
+        fail("expected " + exceptionType.getName() + " but no exception was thrown");
+    }
+
+    public static <T extends Throwable> void assertFails(Runnable run, Class<T> exceptionType, Consumer<T> verifier) {
+        try {
+            run.run();
+        } catch (Throwable t) {
+            if (!exceptionType.isInstance(t)) {
+                throw new AssertionError("expected instanceof " + exceptionType.getName() + " was " + t.getClass().getName(), t);
+            }
+            verifier.accept(exceptionType.cast(t));
+            return;
+        }
+        fail("expected " + exceptionType.getName() + " but no exception was thrown");
+    }
+
+    public static <T extends Throwable> void assertFails(Callable<?> callable, Class<T> exceptionType, Consumer<T> verifier) {
+        try {
+            callable.call();
+        } catch (Throwable t) {
+            if (!exceptionType.isInstance(t)) {
+                throw new AssertionError("expected instanceof " + exceptionType.getName() + " was " + t.getClass().getName(), t);
+            }
+            verifier.accept(exceptionType.cast(t));
             return;
         }
         fail("expected " + exceptionType.getName() + " but no exception was thrown");

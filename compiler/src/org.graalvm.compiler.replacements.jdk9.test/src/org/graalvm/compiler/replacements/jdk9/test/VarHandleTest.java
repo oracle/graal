@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,14 +27,16 @@ package org.graalvm.compiler.replacements.jdk9.test;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 
+import jdk.vm.ci.aarch64.AArch64;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.MembarNode;
-import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
+import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
 import org.graalvm.compiler.nodes.memory.ReadNode;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.word.LocationIdentity;
 import org.junit.Assert;
@@ -114,6 +116,18 @@ public class VarHandleTest extends GraalCompilerTest {
         Assert.assertEquals(expectedAnyKill, countAnyKill(graph));
     }
 
+    private boolean volatileAccessLowered() {
+        return !(getTarget().arch instanceof AArch64);
+    }
+
+    private int numberOfExpectedMembars() {
+        return volatileAccessLowered() ? 2 : 0;
+    }
+
+    private int numberOfExpectedKills() {
+        return volatileAccessLowered() ? 2 : 1;
+    }
+
     @Test
     public void testRead1() {
         testAccess("testRead1Snippet", 1, 0, 0, 0);
@@ -121,7 +135,7 @@ public class VarHandleTest extends GraalCompilerTest {
 
     @Test
     public void testRead2() {
-        testAccess("testRead2Snippet", 1, 0, 2, 2);
+        testAccess("testRead2Snippet", 1, 0, numberOfExpectedMembars(), numberOfExpectedKills());
     }
 
     @Test
@@ -131,7 +145,7 @@ public class VarHandleTest extends GraalCompilerTest {
 
     @Test
     public void testRead4() {
-        testAccess("testRead4Snippet", 1, 0, 2, 2);
+        testAccess("testRead4Snippet", 1, 0, numberOfExpectedMembars(), numberOfExpectedKills());
     }
 
     @Test
@@ -141,7 +155,7 @@ public class VarHandleTest extends GraalCompilerTest {
 
     @Test
     public void testWrite2() {
-        testAccess("testWrite2Snippet", 0, 1, 2, 2);
+        testAccess("testWrite2Snippet", 0, 1, numberOfExpectedMembars(), numberOfExpectedKills());
     }
 
     @Test
@@ -151,7 +165,7 @@ public class VarHandleTest extends GraalCompilerTest {
 
     @Test
     public void testWrite4() {
-        testAccess("testWrite4Snippet", 0, 1, 2, 2);
+        testAccess("testWrite4Snippet", 0, 1, numberOfExpectedMembars(), numberOfExpectedKills());
     }
 
     private static int countAnyKill(StructuredGraph graph) {
@@ -160,14 +174,14 @@ public class VarHandleTest extends GraalCompilerTest {
         for (Node n : graph.getNodes()) {
             if (n instanceof StartNode) {
                 startNodes++;
-            } else if (n instanceof MemoryCheckpoint.Single) {
-                MemoryCheckpoint.Single single = (MemoryCheckpoint.Single) n;
-                if (single.getLocationIdentity().isAny()) {
+            } else if (n instanceof SingleMemoryKill) {
+                SingleMemoryKill single = (SingleMemoryKill) n;
+                if (single.getKilledLocationIdentity().isAny()) {
                     anyKillCount++;
                 }
-            } else if (n instanceof MemoryCheckpoint.Multi) {
-                MemoryCheckpoint.Multi multi = (MemoryCheckpoint.Multi) n;
-                for (LocationIdentity loc : multi.getLocationIdentities()) {
+            } else if (n instanceof MultiMemoryKill) {
+                MultiMemoryKill multi = (MultiMemoryKill) n;
+                for (LocationIdentity loc : multi.getKilledLocationIdentities()) {
                     if (loc.isAny()) {
                         anyKillCount++;
                         break;

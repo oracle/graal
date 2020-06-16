@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,13 +33,12 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.DeoptimizingFixedWithNextNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.word.LocationIdentity;
 
 @NodeInfo(cycles = CYCLES_4, size = SIZE_16, allowedUsageTypes = {Memory})
-public class InitializeKlassNode extends DeoptimizingFixedWithNextNode implements Lowerable, MemoryCheckpoint.Single {
+public class InitializeKlassNode extends DeoptimizingFixedWithNextNode implements Lowerable, SingleMemoryKill {
     public static final NodeClass<InitializeKlassNode> TYPE = NodeClass.create(InitializeKlassNode.class);
 
     @Input ValueNode value;
@@ -47,11 +46,6 @@ public class InitializeKlassNode extends DeoptimizingFixedWithNextNode implement
     public InitializeKlassNode(ValueNode value) {
         super(TYPE, value.stamp(NodeView.DEFAULT));
         this.value = value;
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
     }
 
     public ValueNode value() {
@@ -64,7 +58,7 @@ public class InitializeKlassNode extends DeoptimizingFixedWithNextNode implement
     }
 
     @Override
-    public LocationIdentity getLocationIdentity() {
+    public LocationIdentity getKilledLocationIdentity() {
         return LocationIdentity.any();
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,10 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.util.HashMap;
+import java.util.Map;
+
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
@@ -73,6 +77,7 @@ public class DebugValueTest extends AbstractDebugTest {
     public void testNumValue() throws Throwable {
         final Source source = testSource("ROOT(\n" +
                         "  VARIABLE(a, 42), \n" +
+                        "  VARIABLE(b, true), \n" +
                         "  VARIABLE(inf, infinity), \n" +
                         "  STATEMENT()\n" +
                         ")\n");
@@ -83,17 +88,112 @@ public class DebugValueTest extends AbstractDebugTest {
             expectSuspended((SuspendedEvent event) -> {
                 DebugStackFrame frame = event.getTopStackFrame();
                 DebugValue value42 = frame.getScope().getDeclaredValue("a");
+                DebugValue valueTrue = frame.getScope().getDeclaredValue("b");
+                DebugValue valueInf = frame.getScope().getDeclaredValue("inf");
 
                 assertEquals("a", value42.getName());
                 assertFalse(value42.isArray());
                 assertNull(value42.getArray());
                 assertNull(value42.getProperties());
-                assertEquals("Integer", value42.getMetaObject().as(String.class));
-                assertEquals("Infinity", frame.getScope().getDeclaredValue("inf").getMetaObject().as(String.class));
+                assertFalse(value42.isBoolean());
+                assertTrue(value42.isNumber());
+                assertTrue(value42.fitsInLong());
+                assertTrue(value42.fitsInInt());
+                assertTrue(value42.fitsInShort());
+                assertTrue(value42.fitsInByte());
+                assertTrue(value42.fitsInDouble());
+                assertTrue(value42.fitsInFloat());
+                assertFalse(value42.isString());
+                assertFalse(value42.isDate());
+                assertFalse(value42.isDuration());
+                assertFalse(value42.isInstant());
+                assertFalse(value42.isTime());
+                assertFalse(value42.isTimeZone());
+                assertEquals("42", value42.toDisplayString());
+                DebugValue value42Meta = value42.getMetaObject();
+                assertEquals("Integer", value42Meta.toDisplayString());
+                assertEquals("Integer", value42Meta.getMetaQualifiedName());
+                assertEquals("Integer", value42Meta.getMetaSimpleName());
+                assertTrue(value42Meta.isMetaInstance(value42));
+                assertFalse(value42Meta.isMetaInstance(valueTrue));
+                assertFalse(value42Meta.isMetaInstance(valueInf));
                 SourceSection integerSS = value42.getSourceLocation();
                 assertEquals("source integer", integerSS.getCharacters());
-                SourceSection infinitySS = frame.getScope().getDeclaredValue("inf").getSourceLocation();
+
+                assertEquals("b", valueTrue.getName());
+                assertTrue(valueTrue.isBoolean());
+                assertFalse(valueTrue.isNumber());
+                assertFalse(valueTrue.fitsInLong());
+                assertFalse(valueTrue.fitsInInt());
+                assertFalse(valueTrue.fitsInDouble());
+                assertEquals("true", valueTrue.toDisplayString());
+                DebugValue valueTrueMeta = valueTrue.getMetaObject();
+                assertEquals("Boolean", valueTrueMeta.toDisplayString());
+                assertEquals("Boolean", valueTrueMeta.getMetaQualifiedName());
+                assertEquals("Boolean", valueTrueMeta.getMetaSimpleName());
+                assertTrue(valueTrueMeta.isMetaInstance(valueTrue));
+                assertFalse(valueTrueMeta.isMetaInstance(value42));
+                assertFalse(valueTrueMeta.isMetaInstance(valueInf));
+
+                assertEquals("inf", valueInf.getName());
+                assertFalse(valueInf.isBoolean());
+                assertTrue(valueInf.isNumber());
+                assertFalse(valueInf.fitsInLong());
+                assertTrue(valueInf.fitsInDouble());
+                assertEquals("Infinity", valueInf.toDisplayString());
+                DebugValue valueInfMeta = valueInf.getMetaObject();
+                assertEquals("Infinity", valueInfMeta.toDisplayString());
+                assertEquals("Infinity", valueInfMeta.getMetaQualifiedName());
+                assertEquals("Infinity", valueInfMeta.getMetaSimpleName());
+                assertTrue(valueInfMeta.isMetaInstance(valueInf));
+                assertFalse(valueInfMeta.isMetaInstance(value42));
+                assertFalse(valueInfMeta.isMetaInstance(valueTrue));
+                SourceSection infinitySS = valueInf.getSourceLocation();
                 assertEquals("source infinity", infinitySS.getCharacters());
+            });
+
+            expectDone();
+        }
+    }
+
+    @Test
+    public void testGetRawValue() throws Throwable {
+        final Source source = testSource("ROOT(\n" +
+                        "  VARIABLE(a, 42), \n" +
+                        "  VARIABLE(inf, infinity), \n" +
+                        "  STATEMENT()\n" +
+                        ")\n");
+        try (DebuggerSession session = startSession()) {
+            session.suspendNextExecution();
+            startEval(source);
+
+            expectSuspended((SuspendedEvent event) -> {
+                DebugStackFrame frame = event.getTopStackFrame();
+                DebugValue value42 = frame.getScope().getDeclaredValue("a");
+                assertEquals(42, value42.getRawValue(InstrumentationTestLanguage.class));
+                assertEquals(Double.POSITIVE_INFINITY, frame.getScope().getDeclaredValue("inf").getRawValue(InstrumentationTestLanguage.class));
+            });
+
+            expectDone();
+        }
+    }
+
+    @Test
+    public void testGetRawValueRestricted() throws Throwable {
+        final Source source = testSource("ROOT(\n" +
+                        "  VARIABLE(a, 42), \n" +
+                        "  VARIABLE(inf, infinity), \n" +
+                        "  STATEMENT()\n" +
+                        ")\n");
+        try (DebuggerSession session = startSession()) {
+            session.suspendNextExecution();
+            startEval(source);
+
+            expectSuspended((SuspendedEvent event) -> {
+                DebugStackFrame frame = event.getTopStackFrame();
+                DebugValue value42 = frame.getScope().getDeclaredValue("a");
+                assertNull(value42.getRawValue(ProxyLanguage.class));
+                assertNull(frame.getScope().getDeclaredValue("inf").getRawValue(ProxyLanguage.class));
             });
 
             expectDone();
@@ -185,6 +285,65 @@ public class DebugValueTest extends AbstractDebugTest {
         assertTrue(suspended[0]);
     }
 
+    @Test
+    public void testCached() {
+        final Source source = testSource("DEFINE(function, ROOT(\n" +
+                        "  ARGUMENT(a), \n" +
+                        "  STATEMENT()\n" +
+                        "))\n");
+        Context context = Context.create();
+        context.eval(source);
+        Value functionValue = context.getBindings(InstrumentationTestLanguage.ID).getMember("function");
+        assertNotNull(functionValue);
+        Debugger debugger = context.getEngine().getInstruments().get("debugger").lookup(Debugger.class);
+
+        boolean[] suspended = new boolean[]{false};
+        final ModifiableAttributesTruffleObject ma = new ModifiableAttributesTruffleObject();
+        try (DebuggerSession session = debugger.startSession((SuspendedEvent event) -> {
+            assertFalse(suspended[0]);
+            DebugValue a = event.getTopStackFrame().getScope().getDeclaredValue("a");
+            ma.setIsReadable(true);
+            DebugValue ap1 = a.getProperty("p1");
+            DebugValue ap2 = a.getProperty("p2");
+            assertNotNull(ap1);
+            assertNotNull(ap2);
+
+            assertEquals(0, ap1.asInt());
+            assertEquals(0, ap2.asInt());
+            assertEquals(0, ap1.asInt());
+            ap2 = a.getProperty("p2"); // Get a fresh property value
+            assertEquals(1, ap2.asInt());
+            ap1.isArray();
+            ap1.isNull();
+            ap2.isArray();
+            ap2.isNull();
+            assertEquals(0, ap1.asInt());
+            assertEquals(1, ap2.asInt());
+
+            DebugValue ap1New = a.getProperty("p1");
+            DebugValue ap2New = a.getProperty("p2");
+            ap1New.isNull();
+            ap2New.isNull();
+            assertEquals(1, ap1New.asInt());
+            assertEquals(2, ap2New.asInt());
+            a.getProperty("p1");
+            ap1New = a.getProperty("p1");
+            ap1New.isNull();
+            ap2New.isNull();
+            assertEquals(2, ap1New.asInt());
+            assertEquals(2, ap2New.asInt());
+            // Original properties are unchanged:
+            assertEquals(0, ap1.asInt());
+            assertEquals(1, ap2.asInt());
+            event.prepareContinue();
+            suspended[0] = true;
+        })) {
+            session.install(Breakpoint.newBuilder(getSourceImpl(source)).lineIs(3).build());
+            functionValue.execute(ma);
+        }
+        assertTrue(suspended[0]);
+    }
+
     @ExportLibrary(InteropLibrary.class)
     static final class NoAttributesTruffleObject implements TruffleObject {
 
@@ -231,6 +390,7 @@ public class DebugValueTest extends AbstractDebugTest {
         private boolean isWritable;
         private boolean hasWriteSideEffects;
         private boolean isInternal;
+        private final Map<String, Integer> memberCounters = new HashMap<>();
 
         @ExportMessage
         boolean hasMembers() {
@@ -282,7 +442,14 @@ public class DebugValueTest extends AbstractDebugTest {
 
         @ExportMessage
         Object readMember(String member) {
-            return "propertyValue";
+            Integer counter = memberCounters.get(member);
+            if (counter == null) {
+                counter = 0;
+            } else {
+                counter++;
+            }
+            memberCounters.put(member, counter);
+            return counter;
         }
 
         public void setIsReadable(boolean isReadable) {
@@ -305,6 +472,10 @@ public class DebugValueTest extends AbstractDebugTest {
             this.isInternal = isInternal;
         }
 
+        public String getMemberCounters() {
+            return memberCounters.toString();
+        }
+
         public static boolean isInstance(TruffleObject obj) {
             return obj instanceof ModifiableAttributesTruffleObject;
         }
@@ -324,17 +495,26 @@ public class DebugValueTest extends AbstractDebugTest {
 
         @ExportMessage
         Object readArrayElement(long index) throws UnsupportedMessageException, InvalidArrayIndexException {
-            return "property";
+            switch ((int) index) {
+                case 0:
+                    return "property";
+                case 1:
+                    return "p1";
+                case 2:
+                    return "p2";
+                default:
+                    throw new IllegalStateException("Wrong index: " + index);
+            }
         }
 
         @ExportMessage
         long getArraySize() throws UnsupportedMessageException {
-            return 1L;
+            return 3L;
         }
 
         @ExportMessage
         boolean isArrayElementReadable(long index) {
-            return index == 0;
+            return 0 <= index && index < 3;
         }
     }
 

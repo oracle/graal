@@ -36,6 +36,7 @@ import java.text.MessageFormat;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.function.Supplier;
@@ -43,7 +44,7 @@ import java.util.function.Supplier;
 /**
  * Implementation of feedback and input for commands.
  */
-public final class Environment implements Feedback, CommandInput {
+public class Environment implements Feedback, CommandInput {
     private static final ResourceBundle BUNDLE = ResourceBundle.getBundle(
                     "org.graalvm.component.installer.Bundle");
 
@@ -52,10 +53,10 @@ public final class Environment implements Feedback, CommandInput {
     private final Map<String, String> options;
     private final boolean verbose;
     private final ResourceBundle bundle;
+    private int parameterPos;
     private InputStream in = System.in;
     private PrintStream err = System.err;
     private PrintStream out = System.out;
-    private Supplier<ComponentCollection> registrySupplier;
     private ComponentRegistry localRegistry;
     private boolean stacktraces;
     private ComponentIterable fileIterable;
@@ -65,6 +66,8 @@ public final class Environment implements Feedback, CommandInput {
     private boolean nonInteractive;
     private Path graalHome;
     private FileOperations fileOperations;
+    private CatalogFactory catalogFactory;
+    private ComponentCatalog componentCatalog;
 
     Environment(String commandName, List<String> parameters, Map<String, String> options) {
         this(commandName, (String) null, parameters, options);
@@ -140,9 +143,16 @@ public final class Environment implements Feedback, CommandInput {
         this.fileIterable = fileIterable;
     }
 
+    public void setCatalogFactory(CatalogFactory catalogFactory) {
+        this.catalogFactory = catalogFactory;
+    }
+
     @Override
-    public ComponentCollection getRegistry() {
-        return registrySupplier.get();
+    public ComponentCatalog getRegistry() {
+        if (componentCatalog == null) {
+            componentCatalog = catalogFactory.createComponentCatalog(this, getLocalRegistry());
+        }
+        return componentCatalog;
     }
 
     @Override
@@ -152,13 +162,6 @@ public final class Environment implements Feedback, CommandInput {
 
     public void setLocalRegistry(ComponentRegistry r) {
         this.localRegistry = r;
-        if (this.registrySupplier == null) {
-            this.registrySupplier = () -> r;
-        }
-    }
-
-    public void setComponentRegistry(Supplier<ComponentCollection> registrySupplier) {
-        this.registrySupplier = registrySupplier;
     }
 
     public void setGraalHome(Path f) {
@@ -240,6 +243,12 @@ public final class Environment implements Feedback, CommandInput {
     @Override
     public boolean verbatimPart(String msg, boolean beVerbose) {
         print(beVerbose, false, null, out, msg);
+        return beVerbose;
+    }
+
+    @Override
+    public boolean verbatimPart(String msg, boolean error, boolean beVerbose) {
+        print(beVerbose, false, null, error ? err : out, msg);
         return beVerbose;
     }
 
@@ -330,6 +339,12 @@ public final class Environment implements Feedback, CommandInput {
             }
 
             @Override
+            public boolean verbatimPart(String msg, boolean error, boolean verboseOutput) {
+                print(verboseOutput, false, null, error ? err : out, msg);
+                return verbose;
+            }
+
+            @Override
             public boolean backspace(int chars, boolean beVerbose) {
                 return Environment.this.backspace(chars, beVerbose);
             }
@@ -373,6 +388,9 @@ public final class Environment implements Feedback, CommandInput {
                 }
             }
         }
+        if (bundleKey == null) {
+            return String.valueOf(args[0]);
+        }
         return MessageFormat.format(
                         bundle.getString(bundleKey),
                         args);
@@ -405,17 +423,23 @@ public final class Environment implements Feedback, CommandInput {
 
     @Override
     public String nextParameter() {
-        return parameters.poll();
+        if (parameterPos >= parameters.size()) {
+            return null;
+        }
+        return parameters.get(parameterPos++);
     }
 
     @Override
     public String peekParameter() {
-        return parameters.peek();
+        if (parameterPos >= parameters.size()) {
+            return null;
+        }
+        return parameters.get(parameterPos);
     }
 
     @Override
     public String requiredParameter() {
-        if (parameters.isEmpty()) {
+        if (!hasParameter()) {
             throw new FailedOperationException(
                             MessageFormat.format(BUNDLE.getString("ERROR_MissingParameter"), commandName));
         }
@@ -424,7 +448,7 @@ public final class Environment implements Feedback, CommandInput {
 
     @Override
     public boolean hasParameter() {
-        return !parameters.isEmpty();
+        return parameters.size() > parameterPos;
     }
 
     @Override
@@ -435,10 +459,6 @@ public final class Environment implements Feedback, CommandInput {
     @Override
     public String optValue(String optName) {
         return options.get(optName);
-    }
-
-    public boolean hasOption(String optName) {
-        return optValue(optName) != null;
     }
 
     public char acceptCharacter() {
@@ -508,12 +528,49 @@ public final class Environment implements Feedback, CommandInput {
         this.fileOperations = fileOperations;
     }
 
-    public void close() {
+    public boolean close() throws IOException {
         if (out != null) {
             out.flush();
         }
         if (err != null) {
             err.flush();
         }
+        if (fileOperations != null) {
+            return fileOperations.flush();
+        } else {
+            return false;
+        }
     }
+
+    @Override
+    public CatalogFactory getCatalogFactory() {
+        return catalogFactory;
+    }
+
+    public void resetParameters() {
+        parameterPos = 0;
+    }
+
+    @Override
+    public String getParameter(String key, boolean cmdLine) {
+        if (cmdLine) {
+            return System.getProperty(key);
+        } else {
+            return System.getenv(key.toUpperCase(Locale.ENGLISH));
+        }
+    }
+
+    @Override
+    public Map<String, String> parameters(boolean cmdLine) {
+        if (cmdLine) {
+            Map<String, String> res = new HashMap<>();
+            for (String s : System.getProperties().stringPropertyNames()) {
+                res.put(s, System.getProperty(s));
+            }
+            return res;
+        } else {
+            return System.getenv();
+        }
+    }
+
 }

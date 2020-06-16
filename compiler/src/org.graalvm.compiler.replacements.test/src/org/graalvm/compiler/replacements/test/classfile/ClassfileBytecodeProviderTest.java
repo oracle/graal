@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -87,12 +87,6 @@ import java.util.Formatter;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-import org.graalvm.compiler.test.SubprocessUtil;
-import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.Before;
-import org.junit.Test;
-
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.bytecode.Bytecode;
@@ -110,6 +104,12 @@ import org.graalvm.compiler.replacements.classfile.ClassfileBytecode;
 import org.graalvm.compiler.replacements.classfile.ClassfileBytecodeProvider;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.compiler.api.test.ModuleSupport;
+import org.graalvm.compiler.test.SubprocessUtil;
+import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Before;
+import org.junit.Test;
 
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaField;
@@ -146,6 +146,12 @@ public class ClassfileBytecodeProviderTest extends GraalCompilerTest {
      */
     private static final int CLASSES_PER_JAR = 250;
 
+    /**
+     * Magic token to denote the classes in the Java runtime image (i.e. in the {@code jrt:/} file
+     * system).
+     */
+    public static final String JRT_CLASS_PATH_ENTRY = "<jrt>";
+
     @Test
     public void test() {
         RuntimeProvider rt = Graal.getRequiredCapability(RuntimeProvider.class);
@@ -153,42 +159,73 @@ public class ClassfileBytecodeProviderTest extends GraalCompilerTest {
         MetaAccessProvider metaAccess = providers.getMetaAccess();
 
         Assume.assumeTrue(VerifyPhase.class.desiredAssertionStatus());
-
-        String propertyName = JavaVersionUtil.JAVA_SPEC <= 8 ? "sun.boot.class.path" : "jdk.module.path";
-        String bootclasspath = System.getProperty(propertyName);
-        Assert.assertNotNull("Cannot find value of " + propertyName, bootclasspath);
+        String bootclasspath;
+        if (JavaVersionUtil.JAVA_SPEC <= 8) {
+            String propertyName = "sun.boot.class.path";
+            bootclasspath = System.getProperty(propertyName);
+            Assert.assertNotNull("Cannot find value of " + propertyName, bootclasspath);
+        } else {
+            bootclasspath = JRT_CLASS_PATH_ENTRY;
+        }
 
         for (String path : bootclasspath.split(File.pathSeparator)) {
             if (shouldProcess(path)) {
                 try {
-                    final ZipFile zipFile = new ZipFile(new File(path));
-                    int index = 0;
-                    int step = zipFile.size() > CLASSES_PER_JAR ? zipFile.size() / CLASSES_PER_JAR : 1;
-                    for (final Enumeration<? extends ZipEntry> entry = zipFile.entries(); entry.hasMoreElements();) {
-                        final ZipEntry zipEntry = entry.nextElement();
-                        if ((index % step) == 0) {
-                            String name = zipEntry.getName();
-                            if (name.endsWith(".class") && !name.equals("module-info.class") && !name.startsWith("META-INF/versions/")) {
-                                String className = name.substring(0, name.length() - ".class".length()).replace('/', '.');
-                                if (isInNativeImage(className)) {
-                                    /*
-                                     * Native image requires non-graalsdk classes to be present in
-                                     * the classpath.
-                                     */
-                                    continue;
-                                }
-                                if (isGSON(className)) {
-                                    /* uses old class format */
-                                    continue;
-                                }
-                                try {
-                                    checkClass(metaAccess, getSnippetReflection(), className);
-                                } catch (ClassNotFoundException e) {
-                                    throw new AssertionError(e);
-                                }
+                    if (path.equals(JRT_CLASS_PATH_ENTRY)) {
+                        for (String className : ModuleSupport.getJRTGraalClassNames()) {
+                            if (isGSON(className)) {
+                                /*
+                                 * GSON classes are compiled with old JDK
+                                 */
+                                continue;
+                            }
+                            try {
+                                checkClass(metaAccess, getSnippetReflection(), className);
+                            } catch (ClassNotFoundException e) {
+                                throw new AssertionError(e);
                             }
                         }
-                        index++;
+                    } else {
+                        final ZipFile zipFile = new ZipFile(new File(path));
+                        int index = 0;
+                        int step = zipFile.size() > CLASSES_PER_JAR ? zipFile.size() / CLASSES_PER_JAR : 1;
+                        for (final Enumeration<? extends ZipEntry> entry = zipFile.entries(); entry.hasMoreElements();) {
+                            final ZipEntry zipEntry = entry.nextElement();
+                            if ((index % step) == 0) {
+                                String name = zipEntry.getName();
+                                if (name.endsWith(".class") && !name.equals("module-info.class") && !name.startsWith("META-INF/versions/")) {
+                                    String className = name.substring(0, name.length() - ".class".length()).replace('/', '.');
+                                    if (isInNativeImage(className)) {
+                                        /*
+                                         * Native image requires non-graalsdk classes to be present
+                                         * in the classpath.
+                                         */
+                                        continue;
+                                    }
+                                    if (isGSON(className)) {
+                                        /* uses old class format */
+                                        continue;
+                                    }
+                                    try {
+                                        checkClass(metaAccess, getSnippetReflection(), className);
+                                    } catch (UnsupportedClassVersionError e) {
+                                        // graal-test.jar can contain classes compiled for different
+                                        // Java versions
+                                    } catch (NoClassDefFoundError e) {
+                                        if (!e.getMessage().contains("Could not initialize class")) {
+                                            throw e;
+                                        } else {
+                                            // A second or later attempt to initialize a class
+                                            // results in this confusing error where the
+                                            // original cause of initialization failure is lost
+                                        }
+                                    } catch (ClassNotFoundException e) {
+                                        throw new AssertionError(e);
+                                    }
+                                }
+                            }
+                            index++;
+                        }
                     }
                 } catch (IOException ex) {
                     Assert.fail(ex.toString());

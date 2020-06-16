@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
+import org.graalvm.compiler.nodes.extended.StateSplitProxyNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
@@ -52,7 +53,8 @@ import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode.LeaveAction;
 import com.oracle.svm.core.graal.nodes.CEntryPointPrologueBailoutNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode.UtilityAction;
-import com.oracle.svm.core.graal.nodes.ReadRegisterFixedNode;
+import com.oracle.svm.core.graal.nodes.ReadHeapBaseFixedNode;
+import com.oracle.svm.core.graal.nodes.ReadIsolateThreadFixedNode;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -94,7 +96,14 @@ public class CEntryPointSupport implements GraalFeature {
         r.register1("enterIsolate", Isolate.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode isolate) {
-                b.addPush(JavaKind.Int, CEntryPointEnterNode.enterIsolate(isolate));
+                b.addPush(JavaKind.Int, CEntryPointEnterNode.enterIsolate(isolate, false));
+                return true;
+            }
+        });
+        r.register1("enterIsolateFromCrashHandler", Isolate.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode isolate) {
+                b.addPush(JavaKind.Int, CEntryPointEnterNode.enterIsolate(isolate, true));
                 return true;
             }
         });
@@ -119,6 +128,9 @@ public class CEntryPointSupport implements GraalFeature {
         r.register0("leave", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                StateSplitProxyNode proxy = new StateSplitProxyNode(null);
+                b.add(proxy);
+                b.setStateAfter(proxy);
                 b.addPush(JavaKind.Int, new CEntryPointLeaveNode(LeaveAction.Leave));
                 return true;
             }
@@ -126,6 +138,9 @@ public class CEntryPointSupport implements GraalFeature {
         r.register0("leaveDetachThread", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                StateSplitProxyNode proxy = new StateSplitProxyNode(null);
+                b.add(proxy);
+                b.setStateAfter(proxy);
                 b.addPush(JavaKind.Int, new CEntryPointLeaveNode(LeaveAction.DetachThread));
                 return true;
             }
@@ -133,6 +148,9 @@ public class CEntryPointSupport implements GraalFeature {
         r.register0("leaveTearDownIsolate", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                StateSplitProxyNode proxy = new StateSplitProxyNode(null);
+                b.add(proxy);
+                b.setStateAfter(proxy);
                 b.addPush(JavaKind.Int, new CEntryPointLeaveNode(LeaveAction.TearDownIsolate));
                 return true;
             }
@@ -159,9 +177,9 @@ public class CEntryPointSupport implements GraalFeature {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 if (SubstrateOptions.MultiThreaded.getValue()) {
-                    b.addPush(JavaKind.Object, ReadRegisterFixedNode.forIsolateThread());
+                    b.addPush(JavaKind.Object, new ReadIsolateThreadFixedNode());
                 } else if (SubstrateOptions.SpawnIsolates.getValue()) {
-                    ValueNode heapBase = b.add(ReadRegisterFixedNode.forHeapBase());
+                    ValueNode heapBase = b.add(new ReadHeapBaseFixedNode());
                     ConstantNode addend = b.add(ConstantNode.forIntegerKind(FrameAccess.getWordKind(), CEntryPointSetup.SINGLE_ISOLATE_TO_SINGLE_THREAD_ADDEND));
                     b.addPush(JavaKind.Object, new AddNode(heapBase, addend));
                 } else {
@@ -174,7 +192,7 @@ public class CEntryPointSupport implements GraalFeature {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 if (SubstrateOptions.SpawnIsolates.getValue()) {
-                    b.addPush(JavaKind.Object, ReadRegisterFixedNode.forHeapBase());
+                    b.addPush(JavaKind.Object, new ReadHeapBaseFixedNode());
                 } else {
                     b.addPush(JavaKind.Object, ConstantNode.forIntegerKind(FrameAccess.getWordKind(), CEntryPointSetup.SINGLE_ISOLATE_SENTINEL.rawValue()));
                 }

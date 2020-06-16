@@ -40,7 +40,7 @@ final class Target_java_lang_System {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) static volatile Console cons;
 
     @Substitute
-    @Uninterruptible(reason = "Called from uninterruptible code.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected static long nanoTime() {
         return WindowsUtils.getNanoCounter();
     }

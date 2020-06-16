@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -79,17 +79,6 @@ public final class UnknownIdentifierException extends InteropException {
      */
     public String getUnknownIdentifier() {
         return unknownIdentifier;
-    }
-
-    /**
-     * @since 0.11
-     * @deprecated use {@link #create(String)} instead. Interop exceptions should directly be thrown
-     *             and no longer be hidden as runtime exceptions.
-     */
-    @Deprecated
-    public static RuntimeException raise(String unknownIdentifier) {
-        CompilerDirectives.transferToInterpreter();
-        return silenceException(RuntimeException.class, new UnknownIdentifierException(unknownIdentifier));
     }
 
     /**

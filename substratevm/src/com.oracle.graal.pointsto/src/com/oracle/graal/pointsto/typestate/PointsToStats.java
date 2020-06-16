@@ -90,6 +90,7 @@ import com.oracle.graal.pointsto.flow.builder.TypeFlowBuilder;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -551,13 +552,13 @@ public class PointsToStats {
             return "ArrayElements(" + (arrayFlow.object() != null ? arrayFlow.object().type().toJavaName(false) : "?") + ")";
         } else if (flow instanceof NullCheckTypeFlow) {
             NullCheckTypeFlow nullCheck = (NullCheckTypeFlow) flow;
-            return "NullCheck(" + (nullCheck.isFilterNull() ? "not-null" : "only-null") + ")@" + formatSource(flow);
+            return "NullCheck(" + (nullCheck.isBlockingNull() ? "not-null" : "only-null") + ")@" + formatSource(flow);
         } else if (flow instanceof FilterTypeFlow) {
             FilterTypeFlow filter = (FilterTypeFlow) flow;
             String properties = filter.isExact() ? "exact" : "not-exact";
             properties += ", " + (filter.isAssignable() ? "assignable" : "not-assignable");
             properties += ", " + (filter.includeNull() ? "include-null" : "not-include-null");
-            return "Filter(" + properties + ", " + formatType(filter.getType(), true) + ")@" + formatSource(flow);
+            return "Filter(" + properties + ", " + formatType(filter.getDeclaredType(), true) + ")@" + formatSource(flow);
         } else if (flow instanceof FieldFilterTypeFlow) {
             FieldFilterTypeFlow filter = (FieldFilterTypeFlow) flow;
             return "FieldFilter(" + formatField(filter.getSource()) + ")";
@@ -602,20 +603,15 @@ public class PointsToStats {
 
     private static String formatSource(TypeFlow<?> flow) {
         Object source = flow.getSource();
-        if (source instanceof ValueNode) {
-            ValueNode node = (ValueNode) source;
-            NodeSourcePosition nodeSource = node.getNodeSourcePosition();
-            if (nodeSource != null) {
-                return formatMethod(nodeSource.getMethod()) + ":" + nodeSource.getBCI();
-            } else if (flow.graphRef() != null) {
-                return formatMethod(flow.graphRef().getMethod());
-            } else {
-                return "<unknown-source>";
-            }
+        if (source instanceof BytecodePosition) {
+            BytecodePosition nodeSource = (BytecodePosition) source;
+            return formatMethod(nodeSource.getMethod()) + ":" + nodeSource.getBCI();
         } else if (source instanceof AnalysisType) {
             return formatType((AnalysisType) source);
         } else if (source instanceof AnalysisField) {
             return formatField((AnalysisField) source);
+        } else if (flow.graphRef() != null) {
+            return formatMethod(flow.graphRef().getMethod());
         } else if (source == null) {
             return "<no-source>";
         } else {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,6 +53,7 @@ import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -69,6 +70,8 @@ import java.util.logging.Handler;
 import java.util.logging.Level;
 
 import org.graalvm.collections.UnmodifiableEconomicSet;
+import org.graalvm.home.HomeFinder;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.PolyglotException.StackFrame;
@@ -81,6 +84,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractStackFrameImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueImpl;
 import org.graalvm.polyglot.io.ByteSequence;
+import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.management.ExecutionEvent;
 
@@ -130,6 +134,19 @@ public final class Engine implements AutoCloseable {
         @SuppressWarnings("unused")
         private static void resetPreInitializedEngine() {
             IMPL.resetPreInitializedEngine();
+        }
+
+        /**
+         * Support for Context pre-initialization debugging in HotSpot.
+         */
+        private static void debugContextPreInitialization() {
+            if (!ImageInfo.inImageCode() && System.getProperty("polyglot.image-build-time.PreinitializeContexts") != null) {
+                IMPL.preInitializeEngine();
+            }
+        }
+
+        static {
+            debugContextPreInitialization();
         }
     }
 
@@ -181,8 +198,14 @@ public final class Engine implements AutoCloseable {
      *
      * @since 19.0
      */
+    @SuppressWarnings("static-method")
     public String getVersion() {
-        return impl.getVersion();
+        String version = HomeFinder.getInstance().getVersion();
+        if (version.equals("snapshot")) {
+            return "Development Build";
+        } else {
+            return version;
+        }
     }
 
     /**
@@ -252,11 +275,13 @@ public final class Engine implements AutoCloseable {
     /**
      * Finds the GraalVM home folder.
      *
+     * This is equivalent to {@link HomeFinder#getHomeFolder()} which should be preferred.
+     *
      * @return the path to a folder containing the GraalVM or {@code null} if it cannot be found
      * @since 19.0
      */
     public static Path findHome() {
-        return getImpl().findHome();
+        return HomeFinder.getInstance().getHomeFolder();
     }
 
     static AbstractPolyglotImpl getImpl() {
@@ -511,15 +536,12 @@ public final class Engine implements AutoCloseable {
 
     static class APIAccessImpl extends AbstractPolyglotImpl.APIAccess {
 
-        private final boolean useContextClassLoader;
-
-        APIAccessImpl(boolean useContextClassLoader) {
-            this.useContextClassLoader = useContextClassLoader;
+        APIAccessImpl() {
         }
 
         @Override
-        public boolean useContextClassLoader() {
-            return useContextClassLoader;
+        public AbstractContextImpl getImpl(Context context) {
+            return context.impl;
         }
 
         @Override
@@ -583,7 +605,17 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public ResourceLimitEvent newResourceLimitsEvent(Object impl) {
+            return new ResourceLimitEvent(impl);
+        }
+
+        @Override
         public AbstractLanguageImpl getImpl(Language value) {
+            return value.impl;
+        }
+
+        @Override
+        public Object getImpl(ResourceLimits value) {
             return value.impl;
         }
 
@@ -648,8 +680,8 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public void validatePolyglotAccess(PolyglotAccess access, UnmodifiableEconomicSet<String> languages) {
-            access.validate(languages);
+        public String validatePolyglotAccess(PolyglotAccess access, UnmodifiableEconomicSet<String> languages) {
+            return access.validate(languages);
         }
 
     }
@@ -661,8 +693,6 @@ public final class Engine implements AutoCloseable {
             public AbstractPolyglotImpl run() {
                 AbstractPolyglotImpl engine = null;
                 Class<?> servicesClass = null;
-                boolean useContextClassLoader = false;
-
                 if (Boolean.getBoolean("graalvm.ForcePolyglotInvalid")) {
                     engine = createInvalidPolyglotImpl();
                 } else {
@@ -684,15 +714,14 @@ public final class Engine implements AutoCloseable {
                 }
 
                 if (engine == null) {
+                    // >= JDK 9.
                     engine = searchServiceLoader();
-                    useContextClassLoader = true;
                 }
                 if (engine == null) {
                     engine = createInvalidPolyglotImpl();
                 }
-
                 if (engine != null) {
-                    engine.setConstructors(new APIAccessImpl(useContextClassLoader));
+                    engine.setConstructors(new APIAccessImpl());
                 }
                 return engine;
             }
@@ -740,6 +769,11 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public Context getCurrentContext() {
+            throw noPolyglotImplementationFound();
+        }
+
+        @Override
         public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, long timeout, TimeUnit timeoutUnit, boolean sandbox,
                         long maximumAllowedAllocationBytes, boolean useSystemProperties, boolean allowExperimentalOptions, boolean boundEngine, MessageTransport messageInterceptor,
                         Object logHandlerOrStream,
@@ -748,46 +782,56 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public AbstractExecutionListenerImpl getExecutionListenerImpl() {
-            return new AbstractExecutionListenerImpl(this) {
+        public Object buildLimits(long statementLimit, Predicate<Source> statementLimitSourceFilter, Duration timeLimit, Duration timeLimitAccuracy, Consumer<ResourceLimitEvent> onLimit) {
+            throw noPolyglotImplementationFound();
+        }
+
+        @Override
+        public Context getLimitEventContext(Object impl) {
+            throw noPolyglotImplementationFound();
+        }
+
+        @Override
+        public AbstractManagementImpl getManagementImpl() {
+            return new AbstractManagementImpl(this) {
 
                 @Override
-                public boolean isStatement(Object impl) {
+                public boolean isExecutionEventStatement(Object impl) {
                     return false;
                 }
 
                 @Override
-                public boolean isRoot(Object impl) {
+                public boolean isExecutionEventRoot(Object impl) {
                     return false;
                 }
 
                 @Override
-                public boolean isExpression(Object impl) {
+                public boolean isExecutionEventExpression(Object impl) {
                     return false;
                 }
 
                 @Override
-                public String getRootName(Object impl) {
+                public String getExecutionEventRootName(Object impl) {
                     throw noPolyglotImplementationFound();
                 }
 
                 @Override
-                public PolyglotException getException(Object impl) {
+                public PolyglotException getExecutionEventException(Object impl) {
                     throw noPolyglotImplementationFound();
                 }
 
                 @Override
-                public Value getReturnValue(Object impl) {
+                public Value getExecutionEventReturnValue(Object impl) {
                     throw noPolyglotImplementationFound();
                 }
 
                 @Override
-                public SourceSection getLocation(Object impl) {
+                public SourceSection getExecutionEventLocation(Object impl) {
                     throw noPolyglotImplementationFound();
                 }
 
                 @Override
-                public List<Value> getInputValues(Object impl) {
+                public List<Value> getExecutionEventInputValues(Object impl) {
                     throw noPolyglotImplementationFound();
                 }
 
@@ -802,6 +846,7 @@ public final class Engine implements AutoCloseable {
                                 Predicate<Source> sourceFilter, Predicate<String> rootFilter, boolean collectInputValues, boolean collectReturnValues, boolean collectErrors) {
                     throw noPolyglotImplementationFound();
                 }
+
             };
         }
 
@@ -844,12 +889,12 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public Path findHome() {
-            return null;
+        public Value asValue(Object o) {
+            throw noPolyglotImplementationFound();
         }
 
         @Override
-        public Value asValue(Object o) {
+        public FileSystem newDefaultFileSystem() {
             throw noPolyglotImplementationFound();
         }
 
@@ -936,12 +981,12 @@ public final class Engine implements AutoCloseable {
             }
 
             @Override
-            public CharSequence getCode(Object impl) {
+            public CharSequence getCharacters(Object impl) {
                 throw new UnsupportedOperationException();
             }
 
             @Override
-            public CharSequence getCode(Object impl, int lineNumber) {
+            public CharSequence getCharacters(Object impl, int lineNumber) {
                 throw new UnsupportedOperationException();
             }
 

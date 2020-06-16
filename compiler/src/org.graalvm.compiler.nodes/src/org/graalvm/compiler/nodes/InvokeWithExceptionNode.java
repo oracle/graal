@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,14 +34,14 @@ import java.util.Map;
 
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
-import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.UncheckedInterfaceProvider;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -50,13 +50,9 @@ import org.graalvm.word.LocationIdentity;
 import jdk.vm.ci.code.BytecodeFrame;
 
 @NodeInfo(nameTemplate = "Invoke!#{p#targetMethod/s}", allowedUsageTypes = {Memory}, cycles = CYCLES_UNKNOWN, size = SIZE_UNKNOWN)
-public final class InvokeWithExceptionNode extends ControlSplitNode implements Invoke, MemoryCheckpoint.Single, LIRLowerable, UncheckedInterfaceProvider {
+public final class InvokeWithExceptionNode extends WithExceptionNode implements Invoke, IterableNodeType, SingleMemoryKill, LIRLowerable, UncheckedInterfaceProvider {
     public static final NodeClass<InvokeWithExceptionNode> TYPE = NodeClass.create(InvokeWithExceptionNode.class);
 
-    private static final double EXCEPTION_PROBA = 1e-5;
-
-    @Successor AbstractBeginNode next;
-    @Successor AbstractBeginNode exceptionEdge;
     @OptionalInput ValueNode classInit;
     @Input(Extension) CallTargetNode callTarget;
     @OptionalInput(State) FrameState stateDuring;
@@ -64,7 +60,6 @@ public final class InvokeWithExceptionNode extends ControlSplitNode implements I
     protected int bci;
     protected boolean polymorphic;
     protected boolean useForInlining;
-    protected double exceptionProbability;
 
     public InvokeWithExceptionNode(CallTargetNode callTarget, AbstractBeginNode exceptionEdge, int bci) {
         super(TYPE, callTarget.returnStamp().getTrustedStamp());
@@ -73,7 +68,6 @@ public final class InvokeWithExceptionNode extends ControlSplitNode implements I
         this.callTarget = callTarget;
         this.polymorphic = false;
         this.useForInlining = true;
-        this.exceptionProbability = EXCEPTION_PROBA;
     }
 
     @Override
@@ -84,25 +78,6 @@ public final class InvokeWithExceptionNode extends ControlSplitNode implements I
     @Override
     public FixedNode asFixedNode() {
         return this;
-    }
-
-    public AbstractBeginNode exceptionEdge() {
-        return exceptionEdge;
-    }
-
-    public void setExceptionEdge(AbstractBeginNode x) {
-        updatePredecessor(exceptionEdge, x);
-        exceptionEdge = x;
-    }
-
-    @Override
-    public AbstractBeginNode next() {
-        return next;
-    }
-
-    public void setNext(AbstractBeginNode x) {
-        updatePredecessor(next, x);
-        next = x;
     }
 
     @Override
@@ -158,15 +133,10 @@ public final class InvokeWithExceptionNode extends ControlSplitNode implements I
     @Override
     public void setNext(FixedNode x) {
         if (x != null) {
-            this.setNext(KillingBeginNode.begin(x, getLocationIdentity()));
+            this.setNext(KillingBeginNode.begin(x, this.getKilledLocationIdentity()));
         } else {
             this.setNext(null);
         }
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
     }
 
     @Override
@@ -191,7 +161,7 @@ public final class InvokeWithExceptionNode extends ControlSplitNode implements I
     }
 
     @Override
-    public LocationIdentity getLocationIdentity() {
+    public LocationIdentity getKilledLocationIdentity() {
         return LocationIdentity.any();
     }
 
@@ -202,12 +172,6 @@ public final class InvokeWithExceptionNode extends ControlSplitNode implements I
             debugProperties.put("targetMethod", callTarget.targetName());
         }
         return debugProperties;
-    }
-
-    public void killExceptionEdge() {
-        AbstractBeginNode edge = exceptionEdge();
-        setExceptionEdge(null);
-        GraphUtil.killCFG(edge);
     }
 
     @SuppressWarnings("try")
@@ -226,14 +190,9 @@ public final class InvokeWithExceptionNode extends ControlSplitNode implements I
     }
 
     @Override
-    public void replaceBci(int newBci) {
+    public void setBci(int newBci) {
         assert BytecodeFrame.isPlaceholderBci(bci) && !BytecodeFrame.isPlaceholderBci(newBci) : "can only replace placeholder with better bci";
         bci = newBci;
-    }
-
-    @Override
-    public double probability(AbstractBeginNode successor) {
-        return successor == next ? 1 - exceptionProbability : exceptionProbability;
     }
 
     @Override
@@ -253,11 +212,6 @@ public final class InvokeWithExceptionNode extends ControlSplitNode implements I
     }
 
     @Override
-    public AbstractBeginNode getPrimarySuccessor() {
-        return this.next();
-    }
-
-    @Override
     public Stamp uncheckedStamp() {
         return this.callTarget.returnStamp().getUncheckedStamp();
     }
@@ -273,28 +227,22 @@ public final class InvokeWithExceptionNode extends ControlSplitNode implements I
         return classInit;
     }
 
-    @Override
-    public boolean setProbability(AbstractBeginNode successor, double value) {
-        // Cannot set probability for exception invokes.
-        return false;
-    }
-
-    @Override
-    public int getSuccessorCount() {
-        return 2;
-    }
-
     /**
      * Replaces this InvokeWithExceptionNode with a normal InvokeNode. Kills the exception dispatch
      * code.
      */
     public InvokeNode replaceWithInvoke() {
-        InvokeNode newInvoke = graph().add(new InvokeNode(callTarget, bci, stamp, getLocationIdentity()));
+        InvokeNode newInvoke = graph().add(new InvokeNode(callTarget, bci, stamp, this.getKilledLocationIdentity()));
         newInvoke.setStateAfter(stateAfter);
         newInvoke.setStateDuring(stateDuring);
         AbstractBeginNode oldException = this.exceptionEdge;
         graph().replaceSplitWithFixed(this, newInvoke, this.next());
         GraphUtil.killCFG(oldException);
         return newInvoke;
+    }
+
+    @Override
+    public InvokeNode replaceWithNonThrowing() {
+        return replaceWithInvoke();
     }
 }

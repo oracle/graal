@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -47,7 +47,7 @@ public final class FitsInTest extends InteropTestBase {
 
     @BeforeClass
     public static void loadTestBitcode() {
-        Value testLibrary = InteropTestBase.loadTestBitcodeValue("fitsIn");
+        Value testLibrary = loadTestBitcodeValue("fitsIn.c");
         testFitsIn = testLibrary.getMember("test_fits_in");
     }
 

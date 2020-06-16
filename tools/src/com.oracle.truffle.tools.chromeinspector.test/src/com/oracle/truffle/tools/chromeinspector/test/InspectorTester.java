@@ -123,6 +123,10 @@ public final class InspectorTester {
         return exec.contextId;
     }
 
+    public InspectorExecutionContext getInspectorContext() {
+        return exec.inspectorContext;
+    }
+
     public Future<Value> eval(Source source) {
         return exec.eval(source);
     }
@@ -243,6 +247,7 @@ public final class InspectorTester {
         private InspectServerSession inspect;
         private ConnectionWatcher connectionWatcher;
         private long contextId;
+        private InspectorExecutionContext inspectorContext;
         private Source evalSource;
         private CompletableFuture<Value> evalValue;
         private boolean done = false;
@@ -271,6 +276,7 @@ public final class InspectorTester {
             try {
                 connectionWatcher = sessionInfo.getConnectionWatcher();
                 contextId = sessionInfo.getId();
+                inspectorContext = sessionInfo.getInspectorContext();
                 inspect.setMessageListener(this);
                 context = Context.newBuilder().engine(engine).allowAllAccess(true).build();
                 initialized.release();

@@ -1,0 +1,24 @@
+#!/bin/sh
+
+CONFIG_PATH="$1"
+EMSDK_DIR="$2"
+
+{
+echo "LLVM_ROOT='$EMSDK_DIR/llvm/git/build_master_64/bin'"
+echo "BINARYEN_ROOT='$EMSDK_DIR/binaryen/master_64bit_binaryen'"
+echo "EMSCRIPTEN_ROOT='$EMSDK_DIR/emscripten/master'"
+echo "NODE_JS='$EMSDK_DIR/node/12.9.1_64bit/bin/node'"
+echo "COMPILER_ENGINE=NODE_JS"
+echo "JS_ENGINES=[NODE_JS]"
+} > "$CONFIG_PATH"
+
+echo "Generated Emscripten config file at $CONFIG_PATH:"
+echo "--------"
+cat "$CONFIG_PATH"
+echo "--------"
+
+echo "Triggering cache generation."
+echo "int main() { return 0; }" > test.c
+$EMSDK_DIR/emscripten/master/emcc test.c
+echo "Cache generation completed."
+

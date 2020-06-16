@@ -1,0 +1,61 @@
+#
+# Copyright (c) 2018, Oracle and/or its affiliates.
+#
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without modification, are
+# permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this list of
+# conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice, this list of
+# conditions and the following disclaimer in the documentation and/or other materials provided
+# with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors may be used to
+# endorse or promote products derived from this software without specific prior written
+# permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS
+# OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+# COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+# GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+# AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+# NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+# OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+
+BREAK 84 CONTINUE "start"
+    OPEN_SCOPE
+        MEMBER exact "long double" "a" "0xK3fff9d70a3d70a3d70a4"
+        MEMBER exact "long double" "b" "0xKc00191eb851eb851eb85"
+        MEMBER exact "long double" "c" "0xK4001b947ae147ae147ae"
+        MEMBER exact "long double" "d" "0xK400bad8d3cd35a858800"
+        MEMBER exact "long double" "e" "0xK00000000000000000000"
+        MEMBER exact "long double" "f" "QNaN"
+        MEMBER exact "long double" "g" "SNaN"
+        MEMBER exact "long double" "h" "INF"
+        MEMBER structured "UnpackedStruct" "us"
+            MEMBER exact "long double" "a" "0xK3fff9d70a3d70a3d70a4"
+            MEMBER exact "long double" "b" "0xKc00191eb851eb851eb85"
+            MEMBER exact "long double" "c" "0xK4001b947ae147ae147ae"
+            MEMBER exact "long double" "d" "0xK400bad8d3cd35a858800"
+            MEMBER exact "long double" "e" "0xK00000000000000000000"
+            MEMBER exact "long double" "f" "QNaN"
+            MEMBER exact "long double" "g" "SNaN"
+            MEMBER exact "long double" "h" "INF"
+        END_MEMBERS
+        MEMBER structured "PackedStruct" "ps"
+            MEMBER exact "long double" "a" "0xK3fff9d70a3d70a3d70a4"
+            MEMBER exact "long double" "b" "0xKc00191eb851eb851eb85"
+            MEMBER exact "long double" "c" "0xK4001b947ae147ae147ae"
+            MEMBER exact "long double" "d" "0xK400bad8d3cd35a858800"
+            MEMBER exact "long double" "e" "0xK00000000000000000000"
+            MEMBER exact "long double" "f" "QNaN"
+            MEMBER exact "long double" "g" "SNaN"
+            MEMBER exact "long double" "h" "INF"
+        END_MEMBERS
+

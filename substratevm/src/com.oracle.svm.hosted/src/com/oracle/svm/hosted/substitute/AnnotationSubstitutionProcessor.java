@@ -275,9 +275,13 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         }
     }
 
+    private static String substitutionName(Class<?> originalClass) {
+        return "Target_" + originalClass.getName().replace('.', '_').replace('$', '_');
+    }
+
     private void handleAliasClass(Class<?> annotatedClass, Class<?> originalClass, TargetClass targetClassAnnotation) {
         if (VerifyNamingConventions.getValue() && targetClassAnnotation.classNameProvider() == TargetClass.NoClassNameProvider.class) {
-            String expectedName = "Target_" + originalClass.getName().replace('.', '_').replace('$', '_');
+            String expectedName = substitutionName(originalClass);
             String actualName = annotatedClass.getSimpleName();
             guarantee(actualName.equals(expectedName) || actualName.startsWith(expectedName + "_"),
                             "Naming convention violation: %s must be named %s or %s_<suffix>", annotatedClass, expectedName, expectedName);
@@ -631,6 +635,11 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
         } catch (NoSuchMethodException ex) {
             throw UserError.abort("could not find target method: " + annotatedMethod);
+        } catch (NoClassDefFoundError error) {
+            String message = String.format("can not find %s.%s, %s can not be loaded, due to %s not being available in the classpath. " +
+                            "Are you missing a dependency in your classpath?",
+                            originalClass.getName(), originalName, originalClass.getName(), error.getMessage());
+            throw UserError.abort(message);
         }
     }
 
@@ -657,10 +666,17 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
         } catch (NoSuchFieldException ex) {
             /*
-             * Some fields are hidden from reflection. Try to find the field via the
-             * ResolvedJavaType.
+             * Some fields are hidden from reflection. The set of hidden fields is computed via
+             * {sun.reflect,jdk.internal.reflect}.Reflection.fieldFilterMap. Try to find the field
+             * via the ResolvedJavaType.
              */
-            for (ResolvedJavaField f : metaAccess.lookupJavaType(originalClass).getInstanceFields(true)) {
+            ResolvedJavaField[] fields;
+            if (Modifier.isStatic(annotatedField.getModifiers())) {
+                fields = metaAccess.lookupJavaType(originalClass).getStaticFields();
+            } else {
+                fields = metaAccess.lookupJavaType(originalClass).getInstanceFields(true);
+            }
+            for (ResolvedJavaField f : fields) {
                 if (f.getName().equals(originalName)) {
                     return f;
                 }
@@ -677,7 +693,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             try {
                 onlyWithProvider = ReflectionUtil.newInstance(onlyWithClass);
             } catch (ReflectionUtilError ex) {
-                throw UserError.abort("Class specified as onlyWith for " + annotatedElement + " cannot be loaded or instantiated: " + onlyWithClass.getTypeName(), ex.getCause());
+                throw UserError.abort(ex.getCause(), "Class specified as onlyWith for " + annotatedElement + " cannot be loaded or instantiated: " + onlyWithClass.getTypeName());
             }
 
             boolean onlyWithResult;
@@ -786,7 +802,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             try {
                 className = ReflectionUtil.newInstance(target.classNameProvider()).apply(target);
             } catch (ReflectionUtilError ex) {
-                throw UserError.abort("Cannot instantiate classNameProvider: " + target.classNameProvider().getTypeName() + ". The class must have a parameterless constructor.", ex.getCause());
+                throw UserError.abort(ex.getCause(), "Cannot instantiate classNameProvider: " + target.classNameProvider().getTypeName() + ". The class must have a parameterless constructor.");
             }
         } else {
             guarantee(!target.className().isEmpty(), "Neither class, className, nor classNameProvider specified for substitution");
@@ -798,7 +814,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             try {
                 onlyWithProvider = ReflectionUtil.newInstance(onlyWithClass);
             } catch (ReflectionUtilError ex) {
-                throw UserError.abort("Class specified as onlyWith for " + annotatedBaseClass.getTypeName() + " cannot be loaded or instantiated: " + onlyWithClass.getTypeName(), ex.getCause());
+                throw UserError.abort(ex.getCause(), "Class specified as onlyWith for " + annotatedBaseClass.getTypeName() + " cannot be loaded or instantiated: " + onlyWithClass.getTypeName());
             }
 
             boolean onlyWithResult;

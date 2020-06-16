@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -55,29 +55,29 @@
 #endif
 
 #define TEST(ref, a, op, b)                                                                                                                          \
-  {                                                                                                                                                  \
-    long double x, y, z;                                                                                                                             \
-    memset(&x, 0, sizeof(x));                                                                                                                        \
-    memset(&y, 0, sizeof(y));                                                                                                                        \
-    memset(&z, 0, sizeof(z));                                                                                                                        \
-    x = (a);                                                                                                                                         \
-    y = (b);                                                                                                                                         \
-    z = x op y;                                                                                                                                      \
-    if (z != (ref)) {                                                                                                                                \
-      printf("error: " #a " " #op " " #b " != " #ref);                                                                                               \
-      abort();                                                                                                                                       \
-    }                                                                                                                                                \
-    printfp(#a " " #op " " #b, &z);                                                                                                                  \
-  }
+    {                                                                                                                                                \
+        long double x, y, z;                                                                                                                         \
+        memset(&x, 0, sizeof(x));                                                                                                                    \
+        memset(&y, 0, sizeof(y));                                                                                                                    \
+        memset(&z, 0, sizeof(z));                                                                                                                    \
+        x = (a);                                                                                                                                     \
+        y = (b);                                                                                                                                     \
+        z = x op y;                                                                                                                                  \
+        if (z != (ref)) {                                                                                                                            \
+            printf("error: " #a " " #op " " #b " != " #ref);                                                                                         \
+            abort();                                                                                                                                 \
+        }                                                                                                                                            \
+        printfp(#a " " #op " " #b, &z);                                                                                                              \
+    }
 
 static void printfp(const char *msg, long double *x) {
-  uint8_t *p = (uint8_t *)x;
-  int i;
+    uint8_t *p = (uint8_t *) x;
+    int i;
 
-  printf("%s:", msg);
-  for (i = 0; i < sizeof(long double); i++)
-    printf(" %02x", *(p++));
-  printf("\n");
+    printf("%s:", msg);
+    for (i = 0; i < sizeof(long double); i++)
+        printf(" %02x", *(p++));
+    printf("\n");
 }
 
 #endif

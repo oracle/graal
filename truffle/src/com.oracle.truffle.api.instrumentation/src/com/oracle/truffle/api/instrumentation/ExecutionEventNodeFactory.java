@@ -53,7 +53,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
  * stored as a {@link CompilationFinal compilation final}, so no peak performance overhead persists
  * for looking up the counter on the fast path.
  * </p>
- * 
+ *
  * @since 0.12
  */
 public interface ExecutionEventNodeFactory {

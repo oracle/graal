@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -255,10 +255,19 @@ public class AArch64Move {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-            if (state != null) {
-                crb.recordImplicitException(masm.position(), state);
-            }
+            int prePosition = masm.position();
             emitMemAccess(crb, masm);
+            if (state != null) {
+                int implicitExceptionPosition = prePosition;
+                // Adjust implicit exception position if this ldr/str has been merged to ldp/stp.
+                if (kind.isInteger() && prePosition == masm.position() && masm.isImmLoadStoreMerged()) {
+                    implicitExceptionPosition = prePosition - 4;
+                    if (crb.isImplicitExceptionExist(implicitExceptionPosition)) {
+                        return;
+                    }
+                }
+                crb.recordImplicitException(implicitExceptionPosition, state);
+            }
         }
 
         @Override
@@ -298,6 +307,45 @@ public class AArch64Move {
         }
     }
 
+    public static final class VolatileLoadOp extends AArch64LIRInstruction {
+        public static final LIRInstructionClass<VolatileLoadOp> TYPE = LIRInstructionClass.create(VolatileLoadOp.class);
+        protected final AArch64Kind kind;
+        @State protected LIRFrameState state;
+        @Def protected AllocatableValue result;
+        @Use protected AllocatableValue address;
+
+        public VolatileLoadOp(AArch64Kind kind, AllocatableValue result, AllocatableValue address, LIRFrameState state) {
+            super(TYPE);
+            this.kind = kind;
+            this.result = result;
+            this.address = address;
+            this.state = state;
+            if (state != null) {
+                throw GraalError.shouldNotReachHere("Can't handle implicit null check");
+            }
+        }
+
+        @Override
+        protected void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+            int srcSize = kind.getSizeInBytes() * Byte.SIZE;
+            int destSize = result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            if (kind.isInteger()) {
+                masm.ldar(srcSize, asRegister(result), asRegister(address));
+            } else {
+                assert srcSize == destSize;
+                try (ScratchRegister r1 = masm.getScratchRegister()) {
+                    Register rscratch1 = r1.getRegister();
+                    masm.ldar(srcSize, rscratch1, asRegister(address));
+                    masm.fmov(destSize, asRegister(result), rscratch1);
+                }
+            }
+        }
+
+        public AArch64Kind getKind() {
+            return kind;
+        }
+    }
+
     public static class StoreOp extends MemOp {
         public static final LIRInstructionClass<StoreOp> TYPE = LIRInstructionClass.create(StoreOp.class);
         @Use protected AllocatableValue input;
@@ -332,6 +380,43 @@ public class AArch64Move {
         }
     }
 
+    public static class VolatileStoreOp extends AArch64LIRInstruction {
+        public static final LIRInstructionClass<VolatileStoreOp> TYPE = LIRInstructionClass.create(VolatileStoreOp.class);
+        protected final AArch64Kind kind;
+        @State protected LIRFrameState state;
+        @Use protected AllocatableValue input;
+        @Use protected AllocatableValue address;
+
+        public VolatileStoreOp(AArch64Kind kind, AllocatableValue address, AllocatableValue input, LIRFrameState state) {
+            super(TYPE);
+            this.kind = kind;
+            this.address = address;
+            this.input = input;
+            this.state = state;
+            if (state != null) {
+                throw GraalError.shouldNotReachHere("Can't handle implicit null check");
+            }
+        }
+
+        @Override
+        protected void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
+            int destSize = kind.getSizeInBytes() * Byte.SIZE;
+            if (kind.isInteger()) {
+                masm.stlr(destSize, asRegister(input), asRegister(address));
+            } else {
+                try (ScratchRegister r1 = masm.getScratchRegister()) {
+                    Register rscratch1 = r1.getRegister();
+                    masm.fmov(destSize, rscratch1, asRegister(input));
+                    masm.stlr(destSize, rscratch1, asRegister(address));
+                }
+            }
+        }
+
+        public AArch64Kind getKind() {
+            return kind;
+        }
+    }
+
     public static final class NullCheckOp extends AArch64LIRInstruction implements NullCheck {
         public static final LIRInstructionClass<NullCheckOp> TYPE = LIRInstructionClass.create(NullCheckOp.class);
 
@@ -346,8 +431,17 @@ public class AArch64Move {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-            crb.recordImplicitException(masm.position(), state);
+            int prePosition = masm.position();
             masm.ldr(64, zr, address.toAddress());
+            int implicitExceptionPosition = prePosition;
+            // Adjust implicit exception position if this ldr has been merged to ldp.
+            if (prePosition == masm.position() && masm.isImmLoadStoreMerged()) {
+                implicitExceptionPosition = prePosition - 4;
+                if (crb.isImplicitExceptionExist(implicitExceptionPosition)) {
+                    return;
+                }
+            }
+            crb.recordImplicitException(implicitExceptionPosition, state);
         }
 
         @Override
@@ -537,7 +631,9 @@ public class AArch64Move {
                     crb.recordInlineDataInCode(input);
                     masm.mov(dst, 0xDEADDEADDEADDEADL, true);
                 } else {
-                    masm.ldr(64, dst, (AArch64Address) crb.recordDataReferenceInCode(input, 8));
+                    crb.recordDataReferenceInCode(input, 8);
+                    AArch64Address address = AArch64Address.createScaledImmediateAddress(dst, 0x0);
+                    masm.adrpLdr(64, dst, address);
                 }
                 break;
             default:
@@ -549,7 +645,7 @@ public class AArch64Move {
         try (ScratchRegister addrReg = masm.getScratchRegister()) {
             StackSlot slot = (StackSlot) result;
             AArch64Address resultAddress = loadStackSlotAddress(crb, masm, slot, addrReg.getRegister());
-            if (constant.isDefaultForKind() || constant.isNull()) {
+            if (constant.isNull() && !crb.mustReplaceWithUncompressedNullRegister(constant)) {
                 emitStore(crb, masm, (AArch64Kind) result.getPlatformKind(), resultAddress, zr.asValue(LIRKind.combine(result)));
             } else {
                 try (ScratchRegister sc = masm.getScratchRegister()) {

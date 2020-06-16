@@ -55,7 +55,7 @@ import org.antlr.v4.runtime.misc.*;
 
 @SuppressWarnings("all")
 public class SimpleLanguageLexer extends Lexer {
-	static { RuntimeMetaData.checkVersion("4.7", RuntimeMetaData.VERSION); }
+	static { RuntimeMetaData.checkVersion("4.7.2", RuntimeMetaData.VERSION); }
 
 	protected static final DFA[] _decisionToDFA;
 	protected static final PredictionContextCache _sharedContextCache =
@@ -74,27 +74,36 @@ public class SimpleLanguageLexer extends Lexer {
 		"DEFAULT_MODE"
 	};
 
-	public static final String[] ruleNames = {
-		"T__0", "T__1", "T__2", "T__3", "T__4", "T__5", "T__6", "T__7", "T__8", 
-		"T__9", "T__10", "T__11", "T__12", "T__13", "T__14", "T__15", "T__16", 
-		"T__17", "T__18", "T__19", "T__20", "T__21", "T__22", "T__23", "T__24", 
-		"T__25", "T__26", "T__27", "T__28", "T__29", "WS", "COMMENT", "LINE_COMMENT", 
-		"LETTER", "NON_ZERO_DIGIT", "DIGIT", "HEX_DIGIT", "OCT_DIGIT", "BINARY_DIGIT", 
-		"TAB", "STRING_CHAR", "IDENTIFIER", "STRING_LITERAL", "NUMERIC_LITERAL"
-	};
+	private static String[] makeRuleNames() {
+		return new String[] {
+			"T__0", "T__1", "T__2", "T__3", "T__4", "T__5", "T__6", "T__7", "T__8", 
+			"T__9", "T__10", "T__11", "T__12", "T__13", "T__14", "T__15", "T__16", 
+			"T__17", "T__18", "T__19", "T__20", "T__21", "T__22", "T__23", "T__24", 
+			"T__25", "T__26", "T__27", "T__28", "T__29", "WS", "COMMENT", "LINE_COMMENT", 
+			"LETTER", "NON_ZERO_DIGIT", "DIGIT", "HEX_DIGIT", "OCT_DIGIT", "BINARY_DIGIT", 
+			"TAB", "STRING_CHAR", "IDENTIFIER", "STRING_LITERAL", "NUMERIC_LITERAL"
+		};
+	}
+	public static final String[] ruleNames = makeRuleNames();
 
-	private static final String[] _LITERAL_NAMES = {
-		null, "'function'", "'('", "','", "')'", "'{'", "'}'", "'break'", "';'", 
-		"'continue'", "'debugger'", "'while'", "'if'", "'else'", "'return'", "'||'", 
-		"'&&'", "'<'", "'<='", "'>'", "'>='", "'=='", "'!='", "'+'", "'-'", "'*'", 
-		"'/'", "'='", "'.'", "'['", "']'"
-	};
-	private static final String[] _SYMBOLIC_NAMES = {
-		null, null, null, null, null, null, null, null, null, null, null, null, 
-		null, null, null, null, null, null, null, null, null, null, null, null, 
-		null, null, null, null, null, null, null, "WS", "COMMENT", "LINE_COMMENT", 
-		"IDENTIFIER", "STRING_LITERAL", "NUMERIC_LITERAL"
-	};
+	private static String[] makeLiteralNames() {
+		return new String[] {
+			null, "'function'", "'('", "','", "')'", "'{'", "'}'", "'break'", "';'", 
+			"'continue'", "'debugger'", "'while'", "'if'", "'else'", "'return'", 
+			"'||'", "'&&'", "'<'", "'<='", "'>'", "'>='", "'=='", "'!='", "'+'", 
+			"'-'", "'*'", "'/'", "'='", "'.'", "'['", "']'"
+		};
+	}
+	private static final String[] _LITERAL_NAMES = makeLiteralNames();
+	private static String[] makeSymbolicNames() {
+		return new String[] {
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, "WS", "COMMENT", "LINE_COMMENT", 
+			"IDENTIFIER", "STRING_LITERAL", "NUMERIC_LITERAL"
+		};
+	}
+	private static final String[] _SYMBOLIC_NAMES = makeSymbolicNames();
 	public static final Vocabulary VOCABULARY = new VocabularyImpl(_LITERAL_NAMES, _SYMBOLIC_NAMES);
 
 	/**

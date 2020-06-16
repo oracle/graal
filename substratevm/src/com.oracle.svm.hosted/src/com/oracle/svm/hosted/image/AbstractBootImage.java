@@ -31,6 +31,7 @@ import org.graalvm.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.LinkerInvocation;
+import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
@@ -72,17 +73,16 @@ public abstract class AbstractBootImage {
         EXECUTABLE(true),
         STATIC_EXECUTABLE(true);
 
-        public final boolean executable;
+        public final boolean isExecutable;
+        public final String mainEntryPointName;
 
         NativeImageKind(boolean executable) {
-            this.executable = executable;
+            isExecutable = executable;
+            mainEntryPointName = executable ? "main" : "run_main";
         }
 
         public String getFilenameSuffix() {
-            if (executable) {
-                return ObjectFile.getNativeFormat() == ObjectFile.Format.PECOFF ? ".exe" : "";
-            }
-            return "";
+            return ObjectFile.getNativeFormat() == ObjectFile.Format.PECOFF ? ".exe" : "";
         }
 
         public String getFilenamePrefix() {
@@ -124,7 +124,7 @@ public abstract class AbstractBootImage {
      * Build the image. Calling this method is a precondition to calling {@link #write}. It
      * typically finalizes content of the object. It does not build debug information.
      */
-    public abstract void build(DebugContext debug);
+    public abstract void build(DebugContext debug, ImageHeapLayouter layouter);
 
     /**
      * Write the image to the named file. This also writes debug information -- either to the same
@@ -141,13 +141,12 @@ public abstract class AbstractBootImage {
 
     // factory method
     public static AbstractBootImage create(NativeImageKind k, HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap,
-                    NativeImageCodeCache codeCache,
-                    List<HostedMethod> entryPoints, HostedMethod mainEntryPoint, ClassLoader classLoader) {
+                    NativeImageCodeCache codeCache, List<HostedMethod> entryPoints, ClassLoader classLoader) {
         switch (k) {
             case SHARED_LIBRARY:
-                return new SharedLibraryViaCCBootImage(universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, mainEntryPoint, classLoader);
+                return new SharedLibraryViaCCBootImage(universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, classLoader);
             default:
-                return new ExecutableViaCCBootImage(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, mainEntryPoint, classLoader);
+                return new ExecutableViaCCBootImage(k, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, classLoader);
         }
     }
 

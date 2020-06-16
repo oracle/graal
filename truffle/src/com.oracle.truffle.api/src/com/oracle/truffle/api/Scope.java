@@ -62,6 +62,7 @@ public final class Scope {
     private final Object variables;
     private final Object receiver;
     private final String receiverName;
+    private final Object rootInstance;
 
     private Scope() {
         name = null;
@@ -70,9 +71,10 @@ public final class Scope {
         variables = null;
         receiver = null;
         receiverName = null;
+        rootInstance = null;
     }
 
-    Scope(String name, Node node, Object arguments, Object variables, Object receiver, String receiverName) {
+    Scope(String name, Node node, Object arguments, Object variables, Object receiver, String receiverName, Object rootInstance) {
         this.name = name;
         this.node = node;
         assertNullOrTruffleObject(arguments);
@@ -82,6 +84,8 @@ public final class Scope {
         assertNullOrInteropType(receiver);
         this.receiver = receiver;
         this.receiverName = receiverName;
+        assertNullOrInteropType(rootInstance);
+        this.rootInstance = rootInstance;
     }
 
     private static boolean assertTruffleObject(Object obj) {
@@ -96,6 +100,12 @@ public final class Scope {
     private static void assertNullOrInteropType(Object obj) {
         if (obj != null) {
             LanguageAccessor.interopAccess().checkInteropType(obj);
+        }
+    }
+
+    private static void assertNullOrExecutable(Object obj) {
+        if (obj != null) {
+            assert LanguageAccessor.interopAccess().isExecutableObject(obj) : Objects.toString(obj);
         }
     }
 
@@ -187,6 +197,17 @@ public final class Scope {
     }
 
     /**
+     * Get the root instance object of this scope. The object is an instance of guest language
+     * representation of the root node of this scope, e.g. a guest language function.
+     *
+     * @return the root instance object, or <code>null</code> when no such instance exists.
+     * @since 19.3.0
+     */
+    public Object getRootInstance() {
+        return rootInstance;
+    }
+
+    /**
      * Get code name of the receiver object, if there is any.
      *
      * @return the code name of {@link #getReceiver() receiver object}, or <code>null</code>.
@@ -210,6 +231,7 @@ public final class Scope {
         private final Object variables;
         private Object receiver;
         private String receiverName;
+        private Object rootInstance;
 
         Builder(String name, Object variables) {
             assert name != null;
@@ -267,12 +289,29 @@ public final class Scope {
         }
 
         /**
+         * Set the root instance object of this scope. The object is an instance of guest language
+         * representation of the root node of this scope, e.g. a guest language function. It's
+         * supposed to be executable.
+         *
+         * @param rootInstance the root instance object, or <code>null</code> when no such instance
+         *            exists.
+         * @since 19.3.0
+         */
+        @SuppressWarnings("hiding")
+        public Builder rootInstance(Object rootInstance) {
+            assertNullOrInteropType(rootInstance);
+            assertNullOrExecutable(rootInstance);
+            this.rootInstance = rootInstance;
+            return this;
+        }
+
+        /**
          * Uses configuration of this builder to create new {@link Scope} object.
          *
          * @since 0.30
          */
         public Scope build() {
-            return new Scope(name, node, arguments, variables, receiver, receiverName);
+            return new Scope(name, node, arguments, variables, receiver, receiverName, rootInstance);
         }
     }
 }

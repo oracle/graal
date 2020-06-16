@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,6 +39,7 @@ import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugContext.CompilerPhaseScope;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.lir.LIR;
@@ -145,7 +146,8 @@ public class LIRCompilerBackend {
             LIR lir = new LIR(schedule.getCFG(), linearScanOrder, codeEmittingOrder, graph.getOptions(), graph.getDebug());
 
             LIRGenerationProvider lirBackend = (LIRGenerationProvider) backend;
-            LIRGenerationResult lirGenRes = lirBackend.newLIRGenerationResult(graph.compilationId(), lir, registerConfig, graph, stub);
+            RegisterAllocationConfig registerAllocationConfig = backend.newRegisterAllocationConfig(registerConfig, allocationRestrictedTo);
+            LIRGenerationResult lirGenRes = lirBackend.newLIRGenerationResult(graph.compilationId(), lir, registerAllocationConfig, graph, stub);
             LIRGeneratorTool lirGen = lirBackend.newLIRGenerator(lirGenRes);
             NodeLIRBuilderTool nodeLirGen = lirBackend.newNodeLIRBuilder(graph, lirGen);
 
@@ -156,7 +158,7 @@ public class LIRCompilerBackend {
             try (DebugContext.Scope s = debug.scope("LIRStages", nodeLirGen, lirGenRes, lir)) {
                 // Dump LIR along with HIR (the LIR is looked up from context)
                 debug.dump(DebugContext.BASIC_LEVEL, graph.getLastSchedule(), "After LIR generation");
-                LIRGenerationResult result = emitLowLevel(backend.getTarget(), lirGenRes, lirGen, lirSuites, backend.newRegisterAllocationConfig(registerConfig, allocationRestrictedTo));
+                LIRGenerationResult result = emitLowLevel(backend.getTarget(), lirGenRes, lirGen, lirSuites, registerAllocationConfig);
                 return result;
             } catch (Throwable e) {
                 throw debug.handle(e);
@@ -199,7 +201,7 @@ public class LIRCompilerBackend {
                     ResolvedJavaMethod installedCodeOwner,
                     CompilationResultBuilderFactory factory) {
         DebugContext debug = lirGenRes.getLIR().getDebug();
-        try (DebugCloseable a = EmitCode.start(debug)) {
+        try (DebugCloseable a = EmitCode.start(debug); CompilerPhaseScope cps = debug.enterCompilerPhase("Emit code");) {
             LIRGenerationProvider lirBackend = (LIRGenerationProvider) backend;
 
             FrameMap frameMap = lirGenRes.getFrameMap();

@@ -1,4 +1,4 @@
-gateCmdSuffix : ["-v", "--kill-with-sigquit", "gate", "--strict-mode", "--extra-vm-argument=-Dgraal.DumpOnError=true -Dgraal.PrintGraphFile=true", "--extra-vm-argument=${EXTRA_VM_ARGS}", "--tags"]
+gateCmdSuffix : ["--kill-with-sigquit", "gate", "--strict-mode", "--extra-vm-argument=-Dgraal.DumpOnError=true -Dgraal.PrintGraphFile=true -Dgraal.PrintBackendCFG=true", "--extra-vm-argument=${EXTRA_VM_ARGS}", "--tags"]
 gateCmd : ["mx", "--strict-compliance"] ${gateCmdSuffix}
 
 graalWeekly: ${graal-weekly-notifications} {
@@ -20,7 +20,7 @@ gateCoverage : {
   run : [
     ${gateCmd} ["build,coverage", --jacocout, html]
     [mx, coverage-upload]
-    [mx, sonarqube-upload, "-Dsonar.host.url=$SONAR_HOST_URL", "-Dsonar.projectKey=com.oracle.graal.compiler."${jvm-config.default}, "-Dsonar.projectName=GraalVM - Compiler ("${jvm-config.default}")", --exclude-generated, --skip-coverage]
+    # GR-18258 [mx, sonarqube-upload, "-Dsonar.host.url=$SONAR_HOST_URL", "-Dsonar.projectKey=com.oracle.graal.compiler."${jvm-config.default}, "-Dsonar.projectName=GraalVM - Compiler ("${jvm-config.default}")", --exclude-generated, --skip-coverage]
   ]
 }
 
@@ -57,6 +57,12 @@ gateTestCompileImmediately : ${gateTest} {
   }
 }
 
+gateLanguageAgnoistcInlining : ${gateTest} {
+  environment : {
+    EXTRA_VM_ARGS : "-Dpolyglot.engine.AllowExperimentalOptions=true -Dpolyglot.engine.LanguageAgnosticInlining=true"
+  }
+}
+
 gateTestCTW : {
   environment : {
     EXTRA_VM_ARGS : ""
@@ -70,7 +76,8 @@ gateTestCTW : {
 
 gateTestCTWWeekly : {
   environment : {
-    EXTRA_VM_ARGS : ""
+    # GR-23372
+    EXTRA_VM_ARGS : "-DCompileTheWorld.MaxClasses=5000"
   }
   run : [
     # At least one gate build should run without strict
@@ -90,7 +97,7 @@ gateTestBenchmark : {
   run : [
     ${gateCmd} ["build,benchmarktest"]
     # blackbox jmh test
-    ["mx", "benchmark", "jmh-dist:*", "--", "-Djmh.ignoreLock=true", "--jvm-config=${JVM_CONFIG}", "--jvm=${JVM}", "--", ".*TestJMH.*" ]
+    ["mx", "benchmark", "jmh-dist:GRAAL_COMPILER_MICRO_BENCHMARKS", "--", "-Djmh.ignoreLock=true", "--jvm-config=${JVM_CONFIG}", "--jvm=${JVM}", "--", ".*TestJMH.*" ]
     # whitebox jmh test
     ["mx", "benchmark", "jmh-whitebox:*", "--", "-Djmh.ignoreLock=true", "--jvm-config=${JVM_CONFIG}", "--jvm=${JVM}", "--", ".*TestJMH.*" ]
   ]
@@ -124,12 +131,7 @@ gateBootstrapFullVerify : {
 }
 
 gateStyle : ${eclipse} ${jdt} {
-  downloads : {
-    JDT : {name: ecj, version: "4.5.1", platformspecific: false}
-    ECLIPSE : {name: eclipse, version: "4.5.2", platformspecific: true}
-  }
   environment : {
-    ECLIPSE_EXE : "$ECLIPSE/eclipse"
     EXTRA_VM_ARGS : ""
   }
   run : [
@@ -152,11 +154,7 @@ gateSolarisSPARC : ${solaris-sparcv9} ${gateCommon}
 
 gateLinuxSPARC : ${linux-sparcv9} ${gateCommon}
 
-gateLinuxAArch64 : ${linux-aarch64} ${gateCommon} {
-  downloads : {
-    JAVA_HOME : ${jdks.openjdk11}
-  }
-}
+gateLinuxAArch64 : ${linux-aarch64} ${gateCommon}
 
 gateJAOTC : {
   environment : {
@@ -187,6 +185,13 @@ gateMathStubsListener: ${linux-amd64} {
     [echo, -e, "41e14dedcaddfbcc7a3042f7b926d474  macroAssembler_x86_tan.cpp", |, md5sum, -c]
   ]
   targets: [daily]
+  notify_emails: [
+    "yudi.zheng@oracle.com"
+  ]
+}
+
+gateLinuxAMD64AVX3 : ${gateLinuxAMD64} {
+  capabilities : ["linux", "amd64", "x82"]
   notify_emails: [
     "yudi.zheng@oracle.com"
   ]

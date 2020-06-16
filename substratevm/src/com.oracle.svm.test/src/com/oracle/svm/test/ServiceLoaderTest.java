@@ -25,13 +25,29 @@
 package com.oracle.svm.test;
 
 import java.util.ServiceLoader;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.junit.Assert;
 import org.junit.Test;
 
 public class ServiceLoaderTest {
+
+    public static class TestFeature implements Feature {
+        @Override
+        public void beforeAnalysis(BeforeAnalysisAccess access) {
+            RuntimeClassInitialization.initializeAtBuildTime(ServiceLoaderTest.class);
+            RuntimeClassInitialization.initializeAtBuildTime(ServiceLoaderTest.ServiceA.class);
+            RuntimeClassInitialization.initializeAtBuildTime(ServiceLoaderTest.ServiceB.class);
+            RuntimeClassInitialization.initializeAtBuildTime(ServiceLoaderTest.ServiceC.class);
+            RuntimeClassInitialization.initializeAtBuildTime(ServiceLoaderTest.ServiceD.class);
+            RuntimeClassInitialization.initializeAtBuildTime(ServiceLoaderTest.ServiceHostedOnly.class);
+            RuntimeClassInitialization.initializeAtBuildTime(ServiceLoaderTest.ServiceInterface.class);
+        }
+    }
+
     static {
         testServicesInHotSpot();
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,8 +47,8 @@ import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 
-import com.oracle.truffle.api.library.DynamicDispatchLibrary;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 import com.oracle.truffle.dsl.processor.model.Template;
 
@@ -65,9 +65,27 @@ public final class LibraryData extends Template {
     private TypeMirror assertions;
 
     private ExportsLibrary objectExports;
+    private boolean defaultExportLookupEnabled;
+    private boolean dynamicDispatchEnabled = true;
 
     public LibraryData(TypeElement type, AnnotationMirror annotationMirror) {
         super(ProcessorContext.getInstance(), type, annotationMirror);
+    }
+
+    public void setDynamicDispatchEnabled(boolean dynamicDispatchEnabled) {
+        this.dynamicDispatchEnabled = dynamicDispatchEnabled;
+    }
+
+    public boolean isDynamicDispatchEnabled() {
+        return dynamicDispatchEnabled;
+    }
+
+    public void setDefaultExportLookupEnabled(boolean defaultExportLookupEnabled) {
+        this.defaultExportLookupEnabled = defaultExportLookupEnabled;
+    }
+
+    public boolean isDefaultExportLookupEnabled() {
+        return defaultExportLookupEnabled;
     }
 
     public void setExportsReceiverType(TypeMirror receiverType) {
@@ -129,7 +147,7 @@ public final class LibraryData extends Template {
     }
 
     public boolean isDynamicDispatch() {
-        return getTemplateType().getSimpleName().toString().equals(DynamicDispatchLibrary.class.getSimpleName());
+        return getTemplateType().getSimpleName().toString().equals(types.DynamicDispatchLibrary.asElement().getSimpleName().toString());
     }
 
     void setObjectExports(ExportsLibrary objectExports) {
@@ -138,6 +156,21 @@ public final class LibraryData extends Template {
 
     public ExportsLibrary getObjectExports() {
         return objectExports;
+    }
+
+    public LibraryDefaultExportData getBuiltinDefaultExport(TypeMirror receiverType) {
+        for (LibraryDefaultExportData export : defaultExports) {
+            if (export.isDefaultObjectExport()) {
+                continue;
+            }
+            if (ElementUtils.isAssignable(export.getReceiverType(), receiverType)) {
+                return export;
+            }
+            if (ElementUtils.isAssignable(ProcessorContext.getInstance().getType(Object.class), export.getReceiverType())) {
+                return export;
+            }
+        }
+        return null;
     }
 
 }

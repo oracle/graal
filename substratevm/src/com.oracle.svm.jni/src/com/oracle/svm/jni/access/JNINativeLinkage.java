@@ -24,16 +24,16 @@
  */
 package com.oracle.svm.jni.access;
 
-import com.oracle.svm.core.c.CGlobalDataFactory;
-import com.oracle.svm.core.c.CGlobalData;
-import com.oracle.svm.core.graal.code.CGlobalDataInfo;
-import com.oracle.svm.hosted.c.CGlobalDataFeature;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.c.CGlobalDataFactory;
+import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
+import com.oracle.svm.hosted.c.CGlobalDataFeature;
 
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaUtil;
@@ -73,6 +73,14 @@ public final class JNINativeLinkage {
         return declaringClass;
     }
 
+    public String getName() {
+        return name;
+    }
+
+    public String getDescriptor() {
+        return descriptor;
+    }
+
     public boolean isBuiltInFunction() {
         return (PlatformNativeLibrarySupport.singleton().isBuiltinPkgNative(this.getShortName()));
     }
@@ -81,7 +89,7 @@ public final class JNINativeLinkage {
         assert this.isBuiltInFunction();
         if (builtInAddress == null) {
             CGlobalData<CFunctionPointer> linkage = CGlobalDataFactory.forSymbol(this.getShortName());
-            builtInAddress = CGlobalDataFeature.singleton().registerAsAccessed(linkage);
+            builtInAddress = CGlobalDataFeature.singleton().registerAsAccessedOrGet(linkage);
         }
         return builtInAddress;
     }

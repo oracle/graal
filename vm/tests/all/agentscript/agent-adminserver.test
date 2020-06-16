@@ -1,0 +1,12 @@
+>[5] node --insight=agent-adminserver.js --experimental-options agent-ping.js
+Admin ready at 9999
+Ping 1
+Ping 2
+Attaching
+observing ping at 2
+Ping 3
+observing ping at 3
+Ping 4
+observing ping at 4
+Ping 5
+observing ping at 5

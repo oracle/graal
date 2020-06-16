@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -219,7 +219,7 @@ class MultiLanguageShell {
             } catch (PolyglotException e) {
                 bufferSource = null;
                 if (e.isInternalError()) {
-                    console.println("Internal error occured: " + e.toString());
+                    console.println("Internal error occurred: " + e.toString());
                     if (verboseErrors) {
                         e.printStackTrace(new PrintWriter(console.getOutput()));
                     } else {
@@ -260,7 +260,7 @@ class MultiLanguageShell {
                     }
                 }
             } catch (Throwable e) {
-                console.println("Internal error occured: " + e.toString());
+                console.println("Internal error occurred: " + e.toString());
                 if (verboseErrors) {
                     e.printStackTrace(new PrintWriter(console.getOutput()));
                 } else {

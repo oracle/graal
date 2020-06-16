@@ -24,27 +24,17 @@
  */
 package com.oracle.svm.core.posix.headers;
 
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.impl.InternalPlatform.DARWIN_AND_JNI;
-import org.graalvm.nativeimage.impl.InternalPlatform.LINUX_AND_JNI;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
 
-//Allow methods with non-standard names: Checkstyle: stop
+// Checkstyle: stop
 
-/*
- * The definitions I need, manually translated from the C header file <sched.h>.
+/**
+ * Definitions manually translated from the C header file sched.h.
  */
-
-@Platforms({DARWIN_AND_JNI.class, LINUX_AND_JNI.class})
 @CContext(PosixDirectives.class)
 public class Sched {
 
-    /**
-     * sched_yield() causes the calling thread to relinquish the CPU. The thread is moved to the end
-     * of the queue for its static priority and a new thread gets to run.
-     */
     @CFunction
     public static native int sched_yield();
-
 }

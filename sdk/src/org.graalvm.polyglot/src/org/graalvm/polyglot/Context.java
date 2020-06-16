@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package org.graalvm.polyglot;
 
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.Path;
 import java.time.ZoneId;
 import java.util.Collections;
 import java.util.HashMap;
@@ -323,11 +324,11 @@ public final class Context implements AutoCloseable {
      * <b>Basic Example:</b>
      *
      * <pre>
-     * Context context = Context.create();
-     * Source source = Source.newBuilder("js", "42").name("mysource.js").build();
-     * Value result = context.eval(source);
-     * assert result.asInt() == 42;
-     * context.close();
+     * try (Context context = Context.create()) {
+     *     Source source = Source.newBuilder("js", "42", "mysource.js").build();
+     *     Value result = context.eval(source);
+     *     assert result.asInt() == 42;
+     * }
      * </pre>
      *
      * @param source a source object to evaluate
@@ -352,10 +353,10 @@ public final class Context implements AutoCloseable {
      * <b>Basic Example:</b>
      *
      * <pre>
-     * Context context = Context.create();
-     * Value result = context.eval("js", "42");
-     * assert result.asInt() == 42;
-     * context.close();
+     * try (Context context = Context.create()) {
+     *     Value result = context.eval("js", "42");
+     *     assert result.asInt() == 42;
+     * }
      * </pre>
      *
      * @throws PolyglotException in case the guest language code parsing or evaluation failed.
@@ -368,6 +369,104 @@ public final class Context implements AutoCloseable {
      */
     public Value eval(String languageId, CharSequence source) {
         return eval(Source.create(languageId, source));
+    }
+
+    /**
+     * Parses but does not evaluate a given source by using the {@linkplain Source#getLanguage()
+     * language} specified in the source and returns a {@link Value value} that can be
+     * {@link Value#execute(Object...) executed}. If a parsing fails, e.g. due to a syntax error in
+     * the source, then a {@link PolyglotException} will be thrown. In case of a syntax error the
+     * {@link PolyglotException#isSyntaxError()} will return <code>true</code>. There is no
+     * guarantee that only syntax errors will be thrown by this method. Any other guest language
+     * exception might be thrown. If the validation succeeds then the method completes without
+     * throwing an exception.
+     * <p>
+     * The result value only supports an empty set of arguments to {@link Value#execute(Object...)
+     * execute}. If executed repeatedly then the source is evaluated multiple times.
+     * {@link Source.Builder#interactive(boolean) Interactive} sources will print their result for
+     * each execution of the parsing result to the {@link Builder#out(OutputStream) output} stream.
+     * <p>
+     * If the parsing succeeds and the source is {@link Source.Builder#cached(boolean) cached} then
+     * the result will automatically be reused for consecutive calls to {@link #parse(Source)} or
+     * {@link #eval(Source)}. If the validation should be performed for each invocation or the
+     * result should not be remembered then {@link Source.Builder#cached(boolean) cached} can be set
+     * to <code>false</code>. By default sources are cached.
+     * <p>
+     * <b>Basic Example:</b>
+     *
+     * <pre>
+     * try (Context context = Context.create()) {
+     *     Source source = Source.create("js", "42");
+     *     Value value;
+     *     try {
+     *         value = context.parse(source);
+     *         // parsing succeeded
+     *     } catch (PolyglotException e) {
+     *         if (e.isSyntaxError()) {
+     *             SourceSection location = e.getSourceLocation();
+     *             // syntax error detected at location
+     *         } else {
+     *             // other guest error detected
+     *         }
+     *         throw e;
+     *     }
+     *     // evaluate the parsed script
+     *     value.execute();
+     * }
+     * </pre>
+     *
+     * @param source a source object to parse
+     * @throws PolyglotException in case the guest language code parsing or validation failed.
+     * @throws IllegalArgumentException if the language does not exist or is not accessible.
+     * @throws IllegalStateException if the context is already closed and the current thread is not
+     *             allowed to access it, or if the given language is not installed.
+     * @since 20.2
+     */
+    public Value parse(Source source) throws PolyglotException {
+        return impl.parse(source.getLanguage(), source.impl);
+    }
+
+    /**
+     * Parses but does not evaluate a guest language code literal using a provided
+     * {@link Language#getId() language id} and character sequence and returns a {@link Value value}
+     * that can be {@link Value#execute(Object...) executed}. The provided {@link CharSequence} must
+     * represent an immutable String. This method represents a short-hand for
+     * {@link #parse(Source)}.
+     * <p>
+     * The result value only supports an empty set of arguments to {@link Value#execute(Object...)
+     * execute}. If executed repeatedly then the source is evaluated multiple times.
+     * {@link Source.Builder#interactive(boolean) Interactive} sources will print their result for
+     * each execution of the parsing result to the {@link Builder#out(OutputStream) output} stream.
+     * <p>
+     *
+     * <pre>
+     * try (Context context = Context.create()) {
+     *     Value value;
+     *     try {
+     *         value = context.parse("js", "42");
+     *         // parsing succeeded
+     *     } catch (PolyglotException e) {
+     *         if (e.isSyntaxError()) {
+     *             SourceSection location = e.getSourceLocation();
+     *             // syntax error detected at location
+     *         } else {
+     *             // other guest error detected
+     *         }
+     *         throw e;
+     *     }
+     *     // evaluate the parsed script
+     *     value.execute();
+     * }
+     * </pre>
+     *
+     * @throws PolyglotException in case the guest language code parsing or evaluation failed.
+     * @throws IllegalArgumentException if the language does not exist or is not accessible.
+     * @throws IllegalStateException if the context is already closed and the current thread is not
+     *             allowed to access it, or if the given language is not installed.
+     * @since 20.2
+     */
+    public Value parse(String languageId, CharSequence source) {
+        return parse(Source.create(languageId, source));
     }
 
     /**
@@ -421,6 +520,15 @@ public final class Context implements AutoCloseable {
      */
     public boolean initialize(String languageId) {
         return impl.initializeLanguage(languageId);
+    }
+
+    /**
+     * Resets all accumulators of resource limits for the associated context to zero.
+     *
+     * @since 19.3
+     */
+    public void resetLimits() {
+        impl.resetLimits();
     }
 
     /**
@@ -671,7 +779,7 @@ public final class Context implements AutoCloseable {
      * {@link Engine#getOptions() options} of the {@link #getEngine() engine}.
      * </ul>
      * <p>
-     * The returned context may <b>not</b> be used to {@link #enter() enter} , {@link #leave()
+     * The returned context can <b>not</b> be used to {@link #enter() enter} , {@link #leave()
      * leave} or {@link #close() close} the context or {@link #getEngine() engine}. Invoking such
      * methods will cause an {@link IllegalStateException} to be thrown. This ensures that only the
      * {@link #create(String...) creator} of a context is allowed to enter, leave or close a
@@ -766,8 +874,11 @@ public final class Context implements AutoCloseable {
         private Boolean allowCreateProcess;
         private ProcessHandler processHandler;
         private EnvironmentAccess environmentAccess;
+        private ResourceLimits resourceLimits;
         private Map<String, String> environment;
         private ZoneId zone;
+        private Path currentWorkingDirectory;
+        private ClassLoader hostClassLoader;
 
         Builder(String... onlyLanguages) {
             Objects.requireNonNull(onlyLanguages);
@@ -959,6 +1070,15 @@ public final class Context implements AutoCloseable {
          * In order to access class members looked up by the guest application a
          * {@link #allowHostAccess(org.graalvm.polyglot.HostAccess) host access policy} needs to be
          * set or {@link #allowAllAccess(boolean) all access} needs to be set to <code>true</code>.
+         * <p>
+         * To load new classes the context uses the
+         * {@link Context.Builder#hostClassLoader(java.lang.ClassLoader) hostClassLoader} if
+         * specified or the {@link Thread#getContextClassLoader() context class loader} that will be
+         * captured when the context is {@link #build() built}. If an explicit
+         * {@link #engine(Engine) engine} was specified, then the context class loader at engine
+         * {@link Engine.Builder#build() build-time} will be used instead. When the Java module
+         * system is available (>= JDK 9) then only classes are accessible that are exported to the
+         * unnamed module of the captured class loader.
          * <p>
          * <h3>Example usage with JavaScript:</h3>
          *
@@ -1212,7 +1332,7 @@ public final class Context implements AutoCloseable {
          *
          * @return the {@link Builder}
          * @see ZoneId#systemDefault()
-         * @since 20.0.0 beta 2
+         * @since 19.2.0
          */
         public Builder timeZone(final ZoneId zone) {
             this.zone = zone;
@@ -1278,6 +1398,20 @@ public final class Context implements AutoCloseable {
         }
 
         /**
+         * Assigns resource limit configuration to a context. By default no resource limits are
+         * assigned. The limits will be enabled for all contexts created using this builder.
+         * Assigning a limit may have performance impact of all contexts that run with the same
+         * engine.
+         *
+         * @see ResourceLimits for usage examples
+         * @since 19.3.0
+         */
+        public Builder resourceLimits(ResourceLimits limits) {
+            this.resourceLimits = limits;
+            return this;
+        }
+
+        /**
          * Allow environment access using the provided policy. If {@link #allowAllAccess(boolean)
          * all access} is {@code true} then the default environment access policy is
          * {@link EnvironmentAccess#INHERIT}, otherwise {@link EnvironmentAccess#NONE}. The provided
@@ -1322,6 +1456,45 @@ public final class Context implements AutoCloseable {
             for (Map.Entry<String, String> e : env.entrySet()) {
                 environment(e.getKey(), e.getValue());
             }
+            return this;
+        }
+
+        /**
+         * Sets the current working directory used by the guest application to resolve relative
+         * paths. When the Context is built, the given directory is set as the current working
+         * directory on the Context's file system using the
+         * {@link FileSystem#setCurrentWorkingDirectory(java.nio.file.Path)
+         * FileSystem.setCurrentWorkingDirectory} method.
+         *
+         * @param workingDirectory the new current working directory
+         * @throws NullPointerException when {@code workingDirectory} is {@code null}
+         * @throws IllegalArgumentException when {@code workingDirectory} is a relative path
+         * @since 20.0.0
+         */
+        public Builder currentWorkingDirectory(Path workingDirectory) {
+            Objects.requireNonNull(workingDirectory, "WorkingDirectory must be non null.");
+            if (!workingDirectory.isAbsolute()) {
+                throw new IllegalArgumentException("WorkingDirectory must be an absolute path.");
+            }
+            this.currentWorkingDirectory = workingDirectory;
+            return this;
+        }
+
+        /**
+         * Sets a host class loader. If set the given {@code classLoader} is used to load host
+         * classes and it's also set as a {@link Thread#setContextClassLoader(java.lang.ClassLoader)
+         * context ClassLoader} during code execution. Otherwise the ClassLoader that was captured
+         * when the context was {@link #build() built} is used to to load host classes and the
+         * {@link Thread#setContextClassLoader(java.lang.ClassLoader) context ClassLoader} is not
+         * set during code execution. Setting the hostClassLoader has a negative effect on enter and
+         * leave performance.
+         *
+         * @param classLoader the host class loader
+         * @since 20.1.0
+         */
+        public Builder hostClassLoader(ClassLoader classLoader) {
+            Objects.requireNonNull(classLoader, "ClassLoader must be non null.");
+            this.hostClassLoader = classLoader;
             return this;
         }
 
@@ -1378,9 +1551,17 @@ public final class Context implements AutoCloseable {
             if (environmentAccess == null) {
                 environmentAccess = this.allowAllAccess ? EnvironmentAccess.INHERIT : EnvironmentAccess.NONE;
             }
+            Object limits;
+            if (resourceLimits != null) {
+                limits = resourceLimits.impl;
+            } else {
+                limits = null;
+            }
+
             if (!io && customFileSystem != null) {
                 throw new IllegalStateException("Cannot install custom FileSystem when IO is disabled.");
             }
+            String localCurrentWorkingDirectory = currentWorkingDirectory == null ? null : currentWorkingDirectory.toString();
             Engine engine = this.sharedEngine;
             if (engine == null) {
                 org.graalvm.polyglot.Engine.Builder engineBuilder = Engine.newBuilder().options(options == null ? Collections.emptyMap() : options);
@@ -1404,10 +1585,12 @@ public final class Context implements AutoCloseable {
                 engineBuilder.allowExperimentalOptions(experimentalOptions);
                 engineBuilder.setBoundEngine(true);
                 engine = engineBuilder.build();
-                return engine.impl.createContext(null, null, null, hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
+                Context ctx = engine.impl.createContext(null, null, null, hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
                                 io, hostClassLoading, experimentalOptions,
                                 localHostLookupFilter, Collections.emptyMap(), arguments == null ? Collections.emptyMap() : arguments,
-                                onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone);
+                                onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone, limits,
+                                localCurrentWorkingDirectory, hostClassLoader);
+                return ctx;
             } else {
                 if (messageTransport != null) {
                     throw new IllegalStateException("Cannot use MessageTransport in a context that shares an Engine.");
@@ -1415,12 +1598,14 @@ public final class Context implements AutoCloseable {
                 return engine.impl.createContext(out, err, in, hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
                                 io, hostClassLoading, experimentalOptions,
                                 localHostLookupFilter, options == null ? Collections.emptyMap() : options, arguments == null ? Collections.emptyMap() : arguments,
-                                onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone);
+                                onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone, limits,
+                                localCurrentWorkingDirectory, hostClassLoader);
             }
         }
 
         private boolean orAllAccess(Boolean optionalBoolean) {
             return optionalBoolean != null ? optionalBoolean : allowAllAccess;
         }
+
     }
 }

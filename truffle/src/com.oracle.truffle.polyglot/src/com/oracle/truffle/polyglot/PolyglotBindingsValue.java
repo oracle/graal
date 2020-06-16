@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,10 +55,10 @@ final class PolyglotBindingsValue extends PolyglotValue {
     final Value delegateBindings;
     final Map<String, Value> values;
 
-    PolyglotBindingsValue(PolyglotLanguageContext context) {
+    PolyglotBindingsValue(PolyglotLanguageContext context, PolyglotBindings bindings) {
         super(context);
         this.values = context.context.polyglotBindings;
-        this.delegateBindings = context.asValue(new PolyglotBindings(context, values));
+        this.delegateBindings = context.asValue(bindings);
     }
 
     @Override
@@ -108,12 +108,12 @@ final class PolyglotBindingsValue extends PolyglotValue {
     }
 
     @Override
-    public String toString(Object receiver) {
+    public String toStringImpl(Object receiver) {
         return delegateBindings.toString();
     }
 
     @Override
-    public Value getMetaObject(Object receiver) {
+    public Value getMetaObjectImpl(Object receiver) {
         return delegateBindings.getMetaObject();
     }
 }

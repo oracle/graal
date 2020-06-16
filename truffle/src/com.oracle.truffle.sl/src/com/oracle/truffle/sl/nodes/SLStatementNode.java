@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,6 @@
 package com.oracle.truffle.sl.nodes;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -61,7 +60,6 @@ import com.oracle.truffle.api.source.SourceSection;
  */
 @NodeInfo(language = "SL", description = "The abstract base node for all SL statements")
 @GenerateWrapper
-@ReportPolymorphism
 public abstract class SLStatementNode extends Node implements InstrumentableNode {
 
     private static final int NO_SOURCE = -1;
@@ -101,7 +99,11 @@ public abstract class SLStatementNode extends Node implements InstrumentableNode
         }
         Source source = rootSourceSection.getSource();
         if (sourceCharIndex == UNAVAILABLE_SOURCE) {
-            return source.createUnavailableSection();
+            if (hasRootTag && !rootSourceSection.isAvailable()) {
+                return rootSourceSection;
+            } else {
+                return source.createUnavailableSection();
+            }
         } else {
             return source.createSection(sourceCharIndex, sourceLength);
         }

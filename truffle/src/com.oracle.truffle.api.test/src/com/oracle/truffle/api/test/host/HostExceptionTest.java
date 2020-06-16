@@ -110,6 +110,9 @@ public class HostExceptionTest {
                     case "runner":
                         rootNode = new RunnerRootNode();
                         break;
+                    case "rethrower":
+                        rootNode = new RethrowerRootNode();
+                        break;
                     default:
                         throw new IllegalArgumentException();
                 }
@@ -388,6 +391,34 @@ public class HostExceptionTest {
         assertNotNull(exception.getStackTrace());
     }
 
+    @Test
+    public void testRethrowHostException() {
+        expectedException = NoSuchElementException.class;
+        Runnable thrower = HostExceptionTest::thrower;
+        Value rethrower = context.eval(ProxyLanguage.ID, "rethrower");
+
+        // throw and rethrow a host exception
+        try {
+            rethrower.executeVoid(thrower);
+            shouldHaveThrown(PolyglotException.class);
+        } catch (PolyglotException polyglotException) {
+            assertNull("cause must be null", polyglotException.getCause());
+            assertTrue(polyglotException.isHostException());
+            assertThat(polyglotException.asHostException(), instanceOf(expectedException));
+            assertNull(polyglotException.asHostException().getCause());
+        }
+
+        // throw, rethrow, and then catch a host exception
+        Value catcher = context.eval(ProxyLanguage.ID, "catcher");
+        Value result = catcher.execute(rethrower, thrower);
+        assertTrue(result.isHostObject());
+        assertThat(result.asHostObject(), instanceOf(NoSuchElementException.class));
+
+        NoSuchElementException exception = result.asHostObject();
+        assertNotNull(exception);
+        assertThat(exception, instanceOf(expectedException));
+    }
+
     static void shouldHaveThrown(Class<? extends Throwable> expected) {
         fail("Expected a " + expected + " but none was thrown");
     }
@@ -468,6 +499,7 @@ public class HostExceptionTest {
         assertNotNull("Unexpected exception: " + ex, expectedException);
         assertThat(env.asHostObject(exceptionObject), instanceOf(expectedException));
         assertThat(ProxyLanguage.getCurrentContext().getEnv().asHostException(ex), instanceOf(expectedException));
+        assertTrue(InteropLibrary.getFactory().getUncached().isException(exceptionObject));
         return exceptionObject;
     }
 
@@ -498,6 +530,49 @@ public class HostExceptionTest {
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new AssertionError(e);
+            }
+        }
+    }
+
+    class RethrowerRootNode extends RootNode {
+        @Child InteropLibrary interop = InteropLibrary.getFactory().createDispatched(5);
+
+        RethrowerRootNode() {
+            super(ProxyLanguage.getCurrentLanguage());
+        }
+
+        @TruffleBoundary
+        @Override
+        public SourceSection getSourceSection() {
+            return Source.newBuilder(ProxyLanguage.ID, "rethrow", "rethrower").build().createSection(1);
+        }
+
+        @Override
+        public String getName() {
+            return "rethrower";
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            TruffleObject thrower = (TruffleObject) frame.getArguments()[0];
+            Object[] args = Arrays.copyOfRange(frame.getArguments(), 1, frame.getArguments().length);
+            try {
+                return interop.execute(thrower, args);
+            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError(e);
+            } catch (Exception ex) {
+                if (ex instanceof TruffleException) {
+                    Object exObj = ((TruffleException) ex).getExceptionObject();
+                    assertTrue(env.isHostObject(exObj));
+                    assertTrue(interop.isException(exObj));
+                    try {
+                        throw interop.throwException(exObj);
+                    } catch (UnsupportedMessageException e) {
+                        throw new AssertionError(e);
+                    }
+                }
+                throw new AssertionError(ex);
             }
         }
     }

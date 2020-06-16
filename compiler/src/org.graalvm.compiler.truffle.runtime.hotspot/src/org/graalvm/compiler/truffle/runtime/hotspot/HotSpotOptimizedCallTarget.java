@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,6 +51,15 @@ public class HotSpotOptimizedCallTarget extends OptimizedCallTarget implements O
      * This field is read by the code injected by {@code TruffleCallBoundaryInstrumentationFactory}
      * into a method annotated by {@link TruffleCallBoundary}. The injected code assumes this field
      * is never null hence the use of {@link #INVALID_CODE}.
+     *
+     * Note: the only thread that writes to this field is the compilation thread. Thus, non-volatile
+     * publication is safe if and only if the compiler thread makes sure that the writes to the
+     * fields of the InstalledCode object are synchronized. One of those fields is name, which is
+     * final, so this is ensured. Other fields are written behind the JNI calls (in the VM's native
+     * code), which should ensure safe publication: these fields are version, address and
+     * entryPoint. Therefore, any thread that sees an InstalledCode object through the installedCode
+     * field, will also see all properly initialized fields, thus there is no need for a volatile
+     * flag.
      */
     private InstalledCode installedCode;
 

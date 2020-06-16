@@ -53,6 +53,7 @@ public class JavaFrameAnchors {
         return lastAnchor.get();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static JavaFrameAnchor getFrameAnchor(IsolateThread vmThread) {
         return lastAnchor.get(vmThread);
     }

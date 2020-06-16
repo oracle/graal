@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2020, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -85,11 +85,43 @@ class SulongTestSuiteBuildTask(mx.NativeBuildTask):
             self.subject._is_needs_rebuild_call = False
 
 
-class SulongTestSuite(mx.NativeProject):  # pylint: disable=too-many-ancestors
+class SulongTestSuiteBase(mx.NativeProject):  # pylint: disable=too-many-ancestors
+    def __init__(self, suite, name, subDir, deps, workingSets, results, output, d, **args):
+        super(SulongTestSuiteBase, self).__init__(suite, name, subDir, [], deps, workingSets, results, output, d, **args)
+
+    def getVariants(self):
+        if not hasattr(self, '_variants'):
+            self._variants = []
+            for v in self.variants:
+                if 'gcc' in v and not SulongTestSuite.haveDragonegg():
+                    mx.warn('Could not find dragonegg, not building test variant "%s"' % v)
+                    continue
+                self._variants.append(v)
+        return self._variants
+
+    def getResults(self, replaceVar=mx_subst.results_substitutions):
+        if not self.results:
+            self.results = []
+            for t in self.getTests():
+                if self.buildRef:
+                    self.results.append(os.path.join(t, 'ref.out'))
+                for v in self.getVariants():
+                    result_file = mx.add_lib_suffix(v) if self.buildSharedObject else v + '.bc'
+                    self.results.append(os.path.join(t, result_file))
+        return super(SulongTestSuiteBase, self).getResults(replaceVar=replaceVar)
+
+
+class SulongTestSuite(SulongTestSuiteBase):  # pylint: disable=too-many-ancestors
     def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, buildRef=True,
                  buildSharedObject=False, **args):
-        d = os.path.join(suite.dir, subDir) # use common Makefile for all test suites
-        mx.NativeProject.__init__(self, suite, name, subDir, [], deps, workingSets, results, output, d, **args)
+        projectDir = args.pop('dir', None)
+        if projectDir:
+            d = os.path.join(suite.dir, projectDir)
+        elif subDir is None:
+            d = os.path.join(suite.dir, name)
+        else:
+            d = os.path.join(suite.dir, subDir, name)
+        super(SulongTestSuite, self).__init__(suite, name, subDir, deps, workingSets, results, output, d, **args)
         self.vpath = True
         self.buildRef = buildRef
         self.buildSharedObject = buildSharedObject
@@ -123,36 +155,34 @@ class SulongTestSuite(mx.NativeProject):  # pylint: disable=too-many-ancestors
     def getTests(self):
         if not hasattr(self, '_tests'):
             self._tests = []
-            root = os.path.join(self.dir, self.name)
+            root = os.path.join(self.dir)
             for path, _, files in os.walk(root):
                 for f in files:
                     absPath = os.path.join(path, f)
                     relPath = os.path.relpath(absPath, root)
-                    test, ext = os.path.splitext(relPath)
-                    if ext in ['.c', '.cpp', '.ll']:
-                        self._tests.append(test)
+                    _, ext = os.path.splitext(relPath)
+                    if ext in getattr(self, "fileExts", ['.c', '.cpp', '.ll']):
+                        self._tests.append(relPath + ".dir")
         return self._tests
-
-    def getVariants(self):
-        if not hasattr(self, '_variants'):
-            self._variants = []
-            for v in self.variants:
-                if 'gcc' in v and not SulongTestSuite.haveDragonegg():
-                    mx.warn('Could not find dragonegg, not building test variant "%s"' % v)
-                    continue
-                self._variants.append(v)
-        return self._variants
 
     def getBuildEnv(self, replaceVar=mx_subst.path_substitutions):
         env = super(SulongTestSuite, self).getBuildEnv(replaceVar=replaceVar)
-        env['VPATH'] = os.path.join(self.dir, self.name)
         env['PROJECT'] = self.name
         env['TESTS'] = ' '.join(self.getTests())
         env['VARIANTS'] = ' '.join(self.getVariants())
         env['BUILD_REF'] = '1' if self.buildRef else '0'
         env['BUILD_SO'] = '1' if self.buildSharedObject else '0'
         env['SO_EXT'] = mx.add_lib_suffix("")
-        env['SULONG_MAKE_CLANG_IMPLICIT_ARGS'] = mx_sulong.getClangImplicitArgs()
+        env['CLANG'] = mx_sulong.findBundledLLVMProgram('clang')
+        env['CLANGXX'] = mx_sulong.findBundledLLVMProgram('clang++')
+        env['LLVM_OPT'] = mx_sulong.findBundledLLVMProgram('opt')
+        env['LLVM_AS'] = mx_sulong.findBundledLLVMProgram('llvm-as')
+        env['LLVM_DIS'] = mx_sulong.findBundledLLVMProgram('llvm-dis')
+        env['LLVM_LINK'] = mx_sulong.findBundledLLVMProgram('llvm-link')
+        env['LLVM_OBJCOPY'] = mx_sulong.findBundledLLVMProgram('llvm-objcopy')
+        env['GRAALVM_LLVM_HOME'] = mx_subst.path_substitutions.substitute("<path:SULONG_HOME>")
+        if 'OS' not in env:
+            env['OS'] = mx_subst.path_substitutions.substitute("<os>")
         if SulongTestSuite.haveDragonegg():
             env['DRAGONEGG'] = mx_sulong.dragonEggPath()
             env['DRAGONEGG_GCC'] = mx_sulong.getGCC()
@@ -163,17 +193,47 @@ class SulongTestSuite(mx.NativeProject):  # pylint: disable=too-many-ancestors
             mx.abort('Could not find dragonegg, cannot build "{}" (requireDragonegg = True).'.format(self.name))
         return env
 
-    def getResults(self, replaceVar=mx_subst.results_substitutions):
-        if not self.results:
-            self.results = []
-            for t in self.getTests():
-                if self.buildRef:
-                    self.results.append(os.path.join(t, 'ref.out'))
-                for v in self.getVariants():
-                    result_file = mx.add_lib_suffix(v) if self.buildSharedObject else v + '.bc'
-                    self.results.append(os.path.join(t, result_file))
-        return super(SulongTestSuite, self).getResults(replaceVar=replaceVar)
 
+class GeneratedTestSuite(SulongTestSuiteBase):  # pylint: disable=too-many-ancestors
+    def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, buildRef=True,
+                 buildSharedObject=False, **args):
+        d = os.path.join(suite.dir, subDir, name)
+        super(GeneratedTestSuite, self).__init__(suite, name, subDir, deps, workingSets, results, output, d, **args)
+        self.vpath = True
+        self.buildRef = buildRef
+        self.buildSharedObject = buildSharedObject
+        self._is_needs_rebuild_call = False
+
+    def getTests(self):
+        if not hasattr(self, '_tests'):
+            self._tests = []
+
+            def enlist(line):
+                line = line.strip()
+                if not line.endswith(".ignore"):
+                    self._tests += [line + ".dir"]
+
+            mx_sulong.llirtestgen(["gen", "--print-filenames"], out=enlist)
+        return self._tests
+
+    def getBuildEnv(self, replaceVar=mx_subst.path_substitutions):
+        env = super(GeneratedTestSuite, self).getBuildEnv(replaceVar=replaceVar)
+        env['VPATH'] = self.dir
+        env['PROJECT'] = self.name
+        env['TESTS'] = ' '.join(self.getTests())
+        env['VARIANTS'] = ' '.join(self.getVariants())
+        env['BUILD_REF'] = '1' if self.buildRef else '0'
+        env['BUILD_SO'] = '1' if self.buildSharedObject else '0'
+        env['SO_EXT'] = mx.add_lib_suffix("")
+        env['CLANG'] = mx_sulong.findBundledLLVMProgram('clang')
+        env['CLANGXX'] = mx_sulong.findBundledLLVMProgram('clang++')
+        env['LLVM_OPT'] = mx_sulong.findBundledLLVMProgram('opt')
+        env['LLVM_AS'] = mx_sulong.findBundledLLVMProgram('llvm-as')
+        env['LLVM_DIS'] = mx_sulong.findBundledLLVMProgram('llvm-dis')
+        env['LLVM_LINK'] = mx_sulong.findBundledLLVMProgram('llvm-link')
+        env['LLVM_OBJCOPY'] = mx_sulong.findBundledLLVMProgram('llvm-objcopy')
+        env['GRAALVM_LLVM_HOME'] = mx_subst.path_substitutions.substitute("<path:SULONG_HOME>")
+        return env
 
 class ExternalTestSuite(SulongTestSuite):  # pylint: disable=too-many-ancestors
     def __init__(self, *args, **kwargs):
@@ -195,7 +255,7 @@ class ExternalTestSuite(SulongTestSuite):  # pylint: disable=too-many-ancestors
         vmArgs += [
             "-Dsulongtest.externalTestSuitePath=" + self.getOutput(),
             "-Dsulongtest.testSourcePath=" + self.get_test_source(),
-            "-Dsulongtest.testConfigPath=" + os.path.join(self.dir, self.configDir),
+            "-Dsulongtest.testConfigPath=" + os.path.join(self.dir, "..", self.configDir),
             ]
         if hasattr(self, 'extraLibs'):
             vmArgs.append('-Dpolyglot.llvm.libraries=' + ':'.join(self.extraLibs))
@@ -232,7 +292,7 @@ class ExternalTestSuite(SulongTestSuite):  # pylint: disable=too-many-ancestors
         exclude_files = []
 
         # full name check is cheaper than pattern matching
-        for exclude in mx_buildtools.collectExcludes(os.path.join(self.dir, self.configDir)):
+        for exclude in mx_buildtools.collectExcludes(os.path.join(self.dir, "..", self.configDir)):
             if _maybe_pattern(exclude):
                 exclude_patterns.append(exclude)
             else:

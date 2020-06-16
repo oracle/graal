@@ -174,6 +174,10 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
         return this.isAllocationContextSensitiveObject() || this.isConstantContextSensitiveObject();
     }
 
+    public ArrayElementsTypeStore getArrayElementsTypeStore() {
+        return arrayElementsTypeStore;
+    }
+
     /** Returns the array elements type flow corresponding to an analysis object of array type. */
     public ArrayElementsTypeFlow getArrayElementsFlow(BigBang bb, boolean isStore) {
         assert this.isObjectArray();

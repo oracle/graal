@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.windows.headers;
 
+import static org.graalvm.nativeimage.c.function.CFunction.Transition.NO_TRANSITION;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.CContext;
@@ -34,6 +36,8 @@ import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.windows.headers.LibC.WCharPointer;
+
 //Checkstyle: stop
 
 /**
@@ -43,15 +47,10 @@ import org.graalvm.word.UnsignedWord;
 @Platforms(Platform.WINDOWS.class)
 public class FileAPI {
 
-    /**
-     * Write nNumberOfBytesToWrite of lpBuffer to HANDLE hFile. Return non zero on success, zero on
-     * failure
-     */
     @CFunction
     public static native int WriteFile(int hFile, CCharPointer lpBuffer, UnsignedWord nNumberOfBytesToWrite,
                     CIntPointer lpNumberOfBytesWritten, PointerBase lpOverlapped);
 
-    /** Flush the File Buffers for hFile. Return non zero on success, zero on failure */
     @CFunction
     public static native int FlushFileBuffers(int hFile);
 
@@ -64,8 +63,9 @@ public class FileAPI {
     @CConstant
     public static native int STD_ERROR_HANDLE();
 
-    /** Retrieve a handle for standard input, output, error */
     @CFunction
     public static native int GetStdHandle(int stdHandle);
 
+    @CFunction(transition = NO_TRANSITION)
+    public static native int GetTempPathW(int nBufferLength, WCharPointer lpBuffer);
 }

@@ -28,31 +28,14 @@ import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 
-//Checkstyle: stop
+// Checkstyle: stop
 
 /**
- * Contains the definitions from stdlib.h that we actually needed.
+ * Definitions manually translated from the C header file stdlib.h.
  */
 @CContext(PosixDirectives.class)
 public class Stdlib {
 
-    /**
-     * Return the canonical absolute name of file NAME. If RESOLVED is null, the result is malloc'd;
-     * otherwise, if the canonical name is PATH_MAX chars or more, returns null with `errno' set to
-     * ENAMETOOLONG; if the name fits in fewer than PATH_MAX chars, returns the name in RESOLVED.
-     */
     @CFunction
     public static native CCharPointer realpath(CCharPointer name, CCharPointer resolved);
-
-    @CFunction
-    public static native CCharPointer mkdtemp(CCharPointer template);
-
-    @CFunction
-    public static native CCharPointer getenv(CCharPointer name);
-
-    @CFunction
-    public static native int setenv(CCharPointer name, CCharPointer value, int overwrite);
-
-    @CFunction
-    public static native int unsetenv(CCharPointer name);
 }

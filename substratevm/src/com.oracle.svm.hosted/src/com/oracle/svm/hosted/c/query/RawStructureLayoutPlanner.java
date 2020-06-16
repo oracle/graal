@@ -119,13 +119,13 @@ public final class RawStructureLayoutPlanner extends NativeInfoTreeVisitor {
         if (info.isObject()) {
             declaredSize = ConfigurationValues.getObjectLayout().getReferenceSize();
         } else {
-            /**
+            /*
              * Resolve field size using the declared type in its accessors. Note that the field
              * offsets are not calculated before visiting all StructFieldInfos and collecting all
              * field types.
              */
             final ResolvedJavaType fieldType;
-            AccessorInfo accessor = info.getAccessorInfo();
+            AccessorInfo accessor = info.getAccessorInfoWithSize();
             switch (accessor.getAccessorKind()) {
                 case GETTER:
                     fieldType = accessor.getReturnType();
@@ -187,9 +187,9 @@ public final class RawStructureLayoutPlanner extends NativeInfoTreeVisitor {
                 sizeProvider = ReflectionUtil.newInstance(sizeProviderClass);
             } catch (ReflectionUtilError ex) {
                 throw UserError.abort(
+                                ex.getCause(),
                                 "The size provider of @" + RawStructure.class.getSimpleName() + " " + info.getAnnotatedElement().toJavaName(true) +
-                                                " cannot be instantiated via no-argument constructor",
-                                ex.getCause());
+                                                " cannot be instantiated via no-argument constructor");
             }
 
             totalSize = sizeProvider.applyAsInt(currentOffset);

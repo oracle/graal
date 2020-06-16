@@ -33,6 +33,7 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.InputType;
@@ -41,19 +42,19 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
+import org.graalvm.compiler.nodes.extended.GuardedNode;
+import org.graalvm.compiler.nodes.extended.GuardingNode;
 
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import org.graalvm.compiler.nodes.extended.GuardedNode;
-import org.graalvm.compiler.nodes.extended.GuardingNode;
 
 /**
  * Node representing an exact integer addition that will throw an {@link ArithmeticException} in
  * case the addition would overflow the 32 bit range.
  */
 @NodeInfo(cycles = CYCLES_2, size = SIZE_2)
-public final class IntegerAddExactNode extends AddNode implements GuardedNode, IntegerExactArithmeticNode {
+public final class IntegerAddExactNode extends AddNode implements GuardedNode, IntegerExactArithmeticNode, IterableNodeType {
     public static final NodeClass<IntegerAddExactNode> TYPE = NodeClass.create(IntegerAddExactNode.class);
 
     @Input(InputType.Guard) protected GuardingNode guard;
@@ -137,6 +138,9 @@ public final class IntegerAddExactNode extends AddNode implements GuardedNode, I
             }
         }
         if (!IntegerStamp.addCanOverflow((IntegerStamp) forX.stamp(NodeView.DEFAULT), (IntegerStamp) forY.stamp(NodeView.DEFAULT))) {
+            return new AddNode(forX, forY).canonical(tool);
+        }
+        if (getGuard() == null) {
             return new AddNode(forX, forY).canonical(tool);
         }
         return this;

@@ -37,8 +37,9 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
-import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.UnknownObjectField;
+import com.oracle.svm.core.annotate.UnknownPrimitiveField;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
 import com.oracle.svm.core.hub.AnnotationsEncoding;
@@ -66,21 +67,21 @@ public class SubstrateMethod implements SharedRuntimeMethod, Replaced {
     private final int hashCode;
     private SubstrateType declaringClass;
     private int encodedGraphStartOffset;
-    private int vTableIndex;
+    @UnknownPrimitiveField private int vTableIndex;
     private Object annotationsEncoding;
 
     /**
      * A pointer to the compiled code of the corresponding method in the native image. Used as
      * destination address if this method is called in a direct call.
      */
-    private int codeOffsetInImage;
+    @UnknownPrimitiveField private int codeOffsetInImage;
 
     /**
      * A pointer to the deoptimization target code in the native image. Used as destination address
      * for deoptimization. This is only != 0, if there _is_ a deoptimization target method in the
      * image for this method.
      */
-    private int deoptOffsetInImage;
+    @UnknownPrimitiveField private int deoptOffsetInImage;
 
     @UnknownObjectField(types = {SubstrateMethod[].class, SubstrateMethod.class}, canBeNull = true)//
     protected Object implementations;
@@ -98,7 +99,7 @@ public class SubstrateMethod implements SharedRuntimeMethod, Replaced {
 
         modifiers = original.getModifiers();
         name = stringTable.deduplicate(original.getName(), true);
-        neverInline = (original.getAnnotation(NeverInline.class) != null);
+        neverInline = SubstrateUtil.NativeImageLoadingShield.isNeverInline(original);
 
         /*
          * AnalysisMethods of snippets are stored in a hash map of SubstrateReplacements. The
@@ -192,6 +193,11 @@ public class SubstrateMethod implements SharedRuntimeMethod, Replaced {
 
     @Override
     public boolean isEntryPoint() {
+        return false;
+    }
+
+    @Override
+    public boolean hasCalleeSavedRegisters() {
         return false;
     }
 
@@ -320,7 +326,7 @@ public class SubstrateMethod implements SharedRuntimeMethod, Replaced {
 
     @Override
     public Annotation[] getAnnotations() {
-        return AnnotationsEncoding.decodeAnnotations(annotationsEncoding);
+        return AnnotationsEncoding.decodeAnnotations(annotationsEncoding).getAnnotations();
     }
 
     @Override
@@ -330,7 +336,7 @@ public class SubstrateMethod implements SharedRuntimeMethod, Replaced {
 
     @Override
     public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
-        return AnnotationsEncoding.decodeAnnotation(annotationsEncoding, annotationClass);
+        return AnnotationsEncoding.decodeAnnotations(annotationsEncoding).getAnnotation(annotationClass);
     }
 
     @Override

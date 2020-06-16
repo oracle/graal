@@ -78,6 +78,7 @@ import com.oracle.svm.hosted.ImageBuildTask;
 import com.oracle.svm.hosted.NativeImageClassLoader;
 import com.oracle.svm.hosted.NativeImageGeneratorRunner;
 import com.oracle.svm.hosted.server.SubstrateServerMessage.ServerCommand;
+import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
 /**
@@ -152,6 +153,14 @@ public final class NativeImageBuildServer {
     }
 
     public static void main(String[] argsArray) {
+        ModuleSupport.exportAndOpenAllPackagesToUnnamed("org.graalvm.truffle", false);
+        ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.compiler", false);
+        ModuleSupport.exportAndOpenAllPackagesToUnnamed("com.oracle.graal.graal_enterprise", true);
+        ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "sun.text.spi", false);
+        if (JavaVersionUtil.JAVA_SPEC >= 14) {
+            ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "jdk.internal.loader", false);
+        }
+
         if (!verifyValidJavaVersionAndPlatform()) {
             System.exit(FAILED_EXIT_STATUS);
         }
@@ -394,7 +403,7 @@ public final class NativeImageBuildServer {
             final ImageBuildTask task = loadCompilationTask(arguments, imageClassLoader);
             try {
                 tasks.add(task);
-                return task.build(arguments.toArray(new String[arguments.size()]), classpath, imageClassLoader);
+                return task.build(arguments.toArray(new String[arguments.size()]), imageClassLoader);
             } finally {
                 tasks.remove(task);
             }
@@ -423,6 +432,7 @@ public final class NativeImageBuildServer {
             resetGlobalStateInLoggers();
             resetGlobalStateMXBeanLookup();
             resetResourceBundle();
+            resetJarFileFactoryCaches();
             resetGlobalStateInGraal();
             withGlobalStaticField("java.lang.ApplicationShutdownHooks", "hooks", f -> {
                 @SuppressWarnings("unchecked")
@@ -522,6 +532,11 @@ public final class NativeImageBuildServer {
 
     private static void resetResourceBundle() {
         withGlobalStaticField("java.util.ResourceBundle", "cacheList", list -> ((ConcurrentHashMap<?, ?>) list.get(null)).clear());
+    }
+
+    private static void resetJarFileFactoryCaches() {
+        withGlobalStaticField("sun.net.www.protocol.jar.JarFileFactory", "fileCache", list -> ((HashMap<?, ?>) list.get(null)).clear());
+        withGlobalStaticField("sun.net.www.protocol.jar.JarFileFactory", "urlCache", list -> ((HashMap<?, ?>) list.get(null)).clear());
     }
 
     private static ImageBuildTask loadCompilationTask(ArrayList<String> arguments, ClassLoader classLoader) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -159,6 +159,7 @@ final class Target_com_oracle_truffle_nfi_impl_NFIContext {
     }
 
     @Substitute
+    @TruffleBoundary
     void executeNative(long cif, long functionPointer, byte[] primArgs, int patchCount, int[] patchOffsets, Object[] objArgs, byte[] ret) {
         try (LocalNativeScope scope = TruffleNFISupport.createLocalScope(patchCount);
                         PinnedObject retBuffer = PinnedObject.create(ret)) {
@@ -169,6 +170,7 @@ final class Target_com_oracle_truffle_nfi_impl_NFIContext {
     }
 
     @Substitute
+    @TruffleBoundary
     long executePrimitive(long cif, long functionPointer, byte[] primArgs, int patchCount, int[] patchOffsets, Object[] objArgs) {
         try (LocalNativeScope scope = TruffleNFISupport.createLocalScope(patchCount)) {
             NativeTruffleContext ctx = WordFactory.pointer(nativeContext);
@@ -180,6 +182,7 @@ final class Target_com_oracle_truffle_nfi_impl_NFIContext {
     }
 
     @Substitute
+    @TruffleBoundary
     Object executeObject(long cif, long functionPointer, byte[] primArgs, int patchCount, int[] patchOffsets, Object[] objArgs) {
         try (LocalNativeScope scope = TruffleNFISupport.createLocalScope(patchCount)) {
             NativeTruffleContext ctx = WordFactory.pointer(nativeContext);

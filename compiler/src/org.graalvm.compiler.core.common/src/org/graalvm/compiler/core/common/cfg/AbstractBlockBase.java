@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -92,6 +92,38 @@ public abstract class AbstractBlockBase<T extends AbstractBlockBase<T>> {
 
     public T getDominator() {
         return dominator;
+    }
+
+    /**
+     * Returns the next dominator of this block that is either in the same loop of this block or in
+     * an outer loop.
+     *
+     * @return the next dominator while skipping over loops
+     */
+    public T getDominatorSkipLoops() {
+        T d = getDominator();
+
+        if (d == null) {
+            // We are at the start block and don't have a dominator.
+            return null;
+        }
+
+        if (isLoopHeader()) {
+            // We are moving out of current loop => just return dominator.
+            assert d.getLoopDepth() == getLoopDepth() - 1;
+            assert d.getLoop() != getLoop();
+            return d;
+        }
+
+        while (d.getLoop() != getLoop()) {
+            // We have a case where our dominator is in a different loop. Move further along
+            // the domiantor tree until we hit our loop again.
+            d = d.getDominator();
+        }
+
+        assert d.getLoopDepth() <= getLoopDepth();
+
+        return d;
     }
 
     public void setDominator(T dominator) {

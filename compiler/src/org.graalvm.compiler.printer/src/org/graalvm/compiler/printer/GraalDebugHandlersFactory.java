@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -68,20 +68,25 @@ public class GraalDebugHandlersFactory implements DebugHandlersFactory {
             handlers.add(new CFGPrinterObserver());
         }
         handlers.add(new NoDeadCodeVerifyHandler());
+        if (DebugOptions.PrintBlockMapping.getValue(options)) {
+            handlers.add(new BciBlockMappingDumpHandler());
+        }
         return handlers;
     }
 
     private static class NodeDumper implements DebugDumpHandler {
         @Override
         public void dump(DebugContext debug, Object object, String format, Object... arguments) {
-            if (object instanceof Node) {
-                Node node = (Node) object;
-                String location = GraphUtil.approxSourceLocation(node);
-                String nodeName = node.toString(Verbosity.Debugger);
-                if (location != null) {
-                    debug.log("Context obj %s (approx. location: %s)", nodeName, location);
-                } else {
-                    debug.log("Context obj %s", nodeName);
+            if (debug.isLogEnabled()) {
+                if (object instanceof Node) {
+                    Node node = (Node) object;
+                    String location = GraphUtil.approxSourceLocation(node);
+                    String nodeName = node.toString(Verbosity.Debugger);
+                    if (location != null) {
+                        debug.log("Context obj %s (approx. location: %s)", nodeName, location);
+                    } else {
+                        debug.log("Context obj %s", nodeName);
+                    }
                 }
             }
         }

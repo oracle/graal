@@ -84,7 +84,7 @@ mx --jdk jvmci sl -Dgraal.TruffleBackgroundCompilation=false \
 
 This time we get more output, because the method `namesEqual` was inlined at
 multiple sites (each site is represented by its inlining chain). The following output
-fragment first shows us the histogram with the `if`-statement ID and its occurence
+fragment first shows us the histogram with the `if`-statement ID and its occurrence
 count. It then shows the exact call stacks and execution counts for the branches.
 For example, for `[1]`, when `namesEqual` is called from `executeRead`, the `true`
 branch is taken `18018` times. When the `namesEqual` is called from `executeWrite`

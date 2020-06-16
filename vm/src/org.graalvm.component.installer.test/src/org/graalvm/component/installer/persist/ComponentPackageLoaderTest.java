@@ -48,6 +48,7 @@ import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.TestBase;
 import org.graalvm.component.installer.jar.JarMetaLoader;
 import org.graalvm.component.installer.model.ComponentInfo;
+import org.graalvm.component.installer.model.DistributionType;
 import org.junit.After;
 import org.junit.Assert;
 import static org.junit.Assert.assertEquals;
@@ -304,4 +305,28 @@ public class ComponentPackageLoaderTest extends TestBase {
         assertEquals(4, lines.length);
     }
 
+    @Test
+    public void testFastr() throws Exception {
+        info = info();
+        assertEquals(1, info.getDependencies().size());
+        assertEquals("org.graalvm.llvm-toolchain", info.getDependencies().iterator().next());
+    }
+
+    @Test
+    public void testDistributionTypeMissing() throws Exception {
+        info = info();
+        assertEquals(DistributionType.OPTIONAL, info.getDistributionType());
+    }
+
+    @Test
+    public void testDistributionTypeBundled() throws Exception {
+        info = info();
+        assertEquals(DistributionType.BUNDLED, info.getDistributionType());
+    }
+
+    @Test
+    public void testDistributionTypeInvalid() throws Exception {
+        exception.expect(MetadataException.class);
+        info = info();
+    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -53,6 +53,11 @@ public interface LLVMNativePointer extends LLVMPointer {
 
     @Override
     LLVMNativePointer copy();
+
+    @Override
+    @Deprecated
+    @SuppressWarnings("deprecation")
+    boolean equals(Object obj);
 
     /**
      * Increment this pointer. The result is determined by simply adding the offset to the

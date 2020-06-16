@@ -98,7 +98,7 @@ public class SubstrateMetaAccess implements MetaAccessProvider, Replaced {
         if (constant.getJavaKind() != JavaKind.Object || constant.isNull()) {
             return null;
         }
-        return lookupJavaType(SubstrateObjectConstant.asObject(constant).getClass());
+        return ((SubstrateObjectConstant) constant).getType(this);
     }
 
     @Override

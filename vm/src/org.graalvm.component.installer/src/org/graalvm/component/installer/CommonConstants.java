@@ -37,6 +37,7 @@ public class CommonConstants {
     public static final String CAP_OS_ARCH = "os_arch";
     public static final String CAP_OS_NAME = "os_name";
     public static final String CAP_EDITION = "edition";
+    public static final String CAP_JAVA_VERSION = "java_version";
 
     public static final String EDITION_CE = "ce";
 
@@ -46,7 +47,20 @@ public class CommonConstants {
      */
     public static final String TOKEN_GRAALVM_PATH = "graalvm_home"; // NOI18N
 
-    public static final String LANGUAGE_PARENT = "jre/languages"; // NOI18N
+    /**
+     * Path to the runtime lib. Replaceable token for installation messages.
+     */
+    public static final String TOKEN_GRAALVM_RTLIB_DIR = "graalvm_rtlib_dir"; // NOI18N
+
+    /**
+     * Path to arch-dependent runtime lib. Replaceable token for installation messages.
+     */
+    public static final String TOKEN_GRAALVM_RTLIB_ARCH_DIR = "graalvm_rtlib_arch_dir"; // NOI18N
+
+    /**
+     * Path to languages home. Replaceable token for installation messages.
+     */
+    public static final String TOKEN_GRAALVM_LANG_DIR = "graalvm_languages_dir"; // NOI18N
 
     /**
      * Relative path for the component storage.
@@ -61,6 +75,8 @@ public class CommonConstants {
      * System property to specify catalog URL.
      */
     public static final String SYSPROP_CATALOG_URL = "org.graalvm.component.catalog"; // NOI18N
+
+    public static final String SYSPROP_JAVA_VERSION = "java.specification.version"; // NOI18N
 
     public static final String ENV_VARIABLE_PREFIX = "GRAAVLM_"; // NOI18N
 
@@ -121,4 +137,15 @@ public class CommonConstants {
 
     public static final String ENV_DELETE_LIST = "GU_POST_DELETE_LIST"; // NOI18N
     public static final String ENV_COPY_CONTENTS = "GU_POST_COPY_CONTENTS"; // NOI18N
+
+    public static final String ARCH_X8664 = "x86_64"; // NOI18N
+    public static final String ARCH_AMD64 = "amd64"; // NOI18N
+
+    public static final String OS_MACOS_DARWIN = "darwin"; // NOI18N
+    public static final String OS_TOKEN_MACOS = "macos"; // NOI18N
+
+    /**
+     * Return code which will cause the wrapper to retry operations on locked files.
+     */
+    public static final int WINDOWS_RETCODE_DELAYED_OPERATION = 11;
 }

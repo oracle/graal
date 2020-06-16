@@ -57,4 +57,9 @@ final class NativeToolchainConfig implements ToolchainConfig {
     public String getToolchainSubdir() {
         return "native";
     }
+
+    @Override
+    public boolean enableCXX() {
+        return true;
+    }
 }

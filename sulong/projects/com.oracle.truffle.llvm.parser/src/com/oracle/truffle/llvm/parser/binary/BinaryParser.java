@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -114,7 +114,7 @@ public final class BinaryParser {
         if (bcSource != null) {
             LibraryLocator.traceParseBitcode(context, bcSource.getPath());
         }
-        return new BinaryParserResult(libraries, paths, bitcode, locator);
+        return new BinaryParserResult(libraries, paths, bitcode, locator, bcSource);
     }
 
     public static String getOrigin(Source source) {

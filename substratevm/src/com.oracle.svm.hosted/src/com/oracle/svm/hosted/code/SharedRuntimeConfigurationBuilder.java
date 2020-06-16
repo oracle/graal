@@ -32,8 +32,10 @@ import java.util.function.Function;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
-import org.graalvm.compiler.nodes.spi.GCProvider;
+import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
+import org.graalvm.compiler.nodes.gc.BarrierSet;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
+import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.options.OptionValues;
@@ -46,9 +48,10 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.GraalConfiguration;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
+import com.oracle.svm.core.graal.code.SubstrateMetaAccessExtensionProvider;
+import com.oracle.svm.core.graal.code.SubstratePlatformConfigurationProvider;
 import com.oracle.svm.core.graal.code.SubstrateRegisterConfigFactory;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
-import com.oracle.svm.core.graal.meta.SubstrateCodeCacheProvider;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.meta.SubstrateLoweringProvider;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig.ConfigKind;
@@ -94,21 +97,23 @@ public abstract class SharedRuntimeConfigurationBuilder {
 
     public SharedRuntimeConfigurationBuilder build() {
         wordTypes = new SubstrateWordTypes(metaAccess, FrameAccess.getWordKind());
-        Providers p = createProviders(null, null, null, null, null, null, null, null, null);
+        Providers p = createProviders(null, null, null, null, null, null, null, null, null, null);
         StampProvider stampProvider = createStampProvider(p);
-        p = createProviders(null, null, null, null, null, null, stampProvider, null, null);
+        p = createProviders(null, null, null, null, null, null, stampProvider, null, null, null);
         ConstantReflectionProvider constantReflection = createConstantReflectionProvider(p);
-        p = createProviders(null, constantReflection, null, null, null, null, stampProvider, null, null);
+        p = createProviders(null, constantReflection, null, null, null, null, stampProvider, null, null, null);
         ConstantFieldProvider constantFieldProvider = createConstantFieldProvider(p);
         SnippetReflectionProvider snippetReflection = createSnippetReflectionProvider();
         ForeignCallsProvider foreignCalls = createForeignCallsProvider();
-        p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, null, null, stampProvider, snippetReflection, null);
+        p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, null, null, stampProvider, snippetReflection, null, null);
+        BarrierSet barrierSet = ImageSingletons.lookup(Heap.class).createBarrierSet(metaAccess);
+        PlatformConfigurationProvider platformConfig = new SubstratePlatformConfigurationProvider(barrierSet);
+        MetaAccessExtensionProvider metaAccessExtensionProvider = new SubstrateMetaAccessExtensionProvider();
+        p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, null, null, stampProvider, snippetReflection, platformConfig, metaAccessExtensionProvider);
         LoweringProvider lowerer = createLoweringProvider(p);
-        p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, lowerer, null, stampProvider, snippetReflection, null);
+        p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, lowerer, null, stampProvider, snippetReflection, platformConfig, metaAccessExtensionProvider);
         Replacements replacements = createReplacements(p, snippetReflection);
-        p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, snippetReflection, null);
-        GCProvider gc = ImageSingletons.lookup(Heap.class).getGCProvider();
-        p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, snippetReflection, gc);
+        p = createProviders(null, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, snippetReflection, platformConfig, metaAccessExtensionProvider);
 
         EnumMap<ConfigKind, SubstrateBackend> backends = new EnumMap<>(ConfigKind.class);
         for (ConfigKind config : ConfigKind.values()) {
@@ -117,7 +122,7 @@ public abstract class SharedRuntimeConfigurationBuilder {
             CodeCacheProvider codeCacheProvider = createCodeCacheProvider(registerConfig);
 
             Providers newProviders = createProviders(codeCacheProvider, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider,
-                            snippetReflection, gc);
+                            snippetReflection, platformConfig, metaAccessExtensionProvider);
             backends.put(config, GraalConfiguration.instance().createBackend(newProviders));
         }
 
@@ -130,8 +135,10 @@ public abstract class SharedRuntimeConfigurationBuilder {
     }
 
     protected Providers createProviders(CodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider, ForeignCallsProvider foreignCalls,
-                    LoweringProvider lowerer, Replacements replacements, StampProvider stampProvider, @SuppressWarnings("unused") SnippetReflectionProvider snippetReflection, GCProvider gc) {
-        return new Providers(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, gc);
+                    LoweringProvider lowerer, Replacements replacements, StampProvider stampProvider, @SuppressWarnings("unused") SnippetReflectionProvider snippetReflection,
+                    PlatformConfigurationProvider platformConfigurationProvider, MetaAccessExtensionProvider metaAccessExtensionProvider) {
+        return new Providers(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, platformConfigurationProvider,
+                        metaAccessExtensionProvider, snippetReflection, wordTypes);
     }
 
     public RuntimeConfiguration getRuntimeConfig() {
@@ -155,14 +162,12 @@ public abstract class SharedRuntimeConfigurationBuilder {
     }
 
     protected LoweringProvider createLoweringProvider(Providers p) {
-        return SubstrateLoweringProvider.create(p.getMetaAccess(), p.getForeignCalls());
+        return SubstrateLoweringProvider.create(p.getMetaAccess(), p.getForeignCalls(), p.getPlatformConfigurationProvider(), p.getMetaAccessExtensionProvider());
     }
 
     protected abstract Replacements createReplacements(Providers p, SnippetReflectionProvider snippetReflection);
 
-    protected SubstrateCodeCacheProvider createCodeCacheProvider(RegisterConfig registerConfig) {
-        return new SubstrateCodeCacheProvider(ConfigurationValues.getTarget(), registerConfig);
-    }
+    protected abstract CodeCacheProvider createCodeCacheProvider(RegisterConfig registerConfig);
 
     public void updateLazyState(HostedMetaAccess hMetaAccess) {
         HybridLayout<DynamicHub> hubLayout = new HybridLayout<>(DynamicHub.class, ConfigurationValues.getObjectLayout(), hMetaAccess);

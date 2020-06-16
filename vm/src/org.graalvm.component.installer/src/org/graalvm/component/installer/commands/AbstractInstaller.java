@@ -63,7 +63,7 @@ public abstract class AbstractInstaller implements Closeable {
     private boolean replaceComponents;
     private boolean dryRun;
     private boolean ignoreRequirements;
-    private boolean failOnExisting;
+    private boolean failOnExisting = true;
     private Path installPath;
     private boolean allowUpgrades;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package org.graalvm.compiler.replacements.test;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.Arrays;
 
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
@@ -35,7 +36,6 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
@@ -56,13 +56,21 @@ public abstract class MethodSubstitutionTest extends GraalCompilerTest {
         return testGraph(snippet, null);
     }
 
-    @SuppressWarnings("try")
+    protected StructuredGraph testGraph(final String snippet, boolean assertInvoke) {
+        return testGraph(snippet, null, assertInvoke);
+    }
+
     protected StructuredGraph testGraph(final String snippet, String name) {
-        return testGraph(getResolvedJavaMethod(snippet), name);
+        return testGraph(snippet, name, false);
     }
 
     @SuppressWarnings("try")
-    protected StructuredGraph testGraph(final ResolvedJavaMethod method, String name) {
+    protected StructuredGraph testGraph(final String snippet, String name, boolean assertInvoke) {
+        return testGraph(getResolvedJavaMethod(snippet), name, assertInvoke);
+    }
+
+    @SuppressWarnings("try")
+    protected StructuredGraph testGraph(final ResolvedJavaMethod method, String name, boolean assertInvoke) {
         DebugContext debug = getDebugContext();
         try (DebugContext.Scope s = debug.scope("MethodSubstitutionTest", method)) {
             StructuredGraph graph = parseEager(method, AllowAssumptions.YES, debug);
@@ -70,14 +78,14 @@ public abstract class MethodSubstitutionTest extends GraalCompilerTest {
             debug.dump(DebugContext.BASIC_LEVEL, graph, "Graph");
             createInliningPhase().apply(graph, context);
             debug.dump(DebugContext.BASIC_LEVEL, graph, "Graph");
-            new CanonicalizerPhase().apply(graph, context);
+            createCanonicalizerPhase().apply(graph, context);
             new DeadCodeEliminationPhase().apply(graph);
             // Try to ensure any macro nodes are lowered to expose any resulting invokes
             if (graph.getNodes().filter(MacroNode.class).isNotEmpty()) {
-                new LoweringPhase(new CanonicalizerPhase(), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
+                new LoweringPhase(this.createCanonicalizerPhase(), LoweringTool.StandardLoweringStage.HIGH_TIER).apply(graph, context);
             }
             if (graph.getNodes().filter(MacroNode.class).isNotEmpty()) {
-                new LoweringPhase(new CanonicalizerPhase(), LoweringTool.StandardLoweringStage.MID_TIER).apply(graph, context);
+                new LoweringPhase(this.createCanonicalizerPhase(), LoweringTool.StandardLoweringStage.MID_TIER).apply(graph, context);
             }
             assertNotInGraph(graph, MacroNode.class);
             if (name != null) {
@@ -86,13 +94,22 @@ public abstract class MethodSubstitutionTest extends GraalCompilerTest {
                         Invoke invoke = (Invoke) node;
                         if (invoke.callTarget() instanceof MethodCallTargetNode) {
                             MethodCallTargetNode call = (MethodCallTargetNode) invoke.callTarget();
-                            assertTrue(!call.targetMethod().getName().equals(name), "Unexpected invoke of intrinsic %s", call.targetMethod());
+                            boolean found = call.targetMethod().getName().equals(name);
+                            if (assertInvoke) {
+                                assertTrue(found, "Expected to find a call to %s", name);
+                            } else {
+                                assertFalse(found, "Unexpected call to %s", name);
+                            }
                         }
                     }
 
                 }
             } else {
-                assertNotInGraph(graph, Invoke.class);
+                if (assertInvoke) {
+                    assertInGraph(graph, Invoke.class);
+                } else {
+                    assertNotInGraph(graph, Invoke.class);
+                }
             }
             return graph;
         } catch (Throwable e) {
@@ -116,7 +133,7 @@ public abstract class MethodSubstitutionTest extends GraalCompilerTest {
         StructuredGraph graph = testGraph(testMethodName);
 
         // Check to see if the resulting graph contains the expected node
-        StructuredGraph replacement = getReplacements().getSubstitution(realMethod, -1, false, null, graph.getOptions());
+        StructuredGraph replacement = getReplacements().getSubstitution(realMethod, -1, false, null, graph.allowAssumptions(), graph.getOptions());
         if (replacement == null && !optional) {
             assertInGraph(graph, intrinsicClass);
         }
@@ -136,13 +153,20 @@ public abstract class MethodSubstitutionTest extends GraalCompilerTest {
         }
     }
 
-    protected static StructuredGraph assertInGraph(StructuredGraph graph, Class<?> clazz) {
+    protected static StructuredGraph assertInGraph(StructuredGraph graph, Class<?>... clazzes) {
         for (Node node : graph.getNodes()) {
-            if (clazz.isInstance(node)) {
-                return graph;
+            for (Class<?> clazz : clazzes) {
+                if (clazz.isInstance(node)) {
+                    return graph;
+                }
             }
         }
-        fail("Graph does not contain a node of class " + clazz.getName());
+        if (clazzes.length == 1) {
+            fail("Graph does not contain a node of class " + clazzes[0].getName());
+        } else {
+            fail("Graph does not contain a node of one these classes class " + Arrays.toString(clazzes));
+
+        }
         return graph;
     }
 

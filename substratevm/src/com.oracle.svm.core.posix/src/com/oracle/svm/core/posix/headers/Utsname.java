@@ -33,9 +33,12 @@ import org.graalvm.word.PointerBase;
 
 // Checkstyle: stop
 
-/** Declarations of method from <sys/utsname.h>. */
+/**
+ * Definitions manually translated from the C header file sys/utsname.h.
+ */
 @CContext(PosixDirectives.class)
 public class Utsname {
+
     @CStruct(addStructKeyword = true)
     public interface utsname extends PointerBase {
         @CFieldAddress
@@ -54,9 +57,6 @@ public class Utsname {
         CCharPointer machine();
     }
 
-    /**
-     * int uname(struct utsname *name);
-     */
     @CFunction
     public static native int uname(utsname name);
 }

@@ -87,7 +87,7 @@ public class CompilationInfoSupport {
         deoptEntries.computeIfAbsent(toAnalysisMethod(method), m -> new HashSet<>()).add(encodedBci);
     }
 
-    protected boolean isDeoptTarget(ResolvedJavaMethod method) {
+    public boolean isDeoptTarget(ResolvedJavaMethod method) {
         assert seal();
         return deoptEntries.containsKey(toAnalysisMethod(method));
     }

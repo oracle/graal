@@ -189,14 +189,14 @@ public class CSourceCodeWriter {
                     NativeLibraries nativeLibs) {
         boolean isNumericInteger = type.getJavaKind().isNumericInteger();
         UserError.guarantee(isNumericInteger || !isUnsigned,
-                        "Only integer types can be unsigned. " + type.getJavaKind().getJavaName() + " is not an integer type in " + method.format("%H.%n(%p)"));
+                        "Only integer types can be unsigned. %s is not an integer type in %s", type, method);
 
         boolean isUnsignedWord = metaAccess.lookupJavaType(UnsignedWord.class).isAssignableFrom(type);
         boolean isSignedWord = metaAccess.lookupJavaType(SignedWord.class).isAssignableFrom(type);
         boolean isWord = isUnsignedWord || isSignedWord;
         boolean isObject = type.getJavaKind() == JavaKind.Object && !isWord;
         UserError.guarantee(isObject || !isConst,
-                        "Only pointer types can be const. " + type.getJavaKind().getJavaName() + " in method " + method.format("%H.%n(%p)") + " is not a pointer type.");
+                        "Only pointer types can be const. %s in method %s is not a pointer type.", type, method);
 
         if (useSiteTypedef.isPresent()) {
             return (isConst ? "const " : "") + useSiteTypedef.get();

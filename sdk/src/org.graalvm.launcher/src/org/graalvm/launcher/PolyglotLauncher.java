@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,7 +48,6 @@ import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -61,6 +60,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.graalvm.home.HomeFinder;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -70,7 +70,7 @@ import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 
-public final class PolyglotLauncher extends Launcher {
+public final class PolyglotLauncher extends LanguageLauncherBase {
 
     private String mainLanguage = null;
     private boolean verbose = false;
@@ -94,11 +94,11 @@ public final class PolyglotLauncher extends Launcher {
         }
         System.out.println();
         System.out.println("Basic Options:");
-        printOption("--language <lang>",      "Specifies the main language.");
-        printOption("--file [<lang>:]FILE",   "Additional file to execute.");
-        printOption("--eval [<lang>:]CODE",   "Evaluates code snippets, for example, '--eval js:42'.");
-        printOption("--shell",                "Start a multi language shell.");
-        printOption("--verbose",              "Enable verbose stack trace for internal errors.");
+        launcherOption("--language <lang>",      "Specifies the main language.");
+        launcherOption("--file [<lang>:]FILE",   "Additional file to execute.");
+        launcherOption("--eval [<lang>:]CODE",   "Evaluates code snippets, for example, '--eval js:42'.");
+        launcherOption("--shell",                "Start a multi language shell.");
+        launcherOption("--verbose",              "Enable verbose stack trace for internal errors.");
         // @formatter:on
     }
 
@@ -109,19 +109,21 @@ public final class PolyglotLauncher extends Launcher {
                         "--file [<lang>:]FILE",
                         "--eval [<lang>:]CODE",
                         "--shell"));
+        super.collectArguments(args);
     }
 
     @Override
     protected void printVersion() {
         printVersion(getTempEngine());
+        printPolyglotVersions();
     }
 
-    protected static void printVersion(Engine engine) {
+    protected void printVersion(Engine engine) {
         String engineImplementationName = engine.getImplementationName();
         if (isAOT()) {
             engineImplementationName += " Native";
         }
-        System.out.println(String.format("%s polyglot launcher %s", engineImplementationName, engine.getVersion()));
+        println(String.format("%s polyglot launcher %s", engineImplementationName, engine.getVersion()));
     }
 
     /**
@@ -179,8 +181,20 @@ public final class PolyglotLauncher extends Launcher {
 
     private void launch(String[] args) {
         List<String> argumentsList = new ArrayList<>(Arrays.asList(args));
+        for (;;) {
+            try {
+                launchImpl(argumentsList);
+            } catch (RestartInJVMException ex) {
+                argumentsList.add(0, "--jvm");
+                continue;
+            }
+            return;
+        }
+    }
+
+    private void launchImpl(List<String> argumentsList) {
         if (isAOT()) {
-            nativeAccess.maybeExec(argumentsList, true, Collections.emptyMap(), VMType.Native);
+            maybeNativeExec(argumentsList, true, Collections.emptyMap());
         }
 
         final Deque<String> arguments = new ArrayDeque<>(argumentsList);
@@ -196,11 +210,11 @@ public final class PolyglotLauncher extends Launcher {
         List<String> unrecognizedArgs = parsePolyglotLauncherOptions(arguments, scripts);
 
         Map<String, String> polyglotOptions = new HashMap<>();
-        parsePolyglotOptions(null, polyglotOptions, unrecognizedArgs);
+        parseUnrecognizedOptions(null, polyglotOptions, unrecognizedArgs);
 
         String[] programArgs = arguments.toArray(new String[0]);
 
-        if (runPolyglotAction()) {
+        if (runLauncherAction()) {
             return;
         }
         argumentsProcessingDone();
@@ -208,7 +222,7 @@ public final class PolyglotLauncher extends Launcher {
         final Context.Builder contextBuilder = Context.newBuilder().options(polyglotOptions);
 
         contextBuilder.allowAllAccess(true);
-        setupLogHandler(contextBuilder);
+        setupContextBuilder(contextBuilder);
 
         if (version) {
             printVersion(Engine.newBuilder().options(polyglotOptions).build());
@@ -229,40 +243,24 @@ public final class PolyglotLauncher extends Launcher {
     static {
         if (IS_AOT) {
             AOT_LAUNCHER_CLASSES = new HashMap<>();
-            Engine engine = Engine.newBuilder().allowExperimentalOptions(true).build();
-            Set<String> languages = Collections.unmodifiableSet(engine.getLanguages().keySet());
-            engine.close();
-            String macrosPathsPorperty = System.getProperty("com.oracle.graalvm.launcher.macrospaths");
-            if (macrosPathsPorperty != null && !macrosPathsPorperty.isEmpty()) {
-                Path macrosDir = Paths.get(macrosPathsPorperty);
-                if (!Files.isDirectory(macrosDir)) {
-                    throw new RuntimeException("Expected " + macrosDir + " to be a directory");
-                }
-                try {
-                    List<URL> classpath = new ArrayList<>();
-                    List<String> classes = new ArrayList<>();
-                    Files.list(macrosDir).flatMap(PolyglotLauncher::loadPolyglotConfig).filter(c -> languages.contains(c.language)).forEach(c -> {
-                        c.classpath.stream().map(c.dir::resolve).map(p -> {
-                            if (!Files.exists(p)) {
-                                throw new RuntimeException(p + " does not exist");
-                            }
-                            try {
-                                return p.normalize().toUri().toURL();
-                            } catch (MalformedURLException e) {
-                                throw new RuntimeException(e);
-                            }
-                        }).forEach(classpath::add);
-                        classes.add(c.launcher);
-                    });
-                    URLClassLoader loader = new URLClassLoader(classpath.toArray(new URL[0]), PolyglotLauncher.class.getClassLoader());
-                    for (String launcher : classes) {
-                        AOT_LAUNCHER_CLASSES.put(launcher, getLauncherClass(launcher, loader));
+            List<URL> classpath = new ArrayList<>();
+            List<String> classes = new ArrayList<>();
+            HomeFinder.getInstance().getLanguageHomes().values().stream().flatMap(PolyglotLauncher::loadPolyglotConfig).forEach(c -> {
+                c.classpath.stream().map(c.dir::resolve).map(p -> {
+                    if (!Files.exists(p)) {
+                        throw new RuntimeException(p + " does not exist");
                     }
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            } else {
-                System.err.println("ERROR: com.oracle.graalvm.launcher.macrospaths was not provided");
+                    try {
+                        return p.normalize().toUri().toURL();
+                    } catch (MalformedURLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }).forEach(classpath::add);
+                classes.add(c.launcher);
+            });
+            URLClassLoader loader = new URLClassLoader(classpath.toArray(new URL[0]), PolyglotLauncher.class.getClassLoader());
+            for (String launcher : classes) {
+                AOT_LAUNCHER_CLASSES.put(launcher, getLauncherClass(launcher, loader));
             }
         } else {
             AOT_LAUNCHER_CLASSES = null;
@@ -283,28 +281,22 @@ public final class PolyglotLauncher extends Launcher {
 
     private static final class PolyglotLauncherConfig {
         final Path dir;
-        final String language;
         final List<String> classpath;
         final String launcher;
 
         static PolyglotLauncherConfig parse(String spec, Path context) {
             String[] parts = spec.split("\\|");
-            if (parts.length != 3) {
-                throw new RuntimeException("Expected 3 `|`-separated parts in polyglot config (" + context + "). Got: " + Arrays.toString(parts));
+            if (parts.length != 2) {
+                throw new RuntimeException("Expected 2 `|`-separated parts in polyglot config (" + context + "). Got: " + Arrays.toString(parts));
             }
-            return new PolyglotLauncherConfig(context.getParent(), parts[0], Arrays.asList(parts[1].split(":")), parts[2]);
+            return new PolyglotLauncherConfig(context.getParent(), Arrays.asList(parts[0].split(":")), parts[1]);
         }
 
-        PolyglotLauncherConfig(Path dir, String language, List<String> classpath, String launcher) {
+        PolyglotLauncherConfig(Path dir, List<String> classpath, String launcher) {
             this.dir = dir;
-            this.language = language;
             this.classpath = classpath;
             this.launcher = launcher;
         }
-    }
-
-    private static Class<AbstractLanguageLauncher> getLauncherClass(String launcherName) {
-        return getLauncherClass(launcherName, PolyglotLauncher.class.getClassLoader());
     }
 
     @SuppressWarnings("unchecked")
@@ -330,7 +322,21 @@ public final class PolyglotLauncher extends Launcher {
                                 AOT_LAUNCHER_CLASSES.keySet().stream().sorted().map(s -> " - " + s).collect(Collectors.joining("\n")));
             }
         } else {
-            launcherClass = getLauncherClass(launcherName);
+            List<URL> classpath = new ArrayList<>();
+            HomeFinder.getInstance().getLanguageHomes().values().stream().flatMap(PolyglotLauncher::loadPolyglotConfig).filter(c -> launcherName.endsWith(c.launcher)).forEach(c -> {
+                c.classpath.stream().map(c.dir::resolve).map(p -> {
+                    if (!Files.exists(p)) {
+                        throw new RuntimeException(p + " does not exist");
+                    }
+                    try {
+                        return p.normalize().toUri().toURL();
+                    } catch (MalformedURLException e) {
+                        throw new RuntimeException(e);
+                    }
+                }).forEach(classpath::add);
+            });
+            URLClassLoader loader = new URLClassLoader(classpath.toArray(new URL[0]), PolyglotLauncher.class.getClassLoader());
+            launcherClass = getLauncherClass(launcherName, loader);
             if (launcherClass == null) {
                 throw abort("Could not find class '" + launcherName + "'.");
             }
@@ -428,19 +434,26 @@ public final class PolyglotLauncher extends Launcher {
     }
 
     public static void main(String[] args) {
+        PolyglotLauncher launcher = new PolyglotLauncher();
         try {
-            PolyglotLauncher launcher = new PolyglotLauncher();
             try {
                 launcher.launch(args);
             } catch (AbortException e) {
                 throw e;
             } catch (PolyglotException e) {
-                handlePolyglotException(e);
+                launcher.handlePolyglotException(e);
             } catch (Throwable t) {
                 throw launcher.abort(t);
             }
         } catch (AbortException e) {
-            handleAbortException(e);
+            launcher.handleAbortException(e);
+        }
+    }
+
+    private static final class RestartInJVMException extends RuntimeException {
+        static final long serialVersionUID = 1;
+
+        RestartInJVMException() {
         }
     }
 
@@ -462,7 +475,12 @@ public final class PolyglotLauncher extends Launcher {
                 }
             }
             if (language == null) {
-                throw abort(String.format("Can not determine language for '%s' %s", this, this.getLanguageSpecifierHelp()));
+                final String msg = "Cannot determine language for '%s' %s";
+                if (isAOT()) {
+                    getError().println(String.format(msg, this, "Trying with --jvm mode..."));
+                    throw new RestartInJVMException();
+                }
+                throw abort(String.format(msg, this, this.getLanguageSpecifierHelp()));
             }
             return language;
         }

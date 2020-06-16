@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -98,6 +99,8 @@ import org.graalvm.compiler.phases.tiers.MidTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.GraphOrder;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.replacements.SnippetTemplate;
+import org.graalvm.compiler.replacements.nodes.MacroNode;
 import org.graalvm.compiler.virtual.phases.ea.EarlyReadEliminationPhase;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -115,10 +118,10 @@ import com.oracle.svm.core.annotate.DeoptTest;
 import com.oracle.svm.core.annotate.NeverInlineTrivial;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Specialize;
+import com.oracle.svm.core.annotate.StubCallingConvention;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.FrameInfoEncoder;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
-import com.oracle.svm.core.deopt.DeoptTester;
 import com.oracle.svm.core.graal.GraalConfiguration;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
@@ -126,6 +129,7 @@ import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
 import com.oracle.svm.core.graal.nodes.DeoptTestNode;
 import com.oracle.svm.core.graal.phases.DeadStoreRemovalPhase;
+import com.oracle.svm.core.graal.snippets.DeoptTester;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
 import com.oracle.svm.core.util.InterruptImageBuilding;
@@ -316,7 +320,7 @@ public class CompileQueue {
         this.runtimeConfig = runtimeConfigBuilder.getRuntimeConfig();
         this.deoptimizeAll = deoptimizeAll;
         this.dataCache = new ConcurrentHashMap<>();
-        this.executor = new CompletionExecutor(universe.getBigBang(), executorService);
+        this.executor = new CompletionExecutor(universe.getBigBang(), executorService, universe.getBigBang().getHeartbeatCallback());
         this.featureHandler = featureHandler;
         this.snippetReflection = snippetReflection;
 
@@ -340,14 +344,13 @@ public class CompileQueue {
                 parseAll();
             }
             // Checking @Uninterruptible annotations does not take long enough to justify a timer.
-            UninterruptibleAnnotationChecker.check(debug, universe.getMethods());
+            new UninterruptibleAnnotationChecker(universe.getMethods()).check();
             // Checking @RestrictHeapAccess annotations does not take long enough to justify a
             // timer.
             RestrictHeapAccessAnnotationChecker.check(debug, universe, universe.getMethods());
             // Checking @MustNotSynchronize annotations does not take long enough to justify a
             // timer.
             MustNotSynchronizeAnnotationChecker.check(debug, universe.getMethods());
-            beforeCompileAll(debug);
 
             if (SubstrateOptions.AOTInline.getValue() && SubstrateOptions.AOTTrivialInline.getValue()) {
                 try (StopTimer ignored = new Timer(imageName, "(inline)").start()) {
@@ -373,8 +376,8 @@ public class CompileQueue {
     }
 
     private void createSuites() {
-        regularSuites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, snippetReflection, true, !universe.isPostParseCanonicalized());
-        deoptTargetSuites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, snippetReflection, true, !universe.isPostParseCanonicalized());
+        regularSuites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, snippetReflection, true);
+        deoptTargetSuites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, snippetReflection, true);
         removeDeoptTargetOptimizations(deoptTargetSuites);
         regularLIRSuites = NativeImageGenerator.createLIRSuites(featureHandler, runtimeConfig.getProviders(), true);
         deoptTargetLIRSuites = NativeImageGenerator.createLIRSuites(featureHandler, runtimeConfig.getProviders(), true);
@@ -385,10 +388,14 @@ public class CompileQueue {
         PhaseSuite<HighTierContext> phaseSuite = new PhaseSuite<>();
         phaseSuite.appendPhase(new DeadStoreRemovalPhase());
         phaseSuite.appendPhase(new DevirtualizeCallsPhase());
-        phaseSuite.appendPhase(new CanonicalizerPhase());
+        phaseSuite.appendPhase(CanonicalizerPhase.create());
         phaseSuite.appendPhase(new StrengthenStampsPhase());
-        phaseSuite.appendPhase(new CanonicalizerPhase());
+        phaseSuite.appendPhase(CanonicalizerPhase.create());
         return phaseSuite;
+    }
+
+    public Collection<CompileTask> getCompilationTasks() {
+        return compilations.values();
     }
 
     private void printMethodHistogram() {
@@ -481,8 +488,8 @@ public class CompileQueue {
                         .forEach(method -> ensureParsed(method, new EntryPointReason()));
 
         SubstrateForeignCallsProvider foreignCallsProvider = (SubstrateForeignCallsProvider) runtimeConfig.getProviders().getForeignCalls();
-        foreignCallsProvider.getForeignCalls().keySet().stream()
-                        .map(descriptor -> (HostedMethod) descriptor.findMethod(runtimeConfig.getProviders().getMetaAccess()))
+        foreignCallsProvider.getForeignCalls().values().stream()
+                        .map(linkage -> (HostedMethod) linkage.getDescriptor().findMethod(runtimeConfig.getProviders().getMetaAccess()))
                         .filter(method -> method.wrapped.isRootMethod())
                         .forEach(method -> ensureParsed(method, new EntryPointReason()));
     }
@@ -512,10 +519,6 @@ public class CompileQueue {
         ensureParsed(universe.createDeoptTarget(method), new EntryPointReason());
     }
 
-    @SuppressWarnings("unused")
-    protected void beforeCompileAll(DebugContext debug) throws InterruptedException {
-    }
-
     private void checkTrivial(HostedMethod method) {
         if (!method.compilationInfo.isTrivialMethod() && method.canBeInlined() && InliningUtilities.isTrivialMethod(method.compilationInfo.getGraph())) {
             method.compilationInfo.setTrivialMethod(true);
@@ -525,32 +528,15 @@ public class CompileQueue {
 
     @SuppressWarnings("try")
     private void inlineTrivialMethods(DebugContext debug) throws InterruptedException {
-        executor.init();
-        PhaseSuite<HighTierContext> afterParseSuite = afterParseCanonicalization();
         for (HostedMethod method : universe.getMethods()) {
             try (DebugContext.Scope s = debug.scope("InlineTrivial", method.compilationInfo.getGraph(), method, this)) {
                 if (method.compilationInfo.getGraph() != null) {
-                    HostedProviders providers = (HostedProviders) runtimeConfig.lookupBackend(method).getProviders();
-                    if (!universe.isPostParseCanonicalized()) {
-                        executor.execute((DebugContext newDebug) -> {
-                            method.compilationInfo.getGraph().resetDebug(newDebug);
-                            afterParseSuite.apply(method.compilationInfo.getGraph(), new HighTierContext(providers, afterParseSuite, getOptimisticOpts()));
-
-                            /* Check that graph is in good shape after parsing. */
-                            assert GraphOrder.assertSchedulableGraph(method.compilationInfo.getGraph());
-                        });
-                    }
                     checkTrivial(method);
                 }
             } catch (Throwable e) {
                 throw debug.handle(e);
             }
         }
-
-        executor.start();
-        executor.complete();
-        executor.shutdown();
-        universe.setPostParseCanonicalized();
 
         int round = 0;
         do {
@@ -598,7 +584,7 @@ public class CompileQueue {
 
                     if (inlined) {
                         Providers providers = runtimeConfig.lookupBackend(method).getProviders();
-                        new CanonicalizerPhase().apply(graph, providers);
+                        CanonicalizerPhase.create().apply(graph, providers);
 
                         /*
                          * Publish the new graph, it can be picked up immediately by other threads
@@ -708,7 +694,9 @@ public class CompileQueue {
     @SuppressWarnings("try")
     private void defaultParseFunction(DebugContext debug, HostedMethod method, CompileReason reason, RuntimeConfiguration config) {
         if ((!NativeImageOptions.AllowFoldMethods.getValue() && method.getAnnotation(Fold.class) != null) || method.getAnnotation(NodeIntrinsic.class) != null) {
-            throw VMError.shouldNotReachHere("Parsing method annotated with @Fold or @NodeIntrinsic: " + method.format("%H.%n(%p)"));
+            throw VMError.shouldNotReachHere("Parsing method annotated with @" + Fold.class.getSimpleName() + " or " + NodeIntrinsic.class.getSimpleName() + ": " +
+                            method.format("%H.%n(%p)") +
+                            ". Make sure you have used Graal annotation processors on the parent-project of the method's declaring class.");
         }
 
         HostedProviders providers = (HostedProviders) config.lookupBackend(method).getProviders();
@@ -719,7 +707,7 @@ public class CompileQueue {
             if (plugin != null && !plugin.inlineOnly()) {
                 Bytecode code = new ResolvedJavaMethodBytecode(method);
                 // DebugContext debug = new DebugContext(options, providers.getSnippetReflection());
-                graph = new SubstrateIntrinsicGraphBuilder(debug.getOptions(), debug, providers, code).buildGraph(plugin);
+                graph = new SubstrateIntrinsicGraphBuilder(getCustomizedOptions(debug), debug, providers, code).buildGraph(plugin);
             }
         }
         if (graph == null && method.isNative() && NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
@@ -727,7 +715,7 @@ public class CompileQueue {
         }
         if (graph == null) {
             needParsing = true;
-            graph = new StructuredGraph.Builder(debug.getOptions(), debug).method(method).build();
+            graph = new StructuredGraph.Builder(getCustomizedOptions(debug), debug).method(method).build();
         }
 
         try (DebugContext.Scope s = debug.scope("Parsing", graph, method, this)) {
@@ -743,22 +731,27 @@ public class CompileQueue {
 
                 method.compilationInfo.graph = graph;
 
+                afterParse(method);
+                PhaseSuite<HighTierContext> afterParseSuite = afterParseCanonicalization();
+                afterParseSuite.apply(method.compilationInfo.graph, new HighTierContext(providers, afterParseSuite, getOptimisticOpts()));
+                assert GraphOrder.assertSchedulableGraph(method.compilationInfo.getGraph());
+
                 for (Invoke invoke : graph.getInvokes()) {
                     if (!canBeUsedForInlining(invoke)) {
                         invoke.setUseForInlining(false);
                     }
                     CallTargetNode targetNode = invoke.callTarget();
-                    HostedMethod invokeTarget = (HostedMethod) targetNode.targetMethod();
-                    if (targetNode.invokeKind().isIndirect() || targetNode instanceof IndirectCallTargetNode) {
-                        for (HostedMethod invokeImplementation : invokeTarget.getImplementations()) {
-                            handleSpecialization(method, targetNode, invokeTarget, invokeImplementation);
-                            ensureParsed(invokeImplementation, new VirtualCallReason(method, invokeImplementation, reason));
-                        }
-                    } else {
-                        if (invokeTarget.wrapped.isImplementationInvoked()) {
-                            handleSpecialization(method, targetNode, invokeTarget, invokeTarget);
-                            ensureParsed(invokeTarget, new DirectCallReason(method, reason));
-                        }
+                    ensureParsed(method, reason, targetNode, (HostedMethod) targetNode.targetMethod(), targetNode.invokeKind().isIndirect() || targetNode instanceof IndirectCallTargetNode);
+                }
+                for (Node n : graph.getNodes()) {
+                    if (n instanceof MacroNode) {
+                        /*
+                         * A MacroNode might be lowered back to a regular invoke. At this point we
+                         * do not know if that happens, but we need to prepared and have the graph
+                         * of the potential callee parsed as if the MacroNode was an Invoke.
+                         */
+                        MacroNode macroNode = (MacroNode) n;
+                        ensureParsed(method, reason, null, (HostedMethod) macroNode.getTargetMethod(), macroNode.getInvokeKind().isIndirect());
                     }
                 }
 
@@ -771,6 +764,38 @@ public class CompileQueue {
         } catch (Throwable e) {
             throw debug.handle(e);
         }
+    }
+
+    private void ensureParsed(HostedMethod method, CompileReason reason, CallTargetNode targetNode, HostedMethod invokeTarget, boolean isIndirect) {
+        if (isIndirect) {
+            for (HostedMethod invokeImplementation : invokeTarget.getImplementations()) {
+                handleSpecialization(method, targetNode, invokeTarget, invokeImplementation);
+                ensureParsed(invokeImplementation, new VirtualCallReason(method, invokeImplementation, reason));
+            }
+        } else {
+            /*
+             * Direct calls to instance methods (invokespecial bytecode or devirtualized calls) can
+             * go to methods that are unreachable if the receiver is always null. At this time, we
+             * do not know the receiver types, so we filter such invokes by looking at the
+             * reachability status from the point of view of the static analysis. Note that we
+             * cannot use "isImplementationInvoked" because (for historic reasons) it also returns
+             * true if a method has a graph builder plugin registered. All graph builder plugins are
+             * already applied during parsing before we reach this point, so we look at the "simple"
+             * implementation invoked status.
+             */
+            if (invokeTarget.wrapped.isSimplyImplementationInvoked()) {
+                handleSpecialization(method, targetNode, invokeTarget, invokeTarget);
+                ensureParsed(invokeTarget, new DirectCallReason(method, reason));
+            }
+        }
+    }
+
+    @SuppressWarnings("unused")
+    protected void afterParse(HostedMethod method) {
+    }
+
+    protected OptionValues getCustomizedOptions(DebugContext debug) {
+        return debug.getOptions();
     }
 
     protected GraphBuilderConfiguration createHostedGraphBuilderConfiguration(HostedProviders providers, HostedMethod method) {
@@ -790,6 +815,10 @@ public class CompileQueue {
         return gbConf;
     }
 
+    protected boolean containsStackValueNode(HostedMethod method) {
+        return universe.getBigBang().getHostVM().containsStackValueNode(method.wrapped);
+    }
+
     protected boolean canBeUsedForInlining(Invoke invoke) {
         HostedMethod caller = (HostedMethod) invoke.asNode().graph().method();
         HostedMethod callee = (HostedMethod) invoke.callTarget().targetMethod();
@@ -801,7 +830,7 @@ public class CompileQueue {
              */
             return false;
         }
-        if (canDeoptForTesting(caller) && universe.getMethodsWithStackValues().contains(callee.wrapped)) {
+        if (canDeoptForTesting(caller) && containsStackValueNode(callee)) {
             /*
              * We must not inline a method that has stack values and can be deoptimized.
              */
@@ -1098,7 +1127,11 @@ public class CompileQueue {
         if (method.getAnnotation(RestrictHeapAccess.class) != null) {
             return false;
         }
-        if (universe.getMethodsWithStackValues().contains(method.wrapped)) {
+        if (StubCallingConvention.Utils.hasStubCallingConvention(method)) {
+            /* Deoptimization runtime cannot fill the callee saved registers. */
+            return false;
+        }
+        if (containsStackValueNode(method)) {
             return false;
         }
 
@@ -1113,6 +1146,7 @@ public class CompileQueue {
                             className.contains("com/oracle/svm/core/thread/JavaThreads") ||
                             className.contains("com/oracle/svm/core/heap/") ||
                             className.contains("com/oracle/svm/core/genscavenge/") ||
+                            className.contains("com/oracle/svm/core/thread/VMOperationControl") ||
                             className.contains("debug/internal/DebugValueMap") && method.getName().equals("registerTopLevel")) {
                 return false;
             }
@@ -1147,6 +1181,11 @@ public class CompileQueue {
                 fixedWithNext.setNext(null);
                 testNode.setNext(next);
                 fixedWithNext.setNext(testNode);
+                if (((StateSplit) node).hasSideEffect() && ((StateSplit) node).stateAfter() != null) {
+                    testNode.setStateAfter(((StateSplit) node).stateAfter().duplicateWithVirtualState());
+                } else {
+                    testNode.setStateAfter(SnippetTemplate.findLastFrameState((FixedNode) node).duplicateWithVirtualState());
+                }
             }
         }
     }

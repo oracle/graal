@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,27 +61,33 @@ import java.util.ArrayList;
  * A newline character designates the end of a line and occupies a column position.
  * <p>
  * If the text ends with a character other than a newline, then the characters following the final
- * newline character count as a line, even though not newline-terminated.
+ * newline character count as a line, even though not newline-terminated. Following line delimiters
+ * are used: "\n", "\r", "\r\n"
  * <p>
  * <strong>Limitations:</strong>
  * <ul>
  * <li>Does not handle multiple character encodings correctly.</li>
  * <li>Treats tabs as occupying 1 column.</li>
- * <li>Does not handle multiple-character line termination sequences correctly.</li>
  * </ul>
  */
 final class TextMap {
 
     // 0-based offsets of newline characters in the text, with sentinel
     private final int[] nlOffsets;
-    // The number of characters in the text, including newlines (which count as 1).
+    // The number of characters in the text, including newlines.
     private final int textLength;
+    // Length of newline characters (1 for '\n', or 2 for "\r\n") valid unless newlineLengths is set
+    private final int newlineLength;
+    // Lengths of newlines, if newlines with different lengths are present.
+    private final int[] newlineLengths;
     // Is the final text character a newline?
     final boolean finalNL;
 
-    TextMap(int[] nlOffsets, int textLength, boolean finalNL) {
+    TextMap(int[] nlOffsets, int textLength, int newlineLength, int[] newlineLengths, boolean finalNL) {
         this.nlOffsets = nlOffsets;
         this.textLength = textLength;
+        this.newlineLength = newlineLength;
+        this.newlineLengths = newlineLengths;
         this.finalNL = finalNL;
     }
 
@@ -91,53 +97,87 @@ final class TextMap {
      */
     public static TextMap fromCharSequence(CharSequence text) {
         final int textLength = text.length();
-        final ArrayList<Integer> lines = new ArrayList<>();
-        lines.add(0);
-        int offset = 0;
-        while (offset < textLength) {
-            final int nlIndex = indexOf(text, '\n', offset);
-            if (nlIndex >= 0) {
-                offset = nlIndex + 1;
-                lines.add(offset);
-            } else {
-                break;
+        ArrayList<Integer> lines;
+        int newlineLength = 0; // 0 - unset, > 0 equal length, < 0 variable length
+        ArrayList<Integer> nlLengths = null;
+        // Suppose that all newlines have the same length.
+        // If not, we'll set nlLengths in the second pass.
+        do {
+            lines = new ArrayList<>();
+            lines.add(0);
+            int offset = 0;
+            if (newlineLength == -1) {
+                // There are newlines of different lengths
+                nlLengths = new ArrayList<>();
+                newlineLength = -2;
             }
-        }
+            while (offset < textLength) {
+                int nlIndex = offset;
+                char c = 0;
+                while (nlIndex < textLength) {
+                    c = text.charAt(nlIndex);
+                    if (c == '\n' || c == '\r') {
+                        break;
+                    }
+                    nlIndex++;
+                }
+                if (nlIndex < textLength) {
+                    int nlLength = getNewlineLength(c, text, textLength, nlIndex);
+                    // Store the length of newline
+                    newlineLength = adjustNewlineLength(nlLength, newlineLength, nlLengths);
+                    if (newlineLength == -1) {
+                        // variable length of newlines.
+                        break;
+                    }
+                    offset = nlIndex + nlLength;
+                    lines.add(offset);
+                } else {
+                    break;
+                }
+            }
+        } while (newlineLength == -1);
         lines.add(Integer.MAX_VALUE);
-        final int[] nlOffsets = new int[lines.size()];
-        for (int line = 0; line < lines.size(); line++) {
-            nlOffsets[line] = lines.get(line);
+        final int[] nlOffsets = list2ints(lines);
+        final int[] newlineLengths;
+        if (nlLengths != null) {
+            assert nlLengths.size() == lines.size() - 2;
+            newlineLengths = list2ints(nlLengths);
+        } else {
+            newlineLengths = null;
         }
         final boolean finalNL = textLength > 0 && (textLength == nlOffsets[nlOffsets.length - 2]);
-        return new TextMap(nlOffsets, textLength, finalNL);
+        return new TextMap(nlOffsets, textLength, newlineLength, newlineLengths, finalNL);
     }
 
-    private static int indexOf(CharSequence seq, int ch, int fromIndex) {
-        if (seq instanceof String) {
-            return ((String) seq).indexOf(ch, fromIndex);
+    private static int getNewlineLength(char c, CharSequence text, int textLength, int nlIndex) {
+        if (c == '\r' && (nlIndex + 1) < textLength && text.charAt(nlIndex + 1) == '\n') {
+            return 2;
+        } else {
+            return 1;
         }
-        final int max = seq.length();
-        int localFromIndex = fromIndex;
-        if (localFromIndex < 0) {
-            localFromIndex = 0;
-        } else if (fromIndex >= max) {
-            // Note: fromIndex might be near -1>>>1.
-            return -1;
-        }
+    }
 
-        if (ch >= Character.MIN_SUPPLEMENTARY_CODE_POINT) {
-            // not needed here
-            throw new UnsupportedOperationException();
-        }
-
-        // handle most cases here (ch is a BMP code point or a
-        // negative value (invalid code point))
-        for (int i = localFromIndex; i < max; i++) {
-            if (seq.charAt(i) == ch) {
-                return i;
+    private static int adjustNewlineLength(int nlLength, int oldNewlineLength, ArrayList<Integer> nlLengths) {
+        int newlineLength = oldNewlineLength;
+        if (newlineLength >= 0) {
+            if (newlineLength == 0) {
+                newlineLength = nlLength;
+            } else if (newlineLength != nlLength) {
+                newlineLength = -1;
             }
+        } else {
+            nlLengths.add(nlLength);
         }
-        return -1;
+        return newlineLength;
+    }
+
+    private static int[] list2ints(ArrayList<Integer> list) {
+        int size = list.size();
+        int[] array = new int[size];
+        for (int i = 0; i < size; i++) {
+            array[i] = list.get(i);
+        }
+        return array;
     }
 
     /**
@@ -229,7 +269,13 @@ final class TextMap {
         if (line == nlOffsets.length - 1) {
             return textLength - nlOffsets[line - 1];
         }
-        return (nlOffsets[line] - nlOffsets[line - 1]) - 1;
+        int nlLength;
+        if (newlineLengths != null) {
+            nlLength = newlineLengths[line - 1];
+        } else {
+            nlLength = newlineLength;
+        }
+        return (nlOffsets[line] - nlOffsets[line - 1]) - nlLength;
     }
 
     /**

@@ -32,19 +32,27 @@ import java.io.InputStream;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
+import com.oracle.svm.util.ModuleSupport;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -52,7 +60,7 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ResourceConfigurationParser;
 import com.oracle.svm.core.configure.ResourcesRegistry;
-import com.oracle.svm.core.jdk.LocalizationSupport;
+import com.oracle.svm.core.jdk.LocalizationFeature;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.UserError;
@@ -70,17 +78,18 @@ public final class ResourcesFeature implements Feature {
 
     private boolean sealed = false;
     private Set<String> newResources = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private int loadedConfigurations;
 
     private class ResourcesRegistryImpl implements ResourcesRegistry {
         @Override
         public void addResources(String pattern) {
-            UserError.guarantee(!sealed, "Resources added too late");
+            UserError.guarantee(!sealed, "Resources added too late: %s", pattern);
             newResources.add(pattern);
         }
 
         @Override
         public void addResourceBundles(String name) {
-            ImageSingletons.lookup(LocalizationSupport.class).addBundleToCache(name);
+            ImageSingletons.lookup(LocalizationFeature.class).addBundleToCache(name);
         }
     }
 
@@ -93,7 +102,7 @@ public final class ResourcesFeature implements Feature {
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         ImageClassLoader imageClassLoader = ((BeforeAnalysisAccessImpl) access).getImageClassLoader();
         ResourceConfigurationParser parser = new ResourceConfigurationParser(ImageSingletons.lookup(ResourcesRegistry.class));
-        ConfigurationParserUtils.parseAndRegisterConfigurations(parser, imageClassLoader, "resource",
+        loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurations(parser, imageClassLoader, "resource",
                         ConfigurationFiles.Options.ResourceConfigurationFiles, ConfigurationFiles.Options.ResourceConfigurationResources,
                         ConfigurationFiles.RESOURCES_NAME);
 
@@ -105,11 +114,26 @@ public final class ResourcesFeature implements Feature {
         if (newResources.isEmpty()) {
             return;
         }
+
         access.requireAnalysisIteration();
-        for (String regExp : newResources) {
-            if (regExp.length() == 0) {
-                continue;
+        DebugContext debugContext = ((DuringAnalysisAccessImpl) access).getDebugContext();
+        final Pattern[] patterns = newResources.stream()
+                        .filter(s -> s.length() > 0)
+                        .map(Pattern::compile)
+                        .collect(Collectors.toList())
+                        .toArray(new Pattern[]{});
+
+        if (JavaVersionUtil.JAVA_SPEC > 8) {
+            try {
+                ModuleSupport.findResourcesInModules(name -> matches(patterns, name),
+                                (resName, content) -> registerResource(debugContext, resName, content));
+            } catch (IOException ex) {
+                throw UserError.abort("Can not read resources from modules. This is possible due to incorrect module " +
+                                "path or missing module visibility directives", ex);
             }
+        }
+
+        for (Pattern pattern : patterns) {
 
             /*
              * Since IncludeResources takes regular expressions it's safer to disallow passing
@@ -120,8 +144,6 @@ public final class ResourcesFeature implements Feature {
              * -H:IncludeResources=nobel/prizes.json -H:IncludeResources=fields/prizes.json
              * @formatter:on
              */
-
-            Pattern pattern = Pattern.compile(regExp);
 
             final Set<File> todo = new HashSet<>();
             // Checkstyle: stop
@@ -139,7 +161,6 @@ public final class ResourcesFeature implements Feature {
             // Checkstyle: resume
             for (File element : todo) {
                 try {
-                    DebugContext debugContext = ((DuringAnalysisAccessImpl) access).getDebugContext();
                     if (element.isDirectory()) {
                         scanDirectory(debugContext, element, "", pattern);
                     } else {
@@ -164,14 +185,11 @@ public final class ResourcesFeature implements Feature {
             return;
         }
         FallbackFeature.FallbackImageRequest resourceFallback = ImageSingletons.lookup(FallbackFeature.class).resourceFallback;
-        if (resourceFallback != null && Options.IncludeResources.getValue().length == 0 &&
-                        ConfigurationFiles.Options.ResourceConfigurationFiles.getValue().length == 0 &&
-                        ConfigurationFiles.Options.ResourceConfigurationResources.getValue().length == 0) {
+        if (resourceFallback != null && Options.IncludeResources.getValue().length == 0 && loadedConfigurations == 0) {
             throw resourceFallback;
         }
     }
 
-    @SuppressWarnings("try")
     private void scanDirectory(DebugContext debugContext, File f, String relativePath, Pattern... patterns) throws IOException {
         if (f.isDirectory()) {
             File[] files = f.listFiles();
@@ -185,33 +203,49 @@ public final class ResourcesFeature implements Feature {
         } else {
             if (matches(patterns, relativePath)) {
                 try (FileInputStream is = new FileInputStream(f)) {
-                    try (DebugContext.Scope s = debugContext.scope("registerResource")) {
-                        debugContext.log("ResourcesFeature: registerResource: " + relativePath);
-                    }
-                    Resources.registerResource(relativePath, is);
+                    registerResource(debugContext, relativePath, is);
                 }
             }
         }
     }
 
-    @SuppressWarnings("try")
     private static void scanJar(DebugContext debugContext, File element, Pattern... patterns) throws IOException {
         JarFile jf = new JarFile(element);
         Enumeration<JarEntry> en = jf.entries();
+
+        Map<String, List<String>> matchedDirectoryResources = new HashMap<>();
+        Set<String> allEntries = new HashSet<>();
         while (en.hasMoreElements()) {
             JarEntry e = en.nextElement();
-            if (e.getName().endsWith("/")) {
+            if (e.isDirectory()) {
+                String dirName = e.getName().substring(0, e.getName().length() - 1);
+                allEntries.add(dirName);
+                if (matches(patterns, dirName)) {
+                    matchedDirectoryResources.put(dirName, new ArrayList<>());
+                }
                 continue;
             }
+            allEntries.add(e.getName());
             if (matches(patterns, e.getName())) {
                 try (InputStream is = jf.getInputStream(e)) {
-                    try (DebugContext.Scope s = debugContext.scope("registerResource")) {
-                        debugContext.log("ResourcesFeature: registerResource: " + e.getName());
-                    }
-                    Resources.registerResource(e.getName(), is);
+                    registerResource(debugContext, e.getName(), is);
                 }
             }
         }
+
+        for (String entry : allEntries) {
+            int last = entry.lastIndexOf('/');
+            String key = last == -1 ? "" : entry.substring(0, last);
+            List<String> dirContent = matchedDirectoryResources.get(key);
+            if (dirContent != null && !dirContent.contains(entry)) {
+                dirContent.add(entry.substring(last + 1, entry.length()));
+            }
+        }
+
+        matchedDirectoryResources.forEach((dir, content) -> {
+            content.sort(Comparator.naturalOrder());
+            registerDirectoryResource(debugContext, dir, String.join(System.lineSeparator(), content));
+        });
     }
 
     private static boolean matches(Pattern[] patterns, String relativePath) {
@@ -221,5 +255,21 @@ public final class ResourcesFeature implements Feature {
             }
         }
         return false;
+    }
+
+    @SuppressWarnings("try")
+    private static void registerResource(DebugContext debugContext, String resourceName, InputStream resourceStream) {
+        try (DebugContext.Scope s = debugContext.scope("registerResource")) {
+            debugContext.log(DebugContext.VERBOSE_LEVEL, "ResourcesFeature: registerResource: " + resourceName);
+            Resources.registerResource(resourceName, resourceStream);
+        }
+    }
+
+    @SuppressWarnings("try")
+    private static void registerDirectoryResource(DebugContext debugContext, String dir, String content) {
+        try (DebugContext.Scope s = debugContext.scope("registerResource")) {
+            debugContext.log(DebugContext.VERBOSE_LEVEL, "ResourcesFeature: registerResource: " + dir);
+            Resources.registerDirectoryResource(dir, content);
+        }
     }
 }

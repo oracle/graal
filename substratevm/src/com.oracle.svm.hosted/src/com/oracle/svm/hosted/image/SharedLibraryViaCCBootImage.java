@@ -42,8 +42,8 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 public class SharedLibraryViaCCBootImage extends NativeBootImageViaCC {
 
     public SharedLibraryViaCCBootImage(HostedUniverse universe, HostedMetaAccess metaAccess, NativeLibraries nativeLibs, NativeImageHeap heap, NativeImageCodeCache codeCache,
-                    List<HostedMethod> entryPoints, HostedMethod mainEntryPoint, ClassLoader imageLoader) {
-        super(NativeImageKind.SHARED_LIBRARY, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, mainEntryPoint, imageLoader);
+                    List<HostedMethod> entryPoints, ClassLoader imageLoader) {
+        super(NativeImageKind.SHARED_LIBRARY, universe, metaAccess, nativeLibs, heap, codeCache, entryPoints, imageLoader);
     }
 
     @Override
@@ -52,17 +52,10 @@ public class SharedLibraryViaCCBootImage extends NativeBootImageViaCC {
     }
 
     @Override
-    protected void addMainEntryPoint(CCLinkerInvocation inv) {
-        if (mainEntryPoint != null) {
-            inv.addSymbolAlias(mainEntryPoint, "run_main");
-        }
-    }
-
-    @Override
     public LinkerInvocation write(DebugContext debug, Path outputDirectory, Path tempDirectory, String imageName, BeforeImageWriteAccessImpl config) {
         LinkerInvocation inv = super.write(debug, outputDirectory, tempDirectory, imageName, config);
-        writeHeaderFiles(outputDirectory, imageName, inv.getSymbolAliases(), false);
-        writeHeaderFiles(outputDirectory, imageName, inv.getSymbolAliases(), true);
+        writeHeaderFiles(outputDirectory, imageName, false);
+        writeHeaderFiles(outputDirectory, imageName, true);
         return inv;
     }
 }

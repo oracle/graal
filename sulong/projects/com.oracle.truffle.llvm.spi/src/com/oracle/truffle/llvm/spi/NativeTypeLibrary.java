@@ -31,15 +31,14 @@ package com.oracle.truffle.llvm.spi;
 
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary.Abstract;
-import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
 import com.oracle.truffle.api.library.Library;
+import com.oracle.truffle.api.library.LibraryFactory;
 
 /**
  * Library for objects that want to simulate the behavior of native memory. If an object implements
  * this interface, raw memory access to this object will simulate the layout of the given type.
  */
 @GenerateLibrary
-@DefaultExport(LegacyLibrary.class)
 public abstract class NativeTypeLibrary extends Library {
 
     @Abstract
@@ -47,5 +46,14 @@ public abstract class NativeTypeLibrary extends Library {
         return false;
     }
 
-    public abstract Object getNativeType(Object receiver);
+    @Abstract
+    public Object getNativeType(@SuppressWarnings("unused") Object receiver) {
+        return null;
+    }
+
+    private static final LibraryFactory<NativeTypeLibrary> FACTORY = LibraryFactory.resolve(NativeTypeLibrary.class);
+
+    public static LibraryFactory<NativeTypeLibrary> getFactory() {
+        return FACTORY;
+    }
 }

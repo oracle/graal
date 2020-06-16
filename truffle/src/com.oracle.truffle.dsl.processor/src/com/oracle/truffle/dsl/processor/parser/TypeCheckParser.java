@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,13 +40,11 @@
  */
 package com.oracle.truffle.dsl.processor.parser;
 
-import java.lang.annotation.Annotation;
-
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 
-import com.oracle.truffle.api.dsl.TypeCheck;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.model.MethodSpec;
 import com.oracle.truffle.dsl.processor.model.ParameterSpec;
@@ -74,7 +72,7 @@ class TypeCheckParser extends TypeSystemMethodParser<TypeCheckData> {
     }
 
     @Override
-    public Class<? extends Annotation> getAnnotationType() {
-        return TypeCheck.class;
+    public DeclaredType getAnnotationType() {
+        return types.TypeCheck;
     }
 }

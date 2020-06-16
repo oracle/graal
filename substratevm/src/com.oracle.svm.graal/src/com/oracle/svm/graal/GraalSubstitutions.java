@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,6 @@ package com.oracle.svm.graal;
 
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Custom;
 import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.FromAlias;
-import static com.oracle.svm.core.annotate.RecomputeFieldValue.Kind.Reset;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -37,6 +36,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.core.gen.NodeLIRBuilder;
 import org.graalvm.compiler.core.match.MatchStatement;
@@ -60,6 +60,8 @@ import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.printer.NoDeadCodeVerifyHandler;
+import org.graalvm.nativeimage.CurrentIsolate;
+import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -102,7 +104,7 @@ final class Target_org_graalvm_compiler_phases_common_inlining_info_elem_Inlinea
     @Substitute
     private static StructuredGraph parseBytecodes(ResolvedJavaMethod method, HighTierContext context, CanonicalizerPhase canonicalizer, StructuredGraph caller, boolean trackNodeSourcePosition) {
         DebugContext debug = caller.getDebug();
-        StructuredGraph result = GraalSupport.decodeGraph(debug, null, null, (SubstrateMethod) method);
+        StructuredGraph result = GraalSupport.decodeGraph(debug, null, CompilationIdentifier.INVALID_COMPILATION_ID, (SubstrateMethod) method);
         assert result != null : "should not try to inline method when no graph is in the native image";
         assert !trackNodeSourcePosition || result.trackNodeSourcePosition();
         return result;
@@ -177,34 +179,6 @@ final class Target_org_graalvm_compiler_debug_DebugHandlersFactory {
     private static Iterable<DebugHandlersFactory> LOADER;
 }
 
-@TargetClass(value = DebugContext.class, onlyWith = GraalFeature.IsEnabled.class)
-final class Target_org_graalvm_compiler_debug_DebugContext {
-
-    /**
-     * Arbitrary threads cannot be in the image so null out {@code DebugContext.invariants} which
-     * holds onto a thread and is only used for assertions.
-     */
-    @Alias @RecomputeFieldValue(kind = Reset)//
-    private Target_org_graalvm_compiler_debug_DebugContext_Invariants invariants;
-
-    /**
-     * Initialization of {@code TTY.out} causes the pointsto analysis to see
-     * HotSpotTTYStreamProvider (the only implementation of TTYStreamProvider). Since SVM images
-     * must not include HotSpot code, a substitution is required.
-     */
-    @Alias @RecomputeFieldValue(kind = FromAlias)//
-    public static PrintStream DEFAULT_LOG_STREAM = Log.logStream();
-
-    /**
-     * SVM doesn't currently support {@code Throwable.fillInStackTrace()}. This substitution should
-     * be removed once GR-3763 is resolved.
-     */
-    @Substitute
-    static StackTraceElement[] getStackTrace(@SuppressWarnings("unused") Thread thread) {
-        return new StackTraceElement[0];
-    }
-}
-
 @TargetClass(value = TimeSource.class, onlyWith = GraalFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_debug_TimeSource {
     @Alias @RecomputeFieldValue(kind = FromAlias)//
@@ -216,6 +190,20 @@ final class Target_org_graalvm_compiler_debug_TTY {
 
     @Alias @RecomputeFieldValue(kind = FromAlias)//
     private static PrintStream out = Log.logStream();
+}
+
+@TargetClass(className = "org.graalvm.compiler.serviceprovider.IsolateUtil", onlyWith = GraalFeature.IsEnabled.class)
+final class Target_org_graalvm_compiler_serviceprovider_IsolateUtil {
+
+    @Substitute
+    public static long getIsolateAddress() {
+        return CurrentIsolate.getIsolate().rawValue();
+    }
+
+    @Substitute
+    public static long getIsolateID() {
+        return ImageSingletons.lookup(GraalSupport.class).getIsolateId();
+    }
 }
 
 /*
@@ -242,7 +230,7 @@ final class Target_org_graalvm_compiler_debug_KeyRegistry {
     private static List<MetricKey> keys = new ArrayList<>();
 }
 
-@TargetClass(value = org.graalvm.compiler.core.match.MatchRuleRegistry.class, onlyWith = GraalFeature.IsEnabledAndNotLibgraal.class)
+@TargetClass(value = org.graalvm.compiler.core.match.MatchRuleRegistry.class, onlyWith = GraalFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_core_match_MatchRuleRegistry {
 
     @Substitute
@@ -256,7 +244,7 @@ final class Target_org_graalvm_compiler_core_match_MatchRuleRegistry {
     }
 }
 
-@TargetClass(value = org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.class, onlyWith = GraalFeature.IsEnabled.class)
+@TargetClass(value = org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.class, onlyWith = GraalFeature.IsEnabledAndNotLibgraal.class)
 @SuppressWarnings({"unused", "static-method"})
 final class Target_org_graalvm_compiler_replacements_nodes_BinaryMathIntrinsicNode {
 

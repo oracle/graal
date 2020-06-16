@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,21 +59,6 @@ public abstract class InteropException extends Exception {
 
     InteropException() {
         super();
-    }
-
-    /**
-     * @since 0.14
-     * @deprecated without replacement. Instead always handle interop exceptions directly or rethrow
-     *             them where it is allowed.
-     */
-    @Deprecated
-    public final RuntimeException raise() {
-        return silenceException(RuntimeException.class, this);
-    }
-
-    @SuppressWarnings({"unchecked", "unused"})
-    static <E extends Exception> RuntimeException silenceException(Class<E> type, Exception ex) throws E {
-        throw (E) ex;
     }
 
     private static final long serialVersionUID = -5173354806966156285L;

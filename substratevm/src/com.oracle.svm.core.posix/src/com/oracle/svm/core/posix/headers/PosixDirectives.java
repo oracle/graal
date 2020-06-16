@@ -26,97 +26,71 @@ package com.oracle.svm.core.posix.headers;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.CContext;
 
 import com.oracle.svm.core.util.VMError;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 
 public class PosixDirectives implements CContext.Directives {
     private static final String[] commonLibs = new String[]{
-                    "<stdlib.h>",
-                    "<dirent.h>",
                     "<dlfcn.h>",
                     "<fcntl.h>",
-                    "<grp.h>",
-                    "<ifaddrs.h>",
-                    "<langinfo.h>",
                     "<limits.h>",
                     "<locale.h>",
-                    "<net/ethernet.h>",
-                    "<net/if.h>",
-                    "<netdb.h>",
-                    "<netinet/in.h>",
-                    "<netinet/ip.h>",
-                    "<netinet/tcp.h>",
                     "<pthread.h>",
                     "<pwd.h>",
-                    "<sched.h>",
-                    "<semaphore.h>",
                     "<signal.h>",
-                    "<stdio.h>",
-                    "<spawn.h>",
                     "<sys/errno.h>",
-                    "<sys/file.h>",
-                    "<sys/ioctl.h>",
                     "<sys/mman.h>",
-                    "<sys/param.h>",
-                    "<sys/poll.h>",
                     "<sys/resource.h>",
-                    "<sys/select.h>",
-                    "<sys/socket.h>",
                     "<sys/stat.h>",
-                    "<sys/statvfs.h>",
-                    "<sys/sysctl.h>",
                     "<sys/time.h>",
                     "<sys/times.h>",
-                    "<sys/types.h>",
-                    "<sys/uio.h>",
                     "<sys/utsname.h>",
-                    "<sys/wait.h>",
-                    "<termios.h>",
                     "<time.h>",
                     "<unistd.h>",
-                    "<zlib.h>"
     };
 
     private static final String[] darwinLibs = new String[]{
-                    "<CoreFoundation/CoreFoundation.h>",
-                    "<sys/event.h>",
+                    "<Foundation/Foundation.h>",
                     "<mach/mach.h>",
-                    "<sys/ucontext.h>",
                     "<mach/mach_time.h>",
                     "<mach-o/dyld.h>",
-                    "<netinet6/in6_var.h>",
-                    "<net/if_dl.h>"
+                    "<sys/sysctl.h>",
+                    "<sys/syslimits.h>",
     };
 
     private static final String[] linuxLibs = new String[]{
-                    "<arpa/inet.h>",
-                    "<sys/epoll.h>",
-                    "<sys/sendfile.h>",
                     "<mntent.h>",
-                    "<link.h>",
     };
 
     @Override
     public boolean isInConfiguration() {
-        return Platform.includedIn(InternalPlatform.LINUX_AND_JNI.class) || Platform.includedIn(InternalPlatform.DARWIN_AND_JNI.class);
+        return Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class);
     }
 
     @Override
     public List<String> getHeaderFiles() {
         List<String> result = new ArrayList<>(Arrays.asList(commonLibs));
-        if (Platform.includedIn(InternalPlatform.LINUX_AND_JNI.class)) {
+        if (Platform.includedIn(Platform.LINUX.class)) {
             result.addAll(Arrays.asList(linuxLibs));
-        } else if (Platform.includedIn(InternalPlatform.DARWIN_AND_JNI.class)) {
+        } else if (Platform.includedIn(Platform.DARWIN.class)) {
             result.addAll(Arrays.asList(darwinLibs));
         } else {
             throw VMError.shouldNotReachHere("Unsupported OS");
         }
         return result;
+    }
+
+    @Override
+    public List<String> getOptions() {
+        if (Platform.includedIn(Platform.DARWIN.class)) {
+            return Collections.singletonList("-ObjC");
+        }
+        return Collections.emptyList();
     }
 
     @Override

@@ -1,47 +1,69 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * The Universal Permissive License (UPL), Version 1.0
  *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
  *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ * (a) the Software, and
  *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 package com.oracle.truffle.regex.charset;
 
 public final class Constants {
 
-    public static final CodePointSet BMP_RANGE = CodePointSet.createNoDedup(Character.MIN_VALUE, Character.MAX_VALUE);
-    public static final CodePointSet TRAIL_SURROGATE_RANGE = CodePointSet.createNoDedup(0xDC00, 0xDFFF);
+    public static final int MAX_CODE_POINT = Character.MAX_CODE_POINT;
 
-    public static final CodePointSet BMP_WITHOUT_SURROGATES = CodePointSet.createNoDedup(
-                    0x0000, 0xd7ff,
-                    0xe000, 0xffff);
+    // 0x00 - 0xff
+    public static final CodePointSet BYTE_RANGE = CodePointSet.createNoDedup(0x00, 0xff);
 
-    public static final CodePointSet ASTRAL_SYMBOLS = CodePointSet.createNoDedup(0x10000, 0x10ffff);
+    // 0x00 - 0xffff
+    public static final CodePointSet BMP_RANGE = CodePointSet.createNoDedup(0x00, 0xffff);
+
+    public static final CodePointSet BMP_WITHOUT_SURROGATES = CodePointSet.createNoDedup(0x0000, 0xd7ff, 0xe000, 0xffff);
+
+    public static final CodePointSet ASTRAL_SYMBOLS = CodePointSet.createNoDedup(0x010000, 0x10ffff);
+
+    public static final CodePointSet SURROGATES = CodePointSet.createNoDedup(0xd800, 0xdfff);
 
     public static final CodePointSet LEAD_SURROGATES = CodePointSet.createNoDedup(0xd800, 0xdbff);
 
     public static final CodePointSet TRAIL_SURROGATES = CodePointSet.createNoDedup(0xdc00, 0xdfff);
 
+    // [0-9]
     public static final CodePointSet DIGITS = CodePointSet.createNoDedup('0', '9');
 
-    // inverse of DIGITS
+    // [^0-9]
     public static final CodePointSet NON_DIGITS = CodePointSet.createNoDedup(
                     0x0000, 0x002f,
                     0x003a, 0x10ffff);
@@ -53,7 +75,7 @@ public final class Constants {
                     0x005f, 0x005f,
                     0x0061, 0x007a);
 
-    // inverse of WORD_CHARS
+    // [^A-Za-z0-9_]
     public static final CodePointSet NON_WORD_CHARS = CodePointSet.createNoDedup(
                     0x0000, 0x002f,
                     0x003a, 0x0040,
@@ -184,7 +206,7 @@ public final class Constants {
                     0x000e, 0x2027,
                     0x202a, 0x10ffff);
 
-    public static final CodePointSet DOT_ALL = CodePointSet.createNoDedup(Character.MIN_CODE_POINT, Character.MAX_CODE_POINT);
+    public static final CodePointSet DOT_ALL = CodePointSet.getFull();
 
     // [A-Fa-f0-9]
     public static final CodePointSet HEX_CHARS = CodePointSet.createNoDedup(
@@ -193,7 +215,7 @@ public final class Constants {
                     0x0061, 0x0066);
 
     /**
-     * Used for deduplication in {@link CodePointSet} and {@link CharSet}.
+     * Used for deduplication in {@link CodePointSet}.
      */
     public static final CodePointSet[] CONSTANT_CODE_POINT_SETS = new CodePointSet[]{
                     DIGITS,

@@ -41,6 +41,13 @@ public final class Target_jdk_internal_reflect_Reflection {
     }
 
     @Substitute
+    @TargetElement(onlyWith = JDK8OrEarlier.class) //
+    @NeverInline("Starting a stack walk in the caller frame")
+    public static Class<?> getCallerClass(int depth) {
+        return StackTraceUtils.getCallerClass(KnownIntrinsics.readCallerStackPointer(), depth);
+    }
+
+    @Substitute
     public static int getClassAccessFlags(Class<?> cls) {
         return cls.getModifiers();
     }

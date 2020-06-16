@@ -41,7 +41,7 @@ public final class InstructionBlock {
 
     private final int blockIndex;
 
-    private final List<Instruction> instructions = new ArrayList<>();
+    private final ArrayList<Instruction> instructions = new ArrayList<>();
 
     private String name = LLVMIdentifier.UNKNOWN;
 
@@ -67,6 +67,10 @@ public final class InstructionBlock {
         return name;
     }
 
+    public List<Instruction> getInstructions() {
+        return instructions;
+    }
+
     public Instruction getInstruction(int index) {
         return instructions.get(index);
     }
@@ -82,14 +86,6 @@ public final class InstructionBlock {
     public TerminatingInstruction getTerminatingInstruction() {
         assert instructions.get(instructions.size() - 1) instanceof TerminatingInstruction : "last instruction must be a terminating instruction";
         return (TerminatingInstruction) instructions.get(instructions.size() - 1);
-    }
-
-    public void set(int index, Instruction instruction) {
-        instructions.set(index, instruction);
-    }
-
-    public void remove(int index) {
-        instructions.remove(index);
     }
 
     @Override

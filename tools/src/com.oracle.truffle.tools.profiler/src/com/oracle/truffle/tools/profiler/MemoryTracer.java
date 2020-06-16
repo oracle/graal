@@ -24,8 +24,6 @@
  */
 package com.oracle.truffle.tools.profiler;
 
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-
 import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -40,6 +38,8 @@ import java.util.function.Supplier;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.instrumentation.AllocationEvent;
 import com.oracle.truffle.api.instrumentation.AllocationEventFilter;
@@ -48,6 +48,8 @@ import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.tools.profiler.impl.CPUTracerInstrument;
@@ -72,6 +74,8 @@ import com.oracle.truffle.tools.profiler.impl.ProfilerToolFactory;
  * @since 0.30
  */
 public final class MemoryTracer implements Closeable {
+
+    private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
     MemoryTracer(TruffleInstrument.Env env) {
         this.env = env;
@@ -339,9 +343,15 @@ public final class MemoryTracer implements Closeable {
             LanguageInfo languageInfo = event.getLanguage();
             String metaObjectString;
             gettingMetaObject.set(true);
-            Object metaObject = env.findMetaObject(languageInfo, event.getValue());
-            if (metaObject != null) {
-                metaObjectString = env.toString(languageInfo, metaObject);
+            Object view = env.getLanguageView(languageInfo, event.getValue());
+            InteropLibrary viewLib = InteropLibrary.getFactory().getUncached(view);
+            if (viewLib.hasMetaObject(view)) {
+                try {
+                    metaObjectString = INTEROP.asString(INTEROP.getMetaQualifiedName(viewLib.getMetaObject(view)));
+                } catch (UnsupportedMessageException e) {
+                    CompilerDirectives.transferToInterpreter();
+                    throw new AssertionError(e);
+                }
             } else {
                 metaObjectString = "null";
             }
@@ -467,9 +477,6 @@ public final class MemoryTracer implements Closeable {
         }
 
         /**
-         * @return A String representation of the
-         *         {@linkplain com.oracle.truffle.api.instrumentation.TruffleInstrument.Env#findMetaObject(LanguageInfo, Object)
-         *         meta object}
          * @since 0.30
          */
         public String getMetaObjectString() {

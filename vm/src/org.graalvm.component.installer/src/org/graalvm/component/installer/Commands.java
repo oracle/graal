@@ -94,8 +94,8 @@ public interface Commands {
     /**
      * Verifies JAR integrity.
      */
-    String OPTION_VERIFY_JARS = "s";
-    String LONG_OPTION_VERIFY_JARS = "verify-jars";
+    String OPTION_NO_VERIFY_JARS = "s";
+    String LONG_OPTION_NO_VERIFY_JARS = "no-verify-jars";
 
     /**
      * Do not use tabular list.
@@ -189,4 +189,40 @@ public interface Commands {
 
     String OPTION_VERSION = "V";
     String LONG_OPTION_VERSION = "use-version";
+
+    /**
+     * Uninstall other components depending on the uninstalled ones.
+     */
+    String OPTION_UNINSTALL_DEPENDENT = "D";
+    String LONG_OPTION_UNINSTALL_DEPENDENT = "remove-deps";
+
+    /**
+     * Attempt to resolve dependencies against local directories.
+     */
+    String OPTION_LOCAL_DEPENDENCIES = "D";
+    String LONG_OPTION_LOCAL_DEPENDENCIES = "local-deps";
+
+    /**
+     * Ignore component dependencies.
+     */
+    String OPTION_NO_DEPENDENCIES = "M";
+    String LONG_OPTION_NO_DEPENDENCIES = "no-deps";
+
+    /**
+     * Print version and exit. Non-alnum option to indicate the short form is not defined.
+     */
+    String OPTION_PRINT_VERSION = "@";
+    String LONG_OPTION_PRINT_VERSION = "version";
+
+    /**
+     * Show version and continue. Non-alnum option to indicate the short form is not defined.
+     */
+    String OPTION_SHOW_VERSION = "#";
+    String LONG_OPTION_SHOW_VERSION = "show-version";
+
+    /**
+     * Will not fail, if at least one of the catalogs can be read.
+     */
+    String OPTION_IGNORE_CATALOG_ERRORS = "E";
+    String LONG_OPTION_IGNORE_CATALOG_ERRORS = "no-catalog-errors";
 }

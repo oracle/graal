@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,7 +28,6 @@ import org.graalvm.compiler.truffle.test.builtins.SLAssertFalseBuiltinFactory;
 import org.graalvm.compiler.truffle.test.builtins.SLAssertTrueBuiltinFactory;
 import org.graalvm.compiler.truffle.test.builtins.SLCallFunctionsWithBuiltinFactory;
 import org.graalvm.compiler.truffle.test.builtins.SLCallUntilOptimizedBuiltinFactory;
-import org.graalvm.compiler.truffle.test.builtins.SLCallWithOptionOverrideBuiltinFactory;
 import org.graalvm.compiler.truffle.test.builtins.SLDeoptimizeWhenCompiledBuiltinFactory;
 import org.graalvm.compiler.truffle.test.builtins.SLDisableSplittingBuiltinFactory;
 import org.graalvm.compiler.truffle.test.builtins.SLGetOptionBuiltinFactory;
@@ -44,8 +43,8 @@ import com.oracle.truffle.sl.test.SLTestRunner;
 import com.oracle.truffle.sl.test.SLTestSuite;
 
 @RunWith(SLTestRunner.class)
-@SLTestSuite({"sl"})
-public class SLTruffleGraalTestSuite extends TestWithSynchronousCompiling {
+@SLTestSuite(value = {"sl"}, options = {"engine.BackgroundCompilation", "false", "engine.CompilationThreshold", "10", "engine.CompileImmediately", "false"})
+public class SLTruffleGraalTestSuite {
 
     public static void main(String[] args) throws Exception {
         SLTestRunner.runInMain(SLTruffleGraalTestSuite.class, args);
@@ -58,7 +57,6 @@ public class SLTruffleGraalTestSuite extends TestWithSynchronousCompiling {
         SLTestRunner.installBuiltin(SLWaitForOptimizationBuiltinFactory.getInstance());
         SLTestRunner.installBuiltin(SLDisableSplittingBuiltinFactory.getInstance());
         SLTestRunner.installBuiltin(SLCallUntilOptimizedBuiltinFactory.getInstance());
-        SLTestRunner.installBuiltin(SLCallWithOptionOverrideBuiltinFactory.getInstance());
         SLTestRunner.installBuiltin(SLCallFunctionsWithBuiltinFactory.getInstance());
         SLTestRunner.installBuiltin(SLIsCompilationConstantBuiltinFactory.getInstance());
         SLTestRunner.installBuiltin(SLDeoptimizeWhenCompiledBuiltinFactory.getInstance());

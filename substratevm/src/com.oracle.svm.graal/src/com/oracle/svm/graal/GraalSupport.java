@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.graal;
 
+import static org.graalvm.word.LocationIdentity.ANY_LOCATION;
+
 import java.io.PrintStream;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -42,6 +44,7 @@ import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.gen.NodeMatchRules;
 import org.graalvm.compiler.core.match.MatchStatement;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.DiagnosticsOutputDirectory;
@@ -60,12 +63,16 @@ import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.GraalServices;
-import org.graalvm.nativeimage.hosted.Feature.CompilationAccess;
-import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature.CompilationAccess;
+import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
@@ -107,9 +114,41 @@ public class GraalSupport {
     protected final DiagnosticsOutputDirectory outputDirectory = new DiagnosticsOutputDirectory(RuntimeOptionValues.singleton());
     protected final Map<ExceptionAction, Integer> compilationProblemsPerAction = new EnumMap<>(ExceptionAction.class);
 
+    private static final CGlobalData<Pointer> nextIsolateId = CGlobalDataFactory.createWord((Pointer) WordFactory.unsigned(1L));
+
+    private volatile long isolateId = 0;
+
+    /**
+     * Gets an identifier for the current isolate that is guaranteed to be unique for the first
+     * {@code 2^64 - 1} isolates in the process.
+     *
+     * @return a non-zero value
+     */
+    public long getIsolateId() {
+        if (isolateId == 0) {
+            synchronized (this) {
+                if (isolateId == 0) {
+                    Pointer p = nextIsolateId.get();
+                    long value;
+                    long nextValue;
+                    do {
+                        value = p.readLong(0);
+                        nextValue = value + 1;
+                        if (nextValue == 0) {
+                            // Avoid setting id to reserved 0 value after long integer overflow
+                            nextValue = 1;
+                        }
+                    } while (p.compareAndSwapLong(0, value, nextValue, ANY_LOCATION) != value);
+                    isolateId = value;
+                }
+            }
+        }
+        return isolateId;
+    }
+
     public DebugContext openDebugContext(OptionValues options, CompilationIdentifier compilationId, Object compilable, PrintStream logStream) {
         Description description = new Description(compilable, compilationId.toString(CompilationIdentifier.Verbosity.ID));
-        return DebugContext.create(options, description, metricValues, logStream, runtimeConfig.getDebugHandlersFactories());
+        return new Builder(options, runtimeConfig.getDebugHandlersFactories()).globalMetrics(metricValues).description(description).logStream(logStream).build();
     }
 
     public DiagnosticsOutputDirectory getDebugOutputDirectory() {
@@ -160,6 +199,11 @@ public class GraalSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static boolean setGraphEncoding(byte[] graphEncoding, Object[] graphObjects, NodeClass<?>[] graphNodeTypes) {
+        if (get().graphObjects == null && graphObjects.length == 0) {
+            assert graphEncoding.length == 0;
+            assert graphNodeTypes.length == 0;
+            return false;
+        }
         boolean result = false;
         if (!Arrays.equals(get().graphEncoding, graphEncoding)) {
             get().graphEncoding = graphEncoding;

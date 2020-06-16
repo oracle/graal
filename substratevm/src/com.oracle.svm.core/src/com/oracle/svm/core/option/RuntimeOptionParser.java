@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.option;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Optional;
@@ -77,14 +78,15 @@ public final class RuntimeOptionParser {
             args = RuntimeOptionParser.singleton().parse(args, GRAAL_OPTION_PREFIX, BooleanOptionFormat.NAME_VALUE, true);
             args = XOptions.singleton().parse(args, true);
             args = RuntimePropertyParser.parse(args);
+
+            RuntimeOptionParser.singleton().notifyOptionsParsed();
         }
         return args;
     }
 
-    /**
-     * All reachable options.
-     */
+    /** All reachable options. */
     private final SortedMap<String, OptionDescriptor> sortedOptions;
+    private ArrayList<OptionsParsedListener> optionsParsedListeners;
 
     public Optional<OptionDescriptor> getDescriptor(String optionName) {
         return Optional.ofNullable(sortedOptions.get(optionName));
@@ -108,6 +110,14 @@ public final class RuntimeOptionParser {
             }
         }
         return result;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void registerOptionsParsedListener(OptionsParsedListener listener) {
+        if (optionsParsedListeners == null) {
+            optionsParsedListeners = new ArrayList<>();
+        }
+        optionsParsedListeners.add(listener);
     }
 
     /**
@@ -184,8 +194,8 @@ public final class RuntimeOptionParser {
      */
     private void parseOptionAtRuntime(String arg, String optionPrefix, BooleanOptionFormat booleanOptionFormat, EconomicMap<OptionKey<?>, Object> values, boolean systemExitOnError) {
         OptionParseResult parseResult = SubstrateOptionsParser.parseOption(sortedOptions, arg.substring(optionPrefix.length()), values, optionPrefix, booleanOptionFormat);
-        if (parseResult.printFlags()) {
-            SubstrateOptionsParser.printFlags(parseResult::matchesFlagsRuntime, sortedOptions, optionPrefix, Log.logStream());
+        if (parseResult.printFlags() || parseResult.printFlagsWithExtraHelp()) {
+            SubstrateOptionsParser.printFlags(parseResult::matchesFlagsRuntime, sortedOptions, optionPrefix, Log.logStream(), parseResult.printFlagsWithExtraHelp());
             System.exit(0);
         }
         if (!parseResult.isValid()) {
@@ -213,5 +223,17 @@ public final class RuntimeOptionParser {
 
     public Collection<OptionDescriptor> getDescriptors() {
         return sortedOptions.values();
+    }
+
+    private void notifyOptionsParsed() {
+        if (optionsParsedListeners != null) {
+            for (OptionsParsedListener listener : optionsParsedListeners) {
+                listener.onOptionsParsed();
+            }
+        }
+    }
+
+    public interface OptionsParsedListener {
+        void onOptionsParsed();
     }
 }

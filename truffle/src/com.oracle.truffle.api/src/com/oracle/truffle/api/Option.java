@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -116,6 +116,14 @@ public @interface Option {
      * @since 0.27
      */
     boolean deprecated() default false;
+
+    /**
+     * Returns the deprecation reason and the recommended fix. The generated option descriptor
+     * returns this value as result of {@link OptionDescriptor#getDeprecationMessage()}.
+     *
+     * @since 20.1.0
+     */
+    String deprecationMessage() default "";
 
     /**
      * Specifies the category of the option. The generated option descriptor returns this value as

@@ -51,6 +51,8 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
+import com.oracle.graal.pointsto.flow.MethodTypeFlow;
+import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.infrastructure.WrappedConstantPool;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
@@ -66,13 +68,14 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.ExcludeFromReferenceMap;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
+import com.oracle.svm.core.c.function.CFunctionOptions;
+import com.oracle.svm.core.classinitialization.ClassInitializationInfo.ClassInitializerFunctionPointerHolder;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
 import com.oracle.svm.core.heap.ReferenceMapEncoder;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
-import com.oracle.svm.core.hub.ClassInitializationInfo.ClassInitializerFunctionPointerHolder;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.LayoutEncoding;
@@ -82,6 +85,7 @@ import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.ComputedValueField;
 import com.oracle.svm.hosted.substitute.DeletedMethod;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ExceptionHandler;
@@ -263,9 +267,17 @@ public class UniverseBuilder {
         assert !hUniverse.methods.containsKey(aMethod);
         hUniverse.methods.put(aMethod, sMethod);
 
-        if (aMethod.getAnnotation(CFunction.class) != null) {
+        boolean isCFunction = aMethod.getAnnotation(CFunction.class) != null;
+        boolean hasCFunctionOptions = aMethod.getAnnotation(CFunctionOptions.class) != null;
+        if (hasCFunctionOptions && !isCFunction) {
+            unsupportedFeatures.addMessage(aMethod.format("%H.%n(%p)"), aMethod,
+                            "Method annotated with @" + CFunctionOptions.class.getSimpleName() + " must also be annotated with @" + CFunction.class);
+        }
+
+        if (isCFunction) {
             if (!aMethod.isNative()) {
-                unsupportedFeatures.addMessage(aMethod.format("%H.%n(%p)"), aMethod, "Method annotated with @" + CFunction.class.getSimpleName() + " must be declared native");
+                unsupportedFeatures.addMessage(aMethod.format("%H.%n(%p)"), aMethod,
+                                "Method annotated with @" + CFunction.class.getSimpleName() + " must be declared native");
             }
         } else if (aMethod.isNative() && !aMethod.isIntrinsicMethod() && aMethod.isImplementationInvoked() && !NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
             unsupportedFeatures.addMessage(aMethod.format("%H.%n(%p)"), aMethod, AnnotationSubstitutionProcessor.deleteErrorMessage(aMethod, DeletedMethod.NATIVE_MESSAGE, true));
@@ -654,16 +666,17 @@ public class UniverseBuilder {
 
             // Check which types may be a parameter of System.identityHashCode (which is invoked by
             // Object.hashCode).
-            TypeState thisParamState = method.getTypeFlow().getParameterTypeState(bb, 0);
+            MethodTypeFlow methodFlow = method.getTypeFlow();
+            TypeFlow<?> paramFlow = methodFlow.getParameterFlow(0);
+            TypeState thisParamState = methodFlow.getParameterTypeState(bb, 0);
             assert thisParamState != null;
-
             Iterable<AnalysisType> typesNeedHashCode = thisParamState.types();
-            if (typesNeedHashCode == null || thisParamState.isUnknown()) {
+            if (typesNeedHashCode == null || thisParamState.isUnknown() || methodFlow.isSaturated(bb, paramFlow)) {
 
-                // This is the case if the identityHashCode parameter type is unknown. So all
-                // classes get the hashCode field.
-                // But this is only a fail-safe, because it cannot happen in the current
-                // implementation of the analysis pass.
+                /*
+                 * If the identityHashCode parameter type is unknown or it is saturated then all
+                 * classes need to get the hashCode field.
+                 */
 
                 debug.log("all types need a hashCode field");
                 for (HostedType hType : hUniverse.getTypes()) {
@@ -769,11 +782,13 @@ public class UniverseBuilder {
         }
 
         // An int to hold the result for System.identityHashCode.
-        if (clazz.needHashCodeField()) {
+        if (ConfigurationValues.getObjectLayout().useExplicitIdentityHashCodeField() && clazz.needHashCodeField()) {
             int intFieldSize = ConfigurationValues.getObjectLayout().sizeInBytes(JavaKind.Int);
             nextOffset = NumUtil.roundUp(nextOffset, intFieldSize);
             clazz.setHashCodeFieldOffset(nextOffset);
             nextOffset += intFieldSize;
+        } else {
+            clazz.setHashCodeFieldOffset(ConfigurationValues.getObjectLayout().getInstanceIdentityHashCodeOffset());
         }
 
         clazz.instanceFields = orderedFields.toArray(new HostedField[orderedFields.size()]);
@@ -1163,17 +1178,17 @@ public class UniverseBuilder {
                     HybridLayout<?> hybridLayout = new HybridLayout<>(instanceClass, ol);
                     JavaKind storageKind = hybridLayout.getArrayElementStorageKind();
                     boolean isObject = (storageKind == JavaKind.Object);
-                    layoutHelper = LayoutEncoding.forArray(isObject, hybridLayout.getArrayBaseOffset(), ol.getArrayIndexShift(storageKind));
+                    layoutHelper = LayoutEncoding.forArray(type, isObject, hybridLayout.getArrayBaseOffset(), ol.getArrayIndexShift(storageKind));
                 } else {
-                    layoutHelper = LayoutEncoding.forInstance(ConfigurationValues.getObjectLayout().alignUp(instanceClass.getInstanceSize()));
+                    layoutHelper = LayoutEncoding.forInstance(type, ConfigurationValues.getObjectLayout().alignUp(instanceClass.getInstanceSize()));
                 }
                 monitorOffset = instanceClass.getMonitorFieldOffset();
                 hashCodeOffset = instanceClass.getHashCodeFieldOffset();
             } else if (type.isArray()) {
                 JavaKind storageKind = type.getComponentType().getStorageKind();
                 boolean isObject = (storageKind == JavaKind.Object);
-                layoutHelper = LayoutEncoding.forArray(isObject, ol.getArrayBaseOffset(storageKind), ol.getArrayIndexShift(storageKind));
-                hashCodeOffset = ol.getArrayHashCodeOffset();
+                layoutHelper = LayoutEncoding.forArray(type, isObject, ol.getArrayBaseOffset(storageKind), ol.getArrayIndexShift(storageKind));
+                hashCodeOffset = ol.getArrayIdentityHashcodeOffset();
             } else if (type.isInterface()) {
                 layoutHelper = LayoutEncoding.forInterface();
             } else if (type.isPrimitive()) {
@@ -1212,7 +1227,7 @@ public class UniverseBuilder {
 
         SubstrateReferenceMap referenceMap = new SubstrateReferenceMap();
         for (HostedField field : fields) {
-            if (field.getType().getStorageKind() == JavaKind.Object && field.hasLocation() && field.getAnnotation(ExcludeFromReferenceMap.class) == null) {
+            if (field.getType().getStorageKind() == JavaKind.Object && field.hasLocation() && !excludeFromReferenceMap(field)) {
                 referenceMap.markReferenceAtOffset(field.getLocation(), true);
             }
         }
@@ -1227,6 +1242,14 @@ public class UniverseBuilder {
             }
         }
         return referenceMap;
+    }
+
+    private static boolean excludeFromReferenceMap(HostedField field) {
+        ExcludeFromReferenceMap annotation = field.getAnnotation(ExcludeFromReferenceMap.class);
+        if (annotation != null) {
+            return ReflectionUtil.newInstance(annotation.onlyIf()).getAsBoolean();
+        }
+        return false;
     }
 
     private void processFieldLocations() {

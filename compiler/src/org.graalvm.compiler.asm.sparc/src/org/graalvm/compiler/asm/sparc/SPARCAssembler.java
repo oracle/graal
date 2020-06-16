@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -547,6 +547,7 @@ public abstract class SPARCAssembler extends Assembler {
     public enum Annul {
         ANNUL(1),
         NOT_ANNUL(0);
+
         public final int flag;
 
         Annul(int flag) {
@@ -557,6 +558,7 @@ public abstract class SPARCAssembler extends Assembler {
     public enum BranchPredict {
         PREDICT_TAKEN(1),
         PREDICT_NOT_TAKEN(0);
+
         public final int flag;
 
         BranchPredict(int flag) {
@@ -626,6 +628,13 @@ public abstract class SPARCAssembler extends Assembler {
 
         public int getValue() {
             return value;
+        }
+
+        public int getOpfCCValue() {
+            /*
+             * In the opf_cc encoding for FMOVcc, the third bit is set to indicate icc/xcc.
+             */
+            return (isFloat ? value : (value | 0x4));
         }
 
         public String getOperator() {
@@ -1613,7 +1622,7 @@ public abstract class SPARCAssembler extends Assembler {
             inst = BitSpec.rd.setBits(inst, rd.encoding());
             inst = BitSpec.op3.setBits(inst, opfLow.op3.value);
             inst = BitSpec.opfCond.setBits(inst, condition.value);
-            inst = BitSpec.opfCC.setBits(inst, cc.value);
+            inst = BitSpec.opfCC.setBits(inst, cc.getOpfCCValue());
             inst = BitSpec.opfLow.setBits(inst, opfLow.value);
             inst = BitSpec.rs2.setBits(inst, rs2.encoding());
             masm.emitInt(inst);
@@ -2193,7 +2202,7 @@ public abstract class SPARCAssembler extends Assembler {
     }
 
     private void fmovcc(ConditionFlag cond, CC cc, Register rs2, Register rd, int opfLow) {
-        int opfCC = cc.value;
+        int opfCC = cc.getOpfCCValue();
         int a = opfCC << 11 | opfLow << 5 | rs2.encoding;
         fmt10(rd.encoding, Fpop2.value, cond.value, a);
     }

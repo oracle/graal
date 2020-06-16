@@ -40,13 +40,18 @@
  */
 package com.oracle.truffle.polyglot;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.utilities.TriState;
 
 @ExportLibrary(InteropLibrary.class)
 final class HostFunction implements TruffleObject {
@@ -80,6 +85,48 @@ final class HostFunction implements TruffleObject {
         return execute.execute(method, obj, args, languageContext);
     }
 
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean hasLanguage() {
+        return true;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    Class<? extends TruffleLanguage<?>> getLanguage() {
+        return HostLanguage.class;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    String toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        if (obj == null) {
+            return "null";
+        }
+        String typeName = obj.getClass().getTypeName();
+        return typeName + "." + method.getName();
+    }
+
+    @ExportMessage
+    @SuppressWarnings("unused")
+    static final class IsIdenticalOrUndefined {
+        @Specialization
+        static TriState doHostObject(HostFunction receiver, HostFunction other) {
+            return (receiver.method == other.method && receiver.obj == other.obj) ? TriState.TRUE : TriState.FALSE;
+        }
+
+        @Fallback
+        static TriState doOther(HostFunction receiver, Object other) {
+            return TriState.UNDEFINED;
+        }
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    static int identityHashCode(HostFunction receiver) {
+        return System.identityHashCode(receiver.method);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (o instanceof HostFunction) {
@@ -94,11 +141,4 @@ final class HostFunction implements TruffleObject {
         return method.hashCode();
     }
 
-    String getDescription() {
-        if (obj == null) {
-            return "null";
-        }
-        String typeName = obj.getClass().getTypeName();
-        return typeName + "." + method.getName();
-    }
 }

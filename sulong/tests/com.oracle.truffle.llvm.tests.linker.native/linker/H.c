@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,11 +35,11 @@ __attribute__((visibility("hidden"))) int globalD = 11;
 int globalH = 12;
 
 __attribute__((visibility("hidden"))) int methodD(int a, int b) {
-  printf("HiddenD used by H\n");
-  return a - b;
+    printf("HiddenD used by H\n");
+    return a - b;
 }
 
 int methodH(int a, int b) {
-  printf("H\n");
-  return methodD(a, b) + (a << b) + globalD + globalH;
+    printf("H\n");
+    return methodD(a, b) + (a << b) + globalD + globalH;
 }

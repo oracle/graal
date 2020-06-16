@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,11 +29,14 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Formatter;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -45,6 +48,14 @@ import org.junit.Assume;
  * Utility methods for spawning a VM in a subprocess during unit tests.
  */
 public final class SubprocessUtil {
+
+    /**
+     * The name of the boolean system property that can be set to preserve temporary files created
+     * as arguments files passed to the java launcher.
+     *
+     * @see "https://docs.oracle.com/javase/9/tools/java.htm#JSWOR-GUID-4856361B-8BFD-4964-AE84-121F5F6CF111"
+     */
+    public static final String KEEP_TEMPORARY_ARGUMENT_FILES_PROPERTY_NAME = "test." + SubprocessUtil.class.getSimpleName() + ".keepTempArgumentFiles";
 
     private SubprocessUtil() {
     }
@@ -102,6 +113,26 @@ public final class SubprocessUtil {
     }
 
     /**
+     * Gets the command line options to do the same package opening and exporting specified by the
+     * {@code --open-packages} option to the {@code mx unittest} command.
+     *
+     * Properties defined in {@code com.oracle.mxtool.junit.MxJUnitWrapper}.
+     */
+    public static List<String> getPackageOpeningOptions() {
+        List<String> result = new ArrayList<>();
+        String[] actions = {"opens", "exports"};
+        for (String action : actions) {
+            String opens = System.getProperty("com.oracle.mxtool.junit." + action);
+            if (opens != null && !opens.isEmpty()) {
+                for (String value : opens.split(System.lineSeparator())) {
+                    result.add("--add-" + action + "=" + value);
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
      * Gets the command line used to start the current Java VM, including all VM arguments, but not
      * including the main class or any Java arguments. This can be used to spawn an identical VM,
      * but running different Java code.
@@ -117,10 +148,30 @@ public final class SubprocessUtil {
     }
 
     /**
-     * Detects whether a java agent is attached.
+     * Detects whether a Java agent matching {@code agentPredicate} is specified in the VM
+     * arguments.
+     *
+     * @param agentPredicate a predicate that is given the value of a {@code -javaagent} VM argument
+     */
+    public static boolean isJavaAgentAttached(Predicate<String> agentPredicate) {
+        return SubprocessUtil.getVMCommandLine().stream().//
+                        filter(args -> args.startsWith("-javaagent:")).//
+                        map(s -> s.substring("-javaagent:".length())).//
+                        anyMatch(agentPredicate);
+    }
+
+    /**
+     * Detects whether a Java agent is specified in the VM arguments.
      */
     public static boolean isJavaAgentAttached() {
-        return SubprocessUtil.getVMCommandLine().stream().anyMatch(args -> args.startsWith("-javaagent"));
+        return isJavaAgentAttached(javaAgentValue -> true);
+    }
+
+    /**
+     * Detects whether the JaCoCo Java agent is specified in the VM arguments.
+     */
+    public static boolean isJaCoCoAttached() {
+        return isJavaAgentAttached(s -> s.toLowerCase().contains("jacoco"));
     }
 
     /**
@@ -143,8 +194,14 @@ public final class SubprocessUtil {
          */
         public final List<String> output;
 
-        public Subprocess(List<String> command, int exitCode, List<String> output) {
+        /**
+         * Explicit environment variables.
+         */
+        private Map<String, String> env;
+
+        public Subprocess(List<String> command, Map<String, String> env, int exitCode, List<String> output) {
             this.command = command;
+            this.env = env;
             this.exitCode = exitCode;
             this.output = output;
         }
@@ -160,6 +217,13 @@ public final class SubprocessUtil {
             Formatter msg = new Formatter();
             if (delimiter != null) {
                 msg.format("%s%n", delimiter);
+            }
+            if (env != null && !env.isEmpty()) {
+                msg.format("env");
+                for (Map.Entry<String, String> e : env.entrySet()) {
+                    msg.format(" %s=%s", e.getKey(), quoteShellArg(e.getValue()));
+                }
+                msg.format("\\%n");
             }
             msg.format("%s%n", CollectionsUtil.mapAndJoin(command, e -> quoteShellArg(String.valueOf(e)), " "));
             for (String line : output) {
@@ -180,6 +244,14 @@ public final class SubprocessUtil {
             return toString(DASHES_DELIMITER);
         }
     }
+
+    /**
+     * A sentinel value which when present in the {@code vmArgs} parameter for any of the
+     * {@code java(...)} methods in this class is replaced with a temporary argument file containing
+     * the contents of {@link #getPackageOpeningOptions}. The argument file is preserved if the
+     * {@link #KEEP_TEMPORARY_ARGUMENT_FILES_PROPERTY_NAME} system property is true.
+     */
+    public static final String PACKAGE_OPENING_OPTIONS = ";:PACKAGE_OPENING_OPTIONS_IN_TEMPORARY_ARGUMENTS_FILE:;";
 
     /**
      * Executes a Java subprocess.
@@ -231,7 +303,22 @@ public final class SubprocessUtil {
      * @param mainClassAndArgs the main class and its arguments
      */
     private static Subprocess javaHelper(List<String> vmArgs, Map<String, String> env, List<String> mainClassAndArgs) throws IOException, InterruptedException {
-        List<String> command = new ArrayList<>(vmArgs);
+        List<String> command = new ArrayList<>(vmArgs.size());
+        Path packageOpeningOptionsArgumentsFile = null;
+        for (String vmArg : vmArgs) {
+            if (vmArg == PACKAGE_OPENING_OPTIONS) {
+                if (packageOpeningOptionsArgumentsFile == null) {
+                    List<String> packageOpeningOptions = getPackageOpeningOptions();
+                    if (!packageOpeningOptions.isEmpty()) {
+                        packageOpeningOptionsArgumentsFile = Files.createTempFile(Paths.get("."), "package-opening-options-arguments-file", ".txt").toAbsolutePath();
+                        Files.write(packageOpeningOptionsArgumentsFile, packageOpeningOptions);
+                        command.add("@" + packageOpeningOptionsArgumentsFile);
+                    }
+                }
+            } else {
+                command.add(vmArg);
+            }
+        }
         command.addAll(mainClassAndArgs);
         ProcessBuilder processBuilder = new ProcessBuilder(command);
         if (env != null) {
@@ -239,14 +326,22 @@ public final class SubprocessUtil {
             processBuilderEnv.putAll(env);
         }
         processBuilder.redirectErrorStream(true);
-        Process process = processBuilder.start();
-        BufferedReader stdout = new BufferedReader(new InputStreamReader(process.getInputStream()));
-        String line;
-        List<String> output = new ArrayList<>();
-        while ((line = stdout.readLine()) != null) {
-            output.add(line);
+        try {
+            Process process = processBuilder.start();
+            BufferedReader stdout = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            String line;
+            List<String> output = new ArrayList<>();
+            while ((line = stdout.readLine()) != null) {
+                output.add(line);
+            }
+            return new Subprocess(command, env, process.waitFor(), output);
+        } finally {
+            if (packageOpeningOptionsArgumentsFile != null) {
+                if (!Boolean.getBoolean(KEEP_TEMPORARY_ARGUMENT_FILES_PROPERTY_NAME)) {
+                    Files.delete(packageOpeningOptionsArgumentsFile);
+                }
+            }
         }
-        return new Subprocess(command, process.waitFor(), output);
     }
 
     private static final boolean isJava8OrEarlier = JavaVersionUtil.JAVA_SPEC <= 8;
@@ -278,7 +373,11 @@ public final class SubprocessUtil {
         while (i < commandLine.size()) {
             String s = commandLine.get(i);
             if (s.charAt(0) != '-') {
-                return i;
+                // https://bugs.openjdk.java.net/browse/JDK-8027634
+                if (isJava8OrEarlier || s.charAt(0) != '@') {
+                    return i;
+                }
+                i++;
             } else if (hasArg(s)) {
                 i += 2;
             } else {

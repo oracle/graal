@@ -70,7 +70,7 @@ public class InteriorObjRefWalker {
                 final UnsignedWord elementOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, index);
                 final Pointer elementPointer = objPointer.add(elementOffset);
                 boolean isCompressed = ReferenceAccess.singleton().haveCompressedReferences();
-                final boolean visitResult = visitor.visitObjectReferenceInline(elementPointer, isCompressed);
+                final boolean visitResult = visitor.visitObjectReferenceInline(elementPointer, isCompressed, obj);
                 if (!visitResult) {
                     return false;
                 }
@@ -81,6 +81,6 @@ public class InteriorObjRefWalker {
         long referenceMapIndex = objHub.getReferenceMapIndex();
 
         // Visit Object reference in the fields of the Object.
-        return InstanceReferenceMapDecoder.walkOffsetsFromPointer(objPointer, referenceMapEncoding, referenceMapIndex, visitor);
+        return InstanceReferenceMapDecoder.walkOffsetsFromPointer(objPointer, referenceMapEncoding, referenceMapIndex, visitor, obj);
     }
 }

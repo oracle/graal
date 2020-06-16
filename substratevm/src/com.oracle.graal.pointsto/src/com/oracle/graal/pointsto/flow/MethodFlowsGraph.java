@@ -32,18 +32,19 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.graalvm.compiler.graph.Node;
-
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.LoadIndexedTypeFlow;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+
+import jdk.vm.ci.code.BytecodePosition;
 
 public class MethodFlowsGraph {
 
@@ -73,6 +74,7 @@ public class MethodFlowsGraph {
      * We keep a bci->flow mapping for instanceof and invoke flows since they are queried by the
      * analysis results builder.
      */
+    private Set<Object> nonUniqueBcis;
     private Map<Object, InstanceOfTypeFlow> instanceOfFlows;
     private Map<Object, InvokeTypeFlow> invokeFlows;
 
@@ -139,6 +141,7 @@ public class MethodFlowsGraph {
 
         // invoke
         invokeFlows = new HashMap<>(4, 0.75f);
+        nonUniqueBcis = new HashSet<>();
     }
 
     public MethodFlowsGraph(AnalysisMethod method, AnalysisContext context) {
@@ -211,13 +214,18 @@ public class MethodFlowsGraph {
 
     @SuppressWarnings("unchecked")
     public <T extends TypeFlow<?>> T lookupCloneOf(BigBang bb, T original) {
-        assert original != null && !original.isClone();
+        assert original != null : "Looking for the clone of a 'null' flow in " + this;
+        assert !original.isClone() : "Looking for the clone of the already cloned flow " + original + " in " + this;
         assert !(original instanceof FieldTypeFlow) : "Trying to clone a field type flow";
         assert !(original instanceof ArrayElementsTypeFlow) : "Trying to clone an mixed elements type flow";
 
         if (original instanceof AllInstantiatedTypeFlow || original instanceof AllSynchronizedTypeFlow) {
             /* All instantiated is not cloneable. */
             return original;
+        }
+        if (original instanceof ProxyTypeFlow) {
+            /* The ProxyTypeFlow is just a place holder in the original graph for its input. */
+            return (T) ((ProxyTypeFlow) original).getInput();
         }
 
         int slot = original.getSlot();
@@ -325,11 +333,11 @@ public class MethodFlowsGraph {
     }
 
     public void linearizeGraph() {
-        linearizedGraph = getLinearizeGraph();
+        linearizedGraph = doLinearizeGraph();
         isLinearized = true;
     }
 
-    public TypeFlow<?>[] getLinearizeGraph() {
+    private TypeFlow<?>[] doLinearizeGraph() {
 
         Deque<TypeFlow<?>> worklist = new ArrayDeque<>();
 
@@ -508,21 +516,30 @@ public class MethodFlowsGraph {
         doAddFlow(key, invokeTypeFlow, invokeFlows);
     }
 
-    private static <T extends TypeFlow<? extends Node>> void doAddFlow(Object key, T flow, Map<Object, T> map) {
-        if (map.containsKey(key)) {
-            assert key instanceof Integer;
+    private <T extends TypeFlow<BytecodePosition>> void doAddFlow(Object key, T flow, Map<Object, T> map) {
+        assert map == instanceOfFlows || map == invokeFlows : "Keys of these maps must not be overlapping";
+        Object uniqueKey = key;
+        if (nonUniqueBcis.contains(key) || removeNonUnique(key, instanceOfFlows) || removeNonUnique(key, invokeFlows)) {
+            uniqueKey = new Object();
+        }
+        map.put(uniqueKey, flow);
+    }
+
+    private <T extends TypeFlow<BytecodePosition>> boolean removeNonUnique(Object key, Map<Object, T> map) {
+        T oldFlow = map.remove(key);
+        if (oldFlow != null) {
             /*
              * This can happen when Graal inlines jsr/ret routines and the inlined nodes share the
-             * same bci. Remove the old bci->flow pairing and replace it with a uniqueKey->flow
-             * pairing.
+             * same bci. Or for some invokes where the bytecode parser needs to insert a type check
+             * before the invoke. Remove the old bci->flow pairing and replace it with a
+             * uniqueKey->flow pairing.
              */
-            T oldFlow = map.remove(key);
             map.put(new Object(), oldFlow);
-            map.put(new Object(), flow);
+            nonUniqueBcis.add(key);
+            return true;
         } else {
-            map.put(key, flow);
+            return false;
         }
-
     }
 
     public InvokeTypeFlow getInvoke(Object key) {
@@ -546,10 +563,15 @@ public class MethodFlowsGraph {
          * TODO cache the result
          */
         List<MethodFlowsGraph> callers = new ArrayList<>();
-        for (AnalysisMethod caller : method.getJavaInvocations()) {
+        for (AnalysisMethod caller : method.getCallers()) {
             for (MethodFlowsGraph callerFlowGraph : caller.getTypeFlow().getFlows()) {
                 for (InvokeTypeFlow callerInvoke : callerFlowGraph.getInvokeFlows()) {
-                    for (MethodFlowsGraph calleeFlowGraph : callerInvoke.getCalleesFlows(bb)) {
+                    InvokeTypeFlow invoke = callerInvoke;
+                    if (InvokeTypeFlow.isContextInsensitiveVirtualInvoke(callerInvoke)) {
+                        /* The invoke has been replaced by the context insensitive one. */
+                        invoke = callerInvoke.getTargetMethod().getContextInsensitiveInvoke();
+                    }
+                    for (MethodFlowsGraph calleeFlowGraph : invoke.getCalleesFlows(bb)) {
                         // 'this' method graph was found among the callees of an invoke flow in one
                         // of the clones of the caller methods, hence we regiter that clone as a
                         // caller for 'this' method clone

@@ -27,46 +27,42 @@ package com.oracle.svm.hosted.image;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.graalvm.compiler.options.Option;
+import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.option.HostedOptionKey;
-
-import jdk.vm.ci.meta.ResolvedJavaMethod;
+import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 
 public abstract class CCLinkerInvocation implements LinkerInvocation {
 
     public static class Options {
         @Option(help = "Pass the provided raw option to the linker command that produces the final binary. The possible options are platform specific and passed through without any validation.")//
-        public static final HostedOptionKey<String[]> NativeLinkerOption = new HostedOptionKey<>(null);
+        public static final HostedOptionKey<String[]> NativeLinkerOption = new HostedOptionKey<>(new String[0]);
     }
 
     protected final List<String> additionalPreOptions = new ArrayList<>();
-    protected String compilerCommand = "cc";
-    protected final List<String> inputFilenames = new ArrayList<>();
+    protected final List<Path> inputFilenames = new ArrayList<>();
     protected final List<String> rpaths = new ArrayList<>();
     protected final List<String> libpaths = new ArrayList<>();
     protected final List<String> libs = new ArrayList<>();
-    protected final Map<ResolvedJavaMethod, String> symbolAliases = new HashMap<>();
     protected Path outputFile;
     protected AbstractBootImage.NativeImageKind outputKind;
 
     @Override
-    public List<String> getInputFiles() {
+    public List<Path> getInputFiles() {
         return Collections.unmodifiableList(inputFilenames);
     }
 
     @Override
-    public void addInputFile(String filename) {
+    public void addInputFile(Path filename) {
         inputFilenames.add(filename);
     }
 
     @Override
-    public void addInputFile(int index, String filename) {
+    public void addInputFile(int index, Path filename) {
         inputFilenames.add(index, filename);
     }
 
@@ -76,16 +72,6 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
 
     public void setOutputKind(AbstractBootImage.NativeImageKind k) {
         outputKind = k;
-    }
-
-    @Override
-    public Map<ResolvedJavaMethod, String> getSymbolAliases() {
-        return Collections.unmodifiableMap(symbolAliases);
-    }
-
-    @Override
-    public void addSymbolAlias(ResolvedJavaMethod definition, String alias) {
-        symbolAliases.put(definition, alias);
     }
 
     @Override
@@ -147,35 +133,20 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
         libs.add(index, libname);
     }
 
-    @Override
-    public String getCompilerCommand() {
-        return compilerCommand;
+    protected List<String> getCompilerCommand(List<String> options) {
+        return ImageSingletons.lookup(CCompilerInvoker.class).createCompilerCommand(options, outputFile, inputFilenames.toArray(new Path[0]));
     }
-
-    @Override
-    public void setCompilerCommand(String command) {
-        compilerCommand = command;
-    }
-
-    protected abstract void addOneSymbolAliasOption(List<String> cmd, Map.Entry<ResolvedJavaMethod, String> ent);
 
     protected abstract void setOutputKind(List<String> cmd);
 
     @Override
     public List<String> getCommand() {
-        ArrayList<String> cmd = new ArrayList<>();
-        cmd.add(compilerCommand);
-        cmd.add("-v");
-        cmd.add("-o");
-        cmd.add(outputFile.toString());
+        List<String> compilerCmd = getCompilerCommand(additionalPreOptions);
 
-        for (String opt : additionalPreOptions) {
-            cmd.add(opt);
-        }
+        List<String> cmd = new ArrayList<>(compilerCmd);
         setOutputKind(cmd);
-        for (Map.Entry<ResolvedJavaMethod, String> ent : symbolAliases.entrySet()) {
-            addOneSymbolAliasOption(cmd, ent);
-        }
+
+        cmd.add("-v");
         for (String libpath : libpaths) {
             cmd.add("-L" + libpath);
         }
@@ -183,7 +154,6 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
             cmd.add("-Wl,-rpath");
             cmd.add("-Wl," + rpath);
         }
-        cmd.addAll(inputFilenames);
         for (String lib : libs) {
             if (lib.startsWith("-")) {
                 cmd.add("-Wl," + lib.replace(" ", ","));
@@ -192,11 +162,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
             }
         }
 
-        if (Options.NativeLinkerOption.getValue() != null) {
-            for (String nativeLinkerOption : Options.NativeLinkerOption.getValue()) {
-                cmd.add(nativeLinkerOption);
-            }
-        }
+        Collections.addAll(cmd, Options.NativeLinkerOption.getValue());
         return cmd;
     }
 

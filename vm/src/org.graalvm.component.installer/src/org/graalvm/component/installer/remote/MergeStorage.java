@@ -31,9 +31,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.graalvm.component.installer.ComponentCatalog;
+import org.graalvm.component.installer.FailedOperationException;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.IncompatibleException;
+import org.graalvm.component.installer.InstallerStopException;
 import org.graalvm.component.installer.SoftwareChannel;
+import org.graalvm.component.installer.SoftwareChannelSource;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.persist.AbstractCatalogStorage;
@@ -43,34 +47,83 @@ import org.graalvm.component.installer.persist.AbstractCatalogStorage;
  * 
  * @author sdedic
  */
-class MergeStorage extends AbstractCatalogStorage {
+public class MergeStorage extends AbstractCatalogStorage implements ComponentCatalog.DownloadInterceptor {
     private final Map<ComponentInfo, SoftwareChannel> channelMap = new HashMap<>();
     private final List<SoftwareChannel> channels = new ArrayList<>();
+    private final Map<SoftwareChannel, SoftwareChannelSource> channelInfos = new HashMap<>();
 
-    MergeStorage(ComponentRegistry localRegistry, Feedback feedback) {
+    private boolean ignoreCatalogErrors;
+
+    public MergeStorage(ComponentRegistry localRegistry, Feedback feedback) {
         super(localRegistry, feedback, null);
     }
 
-    public void addChannel(SoftwareChannel delegate) {
+    public void addChannel(SoftwareChannelSource info, SoftwareChannel delegate) {
         channels.add(delegate);
+        channelInfos.put(delegate, info);
     }
+
+    public boolean isIgnoreCatalogErrors() {
+        return ignoreCatalogErrors;
+    }
+
+    public void setIgnoreCatalogErrors(boolean ignoreCatalogErrors) {
+        this.ignoreCatalogErrors = ignoreCatalogErrors;
+    }
+
+    private void reportError(Exception exc, SoftwareChannel errChannel) {
+        if (exc == null) {
+            return;
+        }
+        // the previous error is overwritten, so at least report it before it is
+        // forgot:
+        SoftwareChannelSource info = channelInfos.get(errChannel);
+        String l = info.getLabel();
+        if (l == null) {
+            l = info.getLocationURL();
+        }
+        feedback.error("REMOTE_CannotLoadChannel", exc, l, exc.getLocalizedMessage());
+    }
+
+    private boolean idsLoaded;
 
     @Override
     public Set<String> listComponentIDs() throws IOException {
         Set<String> ids = new HashSet<>();
-        IncompatibleException incEx = null;
+        List<Exception> savedEx = new ArrayList<>();
+        List<SoftwareChannel> errChannels = new ArrayList<>();
         boolean oneSucceeded = false;
-        for (SoftwareChannel del : channels) {
+        Exception toThrow = null;
+        for (SoftwareChannel del : new ArrayList<>(channels)) {
             try {
                 ids.addAll(del.getStorage().listComponentIDs());
                 oneSucceeded = true;
             } catch (IncompatibleException ex) {
-                incEx = ex;
+                savedEx.add(ex);
+                errChannels.add(del);
+                channels.remove(del);
+            } catch (IOException | FailedOperationException ex) {
+                if (!isIgnoreCatalogErrors()) {
+                    throw ex;
+                }
+                if (!idsLoaded) {
+                    reportError(ex, del);
+                }
+                toThrow = ex;
+                channels.remove(del);
             }
         }
-        if (!oneSucceeded && incEx != null) {
-            throw incEx;
+        if (!oneSucceeded || ids.isEmpty()) {
+            for (int i = 0; i < savedEx.size(); i++) {
+                reportError(toThrow = savedEx.get(i), errChannels.get(i));
+            }
+            if (toThrow instanceof IOException) {
+                throw (IOException) toThrow;
+            } else if (toThrow != null) {
+                throw (InstallerStopException) toThrow;
+            }
         }
+        idsLoaded = true;
         return ids;
     }
 
@@ -98,5 +151,11 @@ class MergeStorage extends AbstractCatalogStorage {
 
     public SoftwareChannel getOrigin(ComponentInfo ci) {
         return channelMap.get(ci);
+    }
+
+    @Override
+    public FileDownloader processDownloader(ComponentInfo info, FileDownloader dn) {
+        SoftwareChannel orig = getOrigin(info);
+        return orig != null ? orig.configureDownloader(info, dn) : dn;
     }
 }

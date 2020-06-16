@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,24 +27,34 @@ package org.graalvm.compiler.hotspot;
 import static jdk.vm.ci.code.CodeUtil.K;
 import static jdk.vm.ci.code.CodeUtil.getCallingConvention;
 import static jdk.vm.ci.common.InitTimer.timer;
+import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE;
+import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO;
+import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.NO_LOCATIONS;
 
 import java.util.Collections;
 
+import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
+import org.graalvm.compiler.core.gen.LIRGenerationProvider;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
+import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import org.graalvm.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotLoweringProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.stubs.Stub;
+import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
+import org.graalvm.compiler.lir.framemap.FrameMapBuilder;
 import org.graalvm.compiler.lir.framemap.ReferenceMapBuilder;
+import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.word.Word;
 
 import jdk.vm.ci.code.CallingConvention;
+import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.common.InitTimer;
 import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
@@ -55,21 +65,30 @@ import jdk.vm.ci.runtime.JVMCICompiler;
 /**
  * Common functionality of HotSpot host backends.
  */
-public abstract class HotSpotHostBackend extends HotSpotBackend {
+public abstract class HotSpotHostBackend extends HotSpotBackend implements LIRGenerationProvider {
 
     /**
      * Descriptor for {@code SharedRuntime::deopt_blob()->unpack()}.
      */
-    public static final ForeignCallDescriptor DEOPTIMIZATION_HANDLER = new ForeignCallDescriptor("deoptHandler", void.class);
+    public static final HotSpotForeignCallDescriptor DEOPT_BLOB_UNPACK = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, REEXECUTABLE, NO_LOCATIONS, "deopt_blob()->unpack()", void.class);
+
+    /**
+     * Descriptor for {@code SharedRuntime::deopt_blob()->unpack_with_exception_in_tls()}.
+     */
+    public static final HotSpotForeignCallDescriptor DEOPT_BLOB_UNPACK_WITH_EXCEPTION_IN_TLS = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, REEXECUTABLE, NO_LOCATIONS,
+                    "deopt_blob()->unpack_with_exception_in_tls()", void.class);
 
     /**
      * Descriptor for {@code SharedRuntime::deopt_blob()->uncommon_trap()}.
      */
-    public static final ForeignCallDescriptor UNCOMMON_TRAP_HANDLER = new ForeignCallDescriptor("uncommonTrapHandler", void.class);
+    public static final HotSpotForeignCallDescriptor DEOPT_BLOB_UNCOMMON_TRAP = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, REEXECUTABLE, NO_LOCATIONS, "deopt_blob()->uncommon_trap()",
+                    void.class);
 
-    public static final ForeignCallDescriptor ENABLE_STACK_RESERVED_ZONE = new ForeignCallDescriptor("enableStackReservedZoneEntry", void.class, Word.class);
+    public static final HotSpotForeignCallDescriptor ENABLE_STACK_RESERVED_ZONE = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, REEXECUTABLE, NO_LOCATIONS, "enableStackReservedZoneEntry",
+                    void.class, Word.class);
 
-    public static final ForeignCallDescriptor THROW_DELAYED_STACKOVERFLOW_ERROR = new ForeignCallDescriptor("throwDelayedStackoverflowError", void.class);
+    public static final HotSpotForeignCallDescriptor THROW_DELAYED_STACKOVERFLOW_ERROR = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, REEXECUTABLE, NO_LOCATIONS, "throwDelayedStackoverflowError",
+                    void.class);
 
     protected final GraalHotSpotVMConfig config;
 
@@ -82,7 +101,7 @@ public abstract class HotSpotHostBackend extends HotSpotBackend {
     @SuppressWarnings("try")
     public void completeInitialization(HotSpotJVMCIRuntime jvmciRuntime, OptionValues options) {
         final HotSpotProviders providers = getProviders();
-        HotSpotHostForeignCallsProvider foreignCalls = (HotSpotHostForeignCallsProvider) providers.getForeignCalls();
+        HotSpotHostForeignCallsProvider foreignCalls = providers.getForeignCalls();
         final HotSpotLoweringProvider lowerer = (HotSpotLoweringProvider) providers.getLowerer();
 
         try (InitTimer st = timer("foreignCalls.initialize")) {
@@ -155,4 +174,12 @@ public abstract class HotSpotHostBackend extends HotSpotBackend {
         return new HotSpotReferenceMapBuilder(totalFrameSize, config.maxOopMapStackOffset, uncompressedReferenceSize);
     }
 
+    @Override
+    public LIRGenerationResult newLIRGenerationResult(CompilationIdentifier compilationId, LIR lir, RegisterAllocationConfig registerAllocationConfig, StructuredGraph graph, Object stub) {
+        return new HotSpotLIRGenerationResult(compilationId, lir, newFrameMapBuilder(registerAllocationConfig.getRegisterConfig()), registerAllocationConfig, makeCallingConvention(graph, (Stub) stub),
+                        stub,
+                        config.requiresReservedStackCheck(graph.getMethods()));
+    }
+
+    protected abstract FrameMapBuilder newFrameMapBuilder(RegisterConfig registerConfig);
 }

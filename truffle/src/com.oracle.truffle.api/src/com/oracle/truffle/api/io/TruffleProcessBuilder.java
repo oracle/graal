@@ -352,13 +352,13 @@ public final class TruffleProcessBuilder {
 
     private <T extends Throwable> RuntimeException wrapHostException(T t) {
         if (IOAccessor.engineAccess().hasDefaultProcessHandler(polyglotLanguageContext)) {
-            throw sthrow(t);
+            throw sthrow(RuntimeException.class, t);
         }
         throw IOAccessor.engineAccess().wrapHostException(null, polyglotLanguageContext, t);
     }
 
-    @SuppressWarnings("unchecked")
-    private static <T extends RuntimeException> T sthrow(final Throwable t) throws T {
+    @SuppressWarnings({"unchecked", "unused"})
+    private static <T extends Throwable> T sthrow(Class<T> type, Throwable t) throws T {
         throw (T) t;
     }
 

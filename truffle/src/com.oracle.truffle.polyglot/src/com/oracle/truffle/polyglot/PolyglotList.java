@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -130,12 +130,16 @@ class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
 
     @Override
     public int hashCode() {
-        return HostWrapper.hashCode(this);
+        return HostWrapper.hashCode(languageContext, guestObject);
     }
 
     @Override
     public boolean equals(Object o) {
-        return HostWrapper.equals(this, o);
+        if (o instanceof PolyglotList) {
+            return HostWrapper.equals(languageContext, guestObject, ((PolyglotList<?>) o).guestObject);
+        } else {
+            return false;
+        }
     }
 
     static final class Cache {

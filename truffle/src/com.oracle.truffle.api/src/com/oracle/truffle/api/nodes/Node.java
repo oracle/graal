@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.api.nodes;
 
+import static com.oracle.truffle.api.nodes.NodeAccessor.ENGINE;
+import static com.oracle.truffle.api.nodes.NodeAccessor.INSTRUMENT;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -63,8 +66,6 @@ import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.impl.Accessor;
-import com.oracle.truffle.api.impl.Accessor.InstrumentSupport;
 import com.oracle.truffle.api.nodes.ExecutableNode.ReferenceCache;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -107,9 +108,6 @@ public abstract class Node implements NodeInterface, Cloneable {
     protected Node() {
         CompilerAsserts.neverPartOfCompilation("do not create a Node from compiled code");
         assert NodeClass.get(getClass()) != null; // ensure NodeClass constructor does not throw
-        if (TruffleOptions.TraceASTJSON) {
-            dump(this, null, null);
-        }
     }
 
     NodeClass getNodeClass() {
@@ -166,7 +164,7 @@ public abstract class Node implements NodeInterface, Cloneable {
      * @return an approximation of the source code represented by this Node
      * @since 0.8 or earlier
      */
-    @ExplodeLoop
+    @TruffleBoundary
     public SourceSection getEncapsulatingSourceSection() {
         Node current = this;
         while (current != null) {
@@ -180,8 +178,8 @@ public abstract class Node implements NodeInterface, Cloneable {
     }
 
     /**
-     * Returns <code>true</code> if this node can be adopated by a parent. This method is intended
-     * to be overriden by subclasses. If nodes need to be statically shared that they must not be
+     * Returns <code>true</code> if this node can be adopted by a parent. This method is intended to
+     * be overriden by subclasses. If nodes need to be statically shared that they must not be
      * adoptable, because otherwise the parent reference might cause a memory leak. If a node is not
      * adoptable then then it is guaranteed that the {@link #getParent() parent} pointer remains
      * <code>null</code> at all times, even if the node is tried to be adopted by a parent.
@@ -233,7 +231,7 @@ public abstract class Node implements NodeInterface, Cloneable {
 
     /**
      * Notifies the framework about the insertion of one or more nodes during execution. Otherwise,
-     * the framework assumes that {@link com.oracle.truffle.api.instrumentation.Instrumentable
+     * the framework assumes that {@link com.oracle.truffle.api.instrumentation.InstrumentableNode
      * instrumentable} nodes remain unchanged after their root node is first
      * {@link RootNode#execute(com.oracle.truffle.api.frame.VirtualFrame) executed}. Insertions
      * don't need to be notified if it is known that none of the inserted nodes are
@@ -254,18 +252,13 @@ public abstract class Node implements NodeInterface, Cloneable {
         if (rootNode == null) {
             throw new IllegalStateException("Node is not yet adopted and cannot be updated.");
         }
-        InstrumentSupport support = NodeAccessor.ACCESSOR.instrumentSupport();
-        if (support != null) {
-            support.onNodeInserted(rootNode, node);
-        }
+        INSTRUMENT.onNodeInserted(rootNode, node);
     }
 
     /** @since 0.8 or earlier */
     public final void adoptChildren() {
         CompilerDirectives.transferToInterpreterAndInvalidate();
-        if (isAdoptable()) {
-            NodeUtil.adoptChildrenHelper(this);
-        }
+        NodeUtil.adoptChildrenHelper(this);
     }
 
     @SuppressWarnings("deprecation")
@@ -277,9 +270,6 @@ public abstract class Node implements NodeInterface, Cloneable {
         if (newChild.isAdoptable()) {
             assert checkSameLanguages(newChild);
             newChild.parent = this;
-            if (TruffleOptions.TraceASTJSON) {
-                dump(this, newChild, null);
-            }
             NodeUtil.adoptChildrenHelper(newChild);
         }
     }
@@ -299,9 +289,6 @@ public abstract class Node implements NodeInterface, Cloneable {
         if (newChild.isAdoptable()) {
             assert checkSameLanguages(newChild);
             newChild.parent = this;
-            if (TruffleOptions.TraceASTJSON) {
-                dump(this, newChild, null);
-            }
             count += NodeUtil.adoptChildrenAndCountHelper(newChild);
         }
         return count;
@@ -449,18 +436,6 @@ public abstract class Node implements NodeInterface, Cloneable {
         if (TruffleOptions.TraceRewrites) {
             NodeUtil.traceRewrite(this, newNode, reason);
         }
-        if (TruffleOptions.TraceASTJSON) {
-            dump(this, newNode, reason);
-        }
-    }
-
-    private static void dump(Node node, Node newChild, CharSequence reason) {
-        if (NodeAccessor.ACCESSOR != null) {
-            Accessor.DumpSupport dumpSupport = NodeAccessor.ACCESSOR.dumpSupport();
-            if (dumpSupport != null) {
-                dumpSupport.dump(node, newChild, reason);
-            }
-        }
     }
 
     /**
@@ -535,15 +510,18 @@ public abstract class Node implements NodeInterface, Cloneable {
      * @since 0.8 or earlier
      */
     public final RootNode getRootNode() {
-        Node rootNode = this;
-        while (rootNode.getParent() != null) {
-            assert !(rootNode instanceof RootNode) : "root node must not have a parent";
-            rootNode = rootNode.getParent();
+        Node node = this;
+        Node prev;
+        do {
+            prev = node;
+            node = node.getParent();
+        } while (node != null);
+
+        if (prev instanceof RootNode) {
+            return (RootNode) prev;
+        } else {
+            return null;
         }
-        if (rootNode instanceof RootNode) {
-            return (RootNode) rootNode;
-        }
-        return null;
     }
 
     /**
@@ -557,7 +535,7 @@ public abstract class Node implements NodeInterface, Cloneable {
      */
     protected final void reportPolymorphicSpecialize() {
         CompilerAsserts.neverPartOfCompilation();
-        NodeAccessor.ACCESSOR.nodeSupport().reportPolymorphicSpecialize(this);
+        NodeAccessor.RUNTIME.reportPolymorphicSpecialize(this);
     }
 
     /**
@@ -619,17 +597,11 @@ public abstract class Node implements NodeInterface, Cloneable {
         // it is never reset to null, and thus, rootNode is always reachable.
         // GIL: used for nodes that are replace in ASTs that are not yet adopted
         RootNode root = getRootNode();
-        return root == null ? GIL_LOCK : root.lock;
-    }
-
-    /**
-     * @since 0.12
-     * @see com.oracle.truffle.api.instrumentation.InstrumentableNode
-     * @deprecated in 0.33 implement InstrumentableNode#hasTag instead.
-     */
-    @Deprecated
-    protected boolean isTaggedWith(@SuppressWarnings("unused") Class<?> tag) {
-        return false;
+        if (root == null) {
+            return GIL_LOCK;
+        } else {
+            return root.getLazyLock();
+        }
     }
 
     /**
@@ -694,26 +666,31 @@ public abstract class Node implements NodeInterface, Cloneable {
      */
     @SuppressWarnings({"unchecked", "rawtypes"})
     protected final <T extends TruffleLanguage> LanguageReference<T> lookupLanguageReference(Class<T> languageClass) {
-        if (languageClass == null) {
-            CompilerDirectives.transferToInterpreter();
-            throw new NullPointerException();
-        }
-        ExecutableNode executableNode = getExecutableNode();
-        if (executableNode != null) {
-            if (executableNode.language != null && executableNode.language.getClass() == languageClass) {
-                return NodeAccessor.ACCESSOR.engineSupport().getDirectLanguageReference(executableNode.sourceVM,
-                                executableNode.language, languageClass);
-            } else {
-                ReferenceCache cache = executableNode.lookupReferenceCache(languageClass);
-                if (cache != null) {
-                    return (LanguageReference<T>) cache.languageReference;
+        try {
+            if (languageClass == null) {
+                CompilerDirectives.transferToInterpreter();
+                throw new NullPointerException();
+            }
+            ExecutableNode executableNode = getExecutableNode();
+            if (executableNode != null) {
+                TruffleLanguage<?> language = executableNode.getLanguage();
+                Object engine = executableNode.getEngine();
+                if (language != null && language.getClass() == languageClass) {
+                    return ENGINE.getDirectLanguageReference(engine, language, languageClass);
                 } else {
-                    return NodeAccessor.ACCESSOR.engineSupport().lookupLanguageReference(executableNode.sourceVM,
-                                    executableNode.language, languageClass);
+                    ReferenceCache cache = executableNode.lookupReferenceCache(languageClass);
+                    if (cache != null) {
+                        return (LanguageReference<T>) cache.languageReference;
+                    } else {
+                        return ENGINE.lookupLanguageReference(engine,
+                                        language, languageClass);
+                    }
                 }
             }
+            return lookupUncachedLanguageReference(languageClass);
+        } catch (Throwable t) {
+            throw ENGINE.engineToLanguageException(t);
         }
-        return lookupUncachedLanguageReference(languageClass);
     }
 
     @SuppressWarnings("unchecked")
@@ -725,7 +702,7 @@ public abstract class Node implements NodeInterface, Cloneable {
                 @Override
                 @TruffleBoundary
                 public TruffleLanguage<?> get() {
-                    return NodeAccessor.ACCESSOR.engineSupport().getCurrentLanguage(languageClass);
+                    return ENGINE.getCurrentLanguage(languageClass);
                 }
             };
             UNCACHED_LANGUAGE_REFERENCES.put(languageClass, result);
@@ -804,26 +781,32 @@ public abstract class Node implements NodeInterface, Cloneable {
      */
     @SuppressWarnings("unchecked")
     protected final <C, T extends TruffleLanguage<C>> ContextReference<C> lookupContextReference(Class<T> languageClass) {
-        if (languageClass == null) {
-            CompilerDirectives.transferToInterpreter();
-            throw new NullPointerException();
-        }
-        ExecutableNode executableNode = getExecutableNode();
-        if (executableNode != null) {
-            if (executableNode.language != null && executableNode.language.getClass() == languageClass) {
-                return NodeAccessor.ACCESSOR.engineSupport().getDirectContextReference(executableNode.sourceVM,
-                                executableNode.language, languageClass);
-            } else {
-                ReferenceCache cache = executableNode.lookupReferenceCache(languageClass);
-                if (cache != null) {
-                    return (ContextReference<C>) cache.contextReference;
+        try {
+            if (languageClass == null) {
+                CompilerDirectives.transferToInterpreter();
+                throw new NullPointerException();
+            }
+            ExecutableNode executableNode = getExecutableNode();
+            if (executableNode != null) {
+                TruffleLanguage<?> language = executableNode.getLanguage();
+                Object engine = executableNode.getEngine();
+                if (language != null && language.getClass() == languageClass) {
+                    return ENGINE.getDirectContextReference(engine,
+                                    language, languageClass);
                 } else {
-                    return NodeAccessor.ACCESSOR.engineSupport().lookupContextReference(executableNode.sourceVM,
-                                    executableNode.language, languageClass);
+                    ReferenceCache cache = executableNode.lookupReferenceCache(languageClass);
+                    if (cache != null) {
+                        return (ContextReference<C>) cache.contextReference;
+                    } else {
+                        return ENGINE.lookupContextReference(engine,
+                                        language, languageClass);
+                    }
                 }
             }
+            return lookupUncachedContextReference(languageClass);
+        } catch (Throwable t) {
+            throw ENGINE.engineToLanguageException(t);
         }
-        return lookupUncachedContextReference(languageClass);
     }
 
     private static final Map<Class<?>, ContextReference<?>> UNCACHED_CONTEXT_REFERENCES = new ConcurrentHashMap<>();
@@ -849,7 +832,11 @@ public abstract class Node implements NodeInterface, Cloneable {
                 @Override
                 @TruffleBoundary
                 public Object get() {
-                    return NodeAccessor.ACCESSOR.engineSupport().getCurrentContext(language);
+                    try {
+                        return ENGINE.getCurrentContext(language);
+                    } catch (Throwable t) {
+                        throw ENGINE.engineToLanguageException(t);
+                    }
                 }
             };
             UNCACHED_CONTEXT_REFERENCES.put(language, result);
@@ -930,11 +917,6 @@ class NodeSnippets {
             @Override
             protected Object createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
                 return null;
-            }
-
-            @Override
-            protected boolean isObjectOfLanguage(Object object) {
-                return false;
             }
         }
 

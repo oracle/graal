@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,8 +37,8 @@ import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValueNodeUtil;
 import org.graalvm.compiler.nodes.memory.MemoryAccess;
-import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
-import org.graalvm.compiler.nodes.memory.MemoryNode;
+import org.graalvm.compiler.nodes.memory.MemoryKill;
+import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.LocationIdentity;
@@ -50,7 +50,7 @@ import jdk.vm.ci.meta.Value;
 @NodeInfo(allowedUsageTypes = Memory, size = SIZE_512, cycles = CYCLES_UNKNOWN)
 
 public final class AMD64StringUTF16CompressNode extends FixedWithNextNode
-                implements LIRLowerable, MemoryCheckpoint.Multi, MemoryAccess {
+                implements LIRLowerable, MultiMemoryKill, MemoryAccess {
 
     public static final NodeClass<AMD64StringUTF16CompressNode> TYPE = NodeClass.create(AMD64StringUTF16CompressNode.class);
 
@@ -59,7 +59,7 @@ public final class AMD64StringUTF16CompressNode extends FixedWithNextNode
     @Input private ValueNode len;
     final JavaKind readKind;
 
-    @OptionalInput(Memory) private MemoryNode lla; // Last access location registered.
+    @OptionalInput(Memory) private MemoryKill lla; // Last access location registered.
 
     // java.lang.StringUTF16.compress([CI[BII)I
     //
@@ -82,7 +82,7 @@ public final class AMD64StringUTF16CompressNode extends FixedWithNextNode
     }
 
     @Override
-    public LocationIdentity[] getLocationIdentities() {
+    public LocationIdentity[] getKilledLocationIdentities() {
         // Model write access via 'dst' using:
         return new LocationIdentity[]{NamedLocationIdentity.getArrayLocation(JavaKind.Byte)};
     }
@@ -95,12 +95,12 @@ public final class AMD64StringUTF16CompressNode extends FixedWithNextNode
     }
 
     @Override
-    public MemoryNode getLastLocationAccess() {
+    public MemoryKill getLastLocationAccess() {
         return lla;
     }
 
     @Override
-    public void setLastLocationAccess(MemoryNode newlla) {
+    public void setLastLocationAccess(MemoryKill newlla) {
         updateUsages(ValueNodeUtil.asNode(lla), ValueNodeUtil.asNode(newlla));
         lla = newlla;
     }

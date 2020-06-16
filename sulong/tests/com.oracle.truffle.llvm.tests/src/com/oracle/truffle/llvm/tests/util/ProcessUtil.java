@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -50,7 +50,8 @@ import com.oracle.truffle.llvm.tests.options.TestOptions;
 public class ProcessUtil {
 
     private static final int BUFFER_SIZE = 1024;
-    private static final int PROCESS_WAIT_TIMEOUT = 60 * 1000; // 1min timeout
+    private static final int PROCESS_WAIT_TIMEOUT = 60 * 1000; // 1 min timeout
+    private static final int JOIN_TIMEOUT = 5 * 1000; // 5 sec timeout
 
     /**
      * This class represents the result of a native command executed by the operating system.
@@ -129,6 +130,15 @@ public class ProcessUtil {
         }
     }
 
+    public static final class TimeoutError extends AssertionError {
+
+        private static final long serialVersionUID = 1L;
+
+        TimeoutError(String command) {
+            super("timeout running command: " + command);
+        }
+    }
+
     public static ProcessResult executeSulongTestMain(File bitcodeFile, String[] args, Map<String, String> options, Function<Context.Builder, CaptureOutput> captureOutput) throws IOException {
         if (TestOptions.TEST_AOT_IMAGE == null) {
             org.graalvm.polyglot.Source source = org.graalvm.polyglot.Source.newBuilder(LLVMLanguage.ID, bitcodeFile).build();
@@ -198,19 +208,23 @@ public class ProcessUtil {
         if (command == null) {
             throw new IllegalArgumentException("command is null!");
         }
+        Process process = null;
         try {
-            Process process = Runtime.getRuntime().exec(command);
+            process = Runtime.getRuntime().exec(command);
+            StreamReader readError = StreamReader.read(process.getErrorStream());
+            StreamReader readOutput = StreamReader.read(process.getInputStream());
             boolean success = process.waitFor(PROCESS_WAIT_TIMEOUT, TimeUnit.MILLISECONDS);
-            String readError = readStreamAndClose(process.getErrorStream());
-            String inputStream = readStreamAndClose(process.getInputStream());
             if (!success) {
-                throw new AssertionError("timeout running command: " + command);
+                throw new TimeoutError(command);
             }
             int llvmResult = process.exitValue();
-            process.destroyForcibly();
-            return new ProcessResult(command, llvmResult, readError, inputStream);
+            return new ProcessResult(command, llvmResult, readError.getResult(), readOutput.getResult());
         } catch (Exception e) {
             throw new RuntimeException(command + " ", e);
+        } finally {
+            if (process != null) {
+                process.destroyForcibly();
+            }
         }
     }
 
@@ -220,15 +234,50 @@ public class ProcessUtil {
         }
     }
 
-    public static String readStreamAndClose(InputStream inputStream) throws IOException {
-        final ByteArrayOutputStream result = new ByteArrayOutputStream();
-        final byte[] buffer = new byte[BUFFER_SIZE];
-        int length;
-        while ((length = inputStream.read(buffer)) != -1) {
-            result.write(buffer, 0, length);
+    private static class StreamReader {
+
+        private final Thread thread;
+        private final ByteArrayOutputStream result;
+
+        private IOException exception;
+
+        static StreamReader read(InputStream inputStream) {
+            StreamReader ret = new StreamReader(inputStream);
+            ret.thread.start();
+            return ret;
         }
-        inputStream.close();
-        result.close();
-        return result.toString();
+
+        StreamReader(InputStream inputStream) {
+            this.result = new ByteArrayOutputStream();
+            this.thread = new Thread(new Runnable() {
+
+                @Override
+                public void run() {
+                    try {
+                        final byte[] buffer = new byte[BUFFER_SIZE];
+                        int length;
+                        while ((length = inputStream.read(buffer)) != -1) {
+                            result.write(buffer, 0, length);
+                        }
+                    } catch (IOException ex) {
+                        // re-throw in the other thread
+                        exception = ex;
+                    }
+                }
+            });
+        }
+
+        String getResult() throws IOException {
+            try {
+                thread.join(JOIN_TIMEOUT);
+                result.close();
+            } catch (InterruptedException ex) {
+                // ignore
+            }
+            if (exception != null) {
+                throw exception;
+            }
+            return result.toString();
+        }
     }
 }

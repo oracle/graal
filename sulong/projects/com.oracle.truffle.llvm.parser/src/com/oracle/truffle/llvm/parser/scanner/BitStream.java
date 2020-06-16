@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.scanner;
 
+import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import org.graalvm.polyglot.io.ByteSequence;
 
 public final class BitStream {
@@ -71,6 +72,9 @@ public final class BitStream {
     }
 
     public long read(long offset, int bits) {
+        if (Long.compareUnsigned(bits, Long.SIZE) > 0) {
+            throw new LLVMParserException(String.format("Cannot read more than %s bits (%s)", Long.SIZE, Integer.toUnsignedString(bits)));
+        }
         int byteIndex = (int) (offset >> BYTE_BITS_SHIFT);
         int bitOffsetInByte = (int) (offset & BYTE_BITS_MASK);
         int availableBits = Byte.SIZE - bitOffsetInByte;

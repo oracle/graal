@@ -30,27 +30,33 @@ final class FieldInfo {
         ConfigurationMemberKind[] values = ConfigurationMemberKind.values();
         WITHOUT_UNSAFE_ACCESS_CACHE = new FieldInfo[values.length];
         for (ConfigurationMemberKind value : values) {
-            WITHOUT_UNSAFE_ACCESS_CACHE[value.ordinal()] = new FieldInfo(value, false);
+            WITHOUT_UNSAFE_ACCESS_CACHE[value.ordinal()] = new FieldInfo(value, false, false);
         }
     }
 
-    static FieldInfo get(ConfigurationMemberKind kind, boolean allowUnsafeAccess) {
-        if (allowUnsafeAccess) { // assumed to be rare
-            return new FieldInfo(kind, allowUnsafeAccess);
+    static FieldInfo get(ConfigurationMemberKind kind, boolean finalButWritable, boolean allowUnsafeAccess) {
+        if (finalButWritable || allowUnsafeAccess) { // assumed to be rare
+            return new FieldInfo(kind, finalButWritable, allowUnsafeAccess);
         }
         return WITHOUT_UNSAFE_ACCESS_CACHE[kind.ordinal()];
     }
 
     private final ConfigurationMemberKind kind;
+    private final boolean finalButWritable;
     private final boolean allowUnsafeAccess;
 
-    private FieldInfo(ConfigurationMemberKind kind, boolean allowUnsafeAccess) {
+    private FieldInfo(ConfigurationMemberKind kind, boolean finalButWritable, boolean allowUnsafeAccess) {
         this.kind = kind;
+        this.finalButWritable = finalButWritable;
         this.allowUnsafeAccess = allowUnsafeAccess;
     }
 
     public ConfigurationMemberKind getKind() {
         return kind;
+    }
+
+    public boolean isFinalButWritable() {
+        return finalButWritable;
     }
 
     public boolean isUnsafeAccessible() {
@@ -61,13 +67,13 @@ final class FieldInfo {
     public boolean equals(Object obj) {
         if (obj != this && obj instanceof FieldInfo) {
             FieldInfo other = (FieldInfo) obj;
-            return kind.equals(other.kind) && allowUnsafeAccess == other.allowUnsafeAccess;
+            return kind.equals(other.kind) && finalButWritable == other.finalButWritable && allowUnsafeAccess == other.allowUnsafeAccess;
         }
         return (obj == this);
     }
 
     @Override
     public int hashCode() {
-        return 31 * Boolean.hashCode(allowUnsafeAccess) + kind.hashCode();
+        return (Boolean.hashCode(allowUnsafeAccess) * 31 + Boolean.hashCode(finalButWritable)) * 31 + kind.hashCode();
     }
 }

@@ -1,31 +1,48 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * The Universal Permissive License (UPL), Version 1.0
  *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
  *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ * (a) the Software, and
  *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 
 package com.oracle.truffle.regex.tregex.buffer;
 
 import java.util.Arrays;
+import java.util.PrimitiveIterator;
 
 /**
  * This class is designed as a "scratchpad" for generating many char arrays of unknown size. It will
@@ -46,9 +63,14 @@ import java.util.Arrays;
  * }
  * </pre>
  */
-public class IntArrayBuffer extends AbstractArrayBuffer {
+public class IntArrayBuffer extends AbstractArrayBuffer implements Iterable<Integer> {
 
+    private static final int[] EMPTY = {};
     protected int[] buf;
+
+    public IntArrayBuffer() {
+        this(8);
+    }
 
     public IntArrayBuffer(int initialSize) {
         buf = new int[initialSize];
@@ -75,7 +97,56 @@ public class IntArrayBuffer extends AbstractArrayBuffer {
         buf[length++] = c;
     }
 
+    public IntArrayBuffer asFixedSizeArray(int size, int initialValue) {
+        ensureCapacity(size);
+        Arrays.fill(buf, 0, size, initialValue);
+        length = size;
+        return this;
+    }
+
+    public int get(int index) {
+        assert index < length;
+        return buf[index];
+    }
+
+    public void set(int index, int value) {
+        assert index < length;
+        buf[index] = value;
+    }
+
+    public void addAll(IntArrayBuffer o) {
+        ensureCapacity(length + o.length);
+        System.arraycopy(o.buf, 0, buf, length, o.length);
+    }
+
     public int[] toArray() {
-        return Arrays.copyOf(buf, length);
+        return isEmpty() ? EMPTY : Arrays.copyOf(buf, length);
+    }
+
+    @Override
+    public PrimitiveIterator.OfInt iterator() {
+        return new IntArrayBufferIterator(buf, length);
+    }
+
+    private static final class IntArrayBufferIterator implements PrimitiveIterator.OfInt {
+
+        private final int[] buf;
+        private final int size;
+        private int i = 0;
+
+        private IntArrayBufferIterator(int[] buf, int size) {
+            this.buf = buf;
+            this.size = size;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return i < size;
+        }
+
+        @Override
+        public int nextInt() {
+            return buf[i++];
+        }
     }
 }

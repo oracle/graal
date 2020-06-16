@@ -49,7 +49,6 @@ import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatConvertNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
-import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.calc.PointerEqualsNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
@@ -211,7 +210,6 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
 
         ValueNode exception = graphKit.createJavaCallWithExceptionAndUnwind(InvokeKind.Static, createFailedCast, expectedNode, actual);
         graphKit.append(new UnwindNode(exception));
-        graphKit.mergeUnwinds();
     }
 
     private static ValueNode createCheckcast(HostedGraphKit graphKit, ValueNode value, ResolvedJavaType type, boolean nonNull) {
@@ -239,14 +237,14 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
 
     private static void fillArgsArray(HostedGraphKit graphKit, ValueNode argumentArray, int receiverOffset, ValueNode[] args, Class<?>[] argTypes) {
         for (int i = 0; i < argTypes.length; i++) {
-            JavaKind argKind = JavaKind.fromJavaClass(argTypes[i]);
-
             ValueNode arg = graphKit.createLoadIndexed(argumentArray, i, JavaKind.Object);
+            ResolvedJavaType argType = graphKit.getMetaAccess().lookupJavaType(argTypes[i]);
+            JavaKind argKind = graphKit.asKind(argType);
             if (argKind.isPrimitive()) {
                 arg = createCheckcast(graphKit, arg, graphKit.getMetaAccess().lookupJavaType(argKind.toBoxedJavaClass()), true);
-                arg = graphKit.createUnboxing(arg, argKind);
+                arg = graphKit.createUnboxing(arg, argKind, graphKit.getMetaAccess());
             } else {
-                arg = createCheckcast(graphKit, arg, graphKit.getMetaAccess().lookupJavaType(argTypes[i]), false);
+                arg = createCheckcast(graphKit, arg, argType, false);
             }
 
             args[i + receiverOffset] = arg;
@@ -270,7 +268,6 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
         graphKit.createJavaCallWithExceptionAndUnwind(InvokeKind.Special, cons, ite, msgNode, cause);
 
         graphKit.append(new UnwindNode(ite));
-        graphKit.mergeUnwinds();
     }
 
     private static boolean canImplicitCast(JavaKind from, JavaKind to) {
@@ -333,10 +330,9 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
                 }
                 break;
             case Short:
-                assert from.isNumericInteger() && from.getBitCount() < to.getBitCount();
-                return graphKit.append(NarrowNode.create(value, to.getBitCount(), NodeView.DEFAULT));
             case Int:
                 assert from.isNumericInteger() && from.getBitCount() < to.getBitCount();
+                /* All values smaller than 32 bit always have a 32-bit stamp. */
                 return value;
             case Long:
                 assert from.isNumericInteger() && from.getBitCount() < to.getBitCount();
@@ -390,7 +386,7 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
             if (isDeletedField(targetField)) {
                 handleDeletedField(graphKit, providers, targetField, kind);
 
-            } else if (canImplicitCast(targetField.getJavaKind(), kind)) {
+            } else if (canImplicitCast(graphKit.asKind(targetField.getType()), kind)) {
 
                 ValueNode receiver;
                 if (targetField.isStatic()) {
@@ -402,16 +398,15 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
                 }
 
                 ValueNode ret = graphKit.append(LoadFieldNode.create(graphKit.getAssumptions(), receiver, targetField));
-                ret = doImplicitCast(graphKit, targetField.getJavaKind(), kind, ret);
+                ret = doImplicitCast(graphKit, graphKit.asKind(targetField.getType()), kind, ret);
 
                 graphKit.createReturn(ret, kind);
 
             } else {
-                throwIllegalArgumentException(graphKit, "cannot read field of type " + targetField.getJavaKind() + " with " + method.getName());
+                throwIllegalArgumentException(graphKit, "cannot read field of type " + graphKit.asKind(targetField.getType()) + " with " + method.getName());
             }
 
-            assert graphKit.getGraph().verify();
-            return graphKit.getGraph();
+            return graphKit.finalizeGraph();
         }
     }
 
@@ -431,7 +426,7 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
             HostedGraphKit graphKit = new HostedGraphKit(ctx, providers, method);
             ResolvedJavaField targetField = providers.getMetaAccess().lookupJavaField(field);
 
-            JavaKind fieldKind = targetField.getJavaKind();
+            JavaKind fieldKind = graphKit.asKind(targetField.getType());
             if (isDeletedField(targetField)) {
                 handleDeletedField(graphKit, providers, targetField, JavaKind.Void);
 
@@ -461,7 +456,7 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
 
                                 graphKit.thenPart();
                                 PiNode boxed = graphKit.createPiNode(value, StampFactory.object(typeRef, true));
-                                ValueNode unboxed = graphKit.createUnboxing(boxed, valueKind);
+                                ValueNode unboxed = graphKit.createUnboxing(boxed, valueKind, providers.getMetaAccess());
                                 ValueNode converted = doImplicitCast(graphKit, valueKind, fieldKind, unboxed);
 
                                 graphKit.append(new StoreFieldNode(receiver, targetField, converted));
@@ -496,10 +491,7 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
                 throwIllegalArgumentException(graphKit, "cannot write field of type " + targetField.getJavaKind() + " with Field." + method.getName());
             }
 
-            graphKit.mergeUnwinds();
-
-            assert graphKit.getGraph().verify();
-            return graphKit.getGraph();
+            return graphKit.finalizeGraph();
         }
     }
 
@@ -558,14 +550,11 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
             graphKit.createReturn(ret, JavaKind.Object);
 
             graphKit.exceptionPart();
-            graphKit.throwInvocationTargetException();
+            graphKit.throwInvocationTargetException(graphKit.exceptionObject());
 
             graphKit.endInvokeWithException();
 
-            graphKit.mergeUnwinds();
-
-            assert graphKit.getGraph().verify();
-            return graphKit.getGraph();
+            return graphKit.finalizeGraph();
         }
     }
 
@@ -605,14 +594,11 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
             graphKit.createReturn(ret, JavaKind.Object);
 
             graphKit.exceptionPart();
-            graphKit.throwInvocationTargetException();
+            graphKit.throwInvocationTargetException(graphKit.exceptionObject());
 
             graphKit.endInvokeWithException();
 
-            graphKit.mergeUnwinds();
-
-            assert graphKit.getGraph().verify();
-            return graphKit.getGraph();
+            return graphKit.finalizeGraph();
         }
     }
 
@@ -632,8 +618,7 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
             ValueNode nameNode = graphKit.createObject(name);
             graphKit.createReturn(nameNode, JavaKind.Object);
 
-            assert graphKit.getGraph().verify();
-            return graphKit.getGraph();
+            return graphKit.finalizeGraph();
         }
     }
 
@@ -653,8 +638,7 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
             ValueNode nameNode = graphKit.createInt(hashCode);
             graphKit.createReturn(nameNode, JavaKind.Int);
 
-            assert graphKit.getGraph().verify();
-            return graphKit.getGraph();
+            return graphKit.finalizeGraph();
         }
     }
 
@@ -704,8 +688,7 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
 
             graphKit.endIf();
 
-            assert graphKit.getGraph().verify();
-            return graphKit.getGraph();
+            return graphKit.finalizeGraph();
         }
     }
 
@@ -738,9 +721,8 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
             ValueNode msgNode = graphKit.createConstant(msg, JavaKind.Object);
             graphKit.createJavaCallWithExceptionAndUnwind(InvokeKind.Special, cons, instance, msgNode);
             graphKit.append(new UnwindNode(instance));
-            graphKit.mergeUnwinds();
-            assert graphKit.getGraph().verify();
-            return graphKit.getGraph();
+
+            return graphKit.finalizeGraph();
         }
     }
 

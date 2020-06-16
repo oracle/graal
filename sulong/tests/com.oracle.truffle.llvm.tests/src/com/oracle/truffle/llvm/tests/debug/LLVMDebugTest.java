@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -38,6 +38,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.oracle.truffle.llvm.tests.options.TestOptions;
+import com.oracle.truffle.llvm.tests.Platform;
 import org.graalvm.polyglot.Context;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -50,8 +51,6 @@ public final class LLVMDebugTest extends LLVMDebugTestBase {
     private static final Path SRC_DIR_PATH = Paths.get(TestOptions.PROJECT_ROOT, "..", "tests", "com.oracle.truffle.llvm.tests.debug.native", "debug");
     private static final Path TRACE_DIR_PATH = Paths.get(TestOptions.PROJECT_ROOT, "..", "tests", "com.oracle.truffle.llvm.tests.debug.native", "trace");
 
-    private static final String OPTION_ENABLE_LVI = "llvm.enableLVI";
-
     private static final String BC_O0 = "O0.bc";
     private static final String BC_O1 = "O1.bc";
     private static final String BC_MEM2REG = "O0_MEM2REG.bc";
@@ -60,28 +59,35 @@ public final class LLVMDebugTest extends LLVMDebugTestBase {
         super(testName, configuration);
     }
 
-    @Parameters(name = "{0}_{1}")
+    @Parameters(name = "{0}" + TEST_FOLDER_EXT + "/{1}")
     public static Collection<Object[]> getConfigurations() {
         final Map<String, String[]> configs = new HashMap<>();
-        configs.put("testPrimitives", new String[]{BC_O0, BC_MEM2REG});
-        configs.put("testStructures", new String[]{BC_O0, BC_MEM2REG, BC_O1});
-        configs.put("testUnions", new String[]{BC_O0, BC_MEM2REG, BC_O1});
-        configs.put("testDecorators", new String[]{BC_O0, BC_MEM2REG, BC_O1});
-        configs.put("testClasses", new String[]{BC_O0, BC_MEM2REG, BC_O1});
-        configs.put("testScopes", new String[]{BC_O0, BC_MEM2REG, BC_O1});
-        configs.put("testControlFlow", new String[]{BC_O0, BC_MEM2REG});
-        configs.put("testReenterArgsAndVals", new String[]{BC_O0, BC_MEM2REG, BC_O1});
-        configs.put("testFunctionPointer", new String[]{BC_O0, BC_MEM2REG, BC_O1});
-        configs.put("testObjectPointer", new String[]{BC_O0, BC_MEM2REG});
-        configs.put("testLongDouble", new String[]{BC_O0, BC_MEM2REG});
-        configs.put("testBooleans", new String[]{BC_O0, BC_MEM2REG, BC_O1});
-        configs.put("testBitFields", new String[]{BC_O0, BC_MEM2REG});
+        configs.put("testUnions.c", new String[]{BC_O0, BC_MEM2REG, BC_O1});
+        configs.put("testDecorators.c", new String[]{BC_O0, BC_MEM2REG, BC_O1});
+        configs.put("testControlFlow.c", new String[]{BC_O0, BC_MEM2REG});
+        if (!Platform.isAArch64()) {
+            configs.put("testPrimitives.c", new String[]{BC_O0, BC_MEM2REG});
+            String clangCC = System.getenv("CLANG_CC");
+            if (clangCC == null || !clangCC.contains("-4.0")) {
+                // LLVM4 provides no debug info in some cases (esp. with O1)
+                configs.put("testStructures.c", new String[]{BC_O1});
+                configs.put("testClasses.cpp", new String[]{BC_O0, BC_MEM2REG, BC_O1});
+            }
+            configs.put("testReenterArgsAndVals.c", new String[]{BC_O0, BC_MEM2REG});
+            configs.put("testFunctionPointer.c", new String[]{BC_O0, BC_MEM2REG, BC_O1});
+            configs.put("testLongDouble.cpp", new String[]{BC_O0, BC_MEM2REG});
+            configs.put("testBitFields.cpp", new String[]{BC_O0, BC_MEM2REG});
+            configs.put("testScopes.cpp", new String[]{BC_O0, BC_MEM2REG, BC_O1});
+            configs.put("testObjectPointer.cpp", new String[]{BC_O0, BC_MEM2REG});
+            configs.put("testBooleans.cpp", new String[]{BC_O0, BC_MEM2REG, BC_O1});
+        }
+        configs.put("testLoop.c", new String[]{BC_O0, BC_MEM2REG});
         return configs.entrySet().stream().flatMap(e -> Stream.of(e.getValue()).map(v -> new Object[]{e.getKey(), v})).collect(Collectors.toSet());
     }
 
     @Override
     void setContextOptions(Context.Builder contextBuilder) {
-        contextBuilder.option(OPTION_ENABLE_LVI, String.valueOf(true));
+        // use default
     }
 
     @Override

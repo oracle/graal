@@ -67,7 +67,7 @@ public class LoopConditionProfileTest {
 
     @Before
     public void create() {
-        profile = (LoopConditionProfile) invokeStatic(loadRelative(PrimitiveValueProfileTest.class, "LoopConditionProfile$Enabled"), "create");
+        profile = (LoopConditionProfile) invokeStatic(loadRelative(PrimitiveValueProfileTest.class, "LoopConditionProfile$Enabled"), "createLazyLoadClass");
     }
 
     private static long getTrueCount(LoopConditionProfile profile) {

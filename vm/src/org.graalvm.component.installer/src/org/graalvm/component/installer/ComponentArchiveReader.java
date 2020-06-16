@@ -42,8 +42,10 @@ public interface ComponentArchiveReader {
      * @param fileStart bytes at the start of the file; min 8 bytes.
      * @param feedback output interface
      * @param verify verify archive integrity
+     * @param serial identification, optional. If not given the reader is likely to compute a digest
+     *            on the archive, or the component metadata information
      * @return Metadata loader instance or {@code null} if unsupported.
      * @throws java.io.IOException if the loader creation or file open fails
      */
-    MetadataLoader createLoader(Path p, byte[] fileStart, Feedback feedback, boolean verify) throws IOException;
+    MetadataLoader createLoader(Path p, byte[] fileStart, String serial, Feedback feedback, boolean verify) throws IOException;
 }

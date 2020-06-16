@@ -246,9 +246,9 @@ public class DebuggerContextsTest extends AbstractDebugTest {
                 assertEquals(InstrumentationTestLanguage.ID, events.get(1).language.getId());
                 assertTrue(events.get(2).languageInitialized);
                 String type = dc.runInContext(() -> {
-                    assertEquals("10", result.as(String.class));
+                    assertEquals("10", result.toDisplayString());
                     DebugValue metaObj = result.getMetaObject();
-                    return metaObj.as(String.class);
+                    return metaObj.getMetaQualifiedName();
                 });
                 assertEquals("Integer", type);
                 assertEquals(3, events.size());

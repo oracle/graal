@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -133,16 +133,6 @@ class TestProtectedAssembler extends AArch64Assembler {
     }
 
     @Override
-    protected void ldar(int size, Register rt, Register rn) {
-        super.ldar(size, rt, rn);
-    }
-
-    @Override
-    protected void stlr(int size, Register rt, Register rn) {
-        super.stlr(size, rt, rn);
-    }
-
-    @Override
     public void ldaxr(int size, Register rt, Register rn) {
         super.ldaxr(size, rt, rn);
     }
@@ -218,7 +208,7 @@ class TestProtectedAssembler extends AArch64Assembler {
     }
 
     @Override
-    protected void sbfm(int size, Register dst, Register src, int r, int s) {
+    public void sbfm(int size, Register dst, Register src, int r, int s) {
         super.sbfm(size, dst, src, r, s);
     }
 
@@ -258,7 +248,7 @@ class TestProtectedAssembler extends AArch64Assembler {
     }
 
     @Override
-    protected void sub(int size, Register dst, Register src1, Register src2, ExtendType extendType, int shiftAmt) {
+    public void sub(int size, Register dst, Register src1, Register src2, ExtendType extendType, int shiftAmt) {
         super.sub(size, dst, src1, src2, extendType, shiftAmt);
     }
 
@@ -323,8 +313,8 @@ class TestProtectedAssembler extends AArch64Assembler {
     }
 
     @Override
-    protected void ror(int size, Register dst, Register src1, Register src2) {
-        super.ror(size, dst, src1, src2);
+    protected void rorv(int size, Register dst, Register src1, Register src2) {
+        super.rorv(size, dst, src1, src2);
     }
 
     @Override

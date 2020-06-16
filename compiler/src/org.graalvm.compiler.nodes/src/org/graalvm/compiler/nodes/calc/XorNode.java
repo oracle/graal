@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,8 +50,20 @@ public final class XorNode extends BinaryArithmeticNode<Xor> implements BinaryCo
     public static final NodeClass<XorNode> TYPE = NodeClass.create(XorNode.class);
 
     public XorNode(ValueNode x, ValueNode y) {
-        super(TYPE, ArithmeticOpTable::getXor, x, y);
+        super(TYPE, getArithmeticOpTable(x).getXor(), x, y);
         assert x.stamp(NodeView.DEFAULT).isCompatible(y.stamp(NodeView.DEFAULT));
+    }
+
+    private XorNode(ValueNode x, ValueNode y, Stamp forcedStamp) {
+        super(TYPE, forcedStamp, x, y);
+    }
+
+    /**
+     * Create a new XorNode with a forced stamp, without eager folding. This should only be used in
+     * snippet code, where native-image may assign wrong stamps during graph generation.
+     */
+    public static ValueNode createForSnippet(ValueNode x, ValueNode y, Stamp forcedStamp) {
+        return new XorNode(x, y, forcedStamp);
     }
 
     public static ValueNode create(ValueNode x, ValueNode y, NodeView view) {
@@ -62,6 +74,11 @@ public final class XorNode extends BinaryArithmeticNode<Xor> implements BinaryCo
             return tryConstantFold;
         }
         return canonical(null, op, stamp, x, y, view);
+    }
+
+    @Override
+    protected BinaryOp<Xor> getOp(ArithmeticOpTable table) {
+        return table.getXor();
     }
 
     @Override

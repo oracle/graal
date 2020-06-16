@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -60,6 +60,7 @@ import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.sl.nodes.SLEvalRootNode;
+import com.oracle.truffle.sl.nodes.SLRootNode;
 import com.oracle.truffle.sl.nodes.SLStatementNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLBlockNode;
 import com.oracle.truffle.sl.runtime.SLNull;
@@ -112,7 +113,8 @@ public final class SLLexicalScope {
             block = findChildrenBlock(node);
             if (block == null) {
                 // Corrupted SL AST, no block was found
-                assert node.getRootNode() instanceof SLEvalRootNode : "Corrupted SL AST under " + node;
+                RootNode root = node.getRootNode();
+                assert root instanceof SLEvalRootNode || root instanceof SLRootNode : "Corrupted SL AST under " + node;
                 return new SLLexicalScope(null, null, (SLBlockNode) null);
             }
             node = null; // node is above the block

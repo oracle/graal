@@ -28,6 +28,7 @@
 
 static TruffleContext *ctx;
 static double (*globalCallback)(double x);
+static int globalStaticState;
 
 EXPORT void initializeGlobalContext(TruffleEnv *env) {
     ctx = env->getTruffleContext();
@@ -42,4 +43,10 @@ EXPORT TruffleObject registerGlobalCallback(double (*callback)(double)) {
 
 EXPORT double testGlobalCallback(double arg) {
     return globalCallback(arg);
+}
+
+EXPORT int getAndSet(int newValue) {
+    int oldValue = globalStaticState;
+    globalStaticState = newValue;
+    return oldValue;
 }

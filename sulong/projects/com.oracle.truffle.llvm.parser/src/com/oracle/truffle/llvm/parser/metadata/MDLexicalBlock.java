@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,20 +31,13 @@ package com.oracle.truffle.llvm.parser.metadata;
 
 import com.oracle.truffle.llvm.parser.listeners.Metadata;
 
-public final class MDLexicalBlock implements MDBaseNode {
+public final class MDLexicalBlock extends MDNamedLocation {
 
-    private final long line;
     private final long column;
 
-    private MDBaseNode scope;
-    private MDBaseNode file;
-
     private MDLexicalBlock(long line, long column) {
-        this.line = line;
+        super(line);
         this.column = column;
-
-        this.scope = MDVoidNode.INSTANCE;
-        this.file = MDVoidNode.INSTANCE;
     }
 
     @Override
@@ -52,30 +45,8 @@ public final class MDLexicalBlock implements MDBaseNode {
         visitor.visit(this);
     }
 
-    public MDBaseNode getFile() {
-        return file;
-    }
-
-    public long getLine() {
-        return line;
-    }
-
     public long getColumn() {
         return column;
-    }
-
-    public MDBaseNode getScope() {
-        return scope;
-    }
-
-    @Override
-    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
-        if (scope == oldValue) {
-            scope = newValue;
-        }
-        if (file == oldValue) {
-            file = newValue;
-        }
     }
 
     private static final int ARGINDEX_38_SCOPE = 1;
@@ -89,8 +60,8 @@ public final class MDLexicalBlock implements MDBaseNode {
         final long column = args[ARGINDEX_38_COLUMN];
 
         final MDLexicalBlock block = new MDLexicalBlock(line, column);
-        block.scope = md.getNullable(args[ARGINDEX_38_SCOPE], block);
-        block.file = md.getNullable(args[ARGINDEX_38_FILE], block);
+        block.setScope(md.getNullable(args[ARGINDEX_38_SCOPE], block));
+        block.setFile(md.getNullable(args[ARGINDEX_38_FILE], block));
         return block;
     }
 
@@ -105,8 +76,8 @@ public final class MDLexicalBlock implements MDBaseNode {
         // asInt32(args[5); // Unique ID to identify blocks from a template function
 
         final MDLexicalBlock block = new MDLexicalBlock(line, column);
-        block.scope = ParseUtil.resolveReference(args, ARGINDEX_32_SCOPE, block, md);
-        block.file = ParseUtil.resolveReference(args, ARGINDEX_32_FILE, block, md);
+        block.setScope(ParseUtil.resolveReference(args, ARGINDEX_32_SCOPE, block, md));
+        block.setFile(ParseUtil.resolveReference(args, ARGINDEX_32_FILE, block, md));
         return block;
     }
 }

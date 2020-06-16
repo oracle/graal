@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -477,7 +477,7 @@ public interface Feature {
     }
 
     /**
-     * Handler for code that needs to run after the analysis, even if an error has occured, e.g.,
+     * Handler for code that needs to run after the analysis, even if an error has occurred, e.g.,
      * like reporting code.
      *
      * @param access The supported operations that the feature can perform at this time

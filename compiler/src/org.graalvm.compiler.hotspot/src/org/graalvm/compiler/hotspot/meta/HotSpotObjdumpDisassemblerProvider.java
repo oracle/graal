@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,7 +52,6 @@ import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.DataPatch;
 import jdk.vm.ci.code.site.Infopoint;
-import jdk.vm.ci.code.site.Mark;
 import jdk.vm.ci.hotspot.HotSpotCodeCacheProvider;
 import jdk.vm.ci.services.Services;
 
@@ -97,11 +96,11 @@ public class HotSpotObjdumpDisassemblerProvider extends HotSpotDisassemblerProvi
             for (DataPatch site : compResult.getDataPatches()) {
                 putAnnotation(annotations, site.pcOffset, "{" + site.reference.toString() + "}");
             }
-            for (Mark mark : compResult.getMarks()) {
-                putAnnotation(annotations, mark.pcOffset, codeCache.getMarkName(mark));
+            for (CompilationResult.CodeMark mark : compResult.getMarks()) {
+                putAnnotation(annotations, mark.pcOffset, mark.id.getName());
             }
             for (CodeAnnotation a : compResult.getCodeAnnotations()) {
-                putAnnotation(annotations, a.position, a.toString());
+                putAnnotation(annotations, a.getPosition(), a.toString());
             }
             for (Infopoint infopoint : compResult.getInfopoints()) {
                 if (infopoint instanceof Call) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -154,7 +154,7 @@ public final class OrganizedImports {
 
     private String createDeclaredTypeName(Element enclosedElement, DeclaredType type, boolean raw) {
         String name = ElementUtils.fixECJBinaryNameIssue(type.asElement().getSimpleName().toString());
-        if (ElementUtils.isDeprecated((TypeElement) type.asElement())) {
+        if (ElementUtils.isDeprecated(type.asElement())) {
             name = ElementUtils.getQualifiedName(type);
         } else if (classImportUsage.containsKey(name)) {
             String qualifiedImport = classImportUsage.get(name);

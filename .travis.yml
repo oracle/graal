@@ -18,40 +18,47 @@ jdk:
 
 env:
   global:
-    - JVMCI_VERSION="jvmci-19.2-b01"
-    - JDK8_UPDATE_VERSION="212"
-    - JDK8_UPDATE_VERSION_SUFFIX=""
+    - JVMCI_VERSION="jvmci-20.1-b02"
+    - JDK8_UPDATE_VERSION="252"
+    - JDK8_UPDATE_VERSION_SUFFIX="+09"
 
 matrix:
   include:
   - env: JDK="jdk8" GATE="style,fullbuild" PRIMARY="substratevm"
   - env: JDK="jdk8" GATE="build,test" PRIMARY="compiler"
   - env: JDK="jdk8" GATE="build,test,helloworld" PRIMARY="substratevm"
+  - env: JDK="jdk8" GATE="build,test,helloworld_debug" PRIMARY="substratevm"
   - env: JDK="jdk8" GATE="build,bootstraplite" PRIMARY="compiler"
-  - env: JDK="jdk8" GATE="style,fullbuild,sulongBasic" PRIMARY="sulong" LLVM_VERSION="3.8" NO_FEMBED_BITCODE="true"
+  - env: JDK="jdk8" GATE="style,fullbuild,sulongBasic" PRIMARY="sulong"
     addons:
       apt:
         packages:
           - python-pip
-          - clang-3.8
-          - llvm-3.8
-          - clang-format-3.8
           - libc++1
-          - libc++-dev
-  - env: JDK="jdk8" GATE="build,sulong" PRIMARY="vm" DYNAMIC_IMPORTS="/sulong,/substratevm" LLVM_VERSION="6.0" DISABLE_POLYGLOT=true DISABLE_LIBPOLYGLOT=true
+          - libc++abi1
+  - env: JDK="jdk8" GATE="build,sulong" PRIMARY="vm" DYNAMIC_IMPORTS="/sulong,/substratevm" DISABLE_POLYGLOT=true DISABLE_LIBPOLYGLOT=true
     addons:
       apt:
         sources:
           - ubuntu-toolchain-r-test
-          - llvm-toolchain-trusty-6.0
         packages:
-          - clang-6.0
-          - llvm-6.0
           - libc++1
-          - libc++-dev
+          - libc++abi1
+  - os: linux
+    env: JDK="jdk8" GATE="build,debuginfotest" PRIMARY="substratevm"
+    addons:
+      apt:
+        packages:
+          - gdb
   - env: JDK="jdk11" GATE="style,fullbuild" PRIMARY="compiler"
   - env: JDK="jdk11" GATE="build,test" PRIMARY="compiler"
   - env: JDK="jdk11" GATE="build,bootstraplite" PRIMARY="compiler"
+  - os: linux
+    arch: arm64
+    env: JDK="jdk11" GATE="fullbuild,test" PRIMARY="compiler"
+  - os: linux
+    arch: arm64
+    env: JDK="jdk11" GATE="build,bootstraplite" PRIMARY="compiler"
 # GR-16977
 #  - env: JDK="jdk11" GATE="build,test,helloworld" PRIMARY="substratevm"
 
@@ -83,30 +90,30 @@ install:
         if [ "${JDK}" == "jdk8" ]
         then
           export JDT=${MX_PATH}/ecj.jar
-          wget https://archive.eclipse.org/eclipse/downloads/drops4/R-4.5.2-201602121500/ecj-4.5.2.jar -O ${JDT}
+          wget https://archive.eclipse.org/eclipse/downloads/drops4/R-4.14-201912100610/ecj-4.14.jar -O ${JDT}
         fi
       fi
   - |
       if [ "${JDK}" == "jdk8" ]
       then
         JDK_TAR=${TRAVIS_BUILD_DIR}/../jdk.tar.gz
-        wget https://github.com/graalvm/openjdk8-jvmci-builder/releases/download/${JVMCI_VERSION}/openjdk-8u${JDK8_UPDATE_VERSION}${JDK8_UPDATE_VERSION_SUFFIX}-${JVMCI_VERSION}-linux-amd64.tar.gz -O ${JDK_TAR}
+        wget https://github.com/graalvm/graal-jvmci-8/releases/download/${JVMCI_VERSION}/openjdk-8u${JDK8_UPDATE_VERSION}${JDK8_UPDATE_VERSION_SUFFIX}-${JVMCI_VERSION}-linux-amd64.tar.gz -O ${JDK_TAR}
         tar -C ${TRAVIS_BUILD_DIR}/.. -xzf ${JDK_TAR}
         export JAVA_HOME=${TRAVIS_BUILD_DIR}/../openjdk1.8.0_${JDK8_UPDATE_VERSION}-${JVMCI_VERSION}
       fi
   - |
-      if [ "${LLVM_VERSION}" != "" ]
+      if [ "${JDK}" == "jdk11" ]
       then
-        export CLANG=clang-$LLVM_VERSION
-        export CLANGXX=clang++-$LLVM_VERSION
-        export OPT=opt-$LLVM_VERSION
-        export LLVM_AS=llvm-as-$LLVM_VERSION
-        export LLVM_LINK=llvm-link-$LLVM_VERSION
+        # Set the JAVA_HOME to openjdk11 if it is not set
+        if [ "${JAVA_HOME}" == "" ]
+        then
+          export JAVA_HOME=$(realpath $(dirname $(which java | xargs realpath))/../)
+        fi
       fi
 
 script:
   - echo ${JAVA_HOME}
   - ${JAVA_HOME}/bin/java -version
-  - mx --primary-suite-path ${TRAVIS_BUILD_DIR}/${PRIMARY} --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE}
+  - mx --primary-suite-path ${TRAVIS_BUILD_DIR}/${PRIMARY} --J @"-Xmx2g" --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE}
 after_failure:
   - cat hs_err*

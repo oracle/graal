@@ -40,7 +40,15 @@ public class Package_jdk_internal_access implements Function<TargetClass, String
         if (JavaVersionUtil.JAVA_SPEC <= 8) {
             return "sun.misc." + annotation.className();
         } else if (JavaVersionUtil.JAVA_SPEC == 11) {
-            return "jdk.internal.misc." + annotation.className();
+            try {
+                String name = "jdk.internal.misc." + annotation.className();
+                // Checkstyle: stop
+                Class.forName(name);
+                // Checkstyle: resume
+                return name;
+            } catch (ClassNotFoundException e) {
+                return "jdk.internal.access." + annotation.className();
+            }
         } else {
             return "jdk.internal.access." + annotation.className();
         }

@@ -104,7 +104,7 @@ public class InstallVersionsTest extends CommandTestBase {
                         catalogPath.toUri().toURL());
 
         registry = new CatalogContents(this, downloader.getStorage(), localRegistry);
-        paramIterable = new CatalogIterable(this, this, getRegistry(), downloader);
+        paramIterable = new CatalogIterable(this, this);
         return v;
     }
 
@@ -199,4 +199,5 @@ public class InstallVersionsTest extends CommandTestBase {
         exception.expectMessage("VERIFY_UpdateGraalVM");
         cmd.prepareInstallation();
     }
+
 }

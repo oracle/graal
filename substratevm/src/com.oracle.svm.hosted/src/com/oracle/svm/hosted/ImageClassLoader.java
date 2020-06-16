@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,6 @@ package com.oracle.svm.hosted;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.annotation.Annotation;
@@ -51,6 +50,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -66,15 +66,26 @@ import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ModuleSupport;
 
 public final class ImageClassLoader {
 
+    /*
+     * This cannot be a HostedOption because all Subclasses of OptionDescriptors from inside builtin
+     * modules need to be initialized prior to option parsing so that they can be found.
+     */
+    public static final String PROPERTY_IMAGEINCLUDEBUILTINMODULES = "substratevm.ImageIncludeBuiltinModules";
+
     private static final String CLASS_EXTENSION = ".class";
     private static final int CLASS_EXTENSION_LENGTH = CLASS_EXTENSION.length();
+
+    /*
+     * This cannot be a HostedOption because the option parsing already relies on the list of loaded
+     * classes.
+     */
+    private static final int CLASS_LOADING_MAX_SCALING = 8;
     private static final int CLASS_LOADING_TIMEOUT_IN_MINUTES = 10;
 
     static {
@@ -87,33 +98,26 @@ public final class ImageClassLoader {
 
     final Platform platform;
     private final NativeImageClassLoader classLoader;
-    private final String[] classpath;
     private final EconomicSet<Class<?>> applicationClasses = EconomicSet.create();
     private final EconomicSet<Class<?>> hostedOnlyClasses = EconomicSet.create();
     private final EconomicSet<Method> systemMethods = EconomicSet.create();
     private final EconomicSet<Field> systemFields = EconomicSet.create();
 
-    private ImageClassLoader(Platform platform, String[] classpath, NativeImageClassLoader classLoader) {
+    private ImageClassLoader(Platform platform, NativeImageClassLoader classLoader) {
         this.platform = platform;
-        this.classpath = classpath;
         this.classLoader = classLoader;
     }
 
-    public static ImageClassLoader create(Platform platform, String[] classpathAll, NativeImageClassLoader classLoader) {
-        ArrayList<String> classpathFiltered = new ArrayList<>(classpathAll.length);
-        classpathFiltered.addAll(Arrays.asList(classpathAll));
+    public static ImageClassLoader create(Platform platform, NativeImageClassLoader classLoader) {
+        /*
+         * Iterating all classes can already trigger class initialization: We need annotation
+         * information, which triggers class initialization of annotation classes and enum classes
+         * referenced by annotations. Therefore, we need to have the system properties that indicate
+         * "during image build" set up already at this time.
+         */
+        NativeImageGenerator.setSystemPropertiesForImageEarly();
 
-        /* If the GraalVM SDK is on the boot class path, and it contains annotated types. */
-        final String sunBootClassPath = System.getProperty("sun.boot.class.path");
-        if (sunBootClassPath != null) {
-            for (String s : sunBootClassPath.split(File.pathSeparator)) {
-                if (s.contains("graal-sdk")) {
-                    classpathFiltered.add(s);
-                }
-            }
-        }
-
-        ImageClassLoader result = new ImageClassLoader(platform, classpathFiltered.toArray(new String[classpathFiltered.size()]), classLoader);
+        ImageClassLoader result = new ImageClassLoader(platform, classLoader);
         result.initAllClasses();
         return result;
     }
@@ -126,11 +130,29 @@ public final class ImageClassLoader {
         }
     }
 
+    private static void addOptionalModule(Set<String> modules, String name) {
+        if (ModuleSupport.hasSystemModule(name)) {
+            modules.add(name);
+        }
+    }
+
     private void initAllClasses() {
-        final ForkJoinPool executor = new ForkJoinPool(Runtime.getRuntime().availableProcessors());
+        final ForkJoinPool executor = new ForkJoinPool(Math.min(Runtime.getRuntime().availableProcessors(), CLASS_LOADING_MAX_SCALING));
 
         if (JavaVersionUtil.JAVA_SPEC > 8) {
-            for (String moduleResource : ModuleSupport.getJVMCIModuleResources()) {
+            Set<String> modules = new HashSet<>();
+            modules.add("jdk.internal.vm.ci");
+
+            addOptionalModule(modules, "org.graalvm.sdk");
+            addOptionalModule(modules, "jdk.internal.vm.compiler");
+            addOptionalModule(modules, "com.oracle.graal.graal_enterprise");
+
+            String includeModulesStr = System.getProperty(PROPERTY_IMAGEINCLUDEBUILTINMODULES);
+            if (includeModulesStr != null) {
+                modules.addAll(Arrays.asList(includeModulesStr.split(",")));
+            }
+
+            for (String moduleResource : ModuleSupport.getModuleResources(modules)) {
                 if (moduleResource.endsWith(CLASS_EXTENSION)) {
                     executor.execute(() -> handleClassFileName(moduleResource, '/'));
                 }
@@ -138,28 +160,14 @@ public final class ImageClassLoader {
         }
 
         Set<Path> uniquePaths = new TreeSet<>(Comparator.comparing(ImageClassLoader::toRealPath));
-        uniquePaths.addAll(
-                        Arrays.stream(classpath)
-                                        .flatMap(ImageClassLoader::toClassPathEntries)
-                                        .collect(Collectors.toList()));
+        uniquePaths.addAll(classpath());
         uniquePaths.parallelStream().forEach(path -> loadClassesFromPath(executor, path));
 
-        executor.awaitQuiescence(CLASS_LOADING_TIMEOUT_IN_MINUTES, TimeUnit.MINUTES);
-    }
-
-    static Stream<Path> toClassPathEntries(String classPathEntry) {
-        Path entry = ClasspathUtils.stringToClasspath(classPathEntry);
-        if (entry.endsWith(ClasspathUtils.cpWildcardSubstitute)) {
-            try {
-                return Files.list(entry.getParent()).filter(ClasspathUtils::isJar);
-            } catch (IOException e) {
-                return Stream.empty();
-            }
+        boolean completed = executor.awaitQuiescence(CLASS_LOADING_TIMEOUT_IN_MINUTES, TimeUnit.MINUTES);
+        if (!completed) {
+            throw shouldNotReachHere("timed out while initializing classes");
         }
-        if (Files.isReadable(entry)) {
-            return Stream.of(entry);
-        }
-        return Stream.empty();
+        executor.shutdownNow();
     }
 
     private static Set<Path> excludeDirectories = getExcludeDirectories();
@@ -201,32 +209,72 @@ public final class ImageClassLoader {
     }
 
     private void findSystemElements(Class<?> systemClass) {
+        Method[] declaredMethods = null;
         try {
-            for (Method systemMethod : systemClass.getDeclaredMethods()) {
-                if (NativeImageGenerator.includedIn(platform, systemMethod.getAnnotation(Platforms.class))) {
+            declaredMethods = systemClass.getDeclaredMethods();
+        } catch (Throwable t) {
+            handleClassLoadingError(t);
+        }
+        if (declaredMethods != null) {
+            for (Method systemMethod : declaredMethods) {
+                if (annotationsAvailable(systemMethod) && NativeImageGenerator.includedIn(platform, systemMethod.getAnnotation(Platforms.class))) {
                     synchronized (systemMethods) {
                         systemMethods.add(systemMethod);
                     }
                 }
             }
+        }
+
+        Field[] declaredFields = null;
+        try {
+            declaredFields = systemClass.getDeclaredFields();
         } catch (Throwable t) {
             handleClassLoadingError(t);
         }
-        try {
-            for (Field systemField : systemClass.getDeclaredFields()) {
-                if (NativeImageGenerator.includedIn(platform, systemField.getAnnotation(Platforms.class))) {
+        if (declaredFields != null) {
+            for (Field systemField : declaredFields) {
+                if (annotationsAvailable(systemField) && NativeImageGenerator.includedIn(platform, systemField.getAnnotation(Platforms.class))) {
                     synchronized (systemFields) {
                         systemFields.add(systemField);
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * @param element The element to check
+     * @return Returns true if the annotations on the {@code element} can be loaded without any
+     *         errors.
+     */
+    private static boolean canLoadAnnotations(AnnotatedElement element) {
+        try {
+            element.getAnnotations();
+            return true;
         } catch (Throwable t) {
             handleClassLoadingError(t);
+            return false;
+        }
+    }
+
+    /**
+     *
+     * @param element The element to check
+     * @return Returns true if and only if the the {@code element} has any annotations present and
+     *         the {@link AnnotatedElement#getAnnotations()} did not throw any error.
+     */
+    private static boolean annotationsAvailable(AnnotatedElement element) {
+        try {
+            final Annotation[] annotations = element.getAnnotations();
+            return annotations.length != 0;
+        } catch (Throwable t) {
+            handleClassLoadingError(t);
+            return false;
         }
     }
 
     @SuppressWarnings("unused")
-    private void handleClassLoadingError(Throwable t) {
+    private static void handleClassLoadingError(Throwable t) {
         /* we ignore class loading errors due to incomplete paths that people often have */
     }
 
@@ -236,10 +284,15 @@ public final class ImageClassLoader {
             return;
         }
         String className = unversionedClassFileNameWithoutSuffix.replace(fileSystemSeparatorChar, '.');
+
+        Class<?> clazz = null;
         try {
-            handleClass(forName(className));
+            clazz = forName(className);
         } catch (Throwable t) {
             handleClassLoadingError(t);
+        }
+        if (clazz != null) {
+            handleClass(clazz);
         }
     }
 
@@ -315,6 +368,9 @@ public final class ImageClassLoader {
             cur = clazz;
         }
         do {
+            if (!canLoadAnnotations(cur)) {
+                return;
+            }
             Platforms platformsAnnotation = cur.getAnnotation(Platforms.class);
             if (containsHostedOnly(platformsAnnotation)) {
                 isHostedOnly = true;
@@ -325,7 +381,12 @@ public final class ImageClassLoader {
             if (cur instanceof Package) {
                 cur = clazz;
             } else {
-                cur = ((Class<?>) cur).getEnclosingClass();
+                try {
+                    cur = ((Class<?>) cur).getEnclosingClass();
+                } catch (Throwable t) {
+                    handleClassLoadingError(t);
+                    cur = null;
+                }
             }
         } while (cur != null);
 
@@ -404,8 +465,18 @@ public final class ImageClassLoader {
         return Class.forName(name, false, classLoader);
     }
 
+    /**
+     * Deprecated. Use {@link ImageClassLoader#classpath()} instead.
+     *
+     * @return image classpath as a list of strings.
+     */
+    @Deprecated
     public List<String> getClasspath() {
-        return Collections.unmodifiableList(Arrays.asList(classpath));
+        return classpath().stream().map(Path::toString).collect(Collectors.toList());
+    }
+
+    public List<Path> classpath() {
+        return Stream.concat(classLoader.buildcp.stream(), classLoader.imagecp.stream()).collect(Collectors.toList());
     }
 
     public <T> List<Class<? extends T>> findSubclasses(Class<T> baseClass, boolean includeHostedOnly) {

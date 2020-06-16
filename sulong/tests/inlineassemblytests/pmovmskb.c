@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,21 +33,21 @@
 typedef uint8_t vec4 __attribute__((vector_size(16)));
 
 int foo() {
-  vec4 vec = {
-    0x80, 0x00, 0x80, 0x00, //
-    0x00, 0x80, 0x00, 0x80, //
-    0x00, 0x80, 0x80, 0x00, //
-    0x80, 0x00, 0x00, 0x80  //
-  };
-  uint32_t reg;
-  __asm__("pmovmskb %1, %0;" : "=r"(reg) : "x"(vec));
-  printf("mask 0x%x\n", reg);
-  return 0;
+    vec4 vec = {
+        0x80, 0x00, 0x80, 0x00, //
+        0x00, 0x80, 0x00, 0x80, //
+        0x00, 0x80, 0x80, 0x00, //
+        0x80, 0x00, 0x00, 0x80  //
+    };
+    uint32_t reg;
+    __asm__("pmovmskb %1, %0;" : "=r"(reg) : "x"(vec));
+    printf("mask 0x%x\n", reg);
+    return 0;
 }
 
 int main() {
-  for (int i = 0; i < 1; ++i) {
-    foo();
-  }
-  return 0;
+    for (int i = 0; i < 1; ++i) {
+        foo();
+    }
+    return 0;
 }

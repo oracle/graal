@@ -31,7 +31,7 @@ import java.util.Collections;
 import java.util.List;
 import org.graalvm.component.installer.CommandTestBase;
 import org.graalvm.component.installer.CommonConstants;
-import org.graalvm.component.installer.ComponentCollection;
+import org.graalvm.component.installer.ComponentCatalog;
 import org.graalvm.component.installer.SoftwareChannel;
 import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.model.CatalogContents;
@@ -50,12 +50,12 @@ import org.junit.Test;
 public class CatalogCompatTest extends CommandTestBase {
     @Rule public ProxyResource proxyResource = new ProxyResource();
 
-    ComponentCollection openCatalog(SoftwareChannel ch) throws IOException {
+    ComponentCatalog openCatalog(SoftwareChannel ch) throws IOException {
         return openCatalog(ch, getLocalRegistry().getGraalVersion());
     }
 
-    ComponentCollection openCatalog(SoftwareChannel ch, Version v) throws IOException {
-        ComponentCollection cc = new CatalogContents(this, ch.getStorage(), getLocalRegistry(), v);
+    ComponentCatalog openCatalog(SoftwareChannel ch, Version v) throws IOException {
+        ComponentCatalog cc = new CatalogContents(this, ch.getStorage(), getLocalRegistry(), v);
         cc.getComponentIDs();
         return cc;
     }
@@ -77,7 +77,7 @@ public class CatalogCompatTest extends CommandTestBase {
     @Test
     public void testOldFormatReadable() throws Exception {
         storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "1.0.0");
-        setupCatalogFormat1("catalogFormat1");
+        setupCatalogFormat1("catalogFormat1.properties");
         assertNotNull(registry.findComponent("ruby"));
         assertNotNull(registry.findComponent("python"));
         assertNotNull(registry.findComponent("r"));
@@ -91,7 +91,7 @@ public class CatalogCompatTest extends CommandTestBase {
     @Test
     public void testOldFormatIgnoresPrevVersionsAvailable() throws Exception {
         storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "1.0.0");
-        setupCatalogFormat1("catalogFormat1");
+        setupCatalogFormat1("catalogFormat1.properties");
 
         // interprets user input for 'available'
         Version gv = getLocalRegistry().getGraalVersion();
@@ -116,7 +116,7 @@ public class CatalogCompatTest extends CommandTestBase {
     @Test
     public void testOldFormatIgnoresPrevVersionsMostRecent() throws Exception {
         storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "1.0.0");
-        setupCatalogFormat1("catalogFormat1");
+        setupCatalogFormat1("catalogFormat1.properties");
 
         // copied from CatalogIterable, this is what interprets user input for install
         Version gv = getLocalRegistry().getGraalVersion();
@@ -139,7 +139,7 @@ public class CatalogCompatTest extends CommandTestBase {
     @Test
     public void testOldFormatIgnoresFutureVersionsAvailable() throws Exception {
         storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "1.0.0");
-        setupCatalogFormat1("catalogFormat2");
+        setupCatalogFormat1("catalogFormat2.properties");
 
         // this is what interprets user input for 'available'
         Version gv = getLocalRegistry().getGraalVersion();
@@ -162,7 +162,7 @@ public class CatalogCompatTest extends CommandTestBase {
     @Test
     public void testOldFormatIgnoresFutureVersionsInstall() throws Exception {
         storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "1.0.0");
-        setupCatalogFormat1("catalogFormat2");
+        setupCatalogFormat1("catalogFormat2.properties");
 
         // copied from CatalogIterable, this is what interprets user input for install
         Version gv = getLocalRegistry().getGraalVersion();
@@ -188,7 +188,7 @@ public class CatalogCompatTest extends CommandTestBase {
     @Test
     public void testMixedFormatAllowsFutureVersions() throws Exception {
         storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "1.0.0");
-        setupCatalogFormat1("catalogFormatMix");
+        setupCatalogFormat1("catalogFormatMix.properties");
 
         List<ComponentInfo> infos;
 
@@ -217,7 +217,7 @@ public class CatalogCompatTest extends CommandTestBase {
     @Test
     public void testMixedFormatInstallSameRelease() throws Exception {
         storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "1.0.0");
-        setupCatalogFormat1("catalogFormatMix");
+        setupCatalogFormat1("catalogFormatMix.properties");
 
         List<ComponentInfo> infos;
 
@@ -239,7 +239,7 @@ public class CatalogCompatTest extends CommandTestBase {
     @Test
     public void testMixedFormatInstallUpgrades() throws Exception {
         storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "1.0.0");
-        setupCatalogFormat1("catalogFormatMix");
+        setupCatalogFormat1("catalogFormatMix.properties");
 
         List<ComponentInfo> infos;
 

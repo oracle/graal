@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,15 +31,17 @@ package com.oracle.truffle.llvm.parser.util;
 
 import com.oracle.truffle.llvm.parser.model.enums.BinaryOperator;
 import com.oracle.truffle.llvm.parser.model.enums.CastOperator;
+import com.oracle.truffle.llvm.parser.model.enums.UnaryOperator;
 import com.oracle.truffle.llvm.runtime.ArithmeticOperation;
+import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
+import com.oracle.truffle.llvm.runtime.UnaryOperation;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public final class LLVMBitcodeTypeHelper {
-
-    public static LLVMExpressionNode createArithmeticInstruction(NodeFactory nodeFactory, LLVMExpressionNode lhs, LLVMExpressionNode rhs, BinaryOperator operator, Type type) {
+    public static LLVMExpressionNode createArithmeticInstruction(LLVMExpressionNode lhs, LLVMExpressionNode rhs, BinaryOperator operator, Type type, NodeFactory nodeFactory) {
         return nodeFactory.createArithmeticOp(getArithmeticOperation(operator), type, lhs, rhs);
     }
 
@@ -81,13 +83,13 @@ public final class LLVMBitcodeTypeHelper {
         }
     }
 
-    public static LLVMExpressionNode createCast(NodeFactory nodeFactory, LLVMExpressionNode fromNode, Type targetType, Type fromType, CastOperator operator) {
+    public static LLVMExpressionNode createCast(LLVMExpressionNode fromNode, Type targetType, Type fromType, CastOperator operator, NodeFactory nodeFactory) {
         switch (operator) {
             case ZERO_EXTEND:
             case UNSIGNED_INT_TO_FP:
             case INT_TO_PTR:
             case FP_TO_UNSIGNED_INT:
-                return nodeFactory.createUnsignedCast(fromNode, targetType);
+                return CommonNodeFactory.createUnsignedCast(fromNode, targetType);
             case SIGN_EXTEND:
             case TRUNCATE:
             case FP_TO_SIGNED_INT:
@@ -95,10 +97,25 @@ public final class LLVMBitcodeTypeHelper {
             case FP_TRUNCATE:
             case PTR_TO_INT:
             case SIGNED_INT_TO_FP:
-                return nodeFactory.createSignedCast(fromNode, targetType);
+                return CommonNodeFactory.createSignedCast(fromNode, targetType);
             case BITCAST:
+                // Bitcast still uses nodeFactory as it is implemeneted for managed.
+                // Note: managed is not avaliable for expression debugging.
                 return nodeFactory.createBitcast(fromNode, targetType, fromType);
             case ADDRESS_SPACE_CAST:
+            default:
+                return null;
+        }
+    }
+
+    public static LLVMExpressionNode createUnaryInstruction(LLVMExpressionNode operand, UnaryOperator operator, Type type, NodeFactory nodeFactory) {
+        return nodeFactory.createUnaryOp(getUnaryOperation(operator), type, operand);
+    }
+
+    private static UnaryOperation getUnaryOperation(UnaryOperator operator) {
+        switch (operator) {
+            case FP_NEG:
+                return UnaryOperation.NEG;
             default:
                 return null;
         }

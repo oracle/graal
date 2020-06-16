@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,9 @@ import static jdk.vm.ci.code.MemoryBarriers.STORE_LOAD;
 import static jdk.vm.ci.code.MemoryBarriers.STORE_STORE;
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_OPTIONVALUES;
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
+import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE;
+import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.SAFEPOINT;
+import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.STACK_INSPECTABLE_LEAF;
 import static org.graalvm.compiler.hotspot.nodes.AcquiredCASLockNode.mark;
 import static org.graalvm.compiler.hotspot.nodes.BeginLockScopeNode.beginLockScope;
 import static org.graalvm.compiler.hotspot.nodes.EndLockScopeNode.endLockScope;
@@ -76,10 +79,12 @@ import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.VERY_FAS
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 import static org.graalvm.compiler.nodes.extended.MembarNode.memoryBarrier;
 import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
+import static org.graalvm.word.LocationIdentity.any;
 import static org.graalvm.word.WordFactory.unsigned;
 import static org.graalvm.word.WordFactory.zero;
 
 import java.util.List;
+import java.util.Objects;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Snippet;
@@ -95,6 +100,7 @@ import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.meta.HotSpotRegistersProvider;
 import org.graalvm.compiler.hotspot.nodes.CurrentLockNode;
@@ -113,11 +119,12 @@ import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.debug.DynamicCounterNode;
+import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.nodes.java.MonitorEnterNode;
 import org.graalvm.compiler.nodes.java.MonitorExitNode;
-import org.graalvm.compiler.nodes.java.RawMonitorEnterNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.options.OptionValues;
@@ -149,7 +156,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * atomic operations with biased locking and bulk rebiasing</a> by Kenneth Russell and David
  * Detlefs.
  *
- * Comment below is reproduced from {@code markOop.hpp} for convenience:
+ * Comment below is reproduced from {@code markWord.hpp} for convenience:
  *
  * <pre>
  *  Bit-format of an object header (most significant first, big endian layout below):
@@ -474,7 +481,7 @@ public class MonitorSnippets implements Snippets {
     public static void monitorenterStub(Object object, @ConstantParameter int lockDepth, @ConstantParameter boolean trace) {
         verifyOop(object);
         incCounter();
-        if (object == null) {
+        if (BranchProbabilityNode.probability(BranchProbabilityNode.DEOPT_PROBABILITY, object == null)) {
             DeoptimizeNode.deopt(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.NullCheckException);
         }
         // BeginLockScope nodes do not read from object so a use of object
@@ -582,6 +589,7 @@ public class MonitorSnippets implements Snippets {
                     if (probability(FREQUENT_PROBABILITY, succ.isNonNull())) {
                         // There may be a thread spinning on this monitor. Temporarily setting
                         // the monitor owner to null, and hope that the other thread will grab it.
+                        memoryBarrier(LOAD_STORE | STORE_STORE);
                         monitor.writeWord(ownerOffset, zero());
                         memoryBarrier(STORE_STORE | STORE_LOAD);
                         succ = monitor.readWord(succOffset, OBJECT_MONITOR_SUCC_LOCATION);
@@ -753,7 +761,7 @@ public class MonitorSnippets implements Snippets {
 
         private final SnippetInfo monitorenter = snippet(MonitorSnippets.class, "monitorenter");
         private final SnippetInfo monitorexit = snippet(MonitorSnippets.class, "monitorexit", DISPLACED_MARK_WORD_LOCATION, OBJECT_MONITOR_OWNER_LOCATION, OBJECT_MONITOR_CXQ_LOCATION,
-                        OBJECT_MONITOR_ENTRY_LIST_LOCATION, OBJECT_MONITOR_RECURSION_LOCATION, OBJECT_MONITOR_SUCC_LOCATION);
+                        OBJECT_MONITOR_ENTRY_LIST_LOCATION, OBJECT_MONITOR_RECURSION_LOCATION, OBJECT_MONITOR_SUCC_LOCATION, MARK_WORD_LOCATION);
         private final SnippetInfo monitorenterStub = snippet(MonitorSnippets.class, "monitorenterStub");
         private final SnippetInfo monitorexitStub = snippet(MonitorSnippets.class, "monitorexitStub");
         private final SnippetInfo initCounter = snippet(MonitorSnippets.class, "initCounter");
@@ -770,7 +778,7 @@ public class MonitorSnippets implements Snippets {
             this.counters = new Counters(factory);
         }
 
-        public void lower(RawMonitorEnterNode monitorenterNode, HotSpotRegistersProvider registers, LoweringTool tool) {
+        public void lower(MonitorEnterNode monitorenterNode, HotSpotRegistersProvider registers, LoweringTool tool) {
             StructuredGraph graph = monitorenterNode.graph();
             checkBalancedMonitors(graph, tool);
 
@@ -780,7 +788,7 @@ public class MonitorSnippets implements Snippets {
             if (useFastLocking) {
                 args = new Arguments(monitorenter, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("object", monitorenterNode.object());
-                args.add("hub", monitorenterNode.getHub());
+                args.add("hub", Objects.requireNonNull(monitorenterNode.getObjectData()));
                 args.addConst("lockDepth", monitorenterNode.getMonitorId().getLockDepth());
                 args.addConst("threadRegister", registers.getThreadRegister());
                 args.addConst("stackPointerRegister", registers.getStackPointerRegister());
@@ -889,8 +897,9 @@ public class MonitorSnippets implements Snippets {
         }
     }
 
-    public static final ForeignCallDescriptor MONITORENTER = new ForeignCallDescriptor("monitorenter", void.class, Object.class, Word.class);
-    public static final ForeignCallDescriptor MONITOREXIT = new ForeignCallDescriptor("monitorexit", void.class, Object.class, Word.class);
+    public static final HotSpotForeignCallDescriptor MONITORENTER = new HotSpotForeignCallDescriptor(SAFEPOINT, NOT_REEXECUTABLE, any(), "monitorenter", void.class, Object.class, Word.class);
+    public static final HotSpotForeignCallDescriptor MONITOREXIT = new HotSpotForeignCallDescriptor(STACK_INSPECTABLE_LEAF, NOT_REEXECUTABLE, any(), "monitorexit", void.class, Object.class,
+                    Word.class);
 
     @NodeIntrinsic(ForeignCallNode.class)
     private static native void monitorenterStubC(@ConstantNodeParameter ForeignCallDescriptor descriptor, Object object, Word lock);

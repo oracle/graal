@@ -1,26 +1,42 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * The Universal Permissive License (UPL), Version 1.0
  *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
  *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ * (a) the Software, and
  *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 package com.oracle.truffle.regex.tregex.parser.flavors;
 
@@ -39,10 +55,9 @@ import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.charset.CodePointSet;
-import com.oracle.truffle.regex.charset.RangesAccumulator;
-import com.oracle.truffle.regex.charset.SortedListOfRanges;
+import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
+import com.oracle.truffle.regex.charset.Range;
 import com.oracle.truffle.regex.charset.UnicodeProperties;
-import com.oracle.truffle.regex.tregex.buffer.IntRangesBuffer;
 import com.oracle.truffle.regex.tregex.parser.CaseFoldTable;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
@@ -85,6 +100,9 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
     private static final String UNICODE_WORD_BOUNDARY_SNIPPET;
     private static final String UNICODE_WORD_NON_BOUNDARY_SNIPPET;
 
+    private static final String ASCII_WHITESPACE = "\\x09-\\x0d\\x20";
+    private static final String ASCII_NON_WHITESPACE = "\\x00-\\x08\\x0e-\\x1f\\x21-\\u{10ffff}";
+
     static {
         UNICODE_CHAR_CLASS_REPLACEMENTS = new HashMap<>();
         UNICODE_CHAR_CLASS_SETS = new HashMap<>();
@@ -117,7 +135,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
         // the definition of the White_Space property, do the set subtraction and then list the
         // contents of the resulting set.
         CodePointSet unicodeSpaces = UnicodeProperties.getProperty("White_Space");
-        CodePointSet spaces = unicodeSpaces.union(CodePointSet.create('\u001c', '\u001f'));
+        CodePointSet spaces = unicodeSpaces.union(CodePointSet.createNoDedup('\u001c', '\u001f'));
         CodePointSet nonSpaces = spaces.createInverse();
         UNICODE_CHAR_CLASS_SETS.put('s', spaces);
         UNICODE_CHAR_CLASS_SETS.put('S', nonSpaces);
@@ -145,19 +163,19 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
         // Similarly as for \S, we will not be able to produce a replacement string for \W.
         // We will need to construct the set ourselves.
         CodePointSet alpha = UnicodeProperties.getProperty("General_Category=Letter");
-        CodePointSet numericExtras = CodePointSet.create(0xf96b, 0xf973, 0xf978, 0xf9b2, 0xf9d1, 0xf9d3, 0xf9fd, 0x2f890);
+        CodePointSet numericExtras = CodePointSet.createNoDedup(0xf96b, 0xf973, 0xf978, 0xf9b2, 0xf9d1, 0xf9d3, 0xf9fd, 0x2f890);
         CodePointSet numeric = UnicodeProperties.getProperty("General_Category=Number").union(numericExtras);
-        CodePointSet wordChars = alpha.union(numeric).union(CodePointSet.create('_', '_'));
+        CodePointSet wordChars = alpha.union(numeric).union(CodePointSet.create('_'));
         CodePointSet nonWordChars = wordChars.createInverse();
         UNICODE_CHAR_CLASS_SETS.put('w', wordChars);
         UNICODE_CHAR_CLASS_SETS.put('W', nonWordChars);
 
         // This is the snippet that we want to build, but with Python's definitions of \w and \W:
         // "(?:^|(?<=\W))(?=\w)|(?<=\w)(?:(?=\W)|$)"
-        UNICODE_WORD_BOUNDARY_SNIPPET = "(?:^|(?<=[^" + wordCharsStr + "]))(?=[" + wordCharsStr + "])|(?<=[" + wordCharsStr + "])(?:(?=[^" + wordCharsStr + "])|$)";
+        UNICODE_WORD_BOUNDARY_SNIPPET = "(?:(?:^|(?<=[^" + wordCharsStr + "]))(?=[" + wordCharsStr + "])|(?<=[" + wordCharsStr + "])(?:(?=[^" + wordCharsStr + "])|$))";
 
         // "(?:^|(?<=\W))(?:(?=\W)|$)|(?<=\w)(?=\w)"
-        UNICODE_WORD_NON_BOUNDARY_SNIPPET = "(?:^|(?<=[^" + wordCharsStr + "]))(?:(?=[^" + wordCharsStr + "])|$)|(?<=[" + wordCharsStr + "])(?=[" + wordCharsStr + "])";
+        UNICODE_WORD_NON_BOUNDARY_SNIPPET = "(?:(?:^|(?<=[^" + wordCharsStr + "]))(?:(?=[^" + wordCharsStr + "])|$)|(?<=[" + wordCharsStr + "])(?=[" + wordCharsStr + "]))";
     }
 
     /**
@@ -221,7 +239,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
      * The (slightly modified) version of the XID_Start Unicode property used to check names of
      * capture groups.
      */
-    private static final CodePointSet XID_START = UnicodeProperties.getProperty("XID_Start").union(CodePointSet.create('_', '_'));
+    private static final CodePointSet XID_START = UnicodeProperties.getProperty("XID_Start").union(CodePointSet.create('_'));
     /**
      * The XID_Continue Unicode character property.
      */
@@ -295,7 +313,8 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
      */
     private TermCategory lastTerm;
 
-    private final RangesAccumulator<IntRangesBuffer> curCharClass = new RangesAccumulator<>(new IntRangesBuffer());
+    private final CodePointSetAccumulator curCharClass = new CodePointSetAccumulator();
+    private final CodePointSetAccumulator charClassCaseFoldTmp = new CodePointSetAccumulator();
 
     @TruffleBoundary
     public PythonFlavorProcessor(RegexSource source, PythonREMode mode) {
@@ -511,7 +530,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
                 curCharClass.clear();
                 curCharClass.addRange(codepoint, codepoint);
                 caseFold();
-                if (curCharClass.get().matchesSingleChar()) {
+                if (curCharClass.matchesSingleChar()) {
                     emitCharNoCasing(codepoint, inCharClass);
                 } else if (inCharClass) {
                     emitCharSetNoCasing();
@@ -550,21 +569,21 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
     }
 
     private void emitCharSetNoCasing() {
-        emitCharSetNoCasing(curCharClass.get());
+        emitCharSetNoCasing(curCharClass);
     }
 
     /**
      * Like {@link #emitCharSet}, but it does not do any case-folding.
      */
-    private void emitCharSetNoCasing(SortedListOfRanges charSet) {
+    private void emitCharSetNoCasing(Iterable<Range> charSet) {
         if (!silent) {
-            for (int i = 0; i < charSet.size(); i++) {
-                if (charSet.isSingle(i)) {
-                    emitCharNoCasing(charSet.getLo(i), true);
+            for (Range r : charSet) {
+                if (r.isSingle()) {
+                    emitCharNoCasing(r.lo, true);
                 } else {
-                    emitCharNoCasing(charSet.getLo(i), true);
+                    emitCharNoCasing(r.lo, true);
                     emitSnippet("-");
-                    emitCharNoCasing(charSet.getHi(i), true);
+                    emitCharNoCasing(r.hi, true);
                 }
             }
         }
@@ -582,7 +601,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
             bailOut("locale-specific case folding is not supported");
         }
         CaseFoldTable.CaseFoldingAlgorithm caseFolding = getLocalFlags().isUnicode() ? CaseFoldTable.CaseFoldingAlgorithm.PythonUnicode : CaseFoldTable.CaseFoldingAlgorithm.PythonAscii;
-        CaseFoldTable.applyCaseFold(curCharClass, caseFolding);
+        CaseFoldTable.applyCaseFold(curCharClass, charClassCaseFoldTmp, caseFolding);
     }
 
     /// Error reporting
@@ -879,8 +898,11 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
                             emitSnippet("]");
                         }
                     }
-                } else if (getLocalFlags().isLocale() && (curChar() == 'w' || curChar() == 'W')) {
+                } else if (getLocalFlags().isLocale() && (className == 'w' || className == 'W')) {
                     bailOut("locale-specific definitions of word characters are not supported");
+                } else if ((mode == PythonREMode.Bytes || getLocalFlags().isAscii()) && (className == 's' || className == 'S')) {
+                    String snippet = className == 's' ? ASCII_WHITESPACE : ASCII_NON_WHITESPACE;
+                    emitSnippet(inCharClass ? snippet : "[" + snippet + "]");
                 } else {
                     emitSnippet("\\" + className);
                 }

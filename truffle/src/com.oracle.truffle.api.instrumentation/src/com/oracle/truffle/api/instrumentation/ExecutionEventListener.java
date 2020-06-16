@@ -75,7 +75,11 @@ public interface ExecutionEventListener {
      * @param inputIndex the child index of the input
      * @param inputValue the return value of the input child
      * @since 0.30
+     * @deprecated in 20.0. input value notifications are not functional for
+     *             {@link ExecutionEventListener listeners}. Use {@link ExecutionEventNodeFactory
+     *             event node factories} instead.
      */
+    @Deprecated
     default void onInputValue(EventContext context, VirtualFrame frame, EventContext inputContext, int inputIndex, Object inputValue) {
     }
 

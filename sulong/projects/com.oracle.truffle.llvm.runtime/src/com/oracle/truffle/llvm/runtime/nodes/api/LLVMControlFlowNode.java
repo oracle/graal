@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,26 +29,18 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
-import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
+public abstract class LLVMControlFlowNode extends LLVMInstrumentableNode {
 
-public abstract class LLVMControlFlowNode extends LLVMNode {
-
-    private final LLVMSourceLocation source;
-
-    public LLVMControlFlowNode(LLVMSourceLocation source) {
-        this.source = source;
+    public LLVMControlFlowNode() {
     }
 
     public abstract int getSuccessorCount();
+
+    public abstract int[] getSuccessors();
 
     public abstract LLVMStatementNode getPhiNode(int successorIndex);
 
     public boolean needsBranchProfiling() {
         return getSuccessorCount() > 1;
-    }
-
-    @Override
-    public LLVMSourceLocation getSourceLocation() {
-        return source;
     }
 }

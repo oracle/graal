@@ -28,7 +28,6 @@ import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.Charset;
 
-import com.oracle.svm.core.headers.Errno;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.ObjectHandles;
@@ -39,6 +38,7 @@ import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.CErrorNumber;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
@@ -207,6 +207,12 @@ public abstract class TruffleNFISupport {
         return truffleNFISupport.lookupImpl(nativeContext, library, name);
     }
 
+    protected static Target_com_oracle_truffle_nfi_impl_NFIContext getContext(long nativeContext) {
+        TruffleNFISupport truffleNFISupport = ImageSingletons.lookup(TruffleNFISupport.class);
+        NativeAPI.NativeTruffleContext ctx = WordFactory.pointer(nativeContext);
+        return truffleNFISupport.resolveContextHandle(ctx.contextHandle());
+    }
+
     /**
      * Context for calling from native code into Java code. On entry, the native {@code errno} value
      * is stored in {@link ErrnoMirror}. When leaving the context, the {@link ErrnoMirror} value is
@@ -218,12 +224,12 @@ public abstract class TruffleNFISupport {
 
         public ErrnoMirrorContext() {
             errnoMirror = ErrnoMirror.getErrnoMirrorLocation();
-            errnoMirror.write(Errno.errno());
+            errnoMirror.write(CErrorNumber.getCErrorNumber());
         }
 
         @Override
         public void close() {
-            Errno.set_errno(errnoMirror.read());
+            CErrorNumber.setCErrorNumber(errnoMirror.read());
         }
     }
 
@@ -238,12 +244,12 @@ public abstract class TruffleNFISupport {
 
         public NativeErrnoContext() {
             errnoMirror = ErrnoMirror.getErrnoMirrorLocation();
-            Errno.set_errno(errnoMirror.read());
+            CErrorNumber.setCErrorNumber(errnoMirror.read());
         }
 
         @Override
         public void close() {
-            errnoMirror.write(Errno.errno());
+            errnoMirror.write(CErrorNumber.getCErrorNumber());
         }
     }
 }

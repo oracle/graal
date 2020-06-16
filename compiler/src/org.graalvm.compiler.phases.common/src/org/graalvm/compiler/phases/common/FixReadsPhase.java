@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,10 +25,12 @@
 package org.graalvm.compiler.phases.common;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
+import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.core.common.type.FloatStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -88,7 +90,7 @@ import jdk.vm.ci.meta.TriState;
 /**
  * This phase lowers {@link FloatingReadNode FloatingReadNodes} into corresponding fixed reads.
  */
-public class FixReadsPhase extends BasePhase<LowTierContext> {
+public class FixReadsPhase extends BasePhase<CoreProviders> {
 
     private static final CounterKey counterStampsRegistered = DebugContext.counter("FixReads_StampsRegistered");
     private static final CounterKey counterIfsKilled = DebugContext.counter("FixReads_KilledIfs");
@@ -177,6 +179,11 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
             }
 
             @Override
+            public MetaAccessExtensionProvider getMetaAccessExtensionProvider() {
+                return null;
+            }
+
+            @Override
             public boolean canonicalizeReads() {
                 return false;
             }
@@ -209,7 +216,7 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
             this.schedule = schedule;
             this.metaAccess = metaAccess;
             blockActionStart = new BlockMap<>(schedule.getCFG());
-            endMaps = EconomicMap.create();
+            endMaps = EconomicMap.create(Equivalence.IDENTITY);
             stampMap = graph.createNodeMap();
             undoOperations = new NodeStack();
             replaceConstantInputs = replaceInputsWithConstants && GraalOptions.ReplaceInputsWithConstantsBasedOnStamps.getValue(graph.getOptions());
@@ -310,7 +317,7 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
 
                 if (currentEndMap == null || !currentEndMap.isEmpty()) {
 
-                    EconomicMap<ValueNode, Stamp> endMap = EconomicMap.create();
+                    EconomicMap<ValueNode, Stamp> endMap = EconomicMap.create(Equivalence.IDENTITY);
 
                     // Process phis
                     for (ValuePhiNode phi : merge.valuePhis()) {
@@ -407,7 +414,7 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
                 ConstantNode stampConstant = ConstantNode.forConstant(newStamp, constant, metaAccess, graph);
                 debug.log("RawConditionElimination: constant stamp replaces %1s with %1s", node, stampConstant);
                 counterConstantReplacements.increment(debug);
-                node.replaceAtUsages(InputType.Value, stampConstant);
+                node.replaceAtUsages(stampConstant, InputType.Value);
                 GraphUtil.tryKillUnused(node);
                 return true;
             }
@@ -601,7 +608,7 @@ public class FixReadsPhase extends BasePhase<LowTierContext> {
     }
 
     @Override
-    protected void run(StructuredGraph graph, LowTierContext context) {
+    protected void run(StructuredGraph graph, CoreProviders context) {
         schedulePhase.apply(graph);
         ScheduleResult schedule = graph.getLastSchedule();
         FixReadsClosure fixReadsClosure = new FixReadsClosure();

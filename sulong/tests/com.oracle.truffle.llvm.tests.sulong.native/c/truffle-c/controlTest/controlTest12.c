@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,27 +28,27 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int main() {
-  int sum = 0;
-  int i, n = 10;
+    int sum = 0;
+    int i, n = 10;
 
-  i = 0;
-  for (;;) {
-    if (i >= n) {
-      break;
+    i = 0;
+    for (;;) {
+        if (i >= n) {
+            break;
+        }
+        sum += i;
+        i++;
     }
-    sum += i;
-    i++;
-  }
-  for (i = 0;; i++) {
-    if (i == n / 2) {
-      break;
+    for (i = 0;; i++) {
+        if (i == n / 2) {
+            break;
+        }
+        sum -= 1;
     }
-    sum -= 1;
-  }
-  i = 0;
-  for (; i < n / 3;) {
-    sum -= i;
-    i++;
-  }
-  return sum;
+    i = 0;
+    for (; i < n / 3;) {
+        sum -= i;
+        i++;
+    }
+    return sum;
 }

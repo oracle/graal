@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.interop;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -49,6 +50,32 @@ final class InteropAccessor extends Accessor {
     static final InteropAccessor ACCESSOR = new InteropAccessor();
 
     private InteropAccessor() {
+    }
+
+    static Object checkInteropType(Object obj) {
+        assert checkInteropTypeImpl(obj);
+        return obj;
+    }
+
+    private static boolean checkInteropTypeImpl(Object obj) {
+        if (AssertUtils.isInteropValue(obj)) {
+            return true;
+        }
+        CompilerDirectives.transferToInterpreter();
+        Class<?> clazz = obj != null ? obj.getClass() : null;
+        return yieldAnError(clazz);
+    }
+
+    private static boolean yieldAnError(Class<?> clazz) {
+        CompilerDirectives.transferToInterpreter();
+        StringBuilder sb = new StringBuilder();
+        sb.append(clazz == null ? "null" : clazz.getName());
+        sb.append(" isn't allowed Truffle interop type!\n");
+        if (clazz == null) {
+            throw new NullPointerException(sb.toString());
+        } else {
+            throw new ClassCastException(sb.toString());
+        }
     }
 
     /*
@@ -63,7 +90,12 @@ final class InteropAccessor extends Accessor {
 
         @Override
         public void checkInteropType(Object result) {
-            InteropAccessNode.checkInteropType(result);
+            InteropAccessor.checkInteropType(result);
+        }
+
+        @Override
+        public boolean isExecutableObject(Object value) {
+            return InteropLibrary.getFactory().getUncached().isExecutable(value);
         }
 
         @Override
@@ -72,70 +104,18 @@ final class InteropAccessor extends Accessor {
         }
 
         @Override
-        public boolean isValidNodeObject(Object obj) {
-            if (obj instanceof TruffleObject) {
-                TruffleObject tObj = (TruffleObject) obj;
-                if (!ForeignAccess.sendHasKeys(Message.HAS_KEYS.createNode(), tObj)) {
-                    throw new AssertionError("Invalid node object: must return true for the HAS_KEYS message.");
-                }
-                Object keys;
-                try {
-                    keys = ForeignAccess.sendKeys(Message.KEYS.createNode(), tObj);
-                } catch (UnsupportedMessageException e) {
-                    throw new AssertionError("Invalid node object: must support the KEYS message.", e);
-                }
-                if (!(keys instanceof TruffleObject)) {
-                    throw new AssertionError("Invalid node object: the returned KEYS object must be a TruffleObject.");
-                }
-                TruffleObject tKeys = (TruffleObject) keys;
-
-                Node hasSize = Message.HAS_SIZE.createNode();
-                if (!ForeignAccess.sendHasSize(hasSize, tKeys)) {
-                    throw new AssertionError("Invalid node object: the returned KEYS object must support HAS_SIZE.");
-                }
-                Node getSize = Message.GET_SIZE.createNode();
-
-                Number size;
-                try {
-                    size = (Number) ForeignAccess.sendGetSize(getSize, tKeys);
-                } catch (UnsupportedMessageException e) {
-                    throw new AssertionError("Invalid node object: the returned KEYS object must have a size.");
-                }
-                Node readKeyNode = Message.READ.createNode();
-                Node readElementNode = Message.READ.createNode();
-                Node keyInfoNode = Message.KEY_INFO.createNode();
-                long longValue = size.longValue();
-                for (long i = 0; i < longValue; i++) {
-                    Object key;
-                    try {
-                        key = ForeignAccess.sendRead(readKeyNode, tKeys, i);
-                    } catch (UnknownIdentifierException | UnsupportedMessageException e) {
-                        throw new AssertionError("Invalid node object: the returned KEYS object must be readable at number identifier " + i);
-                    }
-                    if (!(key instanceof String)) {
-                        throw new AssertionError("Invalid node object: the returned KEYS object must return a string at number identifier " + i + ". But was " + key.getClass().getName() + ".");
-                    }
-                    try {
-                        ForeignAccess.sendRead(readElementNode, tObj, key);
-                    } catch (UnknownIdentifierException | UnsupportedMessageException e) {
-                        throw new AssertionError("Invalid node object: the returned KEYS element must be readable with identifier " + key);
-                    }
-
-                    int keyInfo = ForeignAccess.sendKeyInfo(keyInfoNode, tObj, key);
-                    if (KeyInfo.isWritable(keyInfo)) {
-                        throw new AssertionError("Invalid node object: The key " + key + " is marked as writable but node objects must not be writable.");
-                    }
-                }
-                Node node = Message.HAS_SIZE.createNode();
-                if (ForeignAccess.sendHasSize(node, tObj)) {
-                    throw new AssertionError("Invalid node object: the node object must not return true for HAS_SIZE.");
-                }
-
-                return true;
-            } else {
-                throw new AssertionError("Invalid node object: Node objects must be of type TruffleObject.");
-            }
+        public Object createLegacyMetaObjectWrapper(Object receiver, Object result) {
+            return new LegacyMetaObjectWrapper(receiver, result);
         }
+
+        @Override
+        public Object unwrapLegacyMetaObjectWrapper(Object receiver) {
+            if (receiver instanceof LegacyMetaObjectWrapper) {
+                return ((LegacyMetaObjectWrapper) receiver).delegate;
+            }
+            return receiver;
+        }
+
     }
 
     static final class EmptyTruffleObject implements TruffleObject {

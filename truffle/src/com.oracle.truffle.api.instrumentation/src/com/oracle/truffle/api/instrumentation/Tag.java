@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,9 +47,9 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.Objects;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.nodes.LanguageInfo;
+import java.util.Set;
 
 /**
  * Base class for tags used in the Truffle instrumentation framework.
@@ -86,14 +86,10 @@ public abstract class Tag {
         if (engine == null) {
             return null;
         }
-        Class<? extends TruffleLanguage<?>> lang = engine.getLanguageClass(language);
-        ProvidedTags tags = lang.getAnnotation(ProvidedTags.class);
-        if (tags != null) {
-            for (Class<? extends Tag> tag : (Class<? extends Tag>[]) tags.value()) {
-                String alias = getIdentifier(tag);
-                if (alias != null && alias.equals(tagId)) {
-                    return tag;
-                }
+        for (Class<? extends Tag> tag : (Set<? extends Class<? extends Tag>>) engine.getProvidedTags(language)) {
+            String alias = getIdentifier(tag);
+            if (alias != null && alias.equals(tagId)) {
+                return tag;
             }
         }
         return null;

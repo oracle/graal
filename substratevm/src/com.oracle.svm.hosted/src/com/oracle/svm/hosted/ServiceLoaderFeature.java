@@ -155,14 +155,14 @@ public class ServiceLoaderFeature implements Feature {
         try {
             resourceURLs = access.getImageClassLoader().getClassLoader().getResources(serviceResourceLocation);
         } catch (IOException ex) {
-            throw UserError.abort("Error loading service implementation resources for service `" + serviceClassName + "`", ex);
+            throw UserError.abort(ex, "Error loading service implementation resources for service `" + serviceClassName + "`");
         }
         while (resourceURLs.hasMoreElements()) {
             URL resourceURL = resourceURLs.nextElement();
             try {
                 implementationClassNames.addAll(parseServiceResource(resourceURL));
             } catch (IOException ex) {
-                throw UserError.abort("Error loading service implementations for service `" + serviceClassName + "` from URL `" + resourceURL + "`", ex);
+                throw UserError.abort(ex, "Error loading service implementations for service `" + serviceClassName + "` from URL `" + resourceURL + "`");
             }
         }
 

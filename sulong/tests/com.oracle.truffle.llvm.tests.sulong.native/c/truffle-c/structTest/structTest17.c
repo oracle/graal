@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,21 +28,21 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 struct t {
-  int val;
-  struct t *ptr;
+    int val;
+    struct t *ptr;
 };
 
 const int size = 10000;
 
 int main() {
-  struct t test;
-  test.val = size;
-  test.ptr = &test;
-  int sum = 0;
-  while (test.val) {
-    sum++;
-    test.val--;
-    test.ptr = test.ptr->ptr;
-  }
-  return sum / size;
+    struct t test;
+    test.val = size;
+    test.ptr = &test;
+    int sum = 0;
+    while (test.val) {
+        sum++;
+        test.val--;
+        test.ptr = test.ptr->ptr;
+    }
+    return sum / size;
 }

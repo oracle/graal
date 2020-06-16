@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,24 +40,29 @@
  */
 package com.oracle.truffle.object.dsl.processor;
 
-import javax.lang.model.type.TypeKind;
-import javax.lang.model.type.TypeMirror;
-
-import com.oracle.truffle.api.object.Layout;
-import com.oracle.truffle.object.dsl.processor.model.LayoutModel;
-import com.oracle.truffle.object.dsl.processor.model.NameUtils;
-import com.oracle.truffle.object.dsl.processor.model.PropertyModel;
-
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.annotation.processing.ProcessingEnvironment;
+import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.TypeKind;
+import javax.lang.model.type.TypeMirror;
+
+import com.oracle.truffle.object.dsl.processor.model.LayoutModel;
+import com.oracle.truffle.object.dsl.processor.model.NameUtils;
+import com.oracle.truffle.object.dsl.processor.model.PropertyModel;
+
 public class LayoutGenerator {
 
     private final LayoutModel layout;
+    private ProcessingEnvironment processingEnv;
+    private final TypeMirror dispatchDefaultValue;
 
-    public LayoutGenerator(LayoutModel layout) {
+    public LayoutGenerator(LayoutModel layout, ProcessingEnvironment processingEnv) {
         this.layout = layout;
+        this.processingEnv = processingEnv;
+        this.dispatchDefaultValue = processingEnv.getElementUtils().getTypeElement("com.oracle.truffle.api.object.dsl.Layout.DispatchDefaultValue").asType();
     }
 
     public void generate(final PrintStream stream) {
@@ -218,6 +223,14 @@ public class LayoutGenerator {
 
         stream.printf("    public static class %sType extends %s {%n", layout.getName(), typeSuperclass);
 
+        if (!processingEnv.getTypeUtils().isSameType(layout.getDispatch(), dispatchDefaultValue)) {
+            stream.println("        ");
+            stream.println("        @Override");
+            stream.println("        public Class<?> dispatch() {");
+            stream.printf("            return %s.class;%n", layout.getDispatch().toString());
+            stream.println("        }");
+        }
+
         if (layout.hasShapeProperties()) {
             stream.println("        ");
 
@@ -324,9 +337,9 @@ public class LayoutGenerator {
         if (layout.getSuperLayout() == null) {
             stream.print("    protected static final Layout LAYOUT = Layout.newLayout()");
 
-            for (Layout.ImplicitCast implicitCast : layout.getImplicitCasts()) {
+            for (VariableElement implicitCast : layout.getImplicitCasts()) {
                 stream.print(".addAllowedImplicitCast(Layout.ImplicitCast.");
-                stream.print(implicitCast.name());
+                stream.print(implicitCast.getSimpleName().toString());
                 stream.print(")");
             }
 

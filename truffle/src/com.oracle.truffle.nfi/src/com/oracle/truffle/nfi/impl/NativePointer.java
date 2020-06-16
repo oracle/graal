@@ -41,6 +41,7 @@
 package com.oracle.truffle.nfi.impl;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
@@ -124,5 +125,21 @@ class NativePointer implements TruffleObject {
         }
 
         return execute.execute(this, (LibFFISignature) signature, args);
+    }
+
+    @ExportMessage
+    boolean hasLanguage() {
+        return true;
+    }
+
+    @ExportMessage
+    Class<? extends TruffleLanguage<?>> getLanguage() {
+        return NFILanguageImpl.class;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        return "NativePointer(" + nativePointer + ")";
     }
 }

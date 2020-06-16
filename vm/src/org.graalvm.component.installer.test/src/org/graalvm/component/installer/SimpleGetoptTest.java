@@ -100,7 +100,7 @@ public class SimpleGetoptTest extends TestBase {
 
     @Test
     public void testUnknownOption() {
-        setParams("install -s  -h");
+        setParams("install -S -h");
         exception.expect(FailedOperationException.class);
         exception.expectMessage("ERROR_UnsupportedOption");
         getopt.process();

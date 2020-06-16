@@ -90,6 +90,11 @@ public class ELFSymtab extends ELFObjectFile.ELFSection implements SymbolTable {
             return symType == SymType.FUNC;
         }
 
+        @Override
+        public boolean isGlobal() {
+            return SymBinding.GLOBAL.equals(binding);
+        }
+
         public boolean isNull() {
             return name.isEmpty() && value == 0 && size == 0 && binding == null && symType == null && referencedSection == null && pseudoSection == null;
         }

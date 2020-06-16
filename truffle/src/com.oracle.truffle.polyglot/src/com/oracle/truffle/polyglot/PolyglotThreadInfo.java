@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,55 +40,187 @@
  */
 package com.oracle.truffle.polyglot;
 
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadMXBean;
+import java.lang.ref.Reference;
+import java.lang.ref.WeakReference;
 import java.util.LinkedList;
+import java.util.concurrent.TimeUnit;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 final class PolyglotThreadInfo {
 
-    static final PolyglotThreadInfo NULL = new PolyglotThreadInfo(null);
+    static final PolyglotThreadInfo NULL = new PolyglotThreadInfo(null, null);
+    private static final Object NULL_CLASS_LOADER = new Object();
 
-    final Thread thread;
+    private final PolyglotContextImpl context;
+    private final Reference<Thread> thread;
 
     private int enteredCount;
     final LinkedList<Object> explicitContextStack = new LinkedList<>();
     volatile boolean cancelled;
+    private volatile long lastEntered;
+    private volatile long timeExecuted;
+    private boolean deprioritized;
+    private Object originalContextClassLoader = NULL_CLASS_LOADER;
+    private ClassLoaderEntry prevContextClassLoader;
 
-    PolyglotThreadInfo(Thread thread) {
-        this.thread = thread;
+    private static volatile ThreadMXBean threadBean;
+
+    PolyglotThreadInfo(PolyglotContextImpl context, Thread thread) {
+        this.context = context;
+        this.thread = new WeakReference<>(thread);
+        this.deprioritized = false;
+    }
+
+    Thread getThread() {
+        return thread.get();
     }
 
     boolean isCurrent() {
-        return thread == Thread.currentThread();
+        return getThread() == Thread.currentThread();
     }
 
-    void enter() {
-        assert Thread.currentThread() == thread;
-        enteredCount++;
+    void enter(PolyglotEngineImpl engine) {
+        assert Thread.currentThread() == getThread();
+        if (!engine.noPriorityChangeNeeded.isValid() && !deprioritized) {
+            lowerPriority();
+            deprioritized = true;
+        }
+        int count = ++enteredCount;
+        if (!engine.noThreadTimingNeeded.isValid() && count == 1) {
+            lastEntered = getTime();
+        }
+        if (!engine.customHostClassLoader.isValid()) {
+            setContextClassLoader();
+        }
+    }
+
+    @TruffleBoundary
+    private void lowerPriority() {
+        getThread().setPriority(Thread.MIN_PRIORITY);
+    }
+
+    @TruffleBoundary
+    private void raisePriority() {
+        // this will be ineffective unless the JVM runs with corresponding system privileges
+        getThread().setPriority(Thread.NORM_PRIORITY);
+    }
+
+    void resetTiming() {
+        if (enteredCount > 0) {
+            lastEntered = getTime();
+        }
+        this.timeExecuted = 0;
+    }
+
+    long getTimeExecuted() {
+        long totalTime = timeExecuted;
+        long last = this.lastEntered;
+        if (last > 0) {
+            totalTime += getTime() - last;
+        }
+        return totalTime;
+    }
+
+    @TruffleBoundary
+    private long getTime() {
+        Thread t = getThread();
+        if (t == null) {
+            return timeExecuted;
+        }
+        ThreadMXBean bean = threadBean;
+        if (bean == null) {
+            /*
+             * getThreadMXBean is synchronized so better cache in a local volatile field to avoid
+             * contention.
+             */
+            threadBean = bean = ManagementFactory.getThreadMXBean();
+        }
+        long time = bean.getThreadCpuTime(t.getId());
+        if (time == -1) {
+            return TimeUnit.MILLISECONDS.convert(System.currentTimeMillis(), TimeUnit.NANOSECONDS);
+        }
+        return time;
     }
 
     boolean isPolyglotThread(PolyglotContextImpl c) {
-        if (thread instanceof PolyglotThread) {
-            return ((PolyglotThread) thread).isOwner(c);
+        if (getThread() instanceof PolyglotThread) {
+            return ((PolyglotThread) getThread()).isOwner(c);
         }
         return false;
     }
 
-    void leave() {
-        assert Thread.currentThread() == thread;
-        --enteredCount;
+    void leave(PolyglotEngineImpl engine) {
+        assert Thread.currentThread() == getThread();
+        int count = --enteredCount;
+        if (!engine.customHostClassLoader.isValid()) {
+            restoreContextClassLoader();
+        }
+        if (!engine.noThreadTimingNeeded.isValid() && count == 0) {
+            long last = this.lastEntered;
+            this.lastEntered = 0;
+            this.timeExecuted += getTime() - last;
+        }
+        if (!engine.noPriorityChangeNeeded.isValid() && deprioritized && count == 0) {
+            raisePriority();
+            deprioritized = false;
+        }
+
     }
 
     boolean isLastActive() {
-        assert Thread.currentThread() == thread;
-        return thread != null && enteredCount == 1 && !cancelled;
+        assert Thread.currentThread() == getThread();
+        return getThread() != null && enteredCount == 1 && !cancelled;
     }
 
     boolean isActive() {
-        return thread != null && enteredCount > 0 && !cancelled;
+        return getThread() != null && enteredCount > 0 && !cancelled;
     }
 
     @Override
     public String toString() {
-        return super.toString() + "[thread=" + thread + ", enteredCount=" + enteredCount + ", cancelled=" + cancelled + "]";
+        return super.toString() + "[thread=" + getThread() + ", enteredCount=" + enteredCount + ", cancelled=" + cancelled + "]";
     }
 
+    @TruffleBoundary
+    private void setContextClassLoader() {
+        ClassLoader hostClassLoader = context.config.hostClassLoader;
+        if (hostClassLoader != null) {
+            Thread t = getThread();
+            ClassLoader original = t.getContextClassLoader();
+            assert originalContextClassLoader != NULL_CLASS_LOADER || prevContextClassLoader == null;
+            if (originalContextClassLoader != NULL_CLASS_LOADER) {
+                prevContextClassLoader = new ClassLoaderEntry((ClassLoader) originalContextClassLoader, prevContextClassLoader);
+            }
+            originalContextClassLoader = original;
+            t.setContextClassLoader(hostClassLoader);
+        }
+    }
+
+    @TruffleBoundary
+    private void restoreContextClassLoader() {
+        if (originalContextClassLoader != NULL_CLASS_LOADER) {
+            assert context.config.hostClassLoader != null;
+            Thread t = getThread();
+            t.setContextClassLoader((ClassLoader) originalContextClassLoader);
+            if (prevContextClassLoader != null) {
+                originalContextClassLoader = prevContextClassLoader.classLoader;
+                prevContextClassLoader = prevContextClassLoader.next;
+            } else {
+                originalContextClassLoader = NULL_CLASS_LOADER;
+            }
+        }
+    }
+
+    private static final class ClassLoaderEntry {
+        final ClassLoader classLoader;
+        final ClassLoaderEntry next;
+
+        ClassLoaderEntry(ClassLoader classLoader, ClassLoaderEntry next) {
+            this.classLoader = classLoader;
+            this.next = next;
+        }
+    }
 }

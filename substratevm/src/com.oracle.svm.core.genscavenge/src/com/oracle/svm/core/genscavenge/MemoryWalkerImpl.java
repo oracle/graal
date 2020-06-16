@@ -24,62 +24,50 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.MemoryWalker;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
-import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.thread.JavaVMOperation;
 
-public class MemoryWalkerImpl extends MemoryWalker {
-
+/** Walker to visit different memory regions with a {@link MemoryWalker}. */
+final class MemoryWalkerImpl extends MemoryWalker {
     @Platforms(Platform.HOSTED_ONLY.class)
-    public MemoryWalkerImpl() {
-        super();
+    MemoryWalkerImpl() {
     }
 
-    /** Visit all the memory regions. */
     @Override
-    public boolean visitMemory(MemoryWalker.Visitor memoryWalkerVisitor) {
-        MemoryWalkerVMOperation vmOperation = new MemoryWalkerVMOperation(memoryWalkerVisitor);
-        vmOperation.enqueue();
-        return vmOperation.getResult();
+    public boolean visitMemory(MemoryWalker.Visitor visitor) {
+        MemoryWalkerVMOperation op = new MemoryWalkerVMOperation(visitor);
+        op.enqueue();
+        return op.getResult();
     }
 
-    /** A VMOperation that walks memory. */
-    protected static final class MemoryWalkerVMOperation extends VMOperation {
+    static final class MemoryWalkerVMOperation extends JavaVMOperation {
+        private final MemoryWalker.Visitor visitor;
+        private boolean result = false;
 
-        private MemoryWalker.Visitor memoryWalkerVisitor;
-        private boolean result;
-
-        protected MemoryWalkerVMOperation(MemoryWalker.Visitor memoryVisitor) {
-            super("MemoryWalkerImpl.visitMemory", CallerEffect.BLOCKS_CALLER, SystemEffect.CAUSES_SAFEPOINT);
-            this.memoryWalkerVisitor = memoryVisitor;
-            this.result = false;
+        MemoryWalkerVMOperation(MemoryWalker.Visitor memoryVisitor) {
+            super("MemoryWalkerImpl.visitMemory", SystemEffect.SAFEPOINT);
+            this.visitor = memoryVisitor;
         }
 
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Allocation would change the memory being visited.")
         public void operate() {
-            ThreadLocalAllocation.disableThreadLocalAllocation();
-            boolean continueVisiting = true;
-            if (continueVisiting) {
-                continueVisiting = HeapImpl.getHeapImpl().walkHeap(memoryWalkerVisitor);
-            }
-            if (continueVisiting) {
-                continueVisiting = CodeInfoTable.getImageCodeCache().walkImageCode(memoryWalkerVisitor);
-            }
-            if (continueVisiting) {
-                continueVisiting = CodeInfoTable.getRuntimeCodeCache().walkRuntimeMethods(memoryWalkerVisitor);
-            }
-            result = continueVisiting;
+            ThreadLocalAllocation.disableAndFlushForAllThreads();
+            result = HeapImpl.getHeapImpl().walkMemory(visitor) &&
+                            CodeInfoTable.getImageCodeCache().walkImageCode(visitor) &&
+                            CodeInfoTable.getRuntimeCodeCache().walkRuntimeMethods(visitor);
         }
 
-        protected boolean getResult() {
+        boolean getResult() {
             return result;
         }
     }
@@ -89,7 +77,7 @@ public class MemoryWalkerImpl extends MemoryWalker {
 class MemoryWalkerFeature implements Feature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return HeapOptions.UseCardRememberedSetHeap.getValue();
+        return SubstrateOptions.UseCardRememberedSetHeap.getValue();
     }
 
     @Override

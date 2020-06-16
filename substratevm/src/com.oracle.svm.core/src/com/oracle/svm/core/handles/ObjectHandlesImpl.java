@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,8 +33,6 @@ import org.graalvm.word.SignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.heap.FeebleReference;
-
 //Checkstyle: stop
 import sun.misc.Unsafe;
 // Checkstyle: resume
@@ -59,14 +57,10 @@ import sun.misc.Unsafe;
 public final class ObjectHandlesImpl implements ObjectHandles {
     private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
-    /**
-     * Internal weak reference. Other code can create its own {@link WeakReference} objects and
-     * handles to them, which we should distinguish from explicit weak references. Therefore, we
-     * implement weak references with this private class.
-     */
-    private static final class WeakHandleReference<T> extends FeebleReference<T> {
-        WeakHandleReference(T obj) {
-            super(obj, null);
+    /** Private subclass to distinguish from regular handles to {@link WeakReference} objects. */
+    private static final class HandleWeakReference<T> extends WeakReference<T> {
+        HandleWeakReference(T referent) {
+            super(referent);
         }
     }
 
@@ -221,15 +215,15 @@ public final class ObjectHandlesImpl implements ObjectHandles {
     }
 
     public ObjectHandle createWeak(Object obj) {
-        return create(new WeakHandleReference<>(obj));
+        return create(new HandleWeakReference<>(obj));
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public <T> T get(ObjectHandle handle) {
         Object obj = doGet(handle);
-        if (obj instanceof WeakHandleReference) {
-            obj = ((WeakHandleReference<T>) obj).get();
+        if (obj instanceof HandleWeakReference) {
+            obj = ((HandleWeakReference<T>) obj).get();
         }
         return (T) obj;
     }
@@ -251,7 +245,7 @@ public final class ObjectHandlesImpl implements ObjectHandles {
     }
 
     public boolean isWeak(ObjectHandle handle) {
-        return (doGet(handle) instanceof WeakHandleReference);
+        return (doGet(handle) instanceof HandleWeakReference);
     }
 
     @Override
@@ -275,7 +269,7 @@ public final class ObjectHandlesImpl implements ObjectHandles {
         destroy(handle);
     }
 
-    long getCurrentCount() {
+    public long computeCurrentCount() {
         long count = 0;
         int bucketIndex = 0;
         Object[] bucket = getBucket(bucketIndex);
@@ -291,7 +285,7 @@ public final class ObjectHandlesImpl implements ObjectHandles {
         return count;
     }
 
-    long getCurrentCapacity() {
+    public long computeCurrentCapacity() {
         long capacity = 0;
         int bucketIndex = 0;
         Object[] bucket = getBucket(bucketIndex);

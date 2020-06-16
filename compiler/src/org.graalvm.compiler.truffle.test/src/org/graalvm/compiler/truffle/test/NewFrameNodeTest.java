@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,12 +45,20 @@ public class NewFrameNodeTest extends PartialEvaluationTest {
     @Test
     public void newFrameNodeFrameSizeIsCorrect() {
         final FrameDescriptor fd = new FrameDescriptor();
+        /*
+         * Make sure there are FrameSlots with higher index then is the default size (10) of inner
+         * array of ArrayList storing FrameSlots in FrameDescriptor
+         */
+        for (int i = 0; i < 15; i++) {
+            fd.addFrameSlot("b", FrameSlotKind.Boolean);
+            fd.removeFrameSlot("b");
+        }
         fd.addFrameSlot("b", FrameSlotKind.Boolean);
         fd.addFrameSlot("i", FrameSlotKind.Int);
         fd.removeFrameSlot("b");
         final Assumption version = fd.getVersion();
 
-        Assert.assertEquals(2, fd.getSize());
+        Assert.assertEquals(17, fd.getSize());
 
         final RootTestNode rootNode = new RootTestNode(fd, "newFrameNodeFrameSizeIsCorrect", new AbstractTestNode() {
             @Override
@@ -62,7 +70,7 @@ public class NewFrameNodeTest extends PartialEvaluationTest {
                         final long[] primitiveLocals = (long[]) getFrameField(frameWithoutBoxing, "primitiveLocals");
                         final Object[] locals = (Object[]) getFrameField(frameWithoutBoxing, "locals");
                         final byte[] tags = (byte[]) getFrameField(frameWithoutBoxing, "tags");
-                        return 100 * tags.length + 10 * primitiveLocals.length + locals.length;
+                        return 10000 * tags.length + 100 * primitiveLocals.length + locals.length;
                     } catch (IllegalAccessException e) {
                         return -2;
                     } catch (NoSuchFieldException e) {
@@ -83,7 +91,7 @@ public class NewFrameNodeTest extends PartialEvaluationTest {
         final OptimizedCallTarget callTarget = compileHelper("frameDescriptorKindIsCorrect", rootNode, new Object[]{});
 
         Assert.assertTrue(callTarget.isValid());
-        Assert.assertEquals(222, callTarget.call());
+        Assert.assertEquals(171717, callTarget.call());
         Assert.assertEquals(version, fd.getVersion());
         Assert.assertTrue(version.isValid());
     }

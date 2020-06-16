@@ -29,10 +29,10 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.c.CGlobalData;
@@ -58,17 +58,24 @@ public final class CFunctionLinkages {
         }
         return nameToFunction.computeIfAbsent(linkageName(method), symbolName -> {
             CGlobalData<CFunctionPointer> linkage = CGlobalDataFactory.forSymbol(symbolName);
-            return CGlobalDataFeature.singleton().registerAsAccessed(linkage);
+            return CGlobalDataFeature.singleton().registerAsAccessedOrGet(linkage);
         });
     }
 
     private static String linkageName(ResolvedJavaMethod method) {
-        CFunction functionAnnotation = method.getAnnotation(CFunction.class);
-        if (functionAnnotation != null && functionAnnotation.value().length() > 0) {
-            return functionAnnotation.value();
-        } else {
-            return method.getName();
+        String annotationLinkageName = getLinkageNameFromAnnotation(method);
+        if (annotationLinkageName != null && !annotationLinkageName.isEmpty()) {
+            return annotationLinkageName;
         }
+        return method.getName();
+    }
+
+    private static String getLinkageNameFromAnnotation(ResolvedJavaMethod method) {
+        CFunction cFunctionAnnotation = method.getAnnotation(CFunction.class);
+        if (cFunctionAnnotation != null) {
+            return cFunctionAnnotation.value();
+        }
+        return null;
     }
 }
 

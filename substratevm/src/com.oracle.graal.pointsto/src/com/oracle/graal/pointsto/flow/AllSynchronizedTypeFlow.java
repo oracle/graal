@@ -29,10 +29,6 @@ package com.oracle.graal.pointsto.flow;
  */
 public class AllSynchronizedTypeFlow extends TypeFlow<Object> {
 
-    public AllSynchronizedTypeFlow() {
-        super();
-    }
-
     @Override
     public String toString() {
         return "AllSynchronizedFlow";

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,11 +32,11 @@ package com.oracle.truffle.llvm.parser.model.functions;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.llvm.parser.metadata.MDAttachment;
+import com.oracle.truffle.llvm.parser.metadata.MDString;
+import com.oracle.truffle.llvm.parser.metadata.MDSubprogram;
 import com.oracle.truffle.llvm.parser.metadata.MetadataAttachmentHolder;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceFunction;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
@@ -46,8 +46,6 @@ import com.oracle.truffle.llvm.parser.model.blocks.InstructionBlock;
 import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 import com.oracle.truffle.llvm.parser.model.enums.Visibility;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.Constant;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.Instruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 import com.oracle.truffle.llvm.parser.model.visitors.FunctionVisitor;
 import com.oracle.truffle.llvm.parser.model.visitors.SymbolVisitor;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
@@ -57,7 +55,7 @@ import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 
 public final class FunctionDefinition extends FunctionSymbol implements Constant, MetadataAttachmentHolder {
 
-    private static final InstructionBlock[] EMPTY = new InstructionBlock[0];
+    public static final InstructionBlock[] EMPTY = new InstructionBlock[0];
 
     private final List<FunctionParameter> parameters = new ArrayList<>();
     private final Visibility visibility;
@@ -68,13 +66,13 @@ public final class FunctionDefinition extends FunctionSymbol implements Constant
     private InstructionBlock[] blocks = EMPTY;
     private int currentBlock = 0;
 
-    private FunctionDefinition(FunctionType type, String name, Linkage linkage, Visibility visibility, AttributesCodeEntry paramAttr) {
-        super(type, name, linkage, paramAttr);
+    private FunctionDefinition(FunctionType type, String name, Linkage linkage, Visibility visibility, AttributesCodeEntry paramAttr, int index) {
+        super(type, name, linkage, paramAttr, index);
         this.visibility = visibility;
     }
 
-    public FunctionDefinition(FunctionType type, Linkage linkage, Visibility visibility, AttributesCodeEntry paramAttr) {
-        this(type, LLVMIdentifier.UNKNOWN, linkage, visibility, paramAttr);
+    public FunctionDefinition(FunctionType type, Linkage linkage, Visibility visibility, AttributesCodeEntry paramAttr, int index) {
+        this(type, LLVMIdentifier.UNKNOWN, linkage, visibility, paramAttr, index);
     }
 
     @Override
@@ -93,6 +91,24 @@ public final class FunctionDefinition extends FunctionSymbol implements Constant
     public String getSourceName() {
         final String scopeName = sourceFunction.getName();
         return SourceFunction.DEFAULT_SOURCE_NAME.equals(scopeName) ? null : scopeName;
+    }
+
+    public String getDisplayName() {
+        /*
+         * For LLVM code produced from C++ sources, function.name stores the linkage name, but not
+         * 'original' C++ name.
+         */
+        if (mdAttachments != null && mdAttachments.size() > 0) {
+            for (MDAttachment mdAttachment : mdAttachments) {
+                if (mdAttachment.getValue() instanceof MDSubprogram) {
+                    MDSubprogram mdSubprogram = (MDSubprogram) mdAttachment.getValue();
+                    if (mdSubprogram.getName() instanceof MDString) {
+                        return ((MDString) mdSubprogram.getName()).getString();
+                    }
+                }
+            }
+        }
+        return getSourceName();
     }
 
     @Override
@@ -118,40 +134,11 @@ public final class FunctionDefinition extends FunctionSymbol implements Constant
     }
 
     public FunctionParameter createParameter(Type t) {
-        final AttributesGroup attrGroup = getParameterAttributesGroup(parameters.size());
-        final FunctionParameter parameter = new FunctionParameter(t, attrGroup);
+        final int argIndex = parameters.size();
+        final AttributesGroup attrGroup = getParameterAttributesGroup(argIndex);
+        final FunctionParameter parameter = new FunctionParameter(t, attrGroup, argIndex);
         parameters.add(parameter);
         return parameter;
-    }
-
-    public void exitLocalScope() {
-        int symbolIndex = 0;
-
-        // in K&R style function declarations the parameters are not assigned names
-        for (final FunctionParameter parameter : parameters) {
-            if (LLVMIdentifier.UNKNOWN.equals(parameter.getName())) {
-                parameter.setName(String.valueOf(symbolIndex++));
-            }
-        }
-
-        final Set<String> explicitBlockNames = Arrays.stream(blocks).map(InstructionBlock::getName).filter(blockName -> !LLVMIdentifier.isUnknown(blockName)).collect(Collectors.toSet());
-        for (final InstructionBlock block : blocks) {
-            if (LLVMIdentifier.isUnknown(block.getName())) {
-                do {
-                    block.setName(LLVMIdentifier.toImplicitBlockName(symbolIndex++));
-                    // avoid name clashes
-                } while (explicitBlockNames.contains(block.getName()));
-            }
-            for (int i = 0; i < block.getInstructionCount(); i++) {
-                final Instruction instruction = block.getInstruction(i);
-                if (instruction instanceof ValueInstruction) {
-                    final ValueInstruction value = (ValueInstruction) instruction;
-                    if (LLVMIdentifier.isUnknown(value.getName())) {
-                        value.setName(String.valueOf(symbolIndex++));
-                    }
-                }
-            }
-        }
     }
 
     public InstructionBlock generateBlock() {

@@ -29,13 +29,15 @@
 #include <windows.h>
 #include <errno.h>
 
-#define JNIEXPORT __declspec(dllexport)
-#define JNIIMPORT __declspec(dllimport)
+#include <jni.h>
 
 #define BitsPerByte 8
 
-typedef __int64 jlong;
-typedef long jint;
+#ifdef JNI_VERSION_9
+    #define JVM_INTERFACE_VERSION 6
+#else
+    #define JVM_INTERFACE_VERSION 4
+#endif
 
 static int _processor_count = 0;
 static jlong _performance_frequency = 0L;
@@ -44,11 +46,15 @@ jlong jlong_from(DWORD high, DWORD low) {
     return ((((uint64_t)high) << 32) | low);
 }
 
+JNIEXPORT int JNICALL JVM_GetInterfaceVersion() {
+    return JVM_INTERFACE_VERSION;
+}
+
 jlong as_long(LARGE_INTEGER x) {
     return jlong_from(x.HighPart, x.LowPart);
 }
 
-JNIEXPORT void initialize() {
+JNIEXPORT void JNICALL initialize() {
   LARGE_INTEGER count;
   SYSTEM_INFO si;
   GetSystemInfo(&si);
@@ -59,38 +65,11 @@ JNIEXPORT void initialize() {
   }
 }
 
-/* Only called in java.lang.Runtime native methods. */
-JNIEXPORT void JVM_FreeMemory() {
-    printf("JVM_FreeMemory called:  Unimplemented\n");
-}
-
-JNIEXPORT jlong JVM_TotalMemory() {
-    printf("JVM_TotalMemory called:  Unimplemented\n");
-    return 0L;
-}
-
-JNIEXPORT jlong JVM_MaxMemory() {
-    printf("JVM_MaxMemory called:  Unimplemented\n");
-    return 0L;
-}
-
-JNIEXPORT void JVM_GC() {
-    printf("JVM_GC called:  Unimplemented\n");
-}
-
-JNIEXPORT void JVM_TraceInstructions(int on) {
-    printf("JVM_TraceInstructions called:  Unimplemented\n");
-}
-
-JNIEXPORT void JVM_TraceMethodCalls(int on) {
-    printf("JVM_TraceMethods called:  Unimplemented\n");
-}
-
-JNIEXPORT int JVM_ActiveProcessorCount() {
+JNIEXPORT int JNICALL JVM_ActiveProcessorCount() {
     DWORD_PTR lpProcessAffinityMask = 0;
     DWORD_PTR lpSystemAffinityMask = 0;
     if (_processor_count <= sizeof(UINT_PTR) * BitsPerByte &&
-        GetProcessAffinityMask(GetCurrentProcess(), &lpProcessAffinityMask, &lpSystemAffinityMask)) { 
+        GetProcessAffinityMask(GetCurrentProcess(), &lpProcessAffinityMask, &lpSystemAffinityMask)) {
         int bitcount = 0;
         // Nof active processors is number of bits in process affinity mask
         while (lpProcessAffinityMask != 0) {
@@ -100,12 +79,12 @@ JNIEXPORT int JVM_ActiveProcessorCount() {
         return bitcount;
     } else {
         return _processor_count;
-    }            
+    }
 }
 
 HANDLE interrupt_event = NULL;
 
-JNIEXPORT HANDLE JVM_GetThreadInterruptEvent() {
+JNIEXPORT HANDLE JNICALL JVM_GetThreadInterruptEvent() {
     if (interrupt_event != NULL) {
         return interrupt_event;
     }
@@ -114,24 +93,31 @@ JNIEXPORT HANDLE JVM_GetThreadInterruptEvent() {
 }
 
 /* Called directly from several native functions */
-JNIEXPORT int JVM_InitializeSocketLibrary() { 
+JNIEXPORT int JNICALL JVM_InitializeSocketLibrary() {
     /* A noop, returns 0 in hotspot */
    return 0;
 }
 
-static jlong  _time_offset         = 116444736000000000L;
-static jlong NANOSECS_PER_SEC      = 1000000000L;
-static jint  NANOSECS_PER_MILLISEC = 1000000;
+static const jlong _offset               = 116444736000000000L;
+static const jlong NANOSECS_PER_SEC      = 1000000000L;
+static const jint  NANOSECS_PER_MILLISEC = 1000000;
 
-static jlong getCurrentTimeMillis() {
-    jlong a;
-    FILETIME wt;
-    GetSystemTimeAsFileTime(&wt);
-    a = jlong_from(wt.dwHighDateTime, wt.dwLowDateTime);
-    return (a - _time_offset) / 10000;
+// Returns time ticks in (10th of micro seconds)
+static __inline jlong windows_to_time_ticks(FILETIME wt) {
+  jlong a = jlong_from(wt.dwHighDateTime, wt.dwLowDateTime);
+  return (a - _offset);
 }
 
-JNIEXPORT jlong Java_java_lang_System_nanoTime(void *env, void * ignored) {
+static __inline jlong getCurrentTimeMillis() {
+    jlong a;
+    FILETIME wt;
+    jlong ticks;
+    GetSystemTimeAsFileTime(&wt);
+    ticks = windows_to_time_ticks(wt);
+    return ticks / 10000;
+}
+
+JNIEXPORT jlong JNICALL Java_java_lang_System_nanoTime(void *env, void * ignored) {
     LARGE_INTEGER current_count;
     double current, freq;
     jlong time;
@@ -147,23 +133,62 @@ JNIEXPORT jlong Java_java_lang_System_nanoTime(void *env, void * ignored) {
     return time;
 }
 
-JNIEXPORT jlong JVM_NanoTime(void *env, void * ignored) {
+JNIEXPORT jlong JNICALL JVM_NanoTime(void *env, void * ignored) {
     return Java_java_lang_System_nanoTime(env, ignored);
 }
 
-JNIEXPORT jlong Java_java_lang_System_currentTimeMillis(void *env, void * ignored) {
+JNIEXPORT jlong JNICALL Java_java_lang_System_currentTimeMillis(void *env, void * ignored) {
     return getCurrentTimeMillis();
 }
 
-JNIEXPORT jlong JVM_CurrentTimeMillis(void *env, void * ignored) {
+JNIEXPORT jlong JNICALL JVM_CurrentTimeMillis(void *env, void * ignored) {
     return Java_java_lang_System_currentTimeMillis(env, ignored);
 }
 
-JNIEXPORT void JVM_Halt(int retcode) {
+static void os_javaTimeSystemUTC(jlong *seconds, jlong *nanos) {
+  FILETIME wt;
+  jlong ticks;
+  jlong secs;
+  GetSystemTimeAsFileTime(&wt);
+  ticks = windows_to_time_ticks(wt); // 10th of micros
+  secs = ticks / 10000000; // 10000 * 1000
+  *seconds = secs;
+  *nanos = ((jlong)(ticks - (secs*10000000))) * 100;
+}
+
+/* Taken from src/hotspot/share/prims/jvm.cpp */
+#define CONST64(x)  (x ## LL)
+
+static const jlong MAX_DIFF_SECS = CONST64(0x0100000000); //  2^32
+static const jlong MIN_DIFF_SECS = -CONST64(0x0100000000); // -2^32
+
+JNIEXPORT jlong JNICALL JVM_GetNanoTimeAdjustment(void *env, void *ignored, jlong offset_secs) {
+    jlong seconds;
+    jlong nanos;
+    jlong diff;
+
+    os_javaTimeSystemUTC(&seconds, &nanos);
+
+    diff = seconds - offset_secs;
+    if (diff >= MAX_DIFF_SECS || diff <= MIN_DIFF_SECS) {
+       return -1; // sentinel value: the offset is too far off the target
+    }
+
+    return (diff * (jlong)1000000000) + nanos;
+}
+
+JNIEXPORT jlong JNICALL Java_jdk_internal_misc_VM_getNanoTimeAdjustment(void *env, void * ignored, jlong offset_secs) {
+    return JVM_GetNanoTimeAdjustment(env, ignored, offset_secs);
+}
+
+JNIEXPORT void JNICALL JVM_BeforeHalt() {
+}
+
+JNIEXPORT void JNICALL JVM_Halt(int retcode) {
     _exit(retcode);
 }
 
-JNIEXPORT int JVM_GetLastErrorString(char *buf, int len) {
+JNIEXPORT int JNICALL JVM_GetLastErrorString(char *buf, int len) {
     DWORD errval;
 
     if ((errval = GetLastError()) != 0) {
@@ -181,11 +206,11 @@ JNIEXPORT int JVM_GetLastErrorString(char *buf, int len) {
         if (buf[n - 1] == '\n') n--;
         if (buf[n - 1] == '\r') n--;
         if (buf[n - 1] == '.') n--;
-        buf[n] = '\0'; 
-      } 
+        buf[n] = '\0';
+      }
       return n;
-    } 
-  
+    }
+
     if (errno != 0) {
       /* C runtime error that has no corresponding DOS error code */
       const char* s = strerror(errno);
@@ -194,10 +219,38 @@ JNIEXPORT int JVM_GetLastErrorString(char *buf, int len) {
       strncpy(buf, s, n);
       buf[n] = '\0';
       return n;
-    } 
+    }
 
   return 0;
-} 
+}
+
+JNIEXPORT jobject JNICALL JVM_DoPrivileged(JNIEnv *env, jclass cls, jobject action, jobject context, jboolean wrapException) {
+    jclass errorClass;
+    jclass actionClass = (*env)->FindClass(env, "java/security/PrivilegedAction");
+    if (actionClass != NULL && !(*env)->ExceptionCheck(env)) {
+        jmethodID run = (*env)->GetMethodID(env, actionClass, "run", "()Ljava/lang/Object;");
+        if (run != NULL && !(*env)->ExceptionCheck(env)) {
+            return (*env)->CallObjectMethod(env, action, run);
+        }
+    }
+    errorClass = (*env)->FindClass(env, "java/lang/InternalError");
+    if (errorClass != NULL && !(*env)->ExceptionCheck(env)) {
+        (*env)->ThrowNew(env, errorClass, "Could not invoke PrivilegedAction");
+    } else {
+        (*env)->FatalError(env, "PrivilegedAction could not be invoked and the error could not be reported");
+    }
+    return NULL;
+}
+
+jboolean VerifyFixClassname(char *utf_name) {
+    fprintf(stderr, "VerifyFixClassname(%s) called:  Unimplemented\n", utf_name);
+    abort();
+}
+
+jboolean VerifyClassname(char *utf_name, jboolean arrayAllowed) {
+    fprintf(stderr, "VerifyClassname(%s, %d) called:  Unimplemented\n", utf_name, arrayAllowed);
+    abort();
+}
 
 int jio_vfprintf(FILE* f, const char *fmt, va_list args) {
   return vfprintf(f, fmt, args);
@@ -217,3 +270,57 @@ int jio_vsnprintf(char *str, size_t count, const char *fmt, va_list args) {
   return result;
 }
 
+#ifdef JNI_VERSION_9
+int jio_snprintf(char *str, size_t count, const char *fmt, ...) {
+  va_list args;
+  int len;
+  va_start(args, fmt);
+  len = jio_vsnprintf(str, count, fmt, args);
+  va_end(args);
+  return len;
+}
+
+int jio_fprintf(FILE *fp, const char *fmt, ...)
+{
+    int len;
+
+    va_list args;
+    va_start(args, fmt);
+    len = jio_vfprintf(fp, fmt, args);
+    va_end(args);
+
+    return len;
+}
+#endif
+
+/*
+ * Signal support, used to implement the shutdown sequence.  Every VM must
+ * support JVM_SIGINT and JVM_SIGTERM, raising the former for user interrupts
+ * (^C) and the latter for external termination (kill, system shutdown, etc.).
+ * Other platform-dependent signal values may also be supported.
+ */
+#include "JvmFuncs_SignalImpl.h"
+
+JNIEXPORT jint JNICALL JVM_FindSignal(const char *name) {
+  return os__get_signal_number(name);
+}
+
+JNIEXPORT jboolean JNICALL JVM_RaiseSignal(jint sig) {
+  os__signal_raise(sig);
+  return JNI_TRUE;
+}
+
+JNIEXPORT void * JNICALL JVM_RegisterSignal(jint sig, void *handler) {
+  // Copied from classic vm
+  // signals_md.c       1.4 98/08/23
+  void* newHandler = handler == (void *)2
+                   ? os__user_handler()
+                   : handler;
+
+  void* oldHandler = os__signal(sig, newHandler);
+  if (oldHandler == os__user_handler()) {
+      return (void *)2;
+  } else {
+      return oldHandler;
+  }
+}

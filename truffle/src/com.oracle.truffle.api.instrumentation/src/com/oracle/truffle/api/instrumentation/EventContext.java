@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,12 +43,19 @@ package com.oracle.truffle.api.instrumentation;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Objects;
+import java.util.Set;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -90,11 +97,12 @@ public final class EventContext {
             return true;
         }
         if (object != null) {
-            assert InstrumentAccessor.interopAccess().isValidNodeObject(object);
+            assert isValidNodeObject(object);
         }
         boolean foundStandardTag = false;
         for (Class<?> clazz : StandardTags.ALL_TAGS) {
             if (hasTag((Class<? extends Tag>) clazz)) {
+                assert languageDeclaresTag(probeNode.getRootNode(), clazz);
                 foundStandardTag = true;
             }
         }
@@ -105,6 +113,21 @@ public final class EventContext {
             }
         }
 
+        return true;
+    }
+
+    private static boolean languageDeclaresTag(RootNode root, Class<?> tag) {
+        Object polyglotEngine = InstrumentAccessor.nodesAccess().getPolyglotEngine(root);
+        if (polyglotEngine == null) {
+            return true;
+        }
+        InstrumentationHandler handler = (InstrumentationHandler) InstrumentAccessor.engineAccess().getInstrumentationHandler(polyglotEngine);
+        Set<Class<?>> providedTags = handler.getProvidedTags(root);
+        if (!providedTags.contains(tag)) {
+            TruffleLanguage<?> language = InstrumentAccessor.nodesAccess().getLanguage(root);
+            throw new AssertionError("An instrumentable node returned true for a tag that was not provided by the language '" + root.getLanguageInfo().getId() + "'.\n" +
+                            "Add @ProvidedTags with tag  " + tag + " to " + language.getClass().getName() + ".");
+        }
         return true;
     }
 
@@ -127,16 +150,17 @@ public final class EventContext {
         }
         Node node = getInstrumentedNode();
         if (node instanceof InstrumentableNode) {
-            return ((InstrumentableNode) node).hasTag(tag);
+            boolean has = ((InstrumentableNode) node).hasTag(tag);
+            assert !has || languageDeclaresTag(probeNode.getRootNode(), tag);
+            return has;
         } else {
-            // legacy support
-            return InstrumentAccessor.nodesAccess().isTaggedWith(node, tag);
+            return false;
         }
     }
 
     /**
      * Returns a language provided object that represents the instrumented node properties. The
-     * returned is alwasy a valid interop object. The returned object is never <code>null</code> and
+     * returned is always a valid interop object. The returned object is never <code>null</code> and
      * always returns <code>true</code> for the HAS_KEYS message. Multiple calls to
      * {@link #getNodeObject()} return the same node object instance.
      *
@@ -156,7 +180,7 @@ public final class EventContext {
             if (object == null) {
                 object = InstrumentAccessor.interopAccess().createDefaultNodeObject(node);
             } else {
-                assert InstrumentAccessor.interopAccess().isValidNodeObject(object);
+                assert isValidNodeObject(object);
             }
             this.nodeObject = object;
         }
@@ -191,7 +215,7 @@ public final class EventContext {
      */
     @SuppressWarnings("deprecation")
     public Node getInstrumentedNode() {
-        com.oracle.truffle.api.instrumentation.InstrumentableFactory.WrapperNode wrapper = probeNode.findWrapper();
+        WrapperNode wrapper = probeNode.findWrapper();
         return wrapper != null ? wrapper.getDelegateNode() : null;
     }
 
@@ -297,21 +321,234 @@ public final class EventContext {
         return new UnwindException(info, unwindBinding);
     }
 
-    /*
-     * TODO (chumer) a way to parse code in the current language and return something like a node
-     * that is directly embeddable into the AST as a @Child.
+    /**
+     * Creates a runtime exception that when thrown is observable to the guest language application.
+     * Be aware that errors propagated to the guest application may significantly alter the behavior
+     * of the guest application influencing other instruments which may limit them ability of them
+     * to be composed. If not wrapped using this method any exception caused by an execution event
+     * instrumentation is printed to the {@link TruffleInstrument.Env#out() error stream}.
+     * <p>
+     * Propagating runtime errors is supported in the following events:
+     * <ul>
+     * <li>{@link ExecutionEventNode#onEnter(VirtualFrame) onEnter}
+     * <li>{@link ExecutionEventNode#onInputValue(VirtualFrame, EventContext, int, Object)
+     * onInputValue}
+     * <li>{@link ExecutionEventNode#onReturnExceptional(VirtualFrame, Throwable)
+     * onReturnExceptional}
+     * <li>{@link ExecutionEventNode#onReturnValue(VirtualFrame, Object) onReturnValue}
+     * <li>{@link ExecutionEventNode#onUnwind(VirtualFrame, Object) onUnwind}
+     * <li>{@link ExecutionEventNode#onDispose(VirtualFrame) onDispose}
+     * </ul>
+     * Errors may not be propagated in {@link ExecutionEventNodeFactory#create(EventContext)} as
+     * this may lead to unstable ASTs.
+     * <p>
+     * If an error is propagated all other installed execution event listeners will continue to be
+     * notified. If multiple listeners propagate errors then the first error will be propagated and
+     * later errors will be attached to the first as {@link Exception#addSuppressed(Throwable)
+     * suppressed} exception. The notification order relates to the order the bindings were
+     * installed.
+     * <p>
+     * Example usage: {@link PropagateErrorSnippets#onCreate}
+     *
+     * @param e the exception to propagate.
+     * @since 20.0
      */
+    public RuntimeException createError(RuntimeException e) {
+        return new InstrumentException(this, e);
+    }
+
     /** @since 0.12 */
     @Override
     public String toString() {
         return "EventContext[source=" + getInstrumentedSourceSection() + "]";
     }
 
+    private boolean isValidNodeObject(Object obj) {
+        CompilerAsserts.neverPartOfCompilation();
+        InteropLibrary interop = InteropLibrary.getFactory().getUncached(obj);
+
+        if (!interop.hasMembers(obj)) {
+            throw new AssertionError("Invalid node object: must return true for the hasMembers message.");
+        }
+        Object members;
+        try {
+            members = interop.getMembers(obj);
+        } catch (UnsupportedMessageException e) {
+            throw new AssertionError("Invalid node object: must support the getMembers message.", e);
+        }
+        InteropLibrary membersInterop = InteropLibrary.getFactory().getUncached(members);
+        if (!membersInterop.hasArrayElements(members)) {
+            throw new AssertionError("Invalid node object: the returned members object must support hasArrayElements.");
+        }
+        long size;
+        try {
+            size = membersInterop.getArraySize(members);
+        } catch (UnsupportedMessageException e) {
+            throw new AssertionError("Invalid node object: the returned members object must have a size.");
+        }
+        for (long i = 0; i < size; i++) {
+            Object key;
+            try {
+                key = membersInterop.readArrayElement(members, i);
+            } catch (InvalidArrayIndexException | UnsupportedMessageException e) {
+                throw new AssertionError("Invalid node object: the returned members object must be readable at number index " + i);
+            }
+            InteropLibrary keyInterop = InteropLibrary.getFactory().getUncached(key);
+            if (!keyInterop.isString(key)) {
+                throw new AssertionError("Invalid node object: the returned member must return a string at index " + i + ". But was " + key.getClass().getName() + ".");
+            }
+            String member;
+            try {
+                member = keyInterop.asString(key);
+            } catch (UnsupportedMessageException e1) {
+                throw new AssertionError("Invalid node object: the returned member must return a string  ");
+            }
+            try {
+                interop.readMember(obj, member);
+            } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+                throw new AssertionError("Invalid node object: the returned member must be readable with identifier " + member);
+            }
+
+            if (interop.isMemberWritable(obj, member)) {
+                throw new AssertionError("Invalid node object: The member " + member + " is marked as writable but node objects must not be writable.");
+            }
+        }
+        if (interop.hasArrayElements(obj)) {
+            throw new AssertionError("Invalid node object: the node object must not return true for hasArrayElements.");
+        }
+
+        return isValidTaggedNodeObject(obj);
+    }
+
+    private boolean isValidTaggedNodeObject(Object obj) {
+        if (hasTag(StandardTags.ReadVariableTag.class)) {
+            isValidVarsNodeObject(obj, StandardTags.ReadVariableTag.NAME);
+        }
+        if (hasTag(StandardTags.WriteVariableTag.class)) {
+            isValidVarsNodeObject(obj, StandardTags.WriteVariableTag.NAME);
+        }
+        return true;
+    }
+
+    private static void isValidVarsNodeObject(Object obj, String varNameProperty) {
+        InteropLibrary interop = InteropLibrary.getFactory().getUncached(obj);
+        if (!interop.isMemberReadable(obj, varNameProperty)) {
+            throw new AssertionError("Invalid node object " + obj + ", does not have " + varNameProperty + " member.");
+        }
+        Object varName;
+        try {
+            varName = interop.readMember(obj, varNameProperty);
+        } catch (UnsupportedMessageException | UnknownIdentifierException ex) {
+            throw new AssertionError("Invalid node object " + obj + ", can not read " + varNameProperty + " member.", ex);
+        }
+        if (varName instanceof String) {
+            return;
+        }
+        interop = InteropLibrary.getFactory().getUncached(varName);
+        if (interop.hasArrayElements(varName)) {
+            long size;
+            try {
+                size = interop.getArraySize(varName);
+            } catch (UnsupportedMessageException e) {
+                throw new AssertionError("Invalid node object: the returned variable name object must have a size when it's an array.");
+            }
+            for (long i = 0; i < size; i++) {
+                Object var;
+                try {
+                    var = interop.readArrayElement(varName, i);
+                } catch (InvalidArrayIndexException | UnsupportedMessageException e) {
+                    throw new AssertionError("Invalid node object: the returned variable name object must be readable at number index " + i);
+                }
+                isValidVarObject(var);
+            }
+        } else {
+            isValidVarObject(varName);
+        }
+    }
+
+    private static void isValidVarObject(Object var) {
+        InteropLibrary interop = InteropLibrary.getFactory().getUncached(var);
+        if (!interop.isString(var)) {
+            throw new AssertionError("Invalid variable object " + var + ", must be interop String.");
+        }
+        try {
+            interop.asString(var);
+        } catch (UnsupportedMessageException ex) {
+            throw new AssertionError("Invalid variable object " + var + ", must be interop String.", ex);
+        }
+        // May have location:
+        boolean hasLocation = interop.hasSourceLocation(var);
+        try {
+            interop.getSourceLocation(var);
+            assert hasLocation : String.format("Invalid variable object %s, provides source location that should not have.", var);
+        } catch (UnsupportedMessageException ex) {
+            assert !hasLocation : String.format("Invalid variable object %s, missing source location.", var);
+        }
+    }
+
+}
+
+class PropagateErrorSnippets extends TruffleInstrument {
+
+    // Checkstyle: stop
+    // @formatter:off
+    @Override
+    // BEGIN: PropagateErrorSnippets#onCreate
+    protected void onCreate(TruffleInstrument.Env env) {
+        env.getInstrumenter().attachExecutionEventListener(
+            SourceSectionFilter.newBuilder().
+                                tagIs(StandardTags.CallTag.class).build(),
+            new ExecutionEventListener() {
+                public void onEnter(EventContext context, VirtualFrame f) {
+                    throw context.createError(
+                          new RuntimeException("propagated to the guest"));
+                }
+                public void onReturnValue(EventContext context,
+                                          VirtualFrame f, Object result) {
+                }
+                public void onReturnExceptional(EventContext context,
+                                                VirtualFrame f, Throwable ex) {}
+            });
+    }
+    // END: PropagateErrorSnippets#onCreate
+    // @formatter:on
+}
+
+class UnwindInstrumentationReturnSnippets extends TruffleInstrument {
+
+    // @formatter:off
+    @Override
+    // BEGIN: UnwindInstrumentationReturnSnippets#onCreate
+    protected void onCreate(TruffleInstrument.Env env) {
+        // Register a listener that checks the return value to all call nodes
+        // If the return value is not 42, it forces to return 42.
+        env.getInstrumenter().attachExecutionEventListener(
+            SourceSectionFilter.newBuilder().
+                                tagIs(StandardTags.CallTag.class).build(),
+            new ExecutionEventListener() {
+                public void onEnter(EventContext context, VirtualFrame f) {}
+                public void onReturnValue(EventContext context,
+                                          VirtualFrame f, Object result) {
+                    if (!Objects.equals(result, 42)) {
+                        CompilerDirectives.transferToInterpreter();
+                        throw context.createUnwind(42);
+                    }
+                }
+                public Object onUnwind(EventContext context,
+                                       VirtualFrame f, Object info) {
+                    // return 42 on unwind
+                    return info;
+                }
+                public void onReturnExceptional(EventContext context,
+                                                VirtualFrame f, Throwable ex) {}
+            });
+    }
+    // END: UnwindInstrumentationReturnSnippets#onCreate
+    // @formatter:on
 }
 
 class UnwindInstrumentationReenterSnippets extends TruffleInstrument {
 
-    // Checkstyle: stop
     // @formatter:off
     @Override
     // BEGIN: UnwindInstrumentationReenterSnippets#onCreate
@@ -356,39 +593,6 @@ class UnwindInstrumentationReenterSnippets extends TruffleInstrument {
             });
     }
     // END: UnwindInstrumentationReenterSnippets#onCreate
-    // @formatter:on
-}
-
-class UnwindInstrumentationReturnSnippets extends TruffleInstrument {
-
-    // @formatter:off
-    @Override
-    // BEGIN: UnwindInstrumentationReturnSnippets#onCreate
-    protected void onCreate(TruffleInstrument.Env env) {
-        // Register a listener that checks the return value to all call nodes
-        // If the return value is not 42, it forces to return 42.
-        env.getInstrumenter().attachExecutionEventListener(
-            SourceSectionFilter.newBuilder().
-                                tagIs(StandardTags.CallTag.class).build(),
-            new ExecutionEventListener() {
-                public void onEnter(EventContext context, VirtualFrame f) {}
-                public void onReturnValue(EventContext context,
-                                          VirtualFrame f, Object result) {
-                    if (!Objects.equals(result, 42)) {
-                        CompilerDirectives.transferToInterpreter();
-                        throw context.createUnwind(42);
-                    }
-                }
-                public Object onUnwind(EventContext context,
-                                       VirtualFrame f, Object info) {
-                    // return 42 on unwind
-                    return info;
-                }
-                public void onReturnExceptional(EventContext context,
-                                                VirtualFrame f, Throwable ex) {}
-            });
-    }
-    // END: UnwindInstrumentationReturnSnippets#onCreate
     // @formatter:on
     // Checkstyle: resume
 }

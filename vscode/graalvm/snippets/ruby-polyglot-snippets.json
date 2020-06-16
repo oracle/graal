@@ -1,0 +1,58 @@
+{
+    "Polyglot_eval": {
+        "prefix": "Polyglot.eval",
+        "body": [
+            "Polyglot.eval('${1|js,R,python|}', ${2:''})"
+        ],
+        "description": "Executes code in a foreign language identified by its ID"
+    },
+    "Polyglot_eval_file_by_id": {
+        "prefix": "Polyglot.eval_file",
+        "body": [
+            "Polyglot.eval_file('${1|js,R,python|}', ${2:'path'})"
+        ],
+        "description": "Executes code in a foreign language from a file, identified by its language ID"
+    },
+    "Polyglot_eval_file": {
+        "prefix": "Polyglot.eval_file",
+        "body": [
+            "Polyglot.eval_file(${1:'path'})"
+        ],
+        "description": "Executes code in a foreign language from a file, automatically determining the language"
+    },
+    "Polyglot_export": {
+        "prefix": "Polyglot.export",
+        "body": [
+            "Polyglot.export('${1:name}', ${2:value})"
+        ],
+        "description": "Exports a value with a given name to other languages"
+    },
+    "Polyglot_export_method": {
+        "prefix": "Polyglot.export_method",
+        "body": [
+            "Polyglot.export_method('${1:name}')"
+        ],
+        "description": "Exports a method, defined in the top-level object, to other languages"
+    },
+    "Polyglot_import": {
+        "prefix": "Polyglot.import",
+        "body": [
+            "Polyglot.import('${1:name}')"
+        ],
+        "description": "Imports and returns a value with a given name exported by other languages"
+    },
+    "Polyglot_import_method": {
+        "prefix": "Polyglot.import_method",
+        "body": [
+            "Polyglot.import_method('${1:name}')"
+        ],
+        "description": "Imports a value, which should be IS_EXECUTABLE, with a given name, and defines it in the top-level object"
+    },
+    "Java_type": {
+        "prefix": "Java.type",
+        "body": [
+            "Java.type('${1:name}')"
+        ],
+        "description": "Returns a Java class object, given its name"
+    }
+}

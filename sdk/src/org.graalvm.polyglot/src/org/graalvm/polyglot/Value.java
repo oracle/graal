@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.zone.ZoneRules;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -86,6 +87,11 @@ import org.graalvm.polyglot.proxy.Proxy;
  * <li>{@link #isProxyObject() Proxy Object}: This value represents a {@link Proxy proxy} value.
  * <li>{@link #isNativePointer() Native Pointer}: This value represents a native pointer. The native
  * pointer value can be accessed using {@link #asNativePointer()}.
+ * <li>{@link #isException() Exception}: This value represents an exception object. The exception
+ * can be thrown using {@link #throwException()}.
+ * <li>{@link #isMetaObject() Meta-Object}: This value represents a metaobject. Access metaobject
+ * operations using {@link #getMetaSimpleName()}, {@link #getMetaQualifiedName()} and
+ * {@link #isMetaInstance(Object)}.
  * </ul>
  * In addition any value may have one or more of the following traits:
  * <ul>
@@ -143,16 +149,100 @@ public final class Value {
     }
 
     /**
-     * Returns the meta representation of this polyglot value. The interpretation of this function
-     * differs for each guest language. A language agnostic way to get to a type name is: <code>
-     * value.{@link #getMetaObject() getMetaObject()}.{@link #toString() toString()}</code>. If a
-     * language does not provide any meta object information, <code>null</code> is returned.
+     * Returns the metaobject that is associated with this value or <code>null</code> if no
+     * metaobject is available. The metaobject represents a description of the object, reveals it's
+     * kind and it's features. Some information that a metaobject might define includes the base
+     * object's type, interface, class, methods, attributes, etc.
+     * <p>
+     * The returned value returns <code>true</code> for {@link #isMetaObject()} and provides
+     * implementations for {@link #getMetaSimpleName()}, {@link #getMetaQualifiedName()}, and
+     * {@link #isMetaInstance(Object)}.
+     * <p>
+     * This method does not cause any observable side-effects.
      *
      * @throws IllegalStateException if the context is already closed.
-     * @since 19.0
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @see #isMetaObject()
+     * @since 19.0 revised in 20.1
      */
     public Value getMetaObject() {
         return impl.getMetaObject(receiver);
+    }
+
+    /**
+     * Returns <code>true</code> if the value represents a metaobject. Metaobjects may be values
+     * that naturally occur in a language or they may be returned by {@link #getMetaObject()}. A
+     * metaobject represents a description of the object, reveals its kind and its features. Returns
+     * <code>false</code> by default. Metaobjects are often also {@link #canInstantiate()
+     * instantiable}, but not necessarily.
+     * <p>
+     * <b>Sample interpretations:</b> In Java an instance of the type {@link Class} is a metaobject.
+     * In JavaScript any function instance is a metaobject. For example, the metaobject of a
+     * JavaScript class is the associated constructor function.
+     * <p>
+     * This method does not cause any observable side-effects. If this method is implemented then
+     * also {@link #getMetaQualifiedName()}, {@link #getMetaSimpleName()} and
+     * {@link #isMetaInstance(Object)} must be implemented as well.
+     *
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @see #getMetaQualifiedName()
+     * @see #getMetaSimpleName()
+     * @see #isMetaInstance(Object)
+     * @see #getMetaObject()
+     * @since 20.1
+     */
+    public boolean isMetaObject() {
+        return impl.isMetaObject(receiver);
+    }
+
+    /**
+     * Returns the qualified name of a metaobject as {@link #isString() String}.
+     * <p>
+     * <b>Sample interpretations:</b> The qualified name of a Java class includes the package name
+     * and its class name. JavaScript does not have the notion of qualified name and therefore
+     * returns the {@link #getMetaSimpleName() simple name} instead.
+     *
+     * @throws UnsupportedOperationException if and only if {@link #isMetaObject()} returns
+     *             <code>false</code> for the same value.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 20.1
+     */
+    public String getMetaQualifiedName() {
+        return impl.getMetaQualifiedName(receiver);
+    }
+
+    /**
+     * Returns the simple name of a metaobject as {@link #isString() string}.
+     * <p>
+     * <b>Sample interpretations:</b> The simple name of a Java class is the class name.
+     *
+     * @throws UnsupportedOperationException if and only if {@link #isMetaObject()} returns
+     *             <code>false</code> for the same value.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 20.1
+     */
+    public String getMetaSimpleName() {
+        return impl.getMetaSimpleName(receiver);
+    }
+
+    /**
+     * Returns <code>true</code> if the given instance is an instance of this value, else
+     * <code>false</code>. The instance value is subject to polyglot value mapping rules as
+     * described in {@link Context#asValue(Object)}.
+     * <p>
+     * <b>Sample interpretations:</b> A Java object is an instance of its returned
+     * {@link Object#getClass() class}.
+     * <p>
+     *
+     * @param instance the instance object to check.
+     * @throws UnsupportedOperationException if and only if {@link #isMetaObject()} returns
+     *             <code>false</code> for the same value.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 20.1
+     */
+    public boolean isMetaInstance(Object instance) {
+        return impl.isMetaInstance(receiver, instance);
     }
 
     /**
@@ -391,8 +481,10 @@ public final class Value {
 
     /**
      * Returns <code>true</code> if the value can be instantiated. This indicates that the
-     * {@link #newInstance(Object...)} can be used with this value.
+     * {@link #newInstance(Object...)} can be used with this value. If a value is instantiable it is
+     * often also a {@link #isMetaObject()}, but this is not a requirement.
      *
+     * @see #isMetaObject()
      * @since 19.0
      */
     public boolean canInstantiate() {
@@ -812,6 +904,8 @@ public final class Value {
      * timezone}.</li>
      * <li><code>{@link Duration}.class</code> is supported if the value is a {@link #isDuration()
      * duration}.</li>
+     * <li><code>{@link PolyglotException}.class</code> is supported if the value is an
+     * {@link #isException() exception object}.</li>
      * <li>Any Java type in the type hierarchy of a {@link #isHostObject() host object}.
      * <li><code>{@link Object}.class</code> is always supported. See section Object mapping rules.
      * <li><code>{@link Map}.class</code> is supported if the value has {@link #hasMembers()
@@ -996,7 +1090,11 @@ public final class Value {
     }
 
     /**
-     * A string representation of the value formatted by the original language.
+     * Converts this value to a human readable string. Each language may have special formating
+     * conventions - even primitive values may not follow the traditional Java formating rules. The
+     * format of the returned string is intended to be interpreted by humans not machines and should
+     * therefore not be relied upon by machines. By default this value class name and its
+     * {@link System#identityHashCode(Object) identity hash code} is used as string representation.
      *
      * @since 19.0
      */
@@ -1016,32 +1114,30 @@ public final class Value {
     }
 
     /**
-     * Returns <code>true</code> if this object represents a date, else <code>false</code>. If the
-     * receiver is also a {@link #isTimeZone() timezone} then the date is aware, otherwise it is
-     * naive.
+     * Returns <code>true</code> if this object represents a date, else <code>false</code>. If this
+     * value is also a {@link #isTimeZone() timezone} then the date is aware, otherwise it is naive.
      *
      * @throws ClassCastException if polyglot value could not be mapped to the target type.
      * @throws NullPointerException if the target type is null.
      * @throws PolyglotException if the conversion triggered a guest language error.
      * @throws IllegalStateException if the underlying context is already closed.
      * @see #asDate()
-     * @since 20.0.0 beta 2
+     * @since 19.2.0
      */
     public boolean isDate() {
         return impl.isDate(receiver);
     }
 
     /**
-     * Returns the receiver as date if this object represents a {@link #isDate() date}. The returned
-     * date is either aware if the receiver has a {@link #isTimeZone() timezone} otherwise it is
-     * naive.
+     * Returns this value as date if this object represents a {@link #isDate() date}. The returned
+     * date is either aware if the value has a {@link #isTimeZone() timezone} otherwise it is naive.
      *
      * @throws ClassCastException if polyglot value could not be mapped to the target type.
      * @throws NullPointerException if the target type is null.
      * @throws PolyglotException if the conversion triggered a guest language error.
      * @throws IllegalStateException if the underlying context is already closed.
      * @see #isDate()
-     * @since 20.0.0 beta 2
+     * @since 19.2.0
      */
     public LocalDate asDate() {
         return impl.asDate(receiver);
@@ -1049,36 +1145,34 @@ public final class Value {
 
     /**
      * Returns <code>true</code> if this object represents a time, else <code>false</code>. If the
-     * receiver is also a {@link #isTimeZone() timezone} then the time is aware, otherwise it is
-     * naive.
+     * value is also a {@link #isTimeZone() timezone} then the time is aware, otherwise it is naive.
      *
      * @throws IllegalStateException if the underlying context is already closed.
      * @see #asTime()
-     * @since 20.0.0 beta 2
+     * @since 19.2.0
      */
     public boolean isTime() {
         return impl.isTime(receiver);
     }
 
     /**
-     * Returns the receiver as time if this object represents a {@link #isTime() time}. The returned
-     * time is either aware if the receiver has a {@link #isTimeZone() timezone} otherwise it is
-     * naive.
+     * Returns this value as time if this object represents a {@link #isTime() time}. The returned
+     * time is either aware if the value has a {@link #isTimeZone() timezone} otherwise it is naive.
      *
      * @throws ClassCastException if polyglot value could not be mapped to the target type.
      * @throws NullPointerException if the target type is null.
      * @throws PolyglotException if the conversion triggered a guest language error.
      * @throws IllegalStateException if the underlying context is already closed.
      * @see #isTime()
-     * @since 20.0.0 beta 2
+     * @since 19.2.0
      */
     public LocalTime asTime() {
         return impl.asTime(receiver);
     }
 
     /**
-     * Returns <code>true</code> if the receiver represents an instant. If a value is an instant
-     * then it is also a {@link #isDate() date}, {@link #isTime() time} and {@link #isTimeZone()
+     * Returns <code>true</code> if this value represents an instant. If a value is an instant then
+     * it is also a {@link #isDate() date}, {@link #isTime() time} and {@link #isTimeZone()
      * timezone}.
      *
      * This method is short-hand for:
@@ -1092,15 +1186,15 @@ public final class Value {
      * @see #isTime()
      * @see #isInstant()
      * @see #asInstant()
-     * @since 20.0.0 beta 2
+     * @since 19.2.0
      */
     public boolean isInstant() {
         return isDate() && isTime() && isTimeZone();
     }
 
     /**
-     * Returns the receiver as instant if this object represents an {@link #isInstant() instant}. If
-     * a value is an instant then it is also a {@link #isDate() date}, {@link #isTime() time} and
+     * Returns this value as instant if this object represents an {@link #isInstant() instant}. If a
+     * value is an instant then it is also a {@link #isDate() date}, {@link #isTime() time} and
      * {@link #isTimeZone() timezone}. Using this method may be more efficient than reconstructing
      * the timestamp from the date, time and timezone data.
      * <p>
@@ -1120,7 +1214,7 @@ public final class Value {
      * @see #isDate()
      * @see #isTime()
      * @see #isTimeZone()
-     * @since 20.0.0 beta 2
+     * @since 19.2.0
      */
     public Instant asInstant() {
         return impl.asInstant(receiver);
@@ -1135,30 +1229,31 @@ public final class Value {
      * <li>If {@link #isDate()} and {@link #isTime()} returns <code>false</code>, then it represents
      * just timezone information.
      * </ul>
-     * Objects with only time or only date information must not have timezone information attached,
-     * as aware date or time information always consist of both date and time. If this rule is
-     * violated then an {@link AssertionError} is thrown if assertions are enabled.
+     * Objects with only date information must not have timezone information attached and objects
+     * with only time information must have either none, or {@link ZoneRules#isFixedOffset() fixed
+     * zone} only. If this rule is violated then an {@link AssertionError} is thrown if assertions
+     * are enabled.
      * <p>
      * If this method is implemented then also {@link #asTimeZone()} must be implemented.
      *
      * @throws IllegalStateException if the underlying context is already closed.
      * @see #asTimeZone()
      * @see #asInstant()
-     * @since 20.0.0 beta 2
+     * @since 19.2.0
      */
     public boolean isTimeZone() {
         return impl.isTimeZone(receiver);
     }
 
     /**
-     * Returns the receiver as timestamp if this object represents a {@link #isTimeZone() timezone}.
+     * Returns this value as timestamp if this object represents a {@link #isTimeZone() timezone}.
      *
      * @throws ClassCastException if polyglot value could not be mapped to the target type.
      * @throws PolyglotException if the conversion triggered a guest language error.
      * @throws IllegalStateException if the underlying context is already closed.
      * @throws NullPointerException if the target type is null.
      * @see #isTimeZone()
-     * @since 20.0.0 beta 2
+     * @since 19.2.0
      */
     public ZoneId asTimeZone() {
         return impl.asTimeZone(receiver);
@@ -1169,30 +1264,103 @@ public final class Value {
      *
      * @throws IllegalStateException if the underlying context is already closed.
      * @see Duration
-     * @see #asDate()
-     * @since 20.0.0 beta 2
+     * @see #asDuration()
+     * @since 19.2.0
      */
     public boolean isDuration() {
         return impl.isDuration(receiver);
     }
 
     /**
-     * Returns the receiver as duration if this object represents a {@link #isDuration() duration}.
+     * Returns this value as duration if this object represents a {@link #isDuration() duration}.
      *
      * @throws ClassCastException if polyglot value could not be mapped to the target type.
      * @throws PolyglotException if the conversion triggered a guest language error.
      * @throws IllegalStateException if the underlying context is already closed.
      * @throws NullPointerException if the target type is null.
      * @see #isDuration()
-     * @since 20.0.0 beta 2
+     * @since 19.2.0
      */
     public Duration asDuration() {
         return impl.asDuration(receiver);
     }
 
     /**
+     * Returns <code>true</code> if this object represents an exception, else <code>false</code>.
+     *
+     * @throws IllegalStateException if the underlying context is already closed.
+     * @see #throwException()
+     * @since 19.3
+     */
+    public boolean isException() {
+        return impl.isException(receiver);
+    }
+
+    /**
+     * Throws this value if this object represents an {@link #isException() exception}.
+     *
+     * @throws UnsupportedOperationException if the value is not an exception.
+     * @throws IllegalStateException if the underlying context is already closed.
+     * @see #isException()
+     * @since 19.3
+     */
+    public RuntimeException throwException() {
+        return impl.throwException(receiver);
+    }
+
+    /**
+     * Returns the context this value was created with. The returned context may be
+     * <code>null</code> if the value was created using {@link Value#asValue(Object)} and no current
+     * context was {@link Context#enter() entered} at the time.
+     * <p>
+     * The returned context can <b>not</b> be used to {@link Context#enter() enter} ,
+     * {@link Context#leave() leave} or {@link Context#close() close} the context or
+     * {@link Context#getEngine() engine}. Invoking such methods will cause an
+     * {@link IllegalStateException} to be thrown. This ensures that only the
+     * {@link Context#create(String...) creator} of a context is allowed to enter, leave or close a
+     * context and that a context is not closed while it is still active.
+     *
+     * @since 19.3.0
+     */
+    public Context getContext() {
+        return impl.getContext();
+    }
+
+    /**
+     * Compares the identity of the underlying polyglot objects. This method does not do any
+     * structural comparisons.
+     *
+     * {@inheritDoc}
+     *
+     * @since 20.1
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof Value)) {
+            return false;
+        }
+        return impl.equalsImpl(receiver, ((Value) obj).receiver);
+    }
+
+    /**
+     * Returns the identity hash code of the underlying object. This method does not compute the
+     * hash code depending on the contents of the value.
+     *
+     * {@inheritDoc}
+     *
+     * @since 20.1
+     */
+    @Override
+    public int hashCode() {
+        return impl.hashCodeImpl(receiver);
+    }
+
+    /**
      * Converts a Java host value to a polyglot value. Returns a value for any host or guest value.
      * If there is a context available use {@link Context#asValue(Object)} for efficiency instead.
+     * The value is bound the {@link Context#getCurrent() current} context when created. If there is
+     * no context available when the value was constructed then Values constructed with this method
+     * may return <code>null</code> for {@link #getContext()}.
      *
      * @param o the object to convert
      * @throws IllegalStateException if no context is currently entered.

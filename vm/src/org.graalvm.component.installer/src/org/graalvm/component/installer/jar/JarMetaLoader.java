@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
@@ -58,21 +59,27 @@ public class JarMetaLoader extends ComponentPackageLoader {
     private final Feedback fb;
 
     public JarMetaLoader(JarFile jarFile, Feedback feedback) throws IOException {
-        super(new ManifestValues(jarFile), feedback);
+        this(jarFile, null, feedback);
+    }
+
+    public JarMetaLoader(JarFile jarFile, String serial, Feedback feedback) throws IOException {
+        super(serial, new ManifestValues(jarFile), feedback);
         this.jarFile = jarFile;
         this.fb = feedback.withBundle(JarMetaLoader.class);
     }
 
     private static class ManifestValues implements Function<String, String> {
         private final Manifest mf;
+        private final Attributes mainAttributes;
 
         ManifestValues(JarFile jf) throws IOException {
             this.mf = jf.getManifest();
+            this.mainAttributes = mf == null ? null : mf.getMainAttributes();
         }
 
         @Override
         public String apply(String t) {
-            return mf.getMainAttributes().getValue(t);
+            return mainAttributes == null ? null : mainAttributes.getValue(t);
         }
 
     }

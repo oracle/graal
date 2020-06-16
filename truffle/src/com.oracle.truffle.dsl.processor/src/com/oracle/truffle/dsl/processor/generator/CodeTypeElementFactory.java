@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,11 +42,15 @@ package com.oracle.truffle.dsl.processor.generator;
 
 import java.util.List;
 
+import com.oracle.truffle.dsl.processor.AnnotationProcessor;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 
 public abstract class CodeTypeElementFactory<M> {
 
-    public abstract List<CodeTypeElement> create(ProcessorContext context, M m);
+    public abstract List<CodeTypeElement> create(ProcessorContext context, AnnotationProcessor<?> processor, M m);
+
+    protected final TruffleTypes types = ProcessorContext.getInstance().getTypes();
 
 }

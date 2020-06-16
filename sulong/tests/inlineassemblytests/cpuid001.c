@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,8 +32,8 @@
 
 int main() {
 #ifdef __RDRND__
-  return has_rdrand() ? 1 : 0;
+    return has_rdrand() ? 1 : 0;
 #else
-  return 1;
+    return 1;
 #endif
 }

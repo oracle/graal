@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,9 +23,6 @@
  * questions.
  */
 package org.graalvm.compiler.hotspot.test;
-
-import static org.graalvm.compiler.hotspot.meta.HotSpotGraphBuilderPlugins.aesDecryptName;
-import static org.graalvm.compiler.hotspot.meta.HotSpotGraphBuilderPlugins.aesEncryptName;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -160,11 +157,15 @@ public class CheckGraalIntrinsics extends GraalTest {
     private static Collection<String> add(Collection<String> c, String... elements) {
         String[] sorted = elements.clone();
         Arrays.sort(sorted);
-        for (int i = 0; i < elements.length; i++) {
-            if (!elements[i].equals(sorted[i])) {
-                // Let's keep the list sorted for easier visual inspection
-                fail("Element %d is out of order, \"%s\"", i, elements[i]);
+        if (!Arrays.equals(elements, sorted)) {
+            int width = 2 + Arrays.asList(elements).stream().map(String::length).reduce(0, Integer::max);
+            Formatter fmt = new Formatter();
+            fmt.format("%-" + width + "s | sorted%n", "original");
+            fmt.format("%s%n", new String(new char[width * 2 + 2]).replace('\0', '='));
+            for (int i = 0; i < elements.length; i++) {
+                fmt.format("%-" + width + "s | %s%n", elements[i], sorted[i]);
             }
+            fail("Elements not sorted alphabetically:%n%s", fmt);
         }
         c.addAll(Arrays.asList(elements));
         return c;
@@ -276,8 +277,6 @@ public class CheckGraalIntrinsics extends GraalTest {
                             "jdk/jfr/internal/JVM.getClassId(Ljava/lang/Class;)J");
 
             add(toBeInvestigated,
-                            // Just check if the argument is a compile time constant
-                            "java/lang/invoke/MethodHandleImpl.isCompileConstant(Ljava/lang/Object;)Z",
                             // Only used as a marker for vectorization?
                             "java/util/stream/Streams$RangeIntSpliterator.forEachRemaining(Ljava/util/function/IntConsumer;)V",
                             // Only implemented on non-AMD64 platforms (some logic and runtime call)
@@ -367,15 +366,11 @@ public class CheckGraalIntrinsics extends GraalTest {
                 add(ignore,
                                 "com/sun/crypto/provider/GHASH.processBlocks([BII[J[J)V");
             }
-            if (!(config.useSHA1Intrinsics() || config.useSHA256Intrinsics() || config.useSHA512Intrinsics())) {
-                add(ignore,
-                                "sun/security/provider/DigestBase.implCompressMultiBlock0([BII)I");
-            }
             if (!config.useFMAIntrinsics) {
                 add(ignore,
                                 "java/lang/Math.fma(DDD)D",
                                 "java/lang/Math.fma(FFF)F");
-            } else if (!(arch instanceof AMD64)) {
+            } else if (isSPARC(arch)) {
                 add(toBeInvestigated,
                                 "java/lang/Math.fma(DDD)D",
                                 "java/lang/Math.fma(FFF)F");
@@ -383,8 +378,10 @@ public class CheckGraalIntrinsics extends GraalTest {
         }
 
         if (isJDK10OrHigher()) {
-            add(toBeInvestigated,
-                            "java/lang/Math.multiplyHigh(JJ)J");
+            if (!(arch instanceof AArch64)) {
+                add(toBeInvestigated,
+                                "java/lang/Math.multiplyHigh(JJ)J");
+            }
         }
 
         if (isJDK11OrHigher()) {
@@ -402,13 +399,28 @@ public class CheckGraalIntrinsics extends GraalTest {
         }
 
         if (isJDK13OrHigher()) {
+            if (!(arch instanceof AArch64)) {
+                add(toBeInvestigated,
+                                "java/lang/Math.abs(I)I",
+                                "java/lang/Math.abs(J)J");
+            }
             add(toBeInvestigated,
-                            "java/lang/Math.abs(I)I",
-                            "java/lang/Math.abs(J)J",
                             "java/lang/Math.max(DD)D",
                             "java/lang/Math.max(FF)F",
                             "java/lang/Math.min(DD)D",
                             "java/lang/Math.min(FF)F");
+            add(toBeInvestigated,
+                            "jdk/internal/misc/Unsafe.writeback0(J)V",
+                            "jdk/internal/misc/Unsafe.writebackPostSync0()V",
+                            "jdk/internal/misc/Unsafe.writebackPreSync0()V");
+        }
+
+        if (isJDK14OrHigher()) {
+            add(toBeInvestigated,
+                            "com/sun/crypto/provider/ElectronicCodeBook.implECBDecrypt([BII[BI)I",
+                            "com/sun/crypto/provider/ElectronicCodeBook.implECBEncrypt([BII[BI)I",
+                            "java/math/BigInteger.shiftLeftImplWorker([I[IIII)V",
+                            "java/math/BigInteger.shiftRightImplWorker([I[IIII)V");
         }
 
         if (!config.inlineNotify()) {
@@ -421,6 +433,7 @@ public class CheckGraalIntrinsics extends GraalTest {
         if (!(arch instanceof AMD64)) {
             // Can we implement these on non-AMD64 platforms? C2 seems to.
             add(toBeInvestigated,
+                            "com/sun/crypto/provider/CounterMode.implCrypt([BII[BI)I",
                             "java/lang/String.compareTo(Ljava/lang/String;)I",
                             "java/lang/StringLatin1.indexOf([B[B)I",
                             "java/lang/StringLatin1.inflate([BI[BII)V",
@@ -460,7 +473,6 @@ public class CheckGraalIntrinsics extends GraalTest {
                                     "jdk/internal/misc/Unsafe.getAndSet" + oopName + "(Ljava/lang/Object;JLjava/lang/Object;)Ljava/lang/Object;");
                 }
                 add(toBeInvestigated,
-                                "com/sun/crypto/provider/CounterMode.implCrypt([BII[BI)I",
                                 "java/lang/Thread.onSpinWait()V",
                                 "java/util/ArraysSupport.vectorizedMismatch(Ljava/lang/Object;JLjava/lang/Object;JII)I",
                                 "jdk/internal/misc/Unsafe.getCharUnaligned(Ljava/lang/Object;J)C",
@@ -505,9 +517,10 @@ public class CheckGraalIntrinsics extends GraalTest {
                             "java/util/zip/CRC32C.updateDirectByteBuffer(IJII)I");
         }
 
-        boolean implNames = HotSpotGraphBuilderPlugins.cbcUsesImplNames(config);
-        String cbcEncryptName = implNames ? "implEncrypt" : "encrypt";
-        String cbcDecryptName = implNames ? "implDecrypt" : "decrypt";
+        String cbcEncryptName = HotSpotGraphBuilderPlugins.lookupIntrinsicName(config, "com/sun/crypto/provider/CipherBlockChaining", "implEncrypt", "encrypt");
+        String cbcDecryptName = HotSpotGraphBuilderPlugins.lookupIntrinsicName(config, "com/sun/crypto/provider/CipherBlockChaining", "implDecrypt", "decrypt");
+        String aesEncryptName = HotSpotGraphBuilderPlugins.lookupIntrinsicName(config, "com/sun/crypto/provider/AESCrypt", "implEncryptBlock", "encryptBlock");
+        String aesDecryptName = HotSpotGraphBuilderPlugins.lookupIntrinsicName(config, "com/sun/crypto/provider/AESCrypt", "implDecryptBlock", "decryptBlock");
 
         // AES intrinsics
         if (!config.useAESIntrinsics) {
@@ -538,28 +551,21 @@ public class CheckGraalIntrinsics extends GraalTest {
         if (!config.useSquareToLenIntrinsic()) {
             add(ignore, "java/math/BigInteger.implSquareToLen([II[II)[I");
         }
-
+        // DigestBase intrinsics
+        if (HotSpotGraphBuilderPlugins.isIntrinsicName(config, "sun/security/provider/DigestBase", "implCompressMultiBlock0") &&
+                        !(config.useSHA1Intrinsics() || config.useSHA256Intrinsics() || config.useSHA512Intrinsics())) {
+            add(ignore, "sun/security/provider/DigestBase.implCompressMultiBlock0([BII)I");
+        }
         // SHA intrinsics
+        String shaCompressName = HotSpotGraphBuilderPlugins.lookupIntrinsicName(config, "sun/security/provider/SHA", "implCompress0", "implCompress");
         if (!config.useSHA1Intrinsics()) {
-            if (isJDK9OrHigher()) {
-                add(ignore, "sun/security/provider/SHA.implCompress0([BI)V");
-            } else {
-                add(ignore, "sun/security/provider/SHA.implCompress([BI)V");
-            }
+            add(ignore, "sun/security/provider/SHA." + shaCompressName + "([BI)V");
         }
         if (!config.useSHA256Intrinsics()) {
-            if (isJDK9OrHigher()) {
-                add(ignore, "sun/security/provider/SHA2.implCompress0([BI)V");
-            } else {
-                add(ignore, "sun/security/provider/SHA2.implCompress([BI)V");
-            }
+            add(ignore, "sun/security/provider/SHA2." + shaCompressName + "([BI)V");
         }
         if (!config.useSHA512Intrinsics()) {
-            if (isJDK9OrHigher()) {
-                add(ignore, "sun/security/provider/SHA5.implCompress0([BI)V");
-            } else {
-                add(ignore, "sun/security/provider/SHA5.implCompress([BI)V");
-            }
+            add(ignore, "sun/security/provider/SHA5." + shaCompressName + "([BI)V");
         }
     }
 
@@ -581,6 +587,10 @@ public class CheckGraalIntrinsics extends GraalTest {
 
     private static boolean isJDK13OrHigher() {
         return JavaVersionUtil.JAVA_SPEC >= 13;
+    }
+
+    private static boolean isJDK14OrHigher() {
+        return JavaVersionUtil.JAVA_SPEC >= 14;
     }
 
     public interface Refiner {

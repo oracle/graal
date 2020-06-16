@@ -1,5 +1,4 @@
-Contributing
-============
+# Contributing
 
 Thanks for considering to contribute your changes to the Truffle project. We are grateful for
 your support, as only your support makes Truffle the best platform for research in the area
@@ -12,8 +11,13 @@ speed execution up, improve the tooling, or give better control over the system.
 Once you believe your contribution is valuable for others, create a pull request.
 Please make sure to include a clear description of the intention of the change.
 
-Reviews
-=======
+If you are adding, changing or removing API you will need to regenerate the signature snapshot:
+```
+$ mx build
+$ mx sigtest --generate
+```
+
+# Reviews
 
 The core Truffle repository is the production ready intersection of all the exploratory
 work done in its forked copies. The primarily concern in this core repository is Truffle
@@ -34,8 +38,7 @@ The API includes properties, files, ports, protocols that are being read or writ
 It includes L10N, packages, versioning. It includes runtime behavior, threading,
 memory management, etc. In short API is *everything somebody else can depend on*.
 
-Trivial API Change
-------------------
+## Trivial API Change
 
 It is very likely that by changing something in the Truffle repository, you are changing an API. If you
 do so, it is important to stick with essential properties of a good API change:
@@ -52,8 +55,7 @@ reached assign to one of the reviewers to handle the final approval and integrat
 Trivial change is usually about single method/class addition or other *little improvements* of existing APIs.
 Additions of whole packages very likely fall into complex change category.
 
-Complex API Change
-------------------
+## Complex API Change
 
 If an API change is inherently backward *incompatible*, if it is huge or if it requires a discussion,
 it is subject to **standard** review. The purpose of such review is to seek wider consensus among involved parties. The ideal pull request intended to pass **standard** review should:
@@ -67,8 +69,7 @@ After this initial discussion the request's branch shall be filled with code add
 the result of the discussion. When the code, tests, documentation is done there should be another,
 *final review* where the reviewers decide whether to merge the change or not.
 
-No API Change
--------------
+## No API Change
 
 Adding tests verifying existing behavior, improving documentation to describe current behavior, refactoring
 internal code without influencing functionality, mangling with private or package private members of API
@@ -81,23 +82,21 @@ pull request once the review is completed and there are no required changes to b
 Alternatively one can treat these "no API changes" as trivial API changes
 and request **fast-track** review and give everyone a chance to participate.
 
-Applying the Change
-===================
+# Applying the Change
 
 To allow your pull request for Truffle to be accepted, you need to sign the [Oracle Contributor Agreement][1].
 There is a white-list for contributors who have signed the OCA so please add a comment
 to your first pull request indicating the name you used to sign the OCA if it isn't clear
 from your github profile.
 
-Once the review is successfully over, an `accept` label shall be attached to the
-pull request. After the `accept` label has been applied, the pull request author can merge the pull
-request - having write permission - otherwise someone with the necessary
-permissions (preferably the assignee) will do the merge. The pull request author
-must remove the `accept` label if any further semantic changes (i.e.,
-changes other than rebasing or squashing commits) are made to the pull request after the
-`accept` label was applied. If you don't have write permission, the reviewer(s)
-will work with you to ensure the pull request is in a ready-to-merge state
-before applying the `accept` label.
+The Graal repository has a Travis gate set up to run on every pull request.
+Please make sure to address all the issues in failing gates.
+
+Once the review is successfully over, an `accept` label shall be attached to the pull request. 
+At that point, it's up to someone from the truffle core team to shepherd the pull request.
+The shepherding process includes ensuring that none of the public and internal tests are broken by the change and merging the change.
+Commonly, the person to shepherd the PR should be the same person that reviewed and approved it.
+If that person is unresponsive or unavailable to do so, feel free to cc @boris-spas to the PR.
 
 [1]: http://www.oracle.com/technetwork/community/oca-486395.html
 [2]: http://wiki.netbeans.org/APIReviews

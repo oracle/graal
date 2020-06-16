@@ -295,7 +295,7 @@ public class DebugALot extends TruffleInstrument implements SuspendedCallback {
             DebugValue v = values.get(i);
             logger.print(v.getName());
             logger.print(" = ");
-            logger.println(v.as(String.class));
+            logger.println(v.toDisplayString(false));
             int offset = prefix.length() + Integer.toString(i + 1).length() + 2;
             String valuePrefix = getPrefix(offset);
             logValue(valuePrefix, v);
@@ -313,7 +313,7 @@ public class DebugALot extends TruffleInstrument implements SuspendedCallback {
         if (metaObject != null) {
             logger.print(prefix);
             logger.print("Type: ");
-            logger.println(metaObject.as(String.class));
+            logger.println(metaObject.toDisplayString(false));
         }
         SourceSection sourceLocation = v.getSourceLocation();
         if (sourceLocation != null) {
@@ -332,7 +332,7 @@ public class DebugALot extends TruffleInstrument implements SuspendedCallback {
                 logger.print("  element #");
                 logger.print(Integer.toString(i));
                 logger.print(" : ");
-                logger.println(array.get(i).as(String.class));
+                logger.println(array.get(i).toDisplayString(false));
             }
         }
         Collection<DebugValue> properties = v.getProperties();
@@ -357,17 +357,17 @@ public class DebugALot extends TruffleInstrument implements SuspendedCallback {
     private void testEval(String prefix, DebugStackFrame frame, List<DebugValue> values) {
         for (DebugValue v : values) {
             DebugValue ev = frame.eval(v.getName());
-            String value = v.as(String.class);
-            String evalue = ev.as(String.class);
+            String value = v.toDisplayString(false);
+            String evalue = ev.toDisplayString(false);
             if (!value.equals(evalue)) {
                 hasFailed = true;
                 logger.print(prefix);
                 logger.print("ERROR: local value '");
                 logger.print(v.getName());
                 logger.print("' has value '");
-                logger.print(v.as(String.class));
+                logger.print(v.toDisplayString(false));
                 logger.print("' but evaluated to '");
-                logger.print(ev.as(String.class));
+                logger.print(ev.toDisplayString(false));
                 logger.println("'");
             }
         }

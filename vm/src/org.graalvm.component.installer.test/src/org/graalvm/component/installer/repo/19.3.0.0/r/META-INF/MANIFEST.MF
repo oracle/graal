@@ -1,0 +1,26 @@
+Bundle-Name: FastR
+Bundle-Symbolic-Name: org.graalvm.R
+Bundle-Version: 19.3.0.0
+Require-Bundle: org.graalvm.llvm-toolchain
+Bundle-RequireCapability: org.graalvm; filter:="(&(graalvm_version=19.3.0.0
+ )(os_arch=amd64))"
+x-GraalVM-Polyglot-Part: False
+x-GraalVM-Working-Directories: jre/languages/R
+x-GraalVM-Message-PostInst: NOTES:\n---------------\nSome R packages nee
+ d a system-dependent configuration before they can be installed. A gener
+ ic configuration that works out of the box in most cases is provided by 
+ default. If you wish to fine-tune the configuration to your system or sh
+ ould you encounter any issues during R package installation, try running
+  the following script that adjusts the configuration to your system: \n 
+    ${graalvm_home}/jre/languages/R/bin/configure_fastr\n\nThe R componen
+ t comes without native image by default. If you wish to build the native
+  image, which provides faster startup, but slightly slower peak performa
+ nce, then run the following:\n   ${graalvm_home}/jre/languages/R/bin/ins
+ tall_r_native_image\n\nThe native image is then used by default. Pass '-
+ -jvm' flag to the R or Rscript launcher to use JVM instead of the native
+  image. Note that the native image is not stable yet and is intended for
+  evaluation purposes and experiments. Some features may not work when th
+ e native image is installed, most notably the --polyglot switch. The nat
+ ive image can be uninstalled using the installation script with 'uninsta
+ ll' argument.\n\nSee http://www.graalvm.org/docs/reference-manual/langua
+ ges/r for more.

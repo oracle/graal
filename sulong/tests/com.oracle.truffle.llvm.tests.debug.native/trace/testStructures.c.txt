@@ -1,0 +1,122 @@
+#
+# Copyright (c) 2018, Oracle and/or its affiliates.
+#
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without modification, are
+# permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this list of
+# conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice, this list of
+# conditions and the following disclaimer in the documentation and/or other materials provided
+# with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors may be used to
+# endorse or promote products derived from this software without specific prior written
+# permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS
+# OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+# COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+# GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+# AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+# NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+# OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+
+BREAK 99 CONTINUE "testCombinedStructArg"
+    OPEN_SCOPE
+        MEMBER structured "struct combinableStruct" "str"
+            MEMBER int "int" "a" "128"
+            MEMBER int "int" "b" "256"
+        END_MEMBERS
+    OPEN_SCOPE "<static>"
+        MEMBER structured "struct globalStruct" "myGlobalStruct"
+            MEMBER int "int" "a" "123"
+            MEMBER float32 "float" "b" "124.5"
+        END_MEMBERS
+
+
+BREAK 105 CONTINUE "testSplittedStructArg"
+    OPEN_SCOPE
+        MEMBER structured "struct splittableStruct" "str"
+            MEMBER int "long int" "a" "128"
+            MEMBER int "long int" "b" "256"
+        END_MEMBERS
+    OPEN_SCOPE "<static>"
+        MEMBER structured "struct globalStruct" "myGlobalStruct"
+            MEMBER int "int" "a" "123"
+            MEMBER float32 "float" "b" "124.5"
+        END_MEMBERS
+
+
+BREAK 170 CONTINUE "start"
+    OPEN_SCOPE
+        MEMBER structured "struct splittableStruct" "mySplittableStruct"
+            MEMBER int "long int" "a" "128"
+            MEMBER int "long int" "b" "256"
+        END_MEMBERS
+        MEMBER structured "struct simpleStruct" "mySimpleStruct"
+            MEMBER int "int" "a" "15"
+            MEMBER float32 "float" "b" "17.3"
+            MEMBER structured "(unsigned int)[3]" "c"
+                MEMBER int "unsigned int" "[1]" "111"
+                MEMBER int "unsigned int" "[2]" "111"
+                MEMBER int "unsigned int" "[0]" "102"
+            END_MEMBERS
+        END_MEMBERS
+        MEMBER structured "struct combinableStruct" "myCombinableStruct"
+            MEMBER int "int" "a" "128"
+            MEMBER int "int" "b" "256"
+        END_MEMBERS
+        MEMBER structured "struct bitFieldsStruct" "myBitFields"
+            MEMBER int "unsigned int" "a" "255"
+            MEMBER int "unsigned int" "b" "129"
+            MEMBER int "unsigned int" "c" "128"
+            MEMBER int "unsigned int" "d" "127"
+            MEMBER int "unsigned int" "e" "126"
+            MEMBER int "unsigned int" "f" "0"
+            MEMBER int "int" "g" "-1"
+            MEMBER int "int" "h" "0"
+        END_MEMBERS
+        MEMBER structured "FloatStruct" "fs"
+            MEMBER float32 "float" "a" "1.2"
+            MEMBER float32 "float" "b" "3.4"
+            MEMBER float32 "float" "c" "-5.6"
+            MEMBER float32 "float" "d" "6.7"
+            MEMBER float32 "float" "e" "8.9"
+            MEMBER float32 "float" "f" "0.0"
+            MEMBER float32 "float" "g" "-0.1"
+            MEMBER float32 "float" "h" "0.2"
+        END_MEMBERS
+        MEMBER structured "DoubleStruct" "ds"
+            MEMBER float64 "double" "a" "1.2"
+            MEMBER float64 "double" "b" "3.4"
+            MEMBER float64 "double" "c" "-5.6"
+            MEMBER float64 "double" "d" "6.7"
+            MEMBER float64 "double" "e" "8.9"
+            MEMBER float64 "double" "f" "0.0"
+            MEMBER float64 "double" "g" "-0.1"
+            MEMBER float64 "double" "h" "0.2"
+        END_MEMBERS
+        MEMBER structured "PointerStruct" "ps"
+            MEMBER exact "void*" "a" "0x1001"
+            MEMBER exact "void*" "b" "0x110"
+            MEMBER exact "void*" "c" "0x10010000"
+            MEMBER exact "void*" "d" "0xabcddcba"
+            MEMBER exact "void*" "e" "0x10000001"
+            MEMBER exact "void*" "f" "0xfedcba9876543210"
+            MEMBER exact "void*" "g" "0x12345678"
+            MEMBER exact "void*" "h" "0xffffffff000000ff"
+        END_MEMBERS
+    OPEN_SCOPE "<static>"
+        MEMBER structured "struct globalStruct" "myGlobalStruct"
+            MEMBER int "int" "a" "123"
+            MEMBER float32 "float" "b" "124.5"
+        END_MEMBERS
+
+

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -157,10 +157,6 @@ public class InteractiveEvalTest {
             });
         }
 
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
     }
 
     @TruffleLanguage.Registration(id = SPECIAL_INTERACTIVE, name = "SpecialInteractive", characterMimeTypes = "application/x-test-specinteract", version = "1.0", interactive = false)
@@ -202,10 +198,6 @@ public class InteractiveEvalTest {
             return false;
         }
 
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
     }
 
 }

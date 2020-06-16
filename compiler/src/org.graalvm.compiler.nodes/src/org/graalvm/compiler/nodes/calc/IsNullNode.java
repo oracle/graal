@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -97,7 +97,7 @@ public final class IsNullNode extends UnaryOpLogicNode implements LIRLowerable, 
     @Override
     public boolean verify() {
         assertTrue(getValue() != null, "is null input must not be null");
-        assertTrue(getValue().stamp(NodeView.DEFAULT) instanceof AbstractPointerStamp, "input must be a pointer not %s", getValue().stamp(NodeView.DEFAULT));
+        assertTrue(getValue().stamp(NodeView.DEFAULT).isPointerStamp(), "input must be a pointer not %s", getValue().stamp(NodeView.DEFAULT));
         return super.verify();
     }
 

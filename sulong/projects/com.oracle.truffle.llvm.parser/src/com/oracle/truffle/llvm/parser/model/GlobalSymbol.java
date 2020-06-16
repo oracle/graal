@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,12 +33,21 @@ import com.oracle.truffle.llvm.parser.model.enums.Linkage;
 
 public abstract class GlobalSymbol implements ValueSymbol {
 
+    public static final String CONSTRUCTORS_VARNAME = "llvm.global_ctors";
+    public static final String DESTRUCTORS_VARNAME = "llvm.global_dtors";
+
     private String name;
     private final Linkage linkage;
+    private final int index;
+    private boolean isSpecialInternalSymbol;
 
-    public GlobalSymbol(String name, Linkage linkage) {
+    // Index for alias symbol from bitcode.
+    public static final int ALIAS_INDEX = -1;
+
+    public GlobalSymbol(String name, Linkage linkage, int index) {
         this.name = name;
         this.linkage = linkage;
+        this.index = index;
     }
 
     public final Linkage getLinkage() {
@@ -51,9 +60,32 @@ public abstract class GlobalSymbol implements ValueSymbol {
         return name;
     }
 
+    /**
+     * Returns true if the symbol is an
+     * <a href="https://llvm.org/docs/LangRef.html#intrinsic-global-variables">Intrinsic Global
+     * Variables</a>.
+     * 
+     * @see #setName
+     */
+    public final boolean isIntrinsicGlobalVariable() {
+        return isSpecialInternalSymbol;
+    }
+
     @Override
     public final void setName(String name) {
+        this.isSpecialInternalSymbol = CONSTRUCTORS_VARNAME.equals(name) || DESTRUCTORS_VARNAME.equals(name);
         this.name = name;
+    }
+
+    /**
+     * Get the unique index of the symbol. Symbols that are alias have the value of
+     * {@link GlobalSymbol#ALIAS_INDEX}, and should not be retrieved.
+     *
+     * @return Index of the global symbol.
+     */
+    public final int getIndex() {
+        assert index != ALIAS_INDEX;
+        return index;
     }
 
     public abstract boolean isExported();
@@ -61,4 +93,5 @@ public abstract class GlobalSymbol implements ValueSymbol {
     public abstract boolean isOverridable();
 
     public abstract boolean isExternal();
+
 }

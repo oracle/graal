@@ -41,7 +41,6 @@
 
 #if !defined(_WIN32)
 
-#define _GNU_SOURCE
 #include <dlfcn.h>
 
 #include "native.h"
@@ -49,16 +48,65 @@
 #include <string.h>
 #include "internal.h"
 
+#if defined(ENABLE_ISOLATED_NAMESPACE)
+
+static void* loadLibraryInNamespace(JNIEnv *env, jlong context, const char *utfName, jint mode) {
+    struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) context;
+    void *handle = NULL;
+
+    // Double-checked locking on the NFI context instance.
+    Lmid_t namespace_id = (Lmid_t) (*env)->GetLongField(env, ctx->NFIContext, ctx->NFIContext_isolatedNamespaceId);
+    if (namespace_id == 0) {
+        (*env)->MonitorEnter(env, ctx->NFIContext);
+        namespace_id = (Lmid_t) (*env)->GetLongField(env, ctx->NFIContext, ctx->NFIContext_isolatedNamespaceId);
+        if (namespace_id == 0) {
+            handle = dlmopen(LM_ID_NEWLM, utfName, mode);
+            if (handle != NULL) {
+                if (dlinfo((void*) handle, RTLD_DI_LMID, &namespace_id) != 0) {
+                    // Library was loaded, but can't peek the link-map list (namespace); should not reach here.
+                    jclass internal_error = (*env)->FindClass(env, "java/lang/InternalError");
+                    const char *error = dlerror();
+                    (*env)->ThrowNew(env, internal_error, error);
+                } else {
+                    (*env)->SetLongField(env, ctx->NFIContext, ctx->NFIContext_isolatedNamespaceId, (jlong) namespace_id); 
+                }
+            }
+        }
+        (*env)->MonitorExit(env, ctx->NFIContext);
+    }
+
+    if (namespace_id != 0 && handle == NULL) {
+        // Namespace already created.
+        handle = dlmopen(namespace_id, utfName, mode);
+    }
+
+    return handle;
+}
+
+#endif // defined(ENABLE_ISOLATED_NAMESPACE)
+
 JNIEXPORT jlong JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_loadLibrary(JNIEnv *env, jclass self, jlong context, jstring name, jint flags) {
     const char *utfName = (*env)->GetStringUTFChars(env, name, NULL);
-    void *ret = dlopen(utfName, flags);
-    if (ret == NULL) {
+    struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) context;
+    void *handle = NULL;
+
+#if defined(ENABLE_ISOLATED_NAMESPACE)
+    if (flags & ISOLATED_NAMESPACE) {
+        handle = loadLibraryInNamespace(env, context, utfName, flags & ~ISOLATED_NAMESPACE);
+    } else {
+#endif // defined(ENABLE_ISOLATED_NAMESPACE)
+    handle = dlopen(utfName, flags);    
+#if defined(ENABLE_ISOLATED_NAMESPACE)
+    }
+#endif // defined(ENABLE_ISOLATED_NAMESPACE)
+
+    if (handle == NULL) {
         const char *error = dlerror();
-        struct __TruffleContextInternal *ctx = (struct __TruffleContextInternal *) context;
         (*env)->ThrowNew(env, ctx->UnsatisfiedLinkError, error);
     }
+
     (*env)->ReleaseStringUTFChars(env, name, utfName);
-    return (jlong) ret;
+    return (jlong) handle;
 }
 
 JNIEXPORT void JNICALL Java_com_oracle_truffle_nfi_impl_NFIContext_freeLibrary(JNIEnv *env, jclass self, jlong handle) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,9 +33,9 @@
 int foo(int a, int b);
 
 int main() {
-  int result;
-  printf("Main\n");
-  result = foo(5, 7);
-  printf("Result: %d\n", result);
-  return 0;
+    int result;
+    printf("Main\n");
+    result = foo(5, 7);
+    printf("Result: %d\n", result);
+    return 0;
 }

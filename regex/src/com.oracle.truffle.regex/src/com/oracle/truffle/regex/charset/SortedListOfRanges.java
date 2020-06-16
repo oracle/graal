@@ -1,36 +1,51 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * The Universal Permissive License (UPL), Version 1.0
  *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
  *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ * (a) the Software, and
  *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 package com.oracle.truffle.regex.charset;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.chardata.CharacterSet;
-import com.oracle.truffle.regex.tregex.util.DebugUtil;
 
 /**
  * A storage-agnostic implementation of a sorted list of disjoint integer ranges with inclusive
- * lower and upper bounds. Holds the invariant {@link #rangesAreSortedAndDisjoint()}.
+ * lower and upper bounds. Holds the invariant {@link #rangesAreSortedNonAdjacentAndDisjoint()}.
  */
 public interface SortedListOfRanges extends CharacterSet {
 
@@ -94,7 +109,41 @@ public interface SortedListOfRanges extends CharacterSet {
         if (isEmpty()) {
             return 1;
         }
-        return (getLo(0) == getMinValue() ? 0 : 1) + size() - (getHi(size() - 1) == getMaxValue() ? 1 : 0);
+        return (getMin() == getMinValue() ? 0 : 1) + size() - (getMax() == getMaxValue() ? 1 : 0);
+    }
+
+    /**
+     * Returns the smallest value contained in this set. Must not be called on empty sets.
+     */
+    default int getMin() {
+        assert !isEmpty();
+        return getLo(0);
+    }
+
+    /**
+     * Returns the largest value contained in this set. Must not be called on empty sets.
+     */
+    default int getMax() {
+        assert !isEmpty();
+        return getHi(size() - 1);
+    }
+
+    /**
+     * Returns the smallest value contained in the inverse of this set. Must not be called on empty
+     * or full sets.
+     */
+    default int inverseGetMin() {
+        assert !isEmpty() && !matchesEverything();
+        return getMin() == getMinValue() ? getHi(0) + 1 : getMinValue();
+    }
+
+    /**
+     * Returns the largest value contained in the inverse of this set. Must not be called on empty
+     * or full sets.
+     */
+    default int inverseGetMax() {
+        assert !isEmpty() && !matchesEverything();
+        return getMax() == getMaxValue() ? getLo(size() - 1) - 1 : getMaxValue();
     }
 
     /**
@@ -294,7 +343,7 @@ public interface SortedListOfRanges extends CharacterSet {
     }
 
     /**
-     * Returns {@code true} if a given binary search result is equals to the range in list {@code o}
+     * Returns {@code true} if a given binary search result is equal to the range in list {@code o}
      * at index {@code ib}.
      *
      * @param searchResult the result of a call to {@link #binarySearch(int)} with
@@ -386,9 +435,28 @@ public interface SortedListOfRanges extends CharacterSet {
      * Returns {@code true} if this list is sorted and all of its ranges are disjoint and
      * non-adjacent. This property must hold at all times.
      */
-    default boolean rangesAreSortedAndDisjoint() {
+    default boolean rangesAreSortedNonAdjacentAndDisjoint() {
+        if (size() > 0 && getLo(0) > getHi(0)) {
+            return false;
+        }
         for (int i = 1; i < size(); i++) {
-            if ((!leftOf(i - 1, this, i)) || intersects(i - 1, this, i) || adjacent(i - 1, this, i)) {
+            if (getLo(i) > getHi(i) || (!leftOf(i - 1, this, i)) || intersects(i - 1, this, i) || adjacent(i - 1, this, i)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Returns {@code true} if this list is sorted and all of its ranges are disjoint. This property
+     * must hold at all times.
+     */
+    default boolean rangesAreSortedAndDisjoint() {
+        if (size() > 0 && getLo(0) > getHi(0)) {
+            return false;
+        }
+        for (int i = 1; i < size(); i++) {
+            if (getLo(i) > getHi(i) || (!leftOf(i - 1, this, i)) || intersects(i - 1, this, i)) {
                 return false;
             }
         }
@@ -419,7 +487,12 @@ public interface SortedListOfRanges extends CharacterSet {
      * Returns {@code true} if this list contains all values of {@code o}.
      */
     default boolean contains(SortedListOfRanges o) {
-        assert !matchesNothing() && !o.matchesNothing();
+        if (o.matchesNothing()) {
+            return true;
+        }
+        if (matchesNothing()) {
+            return o.matchesNothing();
+        }
         int ia = 0;
         int ib = 0;
         while (true) {
@@ -439,6 +512,32 @@ public interface SortedListOfRanges extends CharacterSet {
                 return false;
             }
         }
+    }
+
+    /**
+     * Returns {@code true} if this list intersects with {@code o}.
+     */
+    default boolean intersects(SortedListOfRanges o) {
+        if (matchesNothing() || o.matchesNothing() || getHi(size() - 1) < o.getLo(0) || o.getHi(o.size() - 1) < getLo(0)) {
+            return false;
+        }
+        SortedListOfRanges a = this;
+        SortedListOfRanges b = o;
+        if (size() > o.size()) {
+            a = o;
+            b = this;
+        }
+        for (int ia = 0; ia < a.size(); ia++) {
+            int search = b.binarySearch(a.getLo(ia));
+            if (b.binarySearchExactMatch(search, a, ia)) {
+                return true;
+            }
+            int firstIntersection = b.binarySearchGetFirstIntersecting(search, a, ia);
+            if (!(b.binarySearchNoIntersectingFound(firstIntersection) || b.rightOf(firstIntersection, a, ia))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -534,27 +633,62 @@ public interface SortedListOfRanges extends CharacterSet {
     }
 
     /**
-     * Returns {@code true} if this list consists of two values whose binary representations differ
-     * in only a single bit.
+     * Returns {@code true} iff this set contains {@link #getMinValue()} and {@link #getMaxValue()}.
+     */
+    default boolean matchesMinAndMax() {
+        return matchesSomething() && getMin() == getMinValue() && getMax() == getMaxValue();
+    }
+
+    /**
+     * Returns {@code true} iff this code point set contains exactly two characters whose binary
+     * representation differs in one bit only.
      */
     default boolean matches2CharsWith1BitDifference() {
-        if (matchesNothing() || size() > 2 || valueCount() != 2) {
+        if (matchesNothing() || size() > 2 || !valueCountEquals(2)) {
             return false;
         }
-        int c1 = getLo(0);
-        int c2 = size() == 1 ? getHi(0) : getLo(1);
-        return Integer.bitCount(c1 ^ c2) == 1;
+        return Integer.bitCount(getMin() ^ getMax()) == 1;
     }
 
     /**
      * Returns the total number of values contained in this list.
      */
     default int valueCount() {
-        int charSize = 0;
+        int count = 0;
         for (int i = 0; i < size(); i++) {
-            charSize += size(i);
+            count += size(i);
         }
-        return charSize;
+        return count;
+    }
+
+    /**
+     * Returns {@code true} iff the total number of values contained in this list is equal to
+     * {@code cmp}.
+     */
+    default boolean valueCountEquals(int cmp) {
+        int count = 0;
+        for (int i = 0; i < size(); i++) {
+            count += size(i);
+            if (count > cmp) {
+                return false;
+            }
+        }
+        return count == cmp;
+    }
+
+    /**
+     * Returns {@code true} iff the total number of values contained in this list is less or equal
+     * to {@code cmp}.
+     */
+    default boolean valueCountMax(int cmp) {
+        int count = 0;
+        for (int i = 0; i < size(); i++) {
+            count += size(i);
+            if (count > cmp) {
+                return false;
+            }
+        }
+        return count <= cmp;
     }
 
     /**
@@ -574,7 +708,7 @@ public interface SortedListOfRanges extends CharacterSet {
         return size() == 1 && getLo(0) == getMinValue() && getHi(0) == getMaxValue();
     }
 
-    default boolean equals(SortedListOfRanges o) {
+    default boolean equalsListOfRanges(SortedListOfRanges o) {
         if (o == null || size() != o.size()) {
             return false;
         }
@@ -612,16 +746,13 @@ public interface SortedListOfRanges extends CharacterSet {
         if (equals(Constants.NON_WHITE_SPACE)) {
             return "\\S";
         }
-        if (matchesEverything()) {
-            return "[\\s\\S]";
-        }
         if (matchesNothing()) {
             return "[]";
         }
         if (matchesSingleChar()) {
-            return rangeToString(getLo(0), getHi(0));
+            return Range.toString(getLo(0), getHi(0));
         }
-        if (getLo(0) == getMinValue() || getHi(size() - 1) == getMaxValue()) {
+        if (matchesMinAndMax()) {
             return "[^" + inverseRangesToString() + "]";
         } else {
             return "[" + rangesToString() + "]";
@@ -629,18 +760,10 @@ public interface SortedListOfRanges extends CharacterSet {
     }
 
     @TruffleBoundary
-    static String rangeToString(int lo, int hi) {
-        if (lo == hi) {
-            return DebugUtil.charToString(lo);
-        }
-        return DebugUtil.charToString(lo) + "-" + DebugUtil.charToString(hi);
-    }
-
-    @TruffleBoundary
     default String rangesToString() {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < size(); i++) {
-            sb.append(rangeToString(getLo(i), getHi(i)));
+            sb.append(Range.toString(getLo(i), getHi(i)));
         }
         return sb.toString();
     }
@@ -649,17 +772,17 @@ public interface SortedListOfRanges extends CharacterSet {
     default String inverseRangesToString() {
         StringBuilder sb = new StringBuilder();
         if (matchesNothing()) {
-            sb.append(rangeToString(getMinValue(), getMaxValue()));
+            sb.append(Range.toString(getMinValue(), getMaxValue()));
             return sb.toString();
         }
         if (getLo(0) > getMinValue()) {
-            sb.append(rangeToString(getMinValue(), getLo(0) - 1));
+            sb.append(Range.toString(getMinValue(), getLo(0) - 1));
         }
         for (int ia = 1; ia < size(); ia++) {
-            sb.append(rangeToString(getHi(ia - 1) + 1, getLo(ia) - 1));
+            sb.append(Range.toString(getHi(ia - 1) + 1, getLo(ia) - 1));
         }
         if (getHi(size() - 1) < getMaxValue()) {
-            sb.append(rangeToString(getHi(size() - 1) + 1, getMaxValue()));
+            sb.append(Range.toString(getHi(size() - 1) + 1, getMaxValue()));
         }
         return sb.toString();
     }

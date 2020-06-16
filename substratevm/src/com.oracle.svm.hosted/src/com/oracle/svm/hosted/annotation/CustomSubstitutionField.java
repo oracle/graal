@@ -25,13 +25,16 @@
 package com.oracle.svm.hosted.annotation;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 
+import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.svm.core.meta.ReadableJavaField;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public abstract class CustomSubstitutionField implements ReadableJavaField {
+public abstract class CustomSubstitutionField implements ReadableJavaField, OriginalFieldProvider {
 
     protected final ResolvedJavaType declaringClass;
 
@@ -77,5 +80,10 @@ public abstract class CustomSubstitutionField implements ReadableJavaField {
     @Override
     public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
         return null;
+    }
+
+    @Override
+    public Field getJavaField() {
+        throw VMError.shouldNotReachHere();
     }
 }

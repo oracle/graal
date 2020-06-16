@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime.hotspot;
 
-import static org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions.TraceTruffleTransferToInterpreter;
-
+import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -34,19 +33,22 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue;
+import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue.Priority;
+import org.graalvm.compiler.truffle.runtime.CancellableCompileTask;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedOSRLoopNode;
-import org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleCallBoundary;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -70,6 +72,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.runtime.JVMCI;
+import org.graalvm.compiler.truffle.runtime.EngineData;
+import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import sun.misc.Unsafe;
 
 /**
@@ -108,16 +112,13 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         StackIntrospection stackIntrospection;
 
         Lazy(AbstractHotSpotTruffleRuntime runtime) {
+            super(runtime);
             runtime.installDefaultListeners();
         }
     }
 
-    private Boolean traceTransferToInterpreter;
-
-    public AbstractHotSpotTruffleRuntime() {
-        super(Arrays.asList(HotSpotOptimizedCallTarget.class));
-        setDontInlineCallBoundaryMethod();
-    }
+    private volatile boolean traceTransferToInterpreter;
+    private Boolean profilingEnabled;
 
     private volatile Lazy lazy;
     private volatile String lazyConfigurationName;
@@ -133,20 +134,28 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         return lazy;
     }
 
-    private List<ResolvedJavaMethod> truffleCallBoundaryMethods;
+    private final List<ResolvedJavaMethod> truffleCallBoundaryMethods;
+    private volatile CancellableCompileTask initializationTask;
+    private volatile boolean truffleCompilerInitialized;
+    private volatile Throwable truffleCompilerInitializationException;
 
-    @Override
-    public synchronized Iterable<ResolvedJavaMethod> getTruffleCallBoundaryMethods() {
-        if (truffleCallBoundaryMethods == null) {
-            truffleCallBoundaryMethods = new ArrayList<>();
-            MetaAccessProvider metaAccess = getMetaAccess();
-            ResolvedJavaType type = metaAccess.lookupJavaType(OptimizedCallTarget.class);
-            for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
-                if (method.getAnnotation(TruffleCallBoundary.class) != null) {
-                    truffleCallBoundaryMethods.add(method);
-                }
+    public AbstractHotSpotTruffleRuntime() {
+        super(Arrays.asList(HotSpotOptimizedCallTarget.class));
+
+        List<ResolvedJavaMethod> boundaryMethods = new ArrayList<>();
+        MetaAccessProvider metaAccess = getMetaAccess();
+        ResolvedJavaType type = metaAccess.lookupJavaType(OptimizedCallTarget.class);
+        for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
+            if (method.getAnnotation(TruffleCallBoundary.class) != null) {
+                boundaryMethods.add(method);
             }
         }
+        this.truffleCallBoundaryMethods = boundaryMethods;
+        setDontInlineCallBoundaryMethod(boundaryMethods);
+    }
+
+    @Override
+    public final Iterable<ResolvedJavaMethod> getTruffleCallBoundaryMethods() {
         return truffleCallBoundaryMethods;
     }
 
@@ -160,35 +169,103 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     }
 
     @Override
-    public HotSpotTruffleCompiler getTruffleCompiler() {
+    public HotSpotTruffleCompiler getTruffleCompiler(CompilableTruffleAST compilable) {
+        Objects.requireNonNull(compilable, "Compilable must be non null.");
         if (truffleCompiler == null) {
-            initializeTruffleCompiler();
+            initializeTruffleCompiler((OptimizedCallTarget) compilable);
+            rethrowTruffleCompilerInitializationException();
+            assert truffleCompiler != null : "TruffleCompiler must be non null";
         }
         return (HotSpotTruffleCompiler) truffleCompiler;
     }
 
-    protected boolean reportedTruffleCompilerInitializationFailure;
-
-    private void initializeTruffleCompiler() {
-        synchronized (this) {
-            // might occur for multiple compiler threads at the same time.
-            if (truffleCompiler == null) {
-                try {
-                    truffleCompiler = newTruffleCompiler();
-                } catch (Throwable e) {
-                    if (!reportedTruffleCompilerInitializationFailure) {
-                        // This should never happen so report it (once)
-                        reportedTruffleCompilerInitializationFailure = true;
-                        log(printStackTraceToString(e));
-                    }
+    /**
+     * We need to trigger initialization of the Truffle compiler when the first call target is
+     * created. Truffle call boundary methods are installed when the truffle compiler is
+     * initialized, as it requires the compiler to do so. Until then the call boundary methods are
+     * interpreted with the HotSpot interpreter (see {@link #setDontInlineCallBoundaryMethod(List)}
+     * ). This is very slow and we want to avoid doing this as soon as possible. It can also be a
+     * real issue when compilation is turned off completely and no call targets would ever be
+     * compiled. Without ensureInitialized the stubs (see
+     * {@link HotSpotTruffleCompiler#installTruffleCallBoundaryMethods}) would never be installed in
+     * that case and we would use the HotSpot interpreter indefinitely.
+     */
+    private void ensureInitialized(OptimizedCallTarget firstCallTarget) {
+        if (truffleCompilerInitialized) {
+            return;
+        }
+        CancellableCompileTask localTask = initializationTask;
+        if (localTask == null) {
+            final Object lock = this;
+            synchronized (lock) {
+                localTask = initializationTask;
+                if (localTask == null && !truffleCompilerInitialized) {
+                    rethrowTruffleCompilerInitializationException();
+                    initializationTask = localTask = getCompileQueue().submitTask(Priority.INITIALIZATION, firstCallTarget, new BackgroundCompileQueue.Request() {
+                        @Override
+                        protected void execute(TruffleCompilationTask task, WeakReference<OptimizedCallTarget> targetRef) {
+                            synchronized (lock) {
+                                initializeTruffleCompiler(firstCallTarget);
+                                assert truffleCompilerInitialized || truffleCompilerInitializationException != null;
+                                assert initializationTask != null;
+                                initializationTask = null;
+                            }
+                        }
+                    });
                 }
+            }
+        }
+        if (localTask != null) {
+            firstCallTarget.maybeWaitForTask(localTask);
+            rethrowTruffleCompilerInitializationException();
+        } else {
+            assert truffleCompilerInitialized || truffleCompilerInitializationException != null;
+        }
+    }
+
+    /*
+     * Used reflectively in CompilerInitializationTest.
+     */
+    public final void resetCompiler() {
+        truffleCompiler = null;
+        truffleCompilerInitialized = false;
+        truffleCompilerInitializationException = null;
+    }
+
+    private synchronized void initializeTruffleCompiler(OptimizedCallTarget callTarget) {
+        // might occur for multiple compiler threads at the same time.
+        if (!truffleCompilerInitialized) {
+            rethrowTruffleCompilerInitializationException();
+            try {
+                EngineData engineData = callTarget.engine;
+                profilingEnabled = engineData.profilingEnabled;
+                TruffleCompiler compiler = newTruffleCompiler();
+                compiler.initialize(TruffleRuntimeOptions.getOptionsForCompiler(callTarget));
+                truffleCompiler = compiler;
+                traceTransferToInterpreter = engineData.traceTransferToInterpreter;
+                truffleCompilerInitialized = true;
+            } catch (Throwable e) {
+                truffleCompilerInitializationException = e;
             }
         }
     }
 
+    private void rethrowTruffleCompilerInitializationException() {
+        if (truffleCompilerInitializationException != null) {
+            throw sthrow(RuntimeException.class, truffleCompilerInitializationException);
+        }
+    }
+
+    @SuppressWarnings({"unchecked", "unused"})
+    private static <T extends Throwable> T sthrow(Class<T> type, Throwable t) throws T {
+        throw (T) t;
+    }
+
     @Override
-    public OptimizedCallTarget createOptimizedCallTarget(OptimizedCallTarget source, RootNode rootNode) {
-        return new HotSpotOptimizedCallTarget(source, rootNode);
+    public final OptimizedCallTarget createOptimizedCallTarget(OptimizedCallTarget source, RootNode rootNode) {
+        OptimizedCallTarget target = new HotSpotOptimizedCallTarget(source, rootNode);
+        ensureInitialized(target);
+        return target;
     }
 
     @Override
@@ -198,11 +275,11 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     }
 
     /**
-     * Creates a log that {@linkplain HotSpotSpeculationLog#managesFailedSpeculations() manages} a
-     * native failed speculations list. An important invariant is that an nmethod compiled with this
-     * log can never be executing once the log object dies. When the log object dies, it frees the
+     * Creates a log that {@code HotSpotSpeculationLog#managesFailedSpeculations() manages} a native
+     * failed speculations list. An important invariant is that an nmethod compiled with this log
+     * can never be executing once the log object dies. When the log object dies, it frees the
      * failed speculations list thus invalidating the
-     * {@linkplain HotSpotSpeculationLog#getFailedSpeculationsAddress() failed speculations address}
+     * {@code HotSpotSpeculationLog#getFailedSpeculationsAddress() failed speculations address}
      * embedded in the nmethod. If the nmethod were to execute after this point and fail a
      * speculation, it would append the failed speculation to the already freed list.
      * <p>
@@ -218,18 +295,22 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     }
 
     /**
-     * Prevents C1 or C2 from inlining a call to a method annotated by {@link TruffleCallBoundary}
-     * so that we never miss the chance to switch from the Truffle interpreter to compiled code.
+     * Prevents C1 or C2 from inlining a call to and compiling a method annotated by
+     * {@link TruffleCallBoundary} (i.e., <code>OptimizedCallTarget.callBoundary(Object[])</code>)
+     * so that we never miss the chance to jump from the Truffle interpreter to compiled code.
      *
-     * @see HotSpotTruffleCompiler#installTruffleCallBoundaryMethods()
+     * This is quite slow as it forces every call to
+     * <code>OptimizedCallTarget.callBoundary(Object[])</code> to run in the HotSpot interpreter, so
+     * later on we manually compile {@code callBoundary()} with Graal. This then lets a
+     * C1/C2-compiled caller jump to Graal-compiled {@code callBoundary()}, instead of having to go
+     * back to the HotSpot interpreter for every execution of {@code callBoundary()}.
+     *
+     * @see HotSpotTruffleCompiler#installTruffleCallBoundaryMethods() which compiles callBoundary()
+     *      with Graal
      */
-    public static void setDontInlineCallBoundaryMethod() {
-        MetaAccessProvider metaAccess = getMetaAccess();
-        ResolvedJavaType type = metaAccess.lookupJavaType(OptimizedCallTarget.class);
-        for (ResolvedJavaMethod method : type.getDeclaredMethods()) {
-            if (method.getAnnotation(TruffleCallBoundary.class) != null) {
-                setNotInlinableOrCompilable(method);
-            }
+    public static void setDontInlineCallBoundaryMethod(List<ResolvedJavaMethod> callBoundaryMethods) {
+        for (ResolvedJavaMethod method : callBoundaryMethods) {
+            setNotInlinableOrCompilable(method);
         }
     }
 
@@ -317,8 +398,12 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
 
     @SuppressWarnings("try")
     @Override
-    public void bypassedInstalledCode() {
-        getTruffleCompiler().installTruffleCallBoundaryMethods();
+    public void bypassedInstalledCode(OptimizedCallTarget target) {
+        if (!truffleCompilerInitialized) {
+            // do not wait for initialization
+            return;
+        }
+        getTruffleCompiler(target).installTruffleCallBoundaryMethods();
     }
 
     @Override
@@ -332,13 +417,19 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     @Override
     public void notifyTransferToInterpreter() {
         CompilerAsserts.neverPartOfCompilation();
-        if (traceTransferToInterpreter == null) {
-            this.traceTransferToInterpreter = TruffleRuntimeOptions.getValue(TraceTruffleTransferToInterpreter);
-        }
-
         if (traceTransferToInterpreter) {
-            TraceTransferToInterpreterHelper.traceTransferToInterpreter(this, this.getTruffleCompiler());
+            TruffleCompiler compiler = truffleCompiler;
+            assert compiler != null;
+            TraceTransferToInterpreterHelper.traceTransferToInterpreter(this, (HotSpotTruffleCompiler) compiler);
         }
+    }
+
+    @Override
+    public final boolean isProfilingEnabled() {
+        if (profilingEnabled == null) {
+            profilingEnabled = getEngineData(null).profilingEnabled;
+        }
+        return profilingEnabled;
     }
 
     @Override
@@ -436,7 +527,8 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
             OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.getCurrentFrame().getCallTarget();
             final int limit = callTarget.getOptionValue(PolyglotCompilerOptions.TraceStackTraceLimit);
 
-            runtime.log("[truffle] transferToInterpreter at");
+            StringBuilder messageBuilder = new StringBuilder();
+            messageBuilder.append("transferToInterpreter at\n");
             runtime.iterateFrames(new FrameInstanceVisitor<Object>() {
                 int frameIndex = 0;
 
@@ -447,24 +539,24 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
                     if (frameIndex > 0) {
                         line.append("  ");
                     }
-                    line.append(formatStackFrame(frameInstance, target));
+                    line.append(formatStackFrame(frameInstance, target)).append("\n");
                     frameIndex++;
 
-                    runtime.log(line.toString());
+                    messageBuilder.append(line);
                     if (frameIndex < limit) {
                         return null;
                     } else {
-                        runtime.log("    ...");
+                        messageBuilder.append("    ...\n");
                         return frameInstance;
                     }
                 }
 
             });
             final int skip = 3;
-
             StackTraceElement[] stackTrace = new Throwable().getStackTrace();
             String suffix = stackTrace.length > skip + limit ? "\n    ..." : "";
-            runtime.log(Arrays.stream(stackTrace).skip(skip).limit(limit).map(StackTraceElement::toString).collect(Collectors.joining("\n    ", "  ", suffix)));
+            messageBuilder.append(Arrays.stream(stackTrace).skip(skip).limit(limit).map(StackTraceElement::toString).collect(Collectors.joining("\n    ", "  ", suffix)));
+            runtime.log(callTarget, messageBuilder.toString());
         }
     }
 }

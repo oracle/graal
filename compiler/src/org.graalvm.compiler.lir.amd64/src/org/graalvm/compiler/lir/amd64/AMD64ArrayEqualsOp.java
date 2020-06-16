@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,13 +24,14 @@
  */
 package org.graalvm.compiler.lir.amd64;
 
-import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.amd64.AMD64.CPUFeature;
-import jdk.vm.ci.amd64.AMD64Kind;
-import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.Value;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.XOR;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.CONST;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
+
+import java.util.Objects;
+
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Address.Scale;
@@ -43,16 +44,18 @@ import org.graalvm.compiler.asm.amd64.AVXKind;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
+import org.graalvm.compiler.lir.LIRValueUtil;
 import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
-import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.XOR;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
-
-import java.util.Objects;
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64.CPUFeature;
+import jdk.vm.ci.amd64.AMD64Kind;
+import jdk.vm.ci.code.Register;
+import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.Value;
 
 /**
  * Emits code which compares two arrays of the same length. If the CPU supports any vector
@@ -73,13 +76,12 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
     private final Scale arrayIndexScale1;
     private final Scale arrayIndexScale2;
     private final AVXKind.AVXSize vectorSize;
-    private final int constantLength;
     private final boolean signExtend;
 
     @Def({REG}) private Value resultValue;
     @Alive({REG}) private Value array1Value;
     @Alive({REG}) private Value array2Value;
-    @Alive({REG}) private Value lengthValue;
+    @Alive({REG, CONST}) private Value lengthValue;
     @Temp({REG, ILLEGAL}) private Value temp1;
     @Temp({REG, ILLEGAL}) private Value temp2;
     @Temp({REG}) private Value temp3;
@@ -94,7 +96,7 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
     @Temp({REG, ILLEGAL}) private Value vectorTemp4;
 
     public AMD64ArrayEqualsOp(LIRGeneratorTool tool, JavaKind kind1, JavaKind kind2, Value result, Value array1, Value array2, Value length,
-                    int constantLength, boolean directPointers, int maxVectorSize) {
+                    boolean directPointers, int maxVectorSize) {
         super(TYPE);
         this.kind1 = kind1;
         this.kind2 = kind2;
@@ -107,7 +109,6 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
         this.arrayIndexScale1 = Objects.requireNonNull(Scale.fromInt(tool.getProviders().getMetaAccess().getArrayIndexScale(kind1)));
         this.arrayIndexScale2 = Objects.requireNonNull(Scale.fromInt(tool.getProviders().getMetaAccess().getArrayIndexScale(kind2)));
         this.vectorSize = ((AMD64) tool.target().arch).getFeatures().contains(CPUFeature.AVX2) && (maxVectorSize < 0 || maxVectorSize >= 32) ? AVXKind.AVXSize.YMM : AVXKind.AVXSize.XMM;
-        this.constantLength = constantLength;
 
         this.resultValue = result;
         this.array1Value = array1;
@@ -162,7 +163,11 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
     }
 
     private boolean canGenerateConstantLengthCompare(TargetDescription target) {
-        return constantLength >= 0 && kind1.isNumericInteger() && (kind1 == kind2 || getElementsPerVector(AVXKind.AVXSize.XMM) <= constantLength) && supportsSSE41(target);
+        return LIRValueUtil.isJavaConstant(lengthValue) && kind1.isNumericInteger() && (kind1 == kind2 || getElementsPerVector(AVXKind.AVXSize.XMM) <= constantLength()) && supportsSSE41(target);
+    }
+
+    private int constantLength() {
+        return LIRValueUtil.asJavaConstant(lengthValue).asInt();
     }
 
     @Override
@@ -183,7 +188,11 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
             masm.leaq(array2, new AMD64Address(asRegister(array2Value), arrayBaseOffset2));
             Register length = asRegister(temp3);
             // Get array length.
-            masm.movl(length, asRegister(lengthValue));
+            if (LIRValueUtil.isJavaConstant(lengthValue)) {
+                masm.movl(length, constantLength());
+            } else {
+                masm.movl(length, asRegister(lengthValue));
+            }
             // copy
             masm.movl(result, length);
             emitArrayCompare(crb, masm, result, array1, array2, length, trueLabel, falseLabel);
@@ -249,8 +258,7 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
 
         // Compare 16-byte vectors
         masm.andl(result, elementsPerVector - 1); // tail count
-        masm.andl(length, ~(elementsPerVector - 1)); // vector count
-        masm.jcc(ConditionFlag.Zero, compareTail);
+        masm.andlAndJcc(length, ~(elementsPerVector - 1), ConditionFlag.Zero, compareTail, false);
 
         masm.leaq(array1, new AMD64Address(array1, length, arrayIndexScale1, 0));
         masm.leaq(array2, new AMD64Address(array2, length, arrayIndexScale2, 0));
@@ -265,11 +273,9 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
         masm.jcc(ConditionFlag.NotZero, requiresNaNCheck ? nanCheck : falseLabel);
 
         masm.bind(loopCheck);
-        masm.addq(length, elementsPerVector);
-        masm.jcc(ConditionFlag.NotZero, loop);
+        masm.addqAndJcc(length, elementsPerVector, ConditionFlag.NotZero, loop, false);
 
-        masm.testl(result, result);
-        masm.jcc(ConditionFlag.Zero, trueLabel);
+        masm.testlAndJcc(result, result, ConditionFlag.Zero, trueLabel, false);
 
         if (requiresNaNCheck) {
             Label unalignedCheck = new Label();
@@ -477,8 +483,7 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
         Register temp = asRegister(temp4);
 
         masm.andl(result, elementsPerVector - 1); // tail count
-        masm.andl(length, ~(elementsPerVector - 1));  // vector count
-        masm.jcc(ConditionFlag.Zero, compareTail);
+        masm.andlAndJcc(length, ~(elementsPerVector - 1), ConditionFlag.Zero, compareTail, false);
 
         masm.leaq(array1, new AMD64Address(array1, length, arrayIndexScale1, 0));
         masm.leaq(array2, new AMD64Address(array2, length, arrayIndexScale2, 0));
@@ -488,15 +493,12 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
         masm.align(crb.target.wordSize * 2);
         masm.bind(loop);
         masm.movq(temp, new AMD64Address(array1, length, arrayIndexScale1, 0));
-        masm.cmpq(temp, new AMD64Address(array2, length, arrayIndexScale2, 0));
-        masm.jcc(ConditionFlag.NotEqual, requiresNaNCheck ? nanCheck : falseLabel);
+        masm.cmpqAndJcc(temp, new AMD64Address(array2, length, arrayIndexScale2, 0), ConditionFlag.NotEqual, requiresNaNCheck ? nanCheck : falseLabel, false);
 
         masm.bind(loopCheck);
-        masm.addq(length, elementsPerVector);
-        masm.jccb(ConditionFlag.NotZero, loop);
+        masm.addqAndJcc(length, elementsPerVector, ConditionFlag.NotZero, loop, true);
 
-        masm.testl(result, result);
-        masm.jcc(ConditionFlag.Zero, trueLabel);
+        masm.testlAndJcc(result, result, ConditionFlag.Zero, trueLabel, false);
 
         if (requiresNaNCheck) {
             // NaN check is slow path and hence placed outside of the main loop.
@@ -516,15 +518,14 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
          * array.
          */
         masm.movq(temp, new AMD64Address(array1, result, arrayIndexScale1, -VECTOR_SIZE));
-        masm.cmpq(temp, new AMD64Address(array2, result, arrayIndexScale2, -VECTOR_SIZE));
         if (requiresNaNCheck) {
-            masm.jcc(ConditionFlag.Equal, trueLabel);
+            masm.cmpqAndJcc(temp, new AMD64Address(array2, result, arrayIndexScale2, -VECTOR_SIZE), ConditionFlag.Equal, trueLabel, false);
             // At most two iterations, unroll in the emitted code.
             for (int offset = 0; offset < VECTOR_SIZE; offset += kind1.getByteCount()) {
                 emitFloatCompare(masm, array1, array2, result, -VECTOR_SIZE + offset, falseLabel, kind1.getByteCount() == VECTOR_SIZE);
             }
         } else {
-            masm.jccb(ConditionFlag.NotEqual, falseLabel);
+            masm.cmpqAndJcc(temp, new AMD64Address(array2, result, arrayIndexScale2, -VECTOR_SIZE), ConditionFlag.NotEqual, falseLabel, true);
         }
         masm.jmpb(trueLabel);
 
@@ -545,16 +546,14 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
 
         if (kind1.getByteCount() <= 4) {
             // Compare trailing 4 bytes, if any.
-            masm.testl(result, arrayIndexScale1.log2 == 0 ? 4 : 4 >> arrayIndexScale1.log2);
-            masm.jccb(ConditionFlag.Zero, compare2Bytes);
+            masm.testlAndJcc(result, arrayIndexScale1.log2 == 0 ? 4 : 4 >> arrayIndexScale1.log2, ConditionFlag.Zero, compare2Bytes, true);
             masm.movl(temp, new AMD64Address(array1, 0));
-            masm.cmpl(temp, new AMD64Address(array2, 0));
             if (kind1 == JavaKind.Float) {
-                masm.jccb(ConditionFlag.Equal, trueLabel);
+                masm.cmplAndJcc(temp, new AMD64Address(array2, 0), ConditionFlag.Equal, trueLabel, true);
                 emitFloatCompare(masm, array1, array2, Register.None, 0, falseLabel, true);
                 masm.jmpb(trueLabel);
             } else {
-                masm.jccb(ConditionFlag.NotEqual, falseLabel);
+                masm.cmplAndJcc(temp, new AMD64Address(array2, 0), ConditionFlag.NotEqual, falseLabel, true);
             }
             if (kind1.getByteCount() <= 2) {
                 // Move array pointers forward.
@@ -563,12 +562,10 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
 
                 // Compare trailing 2 bytes, if any.
                 masm.bind(compare2Bytes);
-                masm.testl(result, arrayIndexScale1.log2 == 0 ? 2 : 2 >> arrayIndexScale1.log2);
-                masm.jccb(ConditionFlag.Zero, compare1Byte);
+                masm.testlAndJcc(result, arrayIndexScale1.log2 == 0 ? 2 : 2 >> arrayIndexScale1.log2, ConditionFlag.Zero, compare1Byte, true);
                 masm.movzwl(temp, new AMD64Address(array1, 0));
                 masm.movzwl(length, new AMD64Address(array2, 0));
-                masm.cmpl(temp, length);
-                masm.jccb(ConditionFlag.NotEqual, falseLabel);
+                masm.cmplAndJcc(temp, length, ConditionFlag.NotEqual, falseLabel, true);
 
                 // The one-byte tail compare is only required for boolean and byte arrays.
                 if (kind1.getByteCount() <= 1) {
@@ -577,13 +574,12 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
                     masm.leaq(array2, new AMD64Address(array2, 2));
 
                     // Compare trailing byte, if any.
+                    // TODO (yz) this can be optimized, i.e., bind after padding
                     masm.bind(compare1Byte);
-                    masm.testl(result, 1);
-                    masm.jccb(ConditionFlag.Zero, trueLabel);
+                    masm.testlAndJcc(result, 1, ConditionFlag.Zero, trueLabel, true);
                     masm.movzbl(temp, new AMD64Address(array1, 0));
                     masm.movzbl(length, new AMD64Address(array2, 0));
-                    masm.cmpl(temp, length);
-                    masm.jccb(ConditionFlag.NotEqual, falseLabel);
+                    masm.cmplAndJcc(temp, length, ConditionFlag.NotEqual, falseLabel, true);
                 } else {
                     masm.bind(compare1Byte);
                 }
@@ -606,8 +602,7 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
         Register tmp2 = asRegister(temp5);
 
         masm.andl(result, elementsPerLoopIteration - 1); // tail count
-        masm.andl(length, ~(elementsPerLoopIteration - 1));  // bulk loop count
-        masm.jcc(ConditionFlag.Zero, compareTail);
+        masm.andlAndJcc(length, ~(elementsPerLoopIteration - 1), ConditionFlag.Zero, compareTail, false);
 
         masm.leaq(array1, new AMD64Address(array1, length, arrayIndexScale1, 0));
         masm.leaq(array2, new AMD64Address(array2, length, arrayIndexScale2, 0));
@@ -623,24 +618,19 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
         for (int i = 0; i < elementsPerLoopIteration; i++) {
             emitMovBytes(masm, tmp1, new AMD64Address(array1, length, arrayIndexScale1, i << arrayIndexScale1.log2), kind1.getByteCount());
             emitMovBytes(masm, tmp2, new AMD64Address(array2, length, arrayIndexScale2, i << arrayIndexScale2.log2), kind2.getByteCount());
-            masm.cmpq(tmp1, tmp2);
-            masm.jcc(ConditionFlag.NotEqual, falseLabel);
+            masm.cmpqAndJcc(tmp1, tmp2, ConditionFlag.NotEqual, falseLabel, false);
         }
-        masm.addq(length, elementsPerLoopIteration);
-        masm.jccb(ConditionFlag.NotZero, loop);
+        masm.addqAndJcc(length, elementsPerLoopIteration, ConditionFlag.NotZero, loop, true);
 
         masm.bind(compareTail);
-        masm.testl(result, result);
-        masm.jcc(ConditionFlag.Zero, trueLabel);
+        masm.testlAndJcc(result, result, ConditionFlag.Zero, trueLabel, false);
         for (int i = 0; i < elementsPerLoopIteration - 1; i++) {
             emitMovBytes(masm, tmp1, new AMD64Address(array1, length, arrayIndexScale1, 0), kind1.getByteCount());
             emitMovBytes(masm, tmp2, new AMD64Address(array2, length, arrayIndexScale2, 0), kind2.getByteCount());
-            masm.cmpq(tmp1, tmp2);
-            masm.jcc(ConditionFlag.NotEqual, falseLabel);
+            masm.cmpqAndJcc(tmp1, tmp2, ConditionFlag.NotEqual, falseLabel, false);
             if (i < elementsPerLoopIteration - 2) {
                 masm.incrementq(length, 1);
-                masm.decrementq(result, 1);
-                masm.jcc(ConditionFlag.Zero, trueLabel);
+                masm.decqAndJcc(result, ConditionFlag.Zero, trueLabel, false);
             } else {
                 masm.jmpb(trueLabel);
             }
@@ -678,12 +668,11 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
 
             if (kind1 == JavaKind.Float) {
                 masm.movl(temp, address1);
-                masm.cmpl(temp, address2);
+                masm.cmplAndJcc(temp, address2, ConditionFlag.Equal, bitwiseEqual, true);
             } else {
                 masm.movq(temp, address1);
-                masm.cmpq(temp, address2);
+                masm.cmpqAndJcc(temp, address2, ConditionFlag.Equal, bitwiseEqual, true);
             }
-            masm.jccb(ConditionFlag.Equal, bitwiseEqual);
         }
 
         emitNaNCheck(masm, address1, falseLabel);
@@ -708,18 +697,17 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
         masm.bind(loop);
         emitFloatCompare(masm, base1, base2, index, offset, falseLabel, range == 1);
         masm.incrementq(index, 1);
-        masm.incrementq(i, 1);
-        masm.jccb(ConditionFlag.NotZero, loop);
+        masm.incqAndJcc(i, ConditionFlag.NotZero, loop, true);
         // Floats within the range are equal, revert change to the register index
         masm.subq(index, range);
     }
 
     private boolean constantLengthCompareNeedsTmpArrayPointers() {
         AVXKind.AVXSize vSize = vectorSize;
-        if (constantLength < getElementsPerVector(vectorSize)) {
+        if (constantLength() < getElementsPerVector(vectorSize)) {
             vSize = AVXKind.AVXSize.XMM;
         }
-        int vectorCount = constantLength & ~(2 * getElementsPerVector(vSize) - 1);
+        int vectorCount = constantLength() & ~(2 * getElementsPerVector(vSize) - 1);
         return vectorCount > 0;
     }
 
@@ -733,7 +721,7 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
                     AMD64MacroAssembler asm,
                     Register[] tmpVectors,
                     Label noMatch) {
-        if (constantLength == 0) {
+        if (constantLength() == 0) {
             // do nothing
             return;
         }
@@ -741,13 +729,13 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
         Register arrayPtr2 = asRegister(array2Value);
         Register tmp = asRegister(temp3);
         AVXKind.AVXSize vSize = vectorSize;
-        if (constantLength < getElementsPerVector(vectorSize)) {
+        if (constantLength() < getElementsPerVector(vectorSize)) {
             vSize = AVXKind.AVXSize.XMM;
         }
         int elementsPerVector = getElementsPerVector(vSize);
-        if (elementsPerVector > constantLength) {
+        if (elementsPerVector > constantLength()) {
             assert kind1 == kind2;
-            int byteLength = constantLength << arrayIndexScale1.log2;
+            int byteLength = constantLength() << arrayIndexScale1.log2;
             // array is shorter than any vector register, use regular XOR instructions
             int movSize = (byteLength < 2) ? 1 : ((byteLength < 4) ? 2 : ((byteLength < 8) ? 4 : 8));
             emitMovBytes(asm, tmp, new AMD64Address(arrayPtr1, arrayBaseOffset1), movSize);
@@ -760,8 +748,8 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
             }
         } else {
             int elementsPerVectorLoop = 2 * elementsPerVector;
-            int tailCount = constantLength & (elementsPerVectorLoop - 1);
-            int vectorCount = constantLength & ~(elementsPerVectorLoop - 1);
+            int tailCount = constantLength() & (elementsPerVectorLoop - 1);
+            int vectorCount = constantLength() & ~(elementsPerVectorLoop - 1);
             int bytesPerVector = vSize.getBytes();
             if (vectorCount > 0) {
                 Label loopBegin = new Label();
@@ -784,8 +772,7 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
                 asm.jccb(AMD64Assembler.ConditionFlag.NotZero, noMatch);
                 emitVectorTest(asm, tmpVectors[2], vSize);
                 asm.jccb(AMD64Assembler.ConditionFlag.NotZero, noMatch);
-                asm.addq(tmp, elementsPerVectorLoop);
-                asm.jccb(AMD64Assembler.ConditionFlag.NotZero, loopBegin);
+                asm.addqAndJcc(tmp, elementsPerVectorLoop, AMD64Assembler.ConditionFlag.NotZero, loopBegin, true);
             }
             if (tailCount > 0) {
                 emitVectorLoad1(asm, tmpVectors[0], arrayPtr1, arrayBaseOffset1 + (tailCount << arrayIndexScale1.log2) - scaleDisplacement1(bytesPerVector), vSize);
@@ -854,5 +841,10 @@ public final class AMD64ArrayEqualsOp extends AMD64LIRInstruction {
             default:
                 throw new IllegalStateException();
         }
+    }
+
+    @Override
+    public boolean needsClearUpperVectorRegisters() {
+        return true;
     }
 }

@@ -26,7 +26,7 @@ questions.
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>com.oracle.substratevm</groupId>
+    <groupId>org.graalvm.nativeimage</groupId>
     <artifactId>native-image-maven-plugin-test</artifactId>
     <packaging>jar</packaging>
     <version>1.0-SNAPSHOT</version>
@@ -34,6 +34,8 @@ questions.
     <url>https://github.com/oracle/graal/tree/master/substratevm</url>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>1.6</maven.compiler.source>
+        <maven.compiler.target>1.6</maven.compiler.target>
     </properties>
     <build>
         <plugins>
@@ -50,7 +52,7 @@ questions.
                 </configuration>
             </plugin>
             <plugin>
-                <groupId>com.oracle.substratevm</groupId>
+                <groupId>org.graalvm.nativeimage</groupId>
                 <artifactId>native-image-maven-plugin</artifactId>
                 <version><svmVersion/></version>
                 <executions>

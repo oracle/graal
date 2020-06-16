@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -42,6 +42,9 @@ def _read_sibling_file(basename):
         return fp.read()
 
 def _find_version_base_project(versioned_project):
+    base_project_name = getattr(versioned_project, 'overlayTarget', None)
+    if base_project_name:
+        return mx.dependency(base_project_name, context=versioned_project)
     extended_packages = versioned_project.extended_java_packages()
     if not extended_packages:
         mx.abort('Project with a multiReleaseJarVersion attribute must have sources in a package defined by project without multiReleaseJarVersion attribute', context=versioned_project)
@@ -65,6 +68,29 @@ def _is_git_repo(jdkrepo):
     git_dir = join(jdkrepo, '.git')
     return exists(git_dir)
 
+def rename_packages(filepath, verbose=False):
+    with open(filepath) as fp:
+        contents = fp.read()
+    new_contents = contents
+    for old_name, new_name in package_renamings.items():
+        new_contents = new_contents.replace(old_name, new_name)
+        if new_contents != contents:
+            with open(filepath, 'w') as fp:
+                fp.write(new_contents)
+                if verbose:
+                    mx.log('  updated ' + filepath)
+
+# Packages in Graal that have different names in OpenJDK so that the original packages can be deployed
+# as is on the class path and not clash with packages in the jdk.internal.vm.compiler module.
+# Also used by other script.
+package_renamings = {
+    'org.graalvm.collections' : 'jdk.internal.vm.compiler.collections',
+    'org.graalvm.word'        : 'jdk.internal.vm.compiler.word',
+    'org.graalvm.libgraal'    : 'jdk.internal.vm.compiler.libgraal',
+    'org.graalvm.nativeimage' : 'jdk.internal.vm.compiler.nativeimage',
+    'org.graalvm.options'     : 'jdk.internal.vm.compiler.options'
+}
+
 SuiteJDKInfo = namedtuple('SuiteJDKInfo', 'name includes excludes')
 GraalJDKModule = namedtuple('GraalJDKModule', 'name suites')
 
@@ -74,37 +100,55 @@ def updategraalinopenjdk(args):
     parser.add_argument('--pretty', help='value for --pretty when logging the changes since the last JDK* tag')
     parser.add_argument('jdkrepo', help='path to the local OpenJDK repo')
     parser.add_argument('version', type=int, help='Java version of the OpenJDK repo')
+    parser.add_argument('--metro', action='store_true', help='update for Metropolis project (to build libgraal)')
 
     args = parser.parse_args(args)
 
     if mx_compiler.jdk.javaCompliance.value < args.version:
         mx.abort('JAVA_HOME/--java-home must be Java version {} or greater: {}'.format(args.version, mx_compiler.jdk))
 
-    graal_modules = [
-        # JDK module jdk.internal.vm.compiler is composed of sources from:
-        GraalJDKModule('jdk.internal.vm.compiler',
-            # 1. Classes in the compiler suite under the org.graalvm namespace except for packages
-            #    or projects whose names include "truffle", "management" or "core.llvm"
-            [SuiteJDKInfo('compiler', ['org.graalvm'], ['truffle', 'management', 'core.llvm']),
-            # 2. Classes in the sdk suite under the org.graalvm.collections and org.graalvm.word namespaces
-             SuiteJDKInfo('sdk', ['org.graalvm.collections', 'org.graalvm.word'], [])]),
-        # JDK module jdk.internal.vm.compiler.management is composed of sources from:
-        GraalJDKModule('jdk.internal.vm.compiler.management',
-            # 1. Classes in the compiler suite under the org.graalvm.compiler.hotspot.management namespace
-            [SuiteJDKInfo('compiler', ['org.graalvm.compiler.hotspot.management'], [])]),
-        # JDK module jdk.aot is composed of sources from:
-        GraalJDKModule('jdk.aot',
-            # 1. Classes in the compiler suite under the jdk.tools.jaotc namespace
-            [SuiteJDKInfo('compiler', ['jdk.tools.jaotc'], [])]),
-    ]
+    if not args.metro:
+        mx.log('Processing update for OpenJDK {}'.format(args.version))
+        graal_modules = [
+            # JDK module jdk.internal.vm.compiler is composed of sources from:
+            GraalJDKModule('jdk.internal.vm.compiler',
+                # 1. Classes in the compiler suite under the org.graalvm namespace except for packages
+                #    or projects whose names contain terms on the specified exclude list
+                [SuiteJDKInfo('compiler', ['org.graalvm'], ['truffle', 'management', 'core.llvm', 'replacements.llvm', 'libgraal.jni']),
+                # 2. Classes in the sdk suite under the org.graalvm.collections and org.graalvm.word namespaces
+                 SuiteJDKInfo('sdk', ['org.graalvm.collections', 'org.graalvm.word'], [])]),
+            # JDK module jdk.internal.vm.compiler.management is composed of sources from:
+            GraalJDKModule('jdk.internal.vm.compiler.management',
+                # 1. Classes in the compiler suite under the org.graalvm.compiler.hotspot.management namespace
+                [SuiteJDKInfo('compiler', ['org.graalvm.compiler.hotspot.management'], ['libgraal'])]),
+            # JDK module jdk.aot is composed of sources from:
+            GraalJDKModule('jdk.aot',
+                # 1. Classes in the compiler suite under the jdk.tools.jaotc namespace
+                [SuiteJDKInfo('compiler', ['jdk.tools.jaotc'], [])]),
+        ]
+    else:
+        if args.version < 15:
+            mx.abort('Update for Metropolis works only for JDK 15 or later')
+        mx.log('Processing update for Metropolis JDK {}'.format(args.version))
+        # Metropolis needs more code from Graal
+        graal_modules = [
+            # JDK module jdk.internal.vm.compiler is composed of sources from:
+            GraalJDKModule('jdk.internal.vm.compiler',
+                # 1. Classes in the compiler suite under the org.graalvm namespace except for packages
+                #    or projects whose names contain terms on the specified exclude list
+                [SuiteJDKInfo('compiler', ['org.graalvm'], ['truffle', 'management', 'core.llvm', 'replacements.llvm']),
+                # 2. Classes in the sdk suite under the org.graalvm.collections and org.graalvm.word namespaces
+                 SuiteJDKInfo('sdk', ['org.graalvm.collections', 'org.graalvm.word', 'org.graalvm.nativeimage', 'org.graalvm.options'], [])]),
+            # JDK module jdk.internal.vm.compiler.management is composed of sources from:
+            GraalJDKModule('jdk.internal.vm.compiler.management',
+                # 1. Classes in the compiler suite under the org.graalvm.compiler.hotspot.management namespace
+                [SuiteJDKInfo('compiler', ['org.graalvm.compiler.hotspot.management'], ['libgraal'])]),
+            # JDK module jdk.aot is composed of sources from:
+            GraalJDKModule('jdk.aot',
+                # 1. Classes in the compiler suite under the jdk.tools.jaotc namespace
+                [SuiteJDKInfo('compiler', ['jdk.tools.jaotc'], [])]),
+        ]
 
-    # Packages in Graal that have different names in OpenJDK so that the original packages can be deployed
-    # as it on the class path and not clash with packages in the jdk.internal.vm.compiler module.
-    package_renamings = {
-        'org.graalvm.collections' : 'jdk.internal.vm.compiler.collections',
-        'org.graalvm.word'        : 'jdk.internal.vm.compiler.word',
-        'org.graalvm.libgraal'    : 'jdk.internal.vm.compiler.libgraal'
-    }
 
     # Strings to be replaced in files copied to OpenJDK.
     replacements = {
@@ -138,19 +182,12 @@ def updategraalinopenjdk(args):
         if out:
             mx.abort(jdkrepo + ' is not "clean":' + '\n' + out[:min(200, len(out))] + '...')
 
+    mx.checkcopyrights(['--primary', '--', '--fix'])
+
     for dirpath, _, filenames in os.walk(join(jdkrepo, 'make')):
         for filename in filenames:
             if filename.endswith('.gmk'):
-                filepath = join(dirpath, filename)
-                with open(filepath) as fp:
-                    contents = fp.read()
-                new_contents = contents
-                for old_name, new_name in package_renamings.items():
-                    new_contents = new_contents.replace(old_name, new_name)
-                if new_contents != contents:
-                    with open(filepath, 'w') as fp:
-                        fp.write(new_contents)
-                        mx.log('  updated ' + filepath)
+                rename_packages(join(dirpath, filename), True)
 
     java_package_re = re.compile(r"^\s*package\s+(?P<package>[a-zA-Z_][\w\.]*)\s*;$", re.MULTILINE)
 
@@ -175,6 +212,12 @@ def updategraalinopenjdk(args):
             worklist = []
 
             for p in [e for e in suite.projects if e.isJavaProject()]:
+                if str(mx_compiler.jdk.javaCompliance) not in p.javaCompliance:
+                    mx.log('  skipping {} since its compliance ({}) is not compatible with {}'.format(p, repr(p.javaCompliance), mx_compiler.jdk.javaCompliance))
+                    continue
+                if args.version >= 15 and "sparc" in p.name:
+                    # Filter SPARC port for JDK 15
+                    continue
                 if any(inc in p.name for inc in info.includes) and not any(ex in p.name for ex in info.excludes):
                     assert len(p.source_dirs()) == 1, p
                     version = 0
@@ -191,76 +234,87 @@ def updategraalinopenjdk(args):
                         if new_project_name.startswith(old_name):
                             new_project_name = new_project_name.replace(old_name, new_name)
 
-                    source_dir = p.source_dirs()[0]
-                    target_dir = join(classes_dir, new_project_name, 'src')
-                    copied_source_dirs.append(source_dir)
-
-                    workitem = (version, p, source_dir, target_dir)
+                    workitem = (version, p, new_project_name)
                     worklist.append(workitem)
 
             # Ensure versioned resources are copied in the right order
             # such that higher versions override lower versions.
             worklist = sorted(worklist)
 
-            for version, p, source_dir, target_dir in worklist:
+            for version, p, new_project_name in worklist:
                 first_file = True
-                for dirpath, _, filenames in os.walk(source_dir):
-                    for filename in filenames:
-                        src_file = join(dirpath, filename)
-                        dst_file = join(target_dir, os.path.relpath(src_file, source_dir))
-                        with open(src_file) as fp:
+
+                source_dir = p.source_dirs()[0]
+                target_dir = join(classes_dir, new_project_name, 'src')
+                copied_source_dirs.append(source_dir)
+
+                trailing = re.compile(r"[ \t]+\n")
+
+                src_files = run_output(['git', 'ls-files'], cwd=source_dir).split('\n')
+                for rel_src_file in src_files:
+                    if not len(rel_src_file):
+                        continue
+                    if args.version >= 15 and "sparc" in rel_src_file:
+                        # Skip SPARC files for JDK 15
+                        continue
+                    filename = os.path.basename(rel_src_file)
+                    src_file = join(source_dir, rel_src_file)
+                    dst_file = join(target_dir, os.path.relpath(src_file, source_dir))
+                    binary_flag = '' if filename.endswith('.java') else 'b'
+                    with open(src_file, 'r' + binary_flag) as fp:
+                        try:
                             contents = fp.read()
+                        except Exception as ex: # pylint: disable=broad-except
+                            mx.log('Error reading {}: {}'.format(src_file, ex))
+                    if filename.endswith('.java'):
                         old_line_count = len(contents.split('\n'))
-                        if filename.endswith('.java'):
-                            for old_name, new_name in package_renamings.items():
-                                old_name_as_dir = old_name.replace('.', os.sep)
-                                if old_name_as_dir in src_file:
-                                    new_name_as_dir = new_name.replace('.', os.sep)
-                                    dst = src_file.replace(old_name_as_dir, new_name_as_dir)
-                                    dst_file = join(target_dir, os.path.relpath(dst, source_dir))
-                                contents = contents.replace(old_name, new_name)
-                            for old_line, new_line in replacements.items():
-                                contents = contents.replace(old_line, new_line)
+                        for old_name, new_name in package_renamings.items():
+                            old_name_as_dir = old_name.replace('.', os.sep)
+                            if old_name_as_dir in src_file:
+                                new_name_as_dir = new_name.replace('.', os.sep)
+                                dst = src_file.replace(old_name_as_dir, new_name_as_dir)
+                                dst_file = join(target_dir, os.path.relpath(dst, source_dir))
+                            contents = contents.replace(old_name, new_name)
 
-                            match = java_package_re.search(contents)
-                            if not match:
-                                mx.abort('Could not find package declaration in {}'.format(src_file))
-                            java_package = match.group('package')
-                            if any(ex in java_package for ex in info.excludes):
-                                mx.log('  excluding ' + filename)
-                                continue
+                        for old_line, new_line in replacements.items():
+                            contents = contents.replace(old_line, new_line)
 
-                            new_line_count = len(contents.split('\n'))
-                            if new_line_count > old_line_count:
-                                mx.abort('Pattern replacement caused line count to grow from {} to {} in {}'.format(old_line_count, new_line_count, src_file))
-                            else:
-                                if new_line_count < old_line_count:
-                                    contents = contents.replace('\npackage ', '\n' * (old_line_count - new_line_count) + '\npackage ')
-                            new_line_count = len(contents.split('\n'))
-                            if new_line_count != old_line_count:
-                                mx.abort('Unable to correct line count for {}'.format(src_file))
-                            for forbidden in blacklist:
-                                if forbidden in contents:
-                                    mx.abort('Found blacklisted pattern \'{}\' in {}'.format(forbidden, src_file))
-                        dst_dir = os.path.dirname(dst_file)
-                        if not exists(dst_dir):
-                            os.makedirs(dst_dir)
-                        if first_file:
-                            mx.log('  copying: ' + source_dir)
-                            mx.log('       to: ' + target_dir)
-                            if p.testProject or p.definedAnnotationProcessors:
-                                to_exclude = p.name
-                                for old_name, new_name in package_renamings.items():
-                                    if to_exclude.startswith(old_name):
-                                        sfx = '' if to_exclude == old_name else to_exclude[len(old_name):]
-                                        to_exclude = new_name + sfx
-                                        break
-                                jdk_internal_vm_compiler_EXCLUDES.add(to_exclude)
-                                if p.testProject:
-                                    jdk_internal_vm_compiler_test_SRC.add(to_exclude)
-                            first_file = False
-                        with open(dst_file, 'w') as fp:
-                            fp.write(contents)
+                        contents = re.sub(trailing, '\n', contents)
+
+                        match = java_package_re.search(contents)
+                        if not match:
+                            mx.abort('Could not find package declaration in {}'.format(src_file))
+                        java_package = match.group('package')
+                        if any(ex in java_package for ex in info.excludes):
+                            mx.log('  excluding ' + filename)
+                            continue
+
+                        new_line_count = len(contents.split('\n'))
+                        if new_line_count > old_line_count:
+                            mx.abort('Pattern replacement caused line count to grow from {} to {} in {}'.format(old_line_count, new_line_count, src_file))
+                        else:
+                            if new_line_count < old_line_count:
+                                contents = contents.replace('\npackage ', '\n' * (old_line_count - new_line_count) + '\npackage ')
+                        new_line_count = len(contents.split('\n'))
+                        if new_line_count != old_line_count:
+                            mx.abort('Unable to correct line count for {}'.format(src_file))
+                        for forbidden in blacklist:
+                            if forbidden in contents:
+                                mx.abort('Found blacklisted pattern \'{}\' in {}'.format(forbidden, src_file))
+                    dst_dir = os.path.dirname(dst_file)
+                    if not exists(dst_dir):
+                        os.makedirs(dst_dir)
+                    if first_file:
+                        mx.log('  copying: ' + source_dir)
+                        mx.log('       to: ' + target_dir)
+                        if p.testProject or p.definedAnnotationProcessors:
+                            to_exclude = new_project_name
+                            jdk_internal_vm_compiler_EXCLUDES.add(to_exclude)
+                            if p.testProject:
+                                jdk_internal_vm_compiler_test_SRC.add(to_exclude)
+                        first_file = False
+                    with open(dst_file, 'w' + binary_flag) as fp:
+                        fp.write(contents)
 
     def replace_lines(filename, begin_lines, end_line, replace_lines, old_line_check, preserve_indent=False, append_mode=False):
         mx.log('Updating ' + filename + '...')
@@ -316,6 +370,9 @@ def updategraalinopenjdk(args):
         parts = line.split()
         assert len(parts) == 2 and parts[1] == '\\', line
 
+    def do_nothing(line):
+        pass
+
     # Update jdk.internal.vm.compiler.EXCLUDES in make/CompileJavaModules.gmk
     # to exclude all test, benchmark and annotation processor packages.
     CompileJavaModules_gmk = join(jdkrepo, 'make', 'CompileJavaModules.gmk') # pylint: disable=invalid-name
@@ -358,6 +415,44 @@ def updategraalinopenjdk(args):
     end_line = ', \\'
     old_line_check = single_column_with_continuation
     replace_lines(JtregGraalUnit_gmk, begin_lines, end_line, new_lines, old_line_check, preserve_indent=True)
+
+    # Updates for Metropolis
+    if args.metro:
+        # Update 'PROCESSOR_JARS' and 'PROC_SRC_SUBDIRS' in make/modules/jdk.internal.vm.compiler/Gensrc.gmk
+        Gensrc_gmk = join(jdkrepo, 'make', 'modules', 'jdk.internal.vm.compiler', 'Gensrc.gmk') # pylint: disable=invalid-name
+        begin_lines = ['PROC_SRC_SUBDIRS := \\']
+        end_line = 'org.graalvm.compiler.virtual \\'
+        new_lines = ['    jdk.internal.vm.compiler.libgraal.jni \\\n']
+        replace_lines(Gensrc_gmk, begin_lines, end_line, new_lines, old_line_check, preserve_indent=True, append_mode=True)
+
+        begin_lines = ['PROCESSOR_JARS := \\']
+        end_line = '$(BUILDTOOLS_OUTPUTDIR)/jdk.vm.compiler.serviceprovider.processor.jar \\'
+        new_lines = ['    $(BUILDTOOLS_OUTPUTDIR)/jdk.vm.compiler.libgraal.jni.processor.jar \\\n']
+        replace_lines(Gensrc_gmk, begin_lines, end_line, new_lines, old_line_check, preserve_indent=True, append_mode=True)
+
+        # Add 'libgraal.jni.processor' build to make/CompileToolsHotspot.gmk
+        CompileToolsHotspot_gmk = join(jdkrepo, 'make', 'CompileToolsHotspot.gmk') # pylint: disable=invalid-name
+        begin_lines = ['TARGETS += $(BUILD_VM_COMPILER_SERVICEPROVIDER_PROCESSOR)']
+        end_line = '##############################################################################'
+        new_lines = ['\n  $(eval $(call SetupJavaCompilation, BUILD_VM_COMPILER_LIBGRAAL_JNI_PROCESSOR, \\\n',
+                     '      TARGET_RELEASE := $(TARGET_RELEASE_BOOTJDK), \\\n',
+                     '      SRC := \\\n',
+                     '          $(SRC_DIR)/org.graalvm.compiler.processor/src \\\n',
+                     '          $(SRC_DIR)/jdk.internal.vm.compiler.libgraal.jni.annotation/src \\\n',
+                     '          $(SRC_DIR)/jdk.internal.vm.compiler.libgraal.jni.processor/src \\\n',
+                     '          , \\\n',
+                     '      EXCLUDE_FILES := $(EXCLUDE_FILES), \\\n',
+                     '      BIN := $(BUILDTOOLS_OUTPUTDIR)/jdk.vm.compiler.libgraal.jni.processor, \\\n',
+                     '      JAR := $(BUILDTOOLS_OUTPUTDIR)/jdk.vm.compiler.libgraal.jni.processor.jar, \\\n',
+                     '      DISABLED_WARNINGS := options, \\\n',
+                     '  ))\n\n',
+                     '  TARGETS += $(BUILD_VM_COMPILER_LIBGRAAL_JNI_PROCESSOR)\n\n',
+                     '  ##############################################################################\n']  # indent is inlined
+        old_line_check = do_nothing
+        replace_lines(CompileToolsHotspot_gmk, begin_lines, end_line, new_lines, old_line_check, preserve_indent=True, append_mode=True)
+
+        # Rename packages in libgraal.jni.processor service
+        rename_packages(join(jdkrepo, 'src', 'jdk.internal.vm.compiler', 'share', 'classes', 'jdk.internal.vm.compiler.libgraal.jni.processor', 'src', 'META-INF', 'services', 'javax.annotation.processing.Processor'))
 
     overwritten = ''
     if not git_repo:

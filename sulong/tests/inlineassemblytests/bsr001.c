@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,8 +28,8 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int main() {
-  unsigned short arg = 0x1234;
-  unsigned short out = 0;
-  __asm__("bsrw %%ax, %%cx" : "=c"(out) : "a"(arg));
-  return (out == 12);
+    unsigned short arg = 0x1234;
+    unsigned short out = 0;
+    __asm__("bsrw %%ax, %%cx" : "=c"(out) : "a"(arg));
+    return (out == 12);
 }

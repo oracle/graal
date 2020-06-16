@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@
 package org.graalvm.compiler.truffle.runtime;
 
 import static org.graalvm.compiler.truffle.runtime.TruffleDebugOptions.PrintGraph;
-import static org.graalvm.compiler.truffle.runtime.TruffleDebugOptions.PrintTruffleTrees;
 import static org.graalvm.compiler.truffle.runtime.TruffleDebugOptions.getValue;
 import static org.graalvm.compiler.truffle.runtime.TruffleDebugOptions.PrintGraphTarget.Disable;
 
@@ -53,6 +52,7 @@ import com.oracle.truffle.api.nodes.NodeClass;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
 public final class TruffleTreeDumper {
 
@@ -65,7 +65,7 @@ public final class TruffleTreeDumper {
     private static final String AFTER_INLINING = "After Inlining";
 
     public static void dump(TruffleDebugContext debug, OptimizedCallTarget callTarget, TruffleInlining inliningDecision) {
-        if (getValue(PrintGraph) != Disable && getValue(PrintTruffleTrees)) {
+        if (getValue(PrintGraph) != Disable) {
             try {
                 dumpASTAndCallTrees(debug, callTarget, inliningDecision);
             } catch (IOException ex) {
@@ -77,7 +77,7 @@ public final class TruffleTreeDumper {
     private static void dumpASTAndCallTrees(TruffleDebugContext debug, OptimizedCallTarget callTarget, TruffleInlining inlining) throws IOException {
         if (callTarget.getRootNode() != null) {
             AST ast = new AST(callTarget);
-            final GraphOutput<AST, ?> astOutput = debug.buildOutput(GraphOutput.newBuilder(AST_DUMP_STRUCTURE).blocks(AST_DUMP_STRUCTURE).protocolVersion(6, 1));
+            final GraphOutput<AST, ?> astOutput = debug.buildOutput(GraphOutput.newBuilder(AST_DUMP_STRUCTURE).blocks(AST_DUMP_STRUCTURE).protocolVersion(7, 0));
 
             astOutput.beginGroup(ast, "AST", "AST", null, 0, debug.getVersionProperties());
 
@@ -90,8 +90,11 @@ public final class TruffleTreeDumper {
             astOutput.endGroup(); // AST
             astOutput.close();
 
+            if (callTarget.getOptionValue(PolyglotCompilerOptions.LanguageAgnosticInlining)) {
+                return;
+            }
             CallTree callTree = new CallTree(callTarget, null);
-            final GraphOutput<CallTree, ?> callTreeOutput = debug.buildOutput(GraphOutput.newBuilder(CALL_GRAPH_DUMP_STRUCTURE).blocks(CALL_GRAPH_DUMP_STRUCTURE).protocolVersion(6, 1));
+            final GraphOutput<CallTree, ?> callTreeOutput = debug.buildOutput(GraphOutput.newBuilder(CALL_GRAPH_DUMP_STRUCTURE).blocks(CALL_GRAPH_DUMP_STRUCTURE).protocolVersion(7, 0));
             callTreeOutput.beginGroup(null, "Call Tree", "Call Tree", null, 0, debug.getVersionProperties());
             callTreeOutput.print(callTree, null, 0, AFTER_PROFILING);
             if (inlining.countInlinedCalls() > 0) {
@@ -311,7 +314,7 @@ public final class TruffleTreeDumper {
         Node source;
         List<ASTEdge> edges = new ArrayList<>();
         final int id;
-        Map<String, ? super Object> properties = new HashMap<>();
+        Map<String, ? super Object> properties = new LinkedHashMap<>();
         ASTNodeClass nodeClass;
 
         ASTNode(Node source, int id) {
@@ -338,14 +341,25 @@ public final class TruffleTreeDumper {
             if (Introspection.isIntrospectable(source)) {
                 final List<Introspection.SpecializationInfo> specializations = Introspection.getSpecializations(source);
                 for (Introspection.SpecializationInfo specialization : specializations) {
-                    final String methodName = specialization.getMethodName();
-                    properties.put(methodName + ".isActive", specialization.isActive());
-                    properties.put(methodName + ".isExcluded", specialization.isExcluded());
-                    properties.put(methodName + ".instances", specialization.getInstances());
-                    for (int i = 0; i < specialization.getInstances(); i++) {
-                        final List<Object> cachedData = specialization.getCachedData(i);
-                        for (Object o : cachedData) {
-                            properties.put(methodName + "-cachedData[" + i + "]", o);
+                    final String methodName = "specialization." + specialization.getMethodName();
+                    String state;
+                    if (specialization.isActive()) {
+                        state = "active";
+                    } else if (specialization.isExcluded()) {
+                        state = "excluded";
+                    } else {
+                        state = "inactive";
+                    }
+                    properties.put(methodName, state);
+                    if (specialization.getInstances() > 1 || (specialization.getInstances() == 1 && specialization.getCachedData(0).size() > 0)) {
+                        properties.put(methodName + ".instances", specialization.getInstances());
+                        for (int instance = 0; instance < specialization.getInstances(); instance++) {
+                            final List<Object> cachedData = specialization.getCachedData(instance);
+                            int cachedIndex = 0;
+                            for (Object o : cachedData) {
+                                properties.put(methodName + ".instance[" + instance + "].cached[" + cachedIndex + "]", o);
+                                cachedIndex++;
+                            }
                         }
                     }
                 }

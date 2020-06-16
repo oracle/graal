@@ -1,0 +1,247 @@
+[
+  {
+    "name" : "java.io.FileDescriptor",
+    "methods" : [
+        { "name" : "closeAll",
+          "justification" : "Safe, called with Closeable parameter by FileInputStream, FileOutputStream, RandomAccessFile to close the file handler. The Closeable is  megamorphic.",
+          "parameterTypes" : [
+              "java.io.Closeable"
+        ]}
+    ]
+  },
+  {
+    "name" : "java.lang.StringCoding",
+    "methods" : [
+        { "name" : "encode" ,
+          "parameterTypes" : [
+              "char[]",
+              "int",
+              "int"
+        ]},
+        { "name" : "decode",
+          "parameterTypes" : [
+              "byte[]",
+              "int",
+              "int"
+        ]}
+    ]
+  },
+  {
+    "name" : "java.lang.UNIXProcess",
+    "methods" : [
+        { "name" : "lambda$null$0" ,
+          "justification" : "UNIXProcess internal processReaperExecutor.",
+          "parameterTypes" : [
+              "java.lang.ThreadGroup",
+              "java.lang.Runnable"
+        ]}
+    ]
+  },
+  {
+    "name" : "java.net.SocketPermission",
+    "methods" : [
+        { "name" : "equals" ,
+          "parameterTypes" : [
+              "java.lang.Object"
+        ]},
+        { "name" : "hashCode" ,
+          "parameterTypes" : [
+        ]}
+    ]
+  },
+  {
+    "name" : "java.net.URL",
+    "methods" : [
+        { "name" : "equals" ,
+          "parameterTypes" : [
+              "java.lang.Object"
+        ]},
+        { "name" : "hashCode" ,
+          "parameterTypes" : [
+        ]}
+    ]
+  },
+  {
+    "name" : "java.nio.Bits",
+    "justification" : "Bits are package private class used by direct buffers which uses Unsafe to access off heap memory.",
+    "allDeclaredMethods" : true
+  },
+  {
+    "name" : "java.nio.DirectByteBuffer",
+    "justification" : "DirectByteBuffer uses Unsafe to allocate and initialize off heap memory.",
+    "allDeclaredMethods" : true,
+    "methods" : [
+        { "name" : "<init>",
+          "parameterTypes" : [
+            "int"
+        ]}
+    ]
+  },
+  {
+    "name" : "java.nio.DirectByteBuffer$Deallocator",
+    "methods" : [
+        { "name" : "run" ,
+          "justification" : "Uses unsafe to free direct buffer off heap memory",
+          "parameterTypes" : [
+        ]}
+    ]
+  },
+  {
+    "name" : "java.nio.file.spi.FileSystemProvider",
+    "methods" : [
+        { "name" : "checkPermission" ,
+          "justification" : "Only creation of a FileSystemProvider instance, not used for file system access.",
+          "parameterTypes" : [
+        ]}
+    ]
+  },
+  {
+    "name" : "java.util.ServiceLoader",
+    "methods" : [
+        { "name" : "parse" ,
+          "justification" : "Reads META-INF/services files from classpath.",
+          "parameterTypes" : [
+              "java.lang.Class",
+              "java.net.URL"
+        ]}
+    ]
+  },
+  {
+    "name" : "java.util.concurrent.FutureTask",
+    "methods" : [
+        { "name" : "cancel" ,
+          "justification" : "Interrups the executor threads to cancel execution of FutureTask.",
+          "parameterTypes" : [
+            "boolean"
+        ]}
+    ]
+  },
+  {
+    "name" : "java.util.concurrent.ThreadPoolExecutor",
+    "methods" : [
+        { "name" : "tryTerminate" ,
+          "justification" : "Stops the thread pool threads on shutdown.",
+          "parameterTypes" : [
+        ]}
+    ]
+  },
+  {
+    "name" : "java.util.concurrent.ForkJoinWorkerThread",
+    "methods" : [
+        { "name" : "run" ,
+          "parameterTypes" : [
+        ]}
+    ]
+  },
+  {
+    "name" : "java.util.concurrent.ForkJoinTask",
+    "methods" : [
+        { "name" : "invoke" ,
+          "parameterTypes" : [
+        ]}
+    ]
+  },
+  {
+    "name" : "java.util.concurrent.ForkJoinPool",
+    "methods" : [
+        { "name" : "makeCommonPool" ,
+          "parameterTypes" : [
+        ]}
+    ]
+  },
+  {
+    "name" : "java.util.concurrent.locks.LockSupport",
+    "allDeclaredMethods" : true,
+    "justification" : "The LockSupport uses sun.misc.Unsafe"
+  },
+  {
+    "name" : "sun.nio.fs.NativeBuffer$Deallocator",
+    "methods" : [
+        { "name" : "run" ,
+          "justification" : "Uses unsafe to free direct buffer off heap memory",
+          "parameterTypes" : [
+        ]}
+    ]
+  },
+  {
+    "name" : "sun.nio.ch.SocketChannelImpl",
+    "methods" : [
+        { "name" : "toString" ,
+          "parameterTypes" : [
+        ]}
+    ]
+  },
+  {
+    "name" : "java.security.ProtectionDomain",
+    "methods" : [
+        { "name" : "toString" ,
+          "parameterTypes" : [
+        ]}
+    ]
+  },
+  {
+    "name" : "java.security.Provider",
+    "methods" : [
+        { "name" : "check" ,
+          "parameterTypes" : [
+              "java.lang.String"
+        ]}
+    ]
+  },
+  {
+    "name" : "javax.security.auth.Subject$SecureSet",
+    "methods" : [
+        { "name" : "add" ,
+          "parameterTypes" : [
+              "java.lang.Object"
+        ]},
+        { "name" : "contains" ,
+          "parameterTypes" : [
+              "java.lang.Object"
+        ]}
+    ]
+  },
+  {
+    "name" : "javax.security.auth.Subject$SecureSet$1",
+    "methods" : [
+        { "name" : "next" ,
+          "parameterTypes" : [
+        ]}
+    ]
+  },
+  {
+    "name" : "com.oracle.svm.core.jdk.Resources",
+    "methods" : [
+        { "name" : "createURL" ,
+          "parameterTypes" : [
+            "java.lang.String",
+            "byte[]"
+        ]}
+    ]
+  },
+  {
+    "name" : "com.oracle.svm.core.handles.ObjectHandlesImpl",
+    "allDeclaredMethods" : true,
+    "justification" : "Internal SVM implementation of JNI object handles"
+  },
+
+  {
+    "name" : "com.oracle.svm.core.posix.linux.LinuxPhysicalMemory$PhysicalMemorySupportImpl",
+    "methods" : [
+        { "name" : "sizeFromCGroup",
+          "justification" : "Native application on Linux determines heap size by reading /sys/fs/cgroup/memory/memory.limit_in_bytes at start.",
+          "parameterTypes" : [
+        ]}
+    ]
+  },
+  {
+    "name" : "com.oracle.svm.core.thread.JavaVMOperation",
+    "methods" : [
+        { "name" : "operate",
+          "justification" : "The JavaVMOperation is an VM internal concept for task executed in critical sections or safe points, cannot be used by guest language.",
+          "parameterTypes" : [
+            "com.oracle.svm.core.thread.NativeVMOperationData"
+        ]}
+    ]
+  }
+]

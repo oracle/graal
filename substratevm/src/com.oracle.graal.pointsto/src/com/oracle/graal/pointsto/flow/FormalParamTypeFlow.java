@@ -29,8 +29,11 @@ import org.graalvm.compiler.nodes.ParameterNode;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.typestate.TypeState;
 
-public class FormalParamTypeFlow extends TypeFlow<ParameterNode> {
+import jdk.vm.ci.code.BytecodePosition;
+
+public class FormalParamTypeFlow extends TypeFlow<BytecodePosition> {
 
     /** The holding method. */
     protected final AnalysisMethod method;
@@ -38,25 +41,34 @@ public class FormalParamTypeFlow extends TypeFlow<ParameterNode> {
     protected final int position;
 
     public FormalParamTypeFlow(ParameterNode source, AnalysisType declaredType, AnalysisMethod method, int position) {
-        super(source, declaredType);
+        super(source.getNodeSourcePosition(), declaredType);
         this.position = position;
         this.method = method;
     }
 
-    public FormalParamTypeFlow(FormalParamTypeFlow original, MethodFlowsGraph methodFlows) {
+    protected FormalParamTypeFlow(FormalParamTypeFlow original, MethodFlowsGraph methodFlows) {
         super(original, methodFlows);
         this.position = original.position;
         this.method = original.method;
     }
 
     @Override
-    public TypeFlow<ParameterNode> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+    public TypeFlow<BytecodePosition> copy(BigBang bb, MethodFlowsGraph methodFlows) {
         return new FormalParamTypeFlow(this, methodFlows);
     }
 
     @Override
     public AnalysisMethod method() {
         return method;
+    }
+
+    @Override
+    public TypeState filter(BigBang bb, TypeState newState) {
+        /*
+         * If the type flow constraints are relaxed filter the incoming value using the parameter's
+         * declared type.
+         */
+        return declaredTypeFilter(bb, newState);
     }
 
     public int position() {

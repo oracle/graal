@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,6 +43,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -53,6 +54,7 @@ import java.util.function.Supplier;
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.test.Graal;
+import org.graalvm.compiler.api.test.ModuleSupport;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.CompilationPrinter;
 import org.graalvm.compiler.core.GraalCompiler;
@@ -62,7 +64,6 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpHandler;
-import org.graalvm.compiler.debug.DebugDumpScope;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TTY;
@@ -74,6 +75,7 @@ import org.graalvm.compiler.java.ComputeLoopFrequenciesClosure;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.phases.LIRSuites;
+import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodeinfo.Verbosity;
@@ -111,7 +113,6 @@ import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
-import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningPhase;
 import org.graalvm.compiler.phases.common.inlining.info.InlineInfo;
 import org.graalvm.compiler.phases.common.inlining.policy.GreedyInliningPolicy;
@@ -124,12 +125,11 @@ import org.graalvm.compiler.phases.tiers.TargetProvider;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.runtime.RuntimeProvider;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.test.AddExports;
 import org.graalvm.compiler.test.GraalTest;
-import org.graalvm.compiler.test.JLModule;
 import org.junit.After;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.internal.AssumptionViolatedException;
 
@@ -195,9 +195,7 @@ public abstract class GraalCompilerTest extends GraalTest {
      * as of JDK 9.
      */
     protected final void exportPackage(Class<?> moduleMember, String packageName) {
-        if (JavaVersionUtil.JAVA_SPEC > 8) {
-            JLModule.exportPackageTo(moduleMember, packageName, getClass());
-        }
+        ModuleSupport.exportPackageTo(moduleMember, packageName, getClass());
     }
 
     /**
@@ -344,14 +342,16 @@ public abstract class GraalCompilerTest extends GraalTest {
         return ret;
     }
 
-    public GraalCompilerTest() {
-        this(new ConcurrentHashMap<>());
+    private static final ThreadLocal<HashMap<ResolvedJavaMethod, InstalledCode>> cache = ThreadLocal.withInitial(HashMap::new);
+
+    @BeforeClass
+    public static void resetCache() {
+        cache.get().clear();
     }
 
-    public GraalCompilerTest(Map<ResolvedJavaMethod, InstalledCode> cache) {
+    public GraalCompilerTest() {
         this.backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
         this.providers = getBackend().getProviders();
-        this.cache = cache;
     }
 
     /**
@@ -606,11 +606,21 @@ public abstract class GraalCompilerTest extends GraalTest {
         return providers;
     }
 
-    protected HighTierContext getDefaultHighTierContext() {
+    /**
+     * Override the {@link OptimisticOptimizations} settings used for the test. This is called for
+     * all the paths where the value is set so it is the proper place for a test override. Setting
+     * it in other places can result in inconsistent values being used in other parts of the
+     * compiler.
+     */
+    protected OptimisticOptimizations getOptimisticOptimizations() {
+        return OptimisticOptimizations.ALL;
+    }
+
+    protected final HighTierContext getDefaultHighTierContext() {
         return new HighTierContext(getProviders(), getDefaultGraphBuilderSuite(), getOptimisticOptimizations());
     }
 
-    protected MidTierContext getDefaultMidTierContext() {
+    protected final MidTierContext getDefaultMidTierContext() {
         return new MidTierContext(getProviders(), getTargetProvider(), getOptimisticOptimizations(), null);
     }
 
@@ -643,7 +653,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected final BasePhase<HighTierContext> createInliningPhase() {
-        return createInliningPhase(new CanonicalizerPhase());
+        return createInliningPhase(this.createCanonicalizerPhase());
     }
 
     protected BasePhase<HighTierContext> createInliningPhase(CanonicalizerPhase canonicalizer) {
@@ -928,8 +938,6 @@ public abstract class GraalCompilerTest extends GraalTest {
         }
     }
 
-    private Map<ResolvedJavaMethod, InstalledCode> cache;
-
     /**
      * Gets installed code for a given method, compiling it first if necessary. The graph is parsed
      * {@link #parseEager eagerly}.
@@ -981,7 +989,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     protected InstalledCode getCode(final ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, boolean forceCompile, boolean installAsDefault, OptionValues options) {
         boolean useCache = !forceCompile && getArgumentToBind() == null;
         if (useCache && graph == null) {
-            InstalledCode cached = cache.get(installedCodeOwner);
+            InstalledCode cached = cache.get().get(installedCodeOwner);
             if (cached != null) {
                 if (cached.isValid()) {
                     return cached;
@@ -996,7 +1004,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             StructuredGraph graphToCompile = graph == null ? parseForCompile(installedCodeOwner, id, options) : graph;
             DebugContext debug = graphToCompile.getDebug();
 
-            try (AllocSpy spy = AllocSpy.open(installedCodeOwner); DebugContext.Scope ds = debug.scope("Compiling", new DebugDumpScope(id.toString(CompilationIdentifier.Verbosity.ID), true))) {
+            try (AllocSpy spy = AllocSpy.open(installedCodeOwner); DebugContext.Scope ds = debug.scope("Compiling", graph)) {
                 CompilationPrinter printer = CompilationPrinter.begin(options, id, installedCodeOwner, INVOCATION_ENTRY_BCI);
                 CompilationResult compResult = compile(installedCodeOwner, graphToCompile, new CompilationResult(graphToCompile.compilationId()), id, options);
                 printer.finish(compResult);
@@ -1028,7 +1036,7 @@ public abstract class GraalCompilerTest extends GraalTest {
             }
 
             if (useCache) {
-                cache.put(installedCodeOwner, installedCode);
+                cache.get().put(installedCodeOwner, installedCode);
             }
             return installedCode;
         }
@@ -1083,10 +1091,6 @@ public abstract class GraalCompilerTest extends GraalTest {
         return compile(installedCodeOwner, graph, new CompilationResult(compilationId), compilationId, options);
     }
 
-    protected OptimisticOptimizations getOptimisticOptimizations() {
-        return OptimisticOptimizations.ALL;
-    }
-
     /**
      * Compiles a given method.
      *
@@ -1117,6 +1121,12 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     protected StructuredGraph getFinalGraph(ResolvedJavaMethod method) {
         StructuredGraph graph = parseForCompile(method);
+        applyFrontEnd(graph);
+        return graph;
+    }
+
+    protected StructuredGraph getFinalGraph(ResolvedJavaMethod method, OptionValues options) {
+        StructuredGraph graph = parseForCompile(method, options);
         applyFrontEnd(graph);
         return graph;
     }
@@ -1327,6 +1337,8 @@ public abstract class GraalCompilerTest extends GraalTest {
         }
     }
 
+    protected static final Object NO_BIND = new Object();
+
     protected void bindArguments(StructuredGraph graph, Object[] argsToBind) {
         ResolvedJavaMethod m = graph.method();
         Object receiver = isStatic(m.getModifiers()) ? null : this;
@@ -1334,9 +1346,12 @@ public abstract class GraalCompilerTest extends GraalTest {
         JavaType[] parameterTypes = m.toParameterTypes();
         assert parameterTypes.length == args.length;
         for (ParameterNode param : graph.getNodes(ParameterNode.TYPE)) {
-            JavaConstant c = getSnippetReflection().forBoxed(parameterTypes[param.index()].getJavaKind(), args[param.index()]);
-            ConstantNode replacement = ConstantNode.forConstant(c, getMetaAccess(), graph);
-            param.replaceAtUsages(replacement);
+            Object arg = args[param.index()];
+            if (arg != NO_BIND) {
+                JavaConstant c = getSnippetReflection().forBoxed(parameterTypes[param.index()].getJavaKind(), arg);
+                ConstantNode replacement = ConstantNode.forConstant(c, getMetaAccess(), graph);
+                param.replaceAtUsages(replacement);
+            }
         }
     }
 
@@ -1511,5 +1526,9 @@ public abstract class GraalCompilerTest extends GraalTest {
      */
     protected boolean isArchitecture(String name) {
         return name.equals(backend.getTarget().arch.getName());
+    }
+
+    protected CanonicalizerPhase createCanonicalizerPhase() {
+        return CanonicalizerPhase.create();
     }
 }

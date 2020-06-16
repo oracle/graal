@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,8 +29,7 @@
  */
 typedef unsigned int myUnsignedInt;
 
-int start() __attribute__((constructor))
-{
+int start() __attribute__((constructor)) {
     myUnsignedInt typedefedVal = 15;
     const int constVal = 234;
     const myUnsignedInt cuVal = 128;

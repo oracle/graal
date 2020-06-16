@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -146,7 +146,7 @@ public class PolyglotCachingTest {
         for (int i = 0; i < GCUtils.GC_TEST_ITERATIONS; i++) {
             // cache should stay valid and never be collected as long as the source is alive.
             assertCachedEval(context, source);
-            GCUtils.gc();
+            System.gc();
         }
         assertNotNull(parsedRef.get());
         context.close();

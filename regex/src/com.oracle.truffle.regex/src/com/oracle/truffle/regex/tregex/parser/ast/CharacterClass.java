@@ -1,41 +1,58 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * The Universal Permissive License (UPL), Version 1.0
  *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
  *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ * (a) the Software, and
  *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
-
-import com.oracle.truffle.regex.charset.CharSet;
-import com.oracle.truffle.regex.tregex.nfa.ASTNodeSet;
-import com.oracle.truffle.regex.tregex.parser.RegexParser;
-import com.oracle.truffle.regex.tregex.util.json.Json;
-import com.oracle.truffle.regex.tregex.util.json.JsonObject;
-import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 import java.util.Collections;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.tregex.TRegexOptions;
+import com.oracle.truffle.regex.tregex.automaton.StateSet;
+import com.oracle.truffle.regex.tregex.parser.RegexParser;
+import com.oracle.truffle.regex.tregex.string.AbstractStringBuffer;
+import com.oracle.truffle.regex.tregex.util.json.Json;
+import com.oracle.truffle.regex.tregex.util.json.JsonObject;
+import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 /**
  * A {@link Term} that matches characters belonging to a specified set of characters.
@@ -45,29 +62,29 @@ import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
  * <em>CharacterClassEscape</em> and <em>CharacterEscape</em> of the goal symbol <em>AtomEscape</em>
  * in the ECMAScript RegExp syntax.
  * <p>
- * Note that {@link CharacterClass} nodes and the {@link CharSet}s that they rely on can only match
- * characters from the Basic Multilingual Plane (and whose code point fits into 16-bit integers).
- * Any term which matches characters outside of the Basic Multilingual Plane is expanded by
- * {@link RegexParser} into a more complex expression which matches the individual code units that
- * would make up the UTF-16 encoding of those characters.
+ * Note that {@link CharacterClass} nodes and the {@link CodePointSet}s that they rely on can only
+ * match characters from the Basic Multilingual Plane (and whose code point fits into 16-bit
+ * integers). Any term which matches characters outside of the Basic Multilingual Plane is expanded
+ * by {@link RegexParser} into a more complex expression which matches the individual code units
+ * that would make up the UTF-16 encoding of those characters.
  */
-public class CharacterClass extends Term {
+public class CharacterClass extends QuantifiableTerm {
 
-    private CharSet matcherBuilder;
+    private CodePointSet charSet;
     // look-behind groups which might match the same character as this CharacterClass node
-    private ASTNodeSet<Group> lookBehindEntries;
+    private StateSet<LookAroundIndex, LookBehindAssertion> lookBehindEntries;
 
     /**
      * Creates a new {@link CharacterClass} node which matches the set of characters specified by
      * the {@code matcherBuilder}.
      */
-    CharacterClass(CharSet matcherBuilder) {
-        this.matcherBuilder = matcherBuilder;
+    CharacterClass(CodePointSet charSet) {
+        this.charSet = charSet;
     }
 
     private CharacterClass(CharacterClass copy) {
         super(copy);
-        matcherBuilder = copy.matcherBuilder;
+        charSet = copy.charSet;
     }
 
     @Override
@@ -81,20 +98,37 @@ public class CharacterClass extends Term {
     }
 
     /**
-     * Returns the {@link CharSet} representing the set of characters that can be matched by this
-     * {@link CharacterClass}.
+     * Returns the {@link CodePointSet} representing the set of characters that can be matched by
+     * this {@link CharacterClass}.
      */
-    public CharSet getMatcherBuilder() {
-        return matcherBuilder;
+    public CodePointSet getCharSet() {
+        return charSet;
     }
 
-    public void setMatcherBuilder(CharSet matcherBuilder) {
-        this.matcherBuilder = matcherBuilder;
+    public void setCharSet(CodePointSet charSet) {
+        this.charSet = charSet;
     }
 
-    public void addLookBehindEntry(RegexAST ast, Group lookBehindEntry) {
+    public boolean wasSingleChar() {
+        return isFlagSet(FLAG_CHARACTER_CLASS_WAS_SINGLE_CHAR);
+    }
+
+    public void setWasSingleChar() {
+        setWasSingleChar(true);
+    }
+
+    public void setWasSingleChar(boolean value) {
+        setFlag(FLAG_CHARACTER_CLASS_WAS_SINGLE_CHAR, value);
+    }
+
+    @Override
+    public boolean isUnrollingCandidate() {
+        return hasQuantifier() && getQuantifier().isWithinThreshold(TRegexOptions.TRegexQuantifierUnrollThresholdSingleCC);
+    }
+
+    public void addLookBehindEntry(RegexAST ast, LookBehindAssertion lookBehindEntry) {
         if (lookBehindEntries == null) {
-            lookBehindEntries = new ASTNodeSet<>(ast);
+            lookBehindEntries = StateSet.create(ast.getLookArounds());
         }
         lookBehindEntries.add(lookBehindEntry);
     }
@@ -108,22 +142,41 @@ public class CharacterClass extends Term {
      * character as this node. Note that the set contains the {@link Group} bodies of the
      * {@link LookBehindAssertion} nodes, not the {@link LookBehindAssertion} nodes themselves.
      */
-    public Set<Group> getLookBehindEntries() {
+    public Set<LookBehindAssertion> getLookBehindEntries() {
         if (lookBehindEntries == null) {
             return Collections.emptySet();
         }
         return lookBehindEntries;
     }
 
+    public void extractSingleChar(AbstractStringBuffer literal, AbstractStringBuffer mask) {
+        if (charSet.matchesSingleChar()) {
+            literal.append(charSet.getMin());
+            mask.append(0);
+        } else {
+            assert charSet.matches2CharsWith1BitDifference();
+            int c1 = charSet.getMin();
+            int c2 = charSet.getMax();
+            literal.appendOR(c1, c2);
+            mask.appendXOR(c1, c2);
+        }
+    }
+
+    @Override
+    public boolean equalsSemantic(RegexASTNode obj, boolean ignoreQuantifier) {
+        return obj instanceof CharacterClass && ((CharacterClass) obj).getCharSet().equals(charSet) && (ignoreQuantifier || quantifierEquals((CharacterClass) obj));
+    }
+
+    @TruffleBoundary
     @Override
     public String toString() {
-        return matcherBuilder.toString();
+        return charSet.toString() + quantifierToString();
     }
 
     @TruffleBoundary
     @Override
     public JsonValue toJson() {
-        final JsonObject json = toJson("CharacterClass").append(Json.prop("matcherBuilder", matcherBuilder));
+        final JsonObject json = toJson("CharacterClass").append(Json.prop("charSet", charSet));
         if (lookBehindEntries != null) {
             json.append(Json.prop("lookBehindEntries", lookBehindEntries.stream().map(RegexASTNode::astNodeId).collect(Collectors.toList())));
         }

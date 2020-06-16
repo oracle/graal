@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,10 +26,8 @@ package org.graalvm.compiler.truffle.test;
 
 import java.util.function.Consumer;
 
-import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.management.ExecutionEvent;
 import org.graalvm.polyglot.management.ExecutionListener;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -51,7 +49,6 @@ public class ExecutionListenerCompilerTest extends PartialEvaluationTest {
 
     static final SourceSection DUMMY_SECTION = com.oracle.truffle.api.source.Source.newBuilder(ProxyLanguage.ID, "", "").name("").build().createSection(0, 0);
 
-    Context context;
     ProxyLanguage langauge;
 
     static int counter;
@@ -174,7 +171,7 @@ public class ExecutionListenerCompilerTest extends PartialEvaluationTest {
     private void testListener(ExecutionListener.Builder builder, String expectedMethodName, BaseNode baseNode) {
         ExecutionListener listener = null;
         if (builder != null) {
-            listener = builder.attach(context.getEngine());
+            listener = builder.attach(getContext().getEngine());
         }
         assertPartialEvalEquals(expectedMethodName, createRoot(baseNode));
         if (listener != null) {
@@ -190,17 +187,10 @@ public class ExecutionListenerCompilerTest extends PartialEvaluationTest {
                 return super.parse(request);
             }
         });
-        context = Context.create();
-        context.initialize(ProxyLanguage.ID);
-        context.enter();
+        setupContext();
+        getContext().initialize(ProxyLanguage.ID);
         langauge = ProxyLanguage.getCurrentLanguage();
         counter = 0;
-    }
-
-    @After
-    public void tearDown() {
-        context.leave();
-        context.close();
     }
 
     private RootNode createRoot(BaseNode node) {

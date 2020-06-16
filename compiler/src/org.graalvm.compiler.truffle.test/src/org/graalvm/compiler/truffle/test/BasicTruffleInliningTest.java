@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,14 +24,29 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.nodes.RootNode;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningNodeBudget;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningRecursionDepth;
+
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
-import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
-import org.graalvm.polyglot.Context;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 public class BasicTruffleInliningTest extends TruffleInliningTest {
+
+    private int inliningNodeBudget;
+    private int inliningRecursionDepth;
+
+    @Before
+    public void before() {
+        setupContext();
+        OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
+        inliningNodeBudget = target.getOptionValue(InliningNodeBudget);
+        inliningRecursionDepth = target.getOptionValue(InliningRecursionDepth);
+    }
 
     @Test
     public void testSimpleInline() {
@@ -69,7 +84,7 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
     public void testInlineBigFunctions() {
         // @formatter:off
         TruffleInlining decisions = builder.
-                target("callee", TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleInliningMaxCallerSize) - 3).
+                target("callee", inliningNodeBudget - 3).
                 target("caller").
                     calls("callee").
                 buildDecisions();
@@ -81,7 +96,7 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
     public void testDontInlineBigFunctions() {
         // @formatter:off
         TruffleInlining decisions = builder.
-                target("callee", TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleInliningMaxCallerSize)).
+                target("callee", inliningNodeBudget).
                 target("caller").
                     calls("callee").
                 buildDecisions();
@@ -94,7 +109,7 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
         // @formatter:off
         TruffleInlining decisions = builder.
                 target("callee").
-                target("caller", TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleInliningMaxCallerSize) - 3).
+                target("caller", inliningNodeBudget - 3).
                 calls("callee").
                 buildDecisions();
         // @formatter:on
@@ -106,7 +121,7 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
         // @formatter:off
         TruffleInlining decisions = builder.
                 target("callee").
-                target("caller", TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleInliningMaxCallerSize)).
+                target("caller", inliningNodeBudget).
                     calls("callee").
                 buildDecisions();
         // @formatter:on
@@ -116,13 +131,13 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
     @Test
     public void testRecursiveInline() {
         TruffleInlining decisions = builder.target("recursive").calls("recursive").buildDecisions();
-        Assert.assertEquals(TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleMaximumRecursiveInlining).intValue(), countInlines(decisions, "recursive"));
+        Assert.assertEquals(inliningRecursionDepth, countInlines(decisions, "recursive"));
     }
 
     @Test
     public void testDoubleRecursiveInline() {
         TruffleInlining decisions = builder.target("recursive").calls("recursive").calls("recursive").buildDecisions();
-        int n = TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleMaximumRecursiveInlining).intValue();
+        int n = inliningRecursionDepth;
         long geometricSum = 2 * (1 - ((long) Math.pow(2, n))) / (1 - 2); // sum of geometric
                                                                          // progression a*r^n is
                                                                          // (a(1-r^n))/(1-r)
@@ -141,15 +156,15 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
                     calls("callee").
                 buildDecisions();
         // @formatter:on
-        Assert.assertEquals(TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleMaximumRecursiveInlining).intValue(), countInlines(decisions, "recursive"));
-        Assert.assertEquals(TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleMaximumRecursiveInlining) + 1, countInlines(decisions, "callee"));
+        Assert.assertEquals(inliningRecursionDepth, countInlines(decisions, "recursive"));
+        Assert.assertEquals(inliningRecursionDepth + 1, countInlines(decisions, "callee"));
     }
 
     @Test
     public void testInlineBigWithCallSites() {
         // @formatter:off
         TruffleInlining decisions = builder.
-                target("callee", (TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleInliningMaxCallerSize) / 3) - 3).
+                target("callee", (inliningNodeBudget / 3) - 3).
                 target("caller").
                     calls("callee").
                     calls("callee").
@@ -164,7 +179,7 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
         // Do not inline a function if it's size * cappedCallSites is too big
         // @formatter:off
         TruffleInlining decisions = builder.
-                target("callee", TruffleRuntimeOptions.getValue(SharedTruffleRuntimeOptions.TruffleInliningMaxCallerSize) / 3).
+                target("callee", inliningNodeBudget / 3).
                 target("caller").
                     calls("callee").
                     calls("callee").
@@ -220,20 +235,14 @@ public class BasicTruffleInliningTest extends TruffleInliningTest {
     @Test
     @SuppressWarnings("try")
     public void testTruffleFunctionInliningFlag() {
-        Context context = Context.newBuilder().allowExperimentalOptions(true).option("engine.Inlining", "false").build();
-        context.enter();
-        try {
-            // @formatter:off
-            TruffleInlining decisions = builder.
-                    target("callee").
-                    target("caller").
-                        calls("callee", 2).
-                    buildDecisions();
-            // @formatter:on
-            Assert.assertTrue("Decisions where made!", decisions.getCallSites().isEmpty());
-        } finally {
-            context.leave();
-            context.close();
-        }
+        setupContext("engine.Inlining", "false");
+        // @formatter:off
+        TruffleInlining decisions = builder.
+                target("callee").
+                target("caller").
+                    calls("callee", 2).
+                buildDecisions();
+        // @formatter:on
+        Assert.assertTrue("Decisions where made!", decisions.getCallSites().isEmpty());
     }
 }

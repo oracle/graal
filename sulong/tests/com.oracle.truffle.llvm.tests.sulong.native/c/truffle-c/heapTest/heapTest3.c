@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,23 +34,23 @@ int *p[100];
 
 int main() {
 
-  int i;
+    int i;
 
-  for (i = 0; i < 100; i++) {
-    p[i] = (int *)malloc(8 * 100);
-  }
+    for (i = 0; i < 100; i++) {
+        p[i] = (int *) malloc(8 * 100);
+    }
 
-  for (i = 0; i < 100; i++) {
-    p[i] = (int *)realloc(p[i], 8 * 300);
-  }
+    for (i = 0; i < 100; i++) {
+        p[i] = (int *) realloc(p[i], 8 * 300);
+    }
 
-  for (i = 0; i < 100; i++) {
-    p[i] = (int *)realloc(p[i], 8 * 30);
-  }
+    for (i = 0; i < 100; i++) {
+        p[i] = (int *) realloc(p[i], 8 * 30);
+    }
 
-  for (i = 99; i >= 0; i--) {
-    free(p[i]);
-  }
+    for (i = 99; i >= 0; i--) {
+        free(p[i]);
+    }
 
-  return 9;
+    return 9;
 }

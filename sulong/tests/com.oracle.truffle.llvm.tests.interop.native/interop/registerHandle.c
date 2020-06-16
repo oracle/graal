@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,11 +30,9 @@
 #include <polyglot.h>
 #include <truffle.h>
 
-
 typedef struct test {
     int foo;
 } test;
-
 
 test my_test_struct_global = { 1 };
 

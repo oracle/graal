@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -176,7 +176,7 @@ public abstract class AbstractDebugTest {
         if (expectedReturnValue == null) {
             Assert.assertNull(returnValue);
         } else {
-            Assert.assertEquals(expectedReturnValue, returnValue.as(String.class));
+            Assert.assertEquals(expectedReturnValue, returnValue.toDisplayString());
         }
         return suspendedEvent;
     }
@@ -192,7 +192,7 @@ public abstract class AbstractDebugTest {
             String expectedValue = expectedFrame[i + 1];
             DebugValue value = values.get(expectedIdentifier);
             Assert.assertNotNull("Identifier " + expectedIdentifier + " not found.", value);
-            Assert.assertEquals(expectedValue, value.as(String.class));
+            Assert.assertEquals(expectedValue, value.toDisplayString());
         }
     }
 

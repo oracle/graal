@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,48 +42,57 @@ package com.oracle.truffle.api.source;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.net.URL;
-import java.util.Collection;
+import java.nio.charset.Charset;
+import java.util.Set;
+
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.source.Source.SourceBuilder;
-import java.net.URI;
-import java.nio.charset.Charset;
-import java.util.Set;
 
 final class SourceAccessor extends Accessor {
 
     static final SourceAccessor ACCESSOR = new SourceAccessor();
 
+    static final LanguageSupport LANGUAGE = ACCESSOR.languageSupport();
+
     private SourceAccessor() {
     }
 
-    static Collection<ClassLoader> allLoaders() {
-        return ACCESSOR.loaders();
+    public static void load() {
     }
 
-    static String getMimeType(TruffleFile file, Set<String> validMimeTypes) throws IOException {
-        return ACCESSOR.languageSupport().getMimeType(file, validMimeTypes);
+    static String detectMimeType(TruffleFile file, Set<String> validMimeTypes) {
+        return ACCESSOR.languageSupport().detectMimeType(file, validMimeTypes);
     }
 
-    static Charset getEncoding(TruffleFile file, String mimeType) throws IOException {
-        return ACCESSOR.languageSupport().getEncoding(file, mimeType);
-    }
-
-    static Object getCurrentFileSystemContext() {
-        return ACCESSOR.languageSupport().getCurrentFileSystemContext();
+    static Charset detectEncoding(TruffleFile file, String mimeType) {
+        return ACCESSOR.languageSupport().detectEncoding(file, mimeType);
     }
 
     static TruffleFile getTruffleFile(URI uri, Object fileSystemContext) {
-        return ACCESSOR.languageSupport().getTruffleFile(uri, fileSystemContext);
+        return ACCESSOR.languageSupport().getTruffleFile(fileSystemContext, uri);
     }
 
     static TruffleFile getTruffleFile(String path, Object fileSystemContext) {
         return ACCESSOR.languageSupport().getTruffleFile(path, fileSystemContext);
     }
 
-    static boolean isDefaultFileSystem(Object fileSystemContext) {
-        return ACCESSOR.languageSupport().isDefaultFileSystem(fileSystemContext);
+    static boolean hasAllAccess(Object fileSystemContext) {
+        return ACCESSOR.languageSupport().hasAllAccess(fileSystemContext);
+    }
+
+    static void onSourceCreated(Source source) {
+        ACCESSOR.engineSupport().onSourceCreated(source);
+    }
+
+    static String getReinitializedPath(TruffleFile truffleFile) {
+        return ACCESSOR.engineSupport().getReinitializedPath(truffleFile);
+    }
+
+    static URI getReinitializedURI(TruffleFile truffleFile) {
+        return ACCESSOR.engineSupport().getReinitializedURI(truffleFile);
     }
 
     static final class SourceSupportImpl extends Accessor.SourceSupport {
@@ -119,13 +128,13 @@ final class SourceAccessor extends Accessor {
         }
 
         @Override
-        public boolean isLegacySource(Source source) {
-            return source.isLegacy();
+        public void setFileSystemContext(SourceBuilder builder, Object fileSystemContext) {
+            builder.fileSystemContext(fileSystemContext);
         }
 
         @Override
-        public void setFileSystemContext(SourceBuilder builder, Object fileSystemContext) {
-            builder.embedderFileSystemContext(fileSystemContext);
+        public void invalidateAfterPreinitialiation(Source source) {
+            ((SourceImpl) source).key.invalidateAfterPreinitialiation();
         }
     }
 }

@@ -42,27 +42,27 @@ for more details about instrumenting branches and boundaries.
 
 #### Observing what is being compiled
 
-`--vm.Dgraal.TraceTruffleCompilation=true` prints a line each time a method is compiled.
+`--engine.TraceCompilation` prints a line each time a method is compiled.
 
-`--vm.Dgraal.TraceTruffleCompilationDetails=true` also prints a line when compilation is queued, starts or completes.
+`--engine.TraceCompilationDetail` also prints a line when compilation is queued, starts or completes.
 
-`--vm.Dgraal.TraceTruffleCompilationAST=true` prints the Truffle AST for each compilation.
+`--engine.TraceCompilationAST` prints the Truffle AST for each compilation.
 
-`--vm.Dgraal.TraceTruffleCompilationCallTree=true` prints a guest-language call graph for each compilation.
+`--engine.TraceCompilationCallTree` prints a guest-language call graph for each compilation.
 
-`--vm.Dgraal.TraceTruffleInlining=true` prints guest-language inlining decisions for each compilation.
+`--engine.TraceInlining` prints guest-language inlining decisions for each compilation.
 
-`--vm.Dgraal.TraceTruffleSplitting=true` prints guest-language splitting decisions for each compilation.
+`--engine.TraceSplitting` prints guest-language splitting decisions for each compilation.
 
-`--vm.Dgraal.TraceTruffleTransferToInterpreter=true` prints on transfer to interpreter.
+`--engine.TraceTransferToInterpreter` prints on transfer to interpreter.
 
-`--vm.Dgraal.TraceTrufflePerformanceWarnings=true` prints code which may not be ideal for performance.
+`--engine.TracePerformanceWarnings=(call|instanceof|store|all)` prints code which may not be ideal for performance. The `call` enables warinings when partial evaluation cannot inline the virtual runtime call. The `instanceof` enables warninigs when partial evaluation cannot resolve virtual instanceof to an exact type. The `store` enables warninigs when store location argument is not a partial evaluation constant.
 
-`--vm.Dgraal.TruffleCompilationStatistics=true` prints at the end of the process lots of information on what Truffle has compiled and how long it took and where.
+`--engine.CompilationStatistics` prints at the end of the process lots of information on what Truffle has compiled and how long it took and where.
 
-`--vm.Dgraal.TruffleCompilationStatisticDetails=true` prints more information.
+`--engine.CompilationStatisticDetails` prints more information.
 
-`--vm.Dgraal.PrintTruffleExpansionHistogram=true` prints at the end of each compilation a histogram of AST interpreter method calls.
+`--engine.PrintExpansionHistogram` prints at the end of each compilation a histogram of AST interpreter method calls.
 
 `--vm.Dgraal.TruffleInstrumentBoundaries=true` prints at the end of the process information about runtime calls (`@TruffleBoundary`) made from compiled code. These cause objects to escape, are black-boxes to further optimization, and should generally be minimised.
 
@@ -74,17 +74,17 @@ for more details about instrumenting branches and boundaries.
 
 To make best use of the former options, limit what is compiled to the methods that you are interested in.
 
-`--vm.Dgraal.TruffleCompileOnly=foo` restricts compilation to methods with `foo` in their name. Use this in combination with returning a value or taking parameters to avoid code being compiled away.
+`--engine.CompileOnly=foo` restricts compilation to methods with `foo` in their name. Use this in combination with returning a value or taking parameters to avoid code being compiled away.
 
-`--vm.Dgraal.TruffleCompileImmediately=true` compiles methods as soon as they are run.
+`--engine.CompileImmediately` compiles methods as soon as they are run.
 
-`--vm.Dgraal.TruffleBackgroundCompilation=false` compiles synchronously, which can simplify things.
+`--engine.BackgroundCompilation=false` compiles synchronously, which can simplify things.
 
-`--vm.Dgraal.TruffleFunctionInlining=false` disables inlining which can make code easier to understand.
+`--engine.Inlining=false` disables inlining which can make code easier to understand.
 
-`--vm.Dgraal.TruffleOSR=false` disables on-stack-replacement (compilation of the bodies of `while` loops for example) which can make code easier to understand.
+`--engine.OSR=false` disables on-stack-replacement (compilation of the bodies of `while` loops for example) which can make code easier to understand.
 
-`--vm.Dgraal.TruffleCompilation=false` turns off Truffle compilation all together.
+`--engine.Compilation=false` turns off Truffle compilation all together.
 
 ## HotSpot options
 

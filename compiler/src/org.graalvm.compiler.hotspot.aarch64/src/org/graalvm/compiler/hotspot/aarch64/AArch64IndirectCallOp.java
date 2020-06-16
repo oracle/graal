@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,12 +24,12 @@
  */
 package org.graalvm.compiler.hotspot.aarch64;
 
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static jdk.vm.ci.aarch64.AArch64.r12;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
-import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.hotspot.HotSpotMarkId;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
@@ -59,23 +59,20 @@ final class AArch64IndirectCallOp extends IndirectCallOp {
 
     @Use({REG}) private Value metaspaceMethod;
 
-    private final GraalHotSpotVMConfig config;
-
-    AArch64IndirectCallOp(ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, Value metaspaceMethod, Value targetAddress, LIRFrameState state,
-                    GraalHotSpotVMConfig config) {
+    AArch64IndirectCallOp(ResolvedJavaMethod callTarget, Value result, Value[] parameters, Value[] temps, Value metaspaceMethod, Value targetAddress, LIRFrameState state) {
         super(TYPE, callTarget, result, parameters, temps, targetAddress, state);
         this.metaspaceMethod = metaspaceMethod;
-        this.config = config;
     }
 
     @Override
+    @SuppressWarnings("try")
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-        crb.recordMark(config.MARKID_INLINE_INVOKE);
-        Register callReg = asRegister(targetAddress);
-        assert !callReg.equals(METHOD);
-        int pcOffset = masm.position();
-        AArch64Call.indirectCall(crb, masm, callReg, callTarget, state);
-        crb.recordInlineInvokeCallOp(pcOffset, getPosition());
+        try (CompilationResultBuilder.CallContext callContext = crb.openCallContext(false)) {
+            crb.recordMark(HotSpotMarkId.INLINE_INVOKE);
+            Register callReg = asRegister(targetAddress);
+            assert !callReg.equals(METHOD);
+            AArch64Call.indirectCall(crb, masm, callReg, callTarget, state);
+        }
     }
 
     @Override

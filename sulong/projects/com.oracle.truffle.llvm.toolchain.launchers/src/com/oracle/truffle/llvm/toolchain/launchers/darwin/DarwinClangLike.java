@@ -29,10 +29,9 @@
  */
 package com.oracle.truffle.llvm.toolchain.launchers.darwin;
 
-import com.oracle.truffle.llvm.toolchain.launchers.common.ClangLike;
+import java.util.List;
 
-import java.io.InputStream;
-import java.io.OutputStream;
+import com.oracle.truffle.llvm.toolchain.launchers.common.ClangLike;
 
 public class DarwinClangLike extends ClangLike {
 
@@ -49,12 +48,8 @@ public class DarwinClangLike extends ClangLike {
     }
 
     @Override
-    protected ProcessBuilder setupRedirects(ProcessBuilder pb) {
-        return DarwinLinker.setupRedirectsInternal(pb);
+    public void runDriver(List<String> sulongArgs, List<String> userArgs, boolean verb, boolean hlp, boolean earlyexit) {
+        DarwinLinker.runDriverWithSaveTemps(this, sulongArgs, userArgs, verb, hlp, earlyexit, "-Wl,", needLinkerFlags, outputFlagPos);
     }
 
-    @Override
-    protected void processIO(InputStream inputStream, OutputStream outputStream, InputStream errorStream) {
-        DarwinLinker.processIO(errorStream);
-    }
 }

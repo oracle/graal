@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package com.oracle.truffle.tools.chromeinspector.types;
 
+import java.util.List;
+
 import com.oracle.truffle.tools.utils.json.JSONArray;
 import com.oracle.truffle.tools.utils.json.JSONObject;
 
@@ -37,39 +39,48 @@ public final class StackTrace {
 
     private final JSONObject jsonObject;
 
-    public StackTrace(InspectorExecutionContext context, Iterable<DebugStackTraceElement> frames) {
+    public StackTrace(InspectorExecutionContext context, List<List<DebugStackTraceElement>> stacks) {
         jsonObject = new JSONObject();
-        JSONArray callFrames = new JSONArray();
-        for (DebugStackTraceElement frame : frames) {
-            SourceSection sourceSection = frame.getSourceSection();
-            if (sourceSection == null) {
-                continue;
+        JSONObject jsonStack = jsonObject;
+        JSONObject jsonParentStack = null;
+        for (List<DebugStackTraceElement> frames : stacks) {
+            if (jsonParentStack != null) {
+                jsonStack.put("parent", jsonParentStack);
+                jsonStack = jsonParentStack;
             }
-            if (!context.isInspectInternal() && frame.isInternal()) {
-                continue;
-            }
-            Source source = sourceSection.getSource();
-            if (!context.isInspectInternal() && source.isInternal()) {
-                // should not be, double-check
-                continue;
-            }
-            JSONObject callFrame = new JSONObject();
-            callFrame.put("functionName", frame.getName());
-            ScriptsHandler sch = context.acquireScriptsHandler();
-            try {
-                int scriptId = sch.assureLoaded(source);
-                if (scriptId != -1) {
-                    callFrame.put("scriptId", Integer.toString(scriptId));
-                    callFrame.put("url", sch.getScript(scriptId).getUrl());
-                    callFrame.put("lineNumber", sourceSection.getStartLine() - 1);
-                    callFrame.put("columnNumber", sourceSection.getStartColumn() - 1);
-                    callFrames.put(callFrame);
+            JSONArray callFrames = new JSONArray();
+            for (DebugStackTraceElement frame : frames) {
+                SourceSection sourceSection = frame.getSourceSection();
+                if (sourceSection == null) {
+                    continue;
                 }
-            } finally {
-                context.releaseScriptsHandler();
+                if (!context.isInspectInternal() && frame.isInternal()) {
+                    continue;
+                }
+                Source source = sourceSection.getSource();
+                if (!context.isInspectInternal() && source.isInternal()) {
+                    // should not be, double-check
+                    continue;
+                }
+                JSONObject callFrame = new JSONObject();
+                callFrame.put("functionName", frame.getName());
+                ScriptsHandler sch = context.acquireScriptsHandler();
+                try {
+                    int scriptId = sch.assureLoaded(source);
+                    if (scriptId != -1) {
+                        callFrame.put("scriptId", Integer.toString(scriptId));
+                        callFrame.put("url", sch.getScript(scriptId).getUrl());
+                        callFrame.put("lineNumber", sourceSection.getStartLine() - 1);
+                        callFrame.put("columnNumber", sourceSection.getStartColumn() - 1);
+                        callFrames.put(callFrame);
+                    }
+                } finally {
+                    context.releaseScriptsHandler();
+                }
             }
+            jsonStack.put("callFrames", callFrames);
+            jsonParentStack = new JSONObject();
         }
-        jsonObject.put("callFrames", callFrames);
     }
 
     public JSONObject toJSON() {

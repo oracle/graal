@@ -26,14 +26,10 @@ package com.oracle.graal.pointsto.constraints;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
-import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
-
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -138,20 +134,5 @@ public class UnsupportedFeatures {
 
     public boolean exist() {
         return !messages.isEmpty();
-    }
-
-    public void checkMethod(AnalysisMethod method, StructuredGraph graph) {
-        if (method.isEntryPoint() && !Modifier.isStatic(graph.method().getModifiers())) {
-            ValueNode receiver = graph.start().stateAfter().localAt(0);
-            if (receiver != null && receiver.hasUsages()) {
-                /*
-                 * Entry point methods should be static. However, for unit testing we also use JUnit
-                 * test methods as entry points, and they are by convention non-static. If the
-                 * receiver was used, the execution would crash because the receiver is null (or
-                 * undefined).
-                 */
-                throw new UnsupportedFeatureException("Entry point is non-static and uses its receiver: " + method.format("%r %H.%n(%p)"));
-            }
-        }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.dsl.processor.parser;
 
-import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -50,14 +49,9 @@ import java.util.Set;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
-import com.oracle.truffle.api.dsl.CachedLanguage;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.model.CachedParameterSpec;
@@ -70,17 +64,21 @@ import com.oracle.truffle.dsl.processor.model.TemplateMethod;
 
 public class SpecializationMethodParser extends NodeMethodParser<SpecializationData> {
 
-    public SpecializationMethodParser(ProcessorContext context, NodeData operation) {
+    private final boolean ignoreUnexpectedResult;
+
+    public SpecializationMethodParser(ProcessorContext context, NodeData operation, boolean ignoreUnexpectedResult) {
         super(context, operation);
+        this.ignoreUnexpectedResult = ignoreUnexpectedResult;
     }
 
     @Override
     public MethodSpec createSpecification(ExecutableElement method, AnnotationMirror mirror) {
         MethodSpec spec = createDefaultMethodSpec(method, mirror, true, null);
-        spec.getAnnotations().add(new CachedParameterSpec(getContext().getDeclaredType(Cached.class)));
-        spec.getAnnotations().add(new CachedParameterSpec(getContext().getDeclaredType(CachedLibrary.class)));
-        spec.getAnnotations().add(new CachedParameterSpec(getContext().getDeclaredType(CachedContext.class)));
-        spec.getAnnotations().add(new CachedParameterSpec(getContext().getDeclaredType(CachedLanguage.class)));
+        spec.getAnnotations().add(new CachedParameterSpec(types.Cached));
+        spec.getAnnotations().add(new CachedParameterSpec(types.CachedLibrary));
+        spec.getAnnotations().add(new CachedParameterSpec(types.CachedContext));
+        spec.getAnnotations().add(new CachedParameterSpec(types.CachedLanguage));
+        spec.getAnnotations().add(new CachedParameterSpec(types.Bind));
         return spec;
     }
 
@@ -90,13 +88,14 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
     }
 
     @Override
-    public Class<? extends Annotation> getAnnotationType() {
-        return Specialization.class;
+    public DeclaredType getAnnotationType() {
+        return types.Specialization;
     }
 
     private SpecializationData parseSpecialization(TemplateMethod method) {
         List<SpecializationThrowsData> exceptionData = new ArrayList<>();
         boolean unexpectedResultRewrite = false;
+        boolean annotated = false;
         if (method.getMethod() != null) {
             AnnotationValue rewriteValue = ElementUtils.getAnnotationValue(method.getMarkerAnnotation(), "rewriteOn");
             List<TypeMirror> exceptionTypes = ElementUtils.getAnnotationValueList(TypeMirror.class, method.getMarkerAnnotation(), "rewriteOn");
@@ -106,9 +105,9 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
                 SpecializationThrowsData throwsData = new SpecializationThrowsData(method.getMessageElement(), method.getMarkerAnnotation(), rewriteValue, exceptionType);
                 if (!ElementUtils.canThrowType(method.getMethod().getThrownTypes(), exceptionType)) {
                     method.addError("A rewriteOn checked exception was specified but not thrown in the method's throws clause. The @%s method must specify a throws clause with the exception type '%s'.",
-                                    Specialization.class.getSimpleName(), ElementUtils.getQualifiedName(exceptionType));
+                                    types.Specialization.asElement().getSimpleName().toString(), ElementUtils.getQualifiedName(exceptionType));
                 }
-                if (ElementUtils.typeEquals(exceptionType, getContext().getType(UnexpectedResultException.class))) {
+                if (!ignoreUnexpectedResult && ElementUtils.typeEquals(exceptionType, types.UnexpectedResultException)) {
                     if (ElementUtils.typeEquals(method.getMethod().getReturnType(), getContext().getType(Object.class))) {
                         method.addError("A specialization with return type 'Object' cannot throw UnexpectedResultException.");
                     }
@@ -125,8 +124,9 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
                     return ElementUtils.compareByTypeHierarchy(o1.getJavaClass(), o2.getJavaClass());
                 }
             });
+            annotated = isAnnotatedWithReportPolymorphismExclude(method);
         }
-        SpecializationData specialization = new SpecializationData(getNode(), method, SpecializationKind.SPECIALIZED, exceptionData, unexpectedResultRewrite);
+        SpecializationData specialization = new SpecializationData(getNode(), method, SpecializationKind.SPECIALIZED, exceptionData, unexpectedResultRewrite, !annotated);
 
         if (method.getMethod() != null) {
             String insertBeforeName = ElementUtils.getAnnotationValue(String.class, method.getMarkerAnnotation(), "insertBefore");
@@ -153,5 +153,10 @@ public class SpecializationMethodParser extends NodeMethodParser<SpecializationD
         }
 
         return specialization;
+    }
+
+    private boolean isAnnotatedWithReportPolymorphismExclude(TemplateMethod method) {
+        assert method.getMethod() != null;
+        return ElementUtils.findAnnotationMirror(method.getMethod(), types.ReportPolymorphism_Exclude) != null;
     }
 }

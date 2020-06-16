@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,10 +41,10 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.ReinterpretNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.type.StampTool;
+import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.word.LocationIdentity;
 
@@ -87,11 +87,6 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
     }
 
     @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
-    }
-
-    @Override
     public void virtualize(VirtualizerTool tool) {
         ValueNode alias = tool.getAlias(object());
         if (alias instanceof VirtualObjectNode) {
@@ -103,8 +98,13 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
 
                 if (entryIndex != -1) {
                     ValueNode entry = tool.getEntry(virtual, entryIndex);
-                    JavaKind entryKind = virtual.entryKind(entryIndex);
-                    if (entry.getStackKind() == getStackKind() || entryKind == accessKind()) {
+                    JavaKind entryKind = virtual.entryKind(tool.getMetaAccessExtensionProvider(), entryIndex);
+
+                    if (virtual.isVirtualByteArrayAccess(tool.getMetaAccessExtensionProvider(), accessKind())) {
+                        if (virtual.canVirtualizeLargeByteArrayUnsafeRead(entry, entryIndex, accessKind(), tool)) {
+                            tool.replaceWith(VirtualArrayNode.virtualizeByteArrayRead(entry, accessKind(), stamp));
+                        }
+                    } else if (entry.getStackKind() == getStackKind() || entryKind == accessKind()) {
 
                         if (!(entry.stamp(NodeView.DEFAULT).isCompatible(stamp(NodeView.DEFAULT)))) {
                             if (entry.stamp(NodeView.DEFAULT) instanceof PrimitiveStamp && stamp instanceof PrimitiveStamp) {
@@ -130,6 +130,11 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
                 }
             }
         }
+    }
+
+    @Override
+    public boolean isVolatile() {
+        return false;
     }
 
     @Override
@@ -161,11 +166,14 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
 
     @Override
     protected ValueNode cloneAsFieldAccess(Assumptions assumptions, ResolvedJavaField field, boolean volatileAccess) {
-        return LoadFieldNode.create(assumptions, object(), field, volatileAccess);
+        return LoadFieldNode.create(assumptions, field.isStatic() ? null : object(), field, volatileAccess);
     }
 
     @Override
-    protected ValueNode cloneAsArrayAccess(ValueNode location, LocationIdentity identity) {
+    protected ValueNode cloneAsArrayAccess(ValueNode location, LocationIdentity identity, boolean volatileAccess) {
+        if (volatileAccess) {
+            return new RawVolatileLoadNode(object(), location, accessKind(), identity);
+        }
         return new RawLoadNode(object(), location, accessKind(), identity);
     }
 

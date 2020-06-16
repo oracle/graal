@@ -1,0 +1,87 @@
+#
+# Copyright (c) 2018, Oracle and/or its affiliates.
+#
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without modification, are
+# permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this list of
+# conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice, this list of
+# conditions and the following disclaimer in the documentation and/or other materials provided
+# with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors may be used to
+# endorse or promote products derived from this software without specific prior written
+# permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS
+# OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+# COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+# GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+# AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+# NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+# OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+
+BREAK 106 CONTINUE "start"
+    OPEN_SCOPE
+        MEMBER int "long int" "l1" "-9223372036854775808"
+        MEMBER int "long int" "l2" "1"
+        MEMBER int "long unsigned int" "l3" "9223372036854775808"
+        MEMBER int "long unsigned int" "l4" "1"
+        MEMBER float32 "float" "f1" "0.0"
+        MEMBER float32 "float" "f2" "1.0"
+        MEMBER float32 "float" "f3" "-1.0"
+        MEMBER float64 "double" "d1" "0.0"
+        MEMBER float32 "float" "f4" "1.25"
+        MEMBER float64 "double" "d2" "1.0"
+        MEMBER float32 "float" "f5" "-1.25"
+        MEMBER float64 "double" "d3" "-1.0"
+        MEMBER float64 "double" "d4" "1.25"
+        MEMBER float64 "double" "d5" "-1.25"
+        MEMBER int "short" "s1" "-32768"
+        MEMBER int "short" "s2" "1"
+        MEMBER int "unsigned short" "s3" "32768"
+        MEMBER int "unsigned short" "s4" "1"
+        MEMBER int "int" "i1" "-2147483648"
+        MEMBER int "int" "i2" "1"
+        MEMBER int "unsigned int" "i3" "2147483648"
+        MEMBER int "unsigned int" "i4" "1"
+        MEMBER char "char" "c1" "A"
+        MEMBER char "char" "c2" "a"
+        MEMBER char "char" "c3" "0"
+        MEMBER char "char" "c4" "+"
+    OPEN_SCOPE
+        MEMBER int "unsigned short" "S3" "32768"
+        MEMBER int "unsigned short" "S4" "1"
+        MEMBER int "int" "I1" "-2147483648"
+        MEMBER int "int" "I2" "1"
+        MEMBER int "unsigned int" "I3" "2147483648"
+        MEMBER int "unsigned int" "I4" "1"
+        MEMBER char "char" "C1" "A"
+        MEMBER char "char" "C2" "a"
+        MEMBER char "char" "C3" "0"
+        MEMBER char "char" "C4" "+"
+        MEMBER int "long int" "L1" "-9223372036854775808"
+        MEMBER int "long int" "L2" "1"
+        MEMBER int "long unsigned int" "L3" "9223372036854775808"
+        MEMBER int "long unsigned int" "L4" "1"
+        MEMBER float32 "float" "F1" "0.0"
+        MEMBER float32 "float" "F2" "1.0"
+        MEMBER float32 "float" "F3" "-1.0"
+        MEMBER float64 "double" "D1" "0.0"
+        MEMBER float32 "float" "F4" "1.25"
+        MEMBER float64 "double" "D2" "1.0"
+        MEMBER float32 "float" "F5" "-1.25"
+        MEMBER float64 "double" "D3" "-1.0"
+        MEMBER float64 "double" "D4" "1.25"
+        MEMBER float64 "double" "D5" "-1.25"
+        MEMBER int "short" "S1" "-32768"
+        MEMBER int "short" "S2" "1"
+
+

@@ -73,7 +73,7 @@ final class Target_sun_reflect_generics_reflectiveObjects_TypeVariableImpl {
 
     @TargetElement(name = "bounds", onlyWith = JDK11OrLater.class) //
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = TypeVariableBoundsComputer.class) //
-    private volatile Object[] boundsJDK11OrLater;
+    private Object[] boundsJDK11OrLater;
 
     /* The bounds value is cached. The boundASTs field is not used at run time. */
     @Delete //
@@ -94,19 +94,8 @@ final class Target_sun_reflect_generics_reflectiveObjects_TypeVariableImpl {
 
     @Substitute
     public Type[] getBounds() {
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            return boundsJDK8OrEarlier;
-        } else {
-            Object[] value = boundsJDK11OrLater;
-            /* We might want to reify the bounds eagerly during image generation: GR-10494. */
-            // GR-10494: @formatter:off
-            // GR-10494: if (value instanceof FieldTypeSignature[]) {
-            // GR-10494:     value = Util_sun_reflect_generics_reflectiveObjects_TypeVariableImpl.reifyBounds(this, (FieldTypeSignature[]) value);
-            // GR-10494:     boundsJDK11OrLater = value;
-            // GR-10494: }
-            // GR-10494: @formatter:on
-            return (Type[]) value.clone();
-        }
+        Type[] result = JavaVersionUtil.JAVA_SPEC <= 8 ? boundsJDK8OrEarlier : (Type[]) boundsJDK11OrLater;
+        return result.clone();
     }
 
     /** Reason for substitutions: disable access checks in original method. */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -79,6 +79,22 @@ public interface LLVMPointer extends TruffleObject {
      * Create a copy of this pointer with a new {@link LLVMInteropType}.
      */
     LLVMPointer export(LLVMInteropType newType);
+
+    /**
+     * Check whether two pointers refer to the same target. For managed pointers, this will do a
+     * shallow comparison. If both pointers point to the different managed objects that are wrappers
+     * for the same underlying object, this will return false.
+     */
+    boolean isSame(LLVMPointer other);
+
+    /**
+     * Deep equality comparison.
+     *
+     * @deprecated Should not be used!
+     */
+    @Override
+    @Deprecated
+    boolean equals(Object obj);
 
     /**
      * Check whether an object is a {@link LLVMPointer}. This method must be used instead of the

@@ -37,6 +37,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
@@ -52,6 +53,8 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
  */
 @GenerateUncached
 public abstract class ToLLVM extends LLVMNode {
+
+    private static final UnsupportedMessageException REWRITE = UnsupportedMessageException.create();
 
     public abstract Object executeWithType(Object value, LLVMInteropType.Value incomingType, ForeignToLLVMType targetType);
 
@@ -111,42 +114,63 @@ public abstract class ToLLVM extends LLVMNode {
         @Specialization(limit = "3", guards = "incomingType.getKind() == I1")
         static boolean doI1(Object value, @SuppressWarnings("unused") LLVMInteropType.Value incomingType,
                         @CachedLibrary("value") InteropLibrary interop) throws UnsupportedMessageException {
+            if (!interop.isBoolean(value)) {
+                throw REWRITE;
+            }
             return interop.asBoolean(value);
         }
 
         @Specialization(limit = "3", guards = "incomingType.getKind() == I8")
         static byte doI8(Object value, @SuppressWarnings("unused") LLVMInteropType.Value incomingType,
                         @CachedLibrary("value") InteropLibrary interop) throws UnsupportedMessageException {
+            if (!interop.fitsInByte(value)) {
+                throw REWRITE;
+            }
             return interop.asByte(value);
         }
 
         @Specialization(limit = "3", guards = "incomingType.getKind() == I16")
         static short doI16(Object value, @SuppressWarnings("unused") LLVMInteropType.Value incomingType,
                         @CachedLibrary("value") InteropLibrary interop) throws UnsupportedMessageException {
+            if (!interop.fitsInShort(value)) {
+                throw REWRITE;
+            }
             return interop.asShort(value);
         }
 
         @Specialization(limit = "3", guards = "incomingType.getKind() == I32")
         static int doI32(Object value, @SuppressWarnings("unused") LLVMInteropType.Value incomingType,
                         @CachedLibrary("value") InteropLibrary interop) throws UnsupportedMessageException {
+            if (!interop.fitsInInt(value)) {
+                throw REWRITE;
+            }
             return interop.asInt(value);
         }
 
         @Specialization(limit = "3", guards = "incomingType.getKind() == I64")
         static long doI64(Object value, @SuppressWarnings("unused") LLVMInteropType.Value incomingType,
                         @CachedLibrary("value") InteropLibrary interop) throws UnsupportedMessageException {
+            if (!interop.fitsInLong(value)) {
+                throw REWRITE;
+            }
             return interop.asLong(value);
         }
 
         @Specialization(limit = "3", guards = "incomingType.getKind() == FLOAT")
         static float doFloat(Object value, @SuppressWarnings("unused") LLVMInteropType.Value incomingType,
                         @CachedLibrary("value") InteropLibrary interop) throws UnsupportedMessageException {
+            if (!interop.fitsInFloat(value)) {
+                throw REWRITE;
+            }
             return interop.asFloat(value);
         }
 
         @Specialization(limit = "3", guards = "incomingType.getKind() == DOUBLE")
         static double doDouble(Object value, @SuppressWarnings("unused") LLVMInteropType.Value incomingType,
                         @CachedLibrary("value") InteropLibrary interop) throws UnsupportedMessageException {
+            if (!interop.fitsInDouble(value)) {
+                throw REWRITE;
+            }
             return interop.asDouble(value);
         }
 
@@ -321,35 +345,35 @@ public abstract class ToLLVM extends LLVMNode {
         }
 
         protected ForeignToLLVM createToI1() {
-            return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I1);
+            return CommonNodeFactory.createForeignToLLVM(ForeignToLLVMType.I1);
         }
 
         protected ForeignToLLVM createToI8() {
-            return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I8);
+            return CommonNodeFactory.createForeignToLLVM(ForeignToLLVMType.I8);
         }
 
         protected ForeignToLLVM createToI16() {
-            return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I16);
+            return CommonNodeFactory.createForeignToLLVM(ForeignToLLVMType.I16);
         }
 
         protected ForeignToLLVM createToI32() {
-            return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I32);
+            return CommonNodeFactory.createForeignToLLVM(ForeignToLLVMType.I32);
         }
 
         protected ForeignToLLVM createToI64() {
-            return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.I64);
+            return CommonNodeFactory.createForeignToLLVM(ForeignToLLVMType.I64);
         }
 
         protected ForeignToLLVM createToFloat() {
-            return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.FLOAT);
+            return CommonNodeFactory.createForeignToLLVM(ForeignToLLVMType.FLOAT);
         }
 
         protected ForeignToLLVM createToDouble() {
-            return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.DOUBLE);
+            return CommonNodeFactory.createForeignToLLVM(ForeignToLLVMType.DOUBLE);
         }
 
         protected ForeignToLLVM createToPointer() {
-            return getNodeFactory().createForeignToLLVM(ForeignToLLVMType.POINTER);
+            return CommonNodeFactory.createForeignToLLVM(ForeignToLLVMType.POINTER);
         }
     }
 }

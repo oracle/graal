@@ -84,7 +84,7 @@ public class PolymorphicTest {
     private static void assertNoDuplicatesRec(Set<Node> ignored, Set<Class<?>> seenClasses, Node current) {
         if (!ignored.contains(current)) {
             if (seenClasses.contains(current.getClass())) {
-                Assert.fail(String.format("Multiple occurences of the same class %s. %nTree: %s", current.getClass().getSimpleName(), NodeUtil.printCompactTreeToString(current.getRootNode())));
+                Assert.fail(String.format("Multiple occurrences of the same class %s. %nTree: %s", current.getClass().getSimpleName(), NodeUtil.printCompactTreeToString(current.getRootNode())));
             } else {
                 seenClasses.add(current.getClass());
             }

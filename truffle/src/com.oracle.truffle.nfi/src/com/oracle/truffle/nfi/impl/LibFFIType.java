@@ -92,6 +92,8 @@ abstract class LibFFIType {
                 return new StringType(ctx, size, alignment, ffiType);
             case OBJECT:
                 return new ObjectType(ctx, size, alignment, ffiType);
+            case NULLABLE:
+                return new NullableType(ctx, size, alignment, ffiType);
             default:
                 throw new AssertionError(simpleType.name());
         }
@@ -121,10 +123,14 @@ abstract class LibFFIType {
         final NFIContext ctx;
         final NativeSimpleType simpleType;
 
-        BasicType(NFIContext ctx, NativeSimpleType simpleType, int size, int alignment, int objectCount, long ffiType) {
-            super(size, alignment, objectCount, ffiType, Direction.BOTH, false);
+        BasicType(NFIContext ctx, NativeSimpleType simpleType, int size, int alignment, int objectCount, long ffiType, Direction direction) {
+            super(size, alignment, objectCount, ffiType, direction, false);
             this.ctx = ctx;
             this.simpleType = simpleType;
+        }
+
+        BasicType(NFIContext ctx, NativeSimpleType simpleType, int size, int alignment, int objectCount, long ffiType) {
+            this(ctx, simpleType, size, alignment, objectCount, ffiType, Direction.BOTH);
         }
 
         @ExportMessage
@@ -135,7 +141,8 @@ abstract class LibFFIType {
         @ExportMessage
         void serialize(NativeArgumentBuffer buffer, Object value,
                         @Shared("cachedType") @Cached("this.simpleType") NativeSimpleType cachedType,
-                        @CachedLibrary(limit = "3") SerializeArgumentLibrary serialize) throws UnsupportedTypeException {
+                        @CachedLibrary(limit = "3") SerializeArgumentLibrary serialize,
+                        @CachedLibrary(limit = "1") InteropLibrary interop) throws UnsupportedTypeException {
             buffer.align(alignment);
             switch (cachedType) {
                 case UINT8:
@@ -177,6 +184,13 @@ abstract class LibFFIType {
                 case OBJECT:
                     buffer.putObject(TypeTag.OBJECT, value, size);
                     break;
+                case NULLABLE:
+                    if (interop.isNull(value)) {
+                        buffer.putPointer(0L, size);
+                    } else {
+                        buffer.putObject(TypeTag.OBJECT, value, size);
+                    }
+                    break;
                 case VOID:
                 default:
                     CompilerDirectives.transferToInterpreter();
@@ -215,6 +229,7 @@ abstract class LibFFIType {
                     return NativePointer.create(language, buffer.getPointer(size));
                 case STRING:
                     return new NativeString(buffer.getPointer(size));
+                case NULLABLE:
                 case OBJECT:
                     Object ret = buffer.getObject(size);
                     if (ret == null) {
@@ -222,6 +237,7 @@ abstract class LibFFIType {
                     } else {
                         return ret;
                     }
+
                 default:
                     CompilerDirectives.transferToInterpreter();
                     throw new AssertionError(simpleType.name());
@@ -344,6 +360,18 @@ abstract class LibFFIType {
 
         ObjectType(NFIContext ctx, int size, int alignment, long ffiType) {
             super(ctx, NativeSimpleType.OBJECT, size, alignment, 1, ffiType);
+        }
+
+        @Override
+        public ClosureArgumentNode createClosureArgumentNode() {
+            return new ObjectClosureArgumentNode();
+        }
+    }
+
+    static final class NullableType extends BasicType {
+
+        NullableType(NFIContext ctx, int size, int alignment, long ffiType) {
+            super(ctx, NativeSimpleType.NULLABLE, size, alignment, 1, ffiType, Direction.JAVA_TO_NATIVE_ONLY);
         }
 
         @Override

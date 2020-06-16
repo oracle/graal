@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.parser.listeners;
 
 import java.util.ArrayDeque;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.oracle.truffle.llvm.parser.model.IRScope;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
@@ -57,7 +58,7 @@ public final class Module implements ParserListener {
 
     private final ModelModule module;
 
-    private final ParameterAttributes paramAttributes = new ParameterAttributes();
+    private final ParameterAttributes paramAttributes;
 
     private final StringTable stringTable;
 
@@ -71,13 +72,17 @@ public final class Module implements ParserListener {
 
     private final LLSourceBuilder llSource;
 
+    private final AtomicInteger index;
+
     Module(ModelModule module, StringTable stringTable, IRScope scope, LLSourceBuilder llSource) {
         this.module = module;
         this.stringTable = stringTable;
-        types = new Types(module);
+        this.types = new Types(module);
         this.scope = scope;
         this.llSource = llSource;
+        this.paramAttributes = new ParameterAttributes(types);
         functionQueue = new ArrayDeque<>();
+        index = new AtomicInteger(0);
     }
 
     // private static final int STRTAB_RECORD_OFFSET = 2;
@@ -134,12 +139,12 @@ public final class Module implements ParserListener {
         }
 
         if (isPrototype) {
-            final FunctionDeclaration function = new FunctionDeclaration(functionType, linkage, paramAttr);
+            final FunctionDeclaration function = new FunctionDeclaration(functionType, linkage, paramAttr, index.getAndIncrement());
             module.addFunctionDeclaration(function);
             scope.addSymbol(function, function.getType());
             assignNameFromStrTab(name, function);
         } else {
-            final FunctionDefinition function = new FunctionDefinition(functionType, linkage, visibility, paramAttr);
+            final FunctionDefinition function = new FunctionDefinition(functionType, linkage, visibility, paramAttr, index.getAndIncrement());
             module.addFunctionDefinition(function);
             scope.addSymbol(function, function.getType());
             assignNameFromStrTab(name, function);
@@ -177,7 +182,7 @@ public final class Module implements ParserListener {
             visibility = buffer.read();
         }
 
-        GlobalVariable global = GlobalVariable.create(isConstant, (PointerType) type, align, linkage, visibility, scope.getSymbols(), initialiser);
+        GlobalVariable global = GlobalVariable.create(isConstant, (PointerType) type, align, linkage, visibility, scope.getSymbols(), initialiser, index.getAndIncrement());
         assignNameFromStrTab(name, global);
         module.addGlobalVariable(global);
         scope.addSymbol(global, global.getType());

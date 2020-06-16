@@ -1,0 +1,44 @@
+{
+    "Polyglot_eval": {
+        "prefix": "polyglot.eval",
+        "body": [
+            "polyglot.eval(language='${1|js,R,ruby|}', string=${2:''})"
+        ],
+        "description": "Executes code in a foreign language identified by its ID"
+    },
+    "Polyglot_eval_file_by_id": {
+        "prefix": "polyglot.eval",
+        "body": [
+            "polyglot.eval(language='${1|js,R,ruby|}', path=${2:'file'})"
+        ],
+        "description": "Executes code in a foreign language from a file, identified by its ID"
+    },
+    "Polyglot_eval_file": {
+        "prefix": "polyglot.eval",
+        "body": [
+            "polyglot.eval(path=${1:'file'})"
+        ],
+        "description": "Executes code in a foreign language from a file, automatically determining the language"
+    },
+    "Polyglot_export_value": {
+        "prefix": "polyglot.export_value",
+        "body": [
+            "polyglot.export_value(${1:value}, name='${2}')"
+        ],
+        "description": "Exports a value with a given name to other languages"
+    },
+    "Polyglot_import_value": {
+        "prefix": "polyglot.import_value",
+        "body": [
+            "polyglot.import_value('${1:name}')"
+        ],
+        "description": "Imports and returns a value with a given name exported by other languages"
+    },
+    "Java_type": {
+        "prefix": "java.type",
+        "body": [
+            "java.type('${1:name}')"
+        ],
+        "description": "Returns a Java class object, given its name"
+    }
+}

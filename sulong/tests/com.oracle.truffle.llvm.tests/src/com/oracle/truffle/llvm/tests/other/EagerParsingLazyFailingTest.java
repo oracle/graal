@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,6 +37,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.oracle.truffle.llvm.tests.BaseSuiteHarness;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
@@ -79,7 +80,7 @@ public class EagerParsingLazyFailingTest {
         Value load() {
             if (library == null) {
                 try {
-                    File file = new File(TEST_DIR.toFile(), testName + "/" + FILENAME);
+                    File file = TEST_DIR.resolve(testName + BaseSuiteHarness.TEST_DIR_EXT).resolve(FILENAME).toFile();
                     Source source = Source.newBuilder(LLVMLanguage.ID, file).build();
                     library = context.eval(source);
                 } catch (RuntimeException e) {
@@ -102,14 +103,14 @@ public class EagerParsingLazyFailingTest {
 
     @Test
     public void unsupportedInlineAsmNotExecuted() {
-        try (Runner runner = new Runner("unsupported_inline_asm")) {
+        try (Runner runner = new Runner("unsupported_inline_asm.c")) {
             Assert.assertEquals(2, runner.load().invokeMember("run", 0).asInt());
         }
     }
 
     @Test
     public void unsupportedInlineAsmExecuted() {
-        try (Runner runner = new Runner("unsupported_inline_asm")) {
+        try (Runner runner = new Runner("unsupported_inline_asm.c")) {
             exception.expect(PolyglotException.class);
             exception.expectMessage(containsString("Unsupported operation"));
             Assert.assertEquals(1, runner.load().invokeMember("run", 4).asInt());
@@ -118,14 +119,14 @@ public class EagerParsingLazyFailingTest {
 
     @Test
     public void unsupportedInlineAsmEagerParsingNotExecuted() {
-        try (Runner runner = new Runner("unsupported_inline_asm", eagerParsingOptions())) {
+        try (Runner runner = new Runner("unsupported_inline_asm.c", eagerParsingOptions())) {
             Assert.assertEquals(2, runner.load().invokeMember("run", 0).asInt());
         }
     }
 
     @Test
     public void unsupportedInlineAsmEagerParsingExecuted() {
-        try (Runner runner = new Runner("unsupported_inline_asm", eagerParsingOptions())) {
+        try (Runner runner = new Runner("unsupported_inline_asm.c", eagerParsingOptions())) {
             exception.expect(PolyglotException.class);
             exception.expectMessage(containsString("Unsupported operation"));
             Assert.assertEquals(1, runner.load().invokeMember("run", 4).asInt());

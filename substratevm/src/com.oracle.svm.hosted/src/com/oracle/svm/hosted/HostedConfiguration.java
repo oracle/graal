@@ -28,21 +28,18 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.ForkJoinPool;
 
-import com.oracle.svm.hosted.classinitialization.ConfigurableClassInitialization;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
-import com.oracle.svm.hosted.classinitialization.ClassInitializationFeature;
-import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
 import com.oracle.svm.hosted.config.HybridLayout;
@@ -51,31 +48,70 @@ import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 
+import jdk.vm.ci.meta.JavaKind;
+
 public class HostedConfiguration {
 
-    private ClassInitializationSupport classInitializationSupport;
-
-    public HostedConfiguration(ClassInitializationSupport classInitializationSupport) {
-        this.classInitializationSupport = classInitializationSupport;
+    public HostedConfiguration() {
     }
 
     public static HostedConfiguration instance() {
         return ImageSingletons.lookup(HostedConfiguration.class);
     }
 
-    static void setDefaultIfEmpty(FeatureImpl.AfterRegistrationAccessImpl access) {
+    static void setDefaultIfEmpty() {
         if (!ImageSingletons.contains(HostedConfiguration.class)) {
-            ClassInitializationSupport classInitializationSupport = new ConfigurableClassInitialization(access.getMetaAccess(), access.getImageClassLoader());
-            ImageSingletons.add(RuntimeClassInitializationSupport.class, classInitializationSupport);
-            ImageSingletons.add(HostedConfiguration.class, new HostedConfiguration(classInitializationSupport));
-            ClassInitializationFeature.processClassInitializationOptions(classInitializationSupport);
+            ImageSingletons.add(HostedConfiguration.class, new HostedConfiguration());
 
             CompressEncoding compressEncoding = new CompressEncoding(SubstrateOptions.SpawnIsolates.getValue() ? 1 : 0, 0);
             ImageSingletons.add(CompressEncoding.class, compressEncoding);
 
-            ObjectLayout objectLayout = new ObjectLayout(ConfigurationValues.getTarget());
+            ObjectLayout objectLayout = createObjectLayout();
             ImageSingletons.add(ObjectLayout.class, objectLayout);
         }
+    }
+
+    public static ObjectLayout createObjectLayout() {
+        return createObjectLayout(0, JavaKind.Object);
+    }
+
+    /**
+     * Defines the layout of objects.
+     *
+     * The layout of instance objects is:
+     * <ul>
+     * <li>hub (reference)</li>
+     * <li>instance fields (references, primitives)</li>
+     * <li>optional: identity hashcode (int)</li>
+     * </ul>
+     * The hashcode is appended after instance fields and is only present if the identity hashcode
+     * is used for that type.
+     *
+     * The layout of array objects is:
+     * <ul>
+     * <li>hub (reference)</li>
+     * <li>array length (int)</li>
+     * <li>identity hashcode (int)</li>
+     * <li>array elements (length * reference or primitive)</li>
+     * </ul>
+     * The hashcode is always present in arrays. Note that on 64-bit targets it does not impose any
+     * size overhead for arrays with 64-bit aligned elements (e.g. arrays of objects).
+     */
+    public static ObjectLayout createObjectLayout(int hubOffset, JavaKind referenceKind) {
+        SubstrateTargetDescription target = ConfigurationValues.getTarget();
+        int referenceSize = target.arch.getPlatformKind(referenceKind).getSizeInBytes();
+        int objectAlignment = target.wordSize;
+        int firstFieldOffset = hubOffset + referenceSize;
+        int arrayLengthOffset = hubOffset + referenceSize;
+        int arrayIdentityHashCodeOffset = arrayLengthOffset + target.arch.getPlatformKind(JavaKind.Int).getSizeInBytes();
+        int arrayBaseOffset = arrayIdentityHashCodeOffset + target.arch.getPlatformKind(JavaKind.Int).getSizeInBytes();
+        int arrayZeroingStartOffset = arrayIdentityHashCodeOffset;
+        boolean useExplicitIdentityHashCodeField = true;
+        int instanceIdentityHashCodeOffset = -1; // depends on the hub
+
+        ObjectLayout objectLayout = new ObjectLayout(target, referenceSize, objectAlignment, hubOffset, firstFieldOffset, arrayLengthOffset, arrayBaseOffset, arrayZeroingStartOffset,
+                        useExplicitIdentityHashCodeField, instanceIdentityHashCodeOffset, arrayIdentityHashCodeOffset);
+        return objectLayout;
     }
 
     public CompileQueue createCompileQueue(DebugContext debug, FeatureHandler featureHandler, HostedUniverse hostedUniverse,
@@ -114,7 +150,4 @@ public class HostedConfiguration {
         return false;
     }
 
-    public ClassInitializationSupport getClassInitializationSupport() {
-        return classInitializationSupport;
-    }
 }

@@ -37,7 +37,8 @@ TARGETS:=hello-linux-emit-llvm.bc \
          hello-darwin-emit-llvm.bc \
          hello-darwin-compile-fembed-bitcode.o \
          hello-darwin-link-fembed-bitcode \
-         hello-darwin-link-fembed-bitcode.dylib
+         hello-darwin-link-fembed-bitcode.dylib \
+         hello-darwin-link.bundle
 
 CLANG?=clang
 
@@ -64,6 +65,10 @@ $(RESULT_DIR)/%-darwin-link-fembed-bitcode: %.c
 $(RESULT_DIR)/%-darwin-link-fembed-bitcode.dylib: %.c
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANG) -fembed-bitcode -flto=full -Wl,-dylib -o $@ $<
+
+$(RESULT_DIR)/%-darwin-link.bundle: %.c
+	@mkdir -p $(shell dirname $@)
+	$(QUIETLY) $(TOOLCHAIN_CLANG) -dynamic -bundle -o $@ $<
 else
 $(RESULT_DIR)/%-linux-emit-llvm.bc: %.c
 	@mkdir -p $(shell dirname $@)

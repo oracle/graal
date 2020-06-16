@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,8 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import static org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.overrideOptions;
-
 import java.lang.ref.WeakReference;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.FutureTask;
 import java.util.concurrent.PriorityBlockingQueue;
@@ -38,8 +37,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope;
-import org.graalvm.options.OptionValues;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
 /**
  * The compilation queue accepts compilation requests, and schedules compilations.
@@ -52,144 +50,73 @@ import org.graalvm.options.OptionValues;
  * Note that all the compilation requests are second tier when the multi-tier option is turned off.
  */
 public class BackgroundCompileQueue {
+
     private final AtomicLong idCounter;
     private volatile ExecutorService compilationExecutorService;
     private boolean shutdown = false;
+    protected final GraalTruffleRuntime runtime;
 
-    public class Request implements Runnable, Comparable<Request> {
-        private final long id;
-        private final GraalTruffleRuntime runtime;
-        private final OptionValues optionOverrides;
-        private final WeakReference<OptimizedCallTarget> weakCallTarget;
-        private final TruffleCompilationTask task;
-        private final boolean isFirstTier;
-
-        public Request(GraalTruffleRuntime runtime, OptionValues optionOverrides, OptimizedCallTarget callTarget, TruffleCompilationTask task) {
-            this.id = idCounter.getAndIncrement();
-            this.runtime = runtime;
-            this.optionOverrides = optionOverrides;
-            this.weakCallTarget = new WeakReference<>(callTarget);
-            this.task = task;
-            this.isFirstTier = !task.isLastTier();
-        }
-
-        @SuppressWarnings("try")
-        @Override
-        public void run() {
-            OptimizedCallTarget callTarget = weakCallTarget.get();
-            if (callTarget != null) {
-                try (TruffleRuntimeOptionsOverrideScope scope = optionOverrides != null ? overrideOptions(optionOverrides) : null) {
-                    if (!task.isCancelled()) {
-                        runtime.doCompile(callTarget, task);
-                    }
-                } finally {
-                    callTarget.resetCompilationTask();
-                }
-            }
-        }
-
-        @Override
-        public int compareTo(Request that) {
-            if (this.isFirstTier != that.isFirstTier) {
-                return this.isFirstTier ? -1 : 1;
-            }
-            return (int) (this.id - that.id);
-        }
-
-        @Override
-        public String toString() {
-            return "Request(lo: " + isFirstTier + ", id: " + id + ", " + weakCallTarget + ")";
-        }
-    }
-
-    public class RequestFutureTask<V> extends FutureTask<V> implements Comparable<Runnable> {
-        private final Request request;
-
-        public RequestFutureTask(Runnable runnable, V result) {
-            super(runnable, result);
-            this.request = (Request) runnable;
-        }
-
-        @Override
-        public int compareTo(Runnable that) {
-            if (that instanceof RequestFutureTask) {
-                return this.request.compareTo(((RequestFutureTask<?>) that).request);
-            } else {
-                return this.request.compareTo((Request) that);
-            }
-        }
-
-        @Override
-        public String toString() {
-            return "Future(" + request + ")";
-        }
-    }
-
-    public BackgroundCompileQueue() {
+    public BackgroundCompileQueue(GraalTruffleRuntime runtime) {
+        this.runtime = runtime;
         this.idCounter = new AtomicLong();
     }
 
-    private synchronized ExecutorService getExecutorService(OptimizedCallTarget callTarget) {
+    private ExecutorService getExecutorService(OptimizedCallTarget callTarget) {
         if (compilationExecutorService != null) {
             return compilationExecutorService;
         }
-
-        if (shutdown) {
-            throw new RejectedExecutionException("The BackgroundCompileQueue is shutdown");
-        }
-
-        // NOTE: the value from the first Engine compiling wins for now
-        int threads = callTarget.getOptionValue(PolyglotCompilerOptions.CompilerThreads);
-        if (threads == 0) {
-            // No manual selection made, check how many processors are available.
-            int availableProcessors = Runtime.getRuntime().availableProcessors();
-            if (availableProcessors >= 4) {
-                threads = 2;
+        synchronized (this) {
+            if (compilationExecutorService != null) {
+                return compilationExecutorService;
             }
-        }
-        threads = Math.max(1, threads);
-
-        TruffleCompilerThreadFactory factory = new TruffleCompilerThreadFactory("TruffleCompilerThread");
-
-        return compilationExecutorService = new ThreadPoolExecutor(threads, threads, 0, TimeUnit.MILLISECONDS,
-                        new PriorityBlockingQueue<>(), factory) {
-            @Override
-            protected <T> RunnableFuture<T> newTaskFor(Runnable runnable, T value) {
-                return new RequestFutureTask<>(runnable, value);
+            if (shutdown) {
+                throw new RejectedExecutionException("The BackgroundCompileQueue is shutdown");
             }
-        };
-    }
 
-    private static final class TruffleCompilerThreadFactory implements ThreadFactory {
-        private final String namePrefix;
+            // NOTE: the value from the first Engine compiling wins for now
+            int threads = callTarget.getOptionValue(PolyglotCompilerOptions.CompilerThreads);
+            if (threads == 0) {
+                // No manual selection made, check how many processors are available.
+                int availableProcessors = Runtime.getRuntime().availableProcessors();
+                if (availableProcessors >= 4) {
+                    threads = 2;
+                }
+            }
+            threads = Math.max(1, threads);
 
-        TruffleCompilerThreadFactory(final String namePrefix) {
-            this.namePrefix = namePrefix;
-        }
+            ThreadFactory factory = newThreadFactory("TruffleCompilerThread", callTarget);
 
-        @Override
-        public Thread newThread(Runnable r) {
-            final Thread t = new Thread(r) {
+            long compilerIdleDelay = runtime.getCompilerIdleDelay();
+            long keepAliveTime = compilerIdleDelay >= 0 ? compilerIdleDelay : 0;
+            ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(threads, threads,
+                            keepAliveTime, TimeUnit.MILLISECONDS,
+                            new PriorityBlockingQueue<>(), factory) {
                 @Override
-                public void run() {
-                    setContextClassLoader(getClass().getClassLoader());
-                    super.run();
+                protected <T> RunnableFuture<T> newTaskFor(Callable<T> callable) {
+                    return new RequestFutureTask<>((RequestImpl<T>) callable);
                 }
             };
-            t.setName(namePrefix + "-" + t.getId());
-            t.setPriority(Thread.MAX_PRIORITY);
-            t.setDaemon(true);
-            return t;
+            if (compilerIdleDelay >= 0) {
+                threadPoolExecutor.allowCoreThreadTimeOut(true);
+            }
+            return compilationExecutorService = threadPoolExecutor;
         }
     }
 
-    public CancellableCompileTask submitCompilationRequest(GraalTruffleRuntime runtime, OptimizedCallTarget optimizedCallTarget, boolean lastTierCompilation)
-                    throws RejectedExecutionException {
-        final OptionValues optionOverrides = TruffleRuntimeOptions.getCurrentOptionOverrides();
-        CancellableCompileTask cancellable = new CancellableCompileTask(lastTierCompilation);
-        Request request = new Request(runtime, optionOverrides, optimizedCallTarget, cancellable);
-        cancellable.setFuture(getExecutorService(optimizedCallTarget).submit(request));
+    @SuppressWarnings("unused")
+    protected ThreadFactory newThreadFactory(String threadNamePrefix, OptimizedCallTarget callTarget) {
+        return new TruffleCompilerThreadFactory(threadNamePrefix, runtime);
+    }
+
+    public CancellableCompileTask submitTask(Priority priority, OptimizedCallTarget target, Request request) {
+        CancellableCompileTask cancellable = new CancellableCompileTask(priority == Priority.LAST_TIER);
+        RequestImpl<Void> requestImpl = new RequestImpl<>(nextId(), priority, target, cancellable, request);
+        cancellable.setFuture(getExecutorService(target).submit(requestImpl));
         return cancellable;
+    }
+
+    private long nextId() {
+        return idCounter.getAndIncrement();
     }
 
     public int getQueueSize() {
@@ -218,4 +145,112 @@ public class BackgroundCompileQueue {
             throw new RuntimeException("Could not terminate compiler threads. Check if there are runaway compilations that don't handle Thread#interrupt.", e);
         }
     }
+
+    public enum Priority {
+
+        INITIALIZATION(0),
+        FIRST_TIER(1),
+        LAST_TIER(2);
+
+        private final int value;
+
+        Priority(int value) {
+            this.value = value;
+        }
+
+    }
+
+    public abstract static class Request {
+
+        protected abstract void execute(TruffleCompilationTask task, WeakReference<OptimizedCallTarget> targetRef);
+
+    }
+
+    private static final class RequestImpl<V> implements Callable<V>, Comparable<RequestImpl<?>> {
+
+        private final long id;
+        private final Priority priority;
+        private final TruffleCompilationTask task;
+        private final WeakReference<OptimizedCallTarget> targetRef;
+        private final Request request;
+
+        RequestImpl(long id, Priority priority, OptimizedCallTarget callTarget, TruffleCompilationTask task, Request request) {
+            this.id = id;
+            this.priority = priority;
+            this.targetRef = new WeakReference<>(callTarget);
+            this.task = task;
+            this.request = request;
+        }
+
+        @Override
+        public int compareTo(RequestImpl<?> that) {
+            int diff = priority.value - that.priority.value;
+            if (diff == 0) {
+                diff = Long.compare(this.id, that.id);
+            }
+            return diff;
+        }
+
+        @SuppressWarnings("try")
+        @Override
+        public V call() {
+            request.execute(task, targetRef);
+            return null;
+        }
+
+        @Override
+        public String toString() {
+            return "Request(id:" + id + ", priority:" + priority + " target: " + targetRef.get() + ")";
+        }
+    }
+
+    private static class RequestFutureTask<V> extends FutureTask<V> implements Comparable<RequestFutureTask<?>> {
+        private final RequestImpl<V> request;
+
+        RequestFutureTask(RequestImpl<V> callable) {
+            super(callable);
+            this.request = callable;
+        }
+
+        @Override
+        public int compareTo(RequestFutureTask<?> that) {
+            return this.request.compareTo(that.request);
+        }
+
+        @Override
+        public String toString() {
+            return "Future(" + request + ")";
+        }
+    }
+
+    private static final class TruffleCompilerThreadFactory implements ThreadFactory {
+        private final String namePrefix;
+        private final GraalTruffleRuntime runtime;
+
+        TruffleCompilerThreadFactory(final String namePrefix, GraalTruffleRuntime runtime) {
+            this.namePrefix = namePrefix;
+            this.runtime = runtime;
+        }
+
+        @Override
+        public Thread newThread(Runnable r) {
+            final Thread t = new Thread(r) {
+                @SuppressWarnings("try")
+                @Override
+                public void run() {
+                    setContextClassLoader(getClass().getClassLoader());
+                    try (AutoCloseable scope = runtime.openCompilerThreadScope()) {
+                        super.run();
+                    } catch (Exception e) {
+                        throw new InternalError(e);
+                    }
+                }
+            };
+            t.setName(namePrefix + "-" + t.getId());
+            t.setPriority(Thread.MAX_PRIORITY);
+            t.setDaemon(true);
+            return t;
+        }
+    }
+
 }

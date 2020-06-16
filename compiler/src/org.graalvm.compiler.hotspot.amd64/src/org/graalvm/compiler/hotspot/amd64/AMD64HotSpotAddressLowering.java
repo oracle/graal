@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,6 +36,7 @@ import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.hotspot.HotSpotMarkId;
 import org.graalvm.compiler.hotspot.nodes.GraalHotSpotVMConfigNode;
 import org.graalvm.compiler.hotspot.nodes.type.KlassPointerStamp;
 import org.graalvm.compiler.loop.BasicInductionVariable;
@@ -84,8 +85,7 @@ public class AMD64HotSpotAddressLowering extends AMD64CompressAddressLowering {
     @Override
     protected final boolean improveUncompression(AMD64AddressNode addr, CompressionNode compression, ValueNode other) {
         CompressEncoding encoding = compression.getEncoding();
-        Scale scale = Scale.fromShift(encoding.getShift());
-        if (scale == null) {
+        if (!Scale.isScaleShiftSupported(encoding.getShift())) {
             return false;
         }
 
@@ -101,7 +101,7 @@ public class AMD64HotSpotAddressLowering extends AMD64CompressAddressLowering {
         } else if (encoding.getBase() != 0 || (generatePIC && compression.stamp(NodeView.DEFAULT) instanceof KlassPointerStamp)) {
             if (generatePIC) {
                 if (other == null) {
-                    ValueNode base = compression.graph().unique(new GraalHotSpotVMConfigNode(config, config.MARKID_NARROW_KLASS_BASE_ADDRESS, JavaKind.Long));
+                    ValueNode base = compression.graph().unique(new GraalHotSpotVMConfigNode(config, HotSpotMarkId.NARROW_KLASS_BASE_ADDRESS, JavaKind.Long));
                     addr.setBase(base);
                 } else {
                     return false;
@@ -117,7 +117,9 @@ public class AMD64HotSpotAddressLowering extends AMD64CompressAddressLowering {
             addr.setBase(other);
         }
 
+        Scale scale = Scale.fromShift(encoding.getShift());
         addr.setScale(scale);
+        addr.setUncompressionScale(scale);
         addr.setIndex(compression.getValue());
         return true;
     }

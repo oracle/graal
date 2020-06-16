@@ -28,13 +28,12 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.graalvm.compiler.nodes.CallTargetNode;
-import org.graalvm.compiler.nodes.Invoke;
-import org.graalvm.compiler.nodes.StructuredGraph;
-
+import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.hosted.code.AnalysisMethodCalleeWalker.CallPathVisitor.VisitResult;
+
+import jdk.vm.ci.code.BytecodePosition;
 
 /**
  * Gather a list of the transitive blacklisted callees from methods annotated with
@@ -67,7 +66,7 @@ public class AnalysisMethodCalleeWalker {
     }
 
     /** Visit this method, and the methods it calls. */
-    VisitResult walkMethodAndCallees(AnalysisMethod method, AnalysisMethod caller, Invoke invoke, CallPathVisitor visitor) {
+    VisitResult walkMethodAndCallees(AnalysisMethod method, AnalysisMethod caller, BytecodePosition invokePosition, CallPathVisitor visitor) {
         if (path.contains(method)) {
             /*
              * If the method is already on the path then I am in the middle of visiting it, so just
@@ -78,7 +77,7 @@ public class AnalysisMethodCalleeWalker {
         path.add(method);
         try {
             /* Visit the method directly. */
-            final VisitResult directResult = visitor.visitMethod(method, caller, invoke, path.size());
+            final VisitResult directResult = visitor.visitMethod(method, caller, invokePosition, path.size());
             if (directResult != VisitResult.CONTINUE) {
                 return directResult;
             }
@@ -89,7 +88,7 @@ public class AnalysisMethodCalleeWalker {
             }
             /* Visit all the implementations of this method, ignoring if any of them says CUT. */
             for (AnalysisMethod impl : method.getImplementations()) {
-                walkMethodAndCallees(impl, caller, invoke, visitor);
+                walkMethodAndCallees(impl, caller, invokePosition, visitor);
             }
             return VisitResult.CONTINUE;
         } finally {
@@ -99,13 +98,8 @@ public class AnalysisMethodCalleeWalker {
 
     /** Visit the callees of this method. */
     VisitResult walkCallees(AnalysisMethod method, CallPathVisitor visitor) {
-        final StructuredGraph graph = method.getTypeFlow().getGraph();
-        if (graph != null) {
-            for (Invoke invoke : graph.getInvokes()) {
-                final CallTargetNode callTarget = invoke.callTarget();
-                final AnalysisMethod callee = (AnalysisMethod) callTarget.targetMethod();
-                walkMethodAndCallees(callee, method, invoke, visitor);
-            }
+        for (InvokeTypeFlow invoke : method.getTypeFlow().getInvokes()) {
+            walkMethodAndCallees(invoke.getTargetMethod(), method, invoke.getSource(), visitor);
         }
         return VisitResult.CONTINUE;
     }
@@ -133,7 +127,7 @@ public class AnalysisMethodCalleeWalker {
          * {@link VisitResult#CUT} if the walk should cut at this method, or
          * {@link VisitResult#QUIT} if the walk should be stopped altogether.
          */
-        public abstract VisitResult visitMethod(AnalysisMethod method, AnalysisMethod caller, Invoke invoke, int depth);
+        public abstract VisitResult visitMethod(AnalysisMethod method, AnalysisMethod caller, BytecodePosition invokePosition, int depth);
 
         /**
          * Called after every method has been visited. Returns true if visiting should continue,

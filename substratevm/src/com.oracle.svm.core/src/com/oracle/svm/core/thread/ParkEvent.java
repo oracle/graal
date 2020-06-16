@@ -50,22 +50,8 @@ public abstract class ParkEvent {
         ParkEvent create();
     }
 
-    /**
-     * The ticket: false implies unavailable, true implies available. No need to be volatile,
-     * because it is read and written only when the mutex is held, or before a reference to this
-     * ParkEvent is handed out.
-     */
-    protected boolean event;
-
-    /**
-     * When true, calls to {@link #condWait} and {@link #condTimedWait} will always wait, even a
-     * previous call to {@link #unpark} had not been consumed by a wait yet (the semantics of
-     * {@link Thread#sleep}).
-     *
-     * When false, {@link #condWait} and {@link #condTimedWait} will return immediately when a
-     * previous call to {@link #unpark} has happend (the semantics of {@link sun.misc.Unsafe#park}).
-     */
-    protected boolean resetEventBeforeWait;
+    /** Currently required by legacy code. */
+    protected boolean isSleepEvent;
 
     /**
      * A cons-cell for putting this ParkEvent on the free list. This must be (a) allocated
@@ -78,17 +64,17 @@ public abstract class ParkEvent {
     protected ParkEvent() {
     }
 
-    public enum WaitResult {
-        UNPARKED,
-        TIMED_OUT,
-        INTERRUPTED
-    }
+    /**
+     * Resets a pending {@link #unpark()} at the time of the call. This must synchronize in a way
+     * that prevents it from being reordered with regard to setting the thread's interrupted status.
+     */
+    protected abstract void reset();
 
     /* cond_wait. */
-    protected abstract WaitResult condWait();
+    protected abstract void condWait();
 
     /** cond_timedwait, similar to {@link #condWait} but with a timeout in nanoseconds. */
-    protected abstract WaitResult condTimedWait(long delayNanos);
+    protected abstract void condTimedWait(long delayNanos);
 
     /** Notify anyone waiting on this event. */
     protected abstract void unpark();
@@ -106,7 +92,7 @@ public abstract class ParkEvent {
      * and garbage collected.
      */
 
-    static ParkEvent initializeOnce(AtomicReference<ParkEvent> ref, boolean resetEventBeforeWait) {
+    static ParkEvent initializeOnce(AtomicReference<ParkEvent> ref, boolean isSleepEvent) {
         ParkEvent result = ref.get();
         if (result == null) {
             ParkEvent newEvent = ParkEvent.acquire();
@@ -115,8 +101,8 @@ public abstract class ParkEvent {
              * free-list or allocated.
              */
             newEvent.consCell = new ParkEventConsCell(newEvent);
-            newEvent.event = false;
-            newEvent.resetEventBeforeWait = resetEventBeforeWait;
+            newEvent.isSleepEvent = isSleepEvent;
+            newEvent.reset();
 
             if (ref.compareAndSet(null, newEvent)) {
                 /* We won the race. */
@@ -173,12 +159,17 @@ final class DetachedParkEvent extends ParkEvent {
     }
 
     @Override
-    protected WaitResult condWait() {
+    protected void reset() {
+        throw VMError.shouldNotReachHere("Cannot reset a DetachedParkEvent");
+    }
+
+    @Override
+    protected void condWait() {
         throw VMError.shouldNotReachHere("Cannot wait on a DetachedParkEvent");
     }
 
     @Override
-    protected WaitResult condTimedWait(long delayNanos) {
+    protected void condTimedWait(long delayNanos) {
         throw VMError.shouldNotReachHere("Cannot wait on a DetachedParkEvent");
     }
 

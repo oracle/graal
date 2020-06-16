@@ -61,9 +61,17 @@ public interface VirtualMemoryProvider {
 
     /**
      * Returns the granularity of virtual memory management, which is generally the operating
-     * system's page size or a multiple thereof.
+     * system's page size.
      */
     UnsignedWord getGranularity();
+
+    /**
+     * Returns the alignment used by virtual memory management, which is generally equal to the
+     * {@linkplain #getGranularity granularity} or a multiple thereof.
+     */
+    default UnsignedWord getAlignment() {
+        return getGranularity();
+    }
 
     /**
      * Reserve an address range that fits the specified number of bytes. The reserved address range
@@ -73,7 +81,8 @@ public interface VirtualMemoryProvider {
      *
      * @param nbytes The size in bytes of the address range to be reserved, which is rounded up to a
      *            multiple of the {@linkplain #getGranularity() granularity}.
-     * @return A pointer to the beginning of the reserved address range.
+     * @return An {@linkplain #getAlignment aligned} pointer to the beginning of the reserved
+     *         address range, or {@link WordFactory#nullPointer()} in case of an error.
      */
     Pointer reserve(UnsignedWord nbytes);
 
@@ -110,13 +119,14 @@ public interface VirtualMemoryProvider {
      * independently reserved ranges, undefined effects can occur.
      * <p>
      * Alternatively, {@link WordFactory#nullPointer() NULL} can be passed for the start address, in
-     * which case an available (unreserved, uncommitted) address range in an arbitrary location will
-     * be selected, reserved and committed in one step.
+     * which case an available (unreserved, uncommitted) address range in an arbitrary but
+     * {@linkplain #getAlignment aligned} location will be selected, reserved and committed in one
+     * step.
      *
      * @param start The start of the address range to be committed, which must be a multiple of the
      *            {@linkplain #getGranularity() granularity}, or {@link WordFactory#nullPointer()
-     *            null} to select an available (unreserved, uncommitted) address range in an
-     *            arbitrary location.
+     *            NULL} to select an available (unreserved, uncommitted) address range in an
+     *            arbitrary but {@linkplain #getAlignment aligned} location.
      * @param nbytes The size in bytes of the address range to be committed, which is rounded up to
      *            a multiple of the {@linkplain #getGranularity() granularity}.
      * @param access The modes in which the memory is permitted to be accessed, see {@link Access}.

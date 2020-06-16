@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,14 +28,14 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int main() {
-  int *a[2];
-  {
-    a[0] = __builtin_alloca(sizeof(int) * 8);
-    a[0][0] = 2;
-  }
-  {
-    a[1] = __builtin_alloca(sizeof(int) * 8);
-    a[1][0] = 5;
-  }
-  return a[0][0] + a[1][0];
+    int *a[2];
+    {
+        a[0] = __builtin_alloca(sizeof(int) * 8);
+        a[0][0] = 2;
+    }
+    {
+        a[1] = __builtin_alloca(sizeof(int) * 8);
+        a[1][0] = 5;
+    }
+    return a[0][0] + a[1][0];
 }

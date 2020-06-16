@@ -88,6 +88,10 @@ final class InternedSources {
         return source;
     }
 
+    void resetNativeImageState() {
+        table.clear();
+    }
+
     private void cleanupStaleEntries() {
         WeakSourceRef sourceRef = null;
         while ((sourceRef = (WeakSourceRef) deadReferences.poll()) != null) {

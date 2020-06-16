@@ -207,6 +207,12 @@ public abstract class RemoteComponentParam implements ComponentParam, MetadataLo
      */
     protected abstract MetadataLoader metadataFromLocal(Path localFile) throws IOException;
 
+    private FileDownloader downloader;
+
+    protected final FileDownloader getDownloader() {
+        return downloader;
+    }
+
     protected Path downloadLocalFile() throws IOException {
         if (localPath != null && Files.isReadable(localPath)) {
             return localPath;
@@ -219,6 +225,7 @@ public abstract class RemoteComponentParam implements ComponentParam, MetadataLo
             dn.setDisplayProgress(progress);
             dn.download();
             localPath = dn.getLocalFile().toPath();
+            downloader = dn;
         } catch (FileNotFoundException ex) {
             throw feedback.failure("REMOTE_ErrorDownloadingNotExist", ex, spec, remoteURL);
         }

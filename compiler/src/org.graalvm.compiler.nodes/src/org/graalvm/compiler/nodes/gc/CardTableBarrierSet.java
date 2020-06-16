@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2019, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -31,11 +31,12 @@ import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.ArrayRangeWrite;
+import org.graalvm.compiler.nodes.extended.RawLoadNode;
+import org.graalvm.compiler.nodes.extended.RawStoreNode;
 import org.graalvm.compiler.nodes.java.AbstractCompareAndSwapNode;
 import org.graalvm.compiler.nodes.java.LoweredAtomicReadAndWriteNode;
 import org.graalvm.compiler.nodes.memory.FixedAccessNode;
-import org.graalvm.compiler.nodes.memory.HeapAccess;
-import org.graalvm.compiler.nodes.memory.HeapAccess.BarrierType;
+import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
@@ -43,8 +44,55 @@ import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaType;
+
 public class CardTableBarrierSet implements BarrierSet {
-    public CardTableBarrierSet() {
+    private final ResolvedJavaType objectArrayType;
+
+    public CardTableBarrierSet(ResolvedJavaType objectArrayType) {
+        this.objectArrayType = objectArrayType;
+    }
+
+    @Override
+    public BarrierType readBarrierType(RawLoadNode load) {
+        return BarrierType.NONE;
+    }
+
+    @Override
+    public BarrierType storeBarrierType(RawStoreNode store) {
+        return store.needsBarrier() ? guessStoreBarrierType(store.object(), store.value()) : BarrierType.NONE;
+    }
+
+    @Override
+    public BarrierType fieldLoadBarrierType(ResolvedJavaField field, JavaKind storageKind) {
+        return BarrierType.NONE;
+    }
+
+    @Override
+    public BarrierType fieldStoreBarrierType(ResolvedJavaField field, JavaKind storageKind) {
+        return storageKind == JavaKind.Object ? BarrierType.FIELD : BarrierType.NONE;
+    }
+
+    @Override
+    public BarrierType arrayStoreBarrierType(JavaKind storageKind) {
+        return storageKind == JavaKind.Object ? BarrierType.ARRAY : BarrierType.NONE;
+    }
+
+    @Override
+    public BarrierType guessStoreBarrierType(ValueNode object, ValueNode value) {
+        if (value.getStackKind() == JavaKind.Object && object.getStackKind() == JavaKind.Object) {
+            ResolvedJavaType type = StampTool.typeOrNull(object);
+            if (type != null && type.isArray()) {
+                return BarrierType.ARRAY;
+            } else if (type == null || type.isAssignableFrom(objectArrayType)) {
+                return BarrierType.UNKNOWN;
+            } else {
+                return BarrierType.FIELD;
+            }
+        }
+        return BarrierType.NONE;
     }
 
     @Override
@@ -133,7 +181,7 @@ public class CardTableBarrierSet implements BarrierSet {
 
     public boolean needsWriteBarrier(FixedAccessNode node, ValueNode writtenValue) {
         assert !(node instanceof ArrayRangeWrite);
-        HeapAccess.BarrierType barrierType = node.getBarrierType();
+        BarrierType barrierType = node.getBarrierType();
         switch (barrierType) {
             case NONE:
                 return false;
@@ -166,7 +214,9 @@ public class CardTableBarrierSet implements BarrierSet {
     }
 
     private static void addSerialPostWriteBarrier(FixedAccessNode node, AddressNode address, StructuredGraph graph) {
-        boolean precise = node.getBarrierType() != HeapAccess.BarrierType.FIELD;
+        // Use a precise barrier for everything that might be an array write. Being too precise with
+        // the barriers does not cause any correctness issues.
+        boolean precise = node.getBarrierType() != BarrierType.FIELD;
         graph.addAfterFixed(node, graph.add(new SerialWriteBarrier(address, precise)));
     }
 

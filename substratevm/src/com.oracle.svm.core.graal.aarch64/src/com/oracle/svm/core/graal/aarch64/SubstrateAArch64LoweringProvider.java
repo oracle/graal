@@ -26,15 +26,58 @@ package com.oracle.svm.core.graal.aarch64;
 
 import org.graalvm.compiler.core.aarch64.AArch64LoweringProviderMixin;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
+import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.calc.FloatConvertNode;
+import org.graalvm.compiler.nodes.memory.VolatileReadNode;
+import org.graalvm.compiler.nodes.memory.VolatileWriteNode;
+import org.graalvm.compiler.nodes.spi.LoweringTool;
+import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 
 import com.oracle.svm.core.graal.meta.SubstrateBasicLoweringProvider;
+import com.oracle.svm.core.graal.nodes.aarch64.AArch64ISBNode;
+import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
+import com.oracle.svm.core.nodes.CodeSynchronizationNode;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 public class SubstrateAArch64LoweringProvider extends SubstrateBasicLoweringProvider implements AArch64LoweringProviderMixin {
 
-    public SubstrateAArch64LoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, TargetDescription target) {
-        super(metaAccess, foreignCalls, target);
+    public SubstrateAArch64LoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig,
+                    MetaAccessExtensionProvider metaAccessExtensionProvider,
+                    TargetDescription target) {
+        super(metaAccess, foreignCalls, platformConfig, metaAccessExtensionProvider, target);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public void lower(Node n, LoweringTool tool) {
+        @SuppressWarnings("rawtypes")
+        NodeLoweringProvider lowering = getLowerings().get(n.getClass());
+        if (lowering != null) {
+            lowering.lower(n, tool);
+        } else if (n instanceof FloatConvertNode) {
+            // AMD64 has custom lowerings for ConvertNodes, SubstrateLoweringProvider does not
+            // expect to see a ConvertNode and throws an error, just do nothing here.
+        } else if (n instanceof CodeSynchronizationNode) {
+            lowerCodeSynchronizationNode((CodeSynchronizationNode) n);
+        } else if (n instanceof VolatileReadNode || n instanceof VolatileWriteNode) {
+            // AArch64 emits its own code sequence for volatile accesses. We don't want it lowered
+            // to memory barriers + a regular access.
+        } else {
+            super.lower(n, tool);
+        }
+    }
+
+    @SuppressWarnings("try")
+    public void lowerCodeSynchronizationNode(CodeSynchronizationNode node) {
+        StructuredGraph graph = node.graph();
+        try (DebugCloseable position = node.withNodeSourcePosition()) {
+            AArch64ISBNode replacement = graph.add(new AArch64ISBNode());
+            graph.replaceFixed(node, replacement);
+        }
     }
 }

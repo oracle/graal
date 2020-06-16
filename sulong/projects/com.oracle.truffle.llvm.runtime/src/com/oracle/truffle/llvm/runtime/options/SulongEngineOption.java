@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.options;
 
-import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -50,62 +49,132 @@ public final class SulongEngineOption {
     public static final String OPTION_ARRAY_SEPARATOR = ":";
 
     // @formatter:off
-    @Option(name = "llvm.stackSize", category = OptionCategory.USER, stability = OptionStability.STABLE,
-            help = "The stack size, please end the input with one of: k, m, g, or t. (Note: the stack size will be in bytes if no appropriate suffix is give.)")
+    @Option(name = "llvm.stackSize",
+            category = OptionCategory.USER,
+            stability = OptionStability.STABLE,
+            help = "The stack size, please end the input with one of: k, m, g, or t. " +
+                   "Note that the stack size will be in bytes if no appropriate suffix is given.")
             public static final OptionKey<String> STACK_SIZE = new OptionKey<>("81920k");
 
     public static final String LIBRARY_PATH_NAME = "llvm.libraryPath";
-    @Option(name = LIBRARY_PATH_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, //
-            help = "A list of paths where Sulong will search for relative libraries. Paths are delimited by " + OPTION_ARRAY_SEPARATOR + " .") //
+    @Option(name = LIBRARY_PATH_NAME,
+            category = OptionCategory.USER,
+            stability = OptionStability.STABLE,
+            help = "A list of paths where Sulong will search for relative libraries. " +
+                   "Paths are delimited by a colon \'" + OPTION_ARRAY_SEPARATOR + "\'.")
     public static final OptionKey<String> LIBRARY_PATH = new OptionKey<>("");
 
-    @Option(name = "llvm.sourcePath", category = OptionCategory.USER, help = "This option is deprecated. Use --inspect.SourcePath instead.", deprecated = true) //
-    public static final OptionKey<String> SOURCE_PATH = new OptionKey<>("");
+    public static final String LOAD_CXX_LIBRARIES_NAME = "llvm.loadC++Libraries";
+    @Option(name = LOAD_CXX_LIBRARIES_NAME,
+            category = OptionCategory.EXPERT,
+            help = "Specifies whether the standard C++ libraries (libc++ and libc++abi) " +
+                   "should be loaded by default. This should only be needed for running " +
+                   "plain bitcode files, since executables (ELF, Mach-O) usually have a " +
+                   "dependency on both of them. Thus, the option is off by default.")
+    public static final OptionKey<Boolean> LOAD_CXX_LIBRARIES = new OptionKey<>(false);
 
-    @Option(name = "llvm.loadC++Libraries", category = OptionCategory.EXPERT, help = "Specifies whether the standard C++ libraries (libc++ and libc++abi) should be loaded. Enabled by default.") //
-    public static final OptionKey<Boolean> LOAD_CXX_LIBRARIES = new OptionKey<>(true);
+    public static final String CXX_INTEROP_NAME = "llvm.C++Interop";
+    @Option(name = CXX_INTEROP_NAME,
+            category = OptionCategory.EXPERT,
+            help = "Enables using C++ code and features via interop.")
+    public static final OptionKey<Boolean> CXX_INTEROP = new OptionKey<>(false);
 
-    @Option(name = "llvm.enableExternalNativeAccess", category = OptionCategory.USER, help = "Enable Sulongs native interface.") //
+    @Option(name = "llvm.enableExternalNativeAccess",
+            category = OptionCategory.USER,
+            help = "Enable Sulongs native interface.")
     public static final OptionKey<Boolean> ENABLE_NFI = new OptionKey<>(true);
 
-    @Option(name = "llvm.debugSysCalls", category = OptionCategory.USER, help = "Turns syscall debugging on/off. Can be \'true\', \'false\', \'stdout\', \'stderr\' or a filepath.") //
+    @Option(name = "llvm.debugSysCalls",
+            category = OptionCategory.INTERNAL,
+            help = "Turns syscall debugging on/off. " +
+                   "Set value to \'stdout\', \'stderr\' or \'file://<path to writable file>\' to enable.")
     public static final OptionKey<String> DEBUG_SYSCALLS = new OptionKey<>(String.valueOf(false));
 
-    @Option(name = "llvm.printNativeCallStats", category = OptionCategory.USER, help = "Outputs stats about native call site frequencies. Can be \'true\', \'false\', \'stdout\', \'stderr\' or a filepath.") //
+    @Option(name = "llvm.printNativeCallStats",
+            category = OptionCategory.INTERNAL,
+            help = "Outputs stats about native call site frequencies." +
+                   "Set value to \'stdout\', \'stderr\' or \'file://<path to writable file>\' to enable.")
     public static final OptionKey<String> NATIVE_CALL_STATS = new OptionKey<>(String.valueOf(false));
 
-    @Option(name = "llvm.printLifetimeAnalysisStats", category = OptionCategory.USER, help = "Prints the results of the lifetime analysis. Can be \'true\', \'false\', \'stdout\', \'stderr\' or a filepath.") //
+    @Option(name = "llvm.printLifetimeAnalysisStats",
+            category = OptionCategory.INTERNAL,
+            help = "Prints the results of the lifetime analysis." +
+                   "Set value to \'stdout\', \'stderr\' or \'file://<path to writable file>\' to enable.")
     public static final OptionKey<String> PRINT_LIFE_TIME_ANALYSIS_STATS = new OptionKey<>(String.valueOf(false));
 
-    @Option(name = "llvm.debugLoader", category = OptionCategory.EXPERT, help = "Turns dynamic loader debugging on/off. Can be \'true\', \'false\', \'stdout\', \'stderr\' or a filepath.") //
+    @Option(name = "llvm.debugLoader",
+            category = OptionCategory.EXPERT,
+            help = "Turns dynamic loader debugging on/off. " +
+                   "Set value to \'stdout\', \'stderr\' or \'file://<path to writable file>\' to enable.")
     public static final OptionKey<String> LD_DEBUG = new OptionKey<>(String.valueOf(false));
 
-    @Option(name = "llvm.parseOnly", category = OptionCategory.EXPERT, help = "Only parses a bc file; execution is not possible.") //
+    @Option(name = "llvm.optimizeFrameSlots",
+            category = OptionCategory.INTERNAL,
+            help = "Enable fusing of instructions producing values with instructions consuming values.")
+    public static final OptionKey<Boolean> OPTIMIZE_FRAME_SLOTS = new OptionKey<>(true);
+
+    @Option(name = "llvm.printAST",
+            category = OptionCategory.INTERNAL,
+            help = "Prints the Truffle AST of functions when it is created. " +
+                   "A comma-separated list of regular expressions that will be matched against function names.")
+    public static final OptionKey<String> PRINT_AST = new OptionKey<>("");
+
+    @Option(name = "llvm.parseOnly",
+            category = OptionCategory.EXPERT,
+            help = "Only parses a bc file; execution is not possible.")
     public static final OptionKey<Boolean> PARSE_ONLY = new OptionKey<>(false);
 
-    @Option(name = "llvm.enableLVI", category = OptionCategory.EXPERT, help = "Enable source-level inspection of local variables.") //
+    @Option(name = "llvm.enableLVI",
+            category = OptionCategory.EXPERT,
+            help = "This option is deprecated, local variable inspection is always enabled.",
+            deprecated = true)
     public static final OptionKey<Boolean> ENABLE_LVI = new OptionKey<>(false);
 
+    @Option(name = "llvm.OSR",
+            category = OptionCategory.EXPERT,
+            help = "Enable on-stack-replacement of loops.")
+    public static final OptionKey<Boolean> ENABLE_OSR = new OptionKey<>(true);
+
     public static final String LAZY_PARSING_NAME = "llvm.lazyParsing";
-    @Option(name = LAZY_PARSING_NAME, category = OptionCategory.EXPERT, help = "Enable lazy parsing of LLVM bitcode files.") //
+    @Option(name = LAZY_PARSING_NAME,
+            category = OptionCategory.EXPERT,
+            help = "Enable lazy parsing of LLVM bitcode files.")
     public static final OptionKey<Boolean> LAZY_PARSING = new OptionKey<>(true);
 
-    @Option(name = "llvm.llDebug", category = OptionCategory.EXPERT, help = "Enable IR-level debugging of LLVM bitcode files.") //
+    @Option(name = "llvm.llDebug",
+            category = OptionCategory.EXPERT,
+            help = "Enable IR-level debugging of LLVM bitcode files.")
     public static final OptionKey<Boolean> LL_DEBUG = new OptionKey<>(false);
 
-    @Option(name = "llvm.llDebug.sources", category = OptionCategory.EXPERT, help = "Provide the locations of *.ll files for debugging. The expected format is <bc-path>=<ll-path>{:<bc-path>=<ll-path>}.") //
+    @Option(name = "llvm.llDebug.verbose",
+            category = OptionCategory.EXPERT,
+            help = "Enables diagnostics for IR-level debugging (e.g., report missing .ll files). Requires \'--llvm.llDebug=true\'. " +
+                   "Set value to \'stdout\', \'stderr\' or \'file://<path to writable file>\' to enable.")
+    public static final OptionKey<String> LL_DEBUG_VERBOSE = new OptionKey<>("");
+
+    @Option(name = "llvm.llDebug.sources",
+            category = OptionCategory.EXPERT,
+            help = "Provide the locations of *.ll files for debugging. " +
+                   "The expected format is <bc-path>=<ll-path>{:<bc-path>=<ll-path>}.")
     public static final OptionKey<String> LL_DEBUG_SOURCES = new OptionKey<>("");
 
-    @Option(name = "llvm.printStackTraceOnAbort", category = OptionCategory.INTERNAL, help = "Prints a C stack trace when abort() is called.") //
+    @Option(name = "llvm.printStackTraceOnAbort",
+            category = OptionCategory.INTERNAL,
+            help = "Prints a C stack trace when abort() is called.")
     public static final OptionKey<Boolean> STACKTRACE_ON_ABORT = new OptionKey<>(false);
 
-    @Option(name = "llvm.traceIR", category = OptionCategory.EXPERT, help = "Prints a trace of the executed bitcode. Requires \'--llvm.llDebug=true\'. Set value to \'stdout\', \'stderr\' or \'file://<path to writable file>\' to enable.") //
+    @Option(name = "llvm.traceIR",
+            category = OptionCategory.EXPERT,
+            help = "Prints a trace of the executed bitcode. Requires \'--llvm.llDebug=true\'. " +
+                   "Set value to \'stdout\', \'stderr\' or \'file://<path to writable file>\' to enable.")
     public static final OptionKey<String> TRACE_IR = new OptionKey<>("");
 
-    public static final String LIBRARIES_NAME = "llvm.libraries";
-    @Option(name = LIBRARIES_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, //
-            help = "List of libraries (precompiled libraries *.dylib/*.so as well as bitcode libraries *.bc). " + //
-                   "Files with a relative path will be looked up relative to llvm.libraryPath. Libraries are delimited by " + OPTION_ARRAY_SEPARATOR + " .") //
+    @Option(name = "llvm.libraries",
+            category = OptionCategory.USER,
+            stability = OptionStability.STABLE,
+            help = "List of libraries (precompiled libraries *.dylib/*.so as well as bitcode libraries *.bc). " +
+                   "Files with a relative path will be looked up relative to llvm.libraryPath. " +
+                   "Libraries are delimited by a colon \'" + OPTION_ARRAY_SEPARATOR + "\'.")
     public static final OptionKey<String> LIBRARIES = new OptionKey<>("");
     // @formatter:on
 
@@ -122,16 +191,8 @@ public final class SulongEngineOption {
         return new SulongEngineOptionOptionDescriptors();
     }
 
-    public static PrintStream getStream(String name) {
-        if ("stderr".equals(name)) {
-            return System.err;
-        } else {
-            return System.out;
-        }
-    }
-
-    public static boolean isTrue(String option) {
-        return "true".equalsIgnoreCase(option) || "stdout".equalsIgnoreCase(option) || "stderr".equalsIgnoreCase(option);
+    public static boolean optionEnabled(String option) {
+        return !"".equalsIgnoreCase(option) && !"false".equalsIgnoreCase(option);
     }
 
     public static List<String> getPolyglotOptionSearchPaths(TruffleLanguage.Env env) {

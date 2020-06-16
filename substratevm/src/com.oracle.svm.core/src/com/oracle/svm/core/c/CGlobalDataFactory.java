@@ -29,6 +29,8 @@ import java.nio.ByteOrder;
 import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
 
@@ -40,7 +42,12 @@ import com.oracle.svm.core.util.Utf8;
  * outside of the heap, or for creating references to symbols. The {@linkplain CGlobalData returned
  * objects} can be used to access the data by address at runtime. In order for the data to be
  * actually allocated in the native image, it must be reachable during the static analysis.
+ * <p>
+ * All method of this class can only be used at native image build time, and not at run time. It is
+ * not possible to extend the data section of an executable or define new symbols in an executable
+ * at run time.
  */
+@Platforms(Platform.HOSTED_ONLY.class)
 public final class CGlobalDataFactory {
     /**
      * Create a reference to the symbol with the specified name. Calling {@link CGlobalData#get()}
@@ -48,6 +55,18 @@ public final class CGlobalDataFactory {
      */
     public static <T extends PointerBase> CGlobalData<T> forSymbol(String symbolName) {
         return new CGlobalDataImpl<>(symbolName);
+    }
+
+    /**
+     * Create a reference to the symbol with the specified name. Calling {@link CGlobalData#get()}
+     * on the returned object at runtime returns the referenced symbol's address.
+     *
+     * @param nonConstant the provided object does not have to be used as a compile-time constant
+     *            (for example, it can be retrieved from a map), but it will always introduce a
+     *            linking dependency on that symbol in the image.
+     */
+    public static <T extends PointerBase> CGlobalData<T> forSymbol(String symbolName, boolean nonConstant) {
+        return new CGlobalDataImpl<>(symbolName, nonConstant);
     }
 
     /**

@@ -33,6 +33,7 @@ import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.FrameStateBuilder;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
+import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
@@ -263,10 +264,10 @@ class HostedBytecodeParser extends SubstrateBytecodeParser {
             if (needsProxies) {
                 long encodedBci = FrameInfoEncoder.encodeBci(stateAfter.bci, stateAfter.duringCall(), stateAfter.rethrowException());
                 DeoptProxyAnchorNode existingDeoptEntry = deoptEntries.get(encodedBci);
-                if (existingDeoptEntry != STICKY_DEOPT_ENTRY) {
+                if (existingDeoptEntry == null || (existingDeoptEntry != STICKY_DEOPT_ENTRY && instr instanceof AbstractMergeNode)) {
                     if (existingDeoptEntry != null) {
                         /*
-                         * Some state splits (i.e. MergeNode and DispatchBeginNode) do not have a
+                         * Some state splits (i.e. MergeNode and LoopExitNode) do not have a
                          * correspondent byte code. Therefore there can be a previously added deopt
                          * entry with the same BCI. For MergeNodes we replace the previous entry
                          * because the new frame state has less live locals.

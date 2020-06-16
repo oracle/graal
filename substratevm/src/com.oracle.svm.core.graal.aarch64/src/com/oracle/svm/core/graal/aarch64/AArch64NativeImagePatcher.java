@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,22 +27,22 @@ package com.oracle.svm.core.graal.aarch64;
 import java.util.function.Consumer;
 
 import org.graalvm.compiler.asm.Assembler;
-import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandDataAnnotation;
+import org.graalvm.compiler.asm.aarch64.AArch64Assembler.SingleInstructionAnnotation;
+import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.word.Pointer;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.graal.code.NativeImagePatcher;
 import com.oracle.svm.core.graal.code.PatchConsumerFactory;
+import com.oracle.svm.core.util.VMError;
 
 @AutomaticFeature
-@Platforms({Platform.AArch64.class})
-class AArch64NativeImagePatcherFeature implements Feature {
+@Platforms({Platform.AARCH64.class})
+public class AArch64NativeImagePatcher implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(PatchConsumerFactory.NativePatchConsumerFactory.class, new PatchConsumerFactory.NativePatchConsumerFactory() {
@@ -51,8 +51,14 @@ class AArch64NativeImagePatcherFeature implements Feature {
                 return new Consumer<Assembler.CodeAnnotation>() {
                     @Override
                     public void accept(Assembler.CodeAnnotation annotation) {
-                        if (annotation instanceof OperandDataAnnotation) {
-                            compilationResult.addAnnotation(new AArch64NativeImagePatcher(annotation.instructionPosition, (OperandDataAnnotation) annotation));
+                        if (annotation instanceof SingleInstructionAnnotation) {
+                            compilationResult.addAnnotation(new SingleInstructionNativeImagePatcher(annotation.instructionPosition, (SingleInstructionAnnotation) annotation));
+                        } else if (annotation instanceof AArch64MacroAssembler.MovSequenceAnnotation) {
+                            compilationResult.addAnnotation(new MovSequenceNativeImagePatcher(annotation.instructionPosition, (AArch64MacroAssembler.MovSequenceAnnotation) annotation));
+                        } else if (annotation instanceof AArch64MacroAssembler.AdrpLdrMacroInstruction) {
+                            compilationResult.addAnnotation(new AdrpLdrMacroInstructionNativeImagePatcher((AArch64MacroAssembler.AdrpLdrMacroInstruction) annotation));
+                        } else if (annotation instanceof AArch64MacroAssembler.AdrpAddMacroInstruction) {
+                            compilationResult.addAnnotation(new AdrpAddMacroInstructionNativeImagePatcher((AArch64MacroAssembler.AdrpAddMacroInstruction) annotation));
                         }
                     }
                 };
@@ -61,55 +67,147 @@ class AArch64NativeImagePatcherFeature implements Feature {
     }
 }
 
-public class AArch64NativeImagePatcher extends CompilationResult.CodeAnnotation implements NativeImagePatcher {
-    private final OperandDataAnnotation annotation;
+class SingleInstructionNativeImagePatcher extends CompilationResult.CodeAnnotation implements NativeImagePatcher {
+    private final SingleInstructionAnnotation annotation;
 
-    public AArch64NativeImagePatcher(int instructionStartPosition, OperandDataAnnotation annotation) {
+    SingleInstructionNativeImagePatcher(int instructionStartPosition, SingleInstructionAnnotation annotation) {
         super(instructionStartPosition);
         this.annotation = annotation;
     }
 
+    /**
+     * The position from the beginning of the method where the patch is applied. This offset is used
+     * in the reference map.
+     */
     @Override
-    public void patch(int codePos, int relative, byte[] code) {
-        // int curValue = relative - (annotation.nextInstructionPosition -
-        // annotation.instructionPosition);
-        //
-        // for (int i = 0; i < annotation.operandSize; i++) {
-        // assert code[annotation.operandPosition + i] == 0;
-        // code[annotation.operandPosition + i] = (byte) (curValue & 0xFF);
-        // curValue = curValue >>> 8;
-        // }
-        // assert curValue == 0;
+    public int getOffset() {
+        return annotation.instructionPosition + annotation.offsetBits;
     }
 
-    @Uninterruptible(reason = "The patcher is intended to work with raw pointers")
+    /**
+     * The length of the value to patch in bytes, e.g., the size of an operand.
+     */
     @Override
-    public void patchData(Pointer pointer, Object object) {
-        // Pointer address = pointer.add(annotation.operandPosition);
-        // if (annotation.operandSize == Long.BYTES && annotation.operandSize >
-        // ConfigurationValues.getObjectLayout().getReferenceSize()) {
-        // /*
-        // * Some instructions use 8-byte immediates even for narrow (4-byte) compressed
-        // * references. We zero all 8 bytes and patch a narrow reference at the offset, which
-        // * results in the same 8-byte value with little-endian order.
-        // */
-        // address.writeLong(0, 0);
-        // } else {
-        // assert annotation.operandSize == ConfigurationValues.getObjectLayout().getReferenceSize()
-        // :
-        // "Unsupported reference constant size";
-        // }
-        // boolean compressed = ReferenceAccess.singleton().haveCompressedReferences();
-        // ReferenceAccess.singleton().writeObjectAt(address, object, compressed);
+    public int getLength() {
+        assert annotation.operandSizeBits % 8 == 0 : "operandSize is not a byte size";
+        return annotation.operandSizeBits / 8;
     }
 
     @Override
-    public int getPosition() {
-        return annotation.operandPosition;
+    public void patchCode(int relative, byte[] code) {
+        annotation.patch(annotation.instructionPosition, relative, code);
     }
 
     @Override
     public boolean equals(Object obj) {
         return obj == this;
+    }
+}
+
+class AdrpLdrMacroInstructionNativeImagePatcher extends CompilationResult.CodeAnnotation implements NativeImagePatcher {
+    private final AArch64MacroAssembler.AdrpLdrMacroInstruction macroInstruction;
+
+    AdrpLdrMacroInstructionNativeImagePatcher(AArch64MacroAssembler.AdrpLdrMacroInstruction macroInstruction) {
+        super(macroInstruction.instructionPosition);
+        this.macroInstruction = macroInstruction;
+    }
+
+    @Override
+    public void patchCode(int relative, byte[] code) {
+        macroInstruction.patch(macroInstruction.instructionPosition, relative, code);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return obj == this;
+    }
+
+    /**
+     * The position from the beginning of the method where the patch is applied. This offset is used
+     * in the reference map.
+     */
+    @Override
+    public int getOffset() {
+        throw VMError.unsupportedFeature("trying to get offset of adrp ldr macro instruction");
+    }
+
+    /**
+     * The length of the value to patch in bytes, e.g., the size of an operand.
+     */
+    @Override
+    public int getLength() {
+        throw VMError.unsupportedFeature("trying to get length of adrp ldr macro instruction");
+    }
+}
+
+class AdrpAddMacroInstructionNativeImagePatcher extends CompilationResult.CodeAnnotation implements NativeImagePatcher {
+    private final AArch64MacroAssembler.AdrpAddMacroInstruction macroInstruction;
+
+    AdrpAddMacroInstructionNativeImagePatcher(AArch64MacroAssembler.AdrpAddMacroInstruction macroInstruction) {
+        super(macroInstruction.instructionPosition);
+        this.macroInstruction = macroInstruction;
+    }
+
+    @Override
+    public void patchCode(int relative, byte[] code) {
+        macroInstruction.patch(macroInstruction.instructionPosition, relative, code);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return obj == this;
+    }
+
+    /**
+     * The position from the beginning of the method where the patch is applied. This offset is used
+     * in the reference map.
+     */
+    @Override
+    public int getOffset() {
+        throw VMError.unsupportedFeature("trying to get offset of adrp add instruction");
+    }
+
+    /**
+     * The length of the value to patch in bytes, e.g., the size of an operand.
+     */
+    @Override
+    public int getLength() {
+        throw VMError.unsupportedFeature("trying to get length of adrp add instruction");
+    }
+}
+
+class MovSequenceNativeImagePatcher extends CompilationResult.CodeAnnotation implements NativeImagePatcher {
+    private final AArch64MacroAssembler.MovSequenceAnnotation annotation;
+
+    MovSequenceNativeImagePatcher(int instructionStartPosition, AArch64MacroAssembler.MovSequenceAnnotation annotation) {
+        super(instructionStartPosition);
+        this.annotation = annotation;
+    }
+
+    @Override
+    public void patchCode(int relative, byte[] code) {
+        annotation.patch(annotation.instructionPosition, relative, code);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        return obj == this;
+    }
+
+    /**
+     * The position from the beginning of the method where the patch is applied. This offset is used
+     * in the reference map.
+     */
+    @Override
+    public int getOffset() {
+        throw VMError.unsupportedFeature("trying to get offset of move sequence");
+    }
+
+    /**
+     * The length of the value to patch in bytes, e.g., the size of an operand.
+     */
+    @Override
+    public int getLength() {
+        throw VMError.unsupportedFeature("trying to get length of move sequence");
     }
 }

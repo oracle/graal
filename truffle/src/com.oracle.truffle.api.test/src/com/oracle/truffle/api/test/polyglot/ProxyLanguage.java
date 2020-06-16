@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,7 +61,7 @@ import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
 /**
  * Reusable language for testing that allows wrap all methods.
  */
-@TruffleLanguage.Registration(id = ProxyLanguage.ID, name = ProxyLanguage.ID, version = "1.0", contextPolicy = TruffleLanguage.ContextPolicy.SHARED)
+@TruffleLanguage.Registration(id = ProxyLanguage.ID, name = ProxyLanguage.ID, version = "1.0", contextPolicy = TruffleLanguage.ContextPolicy.SHARED, characterMimeTypes = "application/x-proxy-language")
 @ProvidedTags({ExpressionTag.class, StatementTag.class, RootBodyTag.class, RootTag.class})
 public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
 
@@ -110,10 +110,6 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
         return getCurrentLanguage(ProxyLanguage.class);
     }
 
-    public static ContextReference<LanguageContext> getCurrentContextReference() {
-        return getCurrentLanguage(ProxyLanguage.class).getContextReference();
-    }
-
     @Override
     protected LanguageContext createContext(com.oracle.truffle.api.TruffleLanguage.Env env) {
         if (wrapper) {
@@ -128,6 +124,26 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
         }
     }
 
+    @Override
+    protected Object getLanguageView(LanguageContext context, Object value) {
+        if (wrapper) {
+            delegate.languageInstance = this;
+            return delegate.getLanguageView(context, value);
+        } else {
+            return super.getLanguageView(context, value);
+        }
+    }
+
+    @Override
+    protected Object getScopedView(LanguageContext context, Node location, Frame frame, Object value) {
+        if (wrapper) {
+            delegate.languageInstance = this;
+            return delegate.getScopedView(context, location, frame, value);
+        } else {
+            return super.getScopedView(context, location, frame, value);
+        }
+    }
+
     @SuppressWarnings("deprecation")
     @Override
     protected Object getLanguageGlobal(LanguageContext context) {
@@ -139,6 +155,7 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     protected boolean isObjectOfLanguage(Object object) {
         if (wrapper) {
@@ -179,6 +196,7 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     protected Object findMetaObject(LanguageContext context, Object value) {
         if (wrapper) {
@@ -189,6 +207,7 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     protected SourceSection findSourceLocation(LanguageContext context, Object value) {
         if (wrapper) {
@@ -281,6 +300,7 @@ public class ProxyLanguage extends TruffleLanguage<LanguageContext> {
         }
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     protected String toString(LanguageContext context, Object value) {
         if (wrapper) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,11 +28,13 @@ import java.lang.invoke.ConstantCallSite;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 
-import org.junit.Test;
-
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
+import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.hotspot.HotSpotBackend;
+import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.replacements.test.MethodSubstitutionTest;
+import org.junit.Test;
 
 /**
  * Tests HotSpot specific {@link MethodSubstitution}s.
@@ -132,13 +134,18 @@ public class HotSpotMethodSubstitutionTest extends MethodSubstitutionTest {
 
     @Test
     public void testThreadSubstitutions() {
+        GraalHotSpotVMConfig config = ((HotSpotBackend) getBackend()).getRuntime().getVMConfig();
         testGraph("currentThread");
-        testGraph("threadIsInterrupted");
-        testGraph("threadInterrupted");
+        if (config.osThreadInterruptedOffset != Integer.MAX_VALUE) {
+            assertInGraph(testGraph("threadIsInterrupted", "isInterrupted", true), IfNode.class);
+            assertInGraph(testGraph("threadInterrupted", "isInterrupted", true), IfNode.class);
+        }
 
         Thread currentThread = Thread.currentThread();
         test("currentThread", currentThread);
-        test("threadIsInterrupted", currentThread);
+        if (config.osThreadInterruptedOffset != Integer.MAX_VALUE) {
+            test("threadIsInterrupted", currentThread);
+        }
     }
 
     @SuppressWarnings("all")

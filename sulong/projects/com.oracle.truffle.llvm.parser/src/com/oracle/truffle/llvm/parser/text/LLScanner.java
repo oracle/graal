@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -40,9 +40,12 @@ import java.util.regex.Pattern;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
+import com.oracle.truffle.llvm.runtime.options.TargetStream;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 
 final class LLScanner {
+
+    static final LLSourceMap NOT_FOUND = new LLSourceMap(null);
 
     private static TruffleFile findMapping(Path canonicalBCPath, String pathMappings, LLVMContext context) {
         if (pathMappings.isEmpty()) {
@@ -66,7 +69,7 @@ final class LLScanner {
     }
 
     private static TruffleFile findLLPathMapping(String bcPath, String pathMappings, LLVMContext context) {
-        if (bcPath == null || !bcPath.endsWith(".bc")) {
+        if (bcPath == null) {
             return null;
         }
 
@@ -76,18 +79,28 @@ final class LLScanner {
             return mappedFile;
         }
 
-        final String defaultPath = canonicalBCPath.toString().substring(0, bcPath.length() - ".bc".length()) + ".ll";
-        return context.getEnv().getInternalTruffleFile(defaultPath);
+        return context.getEnv().getInternalTruffleFile(getLLPath(canonicalBCPath.toString()));
+    }
+
+    private static String getLLPath(String canonicalBCPath) {
+        if (canonicalBCPath.endsWith(".bc")) {
+            return canonicalBCPath.substring(0, canonicalBCPath.length() - ".bc".length()) + ".ll";
+        }
+        return canonicalBCPath + ".ll";
     }
 
     static LLSourceMap findAndScanLLFile(String bcPath, String pathMappings, LLVMContext context) {
-        if (bcPath == null || !bcPath.endsWith(".bc")) {
-            return null;
+        if (bcPath == null) {
+            return NOT_FOUND;
         }
 
         final TruffleFile llFile = findLLPathMapping(bcPath, pathMappings, context);
         if (llFile == null || !llFile.exists() || !llFile.isReadable()) {
-            return null;
+            TargetStream stream = context.llDebugVerboseStream();
+            if (stream != null) {
+                stream.println("Cannot find .ll file for " + bcPath);
+            }
+            return NOT_FOUND;
         }
 
         try (BufferedReader llReader = llFile.newBufferedReader()) {
@@ -97,14 +110,13 @@ final class LLScanner {
             final LLScanner scanner = new LLScanner(sourceMap);
             for (String line = llReader.readLine(); line != null; line = llReader.readLine()) {
                 if (!scanner.continueAfter(line)) {
-                    return sourceMap;
+                    break;
                 }
             }
+            return sourceMap;
         } catch (IOException e) {
             throw new LLVMParserException("Error while reading from file: " + llFile.getPath());
         }
-
-        return null;
     }
 
     private final LLSourceMap map;
@@ -151,14 +163,17 @@ final class LLScanner {
         return true;
     }
 
-    private static final Pattern FUNCTION_NAME_REGEX = Pattern.compile("define .* @\"?(?<functionName>\\S+)\"?\\(.*");
+    private static final Pattern FUNCTION_NAME_REGEX = Pattern.compile("define .* @((?<functionNameUnquoted>[^\\s(\"]+)|\"(?<functionNameQuoted>[^\"]+)\")\\(.*");
 
     private void beginFunction(String line) {
         assert function == null;
 
         final Matcher matcher = FUNCTION_NAME_REGEX.matcher(line);
         if (matcher.matches()) {
-            String functionName = matcher.group("functionName");
+            String functionName = matcher.group("functionNameUnquoted");
+            if (functionName == null) {
+                functionName = matcher.group("functionNameQuoted");
+            }
             functionName = LLVMIdentifier.toGlobalIdentifier(functionName);
             function = new LLSourceMap.Function(functionName, currentLine);
             map.registerFunction(functionName, function);

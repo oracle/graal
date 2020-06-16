@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,10 +31,9 @@ package com.oracle.truffle.llvm.runtime.global;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMContext.ExternalLibrary;
-import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
+import com.oracle.truffle.llvm.runtime.ExternalLibrary;
+import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceSymbol;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
@@ -42,57 +41,48 @@ import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
-public final class LLVMGlobal implements LLVMSymbol {
+public final class LLVMGlobal extends LLVMSymbol {
 
-    private final LLVMContext context;
     private final LLVMSourceSymbol sourceSymbol;
     private final boolean readOnly;
+    public static final LLVMGlobal[] EMPTY = {};
 
-    /**
-     * Globals currently store the value they are bound to directly in here. If Sulong moves to a
-     * model that supports sharing ASTs between contexts, this needs to be adapted to an indirect
-     * lookup via the context.
-     */
-    private final AssumedValue<Object> target = new AssumedValue<>("llvm global", null);
-
-    @CompilationFinal private String name;
+    private final String name;
     @CompilationFinal private PointerType type;
-    @CompilationFinal private ExternalLibrary library;
     @CompilationFinal private boolean interopTypeCached;
     @CompilationFinal private LLVMInteropType interopType;
 
-    public static LLVMGlobal create(LLVMContext context, String name, PointerType type, LLVMSourceSymbol sourceSymbol, boolean readOnly) {
-        return new LLVMGlobal(context, name, type, sourceSymbol, readOnly);
+    public static LLVMGlobal create(String name, PointerType type, LLVMSourceSymbol sourceSymbol, boolean readOnly, int index, int id, boolean exported) {
+        if (index < 0) {
+            throw new AssertionError("Invalid index for LLVM global: " + index);
+        }
+        if (id < 0) {
+            throw new AssertionError("Invalid index for LLVM global: " + id);
+        }
+        return new LLVMGlobal(name, type, sourceSymbol, readOnly, index, id, exported);
     }
 
-    private LLVMGlobal(LLVMContext context, String name, PointerType type, LLVMSourceSymbol sourceSymbol, boolean readOnly) {
-        this.context = context;
+    public static LLVMGlobal createUnavailable(String name) {
+        return new LLVMGlobal(name + " (unavailable)", PointerType.VOID, null, true, -1, -1, false);
+    }
+
+    private LLVMGlobal(String name, PointerType type, LLVMSourceSymbol sourceSymbol, boolean readOnly, int globalIndex, int moduleId, boolean exported) {
+        super(name, null, moduleId, globalIndex, exported);
         this.name = name;
         this.type = type;
         this.sourceSymbol = sourceSymbol;
         this.readOnly = readOnly;
 
-        this.library = null;
         this.interopTypeCached = false;
         this.interopType = null;
     }
 
     @Override
-    public String getName() {
-        return name;
+    public String toString() {
+        return "(" + type + ")" + (getLibrary() == null ? "" : getLibrary().getName() + "::") + name;
     }
 
-    @Override
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    @Override
-    public ExternalLibrary getLibrary() {
-        return library;
-    }
-
-    public LLVMInteropType getInteropType() {
+    public LLVMInteropType getInteropType(LLVMContext context) {
         if (!interopTypeCached) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             LLVMSourceType sourceType = sourceSymbol != null ? sourceSymbol.getType() : null;
@@ -112,7 +102,7 @@ public final class LLVMGlobal implements LLVMSymbol {
 
     @Override
     public boolean isDefined() {
-        return library != null;
+        return getLibrary() != null;
     }
 
     public void define(ExternalLibrary newLibrary) {
@@ -125,25 +115,11 @@ public final class LLVMGlobal implements LLVMSymbol {
         assert newType != null && newLibrary != null;
         if (!isDefined()) {
             this.type = newType;
-            this.library = newLibrary;
+            setLibrary(newLibrary);
         } else {
             CompilerDirectives.transferToInterpreter();
             throw new AssertionError("Found multiple definitions of global " + getName() + ".");
         }
-    }
-
-    public Object getTarget() {
-        assert target.get() != null;
-        return target.get();
-    }
-
-    public boolean isInitialized() {
-        return target.get() != null;
-    }
-
-    public void setTarget(Object target) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        this.target.set(target);
     }
 
     public boolean isReadOnly() {
@@ -161,7 +137,12 @@ public final class LLVMGlobal implements LLVMSymbol {
     }
 
     @Override
-    public LLVMFunctionDescriptor asFunction() {
+    public boolean isAlias() {
+        return false;
+    }
+
+    @Override
+    public LLVMFunction asFunction() {
         throw new IllegalStateException("Global " + name + " is not a function.");
     }
 

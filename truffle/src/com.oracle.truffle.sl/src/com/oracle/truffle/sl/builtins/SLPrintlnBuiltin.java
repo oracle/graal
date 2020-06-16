@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,14 +40,15 @@
  */
 package com.oracle.truffle.sl.builtins;
 
-import java.io.PrintWriter;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.runtime.SLContext;
+import com.oracle.truffle.sl.runtime.SLLanguageView;
 
 /**
  * Builtin function to write a value to the {@link SLContext#getOutput() standard output}. The
@@ -62,46 +63,12 @@ import com.oracle.truffle.sl.runtime.SLContext;
 public abstract class SLPrintlnBuiltin extends SLBuiltinNode {
 
     @Specialization
-    public long println(long value, @CachedContext(SLLanguage.class) SLContext context) {
-        doPrint(context.getOutput(), value);
+    @TruffleBoundary
+    public Object println(Object value,
+                    @CachedLibrary(limit = "3") InteropLibrary interop,
+                    @CachedContext(SLLanguage.class) SLContext context) {
+        context.getOutput().println(interop.toDisplayString(SLLanguageView.forValue(value)));
         return value;
     }
 
-    @TruffleBoundary
-    private static void doPrint(PrintWriter out, long value) {
-        out.println(value);
-    }
-
-    @Specialization
-    public boolean println(boolean value, @CachedContext(SLLanguage.class) SLContext context) {
-        doPrint(context.getOutput(), value);
-        return value;
-    }
-
-    @TruffleBoundary
-    private static void doPrint(PrintWriter out, boolean value) {
-        out.println(value);
-    }
-
-    @Specialization
-    public String println(String value, @CachedContext(SLLanguage.class) SLContext context) {
-        doPrint(context.getOutput(), value);
-        return value;
-    }
-
-    @TruffleBoundary
-    private static void doPrint(PrintWriter out, String value) {
-        out.println(value);
-    }
-
-    @Specialization
-    public Object println(Object value, @CachedContext(SLLanguage.class) SLContext context) {
-        doPrint(context.getOutput(), value);
-        return value;
-    }
-
-    @TruffleBoundary
-    private static void doPrint(PrintWriter out, Object value) {
-        out.println(value);
-    }
 }

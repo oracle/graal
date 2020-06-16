@@ -1,29 +1,45 @@
 #!/usr/bin/env bash
-
-# ------------------------------------------------------------------------------
-# Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+#
+# Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
-# This code is free software; you can redistribute it and/or modify it
-# under the terms of the GNU General Public License version 2 only, as
-# published by the Free Software Foundation.  Oracle designates this
-# particular file as subject to the "Classpath" exception as provided
-# by Oracle in the LICENSE file that accompanied this code.
+# The Universal Permissive License (UPL), Version 1.0
 #
-# This code is distributed in the hope that it will be useful, but WITHOUT
-# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
-# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-# version 2 for more details (a copy is included in the LICENSE file that
-# accompanied this code).
+# Subject to the condition set forth below, permission is hereby granted to any
+# person obtaining a copy of this software, associated documentation and/or
+# data (collectively the "Software"), free of charge and under any and all
+# copyright rights in the Software, and any and all patent rights owned or
+# freely licensable by each licensor hereunder covering either (i) the
+# unmodified Software as contributed to or provided by such licensor, or (ii)
+# the Larger Works (as defined below), to deal in both
 #
-# You should have received a copy of the GNU General Public License version
-# 2 along with this work; if not, write to the Free Software Foundation,
-# Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+# (a) the Software, and
 #
-# Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
-# or visit www.oracle.com if you need additional information or have any
-# questions.
-# ------------------------------------------------------------------------------
+# (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+# one is included with the Software each a "Larger Work" to which the Software
+# is contributed by such licensors),
+#
+# without restriction, including without limitation the rights to copy, create
+# derivative works of, display, perform, and distribute the Software and make,
+# use, sell, offer for sale, import, export, have made, and have sold the
+# Software and the Larger Work(s), and to sublicense the foregoing rights on
+# either these or other terms.
+#
+# This license is subject to the following condition:
+#
+# The above copyright notice and either this complete permission notice or at a
+# minimum a reference to the UPL must be included in all copies or substantial
+# portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+#
+
 
 # This script takes the CaseFolding.txt and UnicodeData.txt files of the Unicode
 # character database and extracts from them the files UnicodeFoldTable.txt and
@@ -41,24 +57,24 @@
 # remove any comments and empty lines from the file. We also remove items
 # belonging from the full (F) and Turkic (T) mapping and only keep the simple
 # (S) and common (C) ones.
-cat CaseFolding.txt \
+cat dat/CaseFolding.txt \
     | sed -e '/^#/d' \
           -e '/^$/d' \
           -e '/; [FT]; /d' \
           -e 's/; /;/g' \
     | cut -d\; -f1,3 \
-    > UnicodeFoldTable.txt
+    > dat/UnicodeFoldTable.txt
 
 # We produce the table for the Canonicalize abstract function when the Unicode
 # flag is not present. We use the UnicodeData.txt file and extract the
 # Uppercase_Character field. We remove entries which do not have an
 # Uppercase_Character mapping and entries which map from non-ASCII
 # code points (>= 128) to ASCII code points (< 128), as per the ECMAScript spec.
-cat UnicodeData.txt \
+cat dat/UnicodeData.txt \
     | cut -d\; -f1,13 \
     | sed -e '/;$/d' \
           -e '/^\(00[8-F][0-9A-F]\|0[^0][0-9A-F]\+\|[^0][0-9A-F]\+\);00[0-7][0-9A-F]$/d' \
-    > NonUnicodeFoldTable.txt
+    > dat/NonUnicodeFoldTable.txt
 
 # In Python's case insensitive regular expressions, characters are considered
 # equivalent if they have the same Lowercase mapping. However, in some cases
@@ -81,12 +97,12 @@ cat UnicodeData.txt \
 # any empty fields by collapsing neighboring or terminating semicolons and
 # finally removing any lines consisting of a single codepoint (the case when a
 # character has cased mappings).
-cat UnicodeData.txt \
+cat dat/UnicodeData.txt \
     | cut -d\; -f1,13,14 \
     | sed -e 's/;\+/;/g' \
           -e 's/;$//' \
           -e '/^[^;]*$/d' \
-    > PythonSimpleCasing.txt
+    > dat/PythonSimpleCasing.txt
 
 # The Python case folding algorithm also makes use of the extended case mappings
 # defined in SpecialCasing.txt. These occur when, e.g., a single character is
@@ -95,14 +111,14 @@ cat UnicodeData.txt \
 # When processing the file, we strip away the comments and blank lines. Then we
 # reduce each codepoint sequence to just its first codepoint. Finally, we drop
 # any missing entries (by collapsing neighboring or terminating semicolons).
-cat SpecialCasing.txt \
+cat dat/SpecialCasing.txt \
     | sed -e '/^#/d' \
           -e '/^$/d' \
           -e 's/^\([0-9A-F]\+\); \([0-9A-F]*\)[^;]*; \([0-9A-F]*\)[^;]*; \([0-9A-F]*\).*$/\1;\2;\4/g' \
           -e 's/;\+/;/g' \
           -e 's/;$//g' \
-    > PythonExtendedCasing.txt
+    > dat/PythonExtendedCasing.txt
 
 # We produce the Python case fold table by merging the equivalences due to both
 # the simple case mappings and the extended case mappings.
-cat PythonSimpleCasing.txt PythonExtendedCasing.txt > PythonFoldTable.txt
+cat dat/PythonSimpleCasing.txt dat/PythonExtendedCasing.txt > dat/PythonFoldTable.txt

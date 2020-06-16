@@ -28,8 +28,8 @@ package com.oracle.svm.reflect.proxy;
 
 import java.lang.reflect.InvocationHandler;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -79,7 +79,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
 
     public DynamicProxySupport(ClassLoader classLoader) {
         this.classLoader = classLoader;
-        this.proxyCache = new HashMap<>();
+        this.proxyCache = new ConcurrentHashMap<>();
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

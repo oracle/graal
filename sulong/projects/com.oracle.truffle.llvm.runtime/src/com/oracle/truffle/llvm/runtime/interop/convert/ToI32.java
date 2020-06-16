@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.interop.convert;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -38,6 +39,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 
 public abstract class ToI32 extends ForeignToLLVM {
 
@@ -86,16 +88,22 @@ public abstract class ToI32 extends ForeignToLLVM {
         return getSingleStringCharacter(value);
     }
 
-    @Specialization(limit = "5", guards = {"notLLVM(obj)", "interop.isNumber(obj)"})
+    @Specialization(limit = "5", guards = {"foreigns.isForeign(obj)", "interop.isNumber(foreigns.asForeign(obj))"})
     protected int fromForeign(Object obj,
-                    @CachedLibrary("obj") InteropLibrary interop,
+                    @CachedLibrary("obj") LLVMAsForeignLibrary foreigns,
+                    @CachedLibrary(limit = "3") InteropLibrary interop,
                     @Cached BranchProfile exception) {
         try {
-            return interop.asInt(obj);
+            return interop.asInt(foreigns.asForeign(obj));
         } catch (UnsupportedMessageException ex) {
             exception.enter();
-            throw new LLVMPolyglotException(this, "Polyglot number can't be converted to int.");
+            throw new LLVMPolyglotException(this, "Polyglot number %s cannot be converted to i32", foreigns.asForeign(obj));
         }
+    }
+
+    @Fallback
+    protected int fromForeignObject(Object obj) {
+        throw new LLVMPolyglotException(this, "Polyglot object %s cannot be converted to i32", obj);
     }
 
     @TruffleBoundary

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,7 +28,7 @@ import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVD;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVDQU;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVDQU32;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVQ;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVSD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMoveOp.VMOVSS;
@@ -74,7 +74,7 @@ public class AMD64VectorMove {
     public static final class MoveToRegOp extends AMD64LIRInstruction implements ValueMoveOp {
         public static final LIRInstructionClass<MoveToRegOp> TYPE = LIRInstructionClass.create(MoveToRegOp.class);
 
-        @Def({REG, HINT}) protected AllocatableValue result;
+        @Def({REG, STACK, HINT}) protected AllocatableValue result;
         @Use({REG, STACK}) protected AllocatableValue input;
 
         public MoveToRegOp(AllocatableValue result, AllocatableValue input) {
@@ -203,17 +203,15 @@ public class AMD64VectorMove {
         }
     }
 
-    public abstract static class VectorMemOp extends AMD64LIRInstruction {
+    public abstract static class VectorMemOp extends AMD64VectorInstruction {
 
-        protected final AVXSize size;
         protected final VexMoveOp op;
 
         @Use({COMPOSITE}) protected AMD64AddressValue address;
         @State protected LIRFrameState state;
 
         protected VectorMemOp(LIRInstructionClass<? extends VectorMemOp> c, AVXSize size, VexMoveOp op, AMD64AddressValue address, LIRFrameState state) {
-            super(c);
-            this.size = size;
+            super(c, size);
             this.op = op;
             this.address = address;
             this.state = state;
@@ -334,7 +332,7 @@ public class AMD64VectorMove {
             case DOUBLE:
                 return VMOVUPD;
             default:
-                return VMOVDQU;
+                return VMOVDQU32;
         }
     }
 

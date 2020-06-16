@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -61,7 +61,19 @@ public interface HotSpotLIRGenerator extends LIRGeneratorTool {
      */
     void emitTailcall(Value[] args, Value address);
 
+    /**
+     * Emits code that jumps to the deopt blob uncommon_trap entry point with {@code action} and
+     * {@code reason}.
+     */
     void emitDeoptimizeCaller(DeoptimizationAction action, DeoptimizationReason reason);
+
+    /**
+     * Emits code that jumps to the deopt blob unpack_with_exception entry point with
+     * {@code exception}.
+     *
+     * @param exception
+     */
+    void emitDeoptimizeWithExceptionInCaller(Value exception);
 
     /**
      * Emits code for a {@link LoadConstantIndirectlyNode}.
@@ -91,7 +103,7 @@ public interface HotSpotLIRGenerator extends LIRGeneratorTool {
      * @param kind type of the value to load
      * @return value of loaded global in register
      */
-    default Value emitLoadConfigValue(int markId, LIRKind kind) {
+    default Value emitLoadConfigValue(HotSpotMarkId markId, LIRKind kind) {
         throw new GraalError("Emitting code to load a config value is not currently supported on %s", target().arch);
     }
 

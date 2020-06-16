@@ -36,6 +36,7 @@ import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.nativeimage.Platform;
+
 import com.oracle.svm.core.c.NativeImageHeaderPreamble;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.c.info.ConstantInfo;
@@ -133,7 +134,13 @@ public class QueryCodeWriter extends InfoTreeVisitor {
 
     public static void writeCStandardHeaders(CSourceCodeWriter writer) {
         if (NativeImageOptions.getCStandard().compatibleWith(C99)) {
-            writer.includeFiles(Collections.singletonList("<stdbool.h>"));
+            if (!Platform.includedIn(Platform.WINDOWS.class)) {
+                /*
+                 * No stdbool.h in Windows SDK 7.1. If we add native-compiler version detection this
+                 * should only be omitted if cl.exe version is < 19.*.
+                 */
+                writer.includeFiles(Collections.singletonList("<stdbool.h>"));
+            }
         }
         if (NativeImageOptions.getCStandard().compatibleWith(C11)) {
             writer.includeFiles(Collections.singletonList("<stdint.h>"));

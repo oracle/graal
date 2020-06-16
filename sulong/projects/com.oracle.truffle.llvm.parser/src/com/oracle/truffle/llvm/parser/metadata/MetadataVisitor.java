@@ -168,4 +168,8 @@ public interface MetadataVisitor extends ValueList.ValueVisitor<MDBaseNode> {
     default void visit(MDCommonBlock md) {
         defaultAction(md);
     }
+
+    default void visit(MDLabel md) {
+        defaultAction(md);
+    }
 }

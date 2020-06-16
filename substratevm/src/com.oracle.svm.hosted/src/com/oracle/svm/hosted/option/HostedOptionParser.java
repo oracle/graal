@@ -39,6 +39,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionDescriptors;
+import org.graalvm.compiler.options.OptionDescriptorsMap;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.nativeimage.Platforms;
@@ -64,7 +65,7 @@ public class HostedOptionParser implements HostedOptionProvider {
     public static void collectOptions(List<Class<? extends OptionDescriptors>> optionsClasses, SortedMap<String, OptionDescriptor> allHostedOptions,
                     SortedMap<String, OptionDescriptor> allRuntimeOptions) {
         for (Class<? extends OptionDescriptors> optionsClass : optionsClasses) {
-            if (Modifier.isAbstract(optionsClass.getModifiers())) {
+            if (Modifier.isAbstract(optionsClass.getModifiers()) || OptionDescriptorsMap.class.isAssignableFrom(optionsClass)) {
                 continue;
             }
 

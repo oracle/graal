@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,56 +32,56 @@
 #include <ctype.h>
 
 int main() {
-  if (!isgraph('a')) {
-    abort();
-  }
-  if (!isgraph('z')) {
-    abort();
-  }
-  if (!isgraph('A')) {
-    abort();
-  }
-  if (!isgraph('Z')) {
-    abort();
-  }
-  if (isgraph(' ')) {
-    abort();
-  }
-  if (!isgraph('5')) {
-    abort();
-  }
-  if (!isgraph('!')) {
-    abort();
-  }
-  if (!isgraph('@')) {
-    abort();
-  }
-  if (!isgraph('[')) {
-    abort();
-  }
-  if (isgraph('\t')) {
-    abort();
-  }
-  if (isgraph('\n')) {
-    abort();
-  }
+    if (!isgraph('a')) {
+        abort();
+    }
+    if (!isgraph('z')) {
+        abort();
+    }
+    if (!isgraph('A')) {
+        abort();
+    }
+    if (!isgraph('Z')) {
+        abort();
+    }
+    if (isgraph(' ')) {
+        abort();
+    }
+    if (!isgraph('5')) {
+        abort();
+    }
+    if (!isgraph('!')) {
+        abort();
+    }
+    if (!isgraph('@')) {
+        abort();
+    }
+    if (!isgraph('[')) {
+        abort();
+    }
+    if (isgraph('\t')) {
+        abort();
+    }
+    if (isgraph('\n')) {
+        abort();
+    }
 
-  if (isgraph(0x08)) {
-    abort();
-  }
-  if (isgraph(0x00)) {
-    abort();
-  }
-  if (isgraph(0x09)) {
-    abort();
-  }
-  if (isgraph(0x1f)) {
-    abort();
-  }
-  if (!isgraph(';')) {
-    abort();
-  }
-  if (isgraph(0x7f)) {
-    abort();
-  }
+    if (isgraph(0x08)) {
+        abort();
+    }
+    if (isgraph(0x00)) {
+        abort();
+    }
+    if (isgraph(0x09)) {
+        abort();
+    }
+    if (isgraph(0x1f)) {
+        abort();
+    }
+    if (!isgraph(';')) {
+        abort();
+    }
+    if (isgraph(0x7f)) {
+        abort();
+    }
 }

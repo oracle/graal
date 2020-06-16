@@ -36,52 +36,72 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.genscavenge.CompleteGarbageCollectorMXBean;
 import com.oracle.svm.core.genscavenge.HeapImpl;
-import com.oracle.svm.core.genscavenge.HeapOptions;
+import com.oracle.svm.core.genscavenge.HeapImplMemoryMXBean;
+import com.oracle.svm.core.genscavenge.ImageHeapInfo;
+import com.oracle.svm.core.genscavenge.IncrementalGarbageCollectorMXBean;
+import com.oracle.svm.core.genscavenge.LinearImageHeapLayouter;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
-import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
+import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.jdk.RuntimeFeature;
-import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
+import com.oracle.svm.core.jdk.management.ManagementFeature;
+import com.oracle.svm.core.jdk.management.ManagementSupport;
 
 @AutomaticFeature
-public class HeapFeature implements GraalFeature {
+class HeapFeature implements GraalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return HeapOptions.UseCardRememberedSetHeap.getValue();
+        return SubstrateOptions.UseCardRememberedSetHeap.getValue();
     }
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
-        return Arrays.asList(RuntimeFeature.class);
+        return Arrays.asList(RuntimeFeature.class, ManagementFeature.class);
     }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(Heap.class, new HeapImpl(access));
+        ImageSingletons.add(ImageHeapLayouter.class, new LinearImageHeapLayouter(HeapImpl.getImageHeapInfo(), true));
+
+        ManagementSupport managementSupport = ManagementSupport.getSingleton();
+        managementSupport.addPlatformManagedObjectSingleton(java.lang.management.MemoryMXBean.class, new HeapImplMemoryMXBean());
+        managementSupport.addPlatformManagedObjectList(com.sun.management.GarbageCollectorMXBean.class, Arrays.asList(new IncrementalGarbageCollectorMXBean(), new CompleteGarbageCollectorMXBean()));
     }
 
     @Override
     public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
-                    SnippetReflectionProvider snippetReflection,
-                    Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
-        // Even though I don't hold on to this instance,
-        // it is preserved because it becomes the enclosing instance
-        // for the lowerings registered within it.
-        final BarrierSnippets barrierSnippets = BarrierSnippets.factory(options, factories, providers, snippetReflection);
+                    SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
+        // Even though I don't hold on to this instance, it is preserved because it becomes the
+        // enclosing instance for the lowerings registered within it.
+        BarrierSnippets barrierSnippets = new BarrierSnippets(options, factories, providers, snippetReflection);
         barrierSnippets.registerLowerings(lowerings);
 
-        AllocationSnippets.registerLowerings(options, factories, providers, snippetReflection, lowerings);
+        GenScavengeAllocationSnippets.registerLowering(options, factories, providers, snippetReflection, lowerings);
     }
 
     @Override
-    public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection,
-                    Map<SubstrateForeignCallDescriptor, SubstrateForeignCallLinkage> foreignCalls, boolean hosted) {
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        // Needed for the barrier set
+        access.registerAsUsed(Object[].class);
+    }
 
-        AllocationSnippets.registerForeignCalls(runtimeConfig, providers, snippetReflection, foreignCalls, hosted);
+    @Override
+    public void beforeCompilation(BeforeCompilationAccess access) {
+        ImageHeapInfo imageHeapInfo = HeapImpl.getImageHeapInfo();
+        access.registerAsImmutable(imageHeapInfo);
+    }
+
+    @Override
+    public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection, SubstrateForeignCallsProvider foreignCalls, boolean hosted) {
+        GenScavengeAllocationSnippets.registerForeignCalls(providers, foreignCalls);
     }
 }

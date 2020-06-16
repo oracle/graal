@@ -32,36 +32,11 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.file.StandardOpenOption;
 import java.util.Iterator;
 import java.util.ServiceLoader;
-import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.persist.MetadataLoader;
 
-public class FileIterable implements ComponentIterable {
-    private final CommandInput input;
-    private final Feedback feedback;
-    private boolean verifyJars;
-
+public class FileIterable extends AbstractIterable {
     public FileIterable(CommandInput input, Feedback fb) {
-        this.input = input;
-        this.feedback = fb;
-    }
-
-    public boolean isVerifyJars() {
-        return verifyJars;
-    }
-
-    @Override
-    public void setVerifyJars(boolean verifyJars) {
-        this.verifyJars = verifyJars;
-    }
-
-    @Override
-    public ComponentIterable matchVersion(Version.Match m) {
-        return this;
-    }
-
-    @Override
-    public ComponentIterable allowIncompatible() {
-        return this;
+        super(input, fb);
     }
 
     private File getFile(String pathSpec) {
@@ -82,14 +57,9 @@ public class FileIterable implements ComponentIterable {
 
             @Override
             public ComponentParam next() {
-                return new FileComponent(getFile(input.requiredParameter()), verifyJars, feedback);
+                return new FileComponent(getFile(input.requiredParameter()), isVerifyJars(), null, feedback);
             }
         };
-    }
-
-    @Override
-    public ComponentParam createParam(String cmdString, ComponentInfo info) {
-        return null;
     }
 
     public static class FileComponent implements ComponentParam {
@@ -97,10 +67,21 @@ public class FileIterable implements ComponentIterable {
         private MetadataLoader loader;
         private final boolean verifyJars;
         private final Feedback feedback;
+        private final String serial;
 
-        public FileComponent(File localFile, boolean verifyJars, Feedback feedback) {
+        /**
+         * Creates a file-based component.
+         * 
+         * @param localFile local file to load from
+         * @param verifyJars true, if the jar signature should be verified
+         * @param serial serial / tag of the component; if {@code null}, will be computed as sha256
+         *            hash.
+         * @param feedback output
+         */
+        public FileComponent(File localFile, boolean verifyJars, String serial, Feedback feedback) {
             this.localFile = localFile;
             this.verifyJars = verifyJars;
+            this.serial = serial;
             this.feedback = feedback.withBundle(FileComponent.class);
         }
 
@@ -110,6 +91,7 @@ public class FileIterable implements ComponentIterable {
                 return loader;
             }
             byte[] fileStart = null;
+            String ser;
 
             if (localFile.isFile()) {
                 try (ReadableByteChannel ch = FileChannel.open(localFile.toPath(), StandardOpenOption.READ)) {
@@ -117,12 +99,18 @@ public class FileIterable implements ComponentIterable {
                     ch.read(bb);
                     fileStart = bb.array();
                 }
+                if (serial != null) {
+                    ser = serial;
+                } else {
+                    ser = SystemUtils.fingerPrint(SystemUtils.computeFileDigest(localFile.toPath(), null), false);
+                }
             } else {
                 fileStart = new byte[]{0, 0, 0, 0, 0, 0, 0, 0};
+                ser = "";
             }
 
             for (ComponentArchiveReader provider : ServiceLoader.load(ComponentArchiveReader.class)) {
-                MetadataLoader ldr = provider.createLoader(localFile.toPath(), fileStart, feedback, verifyJars);
+                MetadataLoader ldr = provider.createLoader(localFile.toPath(), fileStart, ser, feedback, verifyJars);
                 if (ldr != null) {
                     loader = ldr;
                     return ldr;

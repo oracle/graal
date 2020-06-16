@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,10 @@ import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.LongLocation;
 import com.oracle.truffle.api.object.Shape;
 
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 /** @since 0.17 or earlier */
+@SuppressWarnings("deprecation")
 public abstract class LocationImpl extends Location {
     /**
      * @since 0.17 or earlier
@@ -221,7 +224,10 @@ public abstract class LocationImpl extends Location {
      * usually know more about the value to be set.
      *
      * @since 0.17 or earlier
+     * @deprecated equivalent to {@link java.util.Objects#equals(Object, Object)}
      */
+    @Deprecated
+    @TruffleBoundary // equals is blacklisted
     public static boolean valueEquals(Object val1, Object val2) {
         return val1 == val2 || (val1 != null && val1.equals(val2));
     }

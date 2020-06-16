@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,12 +45,13 @@ import org.graalvm.compiler.core.LIRGenerationPhase;
 import org.graalvm.compiler.core.LIRGenerationPhase.LIRGenerationContext;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.alloc.ComputeBlockOrder;
+import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.core.gen.LIRCompilerBackend;
 import org.graalvm.compiler.core.gen.LIRGenerationProvider;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
+import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
@@ -122,7 +123,7 @@ public abstract class GraalCompilerState {
         this.options = Graal.getRequiredCapability(OptionValues.class);
         this.backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
         this.providers = backend.getProviders();
-        this.debug = DebugContext.create(options, DebugHandlersFactory.LOADER);
+        this.debug = new Builder(options).build();
     }
 
     protected boolean useProfilingInfo() {
@@ -377,7 +378,8 @@ public abstract class GraalCompilerState {
 
         LIR lir = new LIR(cfg, linearScanOrder, codeEmittingOrder, getGraphOptions(), getGraphDebug());
         LIRGenerationProvider lirBackend = (LIRGenerationProvider) request.backend;
-        lirGenRes = lirBackend.newLIRGenerationResult(graph.compilationId(), lir, registerConfig, request.graph, stub);
+        RegisterAllocationConfig registerAllocationConfig = request.backend.newRegisterAllocationConfig(registerConfig, null);
+        lirGenRes = lirBackend.newLIRGenerationResult(graph.compilationId(), lir, registerAllocationConfig, request.graph, stub);
         lirGenTool = lirBackend.newLIRGenerator(lirGenRes);
         nodeLirGen = lirBackend.newNodeLIRBuilder(request.graph, lirGenTool);
     }
@@ -441,7 +443,7 @@ public abstract class GraalCompilerState {
     }
 
     protected AllocationContext createAllocationContext() {
-        return new AllocationContext(lirGenTool.getSpillMoveFactory(), request.backend.newRegisterAllocationConfig(registerConfig, null));
+        return new AllocationContext(lirGenTool.getSpillMoveFactory(), lirGenRes.getRegisterAllocationConfig());
     }
 
     /**

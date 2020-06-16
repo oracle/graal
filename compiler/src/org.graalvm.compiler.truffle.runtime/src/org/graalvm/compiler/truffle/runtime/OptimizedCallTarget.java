@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,16 +33,18 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
-import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCallNode;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExceptionAction;
+import org.graalvm.compiler.truffle.runtime.OptimizedOSRLoopNode.OSRRootNode;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -53,10 +55,9 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.impl.Accessor.CallInlined;
-import com.oracle.truffle.api.impl.Accessor.CallProfiled;
 import com.oracle.truffle.api.impl.DefaultCompilerOptions;
 import com.oracle.truffle.api.nodes.ControlFlowException;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
@@ -71,32 +72,154 @@ import jdk.vm.ci.meta.SpeculationLog;
  * this is a Truffle AST that can be optimized via partial evaluation and compiled to machine code.
  *
  * Note: {@code PartialEvaluator} looks up this class and a number of its methods by name.
+ *
+ * The end-goal of executing a {@link OptimizedCallTarget} is executing its root node. The following
+ * call-graph shows all the paths that can be taken from calling a call target (through all the
+ * public <code>call*</code> methods) to the {@linkplain #executeRootNode(VirtualFrame) execution of
+ * the root node} depending on the type of call.
+ *
+ * <pre>
+ *              GraalRuntimeSupport#callProfiled                    GraalRuntimeSupport#callInlined
+ *                                |                                               |
+ *                                |                                               V
+ *  PUBLIC   call -> callIndirect | callOSR   callDirect <================> callInlined
+ *                           |  +-+    |           |             ^                |
+ *                           |  |  +---+           |     substituted by the       |
+ *                           V  V  V               |     compiler if inlined      |
+ *  PROTECTED               doInvoke <-------------+                              |
+ *                             |                                                  |
+ *                             | <= Jump to installed code                        |
+ *                             V                                                  |
+ *  PROTECTED              callBoundary                                           |
+ *                             |                                                  |
+ *                             | <= Tail jump to installed code in Int.           |
+ *                             V                                                  |
+ *  PROTECTED           profiledPERoot                                            |
+ *                             |                                                  |
+ *  PRIVATE                    +----------> executeRootNode <---------------------+
+ *                                                 |
+ *                                                 V
+ *                                         rootNode.execute()
+ * </pre>
  */
-@SuppressWarnings("deprecation")
+@SuppressWarnings({"deprecation", "hiding"})
 public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootCallTarget, ReplaceObserver {
 
     private static final String NODE_REWRITING_ASSUMPTION_NAME = "nodeRewritingAssumption";
-    static final String CALL_BOUNDARY_METHOD_NAME = "callProxy";
+    static final String EXECUTE_ROOT_NODE_METHOD_NAME = "executeRootNode";
+    private static final AtomicReferenceFieldUpdater<OptimizedCallTarget, SpeculationLog> SPECULATION_LOG_UPDATER = AtomicReferenceFieldUpdater.newUpdater(OptimizedCallTarget.class,
+                    SpeculationLog.class, "speculationLog");
+    private static final AtomicReferenceFieldUpdater<OptimizedCallTarget, Assumption> NODE_REWRITING_ASSUMPTION_UPDATER = AtomicReferenceFieldUpdater.newUpdater(OptimizedCallTarget.class,
+                    Assumption.class, "nodeRewritingAssumption");
+    private static final AtomicReferenceFieldUpdater<OptimizedCallTarget, ArgumentsProfile> ARGUMENTS_PROFILE_UPDATER = AtomicReferenceFieldUpdater.newUpdater(
+                    OptimizedCallTarget.class, ArgumentsProfile.class, "argumentsProfile");
+    private static final AtomicReferenceFieldUpdater<OptimizedCallTarget, ReturnProfile> RETURN_PROFILE_UPDATER = AtomicReferenceFieldUpdater.newUpdater(
+                    OptimizedCallTarget.class, ReturnProfile.class, "returnProfile");
+    private static final WeakReference<OptimizedDirectCallNode> NO_CALL = new WeakReference<>(null);
+    private static final WeakReference<OptimizedDirectCallNode> MULTIPLE_CALLS = null;
+    private static final String SPLIT_LOG_FORMAT = "[poly-event] %-70s %s";
+    private static final int MAX_PROFILED_ARGUMENTS = 256;
 
     /** The AST to be executed when this call target is called. */
     private final RootNode rootNode;
-    final EngineData engineData;
 
-    /** Information about when and how the call target should get compiled. */
-    @CompilationFinal protected volatile OptimizedCompilationProfile compilationProfile;
+    /** Whether this call target was cloned, compiled or called. */
+    @CompilationFinal protected volatile boolean initialized;
 
-    /** Source target if this target was duplicated. */
-    private final OptimizedCallTarget sourceCallTarget;
+    /**
+     * The call threshold is counted down for each real call until it reaches zero and triggers a
+     * {@link #compile(boolean) compilation}. It is decremented for each real call to the call
+     * target. Reset by TruffleFeature after boot image generation.
+     */
+    private int callCount;
+    /**
+     * The call and loop threshold is counted down for each real call and reported loop count until
+     * it reaches zero and triggers a {@link #compile(boolean) compilation}. Reset by TruffleFeature
+     * after boot image generation.
+     */
+    private int callAndLoopCount;
 
-    /** Only set for a source CallTarget with a clonable RootNode. */
-    private volatile RootNode uninitializedRootNode;
+    /*
+     * Profiling information (types and Assumption) are kept in 2-final-fields objects to ensure to
+     * always observe consistent types and assumption. This also enables using atomic operations to
+     * update the profiles safely. It is of utmost importance to never use profiled types without
+     * checking the Assumption, as otherwise it could cast objects to a different and incorrect
+     * type, which would crash.
+     *
+     * The profiled types are either an exact Class, or if it does not match then the profile type
+     * goes directly to null which means unprofiled. This is necessary because checking and casting
+     * is done in separate methods (in caller and callee respectively for arguments profiles, and
+     * the reverse for return profile). Therefore, we need two reads from the profile field, which
+     * means we could get a newer ArgumentsProfile, which would be invalid for the value passed in
+     * the CallTarget, except that the newer profile can only be less precise (= more null) and so
+     * will end up not casting at all the argument indices that did not match the profile.
+     *
+     * These fields are reset by TruffleFeature after boot image generation. These fields are
+     * initially null, and once they become non-null they never become null again (except through
+     * the reset of TruffleFeature).
+     */
+    @CompilationFinal private volatile ArgumentsProfile argumentsProfile;
+    @CompilationFinal private volatile ReturnProfile returnProfile;
+    @CompilationFinal private Class<? extends Throwable> profiledExceptionType;
 
-    private volatile int cachedNonTrivialNodeCount = -1;
-    private volatile SpeculationLog speculationLog;
-    private volatile int callSitesKnown;
+    private static final class ArgumentsProfile {
+        private static final String ARGUMENT_TYPES_ASSUMPTION_NAME = "Profiled Argument Types";
+        private static final Class<?>[] EMPTY_ARGUMENT_TYPES = new Class<?>[0];
+        private static final ArgumentsProfile INVALID = new ArgumentsProfile();
 
-    private static final AtomicReferenceFieldUpdater<OptimizedCallTarget, SpeculationLog> SPECULATION_LOG_UPDATER = AtomicReferenceFieldUpdater.newUpdater(OptimizedCallTarget.class,
-                    SpeculationLog.class, "speculationLog");
+        // Invariant to simplify conditions: types is non-null if assumption is valid
+        final OptimizedAssumption assumption;
+        @CompilationFinal(dimensions = 1) final Class<?>[] types;
+
+        private ArgumentsProfile() {
+            this.assumption = createInvalidAssumption(ARGUMENT_TYPES_ASSUMPTION_NAME);
+            this.types = null;
+        }
+
+        private ArgumentsProfile(Class<?>[] types, String assumptionName) {
+            assert types != null;
+            this.assumption = createValidAssumption(assumptionName);
+            this.types = types;
+        }
+    }
+
+    private static final class ReturnProfile {
+        private static final String RETURN_TYPE_ASSUMPTION_NAME = "Profiled Return Type";
+        private static final ReturnProfile INVALID = new ReturnProfile();
+
+        // Invariant to simplify conditions: type is non-null if assumption is valid
+        final OptimizedAssumption assumption;
+        final Class<?> type;
+
+        private ReturnProfile() {
+            this.assumption = createInvalidAssumption(RETURN_TYPE_ASSUMPTION_NAME);
+            this.type = null;
+        }
+
+        private ReturnProfile(Class<?> type) {
+            assert type != null;
+            this.assumption = createValidAssumption(RETURN_TYPE_ASSUMPTION_NAME);
+            this.type = type;
+        }
+    }
+
+    /**
+     * Set if compilation failed or was ignored. Reset by TruffleFeature after boot image
+     * generation.
+     */
+    private volatile boolean compilationFailed;
+    /**
+     * Whether the call profile was preinitialized with a fixed set of type classes. In such a case
+     * the arguments will be cast using unsafe and the arguments array for calls is not checked
+     * against the profile, only asserted.
+     */
+    @CompilationFinal private boolean callProfiled;
+
+    /**
+     * Timestamp when the call target was initialized e.g. used the first time. Reset by
+     * TruffleFeature after boot image generation.
+     */
+    private volatile long initializedTimestamp;
 
     /**
      * When this field is not null, this {@link OptimizedCallTarget} is {@linkplain #isCompiling()
@@ -114,40 +237,72 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      */
     private volatile CancellableCompileTask compilationTask;
 
+    private volatile boolean needsSplit;
+
+    /**
+     * The engine data associated with this call target. Used to cache option lookups and to gather
+     * engine specific statistics.
+     */
+    public final EngineData engine;
+
+    /** Only set for a source CallTarget with a clonable RootNode. */
+    private volatile RootNode uninitializedRootNode;
+
+    /**
+     * The speculation log to keep track of assumptions taken and failed for previous compialtions.
+     */
+    private volatile SpeculationLog speculationLog;
+
+    /** Source target if this target was duplicated. */
+    private final OptimizedCallTarget sourceCallTarget;
+
     /**
      * When this call target is inlined, the inlining {@link InstalledCode} registers this
      * assumption. It gets invalidated when a node rewrite in this call target is performed. This
      * ensures that all compiled methods that inline this call target are properly invalidated.
      */
     private volatile Assumption nodeRewritingAssumption;
-    private static final AtomicReferenceFieldUpdater<OptimizedCallTarget, Assumption> NODE_REWRITING_ASSUMPTION_UPDATER = AtomicReferenceFieldUpdater.newUpdater(OptimizedCallTarget.class,
-                    Assumption.class, "nodeRewritingAssumption");
-    private volatile OptimizedDirectCallNode callSiteForSplit;
-    @CompilationFinal private volatile String nameCache;
+
+    /**
+     * Traversing the AST to cache non trivial nodes is expensive so we don't want to repeat it only
+     * if the AST changes.
+     */
+    private volatile int cachedNonTrivialNodeCount = -1;
+
+    /**
+     * Number of known direct call sites of this call target. Used in splitting and inlinig
+     * heuristics.
+     */
+    private volatile int callSitesKnown;
+
+    private volatile String nameCache;
     private final int uninitializedNodeCount;
 
-    private final List<WeakReference<OptimizedDirectCallNode>> knownCallNodes;
-    private boolean needsSplit;
-    private static final String SPLIT_LOG_FORMAT = "[truffle] [poly-event] %-70s %s";
+    private volatile WeakReference<OptimizedDirectCallNode> singleCallNode = NO_CALL;
 
-    public OptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
+    protected OptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
         assert sourceCallTarget == null || sourceCallTarget.sourceCallTarget == null : "Cannot create a clone of a cloned CallTarget";
         this.sourceCallTarget = sourceCallTarget;
         this.speculationLog = sourceCallTarget != null ? sourceCallTarget.getSpeculationLog() : null;
         this.rootNode = rootNode;
-        final GraalTVMCI tvmci = runtime().getTvmci();
-        engineData = GraalTVMCI.getEngineData(rootNode);
-        uninitializedNodeCount = tvmci.adoptChildrenAndCount(this.rootNode);
-        knownCallNodes = engineData.options.isLegacySplitting() ? null : new ArrayList<>(1);
-        tvmci.setCallTarget(rootNode, this);
+        this.engine = GraalTVMCI.getEngineData(rootNode);
+        this.resetCompilationProfile();
+        // Do not adopt children of OSRRootNodes; we want to preserve the parent of the LoopNode.
+        this.uninitializedNodeCount = !(rootNode instanceof OSRRootNode) ? GraalRuntimeAccessor.NODES.adoptChildrenAndCount(rootNode) : -1;
+        GraalRuntimeAccessor.NODES.setCallTarget(rootNode, this);
     }
 
-    public Assumption getNodeRewritingAssumption() {
+    final Assumption getNodeRewritingAssumption() {
         Assumption assumption = nodeRewritingAssumption;
         if (assumption == null) {
             assumption = initializeNodeRewritingAssumption();
         }
         return assumption;
+    }
+
+    @Override
+    public JavaConstant getNodeRewritingAssumptionConstant() {
+        return runtime().forObject(getNodeRewritingAssumption());
     }
 
     /**
@@ -184,30 +339,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return rootNode;
     }
 
-    public final OptimizedCompilationProfile getCompilationProfile() {
-        OptimizedCompilationProfile profile = compilationProfile;
-        if (profile != null) {
-            return profile;
-        } else {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            return initialize();
-        }
-    }
-
     public final void resetCompilationProfile() {
-        this.compilationProfile = createCompilationProfile();
-    }
-
-    protected List<OptimizedAssumption> getProfiledTypesAssumptions() {
-        return getCompilationProfile().getProfiledTypesAssumptions();
-    }
-
-    protected Class<?>[] getProfiledArgumentTypes() {
-        return getCompilationProfile().getProfiledArgumentTypes();
-    }
-
-    protected Class<?> getProfiledReturnType() {
-        return getCompilationProfile().getProfiledReturnType();
+        this.callCount = 0;
+        this.callAndLoopCount = 0;
     }
 
     @Override
@@ -223,10 +357,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
     public final Object callIndirect(Node location, Object... args) {
         try {
-            OptimizedCompilationProfile profile = compilationProfile;
-            if (profile != null) {
-                profile.profileIndirectCall();
-            }
+            stopProfilingArguments();
             return doInvoke(args);
         } finally {
             // this assertion is needed to keep the values from being cleared as non-live locals
@@ -237,15 +368,16 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
     public final Object callDirect(Node location, Object... args) {
         try {
-            getCompilationProfile().profileDirectCall(args);
             try {
-                Object result = doInvoke(args);
+                Object result;
+                profileArguments(args);
+                result = doInvoke(args);
                 if (CompilerDirectives.inCompiledCode()) {
-                    result = compilationProfile.injectReturnValueProfile(result);
+                    result = injectReturnValueProfile(result);
                 }
                 return result;
             } catch (Throwable t) {
-                throw rethrow(compilationProfile.profileExceptionType(t));
+                throw rethrow(profileExceptionType(t));
             }
         } finally {
             // this assertion is needed to keep the values from being cleared as non-live locals
@@ -264,81 +396,102 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
     public final Object callInlined(Node location, Object... arguments) {
         try {
-            getCompilationProfile().profileInlinedCall();
-            return callProxy(createFrame(getRootNode().getFrameDescriptor(), arguments));
+            ensureInitialized();
+            return executeRootNode(createFrame(getRootNode().getFrameDescriptor(), arguments));
         } finally {
             // this assertion is needed to keep the values from being cleared as non-live locals
             assert keepAlive(location);
         }
     }
 
-    // Note: {@code PartialEvaluator} looks up this method by name and signature.
-    public final Object callInlinedForced(Node location, Object... arguments) {
-        try {
-            getCompilationProfile().profileInlinedCall();
-            return callProxy(createFrame(getRootNode().getFrameDescriptor(), arguments));
-        } finally {
-            // this assertion is needed to keep the values from being cleared as non-live locals
-            assert keepAlive(location);
-        }
-    }
-
+    /**
+     * Overridden by SVM.
+     */
     protected Object doInvoke(Object[] args) {
         return callBoundary(args);
     }
 
     @TruffleCallBoundary
     protected final Object callBoundary(Object[] args) {
-        if (CompilerDirectives.inInterpreter()) {
-            // We are called and we are still in Truffle interpreter mode.
-            if (isValid()) {
-                // Native entry stubs were deoptimized => reinstall.
-                runtime().bypassedInstalledCode();
-            }
-            if (getCompilationProfile().interpreterCall(this)) {
-                // synchronous compile -> call again to take us to the compiled code
-                return doInvoke(args);
-            }
-        } else {
-            // We come here from compiled code
+        /*
+         * Note this method compiles without any inlining or other optimizations. It is therefore
+         * important that this method stays small. It is compiled as a special stub that calls into
+         * the optimized code or if the call target is not yet optimized calls into profiledPERoot
+         * directly. In order to avoid deoptimizations in this method it has optimizations disabled.
+         * Any additional code here will likely have significant impact on the intepreter call
+         * performance.
+         */
+        if (interpreterCall()) {
+            return doInvoke(args);
         }
-        return callRoot(args);
+        return profiledPERoot(args);
+    }
+
+    private boolean interpreterCall() {
+        if (isValid()) {
+            // Native entry stubs were deoptimized => reinstall.
+            runtime().bypassedInstalledCode(this);
+        }
+        ensureInitialized();
+
+        int intCallCount = this.callCount;
+        this.callCount = intCallCount == Integer.MAX_VALUE ? intCallCount : ++intCallCount;
+        int intAndLoopCallCount = callAndLoopCount;
+        this.callAndLoopCount = intAndLoopCallCount == Integer.MAX_VALUE ? intAndLoopCallCount : ++intAndLoopCallCount;
+
+        // Check if call target is hot enough to compile
+        if (intCallCount >= engine.firstTierCallThreshold //
+                        && intAndLoopCallCount >= engine.firstTierCallAndLoopThreshold //
+                        && !compilationFailed //
+                        && !isCompiling()) {
+            return compile(!engine.multiTier);
+        }
+        return false;
     }
 
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
-    protected final Object callRoot(Object[] originalArguments) {
-        if (GraalCompilerDirectives.inFirstTier()) {
-            getCompilationProfile().firstTierCall(this);
-        }
+    protected final Object profiledPERoot(Object[] originalArguments) {
         Object[] args = originalArguments;
-        OptimizedCompilationProfile profile = this.compilationProfile;
-        if (CompilerDirectives.inCompiledCode() && profile != null) {
-            args = profile.injectArgumentProfile(originalArguments);
+        if (GraalCompilerDirectives.inFirstTier()) {
+            firstTierCall();
         }
-        Object result = callProxy(createFrame(getRootNode().getFrameDescriptor(), args));
-        if (profile != null) {
-            profile.profileReturnValue(result);
+        if (CompilerDirectives.inCompiledCode()) {
+            args = injectArgumentsProfile(originalArguments);
         }
+        Object result = executeRootNode(createFrame(getRootNode().getFrameDescriptor(), args));
+        profileReturnValue(result);
         return result;
     }
 
-    protected final Object callProxy(VirtualFrame frame) {
+    // This should be private but can't be. GR-19397
+    public final boolean firstTierCall() {
+        // this is partially evaluated so the second part should fold to a constant.
+        int firstTierCallThreshold = ++callCount;
+        if (firstTierCallThreshold >= engine.lastTierCallThreshold && !isCompiling() && !compilationFailed) {
+            return lastTierCompile(this);
+        }
+        return false;
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private static boolean lastTierCompile(OptimizedCallTarget callTarget) {
+        return callTarget.compile(true);
+    }
+
+    private Object executeRootNode(VirtualFrame frame) {
         final boolean inCompiled = CompilerDirectives.inCompilationRoot();
         try {
-            return getRootNode().execute(frame);
+            return rootNode.execute(frame);
         } catch (ControlFlowException t) {
-            throw rethrow(getCompilationProfile().profileExceptionType(t));
+            throw rethrow(profileExceptionType(t));
         } catch (Throwable t) {
-            Throwable profiledT = getCompilationProfile().profileExceptionType(t);
-            runtime().getTvmci().onThrowable(null, this, profiledT, frame);
+            Throwable profiledT = profileExceptionType(t);
+            GraalRuntimeAccessor.LANGUAGE.onThrowable(null, this, profiledT, frame);
             throw rethrow(profiledT);
         } finally {
             // this assertion is needed to keep the values from being cleared as non-live locals
             assert frame != null && this != null;
             if (CompilerDirectives.inInterpreter() && inCompiled) {
-                if (!isValid()) {
-                    getCompilationProfile().reportInvalidated();
-                }
                 notifyDeoptimized(frame);
             }
         }
@@ -352,38 +505,36 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return (GraalTruffleRuntime) Truffle.getRuntime();
     }
 
-    private synchronized OptimizedCompilationProfile initialize() {
-        OptimizedCompilationProfile profile = this.compilationProfile;
-        if (profile == null) {
-            GraalTVMCI tvmci = runtime().getTvmci();
-            if (sourceCallTarget == null && rootNode.isCloningAllowed() && !tvmci.isCloneUninitializedSupported(rootNode)) {
+    // This should be private but can't be due to SVM bug.
+    public final void ensureInitialized() {
+        if (!initialized) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            initialize();
+        }
+    }
+
+    private synchronized void initialize() {
+        if (!initialized) {
+            if (sourceCallTarget == null && rootNode.isCloningAllowed() && !GraalRuntimeAccessor.NODES.isCloneUninitializedSupported(rootNode)) {
                 // We are the source CallTarget, so make a copy.
                 this.uninitializedRootNode = NodeUtil.cloneNode(rootNode);
             }
-            tvmci.onFirstExecution(this);
-            this.compilationProfile = profile = createCompilationProfile();
+            GraalRuntimeAccessor.INSTRUMENT.onFirstExecution(getRootNode());
+            if (engine.callTargetStatistics) {
+                this.initializedTimestamp = System.nanoTime();
+            } else {
+                this.initializedTimestamp = 0L;
+            }
+            initialized = true;
         }
-        return profile;
     }
 
     public final OptionValues getOptionValues() {
-        return engineData.engineOptions;
+        return engine.engineOptions;
     }
 
-    public <T> T getOptionValue(OptionKey<T> key) {
-        return PolyglotCompilerOptions.getValue(getOptionValues(), key);
-    }
-
-    private OptimizedCompilationProfile createCompilationProfile() {
-        return OptimizedCompilationProfile.create(getOptionValues());
-    }
-
-    /**
-     * @deprecated Please use {@code compile(boolean)} instead.
-     */
-    @Deprecated
-    public final boolean compile() {
-        return compile(true);
+    public final <T> T getOptionValue(OptionKey<T> key) {
+        return TruffleRuntimeOptions.getPolyglotOptionValue(getOptionValues(), key);
     }
 
     /**
@@ -396,8 +547,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             return true;
         }
         if (!isCompiling()) {
-            if (!runtime().acceptForCompilation(getRootNode())) {
-                getCompilationProfile().reportCompilationIgnored();
+            if (!engine.acceptForCompilation(getRootNode())) {
+                // do not try to compile again
+                compilationFailed = true;
                 return false;
             }
 
@@ -408,9 +560,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                 if (!needsCompile(lastTierCompilation)) {
                     return true;
                 }
-                if (this.compilationProfile == null) {
-                    initialize();
-                }
+                ensureInitialized();
                 if (!isCompiling()) {
                     try {
                         this.compilationTask = task = runtime().submitForCompilation(this, lastTierCompilation);
@@ -420,18 +570,22 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                 }
             }
             if (task != null) {
-                boolean allowBackgroundCompilation = !getOptionValue(PolyglotCompilerOptions.PerformanceWarningsAreFatal) &&
-                                !getOptionValue(PolyglotCompilerOptions.CompilationExceptionsAreThrown);
-                boolean mayBeAsynchronous = allowBackgroundCompilation && getOptionValue(PolyglotCompilerOptions.BackgroundCompilation);
-                runtime().finishCompilation(this, task, mayBeAsynchronous);
-                return !mayBeAsynchronous;
+                runtime().getListener().onCompilationQueued(this);
+                return maybeWaitForTask(task);
             }
         }
         return false;
     }
 
+    public final boolean maybeWaitForTask(CancellableCompileTask task) {
+        boolean mayBeAsynchronous = engine.backgroundCompilation;
+        runtime().finishCompilation(this, task, mayBeAsynchronous);
+        // not async compile and compilation successful
+        return !mayBeAsynchronous && isValid();
+    }
+
     private boolean needsCompile(boolean isLastTierCompilation) {
-        return !isValid() || (isLastTierCompilation && !isValidLastTier());
+        return !isValid() || (engine.multiTier && isLastTierCompilation && !isValidLastTier());
     }
 
     public final boolean isCompiling() {
@@ -465,7 +619,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * @param reason a textual description of the reason why the machine code was invalidated. May
      *            be {@code null}.
      */
-    public void invalidate(Object source, CharSequence reason) {
+    public final void invalidate(Object source, CharSequence reason) {
         cachedNonTrivialNodeCount = -1;
         if (isValid()) {
             invalidateCode();
@@ -474,20 +628,17 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         runtime().cancelInstalledTask(this, source, reason);
     }
 
-    OptimizedCallTarget cloneUninitialized() {
+    final OptimizedCallTarget cloneUninitialized() {
         assert sourceCallTarget == null;
-        if (compilationProfile == null) {
-            initialize();
-        }
+        ensureInitialized();
         RootNode clonedRoot;
-        GraalTVMCI tvmci = runtime().getTvmci();
-        if (tvmci.isCloneUninitializedSupported(rootNode)) {
+        if (GraalRuntimeAccessor.NODES.isCloneUninitializedSupported(rootNode)) {
             assert uninitializedRootNode == null;
-            clonedRoot = tvmci.cloneUninitialized(rootNode);
+            clonedRoot = GraalRuntimeAccessor.NODES.cloneUninitialized(rootNode);
         } else {
             clonedRoot = NodeUtil.cloneNode(uninitializedRootNode);
         }
-        return (OptimizedCallTarget) runtime().createClonedCallTarget(this, clonedRoot);
+        return runtime().createClonedCallTarget(clonedRoot, this);
     }
 
     /**
@@ -502,12 +653,12 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return speculationLog;
     }
 
-    void setSpeculationLog(SpeculationLog speculationLog) {
+    final void setSpeculationLog(SpeculationLog speculationLog) {
         this.speculationLog = speculationLog;
     }
 
     @Override
-    public JavaConstant asJavaConstant() {
+    public final JavaConstant asJavaConstant() {
         return GraalTruffleRuntime.getRuntime().forObject(this);
     }
 
@@ -516,12 +667,28 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         throw (E) ex;
     }
 
-    boolean cancelInstalledTask(Node source, CharSequence reason) {
+    @Override
+    public final void cancelInstalledTask() {
+        runtime().cancelInstalledTask(this, null, "Got inlined. Call site count: " + getKnownCallSiteCount());
+    }
+
+    @Override
+    public final boolean isSameOrSplit(CompilableTruffleAST ast) {
+        if (!(ast instanceof OptimizedCallTarget)) {
+            return false;
+        }
+        OptimizedCallTarget other = (OptimizedCallTarget) ast;
+        return this == other || this == other.sourceCallTarget || other == this.sourceCallTarget ||
+                        (this.sourceCallTarget != null && other.sourceCallTarget != null && this.sourceCallTarget == other.sourceCallTarget);
+    }
+
+    final boolean cancelInstalledTask(Node source, CharSequence reason) {
         return runtime().cancelInstalledTask(this, source, reason);
     }
 
     @Override
-    public void onCompilationFailed(Supplier<String> reasonAndStackTrace, boolean bailout, boolean permanentBailout) {
+    public final void onCompilationFailed(Supplier<String> serializedException, boolean bailout, boolean permanentBailout) {
+        ExceptionAction action;
         if (bailout && !permanentBailout) {
             /*
              * Non-permanent bailouts are expected cases. A non-permanent bailout would be for
@@ -529,41 +696,42 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
              * bailouts, non-permanent bailouts will trigger recompilation and are not considered a
              * failure state.
              */
+            action = ExceptionAction.Silent;
         } else {
-            compilationProfile.reportCompilationFailure();
-            if (getOptionValue(PolyglotCompilerOptions.CompilationExceptionsAreThrown)) {
-                final InternalError error = new InternalError(reasonAndStackTrace.get());
-                throw new OptimizationFailedException(error, this);
-            }
-
-            boolean truffleCompilationExceptionsAreFatal = TruffleRuntimeOptions.areTruffleCompilationExceptionsFatal(this);
-            if (getOptionValue(PolyglotCompilerOptions.CompilationExceptionsArePrinted) || truffleCompilationExceptionsAreFatal) {
-                log(reasonAndStackTrace.get());
-                if (truffleCompilationExceptionsAreFatal) {
-                    log("Exiting VM due to " + (getOptionValue(PolyglotCompilerOptions.CompilationExceptionsAreFatal) ? "TruffleCompilationExceptionsAreFatal"
-                                    : "TrufflePerformanceWarningsAreFatal") + "=true");
-                    System.exit(-1);
+            compilationFailed = true;
+            action = engine.compilationFailureAction;
+        }
+        if (action == ExceptionAction.Throw) {
+            final InternalError error = new InternalError(serializedException.get());
+            throw new OptimizationFailedException(error, this);
+        }
+        if (action.ordinal() >= ExceptionAction.Print.ordinal()) {
+            GraalTruffleRuntime rt = runtime();
+            Map<String, Object> properties = new LinkedHashMap<>();
+            properties.put("ASTSize", getNonTrivialNodeCount());
+            rt.logEvent(this, 0, "opt fail", toString(), properties, serializedException.get());
+            if (action == ExceptionAction.ExitVM) {
+                String reason;
+                if (getOptionValue(PolyglotCompilerOptions.CompilationFailureAction) == ExceptionAction.ExitVM) {
+                    reason = "engine.CompilationFailureAction=ExitVM";
+                } else if (getOptionValue(PolyglotCompilerOptions.CompilationExceptionsAreFatal)) {
+                    reason = "engine.CompilationExceptionsAreFatal=true";
+                } else {
+                    reason = "engine.PerformanceWarningsAreFatal=true";
                 }
+                log(String.format("Exiting VM due to %s", reason));
+                System.exit(-1);
             }
         }
     }
 
-    public static final void log(String message) {
-        runtime().log(message);
+    public final void log(String message) {
+        runtime().log(this, message);
     }
 
-    final int getKnownCallSiteCount() {
+    @Override
+    public final int getKnownCallSiteCount() {
         return callSitesKnown;
-    }
-
-    @SuppressFBWarnings(value = "VO_VOLATILE_INCREMENT", justification = "All increments and decrements are synchronized.")
-    final synchronized void incrementKnownCallSites() {
-        callSitesKnown++;
-    }
-
-    @SuppressFBWarnings(value = "VO_VOLATILE_INCREMENT", justification = "All increments and decrements are synchronized.")
-    final synchronized void decrementKnownCallSites() {
-        callSitesKnown--;
     }
 
     public final OptimizedCallTarget getSourceCallTarget() {
@@ -571,10 +739,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     @Override
-    public String getName() {
+    public final String getName() {
+        CompilerAsserts.neverPartOfCompilation();
         String result = nameCache;
         if (result == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
             result = rootNode.toString();
             nameCache = result;
         }
@@ -582,7 +750,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     @Override
-    public String toString() {
+    public final String toString() {
         CompilerAsserts.neverPartOfCompilation();
         String superString = rootNode.toString();
         if (isValid()) {
@@ -599,7 +767,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      *
      * @param length the length of {@code args} that is guaranteed to be final at compile time
      */
-    static Object[] castArrayFixedLength(Object[] args, int length) {
+    static final Object[] castArrayFixedLength(Object[] args, int length) {
         return args;
     }
 
@@ -624,27 +792,21 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     final void onLoopCount(int count) {
-        getCompilationProfile().reportLoopCount(count);
+        callAndLoopCount += count;
     }
 
     @Override
-    public boolean nodeReplaced(Node oldNode, Node newNode, CharSequence reason) {
+    public final boolean nodeReplaced(Node oldNode, Node newNode, CharSequence reason) {
         CompilerAsserts.neverPartOfCompilation();
         invalidate(newNode, reason);
         /* Notify compiled method that have inlined this call target that the tree changed. */
         invalidateNodeRewritingAssumption();
 
-        OptimizedCompilationProfile profile = this.compilationProfile;
-        if (profile != null) {
-            profile.reportNodeReplaced();
-            if (cancelInstalledTask(newNode, reason)) {
-                profile.reportInvalidated();
-            }
-        }
+        cancelInstalledTask(newNode, reason);
         return false;
     }
 
-    public void accept(NodeVisitor visitor, TruffleInlining inlingDecision) {
+    public final void accept(NodeVisitor visitor, TruffleInlining inlingDecision) {
         if (inlingDecision != null) {
             inlingDecision.accept(this, visitor);
         } else {
@@ -652,12 +814,12 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         }
     }
 
-    public Iterable<Node> nodeIterable(TruffleInlining inliningDecision) {
+    public final Iterable<Node> nodeIterable(TruffleInlining inliningDecision) {
         Iterator<Node> iterator = nodeIterator(inliningDecision);
         return () -> iterator;
     }
 
-    public Iterator<Node> nodeIterator(TruffleInlining inliningDecision) {
+    public final Iterator<Node> nodeIterator(TruffleInlining inliningDecision) {
         Iterator<Node> iterator;
         if (inliningDecision != null) {
             iterator = inliningDecision.makeNodeIterator(this);
@@ -667,11 +829,25 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return iterator;
     }
 
+    @Override
     public final int getNonTrivialNodeCount() {
         if (cachedNonTrivialNodeCount == -1) {
             cachedNonTrivialNodeCount = calculateNonTrivialNodes(getRootNode());
         }
         return cachedNonTrivialNodeCount;
+    }
+
+    @Override
+    public final int getCallCount() {
+        return callCount;
+    }
+
+    public final int getCallAndLoopCount() {
+        return callAndLoopCount;
+    }
+
+    public final long getInitializedTimestamp() {
+        return initializedTimestamp;
     }
 
     public static int calculateNonTrivialNodes(Node node) {
@@ -680,14 +856,32 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return visitor.nodeCount;
     }
 
-    public Map<String, Object> getDebugProperties(TruffleInlining inlining) {
+    public final Map<String, Object> getDebugProperties(TruffleInlining inlining) {
         Map<String, Object> properties = new LinkedHashMap<>();
         GraalTruffleRuntimeListener.addASTSizeProperty(this, inlining, properties);
-        properties.putAll(getCompilationProfile().getDebugProperties());
+        String callsThreshold = String.format("%7d/%5d", getCallCount(), engine.firstTierCallThreshold);
+        String loopsThreshold = String.format("%7d/%5d", getCallAndLoopCount(), engine.firstTierCallAndLoopThreshold);
+        properties.put("Calls/Thres", callsThreshold);
+        properties.put("CallsAndLoop/Thres", loopsThreshold);
         return properties;
     }
 
-    public CompilerOptions getCompilerOptions() {
+    @Override
+    public final TruffleCallNode[] getCallNodes() {
+        final List<OptimizedDirectCallNode> callNodes = new ArrayList<>();
+        getRootNode().accept(new NodeVisitor() {
+            @Override
+            public boolean visit(Node node) {
+                if (node instanceof OptimizedDirectCallNode) {
+                    callNodes.add((OptimizedDirectCallNode) node);
+                }
+                return true;
+            }
+        });
+        return callNodes.toArray(new TruffleCallNode[0]);
+    }
+
+    public final CompilerOptions getCompilerOptions() {
         final CompilerOptions options = rootNode.getCompilerOptions();
         if (options != null) {
             return options;
@@ -695,18 +889,325 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return DefaultCompilerOptions.INSTANCE;
     }
 
-    public void setCallSiteForSplit(OptimizedDirectCallNode callSiteForSplit) {
-        if (sourceCallTarget == null) {
-            throw new IllegalStateException("Attempting to set a split call site on a target that is not a split!");
+    /*
+     * Profiling related code.
+     */
+
+    // region Arguments profiling
+
+    // region Manual Arguments profiling
+    final void initializeArgumentTypes(Class<?>[] argumentTypes) {
+        CompilerAsserts.neverPartOfCompilation();
+        ArgumentsProfile newProfile = new ArgumentsProfile(argumentTypes, "Custom profiled argument types");
+        if (ARGUMENTS_PROFILE_UPDATER.compareAndSet(this, null, newProfile)) {
+            this.callProfiled = true;
+        } else {
+            this.argumentsProfile.assumption.invalidate();
+            throw new AssertionError("Argument types already initialized. initializeArgumentTypes() must be called before any profile is initialized.");
         }
-        this.callSiteForSplit = callSiteForSplit;
     }
 
-    public OptimizedDirectCallNode getCallSiteForSplit() {
-        return callSiteForSplit;
+    final boolean isValidArgumentProfile(Object[] args) {
+        assert callProfiled;
+        ArgumentsProfile argumentsProfile = this.argumentsProfile;
+        return argumentsProfile.assumption.isValid() && checkProfiledArgumentTypes(args, argumentsProfile.types);
     }
 
-    int getUninitializedNodeCount() {
+    private static boolean checkProfiledArgumentTypes(Object[] args, Class<?>[] types) {
+        assert types != null;
+        if (args.length != types.length) {
+            throw new ArrayIndexOutOfBoundsException();
+        }
+        // receiver type is always non-null and exact
+        if (types[0] != args[0].getClass()) {
+            throw new ClassCastException();
+        }
+        // other argument types may be inexact
+        for (int j = 1; j < types.length; j++) {
+            if (types[j] == null) {
+                continue;
+            }
+            types[j].cast(args[j]);
+            Objects.requireNonNull(args[j]);
+        }
+        return true;
+    }
+    // endregion
+
+    // This should be private but can't be. GR-19397
+    public final void stopProfilingArguments() {
+        assert !callProfiled;
+
+        ArgumentsProfile argumentsProfile = this.argumentsProfile;
+        if (argumentsProfile != null && argumentsProfile.assumption.isValid()) {
+            // Argument profiling is not possible for targets of indirect calls.
+            // The assumption will invalidate the callee but we shouldn't invalidate the caller.
+            CompilerDirectives.transferToInterpreter();
+            ArgumentsProfile previous = ARGUMENTS_PROFILE_UPDATER.getAndSet(this, ArgumentsProfile.INVALID);
+            previous.assumption.invalidate();
+        }
+    }
+
+    // This should be private but can't be. GR-19397
+    @ExplodeLoop
+    public final void profileArguments(Object[] args) {
+        assert !callProfiled;
+        ArgumentsProfile argumentsProfile = this.argumentsProfile;
+        if (argumentsProfile == null) {
+            if (CompilerDirectives.inInterpreter()) {
+                initializeProfiledArgumentTypes(args);
+            }
+        } else {
+            Class<?>[] types = argumentsProfile.types;
+            if (types != null) {
+                if (types.length != args.length) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    ArgumentsProfile previous = ARGUMENTS_PROFILE_UPDATER.getAndSet(this, ArgumentsProfile.INVALID);
+                    previous.assumption.invalidate();
+                } else if (argumentsProfile.assumption.isValid()) {
+                    for (int i = 0; i < types.length; i++) {
+                        Class<?> type = types[i];
+                        Object value = args[i];
+                        if (type != null && (value == null || value.getClass() != type)) {
+                            CompilerDirectives.transferToInterpreterAndInvalidate();
+                            updateProfiledArgumentTypes(args, argumentsProfile);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private void initializeProfiledArgumentTypes(Object[] args) {
+        CompilerAsserts.neverPartOfCompilation();
+        assert !callProfiled;
+        final ArgumentsProfile newProfile;
+        if (args.length <= MAX_PROFILED_ARGUMENTS && engine.argumentTypeSpeculation) {
+            Class<?>[] types = args.length == 0 ? ArgumentsProfile.EMPTY_ARGUMENT_TYPES : new Class<?>[args.length];
+            for (int i = 0; i < args.length; i++) {
+                types[i] = classOf(args[i]);
+            }
+            newProfile = new ArgumentsProfile(types, ArgumentsProfile.ARGUMENT_TYPES_ASSUMPTION_NAME);
+        } else {
+            newProfile = ArgumentsProfile.INVALID;
+        }
+
+        if (!ARGUMENTS_PROFILE_UPDATER.compareAndSet(this, null, newProfile)) {
+            // Another thread initialized the profile, we need to check it
+            profileArguments(args);
+        }
+    }
+
+    private void updateProfiledArgumentTypes(Object[] args, ArgumentsProfile oldProfile) {
+        CompilerAsserts.neverPartOfCompilation();
+        assert !callProfiled;
+        Class<?>[] oldTypes = oldProfile.types;
+        Class<?>[] newTypes = new Class<?>[oldProfile.types.length];
+        for (int j = 0; j < oldTypes.length; j++) {
+            newTypes[j] = joinTypes(oldTypes[j], classOf(args[j]));
+        }
+
+        ArgumentsProfile newProfile = new ArgumentsProfile(newTypes, ArgumentsProfile.ARGUMENT_TYPES_ASSUMPTION_NAME);
+        if (ARGUMENTS_PROFILE_UPDATER.compareAndSet(this, oldProfile, newProfile)) {
+            oldProfile.assumption.invalidate();
+        } else {
+            // Another thread updated the profile, we need to retry
+            profileArguments(args);
+        }
+    }
+
+    // This should be private but can't be. GR-19397
+    public final Object[] injectArgumentsProfile(Object[] originalArguments) {
+        assert CompilerDirectives.inCompiledCode();
+        ArgumentsProfile argumentsProfile = this.argumentsProfile;
+        Object[] args = originalArguments;
+        if (argumentsProfile != null && argumentsProfile.assumption.isValid()) {
+            Class<?>[] types = argumentsProfile.types;
+            args = unsafeCast(castArrayFixedLength(args, types.length), Object[].class, true, true, true);
+            args = castArgumentsImpl(args, types);
+        }
+        return args;
+    }
+
+    @ExplodeLoop
+    private Object[] castArgumentsImpl(Object[] originalArguments, Class<?>[] types) {
+        Object[] castArguments = new Object[types.length];
+        boolean isCallProfiled = callProfiled;
+        for (int i = 0; i < types.length; i++) {
+            // callProfiled: only the receiver type is exact.
+            Class<?> targetType = types[i];
+            boolean exact = !isCallProfiled || i == 0;
+            castArguments[i] = targetType != null ? unsafeCast(originalArguments[i], targetType, true, true, exact) : originalArguments[i];
+        }
+        return castArguments;
+    }
+
+    private ArgumentsProfile getInitializedArgumentsProfile() {
+        if (argumentsProfile == null) {
+            /*
+             * We always need an assumption. If this method is called before the profile was
+             * initialized, we have to be conservative and disable profiling.
+             */
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            ARGUMENTS_PROFILE_UPDATER.compareAndSet(this, null, ArgumentsProfile.INVALID);
+            assert argumentsProfile != null;
+        }
+
+        return argumentsProfile;
+    }
+
+    protected final Class<?>[] getProfiledArgumentTypes() {
+        ArgumentsProfile argumentsProfile = getInitializedArgumentsProfile();
+        if (argumentsProfile.assumption.isValid()) {
+            return argumentsProfile.types;
+        } else {
+            return null;
+        }
+    }
+
+    // endregion
+    // region Return value profiling
+
+    private void profileReturnValue(Object result) {
+        ReturnProfile returnProfile = this.returnProfile;
+        if (returnProfile == null) {
+            // we only profile return values in the interpreter as we don't want to deoptimize for
+            // immediate compiles.
+            if (CompilerDirectives.inInterpreter() && engine.returnTypeSpeculation) {
+                final Class<?> type = classOf(result);
+                ReturnProfile newProfile = type == null ? ReturnProfile.INVALID : new ReturnProfile(type);
+                if (!RETURN_PROFILE_UPDATER.compareAndSet(this, null, newProfile)) {
+                    // Another thread initialized the profile, we need to check it
+                    profileReturnValue(result);
+                }
+            }
+        } else {
+            if (returnProfile.assumption.isValid() && (result == null || returnProfile.type != result.getClass())) {
+                // Immediately go to invalid, do not try to widen the type.
+                // See the comment above the returnProfile field.
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                ReturnProfile previous = RETURN_PROFILE_UPDATER.getAndSet(this, ReturnProfile.INVALID);
+                previous.assumption.invalidate();
+            }
+        }
+    }
+
+    private Object injectReturnValueProfile(Object result) {
+        ReturnProfile returnProfile = this.returnProfile;
+        if (CompilerDirectives.inCompiledCode() && returnProfile != null && returnProfile.assumption.isValid()) {
+            return OptimizedCallTarget.unsafeCast(result, returnProfile.type, true, true, true);
+        }
+        return result;
+    }
+
+    private ReturnProfile getInitializedReturnProfile() {
+        if (returnProfile == null) {
+            /*
+             * We always need an assumption. If this method is called before the profile was
+             * initialized, we have to be conservative and disable profiling.
+             */
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            RETURN_PROFILE_UPDATER.compareAndSet(this, null, ReturnProfile.INVALID);
+            assert returnProfile != null;
+        }
+
+        return returnProfile;
+    }
+
+    protected final Class<?> getProfiledReturnType() {
+        ReturnProfile returnProfile = getInitializedReturnProfile();
+        if (returnProfile.assumption.isValid()) {
+            return returnProfile.type;
+        } else {
+            return null;
+        }
+    }
+
+    // endregion
+    // region Exception profiling
+
+    @SuppressWarnings("unchecked")
+    private <T extends Throwable> T profileExceptionType(T value) {
+        Class<? extends Throwable> clazz = profiledExceptionType;
+        if (clazz != Throwable.class) {
+            if (clazz != null && value.getClass() == clazz) {
+                if (CompilerDirectives.inInterpreter()) {
+                    return value;
+                } else {
+                    return (T) CompilerDirectives.castExact(value, clazz);
+                }
+            } else {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                if (clazz == null) {
+                    profiledExceptionType = value.getClass();
+                } else {
+                    profiledExceptionType = Throwable.class;
+                }
+            }
+        }
+        return value;
+    }
+
+    // endregion
+
+    protected List<OptimizedAssumption> getProfiledTypesAssumptions() {
+        List<OptimizedAssumption> result = new ArrayList<>();
+        ArgumentsProfile argumentsProfile = getInitializedArgumentsProfile();
+        if (argumentsProfile.assumption.isValid()) {
+            result.add(argumentsProfile.assumption);
+        }
+        ReturnProfile returnProfile = getInitializedReturnProfile();
+        if (returnProfile.assumption.isValid()) {
+            result.add(returnProfile.assumption);
+        }
+        return result;
+    }
+
+    private static Class<?> classOf(Object arg) {
+        return arg != null ? arg.getClass() : null;
+    }
+
+    private static Class<?> joinTypes(Class<?> class1, Class<?> class2) {
+        // Immediately give up for that argument, do not try to widen the type.
+        // See the comment above the argumentsProfile field.
+        if (class1 == class2) {
+            return class1;
+        } else {
+            return null;
+        }
+    }
+
+    private static OptimizedAssumption createInvalidAssumption(String name) {
+        OptimizedAssumption result = createValidAssumption(name);
+        result.invalidate();
+        return result;
+    }
+
+    private static OptimizedAssumption createValidAssumption(String name) {
+        return (OptimizedAssumption) Truffle.getRuntime().createAssumption(name);
+    }
+
+    /*
+     * Splitting related code.
+     */
+
+    public final boolean isSplit() {
+        return sourceCallTarget != null;
+    }
+
+    public final OptimizedDirectCallNode getCallSiteForSplit() {
+        if (isSplit()) {
+            OptimizedDirectCallNode callNode = getSingleCallNode();
+            assert callNode != null;
+            return callNode;
+        } else {
+            return null;
+        }
+    }
+
+    final int getUninitializedNodeCount() {
+        assert uninitializedNodeCount >= 0;
         return uninitializedNodeCount;
     }
 
@@ -732,7 +1233,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return System.identityHashCode(this);
     }
 
-    CancellableCompileTask getCompilationTask() {
+    final CancellableCompileTask getCompilationTask() {
         return compilationTask;
     }
 
@@ -742,7 +1243,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
      * It may only ever be called by the thread that performed the compilation, and after the
      * compilation is completely done (either successfully or not successfully).
      */
-    public void resetCompilationTask() {
+    public final void resetCompilationTask() {
         /*
          * We synchronize because this is called from the compilation threads so we want to make
          * sure we have finished setting the compilationTask in #compile. Otherwise
@@ -755,32 +1256,66 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         }
     }
 
-    synchronized void addKnownCallNode(OptimizedDirectCallNode directCallNode) {
-        // Keeping all the known call sites can be too much to handle in some cases
-        // so we are limiting to a 100 call sites for now
-        if (knownCallNodes.size() < 100) {
-            knownCallNodes.add(new WeakReference<>(directCallNode));
-        }
-    }
-
-    // Also removes references to reclaimed objects
-    synchronized void removeKnownCallSite(OptimizedDirectCallNode callNodeToRemove) {
-        knownCallNodes.removeIf(new Predicate<WeakReference<OptimizedDirectCallNode>>() {
-            @Override
-            public boolean test(WeakReference<OptimizedDirectCallNode> nodeWeakReference) {
-                return nodeWeakReference.get() == callNodeToRemove || nodeWeakReference.get() == null;
+    @SuppressFBWarnings(value = "VO_VOLATILE_INCREMENT", justification = "All increments and decrements are synchronized.")
+    final synchronized void addDirectCallNode(OptimizedDirectCallNode directCallNode) {
+        Objects.requireNonNull(directCallNode);
+        WeakReference<OptimizedDirectCallNode> nodeRef = singleCallNode;
+        if (nodeRef != MULTIPLE_CALLS) {
+            // we only remember at most one call site
+            if (nodeRef == NO_CALL) {
+                singleCallNode = new WeakReference<>(directCallNode);
+            } else if (nodeRef.get() == directCallNode) {
+                // nothing to do same call site
+                return;
+            } else {
+                singleCallNode = MULTIPLE_CALLS;
             }
-        });
+        }
+        callSitesKnown++;
     }
 
-    boolean isNeedsSplit() {
+    @SuppressFBWarnings(value = "VO_VOLATILE_INCREMENT", justification = "All increments and decrements are synchronized.")
+    final synchronized void removeDirectCallNode(OptimizedDirectCallNode directCallNode) {
+        Objects.requireNonNull(directCallNode);
+        WeakReference<OptimizedDirectCallNode> nodeRef = singleCallNode;
+        if (nodeRef != MULTIPLE_CALLS) {
+            // we only remember at most one call site
+            if (nodeRef == NO_CALL) {
+                // nothing to do
+                return;
+            } else if (nodeRef.get() == directCallNode) {
+                // reset if its the only call site
+                singleCallNode = NO_CALL;
+            } else {
+                singleCallNode = MULTIPLE_CALLS;
+            }
+        }
+        callSitesKnown--;
+    }
+
+    public final boolean isSingleCaller() {
+        WeakReference<OptimizedDirectCallNode> nodeRef = singleCallNode;
+        if (nodeRef != null) {
+            return nodeRef.get() != null;
+        }
+        return false;
+    }
+
+    public final OptimizedDirectCallNode getSingleCallNode() {
+        WeakReference<OptimizedDirectCallNode> nodeRef = singleCallNode;
+        if (nodeRef != null) {
+            return nodeRef.get();
+        }
+        return null;
+    }
+
+    final boolean isNeedsSplit() {
         return needsSplit;
     }
 
-    void polymorphicSpecialize(Node source) {
-        assert !engineData.options.isLegacySplitting();
+    final void polymorphicSpecialize(Node source) {
         List<Node> toDump = null;
-        if (engineData.options.isSplittingDumpDecisions()) {
+        if (engine.splittingDumpDecisions) {
             toDump = new ArrayList<>();
             pullOutParentChain(source, toDump);
         }
@@ -789,29 +1324,22 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     private boolean maybeSetNeedsSplit(int depth, List<Node> toDump) {
-        final int numberOfKnownCallNodes;
-        final OptimizedDirectCallNode onlyCaller;
-        synchronized (this) {
-            numberOfKnownCallNodes = knownCallNodes.size();
-            onlyCaller = numberOfKnownCallNodes == 1 ? knownCallNodes.get(0).get() : null;
-        }
-        if (depth > engineData.options.getSplittingMaxPropagationDepth() || needsSplit || numberOfKnownCallNodes == 0 || (compilationProfile != null && compilationProfile.getCallCount() == 1)) {
-            logEarlyReturn(depth, numberOfKnownCallNodes);
+        final OptimizedDirectCallNode onlyCaller = getSingleCallNode();
+        if (depth > engine.splittingMaxPropagationDepth || needsSplit || callSitesKnown == 0 || getCallCount() == 1) {
+            logEarlyReturn(depth, callSitesKnown);
             return needsSplit;
         }
-        if (numberOfKnownCallNodes == 1) {
-            if (onlyCaller != null) {
-                final RootNode callerRootNode = onlyCaller.getRootNode();
-                if (callerRootNode != null && callerRootNode.getCallTarget() != null) {
-                    final OptimizedCallTarget callerTarget = (OptimizedCallTarget) callerRootNode.getCallTarget();
-                    if (engineData.options.isSplittingDumpDecisions()) {
-                        pullOutParentChain(onlyCaller, toDump);
-                    }
-                    logPolymorphicEvent(depth, "One caller! Analysing parent.");
-                    if (callerTarget.maybeSetNeedsSplit(depth + 1, toDump)) {
-                        logPolymorphicEvent(depth, "Set needs split to true via parent");
-                        needsSplit = true;
-                    }
+        if (onlyCaller != null) {
+            final RootNode callerRootNode = onlyCaller.getRootNode();
+            if (callerRootNode != null && callerRootNode.getCallTarget() != null) {
+                final OptimizedCallTarget callerTarget = (OptimizedCallTarget) callerRootNode.getCallTarget();
+                if (engine.splittingDumpDecisions) {
+                    pullOutParentChain(onlyCaller, toDump);
+                }
+                logPolymorphicEvent(depth, "One caller! Analysing parent.");
+                if (callerTarget.maybeSetNeedsSplit(depth + 1, toDump)) {
+                    logPolymorphicEvent(depth, "Set needs split to true via parent");
+                    needsSplit = true;
                 }
             }
         } else {
@@ -819,13 +1347,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             needsSplit = true;
             maybeDump(toDump);
         }
+
         logPolymorphicEvent(depth, "Return:", needsSplit);
         return needsSplit;
     }
 
     private void logEarlyReturn(int depth, int numberOfKnownCallNodes) {
-        if (engineData.options.isSplittingTraceEvents()) {
-            logPolymorphicEvent(depth, "Early return: " + needsSplit + " callCount: " + compilationProfile.getCallCount() + ", numberOfKnownCallNodes: " + numberOfKnownCallNodes);
+        if (engine.splittingTraceEvents) {
+            logPolymorphicEvent(depth, "Early return: " + needsSplit + " callCount: " + getCallCount() + ", numberOfKnownCallNodes: " + numberOfKnownCallNodes);
         }
     }
 
@@ -834,7 +1363,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     private void logPolymorphicEvent(int depth, String message, Object arg) {
-        if (engineData.options.isSplittingTraceEvents()) {
+        if (engine.splittingTraceEvents) {
             final String indent = new String(new char[depth]).replace("\0", "  ");
             final String argString = (arg == null) ? "" : " " + arg;
             log(String.format(SPLIT_LOG_FORMAT, indent + message + argString, this.toString()));
@@ -842,16 +1371,13 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     private void maybeDump(List<Node> toDump) {
-        if (engineData.options.isSplittingDumpDecisions()) {
+        if (engine.splittingDumpDecisions) {
             final List<OptimizedDirectCallNode> callers = new ArrayList<>();
-            synchronized (this) {
-                for (WeakReference<OptimizedDirectCallNode> nodeRef : knownCallNodes) {
-                    if (nodeRef.get() != null) {
-                        callers.add(nodeRef.get());
-                    }
-                }
+            OptimizedDirectCallNode callNode = getSingleCallNode();
+            if (callNode != null) {
+                callers.add(callNode);
             }
-            PolymorphicSpecializeDump.dumpPolymorphicSpecialize(toDump, callers);
+            PolymorphicSpecializeDump.dumpPolymorphicSpecialize(this, toDump);
         }
     }
 
@@ -864,30 +1390,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         toDump.add(rootNode);
     }
 
-    /**
-     * Call without verifying the argument profile. Needs to be initialized by
-     * {@link GraalTVMCI#initializeProfile(CallTarget, Class[])}. Potentially crashes the VM if the
-     * argument profile is incompatible with the actual arguments. Use with caution.
-     */
-    static class OptimizedCallProfiled extends CallProfiled {
-        @Override
-        public Object call(CallTarget target, Object... args) {
-            OptimizedCallTarget castTarget = (OptimizedCallTarget) target;
-            assert castTarget.compilationProfile != null &&
-                            castTarget.compilationProfile.isValidArgumentProfile(args) : "Invalid argument profile. UnsafeCalls need to explicity initialize the profile.";
-            return castTarget.doInvoke(args);
-        }
-    }
-
-    static class OptimizedCallInlined extends CallInlined {
-        @Override
-        public Object call(Node callNode, CallTarget target, Object... arguments) {
-            try {
-                return ((OptimizedCallTarget) target).callInlinedForced(callNode, arguments);
-            } catch (Throwable t) {
-                OptimizedCallTarget.runtime().getTvmci().onThrowable(callNode, ((OptimizedCallTarget) target), t, null);
-                throw OptimizedCallTarget.rethrow(t);
-            }
-        }
+    final void setNonTrivialNodeCount(int nonTrivialNodeCount) {
+        this.cachedNonTrivialNodeCount = nonTrivialNodeCount;
     }
 }

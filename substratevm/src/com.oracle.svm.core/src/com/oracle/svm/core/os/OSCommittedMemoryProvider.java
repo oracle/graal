@@ -28,9 +28,9 @@ import static org.graalvm.word.WordFactory.nullPointer;
 import static org.graalvm.word.WordFactory.zero;
 
 import org.graalvm.nativeimage.CurrentIsolate;
-import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.WordPointer;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
@@ -38,28 +38,28 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointSetup;
-import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
 import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
 
-@AutomaticFeature
-class OSCommittedMemoryProviderFeature implements Feature {
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (!ImageSingletons.contains(CommittedMemoryProvider.class)) {
-            ImageSingletons.add(CommittedMemoryProvider.class, new OSCommittedMemoryProvider());
-        }
+public class OSCommittedMemoryProvider extends AbstractCommittedMemoryProvider {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public OSCommittedMemoryProvider() {
     }
-}
 
-public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
+    /**
+     * Returns the default alignment used by committed memory management, which is usually the same
+     * as that used by {@linkplain VirtualMemoryProvider#getAlignment virtual memory management}.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    protected static UnsignedWord defaultAlignment() {
+        return VirtualMemoryProvider.get().getAlignment();
+    }
+
     @Override
     @Uninterruptible(reason = "Still being initialized.")
     public int initialize(WordPointer isolatePointer, CEntryPointCreateIsolateParameters parameters) {
@@ -67,12 +67,8 @@ public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
             isolatePointer.write(CEntryPointSetup.SINGLE_ISOLATE_SENTINEL);
             return CEntryPointErrors.NO_ERROR;
         }
-        return ImageHeapProvider.get().initialize(nullPointer(), zero(), isolatePointer, nullPointer());
-    }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected static void tearDownVirtualMemoryConsumers() {
-        Heap.getHeap().tearDown();
+        return ImageHeapProvider.get().initialize(nullPointer(), zero(), isolatePointer, nullPointer());
     }
 
     @Override
@@ -82,11 +78,8 @@ public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
             return CEntryPointErrors.NO_ERROR;
         }
 
-        CommittedMemoryProvider.tearDownUnmanagedMemoryConsumers();
-        tearDownVirtualMemoryConsumers();
-
         PointerBase heapBase = Isolates.getHeapBase(CurrentIsolate.getIsolate());
-        return ImageHeapProvider.get().tearDown(heapBase);
+        return ImageHeapProvider.get().freeImageHeap(heapBase);
     }
 
     /**
@@ -96,14 +89,8 @@ public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
      */
     @Override
     public Pointer allocate(UnsignedWord size, UnsignedWord alignment, boolean executable) {
-        final int access = Access.READ | Access.WRITE | (executable ? Access.EXECUTE : 0);
-
         if (alignment.equal(UNALIGNED)) {
-            Pointer start = VirtualMemoryProvider.get().commit(nullPointer(), size, access);
-            if (start.isNonNull()) {
-                trackVirtualMemory(size);
-            }
-            return start;
+            return allocate(size, executable);
         }
 
         // This happens in stages:
@@ -118,7 +105,7 @@ public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
         // - This will be too big, but I'll give back the extra later.
         final UnsignedWord containerSize = alignment.add(size);
         final UnsignedWord pagedContainerSize = UnsignedUtils.roundUp(containerSize, pageSize);
-        final Pointer containerStart = VirtualMemoryProvider.get().commit(nullPointer(), pagedContainerSize, access);
+        final Pointer containerStart = VirtualMemoryProvider.get().commit(nullPointer(), pagedContainerSize, defaultProtection(executable));
         if (containerStart.isNull()) {
             // No exception is needed: this is just a failure to reserve the virtual address space.
             return nullPointer();
@@ -166,6 +153,23 @@ public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
         return start;
     }
 
+    /** Allocate the requested amount of virtual memory at the default alignment. */
+    protected final Pointer allocate(UnsignedWord size, boolean executable) {
+        Pointer start = VirtualMemoryProvider.get().commit(nullPointer(), size, defaultProtection(executable));
+        if (start.isNonNull()) {
+            trackVirtualMemory(size);
+        }
+        return start;
+    }
+
+    protected static int defaultProtection(boolean executable) {
+        int access = VirtualMemoryProvider.Access.READ | VirtualMemoryProvider.Access.WRITE;
+        if (executable) {
+            access |= VirtualMemoryProvider.Access.EXECUTE;
+        }
+        return access;
+    }
+
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean free(PointerBase start, UnsignedWord nbytes, UnsignedWord alignment, boolean executable) {
@@ -180,8 +184,8 @@ public class OSCommittedMemoryProvider implements CommittedMemoryProvider {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private boolean free(Pointer start, UnsignedWord size) {
-        boolean success = (VirtualMemoryProvider.get().free(start, size) == 0);
+    protected final boolean free(PointerBase start, UnsignedWord size) {
+        boolean success = VirtualMemoryProvider.get().free(start, size) == 0;
         if (success) {
             untrackVirtualMemory(size);
         }

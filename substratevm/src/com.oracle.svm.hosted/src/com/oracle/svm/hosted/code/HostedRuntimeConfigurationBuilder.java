@@ -29,8 +29,9 @@ import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
-import org.graalvm.compiler.nodes.spi.GCProvider;
+import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
+import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.options.OptionValues;
@@ -49,6 +50,7 @@ import com.oracle.svm.hosted.meta.HostedSnippetReflectionProvider;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 
 import jdk.vm.ci.code.CodeCacheProvider;
+import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 
 public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfigurationBuilder {
@@ -65,9 +67,10 @@ public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfiguratio
 
     @Override
     protected Providers createProviders(CodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider, ForeignCallsProvider foreignCalls,
-                    LoweringProvider lowerer, Replacements replacements, StampProvider stampProvider, SnippetReflectionProvider snippetReflection, GCProvider gc) {
+                    LoweringProvider lowerer, Replacements replacements, StampProvider stampProvider, SnippetReflectionProvider snippetReflection,
+                    PlatformConfigurationProvider platformConfigurationProvider, MetaAccessExtensionProvider metaAccessExtensionProvider) {
         return new HostedProviders(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, stampProvider, snippetReflection,
-                        wordTypes, gc);
+                        wordTypes, platformConfigurationProvider, metaAccessExtensionProvider);
     }
 
     @Override
@@ -83,7 +86,12 @@ public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfiguratio
     @Override
     protected Replacements createReplacements(Providers p, SnippetReflectionProvider reflectionProvider) {
         BytecodeProvider bytecodeProvider = new ResolvedJavaMethodBytecodeProvider();
-        return new HostedReplacements(universe, p, reflectionProvider, ConfigurationValues.getTarget(), analysisProviders, bytecodeProvider);
+        return new HostedReplacements(universe, p, reflectionProvider, ConfigurationValues.getTarget(), analysisProviders, bytecodeProvider, getWordTypes());
+    }
+
+    @Override
+    protected CodeCacheProvider createCodeCacheProvider(RegisterConfig registerConfig) {
+        return new HostedCodeCacheProvider(ConfigurationValues.getTarget(), registerConfig);
     }
 
     @Override

@@ -243,6 +243,11 @@ public class TestBase implements Feedback {
     }
 
     @Override
+    public boolean verbatimPart(String msg, boolean error, boolean beVerbose) {
+        return verbatimPart(msg, beVerbose);
+    }
+
+    @Override
     public boolean verbatimPart(String msg, boolean beVerbose) {
         if (feedbackDelegate instanceof FeedbackAdapter) {
             ((FeedbackAdapter) feedbackDelegate).setBundle(NO_BUNDLE);
@@ -272,7 +277,7 @@ public class TestBase implements Feedback {
     }
 
     public void verboseOutput(ResourceBundle bundle, String bundleKey, Object... params) {
-        if (bundle != null) {
+        if (bundle != null && bundleKey != null) {
             MessageFormat.format(bundle.getString(bundleKey), params);
         }
         if (feedbackDelegate instanceof FeedbackAdapter) {
@@ -469,6 +474,11 @@ public class TestBase implements Feedback {
         }
 
         @Override
+        public boolean verbatimPart(String msg, boolean error, boolean beVerbose) {
+            return TestBase.this.verbatimPart(msg, error, beVerbose);
+        }
+
+        @Override
         public boolean verbatimPart(String msg, boolean beVerbose) {
             return TestBase.this.verbatimPart(msg, beVerbose);
         }
@@ -546,6 +556,11 @@ public class TestBase implements Feedback {
 
         @Override
         public void outputPart(String bundleKey, Object... params) {
+        }
+
+        @Override
+        public boolean verbatimPart(String msg, boolean error, boolean beVerbose) {
+            return verbose;
         }
 
         @Override

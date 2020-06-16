@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,13 +38,14 @@ import org.graalvm.compiler.graph.spi.Canonicalizable;
 import org.graalvm.compiler.graph.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.Verbosity;
+import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.memory.AbstractMemoryCheckpoint;
-import org.graalvm.compiler.nodes.memory.MemoryCheckpoint;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.word.LocationIdentity;
 
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
@@ -56,7 +57,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
           cyclesRationale = "Node will be lowered to a foreign call.",
           size = SIZE_8)
 // @formatter:on
-public final class BytecodeExceptionNode extends AbstractMemoryCheckpoint implements Lowerable, MemoryCheckpoint.Single, Canonicalizable {
+public final class BytecodeExceptionNode extends AbstractMemoryCheckpoint implements Lowerable, SingleMemoryKill, Canonicalizable {
 
     public enum BytecodeExceptionKind {
         NULL_POINTER(0, NullPointerException.class),
@@ -100,24 +101,30 @@ public final class BytecodeExceptionNode extends AbstractMemoryCheckpoint implem
     }
 
     @Override
-    public LocationIdentity getLocationIdentity() {
+    public LocationIdentity getKilledLocationIdentity() {
         return LocationIdentity.any();
     }
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (tool.allUsagesAvailable() && getUsageCount() == 0) {
+        if (tool.allUsagesAvailable() && (hasNoUsages() || (hasExactlyOneUsage() && usages().first() == stateAfter))) {
             return null;
         }
         return this;
     }
 
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
-    }
-
     public NodeInputList<ValueNode> getArguments() {
         return arguments;
     }
+
+    /**
+     * Create a new stateDuring for use by a foreign call.
+     */
+    public FrameState createStateDuring() {
+        boolean rethrowException = false;
+        boolean duringCall = true;
+        return stateAfter.duplicateModified(graph(), stateAfter.bci, rethrowException, duringCall,
+                        JavaKind.Object, null, null);
+    }
+
 }

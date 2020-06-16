@@ -1,0 +1,10 @@
+doublesum
+fact-global
+fact-rec
+sum
+issue-18450-full
+fib
+
+# disabled tests
+# sum-table
+# superperfect

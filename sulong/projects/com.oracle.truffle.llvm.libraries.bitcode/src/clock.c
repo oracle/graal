@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,15 +29,15 @@
  */
 #include <time.h>
 #include <stdint.h>
-#include <errno.h>
-#include "syscall.h"
+#include <unistd.h>
+#include <sys/syscall.h>
 
 #ifdef __linux__
 int __clock_gettime(clockid_t clk_id, struct timespec *tp) {
-  __SYSCALL_2P(SYS_clock_gettime, clk_id, tp);
+    return syscall(SYS_clock_gettime, clk_id, tp);
 }
 
 int clock_gettime(clockid_t clk_id, struct timespec *tp) {
-  return __clock_gettime(clk_id, tp);
+    return __clock_gettime(clk_id, tp);
 }
 #endif

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,13 +27,16 @@ package org.graalvm.compiler.nodes.spi;
 import org.graalvm.compiler.api.replacements.SnippetTemplateCache;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.Cancellable;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
 import org.graalvm.compiler.options.OptionValues;
 
@@ -55,6 +58,16 @@ public class DelegatingReplacements implements Replacements {
     }
 
     @Override
+    public <T> T getInjectedArgument(Class<T> type) {
+        return delegate.getInjectedArgument(type);
+    }
+
+    @Override
+    public Stamp getInjectedStamp(Class<?> type, boolean nonNull) {
+        return delegate.getInjectedStamp(type, nonNull);
+    }
+
+    @Override
     public GraphBuilderConfiguration.Plugins getGraphBuilderPlugins() {
         return delegate.getGraphBuilderPlugins();
     }
@@ -71,29 +84,45 @@ public class DelegatingReplacements implements Replacements {
     }
 
     @Override
+    public SnippetParameterInfo getSnippetParameterInfo(ResolvedJavaMethod method) {
+        return delegate.getSnippetParameterInfo(method);
+    }
+
+    @Override
+    public boolean isSnippet(ResolvedJavaMethod method) {
+        return delegate.isSnippet(method);
+    }
+
+    @Override
     public void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition, OptionValues options) {
         delegate.registerSnippet(method, original, receiver, trackNodeSourcePosition, options);
     }
 
     @Override
     public StructuredGraph getMethodSubstitution(MethodSubstitutionPlugin plugin, ResolvedJavaMethod original, IntrinsicContext.CompilationContext context,
-                    StructuredGraph.AllowAssumptions allowAssumptions, Cancellable cancellable, OptionValues options) {
+                    AllowAssumptions allowAssumptions, Cancellable cancellable, OptionValues options) {
         return delegate.getMethodSubstitution(plugin, original, context, allowAssumptions, cancellable, options);
     }
 
     @Override
-    public void registerMethodSubstitution(MethodSubstitutionPlugin plugin, ResolvedJavaMethod original, IntrinsicContext.CompilationContext context, OptionValues options) {
-        delegate.registerMethodSubstitution(plugin, original, context, options);
+    public void registerMethodSubstitution(MethodSubstitutionPlugin plugin) {
+        delegate.registerMethodSubstitution(plugin);
     }
 
     @Override
-    public StructuredGraph getSubstitution(ResolvedJavaMethod method, int invokeBci, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition, OptionValues options) {
-        return delegate.getSubstitution(method, invokeBci, trackNodeSourcePosition, replaceePosition, options);
+    public void registerConditionalPlugin(InvocationPlugin plugin) {
+        delegate.registerConditionalPlugin(plugin);
     }
 
     @Override
-    public StructuredGraph getIntrinsicGraph(ResolvedJavaMethod method, CompilationIdentifier compilationId, DebugContext debug, Cancellable cancellable) {
-        return delegate.getIntrinsicGraph(method, compilationId, debug, cancellable);
+    public StructuredGraph getSubstitution(ResolvedJavaMethod method, int invokeBci, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition, AllowAssumptions allowAssumptions,
+                    OptionValues options) {
+        return delegate.getSubstitution(method, invokeBci, trackNodeSourcePosition, replaceePosition, allowAssumptions, options);
+    }
+
+    @Override
+    public StructuredGraph getIntrinsicGraph(ResolvedJavaMethod method, CompilationIdentifier compilationId, DebugContext debug, AllowAssumptions allowAssumptions, Cancellable cancellable) {
+        return delegate.getIntrinsicGraph(method, compilationId, debug, allowAssumptions, cancellable);
     }
 
     @Override

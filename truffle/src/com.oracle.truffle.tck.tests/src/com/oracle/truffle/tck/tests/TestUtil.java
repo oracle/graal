@@ -45,11 +45,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -109,7 +109,7 @@ final class TestUtil {
                     final Set<? extends String> requiredValueLanguages,
                     final Function<String, ? extends Collection<? extends Snippet>> snippetsProvider,
                     final Function<String, ? extends Collection<? extends Snippet>> valuesProvider) {
-        final Collection<TestRun> testRuns = new LinkedHashSet<>();
+        final Collection<TestRun> testRuns = new TreeSet<>((a, b) -> a.toString().compareTo(b.toString()));
         for (String opLanguage : requiredLanguages) {
             for (Snippet operator : snippetsProvider.apply(opLanguage)) {
                 for (String parLanguage : requiredValueLanguages) {
@@ -137,23 +137,35 @@ final class TestUtil {
     static void validateResult(
                     final TestRun testRun,
                     final Value result,
-                    final PolyglotException exception) {
+                    final PolyglotException exception,
+                    boolean fastAssertions) {
         ResultVerifier verifier = testRun.getSnippet().getResultVerifier();
-        validateResult(verifier, testRun, result, exception);
+        validateResult(verifier, testRun, result, exception, fastAssertions);
     }
 
     static void validateResult(
                     final ResultVerifier verifier,
                     final TestRun testRun,
                     final Value result,
-                    final PolyglotException exception) {
+                    final PolyglotException exception,
+                    boolean fastAssertions) {
         if (exception == null) {
             verifier.accept(ResultVerifier.SnippetRun.create(testRun.getSnippet(), testRun.getActualParameters(), result));
-            verifyToString(testRun, result);
-            verifyMetaObject(testRun, result, 10);
-            verifyInterop(result);
+            assertValue(result, fastAssertions);
         } else {
             verifier.accept(ResultVerifier.SnippetRun.create(testRun.getSnippet(), testRun.getActualParameters(), exception));
+            Value exceptionObject = exception.getGuestObject();
+            if (exceptionObject != null) {
+                assertValue(exceptionObject, fastAssertions);
+            }
+        }
+    }
+
+    private static void assertValue(final Value result, boolean fastAssertions) {
+        if (fastAssertions) {
+            ValueAssert.assertValueFast(result);
+        } else {
+            ValueAssert.assertValue(result);
         }
     }
 
@@ -248,90 +260,6 @@ final class TestUtil {
                     final Predicate<String> predicte) {
         final Set<? extends String> installedLangs = context.getInstalledProviders().keySet();
         return predicte == null ? installedLangs : installedLangs.stream().filter(predicte).collect(Collectors.toSet());
-    }
-
-    private static void verifyToString(final TestRun testRun, final Value result) {
-        try {
-            result.toString();
-        } catch (Exception e) {
-            throw new AssertionError(
-                            String.format("The result's toString of : %s failed.", testRun),
-                            e);
-        }
-    }
-
-    private static void verifyMetaObject(final TestRun testRun, final Value result, int maxMetaCalls) {
-        Value metaObject;
-        try {
-            metaObject = result.getMetaObject();
-        } catch (Exception e) {
-            throw new AssertionError(
-                            String.format("The result's meta object of : %s failed.", testRun),
-                            e);
-        }
-        if (metaObject != null) {
-            verifyToString(testRun, metaObject);
-            if (maxMetaCalls > 0) {
-                verifyMetaObject(testRun, metaObject, maxMetaCalls - 1);
-            }
-        }
-    }
-
-    private static void verifyInterop(final Value result) {
-        if (result.isBoolean()) {
-            verifyBoolean(result);
-        }
-        if (result.isNumber()) {
-            verifyNumber(result);
-        }
-        if (result.isString()) {
-            verifyString(result);
-        }
-        if (result.hasArrayElements()) {
-            verifyArray(result);
-        }
-        if (result.hasMembers()) {
-            verifyObject(result);
-        }
-    }
-
-    private static void verifyBoolean(final Value result) {
-        result.asBoolean();
-    }
-
-    private static void verifyNumber(final Value result) {
-        if (result.fitsInByte()) {
-            result.asByte();
-        }
-        if (result.fitsInInt()) {
-            result.asInt();
-        }
-        if (result.fitsInLong()) {
-            result.asLong();
-        }
-        if (result.fitsInFloat()) {
-            result.asFloat();
-        }
-        if (result.fitsInDouble()) {
-            result.asDouble();
-        }
-    }
-
-    private static void verifyString(final Value result) {
-        result.asString();
-    }
-
-    private static void verifyArray(final Value value) {
-        final long size = value.getArraySize();
-        if (size > 0) {
-            value.getArrayElement(0);
-        }
-    }
-
-    private static void verifyObject(final Value value) {
-        for (String key : value.getMemberKeys()) {
-            value.getMember(key);
-        }
     }
 
     abstract static class CollectingMatcher<T> extends BaseMatcher<T> implements Consumer<Map.Entry<T, Boolean>> {

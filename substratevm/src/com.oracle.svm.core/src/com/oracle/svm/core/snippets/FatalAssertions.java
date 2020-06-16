@@ -63,19 +63,19 @@ public class FatalAssertions {
     }
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an assertion in code that must not allocate.")
-    @SubstrateForeignCallTarget
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void fatalAssertion(@SuppressWarnings("unused") Object receiver) {
         throw VMError.shouldNotReachHere(assertionErrorName());
     }
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an assertion in code that must not allocate.")
-    @SubstrateForeignCallTarget
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void fatalAssertionString(Object receiver, String detailMessage) {
         fatalAssertionObject(receiver, detailMessage);
     }
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an assertion in code that must not allocate.")
-    @SubstrateForeignCallTarget
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void fatalAssertionObject(@SuppressWarnings("unused") Object receiver, Object detailMessage) {
         if (detailMessage instanceof String) {
             runtimeAssertionPrefix().string((String) detailMessage).newline();
@@ -87,49 +87,49 @@ public class FatalAssertions {
     }
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an assertion in code that must not allocate.")
-    @SubstrateForeignCallTarget
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void fatalAssertionBoolean(@SuppressWarnings("unused") Object receiver, boolean detailMessage) {
         runtimeAssertionPrefix().bool(detailMessage).newline();
         throw VMError.shouldNotReachHere(assertionErrorName());
     }
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an assertion in code that must not allocate.")
-    @SubstrateForeignCallTarget
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void fatalAssertionChar(@SuppressWarnings("unused") Object receiver, char detailMessage) {
         runtimeAssertionPrefix().character(detailMessage).newline();
         throw VMError.shouldNotReachHere(assertionErrorName());
     }
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an assertion in code that must not allocate.")
-    @SubstrateForeignCallTarget
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void fatalAssertionInt(@SuppressWarnings("unused") Object receiver, int detailMessage) {
         runtimeAssertionPrefix().signed(detailMessage).newline();
         throw VMError.shouldNotReachHere(assertionErrorName());
     }
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an assertion in code that must not allocate.")
-    @SubstrateForeignCallTarget
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void fatalAssertionLong(@SuppressWarnings("unused") Object receiver, long detailMessage) {
         runtimeAssertionPrefix().signed(detailMessage).newline();
         throw VMError.shouldNotReachHere(assertionErrorName());
     }
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an assertion in code that must not allocate.")
-    @SubstrateForeignCallTarget
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void fatalAssertionFloat(@SuppressWarnings("unused") Object receiver, @SuppressWarnings("unused") float detailMessage) {
         runtimeAssertionPrefix().string("[float number supressed]").newline();
         throw VMError.shouldNotReachHere(assertionErrorName());
     }
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an assertion in code that must not allocate.")
-    @SubstrateForeignCallTarget
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void fatalAssertionDouble(@SuppressWarnings("unused") Object receiver, @SuppressWarnings("unused") double detailMessage) {
         runtimeAssertionPrefix().string("[double number supressed]").newline();
         throw VMError.shouldNotReachHere(assertionErrorName());
     }
 
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an assertion in code that must not allocate.")
-    @SubstrateForeignCallTarget
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void fatalAssertionStringThrowable(@SuppressWarnings("unused") Object receiver, String detailMessage, Throwable cause) {
         runtimeAssertionPrefix().string(detailMessage).string(" caused by ").object(cause).newline();
         throw VMError.shouldNotReachHere(assertionErrorName());

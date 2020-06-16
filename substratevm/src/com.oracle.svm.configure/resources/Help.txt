@@ -5,6 +5,7 @@ This tool can be used to prepare a configuration of JNI, reflection and
 resources for a native-image build.
 
 Usage: native-image-configure generate [options]
+       native-image-configure generate-filters [options]
        native-image-configure help
 
 generate                  generates configuration file(s) from all inputs.
@@ -52,11 +53,54 @@ generate                  generates configuration file(s) from all inputs.
                           -H:ResourceConfigurationFiles=<path>.
                           The paths in the configuration file might need to be
                           adjusted for the build directories/classpath.
-    --no-filter
-                          usage of JNI, reflection and resources in internal
-                          classes does not need to be configured for builds
-                          with native-image and by default, is excluded from
-                          the generated configurations. This option disables
-                          this filter.
+    --caller-filter-file=<path>
+                          Provides a custom filter file for excluding usages
+                          of JNI, reflection and resources based on the caller
+                          class (read more below). This option can be provided
+                          more than once, and the filter rules from the files
+                          will be processed in the specified order.
+    --no-builtin-caller-filter
+                          Usages of JNI, reflection and resources that are
+                          internal to the JDK, to GraalVM or to the Java VM do
+                          not need to be configured for native-image builds and
+                          by default, are filtered (removed) from the generated
+                          configurations. This option disables the built-in
+                          filter for such usages based on the caller class.
+    --no-builtin-heuristic-filter
+                          This option disables builtin heuristics that identify
+                          further internal JNI, reflection and resource usages.
+
+generate-filters          builds a class filter according to the parameters.
+                          Filter rules are created according to the order of
+                          these parameters, and filter rules are applied in
+                          their order so that the last matching one "wins", so
+                          the order of the parameters is relevant. Filter files
+                          can be used with the caller-filter-file option of
+                          native-image-agent.
+    --include-classes=<class-pattern>
+                          adds a single rule to include a specific class, such
+                          as "com.oracle.graal.Compiler", or classes matching a
+                          specified pattern, for example "com.oracle.graal.*"
+                          for classes directly in package "com.oracle.graal",
+                          or "com.oracle.graal.** (double asterisks) for all
+                          classes in "com.oracle.graal" AND all of its
+                          subpackages and their subpackages, recursively. The
+                          rule can potentially override rules from preceding
+                          parameters. Can be specified several times.
+    --exclude-classes=<class-pattern>
+                          adds a single rule to exclude classes matching the
+                          specified pattern, potentially overriding rules from
+                          preceding parameters. Can be specified several times.
+    --input-file=<path>
+                          reads a file with filter rules from the given path.
+                          Rules are processed in the order in which they occur
+                          in the file, so that subsequent rules potentially
+                          override preceding rules, including those from the
+                          --include and --exclude parameters. Can be specified
+                          several times.
+    --output-file=<path>
+                          specifies a file to which the output file is written.
+                          If this parameter is not provided, the filter is
+                          written to standard output.
 
 help                      prints this help message.

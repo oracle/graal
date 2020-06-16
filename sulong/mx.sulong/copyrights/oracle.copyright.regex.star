@@ -1,5 +1,6 @@
 \/\*
- \* Copyright \(c\) (\d\d\d\d, )?(\d\d\d\d), Oracle and\/or its affiliates\.
+ \* Copyright \(c\) (\d\d\d\d, )?(\d\d\d\d), Oracle and\/or its affiliates\.(?:
+ \* Copyright \(c\) (?:\d\d\d\d, )?\d\d\d\d, (?:Red Hat Inc|Arm Limited|Arm Limited and affiliates|Intel Corporation)\.)*
  \*
  \* All rights reserved\.
  \*

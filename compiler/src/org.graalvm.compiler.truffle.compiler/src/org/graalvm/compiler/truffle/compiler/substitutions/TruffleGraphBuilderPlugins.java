@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,6 @@ package org.graalvm.compiler.truffle.compiler.substitutions;
 import static java.lang.Character.toUpperCase;
 import static org.graalvm.compiler.debug.DebugOptions.DumpOnError;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.getRuntime;
-import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleIntrinsifyFrameAccess;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -60,6 +59,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
+import org.graalvm.compiler.nodes.calc.IntegerMulHighNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.GuardedUnsafeLoadNode;
@@ -76,13 +76,12 @@ import org.graalvm.compiler.nodes.java.InstanceOfDynamicNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.virtual.EnsureVirtualizedNode;
-import org.graalvm.compiler.nodes.calc.IntegerMulHighNode;
+import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.nodes.arithmetic.UnsignedMulHighNode;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
-import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.compiler.PerformanceInformationHandler;
 import org.graalvm.compiler.truffle.compiler.nodes.IsCompilationConstantNode;
 import org.graalvm.compiler.truffle.compiler.nodes.ObjectLocationIdentity;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
@@ -93,6 +92,7 @@ import org.graalvm.compiler.truffle.compiler.nodes.frame.NewFrameNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameGetNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameIsNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameSetNode;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PerformanceWarningKind;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -110,20 +110,20 @@ import jdk.vm.ci.meta.SpeculationLog.Speculation;
  */
 public class TruffleGraphBuilderPlugins {
 
-    public static void registerInvocationPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection,
-                    KnownTruffleTypes types) {
+    public static void registerInvocationPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification, Providers providers, KnownTruffleTypes types) {
+        MetaAccessProvider metaAccess = providers.getMetaAccess();
         registerOptimizedAssumptionPlugins(plugins, metaAccess, types);
         registerExactMathPlugins(plugins, metaAccess);
         registerGraalCompilerDirectivesPlugins(plugins, metaAccess);
         registerCompilerDirectivesPlugins(plugins, metaAccess, canDelayIntrinsification);
         registerCompilerAssertsPlugins(plugins, metaAccess, canDelayIntrinsification);
         registerOptimizedCallTargetPlugins(plugins, metaAccess, canDelayIntrinsification, types);
-        registerFrameWithoutBoxingPlugins(plugins, metaAccess, canDelayIntrinsification, constantReflection, types);
+        registerFrameWithoutBoxingPlugins(plugins, metaAccess, canDelayIntrinsification, providers.getConstantReflection(), types);
     }
 
     public static void registerOptimizedAssumptionPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, KnownTruffleTypes types) {
         ResolvedJavaType optimizedAssumptionType = TruffleCompilerRuntime.getRuntime().resolveType(metaAccess, "org.graalvm.compiler.truffle.runtime.OptimizedAssumption");
-        Registration r = new Registration(plugins, new ResolvedJavaSymbol(optimizedAssumptionType), null);
+        Registration r = new Registration(plugins, new ResolvedJavaSymbol(optimizedAssumptionType));
         InvocationPlugin plugin = new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
@@ -395,7 +395,16 @@ public class TruffleGraphBuilderPlugins {
         });
         r.register2("castArrayFixedLength", Object[].class, int.class, new InvocationPlugin() {
             @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode args, ValueNode length) {
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
+                            ValueNode args, ValueNode length) {
+                if (canDelayIntrinsification) {
+                    return false;
+                }
+                if (args.isConstant()) {
+                    b.addPush(JavaKind.Object, args);
+                    return true;
+                }
+
                 b.addPush(JavaKind.Object, new PiArrayNode(args, length, args.stamp(NodeView.DEFAULT)));
                 return true;
             }
@@ -410,16 +419,13 @@ public class TruffleGraphBuilderPlugins {
         registerFrameMethods(r);
         registerUnsafeCast(r, canDelayIntrinsification);
         registerUnsafeLoadStorePlugins(r, canDelayIntrinsification, null, JavaKind.Int, JavaKind.Long, JavaKind.Float, JavaKind.Double, JavaKind.Object);
-
-        if (TruffleCompilerOptions.getValue(TruffleIntrinsifyFrameAccess)) {
-            registerFrameAccessors(r, JavaKind.Object, constantReflection, types);
-            registerFrameAccessors(r, JavaKind.Long, constantReflection, types);
-            registerFrameAccessors(r, JavaKind.Int, constantReflection, types);
-            registerFrameAccessors(r, JavaKind.Double, constantReflection, types);
-            registerFrameAccessors(r, JavaKind.Float, constantReflection, types);
-            registerFrameAccessors(r, JavaKind.Boolean, constantReflection, types);
-            registerFrameAccessors(r, JavaKind.Byte, constantReflection, types);
-        }
+        registerFrameAccessors(r, JavaKind.Object, constantReflection, types);
+        registerFrameAccessors(r, JavaKind.Long, constantReflection, types);
+        registerFrameAccessors(r, JavaKind.Int, constantReflection, types);
+        registerFrameAccessors(r, JavaKind.Double, constantReflection, types);
+        registerFrameAccessors(r, JavaKind.Float, constantReflection, types);
+        registerFrameAccessors(r, JavaKind.Boolean, constantReflection, types);
+        registerFrameAccessors(r, JavaKind.Byte, constantReflection, types);
     }
 
     /**
@@ -525,7 +531,7 @@ public class TruffleGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 ValueNode frame = receiver.get();
-                if (TruffleCompilerOptions.getValue(TruffleIntrinsifyFrameAccess) && frame instanceof NewFrameNode && ((NewFrameNode) frame).getIntrinsifyAccessors()) {
+                if (frame instanceof NewFrameNode && ((NewFrameNode) frame).getIntrinsifyAccessors()) {
                     Speculation speculation = b.getGraph().getSpeculationLog().speculate(((NewFrameNode) frame).getIntrinsifyAccessorsSpeculation());
                     b.add(new DeoptimizeNode(DeoptimizationAction.InvalidateRecompile, DeoptimizationReason.RuntimeConstraint, speculation));
                     return true;
@@ -679,21 +685,24 @@ public class TruffleGraphBuilderPlugins {
 
     @SuppressWarnings("try")
     static void logPerformanceWarningLocationNotConstant(ValueNode location, ResolvedJavaMethod targetMethod, UnsafeAccessNode access) {
-        if (!PartialEvaluator.PerformanceInformationHandler.isEnabled()) {
-            return;
-        }
-        StructuredGraph graph = location.graph();
-        DebugContext debug = access.getDebug();
-        try (DebugContext.Scope s = debug.scope("TrufflePerformanceWarnings", graph)) {
-            TruffleDebugJavaMethod truffleMethod = debug.contextLookup(TruffleDebugJavaMethod.class);
-            String callTargetName = truffleMethod != null ? truffleMethod.getName() : "";
-            Map<String, Object> properties = new LinkedHashMap<>();
-            properties.put("location", location);
-            properties.put("method", targetMethod.format("%h.%n"));
-            PartialEvaluator.PerformanceInformationHandler.logPerformanceWarning(callTargetName, Collections.singletonList(access), "location argument not PE-constant", properties);
-            debug.dump(DebugContext.VERBOSE_LEVEL, graph, "perf warn: location argument not PE-constant: %s", location);
-        } catch (Throwable t) {
-            debug.handle(t);
+        if (PerformanceInformationHandler.isWarningEnabled(PerformanceWarningKind.VIRTUAL_STORE)) {
+            StructuredGraph graph = location.graph();
+            DebugContext debug = access.getDebug();
+            try (DebugContext.Scope s = debug.scope("TrufflePerformanceWarnings", graph)) {
+                TruffleDebugJavaMethod truffleMethod = debug.contextLookup(TruffleDebugJavaMethod.class);
+                if (truffleMethod != null) {    // Never null in compilation but can be null in
+                                                // TrufflCompilerImplTest
+                    Map<String, Object> properties = new LinkedHashMap<>();
+                    properties.put("location", location);
+                    properties.put("method", targetMethod.format("%h.%n"));
+                    PerformanceInformationHandler.logPerformanceWarning(PerformanceWarningKind.VIRTUAL_STORE, truffleMethod.getCompilable(),
+                                    Collections.singletonList(access),
+                                    "location argument not PE-constant", properties);
+                    debug.dump(DebugContext.VERBOSE_LEVEL, graph, "perf warn: Location argument is not a partial evaluation constant: %s", location);
+                }
+            } catch (Throwable t) {
+                debug.handle(t);
+            }
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,24 +29,17 @@ import java.io.ByteArrayOutputStream;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
-import org.graalvm.compiler.debug.LogStream;
-import org.graalvm.compiler.debug.TTY;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.TruffleOptionsOverrideScope;
+import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
-import org.graalvm.compiler.truffle.compiler.SharedTruffleCompilerOptions;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
 import org.graalvm.compiler.truffle.runtime.GraalCompilerDirectives;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions.TruffleRuntimeOptionsOverrideScope;
-import org.graalvm.compiler.truffle.runtime.SharedTruffleRuntimeOptions;
+import org.graalvm.polyglot.Context;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -66,77 +59,80 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
     @SuppressWarnings("unused") private static final L9b object5 = new L9b();
     @SuppressWarnings("unused") private static final Boolean inFirstTier = GraalCompilerDirectives.inFirstTier();
 
+    private ByteArrayOutputStream outContent;
+
+    @Before
+    public void setUp() {
+        outContent = new ByteArrayOutputStream();
+        setupContext(Context.newBuilder().logHandler(outContent).allowAllAccess(true).allowExperimentalOptions(true).option("engine.TracePerformanceWarnings", "all").option(
+                        "engine.TreatPerformanceWarningsAsErrors", "all").option("engine.CompilationFailureAction", "ExitVM").build());
+    }
+
     @Test
     public void testVirtualCall() {
-        testHelper(truffleCompiler, new RootNodeVirtualCall(), true, "perf warn", "execute");
+        testHelper(new RootNodeVirtualCall(), true, "perf warn", "execute");
     }
 
     @Test
     public void testDeepStack() {
-        testHelper(truffleCompiler, new RootNodeDeepStack(), true, "perf warn", "foo", "bar", "execute");
+        testHelper(new RootNodeDeepStack(), true, "perf warn", "foo", "bar", "execute");
     }
 
     @Test
     public void testInstanceOf() {
-        testHelper(truffleCompiler, new RootNodeInstanceOf(), false, "perf info", "foo", "bar", "execute");
+        testHelper(new RootNodeInstanceOf(), false, "perf info", "foo", "bar", "execute");
     }
 
     @Test
     public void testCombined() {
-        testHelper(truffleCompiler, new RootNodeCombined(), true, "perf info", "perf warn", "foo", "bar", "execute");
+        testHelper(new RootNodeCombined(), true, "perf info", "perf warn", "foo", "bar", "execute");
     }
 
     @Test
     public void testBoundaryCall() {
-        testHelper(truffleCompiler, new RootNodeBoundaryCall(), false, EMPTY_PERF_WARNINGS);
+        testHelper(new RootNodeBoundaryCall(), false, EMPTY_PERF_WARNINGS);
     }
 
     @Test
     public void testBoundaryVirtualCall() {
-        testHelper(truffleCompiler, new RootNodeBoundaryVirtualCall(), false, EMPTY_PERF_WARNINGS);
+        testHelper(new RootNodeBoundaryVirtualCall(), false, EMPTY_PERF_WARNINGS);
     }
 
     @Test
     public void testInterfaceCast() {
-        testHelper(truffleCompiler, new RootNodeInterfaceCast(), false, "perf info", Interface.class.getSimpleName(), "foo", "bar", "execute");
+        testHelper(new RootNodeInterfaceCast(), false, "perf info", Interface.class.getSimpleName(), "foo", "bar", "execute");
     }
 
     @Test
     public void testSingleImplementor() {
-        testHelper(truffleCompiler, new RootNodeInterfaceSingleImplementorCall(), false, EMPTY_PERF_WARNINGS);
+        testHelper(new RootNodeInterfaceSingleImplementorCall(), false, EMPTY_PERF_WARNINGS);
     }
 
     @Test
     public void testSlowClassCast() {
-        testHelper(truffleCompiler, new RootNodeDeepClass(), false, "perf info", L8.class.getSimpleName(), "foo", "execute");
+        testHelper(new RootNodeDeepClass(), false, "perf info", L8.class.getSimpleName(), "foo", "execute");
     }
 
     @SuppressWarnings("try")
-    private static void testHelper(TruffleCompilerImpl compiler, RootNode rootNode, boolean expectException, String... outputStrings) {
+    private void testHelper(RootNode rootNode, boolean expectException, String... outputStrings) {
 
-        GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
-        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
-
-        // Compile and capture output to TTY.
-        ByteArrayOutputStream outContent = new ByteArrayOutputStream();
+        // Compile and capture output to logger's stream.
         boolean seenException = false;
-        try (TTY.Filter filter = new TTY.Filter(new LogStream(outContent))) {
-            try (TruffleOptionsOverrideScope scope = TruffleCompilerOptions.overrideOptions(TruffleCompilerOptions.TraceTrufflePerformanceWarnings, Boolean.TRUE);
-                            TruffleRuntimeOptionsOverrideScope scope2runtime = TruffleRuntimeOptions.overrideOptions(SharedTruffleRuntimeOptions.TrufflePerformanceWarningsAreFatal, Boolean.TRUE);
-                            TruffleOptionsOverrideScope scope2compile = TruffleCompilerOptions.overrideOptions(SharedTruffleCompilerOptions.TrufflePerformanceWarningsAreFatal, Boolean.TRUE)) {
-                OptionValues options = scope2compile.getOptions();
-                DebugContext debug = DebugContext.create(options, DebugHandlersFactory.LOADER);
-                try (DebugCloseable d = debug.disableIntercept(); DebugContext.Scope s = debug.scope("PerformanceWarningTest")) {
-                    final OptimizedCallTarget compilable = target;
-                    CompilationIdentifier compilationId = compiler.createCompilationIdentifier(compilable);
-                    TruffleInliningPlan inliningPlan = new TruffleInlining(compilable, new DefaultInliningPolicy());
-                    compiler.compileAST(debug, compilable, inliningPlan, compilationId, null, null);
-                }
-            } catch (AssertionError e) {
-                seenException = true;
-                if (!expectException) {
-                    throw new AssertionError("Unexpected exception caught." + (outContent.size() > 0 ? '\n' + outContent.toString() : ""), e);
-                }
+        try {
+            GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
+            OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+            DebugContext debug = new Builder(TruffleCompilerOptions.getOptions()).build();
+            try (DebugCloseable d = debug.disableIntercept(); DebugContext.Scope s = debug.scope("PerformanceWarningTest")) {
+                final OptimizedCallTarget compilable = target;
+                CompilationIdentifier compilationId = getTruffleCompiler(target).createCompilationIdentifier(compilable);
+                TruffleInliningPlan inliningPlan = new TruffleInlining(compilable, new DefaultInliningPolicy());
+                getTruffleCompiler(target).compileAST(compilable.getOptionValues(), debug, compilable, inliningPlan, compilationId, null, null);
+                assertTrue(compilable.isValid());
+            }
+        } catch (AssertionError e) {
+            seenException = true;
+            if (!expectException) {
+                throw new AssertionError("Unexpected exception caught." + (outContent.size() > 0 ? '\n' + outContent.toString() : ""), e);
             }
         }
         if (expectException && !seenException) {

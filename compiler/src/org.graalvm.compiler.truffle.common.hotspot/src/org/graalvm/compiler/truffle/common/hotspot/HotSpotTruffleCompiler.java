@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,7 +30,9 @@ public interface HotSpotTruffleCompiler extends TruffleCompiler {
 
     /**
      * Compiles and installs special code for
-     * {@link HotSpotTruffleCompilerRuntime#getTruffleCallBoundaryMethods()}.
+     * {@link HotSpotTruffleCompilerRuntime#getTruffleCallBoundaryMethods()}. See also
+     * AbstractHotSpotTruffleRuntime.setDontInlineCallBoundaryMethod() for disabling compilation and
+     * inlining for truffle call boundary methods.
      */
     void installTruffleCallBoundaryMethods();
 

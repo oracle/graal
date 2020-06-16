@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@
 package org.graalvm.compiler.truffle.test;
 
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.polyglot.Context;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -52,36 +51,32 @@ public class TruffleContextCompilationTest extends PartialEvaluationTest {
 
     @Test
     public void testInnerContextsDeoptimize() {
-        try (Context c = Context.create()) {
-            c.initialize(LANGUAGE);
-            c.enter();
-            Env env = Language.getCurrentContext();
+        setupContext();
+        getContext().initialize(LANGUAGE);
+        Env env = Language.getCurrentContext();
 
-            TruffleContext context = env.newContextBuilder().build();
-            OptimizedCallTarget target = assertCompiling(new RootNode(null) {
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    Object prev = context.enter();
-                    try {
-                        // barrier ensures that the deopt does not move up or downwards
-                        barrier();
-                        Object arg = frame.getArguments()[0];
-                        if (arg != FIRST_RUN) {
-                            CompilerDirectives.transferToInterpreterAndInvalidate();
-                        }
-                        barrier();
-                    } finally {
-                        context.leave(prev);
+        TruffleContext context = env.newContextBuilder().build();
+        OptimizedCallTarget target = assertCompiling(new RootNode(null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                Object prev = context.enter();
+                try {
+                    // barrier ensures that the deopt does not move up or downwards
+                    barrier();
+                    Object arg = frame.getArguments()[0];
+                    if (arg != FIRST_RUN) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
                     }
-                    return null;
+                    barrier();
+                } finally {
+                    context.leave(prev);
                 }
-            });
-            assertTrue(target.isValid());
-            target.call(new Object());
-            assertFalse(target.isValid());
-
-            c.leave();
-        }
+                return null;
+            }
+        });
+        assertTrue(target.isValid());
+        target.call(new Object());
+        assertFalse(target.isValid());
     }
 
     private OptimizedCallTarget assertCompiling(RootNode node) {
@@ -98,15 +93,6 @@ public class TruffleContextCompilationTest extends PartialEvaluationTest {
         @Override
         protected Env createContext(Env env) {
             return env;
-        }
-
-        @Override
-        protected boolean isObjectOfLanguage(Object object) {
-            return false;
-        }
-
-        public static ContextReference<Env> getCurrentContextReference() {
-            return getCurrentLanguage(Language.class).getContextReference();
         }
 
         public static Env getCurrentContext() {

@@ -24,11 +24,14 @@
  */
 package org.graalvm.component.installer;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
@@ -50,6 +53,8 @@ public class SimpleGetopt {
     private boolean ignoreUnknownCommands;
     private boolean unknownCommand;
 
+    private List<String> unknownOptions;
+
     private Map<String, String> abbreviations = new HashMap<>();
     private final Map<String, Map<String, String>> commandAbbreviations = new HashMap<>();
 
@@ -61,9 +66,18 @@ public class SimpleGetopt {
         this.parameters = parameters;
     }
 
+    public SimpleGetopt ignoreUnknownOptions(boolean ignore) {
+        this.unknownOptions = ignore ? new ArrayList<>() : null;
+        return this;
+    }
+
     public SimpleGetopt ignoreUnknownCommands(boolean ignore) {
         this.ignoreUnknownCommands = ignore;
         return this;
+    }
+
+    public List<String> getUnknownOptions() {
+        return unknownOptions == null ? Collections.emptyList() : unknownOptions;
     }
 
     // overridable by tests
@@ -140,6 +154,22 @@ public class SimpleGetopt {
         return result;
     }
 
+    Collection<String> getAllOptions() {
+        Set<String> s = new HashSet<>();
+        s.addAll(globalOptions.keySet());
+        for (Map<String, String> cmdOpts : commandOptions.values()) {
+            s.addAll(cmdOpts.keySet());
+        }
+        // discard short option stubs when only long option exists.
+        for (Iterator<String> it = s.iterator(); it.hasNext();) {
+            String opt = it.next();
+            if (opt.length() == 1 && !Character.isLetterOrDigit(opt.charAt(0))) {
+                it.remove();
+            }
+        }
+        return s;
+    }
+
     void computeAbbreviations() {
         abbreviations = computeAbbreviations(globalOptions.keySet());
 
@@ -169,7 +199,8 @@ public class SimpleGetopt {
                                 continue;
                             }
                             if ("X".equals(cOpts.get(s))) {
-                                throw err("ERROR_UnsupportedOption", s, command); // NOI18N
+                                unknownOption(s, command);
+                                break;
                             }
                         }
                         if (cOpts.containsKey(DO_NOT_PROCESS_OPTIONS)) { // NOI18N
@@ -212,6 +243,19 @@ public class SimpleGetopt {
                 }
             }
         }
+    }
+
+    private void unknownOption(String option, String cmd) {
+        if (unknownOptions == null) {
+            if (cmd == null) {
+                throw err("ERROR_UnsupportedGlobalOption", option); // NOI18N
+            } else {
+                throw err("ERROR_UnsupportedOption", option, cmd); // NOI18N
+            }
+        } else {
+            unknownOptions.add(option);
+        }
+
     }
 
     private String processOptSpec(String o, int optCharIndex, String optParam, boolean nextParam) {
@@ -266,13 +310,8 @@ public class SimpleGetopt {
             if (unknownCommand) {
                 return param;
             }
-            if (command == null) {
-                throw err("ERROR_UnsupportedGlobalOption", o); // NOI18N
-            }
-            if (cmdSpec == null || cmdSpec.isEmpty()) {
-                throw err("ERROR_CommandWithNoOptions", command); // NOI18N
-            }
-            throw err("ERROR_UnsupportedOption", o, command); // NOI18N
+            unknownOption(optName, command);
+            return param;
         }
         // no support for parametrized options now
         String optVal = "";
@@ -295,7 +334,8 @@ public class SimpleGetopt {
                 }
                 break;
             case "X":
-                throw err("ERROR_UnsupportedOption", o, command); // NOI18N
+                unknownOption(o, command);
+                return param;
             case "":
                 break;
         }

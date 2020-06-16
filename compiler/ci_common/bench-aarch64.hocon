@@ -1,0 +1,35 @@
+aarch64.default : ${linux-aarch64} {
+  capabilities: ${linux-aarch64.capabilities}
+  environment : {
+    JVM_CONFIG  : ${jvm-config.default}
+    JVM         : "server"
+    MACHINE_NAME: "xgene3"
+  }
+}
+
+aarch64.default-libgraal : ${aarch64.default} {
+  environment : {
+    MX_PRIMARY_SUITE_PATH: "../"${vm_subdir}
+    MX_ENV_PATH: ${libgraal_env}
+    JVM_CONFIG  : ${jvm-config.default}"-libgraal"
+  }
+}
+
+# TODO once GR-18514 is fixed, 'labsjdk-ce-11' should be replaced with 'labsjdk11'
+builds += [
+  # jargraal
+  ${aarch64.default} ${bench-dacapo} ${aarch64-bench-notifications}                     ${labsjdk-ce-11} { targets: [bench, weekly], name: "bench-compiler-dacapo-11-linux-aarch64" }
+  ${aarch64.default} ${bench-scala-dacapo} ${aarch64-bench-notifications}               ${labsjdk-ce-11} { targets: [bench, weekly], name: "bench-compiler-scala-dacapo-11-linux-aarch64", timelimit: "45:00" }
+  ${aarch64.default} ${bench-renaissance-no-db-shootout} ${aarch64-bench-notifications} ${labsjdk-ce-11} { targets: [bench, weekly], name: "bench-compiler-renaissance-11-linux-aarch64" }
+  ${aarch64.default} ${bench-specjvm2008-Single} ${aarch64-bench-notifications}         ${labsjdk-ce-11} { targets: [bench, weekly], name: "bench-compiler-specjvm2008-Single-11-linux-aarch64" }
+  ${aarch64.default} ${bench-specjbb2005} ${aarch64-bench-notifications}                ${labsjdk-ce-11} { targets: [bench, weekly], name: "bench-compiler-specjbb2005-11-linux-aarch64" }
+  ${aarch64.default} ${bench-specjbb2015} ${aarch64-bench-notifications}                ${labsjdk-ce-11} { targets: [bench, weekly], name: "bench-compiler-specjbb2015-11-linux-aarch64" }
+
+  # libgraal
+  ${aarch64.default-libgraal} ${bench-dacapo} ${aarch64-bench-notifications}                     ${labsjdk-ce-11} { targets: [bench, daily], name: "bench-compiler-dacapo-libgraal-11-linux-aarch64" }
+  ${aarch64.default-libgraal} ${bench-scala-dacapo} ${aarch64-bench-notifications}               ${labsjdk-ce-11} { targets: [bench, daily], name: "bench-compiler-scala-dacapo-libgraal-11-linux-aarch64", timelimit: "45:00" }
+  ${aarch64.default-libgraal} ${bench-renaissance-no-db-shootout} ${aarch64-bench-notifications} ${labsjdk-ce-11} { targets: [bench, daily], name: "bench-compiler-renaissance-libgraal-11-linux-aarch64" }
+  ${aarch64.default-libgraal} ${bench-specjvm2008-Single} ${aarch64-bench-notifications}         ${labsjdk-ce-11} { targets: [bench, daily], name: "bench-compiler-specjvm2008-Single-libgraal-11-linux-aarch64" }
+  ${aarch64.default-libgraal} ${bench-specjbb2005} ${aarch64-bench-notifications}                ${labsjdk-ce-11} { targets: [bench, daily], name: "bench-compiler-specjbb2005-libgraal-11-linux-aarch64" }
+  ${aarch64.default-libgraal} ${bench-specjbb2015} ${aarch64-bench-notifications}                ${labsjdk-ce-11} { targets: [bench, daily], name: "bench-compiler-specjbb2015-libgraal-11-linux-aarch64" }
+]

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -95,9 +95,11 @@ public class SharedTruffleOptionsProcessor extends AbstractProcessor {
                 out.println("package " + pkg + ";");
                 out.println("");
                 out.println("import " + optionKeyClassName + ";");
+                out.println("import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;");
                 if (isRuntime) {
                     out.println("import com.oracle.truffle.api.Option;");
                     out.println("import org.graalvm.options.OptionCategory;");
+                    out.println("import org.graalvm.options.OptionType;");
                 }
                 out.println("");
                 out.println("/**");
@@ -115,17 +117,12 @@ public class SharedTruffleOptionsProcessor extends AbstractProcessor {
                 out.println("public abstract class " + className + " {");
 
                 for (Option option : Option.options) {
-                    String defaultValue = option.defaultValue;
-
-                    String deprecatedByText = null;
-                    if (option.deprecatedBy != null) {
-                        deprecatedByText = "Deprecated by " + linkIfRuntime(isRuntime, "org.graalvm.compiler.truffle.runtime.PolyglotCompilerOptions#" + option.deprecatedBy) + ".";
-                    }
+                    String defaultValue;
 
                     if (isRuntime) {
-                        if (deprecatedByText != null) {
+                        if (option.deprecationMessage != null) {
                             out.printf("    /**\n");
-                            out.printf("     * %s\n", deprecatedByText);
+                            out.printf("     * %s\n", option.deprecationMessage);
                             out.printf("     */\n");
                         }
                         String help;
@@ -141,11 +138,10 @@ public class SharedTruffleOptionsProcessor extends AbstractProcessor {
                         } else {
                             help = option.help[0];
                         }
-                        if ("null".equals(defaultValue)) {
-                            defaultValue = "null, org.graalvm.options.OptionType.defaultType(" + option.type + ".class)";
-                        }
+                        defaultValue = option.defaultValue + ", OptionType.defaultType(" + option.type + ".class)";
                         out.printf("    @Option(help = \"%s\", category = OptionCategory.%s)\n", help, option.category);
                     } else {
+                        defaultValue = option.defaultValue;
                         String optionType;
                         if (option.category.equals("INTERNAL")) {
                             optionType = "Debug";
@@ -164,9 +160,9 @@ public class SharedTruffleOptionsProcessor extends AbstractProcessor {
                         }
                         out.printf("     * OptionType: %s\n", optionType);
 
-                        if (deprecatedByText != null) {
+                        if (option.deprecationMessage != null) {
                             out.printf("     *\n");
-                            out.printf("     * %s\n", deprecatedByText);
+                            out.printf("     * %s\n", option.deprecationMessage);
                         }
                         out.printf("     */\n");
 
@@ -174,7 +170,7 @@ public class SharedTruffleOptionsProcessor extends AbstractProcessor {
                         List<String> extraHelp = option.help.length > 1 ? Arrays.asList(option.help).subList(1, option.help.length) : new ArrayList<>();
                         info.options.add(new OptionInfo(option.name, optionType, help, extraHelp, option.type, pkg + '.' + className, option.name));
                     }
-                    out.printf("    public static final OptionKey<%s> %s = new OptionKey<>(%s);\n", option.type, option.name, defaultValue);
+                    out.printf("    static final OptionKey<%s> %s = new OptionKey<>(%s);\n", option.type, option.name, defaultValue);
                     out.println();
                 }
                 out.println("}");
@@ -185,13 +181,5 @@ public class SharedTruffleOptionsProcessor extends AbstractProcessor {
             }
         }
         return true;
-    }
-
-    private static String linkIfRuntime(boolean isRuntime, String className) {
-        if (isRuntime) {
-            return "{@link " + className + "}";
-        } else {
-            return className;
-        }
     }
 }

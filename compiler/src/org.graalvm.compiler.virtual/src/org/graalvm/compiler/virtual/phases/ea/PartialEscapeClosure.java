@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,7 +35,6 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.cfg.Loop;
-import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.CounterKey;
@@ -64,9 +63,8 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.ValueProxyNode;
 import org.graalvm.compiler.nodes.VirtualState;
-import org.graalvm.compiler.nodes.VirtualState.NodeClosure;
 import org.graalvm.compiler.nodes.cfg.Block;
-import org.graalvm.compiler.nodes.spi.LoweringProvider;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.NodeWithState;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizableAllocation;
@@ -75,10 +73,8 @@ import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.virtual.nodes.VirtualObjectState;
 
-import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 
 public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockState<BlockT>> extends EffectsClosure<BlockT> {
 
@@ -129,19 +125,21 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         return false;
     }
 
-    private final class CollectVirtualObjectsClosure extends NodeClosure<ValueNode> {
+    private final class CollectVirtualObjectsClosure2 extends VirtualState.NodePositionClosure<Node> {
         private final EconomicSet<VirtualObjectNode> virtual;
         private final GraphEffectList effects;
         private final BlockT state;
 
-        private CollectVirtualObjectsClosure(EconomicSet<VirtualObjectNode> virtual, GraphEffectList effects, BlockT state) {
+        private CollectVirtualObjectsClosure2(EconomicSet<VirtualObjectNode> virtual, GraphEffectList effects, BlockT state) {
             this.virtual = virtual;
             this.effects = effects;
             this.state = state;
         }
 
         @Override
-        public void apply(Node usage, ValueNode value) {
+        public void apply(Node from, Position p) {
+            ValueNode value = (ValueNode) p.get(from);
+            Node usage = from;
             if (value instanceof VirtualObjectNode) {
                 VirtualObjectNode object = (VirtualObjectNode) value;
                 if (object.getObjectId() != -1 && state.getObjectStateOptional(object) != null) {
@@ -156,6 +154,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 }
             }
         }
+
     }
 
     /**
@@ -164,9 +163,8 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
      */
     public static final class Final extends PartialEscapeClosure<PartialEscapeBlockState.Final> {
 
-        public Final(ScheduleResult schedule, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,
-                        LoweringProvider loweringProvider) {
-            super(schedule, metaAccess, constantReflection, constantFieldProvider, loweringProvider);
+        public Final(ScheduleResult schedule, CoreProviders providers) {
+            super(schedule, providers);
         }
 
         @Override
@@ -180,16 +178,11 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         }
     }
 
-    public PartialEscapeClosure(ScheduleResult schedule, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider) {
-        this(schedule, metaAccess, constantReflection, constantFieldProvider, null);
-    }
-
-    public PartialEscapeClosure(ScheduleResult schedule, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,
-                    LoweringProvider loweringProvider) {
+    public PartialEscapeClosure(ScheduleResult schedule, CoreProviders providers) {
         super(schedule, schedule.getCFG());
         StructuredGraph graph = schedule.getCFG().graph;
         this.hasVirtualInputs = graph.createNodeBitMap();
-        this.tool = new VirtualizerToolImpl(metaAccess, constantReflection, constantFieldProvider, this, graph.getAssumptions(), graph.getOptions(), debug, loweringProvider);
+        this.tool = new VirtualizerToolImpl(providers, this, graph.getAssumptions(), graph.getOptions(), debug);
     }
 
     /**
@@ -370,7 +363,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         for (FrameState fs : nodeWithState.states()) {
             FrameState frameState = getUniqueFramestate(nodeWithState, fs);
             EconomicSet<VirtualObjectNode> virtual = EconomicSet.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
-            frameState.applyToNonVirtual(new CollectVirtualObjectsClosure(virtual, effects, state));
+            frameState.applyToNonVirtual(new CollectVirtualObjectsClosure2(virtual, effects, state));
             collectLockedVirtualObjects(state, virtual);
             collectReferencedVirtualObjects(state, virtual);
             addVirtualMappings(frameState, virtual, state, effects);
@@ -389,7 +382,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
 
     private void addVirtualMappings(FrameState frameState, EconomicSet<VirtualObjectNode> virtual, BlockT state, GraphEffectList effects) {
         for (VirtualObjectNode obj : virtual) {
-            effects.addVirtualMapping(frameState, state.getObjectState(obj).createEscapeObjectState(debug, obj));
+            effects.addVirtualMapping(frameState, state.getObjectState(obj).createEscapeObjectState(debug, tool.getMetaAccessExtensionProvider(), obj));
         }
     }
 
@@ -845,6 +838,8 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
          * materialized, and a PhiNode for the materialized values will be created. Object states
          * can be incompatible if they contain {@code long} or {@code double} values occupying two
          * {@code int} slots in such a way that that their values cannot be merged using PhiNodes.
+         * The states may also be incompatible if they contain escaped large writes to byte arrays
+         * in such a way that they cannot be merged using PhiNodes.
          *
          * @param states the predecessor block states of the merge
          * @return true if materialization happened during the merge, false otherwise
@@ -859,6 +854,11 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
 
             // determine all entries that have a two-slot value
             JavaKind[] twoSlotKinds = null;
+
+            // Determine all entries that span multiple slots.
+            int[] virtualByteCount = null;
+            JavaKind[] virtualKinds = null;
+
             outer: for (int i = 0; i < states.length; i++) {
                 ObjectState objectState = states[i].getObjectState(getObject.applyAsInt(i));
                 ValueNode[] entries = objectState.getEntries();
@@ -866,7 +866,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 ensureVirtual &= objectState.getEnsureVirtualized();
                 while (valueIndex < entryCount) {
                     JavaKind otherKind = entries[valueIndex].getStackKind();
-                    JavaKind entryKind = virtual.entryKind(valueIndex);
+                    JavaKind entryKind = virtual.entryKind(tool.getMetaAccessExtensionProvider(), valueIndex);
                     if (entryKind == JavaKind.Int && otherKind.needsTwoSlots()) {
                         if (twoSlotKinds == null) {
                             twoSlotKinds = new JavaKind[entryCount];
@@ -878,6 +878,62 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                         twoSlotKinds[valueIndex] = otherKind;
                         // skip the next entry
                         valueIndex++;
+                    } else if (virtual.isVirtualByteArray(tool.getMetaAccessExtensionProvider())) {
+                        int bytecount = tool.getVirtualByteCount(entries, valueIndex);
+                        // @formatter:off
+                        /*
+                         * Having a bytecount of 1 here can mean two things:
+                         * - This was a regular byte array access
+                         * - This is an uninitialized value (ie: default)
+                         *
+                         * In the first case, we want to be able to merge regular accesses without
+                         * issues. But in the second case, if one of the branch has escaped a write
+                         * (while other branches did not touch the array), we want to be able to
+                         * propagate the escape to the merge.
+                         *
+                         * However, the semantics of virtual object creation in PEA puts a default
+                         * (0) byte value on all entries. As such, the merging is done in two steps:
+                         * - For each virtual entry, know if there is an escaped write in one of the
+                         * branch, and store its byte count, unless it is 1.
+                         * - Now that we know the byte count, we can escape multiple writes for the
+                         * default values from branches that did nothing on the entry in question to
+                         * a default write of a bigger kind.
+                         *
+                         * for example, consider:
+                         *
+                         * b = new byte[8];
+                         * if (...) {b[0] <- 1L}
+                         * else     {}
+                         *
+                         * for escape analysis purposes, it can be seen as:
+                         *
+                         * b = new byte[8];
+                         * if (...) {b[0] <- 1L}
+                         * else     {b[0] <- 0L}
+                         */
+                        // @formatter:on
+                        if (bytecount > 1) {
+                            if (virtualByteCount == null) {
+                                virtualByteCount = new int[entryCount];
+                            }
+                            if (virtualKinds == null) {
+                                virtualKinds = new JavaKind[entryCount];
+                            }
+                            if (virtualByteCount[valueIndex] != 0 && virtualByteCount[valueIndex] != bytecount) {
+                                compatible = false;
+                                break outer;
+                            }
+                            // Disallow merging ints with floats. Allows merging shorts with chars
+                            // (working with stack kinds).
+                            if (virtualKinds[valueIndex] != null && virtualKinds[valueIndex] != otherKind) {
+                                compatible = false;
+                                break outer;
+                            }
+                            virtualByteCount[valueIndex] = bytecount;
+                            virtualKinds[valueIndex] = otherKind;
+                            // skip illegals.
+                            valueIndex = valueIndex + bytecount - 1;
+                        }
                     } else {
                         assert entryKind.getStackKind() == otherKind.getStackKind() || (entryKind == JavaKind.Int && otherKind == JavaKind.Illegal) ||
                                         entryKind.getBitCount() >= otherKind.getBitCount() : entryKind + " vs " + otherKind;
@@ -889,7 +945,8 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 // if there are two-slot values then make sure the incoming states can be merged
                 outer: for (int valueIndex = 0; valueIndex < entryCount; valueIndex++) {
                     if (twoSlotKinds[valueIndex] != null) {
-                        assert valueIndex < virtual.entryCount() - 1 && virtual.entryKind(valueIndex) == JavaKind.Int && virtual.entryKind(valueIndex + 1) == JavaKind.Int;
+                        assert valueIndex < virtual.entryCount() - 1 && virtual.entryKind(tool.getMetaAccessExtensionProvider(), valueIndex) == JavaKind.Int &&
+                                        virtual.entryKind(tool.getMetaAccessExtensionProvider(), valueIndex + 1) == JavaKind.Int;
                         for (int i = 0; i < states.length; i++) {
                             int object = getObject.applyAsInt(i);
                             ObjectState objectState = states[i].getObjectState(object);
@@ -901,8 +958,33 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                                     // rewrite to a zero constant of the larger kind
                                     debug.log("Rewriting entry %s to constant of larger size", valueIndex);
                                     states[i].setEntry(object, valueIndex, ConstantNode.defaultForKind(twoSlotKinds[valueIndex], graph()));
-                                    states[i].setEntry(object, valueIndex + 1, ConstantNode.forConstant(JavaConstant.forIllegal(), tool.getMetaAccess(), graph()));
+                                    states[i].setEntry(object, valueIndex + 1, tool.getIllegalConstant());
                                 } else {
+                                    compatible = false;
+                                    break outer;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if (compatible && virtualByteCount != null) {
+                assert twoSlotKinds == null;
+                outer: //
+                for (int valueIndex = 0; valueIndex < entryCount; valueIndex++) {
+                    if (virtualByteCount[valueIndex] != 0) {
+                        int byteCount = virtualByteCount[valueIndex];
+                        for (int i = 0; i < states.length; i++) {
+                            int object = getObject.applyAsInt(i);
+                            ObjectState objectState = states[i].getObjectState(object);
+                            if (tool.isEntryDefaults(objectState, byteCount, valueIndex)) {
+                                // Interpret uninitialized as a corresponding large access.
+                                states[i].setEntry(object, valueIndex, ConstantNode.defaultForKind(virtualKinds[valueIndex]));
+                                for (int illegalIndex = valueIndex + 1; illegalIndex < valueIndex + byteCount; illegalIndex++) {
+                                    states[i].setEntry(object, illegalIndex, tool.getIllegalConstant());
+                                }
+                            } else {
+                                if (tool.getVirtualByteCount(objectState.getEntries(), valueIndex) != byteCount) {
                                     compatible = false;
                                     break outer;
                                 }
@@ -933,7 +1015,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                         // skip an entry after a long/double value that occupies two int slots
                         valueIndex++;
                         phis[valueIndex] = null;
-                        values[valueIndex] = ConstantNode.forConstant(JavaConstant.forIllegal(), tool.getMetaAccess(), graph());
+                        values[valueIndex] = tool.getIllegalConstant();
                     }
                     valueIndex++;
                 }
@@ -943,7 +1025,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                     PhiNode phi = phis[i];
                     if (phi != null) {
                         mergeEffects.addFloatingNode(phi, "virtualMergePhi");
-                        if (virtual.entryKind(i) == JavaKind.Object) {
+                        if (virtual.entryKind(tool.getMetaAccessExtensionProvider(), i) == JavaKind.Object) {
                             materialized |= mergeObjectEntry(getObject, states, phi, i);
                         } else {
                             for (int i2 = 0; i2 < states.length; i2++) {

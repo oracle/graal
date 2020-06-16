@@ -40,6 +40,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.hosted.NativeImageOptions;
+import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.substitute.ComputedValueField;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -54,14 +55,18 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
         super(bb, graph);
     }
 
+    protected SVMHost getHostVM() {
+        return (SVMHost) bb.getHostVM();
+    }
+
     @Override
-    public void registerUsedElements() {
-        super.registerUsedElements();
+    public void registerUsedElements(boolean registerEmbeddedRoots) {
+        super.registerUsedElements(registerEmbeddedRoots);
 
         for (Node n : graph.getNodes()) {
             if (n instanceof ConstantNode) {
                 ConstantNode cn = (ConstantNode) n;
-                if (cn.hasUsages() && cn.asJavaConstant().getJavaKind() == JavaKind.Object && cn.asJavaConstant().isNonNull()) {
+                if (cn.hasUsages() && cn.isJavaConstant() && cn.asJavaConstant().getJavaKind() == JavaKind.Object && cn.asJavaConstant().isNonNull()) {
                     /*
                      * Constants that are embedded into graphs via constant folding of static fields
                      * have already been replaced. But constants embedded manually by graph builder
@@ -128,6 +133,7 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
             LoadFieldNode offsetLoadNode = (LoadFieldNode) offsetNode;
             AnalysisField field = (AnalysisField) offsetLoadNode.field();
             if (!field.getDeclaringClass().unsafeFieldsRecomputed() &&
+                            !getHostVM().getClassInitializationSupport().shouldInitializeAtRuntime(field.getDeclaringClass()) &&
                             !(field.wrapped instanceof ComputedValueField) &&
                             !(base.isConstant() && base.asConstant().isDefaultForKind())) {
                 String message = String.format("Field %s is used as an offset in an unsafe operation, but no value recomputation found.%n Wrapped field: %s", field, field.wrapped);

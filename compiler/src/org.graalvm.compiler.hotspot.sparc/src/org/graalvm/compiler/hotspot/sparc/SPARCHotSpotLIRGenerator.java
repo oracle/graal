@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -236,6 +236,12 @@ public class SPARCHotSpotLIRGenerator extends SPARCLIRGenerator implements HotSp
         Value speculation = emitJavaConstant(getMetaAccess().encodeSpeculation(SpeculationLog.NO_SPECULATION));
         moveDeoptValuesToThread(actionAndReason, speculation);
         append(new SPARCHotSpotDeoptimizeCallerOp());
+    }
+
+    @Override
+    public void emitDeoptimizeWithExceptionInCaller(Value exception) {
+        Register thread = getProviders().getRegisters().getThreadRegister();
+        append(new SPARCHotSpotDeoptimizeWithExceptionCallerOp(config, exception, thread));
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,11 +48,17 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.TypeParameterElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.type.TypeVariable;
 
 import org.antlr.v4.runtime.BaseErrorListener;
 import org.antlr.v4.runtime.CharStreams;
@@ -74,7 +80,7 @@ public abstract class DSLExpression {
     }
 
     private static final class DSLErrorListener extends BaseErrorListener {
-        static DSLErrorListener INSTANCE = new DSLErrorListener();
+        static final DSLErrorListener INSTANCE = new DSLErrorListener();
 
         @Override
         public void syntaxError(Recognizer<?, ?> recognizer, Object offendingSymbol, int line, int charPositionInLine, String msg, RecognitionException e) {
@@ -112,6 +118,10 @@ public abstract class DSLExpression {
             public void visitBinary(Binary binary) {
                 expressions.add(binary);
             }
+
+            public void visitCast(Cast cast) {
+                expressions.add(cast);
+            }
         });
         return expressions;
     }
@@ -124,37 +134,22 @@ public abstract class DSLExpression {
 
     public boolean mayAllocate() {
         final AtomicBoolean mayAllocate = new AtomicBoolean(false);
-        accept(new DSLExpressionVisitor() {
+        accept(new AbstractDSLExpressionVisitor() {
 
-            public void visitVariable(Variable var) {
-            }
-
-            public void visitClassLiteral(ClassLiteral classLiteral) {
-            }
-
-            public void visitNegate(Negate negate) {
-            }
-
-            public void visitIntLiteral(IntLiteral binary) {
-            }
-
+            @Override
             public void visitCall(Call binary) {
                 mayAllocate.set(true);
             }
 
-            public void visitBooleanLiteral(BooleanLiteral binary) {
-            }
-
-            public void visitBinary(Binary binary) {
-            }
         });
         return mayAllocate.get();
     }
 
     public boolean isNodeReceiverBound() {
         final AtomicBoolean bindsReceiver = new AtomicBoolean(false);
-        accept(new DSLExpressionVisitor() {
+        accept(new AbstractDSLExpressionVisitor() {
 
+            @Override
             public void visitVariable(Variable var) {
                 if (var.getReceiver() == null) {
                     VariableElement resolvedVar = var.getResolvedVariable();
@@ -168,17 +163,7 @@ public abstract class DSLExpression {
                 }
             }
 
-            public void visitClassLiteral(ClassLiteral classLiteral) {
-            }
-
-            public void visitNegate(Negate negate) {
-
-            }
-
-            public void visitIntLiteral(IntLiteral binary) {
-
-            }
-
+            @Override
             public void visitCall(Call binary) {
                 if (binary.getReceiver() == null) {
                     ExecutableElement method = binary.getResolvedMethod();
@@ -188,13 +173,6 @@ public abstract class DSLExpression {
                 }
             }
 
-            public void visitBooleanLiteral(BooleanLiteral binary) {
-
-            }
-
-            public void visitBinary(Binary binary) {
-
-            }
         });
         return bindsReceiver.get();
     }
@@ -345,6 +323,61 @@ public abstract class DSLExpression {
         @Override
         public int hashCode() {
             return receiver.hashCode();
+        }
+    }
+
+    public static final class Cast extends DSLExpression {
+
+        private final DSLExpression receiver;
+        private final TypeMirror castType;
+
+        public Cast(DSLExpression receiver, TypeMirror castType) {
+            this.receiver = receiver;
+            this.castType = castType;
+        }
+
+        @Override
+        public void accept(DSLExpressionVisitor visitor) {
+            receiver.accept(visitor);
+            visitor.visitCast(this);
+        }
+
+        @Override
+        public DSLExpression reduce(DSLExpressionReducer visitor) {
+            DSLExpression newReceiver = receiver.reduceImpl(visitor);
+            DSLExpression negate = this;
+            if (newReceiver != receiver) {
+                negate = new Cast(newReceiver, castType);
+                negate.setResolvedTargetType(getResolvedTargetType());
+            }
+            return negate;
+        }
+
+        public TypeMirror getCastType() {
+            return castType;
+        }
+
+        public DSLExpression getReceiver() {
+            return receiver;
+        }
+
+        @Override
+        public TypeMirror getResolvedType() {
+            return castType;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof Cast) {
+                Cast otherCast = ((Cast) obj);
+                return receiver.equals(otherCast.receiver) && ElementUtils.typeEquals(castType, otherCast.castType);
+            }
+            return false;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(receiver, castType);
         }
     }
 
@@ -562,6 +595,27 @@ public abstract class DSLExpression {
             if (resolvedMethod.getKind() == ElementKind.CONSTRUCTOR) {
                 return resolvedMethod.getEnclosingElement().asType();
             } else {
+                TypeMirror type = resolvedMethod.getReturnType();
+                TypeMirror receiverType = receiver != null ? receiver.getResolvedType() : null;
+                if (receiverType != null && type.getKind() == TypeKind.TYPEVAR && receiverType.getKind() == TypeKind.DECLARED) {
+                    // try to do some basic type inference
+                    TypeVariable variable = (TypeVariable) type;
+                    TypeElement receiverTypeElement = ElementUtils.fromTypeMirror(receiverType);
+                    Element variableElement = variable.asElement();
+                    int foundIndex = -1;
+                    int index = 0;
+                    for (TypeParameterElement typeParam : receiverTypeElement.getTypeParameters()) {
+                        if (ElementUtils.elementEquals(typeParam, variableElement)) {
+                            foundIndex = index;
+                            break;
+                        }
+                        index++;
+                    }
+                    DeclaredType declaredReceiverType = (DeclaredType) receiverType;
+                    if (foundIndex != -1) {
+                        return declaredReceiverType.getTypeArguments().get(foundIndex);
+                    }
+                }
                 return resolvedMethod.getReturnType();
             }
         }
@@ -810,6 +864,9 @@ public abstract class DSLExpression {
 
         public void visitBooleanLiteral(BooleanLiteral binary) {
         }
+
+        public void visitCast(Cast binary) {
+        }
     }
 
     public interface DSLExpressionVisitor {
@@ -827,6 +884,8 @@ public abstract class DSLExpression {
         void visitIntLiteral(IntLiteral binary);
 
         void visitBooleanLiteral(BooleanLiteral binary);
+
+        void visitCast(Cast binary);
 
     }
 

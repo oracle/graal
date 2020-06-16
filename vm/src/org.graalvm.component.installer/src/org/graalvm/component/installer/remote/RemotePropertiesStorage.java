@@ -97,10 +97,15 @@ public class RemotePropertiesStorage extends AbstractCatalogStorage {
                 if (!s.startsWith(flavourPrefix)) {
                     continue;
                 }
-                l = secondSlashPos + 1;
                 pn = s.substring(slashPos + 1);
 
                 String pref = s.substring(0, secondSlashPos);
+
+                int lastSlashPos = s.indexOf('/', secondSlashPos + 1);
+                if (lastSlashPos == -1) {
+                    lastSlashPos = secondSlashPos;
+                }
+                l = lastSlashPos + 1;
                 if (knownPrefixes.add(pref)) {
                     try {
                         Version vn = Version.fromString(s.substring(slashPos + 1, secondSlashPos));
@@ -160,30 +165,31 @@ public class RemotePropertiesStorage extends AbstractCatalogStorage {
 
         for (String s : compProps.stringPropertyNames()) {
             int slashPos = s.indexOf('/');
+            int anotherSlashPos = s.indexOf('/', slashPos + 1);
 
             String vS = s.substring(0, slashPos);
-            if (!processedPrefixes.add(vS)) {
+            String identity = anotherSlashPos == -1 ? vS : s.substring(0, anotherSlashPos);
+            if (!processedPrefixes.add(identity)) {
                 continue;
             }
-            Version v;
             try {
-                v = Version.fromString(vS);
+                Version.fromString(vS);
             } catch (IllegalArgumentException ex) {
                 feedback.verboseOutput("REMOTE_BadComponentVersion", s);
                 continue;
             }
-            ComponentInfo ci = createVersionedComponent(compProps, id, v);
+            ComponentInfo ci = createVersionedComponent(identity + "/", compProps, id,
+                            anotherSlashPos == -1 ? "" : s.substring(slashPos + 1, anotherSlashPos));
             // just in case the catalog info is broken
             if (ci != null) {
-                infos.put(vS, ci);
+                infos.put(identity, ci);
             }
         }
 
         return new HashSet<>(infos.values());
     }
 
-    private ComponentInfo createVersionedComponent(Properties filtered, String id, Version v) throws IOException {
-        String versoPrefix = v.originalString() + "/"; // NOI18N
+    private ComponentInfo createVersionedComponent(String versoPrefix, Properties filtered, String id, String tag) throws IOException {
         URL downloadURL;
         String s = filtered.getProperty(versoPrefix + id.toLowerCase());
         if (s == null) {
@@ -192,10 +198,10 @@ public class RemotePropertiesStorage extends AbstractCatalogStorage {
         // try {
         downloadURL = new URL(baseURL, s);
         String prefix = versoPrefix + id.toLowerCase() + "-"; // NOI18N
-        String hashS = filtered.getProperty(versoPrefix + PROPERTY_HASH);
+        String hashS = filtered.getProperty(prefix + PROPERTY_HASH);
         byte[] hash = hashS == null ? null : toHashBytes(id, hashS);
 
-        ComponentPackageLoader ldr = new ComponentPackageLoader(
+        ComponentPackageLoader ldr = new ComponentPackageLoader(tag,
                         new PrefixedPropertyReader(prefix, filtered),
                         feedback);
         ComponentInfo info = ldr.createComponentInfo();

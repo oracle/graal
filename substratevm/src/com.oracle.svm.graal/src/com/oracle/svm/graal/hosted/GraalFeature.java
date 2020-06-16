@@ -44,6 +44,7 @@ import java.util.function.Predicate;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
+import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
@@ -73,8 +74,8 @@ import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.truffle.compiler.phases.DeoptimizeOnExceptionPhase;
 import org.graalvm.compiler.word.WordTypes;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
@@ -89,10 +90,12 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.GraalConfiguration;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
+import com.oracle.svm.core.graal.code.SubstrateMetaAccessExtensionProvider;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.util.VMError;
@@ -100,7 +103,6 @@ import com.oracle.svm.graal.GraalSupport;
 import com.oracle.svm.graal.SubstrateGraalRuntime;
 import com.oracle.svm.graal.meta.SubstrateField;
 import com.oracle.svm.graal.meta.SubstrateMethod;
-import com.oracle.svm.graal.meta.SubstrateRuntimeConfigurationBuilder;
 import com.oracle.svm.graal.meta.SubstrateType;
 import com.oracle.svm.hosted.FeatureHandler;
 import com.oracle.svm.hosted.FeatureImpl.AfterHeapLayoutAccessImpl;
@@ -127,6 +129,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -306,6 +309,7 @@ public final class GraalFeature implements Feature {
     @Override
     public void duringSetup(DuringSetupAccess c) {
         DuringSetupAccessImpl config = (DuringSetupAccessImpl) c;
+        AnalysisMetaAccess aMetaAccess = config.getMetaAccess();
 
         try {
             /*
@@ -313,14 +317,18 @@ public final class GraalFeature implements Feature {
              * is the NodeClass from Truffle. So we require Truffle on the class path for any images
              * and tests that use Graal at run time.
              */
-            config.getMetaAccess().lookupJavaType(SubstrateType.class);
+            aMetaAccess.lookupJavaType(SubstrateType.class);
         } catch (NoClassDefFoundError ex) {
             throw VMError.shouldNotReachHere("Building a native image with Graal support requires Truffle on the class path. For unit tests run with 'svmtest', add the option '--truffle'.");
         }
 
         ImageSingletons.add(GraalSupport.class, new GraalSupport());
 
-        objectReplacer = new GraalObjectReplacer(config.getUniverse(), config.getMetaAccess());
+        if (!ImageSingletons.contains(RuntimeGraalSetup.class)) {
+            ImageSingletons.add(RuntimeGraalSetup.class, new SubstrateRuntimeGraalSetup());
+        }
+        GraalProviderObjectReplacements providerReplacements = ImageSingletons.lookup(RuntimeGraalSetup.class).getProviderObjectReplacements(aMetaAccess);
+        objectReplacer = new GraalObjectReplacer(config.getUniverse(), aMetaAccess, providerReplacements);
         config.registerObjectReplacer(objectReplacer);
 
         config.registerClassReachabilityListener(GraalSupport::registerPhaseStatistics);
@@ -337,15 +345,17 @@ public final class GraalFeature implements Feature {
         Function<Providers, SubstrateBackend> backendProvider = GraalSupport.getRuntimeBackendProvider();
         ClassInitializationSupport classInitializationSupport = config.getHostVM().getClassInitializationSupport();
         Providers originalProviders = GraalAccess.getOriginalProviders();
-        runtimeConfigBuilder = new SubstrateRuntimeConfigurationBuilder(RuntimeOptionValues.singleton(), config.getHostVM(), config.getUniverse(), config.getMetaAccess(),
-                        originalProviders.getConstantReflection(), backendProvider, config.getNativeLibraries(), classInitializationSupport).build();
+        runtimeConfigBuilder = ImageSingletons.lookup(RuntimeGraalSetup.class)
+                        .createRuntimeConfigurationBuilder(RuntimeOptionValues.singleton(), config.getHostVM(), config.getUniverse(), config.getMetaAccess(),
+                                        originalProviders.getConstantReflection(), backendProvider, config.getNativeLibraries(), classInitializationSupport)
+                        .build();
         RuntimeConfiguration runtimeConfig = runtimeConfigBuilder.getRuntimeConfig();
 
         Providers runtimeProviders = runtimeConfig.getProviders();
         WordTypes wordTypes = runtimeConfigBuilder.getWordTypes();
         hostedProviders = new HostedProviders(runtimeProviders.getMetaAccess(), runtimeProviders.getCodeCache(), runtimeProviders.getConstantReflection(), runtimeProviders.getConstantFieldProvider(),
                         runtimeProviders.getForeignCalls(), runtimeProviders.getLowerer(), runtimeProviders.getReplacements(), runtimeProviders.getStampProvider(),
-                        runtimeConfig.getSnippetReflection(), wordTypes, runtimeProviders.getGC());
+                        runtimeConfig.getSnippetReflection(), wordTypes, runtimeProviders.getPlatformConfigurationProvider(), new GraphPrepareMetaAccessExtensionProvider());
 
         SubstrateGraalRuntime graalRuntime = new SubstrateGraalRuntime();
         objectReplacer.setGraalRuntime(graalRuntime);
@@ -355,13 +365,13 @@ public final class GraalFeature implements Feature {
         FeatureHandler featureHandler = config.getFeatureHandler();
         NativeImageGenerator.registerGraphBuilderPlugins(featureHandler, runtimeConfig, hostedProviders, config.getMetaAccess(), config.getUniverse(), null, null, config.getNativeLibraries(),
                         config.getImageClassLoader(), false, false, ((Inflation) config.getBigBang()).getAnnotationSubstitutionProcessor(), new SubstrateClassInitializationPlugin(config.getHostVM()),
-                        classInitializationSupport);
+                        classInitializationSupport, ConfigurationValues.getTarget());
         DebugContext debug = DebugContext.forCurrentThread();
         NativeImageGenerator.registerReplacements(debug, featureHandler, runtimeConfig, runtimeConfig.getProviders(), runtimeConfig.getSnippetReflection(), false, true);
         featureHandler.forEachGraalFeature(feature -> feature.registerCodeObserver(runtimeConfig));
-        Suites suites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, runtimeConfig.getSnippetReflection(), false, false);
+        Suites suites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, runtimeConfig.getSnippetReflection(), false);
         LIRSuites lirSuites = NativeImageGenerator.createLIRSuites(featureHandler, runtimeConfig.getProviders(), false);
-        Suites firstTierSuites = NativeImageGenerator.createFirstTierSuites(featureHandler, runtimeConfig, runtimeConfig.getSnippetReflection(), false, false);
+        Suites firstTierSuites = NativeImageGenerator.createFirstTierSuites(featureHandler, runtimeConfig, runtimeConfig.getSnippetReflection(), false);
         LIRSuites firstTierLirSuites = NativeImageGenerator.createFirstTierLIRSuites(featureHandler, runtimeConfig.getProviders(), false);
         GraalSupport.setRuntimeConfig(runtimeConfig, suites, lirSuites, firstTierSuites, firstTierLirSuites);
 
@@ -518,7 +528,7 @@ public final class GraalFeature implements Feature {
                     return;
                 }
 
-                new CanonicalizerPhase().apply(graph, hostedProviders);
+                CanonicalizerPhase.create().apply(graph, hostedProviders);
                 if (deoptimizeOnExceptionPredicate != null) {
                     new DeoptimizeOnExceptionPhase(deoptimizeOnExceptionPredicate).apply(graph);
                 }
@@ -636,7 +646,7 @@ public final class GraalFeature implements Feature {
         graphEncoder = new GraphEncoder(ConfigurationValues.getTarget().arch);
 
         StrengthenStampsPhase strengthenStamps = new RuntimeStrengthenStampsPhase(config.getUniverse(), objectReplacer);
-        CanonicalizerPhase canonicalizer = new CanonicalizerPhase();
+        CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
         for (CallTreeNode node : methods.values()) {
             StructuredGraph graph = node.graph;
             if (graph != null) {
@@ -884,5 +894,24 @@ class RuntimeStrengthenStampsPhase extends StrengthenStampsPhase {
         }
 
         return result;
+    }
+}
+
+/**
+ * Same behavior as {@link SubstrateMetaAccessExtensionProvider}, but operating on
+ * {@link AnalysisType} instead of {@link SharedType} since parsing of graphs for runtime
+ * compilation happens in the Analysis universe.
+ */
+class GraphPrepareMetaAccessExtensionProvider implements MetaAccessExtensionProvider {
+
+    @Override
+    public JavaKind getStorageKind(JavaType type) {
+        return ((AnalysisType) type).getStorageKind();
+    }
+
+    @Override
+    public boolean canConstantFoldDynamicAllocation(ResolvedJavaType type) {
+        assert type instanceof AnalysisType : "AnalysisType is required; AnalysisType lazily creates array types of any depth, so type cannot be null";
+        return ((AnalysisType) type).isInstantiated();
     }
 }

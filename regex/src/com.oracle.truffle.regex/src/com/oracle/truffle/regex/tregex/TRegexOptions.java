@@ -1,26 +1,42 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
- * This code is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * The Universal Permissive License (UPL), Version 1.0
  *
- * This code is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * version 2 for more details (a copy is included in the LICENSE file that
- * accompanied this code).
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
  *
- * You should have received a copy of the GNU General Public License version
- * 2 along with this work; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ * (a) the Software, and
  *
- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
- * or visit www.oracle.com if you need additional information or have any
- * questions.
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
  */
 package com.oracle.truffle.regex.tregex;
 
@@ -29,14 +45,25 @@ import com.oracle.truffle.regex.tregex.nfa.ASTStep;
 import com.oracle.truffle.regex.tregex.nfa.NFA;
 import com.oracle.truffle.regex.tregex.nfa.NFAGenerator;
 import com.oracle.truffle.regex.tregex.nfa.NFATraceFinderGenerator;
-import com.oracle.truffle.regex.tregex.nodes.DFACaptureGroupPartialTransitionNode;
-import com.oracle.truffle.regex.tregex.nodes.TRegexDFAExecutorNode;
-import com.oracle.truffle.regex.tregex.nodes.TraceFinderDFAStateNode;
+import com.oracle.truffle.regex.tregex.nodes.dfa.DFACaptureGroupPartialTransition;
+import com.oracle.truffle.regex.tregex.nodes.dfa.TRegexDFAExecutorNode;
+import com.oracle.truffle.regex.tregex.nodes.dfa.TraceFinderDFAStateNode;
 import com.oracle.truffle.regex.tregex.nodesplitter.DFANodeSplit;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
+import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
+import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
+import com.oracle.truffle.regex.tregex.parser.ast.Term;
 
 public class TRegexOptions {
+
+    /**
+     * Number of regex searches done without generating a DFA for a given regular expression. When
+     * this threshold is reached, TRegex tries to generate a fully expanded DFA to speed up further
+     * searches. This threshold is only checked in interpreter mode, so it should be sufficiently
+     * smaller than the Graal compilation threshold!
+     */
+    public static final int TRegexGenerateDFAThreshold = 100;
 
     /**
      * Try to pre-calculate results of tree-like expressions (see {@link NFATraceFinderGenerator}).
@@ -68,7 +95,7 @@ public class TRegexOptions {
      * {@link com.oracle.truffle.regex.tregex.matchers.RangeListMatcher} or
      * {@link com.oracle.truffle.regex.tregex.matchers.RangeTreeMatcher}. The threshold value must
      * be greater than 1. Example:
-     * 
+     *
      * <pre>
      *     [\u1000-\u1020], [\u1030-\u1040], [\u1050-\u1060]
      *     are three ranges that have the same high byte (0x10).
@@ -80,11 +107,26 @@ public class TRegexOptions {
 
     /**
      * Bailout threshold for number of nodes in the parser tree ({@link RegexAST} generated by
-     * {@link RegexParser}). This number must not be higher than {@link Short#MAX_VALUE}, because we
-     * use {@code short} values for indexing AST nodes. The current setting is based on run times of
+     * {@link RegexParser}).
+     */
+    public static final int TRegexParserTreeMaxSize = Integer.MAX_VALUE;
+
+    /**
+     * Bailout threshold for number of {@link Sequence}s in a {@link Group}.
+     */
+    public static final int TRegexParserTreeMaxNumberOfSequencesInGroup = Short.MAX_VALUE;
+
+    /**
+     * Bailout threshold for number of {@link Term}s in a {@link Sequence}.
+     */
+    public static final int TRegexParserTreeMaxNumberOfTermsInSequence = Short.MAX_VALUE;
+
+    /**
+     * Parser trees bigger than this setting will not be considered for DFA generation. The current
+     * setting is based on run times of
      * {@code graal/com.oracle.truffle.js.test/js/trufflejs/regexp/npm_extracted/hungry-regexp*.js}
      */
-    public static final int TRegexMaxParseTreeSize = 4_000;
+    public static final int TRegexMaxParseTreeSizeForDFA = 4_000;
 
     /**
      * Bailout threshold for number of nodes in the NFA ({@link NFA} generated by
@@ -121,32 +163,45 @@ public class TRegexOptions {
     public static final int RegexMaxCacheSize = 1_000;
 
     /**
-     * Bailout threshold for counted repetitions.
+     * The parser will try to unroll bounded quantifiers on single character classes up to this
+     * limit.
      */
-    public static final int TRegexMaxCountedRepetition = 40;
+    public static final int TRegexQuantifierUnrollThresholdSingleCC = 20;
 
     /**
-     * Bailout threshold for number of capture groups. This number must not be higher than 127,
-     * because we compress capture group boundary indices to {@code byte} in
-     * {@link DFACaptureGroupPartialTransitionNode}!
+     * The parser will try to unroll bounded quantifiers on groups up to this limit.
      */
-    public static final int TRegexMaxNumberOfCaptureGroups = 127;
+    public static final int TRegexQuantifierUnrollThresholdGroup = 5;
+
+    /**
+     * Bailout threshold for number of capture groups.
+     */
+    public static final int TRegexMaxNumberOfCaptureGroups = Short.MAX_VALUE;
+
+    /**
+     * Bailout threshold for number of capture groups in the DFA generator. This number must not be
+     * higher than 127, because we compress capture group boundary indices to {@code byte} in
+     * {@link DFACaptureGroupPartialTransition}!
+     */
+    public static final int TRegexMaxNumberOfCaptureGroupsForDFA = Byte.MAX_VALUE;
 
     /**
      * Maximum number of NFA states involved in one DFA transition. This number must not be higher
      * than 255, because the maximum number of NFA states in one DFA transition determines the
      * number of simultaneously tracked result sets (arrays) in capture group tracking mode, which
-     * are accessed over byte indices in {@link DFACaptureGroupPartialTransitionNode}.
+     * are accessed over byte indices in {@link DFACaptureGroupPartialTransition}.
      */
     public static final int TRegexMaxNumberOfNFAStatesInOneDFATransition = 255;
 
     static {
         assert TRegexTraceFinderMaxNumberOfResults <= 254;
-        assert TRegexMaxParseTreeSize <= Short.MAX_VALUE;
+        assert TRegexParserTreeMaxSize <= Integer.MAX_VALUE;
+        assert TRegexParserTreeMaxNumberOfSequencesInGroup <= Short.MAX_VALUE;
+        assert TRegexParserTreeMaxNumberOfTermsInSequence <= Short.MAX_VALUE;
         assert TRegexMaxNFASize <= Short.MAX_VALUE;
         assert TRegexMaxDFASize <= Short.MAX_VALUE;
         assert TRegexMaxDFASizeAfterNodeSplitting <= Short.MAX_VALUE;
-        assert TRegexMaxNumberOfCaptureGroups <= 127;
+        assert TRegexMaxNumberOfCaptureGroupsForDFA <= 127;
         assert TRegexMaxNumberOfNFAStatesInOneDFATransition <= 255;
         assert TRegexRangeToBitSetConversionThreshold > 1;
     }

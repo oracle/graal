@@ -215,7 +215,7 @@ visualizations of certain compiler data structures. Currently, there is support 
 
 * HIR graphs (i.e., instances of
   [Graph](../src/org.graalvm.compiler.graph/src/org/graalvm/compiler/graph/Graph.java)) to the
-  [Ideal Graph Visualizer](http://ssw.jku.at/General/Staff/TW/igv.html) (IGV), and
+  [Ideal Graph Visualizer](https://www.graalvm.org/docs/reference-manual/tools/#ideal-graph-visualizer) (IGV), and
 * LIR register allocation and generated code to the
   [C1Visualizer](https://java.net/projects/c1visualizer/)
 

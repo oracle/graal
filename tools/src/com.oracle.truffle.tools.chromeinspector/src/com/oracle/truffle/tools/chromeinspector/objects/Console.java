@@ -28,9 +28,11 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.tools.chromeinspector.server.InspectorServerConnection;
 
@@ -141,14 +143,11 @@ class Console extends AbstractInspectorObject {
 
     @Override
     @CompilerDirectives.TruffleBoundary
-    protected Object invokeMember(String name, Object[] arguments) throws UnsupportedTypeException, UnknownIdentifierException {
+    protected Object invokeMember(String name, Object[] arguments) throws UnsupportedTypeException, UnknownIdentifierException, UnsupportedMessageException {
         Object arg;
         if (arguments.length < 1) {
             arg = UNKNOWN;
         } else {
-            if (!(arguments[0] instanceof String || arguments[0] instanceof Number)) {
-                throw UnsupportedTypeException.create(arguments);
-            }
             arg = arguments[0];
         }
         String type = name;
@@ -188,6 +187,15 @@ class Console extends AbstractInspectorObject {
             case METHOD_COUNT_RESET:
                 break;
             case METHOD_ASSERT:
+                // Report assertion only when false
+                if (isTrue(arguments[0])) {
+                    return NullObject.INSTANCE;
+                }
+                if (arguments.length > 1) {
+                    arg = arguments[1];
+                } else {
+                    arg = "console.assert";
+                }
                 break;
             case METHOD_MARK_TIMELINE:
                 break;
@@ -226,8 +234,20 @@ class Console extends AbstractInspectorObject {
             default:
                 throw UnknownIdentifierException.create(name);
         }
+        if (connection == null) {
+            throw new InspectorStateException("The inspector is not connected.");
+        }
         connection.consoleAPICall(type, arg);
         return NullObject.INSTANCE;
+    }
+
+    private static boolean isTrue(Object obj) throws UnsupportedMessageException {
+        InteropLibrary interop = InteropLibrary.getFactory().getUncached();
+        if (interop.isBoolean(obj)) {
+            return interop.asBoolean(obj);
+        } else {
+            return !interop.isNull(obj);
+        }
     }
 
     static final class Keys extends AbstractInspectorArray {

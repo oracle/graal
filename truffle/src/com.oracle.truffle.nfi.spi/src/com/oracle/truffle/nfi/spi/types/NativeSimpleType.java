@@ -54,5 +54,6 @@ public enum NativeSimpleType {
     DOUBLE,
     POINTER,
     STRING,
-    OBJECT;
+    OBJECT,
+    NULLABLE;
 }

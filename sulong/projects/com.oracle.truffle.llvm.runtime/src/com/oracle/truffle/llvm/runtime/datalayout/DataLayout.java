@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -38,6 +38,7 @@ import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 import com.oracle.truffle.llvm.runtime.types.VariableBitWidthType;
 
 /**
@@ -52,7 +53,7 @@ public final class DataLayout {
 
     private final List<DataTypeSpecification> dataLayout;
 
-    private final IdentityHashMap<Type, Integer> sizeCache = new IdentityHashMap<>();
+    private final IdentityHashMap<Type, Long> sizeCache = new IdentityHashMap<>();
     private final IdentityHashMap<Type, Integer> alignmentCache = new IdentityHashMap<>();
 
     public DataLayout() {
@@ -63,17 +64,18 @@ public final class DataLayout {
         this.dataLayout = DataLayoutParser.parseDataLayout(layout);
     }
 
-    public int getSize(Type type) {
-        Integer cachedSize = sizeCache.get(type);
+    public long getSize(Type type) throws TypeOverflowException {
+        Long cachedSize = sizeCache.get(type);
         if (cachedSize != null) {
             return cachedSize;
         }
-        int size = type.getBitSize();
+        long size = type.getBitSize();
         int align = getBitAlignment(type);
-        if (size % align != 0) {
-            size += align - (size % align);
+        long rem = Long.remainderUnsigned(size, align);
+        if (rem != 0) {
+            size = Type.addUnsignedExact(size, Type.subUnsignedExact(align, rem));
         }
-        size = Math.max(1, size / Byte.SIZE);
+        size = Math.max(1, Long.divideUnsigned(size, Byte.SIZE));
         sizeCache.put(type, size);
         return size;
     }
@@ -85,7 +87,7 @@ public final class DataLayout {
         }
         DataTypeSpecification spec = getDataTypeSpecification(baseType);
         if (spec == null) {
-            throw new IllegalStateException("No data specification found for " + baseType);
+            throw new IllegalStateException("No data specification found for " + baseType + ". Data layout is " + dataLayout);
         }
         int alignment = spec.getAbiAlignment();
         alignmentCache.put(baseType, alignment);
@@ -119,7 +121,10 @@ public final class DataLayout {
 
     private DataTypeSpecification getDataTypeSpecification(Type baseType) {
         if (baseType instanceof PointerType || baseType instanceof FunctionType) {
-            return getDataTypeSpecification(DataLayoutType.POINTER);
+            DataTypeSpecification ptrDTSpec = getDataTypeSpecification(DataLayoutType.POINTER, 64);
+            // The preceding call does not work for ARM arch that uses 128 bit pointers. In that
+            // case we take the first pointer spec available.
+            return ptrDTSpec == null ? getDataTypeSpecification(DataLayoutType.POINTER) : ptrDTSpec;
         } else if (baseType instanceof PrimitiveType) {
             PrimitiveType primitiveType = (PrimitiveType) baseType;
             switch (primitiveType.getPrimitiveKind()) {
@@ -143,7 +148,7 @@ public final class DataLayout {
                     return getDataTypeSpecification(DataLayoutType.FLOAT, 80);
             }
         } else if (baseType instanceof VariableBitWidthType) {
-            int bits = baseType.getBitSize();
+            int bits = ((VariableBitWidthType) baseType).getBitSizeInt();
 
             DataTypeSpecification largest = null;
             DataTypeSpecification smallestLarger = null;

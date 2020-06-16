@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.interop.access;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -42,6 +43,7 @@ import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.StructMember;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
+@GenerateUncached
 abstract class LLVMInteropAccessNode extends LLVMNode {
 
     @ValueType
@@ -66,7 +68,7 @@ abstract class LLVMInteropAccessNode extends LLVMNode {
 
     @Specialization
     AccessLocation doArray(LLVMInteropType.Array type, Object foreign, long offset,
-                    @Cached("create()") MakeAccessLocation makeAccessLocation) {
+                    @Cached MakeAccessLocation makeAccessLocation) {
         long index = Long.divideUnsigned(offset, type.elementSize);
         long restOffset = Long.remainderUnsigned(offset, type.elementSize);
         return makeAccessLocation.execute(foreign, index, type.elementType, restOffset);
@@ -81,7 +83,7 @@ abstract class LLVMInteropAccessNode extends LLVMNode {
 
     @Specialization(replaces = "doStructMember")
     AccessLocation doStruct(LLVMInteropType.Struct type, Object foreign, long offset,
-                    @Cached("create()") MakeAccessLocation makeAccessLocation) {
+                    @Cached MakeAccessLocation makeAccessLocation) {
         StructMember member = findMember(type, offset);
         return makeAccessLocation.execute(foreign, member.name, member.type, offset - member.startOffset);
     }
@@ -101,6 +103,7 @@ abstract class LLVMInteropAccessNode extends LLVMNode {
         throw new IllegalStateException("invalid struct access");
     }
 
+    @GenerateUncached
     abstract static class MakeAccessLocation extends LLVMNode {
 
         protected abstract AccessLocation execute(Object foreign, Object identifier, LLVMInteropType type, long restOffset);
@@ -123,10 +126,10 @@ abstract class LLVMInteropAccessNode extends LLVMNode {
                 inner = interop.readMember(foreign, identifier);
             } catch (UnknownIdentifierException ex) {
                 CompilerDirectives.transferToInterpreter();
-                throw new LLVMPolyglotException(this, "Member '%s' not found.", identifier);
+                throw new LLVMPolyglotException(this, "Member '%s' not found", identifier);
             } catch (UnsupportedMessageException ex) {
                 CompilerDirectives.transferToInterpreter();
-                throw new LLVMPolyglotException(this, "Can not read member '%s'.", identifier);
+                throw new LLVMPolyglotException(this, "Can not read member '%s'", identifier);
             }
 
             return recursive.execute(type, inner, restOffset);
@@ -141,10 +144,10 @@ abstract class LLVMInteropAccessNode extends LLVMNode {
                 inner = interop.readArrayElement(foreign, index);
             } catch (InvalidArrayIndexException ex) {
                 CompilerDirectives.transferToInterpreter();
-                throw new LLVMPolyglotException(this, "Invalid array index %d.", index);
+                throw new LLVMPolyglotException(this, "Invalid array index %d", index);
             } catch (UnsupportedMessageException ex) {
                 CompilerDirectives.transferToInterpreter();
-                throw new LLVMPolyglotException(this, "Can not read array element %d.", index);
+                throw new LLVMPolyglotException(this, "Cannot acess array element %d", index);
             }
 
             return recursive.execute(type, inner, restOffset);

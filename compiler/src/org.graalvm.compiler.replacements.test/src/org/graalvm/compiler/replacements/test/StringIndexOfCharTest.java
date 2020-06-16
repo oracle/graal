@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,33 +26,14 @@ package org.graalvm.compiler.replacements.test;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.compiler.core.test.GraalCompilerTest;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
-@RunWith(value = Parameterized.class)
+@RunWith(Parameterized.class)
 public class StringIndexOfCharTest extends GraalCompilerTest {
-
-    private static Map<ResolvedJavaMethod, InstalledCode> cache;
-
-    @BeforeClass
-    public static void setupCache() {
-        cache = new ConcurrentHashMap<>();
-    }
-
-    @AfterClass
-    public static void tearDownCache() {
-        cache = null;
-    }
 
     @Parameterized.Parameters(name = "{0},{1},{2}")
     public static Collection<Object[]> data() {
@@ -84,12 +65,11 @@ public class StringIndexOfCharTest extends GraalCompilerTest {
         return tests;
     }
 
-    private final String sourceString;
-    private final int constantChar;
-    private final int fromIndex;
+    protected final String sourceString;
+    protected final int constantChar;
+    protected final int fromIndex;
 
     public StringIndexOfCharTest(String sourceString, int constantChar, int fromIndex) {
-        super(cache);
         this.sourceString = sourceString;
         this.constantChar = constantChar;
         this.fromIndex = fromIndex;

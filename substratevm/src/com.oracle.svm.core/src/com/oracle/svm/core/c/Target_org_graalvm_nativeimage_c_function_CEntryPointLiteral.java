@@ -30,6 +30,7 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.Uninterruptible;
 
 @TargetClass(CEntryPointLiteral.class)
 final class Target_org_graalvm_nativeimage_c_function_CEntryPointLiteral {
@@ -37,6 +38,7 @@ final class Target_org_graalvm_nativeimage_c_function_CEntryPointLiteral {
     @Alias protected CFunctionPointer functionPointer;
 
     @Substitute
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public CFunctionPointer getFunctionPointer() {
         return functionPointer;
     }

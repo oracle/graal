@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,9 @@ package org.graalvm.compiler.nodes.virtual;
 
 import java.nio.ByteOrder;
 
+import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
+import org.graalvm.compiler.core.common.type.PrimitiveStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.Verbosity;
@@ -34,6 +37,7 @@ import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.ArrayLengthProvider;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
@@ -119,9 +123,9 @@ public class VirtualArrayNode extends VirtualObjectNode implements ArrayLengthPr
     }
 
     @Override
-    public JavaKind entryKind(int index) {
+    public JavaKind entryKind(MetaAccessExtensionProvider metaAccessExtensionProvider, int index) {
         assert index >= 0 && index < length;
-        return componentType.getJavaKind();
+        return metaAccessExtensionProvider.getStorageKind(componentType);
     }
 
     @Override
@@ -141,5 +145,26 @@ public class VirtualArrayNode extends VirtualObjectNode implements ArrayLengthPr
     @Override
     public ValueNode findLength(FindLengthMode mode, ConstantReflectionProvider constantReflection) {
         return ConstantNode.forInt(length);
+    }
+
+    /**
+     * Returns the number of bytes that the entry at a given index actually occupies.
+     */
+    public int byteArrayEntryByteCount(int index, VirtualizerTool tool) {
+        int i = index + 1;
+        while (i < entryCount() && tool.getEntry(this, i).isIllegalConstant()) {
+            i++;
+        }
+        return (i - index);
+    }
+
+    /**
+     * Performs some sanity checks.
+     */
+    public static ValueNode virtualizeByteArrayRead(ValueNode entry, JavaKind accessKind, Stamp targetStamp) {
+        assert !entry.isIllegalConstant();
+        assert targetStamp.getStackKind().isPrimitive();
+        assert accessKind.getBitCount() <= PrimitiveStamp.getBits(targetStamp);
+        return entry;
     }
 }

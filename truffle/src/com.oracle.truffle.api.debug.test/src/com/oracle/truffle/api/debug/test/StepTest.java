@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -602,16 +602,16 @@ public class StepTest extends AbstractDebugTest {
             });
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, 5, false, "EXPRESSION(CONSTANT(1))").prepareStepOut(1);
-                Assert.assertEquals("(1)", event.getReturnValue().as(String.class));
+                Assert.assertEquals("(1)", event.getReturnValue().toDisplayString());
                 Assert.assertEquals(Arrays.asList(event.getInputValues()).toString(), 0, event.getInputValues().length);
             });
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, 5, false, "EXPRESSION(EXPRESSION(CONSTANT(1)), EXPRESSION(CONSTANT(2)))").prepareStepInto(1);
-                Assert.assertEquals("((1)+(2))", event.getReturnValue().as(String.class));
+                Assert.assertEquals("((1)+(2))", event.getReturnValue().toDisplayString());
                 DebugValue[] inputValues = event.getInputValues();
                 Assert.assertEquals(Arrays.asList(inputValues).toString(), 2, event.getInputValues().length);
-                Assert.assertEquals("(1)", inputValues[0].as(String.class));
-                Assert.assertEquals("(2)", inputValues[1].as(String.class));
+                Assert.assertEquals("(1)", inputValues[0].toDisplayString());
+                Assert.assertEquals("(2)", inputValues[1].toDisplayString());
             });
             expectSuspended((SuspendedEvent event) -> {
                 checkState(event, 16, false, "CALL(inner1)").prepareStepInto(1);

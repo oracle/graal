@@ -1,0 +1,17 @@
+> cp agent-fib.js ${TMP_DIR}/helloworld.js
+> js --jvm --experimental-options --insight=agent-histogram.js ${TMP_DIR}/helloworld.js
+Three is the result 3
+==== Histogram ====
+  9 calls to fib
+  4 calls to minusOne
+  4 calls to minusTwo
+  1 calls to :program
+===================
+> js --experimental-options --insight=agent-histogram.js ${TMP_DIR}/helloworld.js
+Three is the result 3
+==== Histogram ====
+  9 calls to fib
+  4 calls to minusOne
+  4 calls to minusTwo
+  1 calls to :program
+===================

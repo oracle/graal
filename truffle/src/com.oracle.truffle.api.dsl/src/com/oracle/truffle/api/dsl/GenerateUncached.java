@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -68,9 +68,10 @@ import java.lang.annotation.Target;
  * <li>All specializations of the closure must not use {@linkplain Specialization#rewriteOn()
  * rewriteOn} attribute.
  * <li>All guards/cache/limit expressions must not bind the node receiver.
- * <li>The node must not declare any {@link NodeChild} or {@link NodeField} annotations.
  * </ul>
- * If any of these requirements are violated then an error will be shown.
+ * If any of these requirements are violated then an error will be shown. If node uses the
+ * {@link NodeChild} or {@link NodeField} annotations then they will return constant
+ * <code>null</code> or the primitive equivalent for the uncached node.
  * <p>
  * <b>Example:</b>
  *

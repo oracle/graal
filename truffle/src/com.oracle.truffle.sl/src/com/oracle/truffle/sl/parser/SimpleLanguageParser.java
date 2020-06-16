@@ -67,7 +67,7 @@ import java.util.ArrayList;
 
 @SuppressWarnings("all")
 public class SimpleLanguageParser extends Parser {
-	static { RuntimeMetaData.checkVersion("4.7", RuntimeMetaData.VERSION); }
+	static { RuntimeMetaData.checkVersion("4.7.2", RuntimeMetaData.VERSION); }
 
 	protected static final DFA[] _decisionToDFA;
 	protected static final PredictionContextCache _sharedContextCache =
@@ -83,24 +83,33 @@ public class SimpleLanguageParser extends Parser {
 		RULE_while_statement = 4, RULE_if_statement = 5, RULE_return_statement = 6, 
 		RULE_expression = 7, RULE_logic_term = 8, RULE_logic_factor = 9, RULE_arithmetic = 10, 
 		RULE_term = 11, RULE_factor = 12, RULE_member_expression = 13;
-	public static final String[] ruleNames = {
-		"simplelanguage", "function", "block", "statement", "while_statement", 
-		"if_statement", "return_statement", "expression", "logic_term", "logic_factor", 
-		"arithmetic", "term", "factor", "member_expression"
-	};
+	private static String[] makeRuleNames() {
+		return new String[] {
+			"simplelanguage", "function", "block", "statement", "while_statement", 
+			"if_statement", "return_statement", "expression", "logic_term", "logic_factor", 
+			"arithmetic", "term", "factor", "member_expression"
+		};
+	}
+	public static final String[] ruleNames = makeRuleNames();
 
-	private static final String[] _LITERAL_NAMES = {
-		null, "'function'", "'('", "','", "')'", "'{'", "'}'", "'break'", "';'", 
-		"'continue'", "'debugger'", "'while'", "'if'", "'else'", "'return'", "'||'", 
-		"'&&'", "'<'", "'<='", "'>'", "'>='", "'=='", "'!='", "'+'", "'-'", "'*'", 
-		"'/'", "'='", "'.'", "'['", "']'"
-	};
-	private static final String[] _SYMBOLIC_NAMES = {
-		null, null, null, null, null, null, null, null, null, null, null, null, 
-		null, null, null, null, null, null, null, null, null, null, null, null, 
-		null, null, null, null, null, null, null, "WS", "COMMENT", "LINE_COMMENT", 
-		"IDENTIFIER", "STRING_LITERAL", "NUMERIC_LITERAL"
-	};
+	private static String[] makeLiteralNames() {
+		return new String[] {
+			null, "'function'", "'('", "','", "')'", "'{'", "'}'", "'break'", "';'", 
+			"'continue'", "'debugger'", "'while'", "'if'", "'else'", "'return'", 
+			"'||'", "'&&'", "'<'", "'<='", "'>'", "'>='", "'=='", "'!='", "'+'", 
+			"'-'", "'*'", "'/'", "'='", "'.'", "'['", "']'"
+		};
+	}
+	private static final String[] _LITERAL_NAMES = makeLiteralNames();
+	private static String[] makeSymbolicNames() {
+		return new String[] {
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, null, null, null, null, null, 
+			null, null, null, null, null, null, null, "WS", "COMMENT", "LINE_COMMENT", 
+			"IDENTIFIER", "STRING_LITERAL", "NUMERIC_LITERAL"
+		};
+	}
+	private static final String[] _SYMBOLIC_NAMES = makeSymbolicNames();
 	public static final Vocabulary VOCABULARY = new VocabularyImpl(_LITERAL_NAMES, _SYMBOLIC_NAMES);
 
 	/**
@@ -191,6 +200,7 @@ public class SimpleLanguageParser extends Parser {
 		super(input);
 		_interp = new ParserATNSimulator(this,_ATN,_decisionToDFA,_sharedContextCache);
 	}
+
 	public static class SimplelanguageContext extends ParserRuleContext {
 		public List<FunctionContext> function() {
 			return getRuleContexts(FunctionContext.class);

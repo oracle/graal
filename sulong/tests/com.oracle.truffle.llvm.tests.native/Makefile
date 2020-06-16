@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+# Copyright (c) 2017, 2020, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -31,7 +31,11 @@ QUIETLY$(MX_VERBOSE)  = @
 
 .PHONY: default
 
+ifdef CLANG_CC
+CLANG=$(CLANG_CC)
+else
 CLANG?=clang
+endif
 
 SOURCE_FILES=$(wildcard ${VPATH}/src/*.c)
 
@@ -41,11 +45,14 @@ OBJECTS=${SOURCES:src/%.c=bin/%.o}
 default: bin/$(LIBSULONGTEST)
 ifeq ($(OS), darwin)
 bin/${LIBSULONGTEST}: LDFLAGS+=-install_name ${LIBSULONGTEST}
+CLANG_PREFIX=/usr/bin/xcrun --sdk macosx
+else
+CLANG_PREFIX=
 endif
 
 bin/$(LIBSULONGTEST): $(OBJECTS)
-	$(QUIETLY) $(CLANG) -shared -fPIC ${LDFLAGS} -o $@ $+
+	$(QUIETLY) $(CLANG_PREFIX) $(CLANG) -shared -fPIC ${LDFLAGS} -o $@ $+
 
 bin/%.o: src/%.c
 	@mkdir -p bin
-	$(QUIETLY) $(CLANG) -c -fPIC -o $@ $+
+	$(QUIETLY) $(CLANG_PREFIX) $(CLANG) -c -fPIC -o $@ $+

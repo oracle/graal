@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,13 @@ public interface TruffleCompiler {
     String SECOND_TIER_COMPILATION_SUFFIX = "#2";
     int FIRST_TIER_INDEX = 1;
     int LAST_TIER_INDEX = 2;
+
+    /**
+     * Initializes the compiler before the first compilation.
+     *
+     * @since 20.0.0
+     */
+    void initialize(Map<String, Object> options);
 
     /**
      * Opens a new compilation for {@code compilable}. Each call results in a new compilation

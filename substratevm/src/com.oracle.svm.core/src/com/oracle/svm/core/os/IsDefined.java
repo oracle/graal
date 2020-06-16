@@ -26,7 +26,6 @@ package com.oracle.svm.core.os;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 
 /**
  * Whether certain C pre-processor macros are defined on particular platforms. These are annotated
@@ -39,12 +38,12 @@ public class IsDefined {
 
     @Fold
     public static final boolean isDarwin() {
-        return Platform.includedIn(InternalPlatform.DARWIN_AND_JNI.class);
+        return Platform.includedIn(Platform.DARWIN.class);
     }
 
     @Fold
     public static final boolean isLinux() {
-        return Platform.includedIn(InternalPlatform.LINUX_AND_JNI.class);
+        return Platform.includedIn(Platform.LINUX.class);
     }
 
     @Fold

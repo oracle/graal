@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -72,13 +72,13 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleException;
-import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
 /**
  * Testing the behavior of proxies towards languages.
@@ -87,17 +87,19 @@ public class ProxySPITest extends AbstractPolyglotTest {
 
     static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
-    static class TestFunction extends ProxyLegacyInteropObject {
+    @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings("static-method")
+    static final class ProxyTestFunction implements TruffleObject {
 
         TruffleObject lastFunction;
 
-        @Override
-        public boolean isExecutable() {
+        @ExportMessage
+        boolean isExecutable() {
             return true;
         }
 
-        @Override
-        public Object execute(Object[] arguments) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
+        @ExportMessage
+        Object execute(Object[] arguments) {
             lastFunction = (TruffleObject) arguments[0];
             return lastFunction;
         }
@@ -110,7 +112,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
     }
 
     private TruffleObject toInnerProxy(Proxy proxy) {
-        TestFunction f = new TestFunction();
+        ProxyTestFunction f = new ProxyTestFunction();
         context.asValue(f).execute(proxy);
         return f.lastFunction;
     }
@@ -707,7 +709,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
     static class Invalid2 implements ProxyTime, ProxyTimeZone {
 
         public ZoneId asTimeZone() {
-            return ZoneId.of("UTC");
+            return ZoneId.of("US/Pacific");
         }
 
         public LocalTime asTime() {

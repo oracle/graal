@@ -36,10 +36,14 @@ import org.graalvm.component.installer.persist.MetadataLoader;
  */
 public class DirectoryArchiveReader implements ComponentArchiveReader {
     @Override
-    public MetadataLoader createLoader(Path p, byte[] fileStart, Feedback feedback, boolean verify) throws IOException {
+    public MetadataLoader createLoader(Path p, byte[] fileStart, String serial, Feedback feedback, boolean verify) throws IOException {
         if (!Files.isDirectory(p)) {
             return null;
         }
-        return DirectoryMetaLoader.create(p, feedback);
+        if (Files.isReadable(p.resolve("META-INF/MANIFEST.MF"))) {
+            return DirectoryMetaLoader.create(p, feedback);
+        } else {
+            return null;
+        }
     }
 }

@@ -33,6 +33,7 @@ import java.util.Queue;
 
 import org.graalvm.compiler.options.OptionType;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.driver.MacroOption.MacroOptionKind;
 
 class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
@@ -43,6 +44,9 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
     static final String helpText = NativeImage.getResource("/Help.txt");
     static final String helpExtraText = NativeImage.getResource("/HelpExtra.txt");
+    static final String noServerOption = SubstrateOptions.NO_SERVER;
+    static final String verboseServerOption = "--verbose-server";
+    static final String serverOptionPrefix = "--server-";
 
     DefaultOptionHandler(NativeImage nativeImage) {
         super(nativeImage);
@@ -78,6 +82,7 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 if (!NativeImage.graalvmConfig.isEmpty()) {
                     message += " " + NativeImage.graalvmConfig;
                 }
+                message += " (Java Version " + System.getProperty("java.version") + ")";
                 nativeImage.showMessage(message);
                 System.exit(0);
                 return true;
@@ -128,11 +133,21 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 return true;
             case "--expert-options":
                 args.poll();
-                nativeImage.setQueryOption(OptionType.User.name());
+                nativeImage.setPrintFlagsOptionQuery(OptionType.User.name());
                 return true;
             case "--expert-options-all":
                 args.poll();
-                nativeImage.setQueryOption("");
+                nativeImage.setPrintFlagsOptionQuery("");
+                return true;
+            case "--expert-options-detail":
+                args.poll();
+                String optionNames = args.poll();
+                nativeImage.setPrintFlagsWithExtraHelpOptionQuery(optionNames);
+                return true;
+            case noServerOption:
+            case verboseServerOption:
+                args.poll();
+                NativeImage.showWarning("Ignoring server-mode native-image argument " + headArg + ".");
                 return true;
         }
 
@@ -154,6 +169,8 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             }
             /* Using agentlib to allow interoperability with other agents */
             nativeImage.addImageBuilderJavaArgs("-agentlib:jdwp=transport=dt_socket,server=y,address=" + debugPort + ",suspend=y");
+            /* Disable watchdog mechanism */
+            nativeImage.addPlainImageBuilderArg(nativeImage.oHDeadlockWatchdogInterval + "0");
             return true;
         }
 
@@ -205,6 +222,11 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             } else {
                 nativeImage.addPlainImageBuilderArg(nativeImage.oHOptimize + headArg.substring(2));
             }
+            return true;
+        }
+        if (headArg.startsWith(serverOptionPrefix)) {
+            args.poll();
+            NativeImage.showWarning("Ignoring server-mode native-image argument " + headArg + ".");
             return true;
         }
         return false;

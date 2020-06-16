@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2017, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -49,7 +49,6 @@ import org.graalvm.word.LocationIdentity;
  * AArch64-specific subclass of ReadNode that knows how to merge ZeroExtend and SignExtend into the
  * read.
  */
-
 @NodeInfo
 public class AArch64ReadNode extends ReadNode {
     public static final NodeClass<AArch64ReadNode> TYPE = NodeClass.create(AArch64ReadNode.class);
@@ -72,6 +71,11 @@ public class AArch64ReadNode extends ReadNode {
         gen.setResult(this, arithgen.emitExtendMemory(isSigned, readKind, resultBits, (AArch64AddressValue) gen.operand(getAddress()), gen.state(this)));
     }
 
+    @Override
+    public Stamp getAccessStamp(NodeView view) {
+        return accessStamp;
+    }
+
     /**
      * replace a ReadNode with an AArch64-specific variant which knows how to merge a downstream
      * zero or sign extend into the read operation.
@@ -84,7 +88,7 @@ public class AArch64ReadNode extends ReadNode {
 
         ValueNode usage = (ValueNode) readNode.usages().first();
         boolean isSigned = usage instanceof SignExtendNode;
-        IntegerStamp accessStamp = ((IntegerStamp) readNode.getAccessStamp());
+        IntegerStamp accessStamp = ((IntegerStamp) readNode.getAccessStamp(NodeView.DEFAULT));
 
         AddressNode address = readNode.getAddress();
         LocationIdentity location = readNode.getLocationIdentity();

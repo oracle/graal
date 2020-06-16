@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -209,6 +209,22 @@ public class LinearScan {
         this.intervalEndMarker = new Interval(Value.ILLEGAL, Interval.END_MARKER_OPERAND_NUMBER, null, rangeEndMarker);
         this.intervalEndMarker.next = intervalEndMarker;
         this.detailedAsserts = Assertions.detailedAssertionsEnabled(ir.getOptions());
+    }
+
+    /**
+     * Compute the variable number of the given operand.
+     *
+     * @param operand
+     * @return the variable number of the supplied operand or {@code -1} if the supplied operand
+     *         describes a register
+     */
+    public int getVariableNumber(int operand) {
+        // check if its a variable
+        if (operand >= firstVariableNumber) {
+            return operand - firstVariableNumber;
+        }
+        // register case
+        return -1;
     }
 
     public LIRGenerationResult getLIRGenerationResult() {
@@ -763,7 +779,7 @@ public class LinearScan {
                 }
             }
         }
-        debug.dump(DebugContext.VERBOSE_LEVEL, new LinearScanIntervalDumper(Arrays.copyOf(intervals, intervalsSize)), label);
+        debug.dump(DebugContext.INFO_LEVEL, new LinearScanIntervalDumper(Arrays.copyOf(intervals, intervalsSize)), label);
     }
 
     boolean verify() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -114,6 +114,12 @@ public class CompilationWrapperTest extends GraalCompilerTest {
     public void testVMCompilation3() throws IOException, InterruptedException {
         assumeManagementLibraryIsLoadable();
         final int maxProblems = 2;
+        Probe failurePatternProbe = new Probe("[[[Graal compilation failure]]]", maxProblems) {
+            @Override
+            String test() {
+                return actualOccurrences > 0 && actualOccurrences <= maxProblems ? null : String.format("expected occurrences to be in [1 .. %d]", maxProblems);
+            }
+        };
         Probe retryingProbe = new Probe("Retrying compilation of", maxProblems) {
             @Override
             String test() {
@@ -132,6 +138,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
             }
         };
         Probe[] probes = {
+                        failurePatternProbe,
                         retryingProbe,
                         adjustmentProbe
         };
@@ -153,6 +160,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
         assumeManagementLibraryIsLoadable();
         testHelper(Collections.emptyList(),
                         Arrays.asList(
+                                        SubprocessUtil.PACKAGE_OPENING_OPTIONS,
                                         "-Dgraal.CompilationFailureAction=ExitVM",
                                         "-Dgraal.TrufflePerformanceWarningsAreFatal=true",
                                         "-Dgraal.CrashAt=root test1"),
@@ -165,10 +173,11 @@ public class CompilationWrapperTest extends GraalCompilerTest {
     @Test
     public void testTruffleCompilation2() throws IOException, InterruptedException {
         Probe[] probes = {
-                        new Probe("Exiting VM due to TruffleCompilationExceptionsAreFatal=true", 1),
+                        new Probe("Exiting VM due to engine.CompilationExceptionsAreFatal=true", 1),
         };
         testHelper(Arrays.asList(probes),
                         Arrays.asList(
+                                        SubprocessUtil.PACKAGE_OPENING_OPTIONS,
                                         "-Dgraal.CompilationFailureAction=Silent",
                                         "-Dgraal.TruffleCompilationExceptionsAreFatal=true",
                                         "-Dgraal.CrashAt=root test1"),
@@ -182,10 +191,11 @@ public class CompilationWrapperTest extends GraalCompilerTest {
     public void testTruffleCompilation3() throws IOException, InterruptedException {
         assumeManagementLibraryIsLoadable();
         Probe[] probes = {
-                        new Probe("Exiting VM due to TrufflePerformanceWarningsAreFatal=true", 1),
+                        new Probe("Exiting VM due to engine.PerformanceWarningsAreFatal=true", 1),
         };
         testHelper(Arrays.asList(probes),
                         Arrays.asList(
+                                        SubprocessUtil.PACKAGE_OPENING_OPTIONS,
                                         "-Dgraal.CompilationFailureAction=Silent",
                                         "-Dgraal.TrufflePerformanceWarningsAreFatal=true",
                                         "-Dgraal.CrashAt=root test1:PermanentBailout"),
@@ -231,7 +241,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
             for (Probe probe : probes) {
                 String error = probe.test();
                 if (error != null) {
-                    Assert.fail(String.format("Did not find expected occurences of '%s' in output of command: %s%n%s", probe.substring, error, proc));
+                    Assert.fail(String.format("Did not find expected occurrences of '%s' in output of command: %s%n%s", probe.substring, error, proc));
                 }
             }
             String line = diagnosticProbe.lastMatchingLine;

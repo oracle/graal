@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,41 +31,10 @@ package com.oracle.truffle.llvm.parser.metadata;
 
 import com.oracle.truffle.llvm.parser.listeners.Metadata;
 
-public final class MDNamespace extends MDName implements MDBaseNode {
-
-    private final long line;
-
-    private MDBaseNode scope;
-    private MDBaseNode file;
+public final class MDNamespace extends MDNamedLocation implements MDBaseNode {
 
     private MDNamespace(long line) {
-        this.line = line;
-
-        this.scope = MDVoidNode.INSTANCE;
-        this.file = MDVoidNode.INSTANCE;
-    }
-
-    public MDBaseNode getScope() {
-        return scope;
-    }
-
-    public MDBaseNode getFile() {
-        return file;
-    }
-
-    public long getLine() {
-        return line;
-    }
-
-    @Override
-    public void replace(MDBaseNode oldValue, MDBaseNode newValue) {
-        super.replace(oldValue, newValue);
-        if (scope == oldValue) {
-            scope = newValue;
-        }
-        if (file == oldValue) {
-            file = newValue;
-        }
+        super(line);
     }
 
     @Override
@@ -86,15 +55,15 @@ public final class MDNamespace extends MDName implements MDBaseNode {
         if (RECORDSIZE_50 != args.length) {
             final long line = args[ARGINDEX_38_LINE];
             final MDNamespace namespace = new MDNamespace(line);
-            namespace.file = md.getNullable(args[ARGINDEX_38_FILE], namespace);
-            namespace.scope = md.getNullable(args[ARGINDEX_SCOPE], namespace);
+            namespace.setFile(md.getNullable(args[ARGINDEX_38_FILE], namespace));
+            namespace.setScope(md.getNullable(args[ARGINDEX_SCOPE], namespace));
             namespace.setName(md.getNullable(args[ARGINDEX_38_NAME], namespace));
             return namespace;
 
         } else {
             final long line = -1L;
             final MDNamespace namespace = new MDNamespace(line);
-            namespace.scope = md.getNullable(args[ARGINDEX_SCOPE], namespace);
+            namespace.setScope(md.getNullable(args[ARGINDEX_SCOPE], namespace));
             namespace.setName(md.getNullable(args[ARGINDEX_50_NAME], namespace));
             return namespace;
         }
@@ -108,8 +77,8 @@ public final class MDNamespace extends MDName implements MDBaseNode {
         final long line = ParseUtil.asLong(args, ARGINDEX_32_LINE, md);
         final MDNamespace namespace = new MDNamespace(line);
 
-        namespace.scope = ParseUtil.resolveReference(args, ARGINDEX_SCOPE, namespace, md);
-        namespace.file = ParseUtil.resolveReference(args, ARGINDEX_32_FILE, namespace, md);
+        namespace.setScope(ParseUtil.resolveReference(args, ARGINDEX_SCOPE, namespace, md));
+        namespace.setFile(ParseUtil.resolveReference(args, ARGINDEX_32_FILE, namespace, md));
         namespace.setName(ParseUtil.resolveReference(args, ARGINDEX_32_NAME, namespace, md));
 
         return namespace;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -110,7 +110,7 @@ public class VerifyDebugUsage extends VerifyPhase<CoreProviders> {
         }
     }
 
-    private void verifyParameters(MethodCallTargetNode callTarget, StructuredGraph callerGraph, NodeInputList<? extends ValueNode> args, ResolvedJavaType stringType, int startArgIdx) {
+    protected void verifyParameters(MethodCallTargetNode callTarget, StructuredGraph callerGraph, NodeInputList<? extends ValueNode> args, ResolvedJavaType stringType, int startArgIdx) {
         if (callTarget.targetMethod().isVarArgs() && args.get(args.count() - 1) instanceof NewArrayNode) {
             // unpack the arguments to the var args
             List<ValueNode> unpacked = new ArrayList<>(args.snapshot());
@@ -144,13 +144,14 @@ public class VerifyDebugUsage extends VerifyPhase<CoreProviders> {
                     "org.graalvm.compiler.phases.BasePhase.dumpAfter",
                     "org.graalvm.compiler.phases.BasePhase.dumpBefore",
                     "org.graalvm.compiler.core.GraalCompiler.emitFrontEnd",
-                    "org.graalvm.compiler.truffle.compiler.PartialEvaluator.fastPartialEvaluation",
-                    "org.graalvm.compiler.truffle.compiler.PartialEvaluator$PerformanceInformationHandler.reportPerformanceWarnings",
+                    "org.graalvm.compiler.truffle.compiler.PartialEvaluator.inliningGraphPE",
+                    "org.graalvm.compiler.truffle.compiler.PerformanceInformationHandler.reportPerformanceWarnings",
                     "org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl.compilePEGraph",
                     "org.graalvm.compiler.core.test.VerifyDebugUsageTest$ValidDumpUsagePhase.run",
                     "org.graalvm.compiler.core.test.VerifyDebugUsageTest$InvalidConcatDumpUsagePhase.run",
                     "org.graalvm.compiler.core.test.VerifyDebugUsageTest$InvalidDumpUsagePhase.run",
-                    "org.graalvm.compiler.hotspot.SymbolicSnippetEncoder.verifySnippetEncodeDecode"));
+                    "org.graalvm.compiler.hotspot.SymbolicSnippetEncoder.verifySnippetEncodeDecode",
+                    "org.graalvm.compiler.truffle.compiler.phases.inlining.CallTree.dumpBasic"));
 
     /**
      * The set of methods allowed to call a {@code Debug.dump(...)} method with the {@code level}
@@ -167,7 +168,8 @@ public class VerifyDebugUsage extends VerifyPhase<CoreProviders> {
                     "org.graalvm.compiler.replacements.ReplacementsImpl$GraphMaker.makeGraph",
                     "org.graalvm.compiler.replacements.SnippetTemplate.instantiate",
                     "org.graalvm.compiler.replacements.SnippetTemplate.<init>",
-                    "org.graalvm.compiler.hotspot.SymbolicSnippetEncoder.verifySnippetEncodeDecode"));
+                    "org.graalvm.compiler.hotspot.SymbolicSnippetEncoder.verifySnippetEncodeDecode",
+                    "org.graalvm.compiler.truffle.compiler.phases.inlining.CallTree.dumpInfo"));
 
     private void verifyParameters(StructuredGraph callerGraph, MethodCallTargetNode debugCallTarget, List<? extends ValueNode> args, ResolvedJavaType stringType, int startArgIdx,
                     int varArgsIndex) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -62,7 +62,7 @@ public final class MainArgsTest extends BaseSulongOnlyHarness {
         configs.add(new RunConfiguration(96, null, new String[]{"hello", "world!"}));
         configs.add(new RunConfiguration(154, null, new String[]{"1", "2", "3"}));
         configs.add(new RunConfiguration(193, null, new String[]{"a", "b", "cd", "efg"}));
-        return configs.stream().map(c -> new Object[]{new File(OTHER_DIR + "/main-args/O1.bc").toPath(), c, String.valueOf(configs.indexOf(c))}).collect(Collectors.toList());
+        return configs.stream().map(c -> new Object[]{new File(OTHER_DIR + "/main-args.c.dir/O1.bc").toPath(), c, String.valueOf(configs.indexOf(c))}).collect(Collectors.toList());
     }
 
     @Override

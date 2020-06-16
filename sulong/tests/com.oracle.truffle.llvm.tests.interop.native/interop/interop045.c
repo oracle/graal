@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,13 +32,12 @@
 typedef void *VALUE;
 
 int main() {
-  VALUE a = (VALUE) polyglot_import("a"); 
-  VALUE b = (VALUE) polyglot_import("b"); 
-  
+    VALUE a = (VALUE) polyglot_import("a");
+    VALUE b = (VALUE) polyglot_import("b");
 
-  if (a < b) {
-    return 1;
-  } else {
-    return 0;
-  }
+    if (a < b) {
+        return 1;
+    } else {
+        return 0;
+    }
 }

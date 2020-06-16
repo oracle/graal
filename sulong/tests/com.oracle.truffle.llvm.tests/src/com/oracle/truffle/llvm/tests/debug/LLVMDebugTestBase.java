@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -43,10 +43,13 @@ import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
+import com.oracle.truffle.llvm.tests.pipe.CaptureNativeOutput;
 import com.oracle.truffle.tck.DebuggerTester;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -56,8 +59,8 @@ public abstract class LLVMDebugTestBase {
 
     private static final String LANG_ID = LLVMLanguage.ID;
 
-    private static final String[] SOURCE_FILE_EXTENSIONS = new String[]{".c", ".cpp", ".ll"};
     private static final String TRACE_EXT = ".txt";
+    public static final String TEST_FOLDER_EXT = ".dir";
     private static final String OPTION_LAZY_PARSING = "llvm.lazyParsing";
 
     LLVMDebugTestBase(String testName, String configuration) {
@@ -82,11 +85,18 @@ public abstract class LLVMDebugTestBase {
         return testName;
     }
 
+    boolean isCxx() {
+        return testName.endsWith(".cpp");
+    }
+
     @Before
     public void before() {
         final Context.Builder contextBuilder = Context.newBuilder(LANG_ID);
         contextBuilder.allowAllAccess(true);
         contextBuilder.option(OPTION_LAZY_PARSING, String.valueOf(false));
+        if (isCxx()) {
+            contextBuilder.option(SulongEngineOption.LOAD_CXX_LIBRARIES_NAME, "true");
+        }
         setContextOptions(contextBuilder);
         tester = new DebuggerTester(contextBuilder);
     }
@@ -107,23 +117,21 @@ public abstract class LLVMDebugTestBase {
         return source;
     }
 
-    private Source loadOriginalSource() {
-        for (String ext : SOURCE_FILE_EXTENSIONS) {
-            final File file = getSourcePath().resolve(testName + ext).toFile();
-            if (file.exists()) {
-                return loadSource(file);
-            }
-        }
-        throw new AssertionError("Could not locate source for test: " + testName);
+    protected Source loadOriginalSource() {
+        final File file = getSourcePath().resolve(testName).toFile();
+        Assert.assertTrue("Locate Source " + file, file.exists());
+        return loadSource(file);
     }
 
-    private Source loadBitcodeSource() {
-        final Path path = getBitcodePath().resolve(Paths.get(testName, configuration));
-        return loadSource(path.toFile());
+    protected Source loadBitcodeSource() {
+        final File file = getBitcodePath().resolve(Paths.get(testName + ".dir", configuration)).toFile();
+        Assert.assertTrue("Locate Bitcode " + file, file.exists());
+        return loadSource(file);
     }
 
     private Trace readTrace() {
         final Path path = getTracePath().resolve(testName + TRACE_EXT);
+        Assert.assertTrue("Locate Trace " + path, path.toFile().exists());
         return Trace.parse(path);
     }
 
@@ -261,24 +269,27 @@ public abstract class LLVMDebugTestBase {
         return Breakpoint.newBuilder(source.getURI()).lineIs(line).build();
     }
 
-    private void runTest(Source source, Source bitcode, Trace trace) {
-        try (DebuggerSession session = tester.startSession()) {
-            trace.requestedBreakpoints().forEach(line -> session.install(buildBreakPoint(source, line)));
-            if (trace.suspendOnEntry()) {
-                session.suspendNextExecution();
+    @SuppressWarnings("try")
+    private void runTest(Source source, Source bitcode, Trace trace) throws IOException {
+        try (CaptureNativeOutput out = new CaptureNativeOutput()) {
+            try (DebuggerSession session = tester.startSession()) {
+                trace.requestedBreakpoints().forEach(line -> session.install(buildBreakPoint(source, line)));
+                if (trace.suspendOnEntry()) {
+                    session.suspendNextExecution();
+                }
+
+                tester.startEval(bitcode);
+
+                final BreakInfo info = new BreakInfo();
+                for (StopRequest bpr : trace) {
+                    final TestCallback expectedEvent = new TestCallback(info, bpr);
+                    do {
+                        tester.expectSuspended(expectedEvent);
+                    } while (!expectedEvent.isDone());
+                }
+
+                tester.expectDone();
             }
-
-            tester.startEval(bitcode);
-
-            final BreakInfo info = new BreakInfo();
-            for (StopRequest bpr : trace) {
-                final TestCallback expectedEvent = new TestCallback(info, bpr);
-                do {
-                    tester.expectSuspended(expectedEvent);
-                } while (!expectedEvent.isDone());
-            }
-
-            tester.expectDone();
         }
     }
 

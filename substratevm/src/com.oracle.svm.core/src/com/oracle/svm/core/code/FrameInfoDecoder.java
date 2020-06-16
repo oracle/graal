@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.code;
 
+import java.util.Arrays;
+
 import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.core.common.util.TypeReader;
 
@@ -34,6 +36,7 @@ import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueInfo;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueType;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.NonmovableByteArrayTypeReader;
@@ -171,7 +174,7 @@ public class FrameInfoDecoder {
                 int deoptMethodIndex = readBuffer.getSVInt();
                 if (deoptMethodIndex < 0) {
                     /* Negative number is a reference to the target method. */
-                    cur.deoptMethod = (SharedMethod) NonmovableArrays.getObject(info.getFrameInfoObjectConstants(), -1 - deoptMethodIndex);
+                    cur.deoptMethod = (SharedMethod) NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoObjectConstants(info), -1 - deoptMethodIndex);
                     cur.deoptMethodOffset = cur.deoptMethod.getDeoptOffsetInImage();
                 } else {
                     /* Positive number is a directly encoded method offset. */
@@ -179,7 +182,7 @@ public class FrameInfoDecoder {
                 }
 
                 curValueInfosLenght = readBuffer.getUVInt();
-                cur.valueInfos = decodeValues(valueInfoAllocator, curValueInfosLenght, readBuffer, info.getFrameInfoObjectConstants());
+                cur.valueInfos = decodeValues(valueInfoAllocator, curValueInfosLenght, readBuffer, CodeInfoAccess.getFrameInfoObjectConstants(info));
             }
 
             if (prev != null) {
@@ -198,7 +201,7 @@ public class FrameInfoDecoder {
                         virtualObjects = valueInfoAllocator.newValueInfoArrayArray(numVirtualObjects);
                         for (int i = 0; i < numVirtualObjects; i++) {
                             int numValues = readBuffer.getUVInt();
-                            ValueInfo[] decodedValues = decodeValues(valueInfoAllocator, numValues, readBuffer, info.getFrameInfoObjectConstants());
+                            ValueInfo[] decodedValues = decodeValues(valueInfoAllocator, numValues, readBuffer, CodeInfoAccess.getFrameInfoObjectConstants(info));
                             if (virtualObjects != null) {
                                 virtualObjects[i] = decodedValues;
                             }
@@ -218,8 +221,8 @@ public class FrameInfoDecoder {
                 cur.sourceClassIndex = sourceClassIndex;
                 cur.sourceMethodNameIndex = sourceMethodNameIndex;
 
-                cur.sourceClass = NonmovableArrays.getObject(info.getFrameInfoSourceClasses(), sourceClassIndex);
-                cur.sourceMethodName = NonmovableArrays.getObject(info.getFrameInfoSourceMethodNames(), sourceMethodNameIndex);
+                cur.sourceClass = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceClasses(info), sourceClassIndex);
+                cur.sourceMethodName = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoSourceMethodNames(info), sourceMethodNameIndex);
                 cur.sourceLineNumber = sourceLineNumber;
             }
 
@@ -228,7 +231,7 @@ public class FrameInfoDecoder {
                     int nameIndex = readBuffer.getUVInt();
                     if (cur.valueInfos != null) {
                         cur.valueInfos[i].nameIndex = nameIndex;
-                        cur.valueInfos[i].name = NonmovableArrays.getObject(info.getFrameInfoNames(), nameIndex);
+                        cur.valueInfos[i].name = NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoNames(info), nameIndex);
                     }
                 }
             }
@@ -250,6 +253,7 @@ public class FrameInfoDecoder {
                 valueInfo.type = valueType;
                 valueInfo.kind = extractKind(flags);
                 valueInfo.isCompressedReference = extractIsCompressedReference(flags);
+                valueInfo.isEliminatedMonitor = extractIsEliminatedMonitor(flags);
             }
             if (valueType.hasData) {
                 long valueInfoData = readBuffer.getSV();
@@ -285,6 +289,16 @@ public class FrameInfoDecoder {
                         ((encodedBci & RETHROW_EXCEPTION_MASK) != 0 ? " rethrowException" : "");
     }
 
+    public static void logReadableBci(Log log, long encodedBci) {
+        log.signed(decodeBci(encodedBci));
+        if ((encodedBci & DURING_CALL_MASK) != 0) {
+            log.string(" duringCall");
+        }
+        if ((encodedBci & RETHROW_EXCEPTION_MASK) != 0) {
+            log.string(" rethrowException");
+        }
+    }
+
     protected static final int TYPE_BITS = 3;
     protected static final int TYPE_SHIFT = 0;
     protected static final int TYPE_MASK_IN_PLACE = ((1 << TYPE_BITS) - 1) << TYPE_SHIFT;
@@ -293,9 +307,23 @@ public class FrameInfoDecoder {
     protected static final int KIND_SHIFT = TYPE_SHIFT + TYPE_BITS;
     protected static final int KIND_MASK_IN_PLACE = ((1 << KIND_BITS) - 1) << KIND_SHIFT;
 
+    /**
+     * Value not used by {@link JavaKind} as a marker for eliminated monitors. The kind of a monitor
+     * is always {@link JavaKind#Object}.
+     */
+    protected static final int IS_ELIMINATED_MONITOR_KIND_VALUE = 15;
+
     protected static final int IS_COMPRESSED_REFERENCE_BITS = 1;
     protected static final int IS_COMPRESSED_REFERENCE_SHIFT = KIND_SHIFT + KIND_BITS;
     protected static final int IS_COMPRESSED_REFERENCE_MASK_IN_PLACE = ((1 << IS_COMPRESSED_REFERENCE_BITS) - 1) << IS_COMPRESSED_REFERENCE_SHIFT;
+
+    protected static final JavaKind[] KIND_VALUES;
+
+    static {
+        KIND_VALUES = Arrays.copyOf(JavaKind.values(), IS_ELIMINATED_MONITOR_KIND_VALUE + 1);
+        assert KIND_VALUES[IS_ELIMINATED_MONITOR_KIND_VALUE] == null;
+        KIND_VALUES[IS_ELIMINATED_MONITOR_KIND_VALUE] = JavaKind.Object;
+    }
 
     /* Allow allocation-free access to ValueType values */
     private static final ValueType[] ValueTypeValues = ValueType.values();
@@ -304,14 +332,15 @@ public class FrameInfoDecoder {
         return ValueTypeValues[(flags & TYPE_MASK_IN_PLACE) >> TYPE_SHIFT];
     }
 
-    /* Allow allocation-free access to JavaKind values */
-    private static final JavaKind[] JavaKindValues = JavaKind.values();
-
     private static JavaKind extractKind(int flags) {
-        return JavaKindValues[(flags & KIND_MASK_IN_PLACE) >> KIND_SHIFT];
+        return KIND_VALUES[(flags & KIND_MASK_IN_PLACE) >> KIND_SHIFT];
     }
 
     private static boolean extractIsCompressedReference(int flags) {
         return (flags & IS_COMPRESSED_REFERENCE_MASK_IN_PLACE) != 0;
+    }
+
+    private static boolean extractIsEliminatedMonitor(int flags) {
+        return ((flags & KIND_MASK_IN_PLACE) >> KIND_SHIFT) == IS_ELIMINATED_MONITOR_KIND_VALUE;
     }
 }

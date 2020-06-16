@@ -25,8 +25,10 @@
 package com.oracle.svm.hosted.substitute;
 
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Field;
 import java.util.Arrays;
 
+import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.meta.ReadableJavaField;
@@ -37,7 +39,7 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class AnnotatedField implements ReadableJavaField {
+public class AnnotatedField implements ReadableJavaField, OriginalFieldProvider {
 
     static Annotation[] appendAnnotationTo(Annotation[] array, Annotation element) {
         Annotation[] result = Arrays.copyOf(array, array.length + 1);
@@ -133,5 +135,10 @@ public class AnnotatedField implements ReadableJavaField {
     @Override
     public String toString() {
         return "InjectedAnnotationField<original " + original.toString() + ", annotation: " + injectedAnnotation + ">";
+    }
+
+    @Override
+    public Field getJavaField() {
+        return OriginalFieldProvider.getJavaField(GraalAccess.getOriginalSnippetReflection(), original);
     }
 }

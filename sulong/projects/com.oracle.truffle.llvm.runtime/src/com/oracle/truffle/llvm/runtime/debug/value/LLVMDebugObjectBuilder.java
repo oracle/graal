@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,7 +39,7 @@ public abstract class LLVMDebugObjectBuilder {
 
         @Override
         public LLVMDebugObject getValue(LLVMSourceType type, LLVMSourceLocation declaration) {
-            return LLVMDebugObject.instantiate(type, 0L, LLVMDebugValue.UNAVAILABLE, declaration);
+            return LLVMDebugObject.create(type, 0L, LLVMDebugValue.UNAVAILABLE, declaration);
         }
 
     };

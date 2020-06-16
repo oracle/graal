@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -133,6 +133,13 @@ public abstract class Stamp implements SpeculationContextObject {
      */
     public boolean isUnrestricted() {
         return this.equals(this.unrestricted());
+    }
+
+    /**
+     * Tests whether this stamp represents a pointer value.
+     */
+    public boolean isPointerStamp() {
+        return this instanceof AbstractPointerStamp;
     }
 
     /**

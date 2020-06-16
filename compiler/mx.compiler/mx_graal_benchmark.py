@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -93,8 +93,8 @@ _IMAGE_JMH_BENCHMARK_ARGS = [
     # JMH does not support forks with native-image. In the distant future we can capture this case.
     '-Dnative-image.benchmark.extra-run-arg=-f0',
 
-    # GR-17177 should remove this from args.
-    '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.openjdk.jmh',
+    # JMH does HotSpot-specific field offset checks in class initializers
+    '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.openjdk.jmh,joptsimple.internal',
 
     # Don't waste time and energy collecting reflection config.
     '-Dnative-image.benchmark.extra-agent-run-arg=-f0',
@@ -183,7 +183,7 @@ class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
         return []
 
 
-mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default', ['-server', '-XX:-EnableJVMCI']), _suite, 2)
+mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default', ['-server', '-XX:-EnableJVMCI', '-XX:-UseJVMCICompiler']), _suite, 2)
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'hosted', ['-server', '-XX:+EnableJVMCI']), _suite, 3)
 
 def build_jvmci_vm_variants(raw_name, raw_config_name, extra_args, variants, include_default=True, suite=None, priority=0, hosted=True):
@@ -211,13 +211,14 @@ _graal_variants = [
     ('no-splitting', ['-Dgraal.TruffleSplitting=false'], 0),
     ('limit-truffle-inlining', ['-Dgraal.TruffleMaximumRecursiveInlining=2'], 0),
     ('no-splitting-limit-truffle-inlining', ['-Dgraal.TruffleSplitting=false', '-Dgraal.TruffleMaximumRecursiveInlining=2'], 0),
+    ('la-inline', ['-Dgraal.TruffleLanguageAgnosticInlining=true'], 0),
 ]
 build_jvmci_vm_variants('server', 'graal-core', ['-server', '-XX:+EnableJVMCI', '-Dgraal.CompilerConfiguration=community', '-Djvmci.Compiler=graal'], _graal_variants, suite=_suite, priority=15)
 
 # On 64 bit systems -client is not supported. Nevertheless, when running with -server, we can
 # force the VM to just compile code with C1 but not with C2 by adding option -XX:TieredStopAtLevel=1.
 # This behavior is the closest we can get to the -client vm configuration.
-mx_benchmark.add_java_vm(JvmciJdkVm('client', 'default', ['-server', '-XX:-EnableJVMCI', '-XX:TieredStopAtLevel=1']), suite=_suite, priority=1)
+mx_benchmark.add_java_vm(JvmciJdkVm('client', 'default', ['-server', '-XX:-EnableJVMCI', '-XX:-UseJVMCICompiler', '-XX:TieredStopAtLevel=1']), suite=_suite, priority=1)
 mx_benchmark.add_java_vm(JvmciJdkVm('client', 'hosted', ['-server', '-XX:+EnableJVMCI', '-XX:TieredStopAtLevel=1']), suite=_suite, priority=1)
 
 class DebugValueBenchmarkMixin(object):
@@ -601,7 +602,11 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
         partialResults.append(datapoint)
 
     def benchmarkList(self, bmSuiteArgs):
-        return [key for key, value in self.daCapoIterations().items() if value != -1]
+        bench_list = [key for key, value in self.daCapoIterations().items() if value != -1]
+        if mx_compiler.jdk.javaCompliance >= '9' and "batik" in bench_list:
+            # batik crashes on JDK9+. This is fixed in the upcoming dacapo chopin release
+            bench_list.remove("batik")
+        return bench_list
 
     def daCapoSuiteTitle(self):
         """Title string used in the output next to the performance result."""
@@ -618,6 +623,9 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
         return [
             re.compile(
                 r"^===== " + re.escape(self.daCapoSuiteTitle()) + " ([a-zA-Z0-9_]+) FAILED (warmup|) =====", # pylint: disable=line-too-long
+                re.MULTILINE),
+            re.compile(
+                r"^\[\[\[Graal compilation failure\]\]\]", # pylint: disable=line-too-long
                 re.MULTILINE)
         ]
 
@@ -1091,7 +1099,10 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
 
     def failurePatterns(self):
         return [
-            re.compile(r"^Errors in benchmark: ", re.MULTILINE)
+            re.compile(r"^Errors in benchmark: ", re.MULTILINE),
+            re.compile(
+                r"^\[\[\[Graal compilation failure\]\]\]", # pylint: disable=line-too-long
+                re.MULTILINE)
         ]
 
     def flakySuccessPatterns(self):
@@ -1127,12 +1138,14 @@ mx_benchmark.add_bm_suite(SpecJvm2008BenchmarkSuite())
 _SpecJbb_specific_vmArgs = [
     "-XX:+UseNUMA",
     "-XX:+AlwaysPreTouch",
-    "-XX:+UseTransparentHugePages",
     "-XX:+UseLargePagesInMetaspace",
     "-XX:-UseAdaptiveSizePolicy",
     "-XX:-UseAdaptiveNUMAChunkSizing",
     "-XX:+PrintGCDetails"
 ]
+
+if mx.is_linux():
+    _SpecJbb_specific_vmArgs.append("-XX:+UseTransparentHugePages")
 
 
 class HeapSettingsMixin(object):
@@ -1276,7 +1289,10 @@ class SpecJbb2005BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, HeapSettingsMix
 
     def failurePatterns(self):
         return [
-            re.compile(r"VALIDATION ERROR", re.MULTILINE)
+            re.compile(r"VALIDATION ERROR", re.MULTILINE),
+               re.compile(
+                   r"^\[\[\[Graal compilation failure\]\]\]", # pylint: disable=line-too-long
+                   re.MULTILINE)
         ]
 
     def flakySuccessPatterns(self):
@@ -1364,7 +1380,11 @@ class SpecJbb2013BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, HeapSettingsMix
         ]
 
     def failurePatterns(self):
-        return []
+        return [
+            re.compile(
+                r"^\[\[\[Graal compilation failure\]\]\]", # pylint: disable=line-too-long
+                re.MULTILINE)
+        ]
 
     def flakySuccessPatterns(self):
         return []
@@ -1475,7 +1495,11 @@ class SpecJbb2015BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, HeapSettingsMix
         ]
 
     def failurePatterns(self):
-        return []
+        return [
+            re.compile(
+                r"^\[\[\[Graal compilation failure\]\]\]", # pylint: disable=line-too-long
+                re.MULTILINE)
+        ]
 
     def flakySuccessPatterns(self):
         return []
@@ -1606,7 +1630,16 @@ class JMHDistWhiteboxBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite):
                any(JMHDistWhiteboxBenchmarkSuite.whitebox_dependency(dist))
 
     def extraVmArgs(self):
-        return ['-XX:-UseJVMCIClassLoader'] + super(JMHDistWhiteboxBenchmarkSuite, self).extraVmArgs()
+        if mx_compiler.isJDK8:
+            extra = ['-XX:-UseJVMCIClassLoader']
+        else:
+            # This is required to use jdk.internal.module.Modules for doing arbitrary exports
+            extra = ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED',
+                     '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.services=ALL-UNNAMED',
+                     '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.runtime=ALL-UNNAMED',
+                     '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED',
+                     '--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.graph=ALL-UNNAMED']
+        return extra + super(JMHDistWhiteboxBenchmarkSuite, self).extraVmArgs()
 
     def getJMHEntry(self, bmSuiteArgs):
         assert self.dist
@@ -1661,10 +1694,26 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
         return self.name()
 
     def renaissanceLibraryName(self):
-        return "RENAISSANCE"
+        return "RENAISSANCE_{}".format(self.renaissanceVersionToRun())
 
     def renaissanceIterations(self):
-        return _renaissanceConfig.copy()
+        benchmarks = _renaissanceConfig.copy()
+        if self.renaissanceVersionToRun() == "0.9.0":
+            del benchmarks["scala-doku"]  # was introduced in 0.10.0
+        return benchmarks
+
+    def renaissanceVersionToRun(self):
+        current_version = self.defaultRenaissanceVersion()
+        version_to_run = self.desiredVersion() if self.desiredVersion() else current_version
+        if version_to_run not in self.availableRenaissanceVersions():
+            mx.abort("Available Renaissance versions are : {}".format(self.availableRenaissanceVersions()))
+        return version_to_run
+
+    def defaultRenaissanceVersion(self):
+        return "0.11.0"
+
+    def availableRenaissanceVersions(self):
+        return ["0.9.0", "0.10.0", "0.11.0"]
 
     def renaissancePath(self):
         lib = mx.library(self.renaissanceLibraryName())
@@ -1679,12 +1728,12 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
         if args.r:
             if args.r.isdigit():
                 return ["-r", args.r] + remaining
-            if args.n == "-1":
-                return None
+            if args.r == "-1":
+                return remaining
         else:
             iterations = self.renaissanceIterations()[benchname]
             if iterations == -1:
-                return None
+                return remaining
             else:
                 return ["-r", str(iterations)] + remaining
 
@@ -1706,15 +1755,21 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
         return []
 
     def failurePatterns(self):
-        return []
+        return [
+            re.compile(
+                r"^\[\[\[Graal compilation failure\]\]\]",
+                re.MULTILINE)
+        ]
 
     def rules(self, out, benchmarks, bmSuiteArgs):
         return [
             mx_benchmark.StdOutRule(
-                r"====== (?P<benchmark>[a-zA-Z0-9_\-]+) \((?P<benchgroup>[a-zA-Z0-9_\-]+)\), iteration (?P<iteration>[0-9]+) completed \((?P<value>[0-9]+(.[0-9]*)?) ms\) ======",
+                r"====== (?P<benchmark>[a-zA-Z0-9_\-]+) \((?P<benchgroup>[a-zA-Z0-9_\-]+)\)( \[(?P<config>[a-zA-Z0-9_\-]+)\])?, iteration (?P<iteration>[0-9]+) completed \((?P<value>[0-9]+(.[0-9]*)?) ms\) ======",  # pylint: disable=line-too-long
                 {
                     "benchmark": ("<benchmark>", str),
+                    "benchmark-configuration": ("<config>", str),
                     "bench-suite": self.benchSuiteName(),
+                    "bench-suite-version": self.renaissanceVersionToRun(),
                     "vm": "jvmci",
                     "config.name": "default",
                     "metric.name": "warmup",
@@ -1724,22 +1779,6 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
                     "metric.score-function": "id",
                     "metric.better": "lower",
                     "metric.iteration": ("<iteration>", int),
-                }
-            ),
-            mx_benchmark.StdOutRule(
-                r"====== (?P<benchmark>[a-zA-Z0-9_\-]+) \((?P<benchgroup>[a-zA-Z0-9_\-]+)\), final iteration completed \((?P<value>[0-9]+(.[0-9]*)?) ms\) ======",
-                {
-                    "benchmark": ("<benchmark>", str),
-                    "bench-suite": self.benchSuiteName(),
-                    "vm": "jvmci",
-                    "config.name": "default",
-                    "metric.name": "final-time",
-                    "metric.value": ("<value>", float),
-                    "metric.unit": "ms",
-                    "metric.type": "numeric",
-                    "metric.score-function": "id",
-                    "metric.better": "lower",
-                    "metric.iteration": 0,
                 }
             )
         ]
@@ -1807,7 +1846,11 @@ class RenaissanceLegacyBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchm
         return []
 
     def failurePatterns(self):
-        return []
+        return [
+            re.compile(
+                r"^\[\[\[Graal compilation failure\]\]\]", # pylint: disable=line-too-long
+                re.MULTILINE)
+        ]
 
     def rules(self, out, benchmarks, bmSuiteArgs):
         return [
@@ -1896,7 +1939,11 @@ class SparkSqlPerfBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.A
         return []
 
     def failurePatterns(self):
-        return []
+        return [
+            re.compile(
+                r"^\[\[\[Graal compilation failure\]\]\]", # pylint: disable=line-too-long
+                re.MULTILINE)
+        ]
 
     def rules(self, out, benchmarks, bmSuiteArgs):
         return []

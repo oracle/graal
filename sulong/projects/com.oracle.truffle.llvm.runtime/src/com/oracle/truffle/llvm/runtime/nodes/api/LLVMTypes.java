@@ -90,6 +90,36 @@ public class LLVMTypes {
     // Automatic type profiling for LLVMIVarBitSmall vs. LLVMIVarBitLarge:
     // The type never changes (it depends on the bit width), so this is always a perfect profile.
 
+    @TypeCheck(LLVMIVarBitSmall.class)
+    public static boolean isLLVMIVarBitSmall(Object object) {
+        return object instanceof LLVMIVarBitSmall;
+    }
+
+    @TypeCast(LLVMIVarBitSmall.class)
+    public static LLVMIVarBitSmall asLLVMIVarBitSmall(Object object) {
+        return (LLVMIVarBitSmall) object;
+    }
+
+    @TypeCheck(LLVMIVarBitLarge.class)
+    public static boolean isLLVMIVarBitLarge(Object object) {
+        return object instanceof LLVMIVarBitLarge;
+    }
+
+    @TypeCast(LLVMIVarBitLarge.class)
+    public static LLVMIVarBitLarge asLLVMIVarBitLarge(Object object) {
+        return (LLVMIVarBitLarge) object;
+    }
+
+    @TypeCheck(LLVMIVarBit.class)
+    public static boolean isLLVMIVarBit(@SuppressWarnings("unused") Object object) {
+        return false;
+    }
+
+    @TypeCast(LLVMIVarBit.class)
+    public static LLVMIVarBit asLLVMIVarBit(@SuppressWarnings("unused") Object object) {
+        throw new IllegalStateException("LLVMIVarBit should always be cast via small/large");
+    }
+
     @ImplicitCast
     public static LLVMIVarBit asIVarBit(LLVMIVarBitSmall small) {
         return small;

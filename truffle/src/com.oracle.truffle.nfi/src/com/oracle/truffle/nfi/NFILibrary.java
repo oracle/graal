@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.nfi;
 
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
@@ -116,7 +117,7 @@ final class NFILibrary implements TruffleObject {
     @SuppressWarnings("static-method")
     @ExportMessage
     boolean isMemberInvocable(@SuppressWarnings("unused") String symbol) {
-        return true; // avoid expensive truffleboundary
+        return true; // avoid expensive truffle boundary
     }
 
     @ExportMessage
@@ -129,6 +130,24 @@ final class NFILibrary implements TruffleObject {
             throw UnknownIdentifierException.create(symbol);
         }
         return executables.execute(preBound, args);
+    }
+
+    @ExportMessage
+    @SuppressWarnings("unused")
+    static boolean hasLanguage(NFILibrary lib) {
+        return true;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("unused")
+    static Class<? extends TruffleLanguage<?>> getLanguage(NFILibrary receiver) {
+        return NFILanguage.class;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("unused")
+    static Object toDisplayString(NFILibrary receiver, boolean allowSideEffects) {
+        return "Native Library";
     }
 
     @ExportLibrary(InteropLibrary.class)
@@ -164,6 +183,21 @@ final class NFILibrary implements TruffleObject {
                 throw InvalidArrayIndexException.create(idx);
             }
             return keys[(int) idx];
+        }
+
+        @ExportMessage
+        static boolean hasLanguage(@SuppressWarnings("unused") Keys receiver) {
+            return true;
+        }
+
+        @ExportMessage
+        static Class<? extends TruffleLanguage<?>> getLanguage(@SuppressWarnings("unused") Keys receiver) {
+            return NFILanguage.class;
+        }
+
+        @ExportMessage
+        static Object toDisplayString(@SuppressWarnings("unused") Keys receiver, @SuppressWarnings("unused") boolean allowSideEffects) {
+            return "Native Members";
         }
     }
 }

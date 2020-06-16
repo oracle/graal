@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.lambda;
 
+import org.graalvm.compiler.java.LambdaUtils;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -58,7 +59,7 @@ final class StableLambdaProxyNameFeature implements GraalFeature {
             throw new AssertionError("Expensive check: should only run with assertions enabled.");
         }
         /* There should be no random lambda names visible to the analysis. */
-        if (types.stream().anyMatch(LambdaProxyRenamingSubstitutionProcessor::isLambdaType)) {
+        if (types.stream().anyMatch(LambdaUtils::isLambdaType)) {
             throw new AssertionError("All lambda proxies should be substituted.");
         }
 

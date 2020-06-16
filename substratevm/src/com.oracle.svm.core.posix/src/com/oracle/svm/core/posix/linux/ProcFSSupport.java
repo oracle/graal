@@ -47,7 +47,7 @@ class ProcFSSupport {
      * buffer is dual-purpose and used to return the file's path name if requested via the
      * {@code needName} parameter. As such the buffer should be large enough to accommodate a path.
      * If not enough buffer capacity is available, and needName is true, false will be returned. If
-     * a mapping is not found, or an error has occured, false will be returned.
+     * a mapping is not found, or an error has occurred, false will be returned.
      *
      * @param fd a file descriptor pointing to /proc/self/maps
      * @param buffer a buffer for reading operations, and optionally for returning the path name of

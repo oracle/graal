@@ -50,7 +50,7 @@ public class DeoptimizationRuntime {
     public static final SubstrateForeignCallDescriptor DEOPTIMIZE = SnippetRuntime.findForeignCall(DeoptimizationRuntime.class, "deoptimize", true, LocationIdentity.any());
 
     /** Foreign call: {@link #DEOPTIMIZE}. */
-    @SubstrateForeignCallTarget
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
     @NeverInline("Access of caller frame")
     private static void deoptimize(long actionAndReason, SpeculationReason speculation) {
         /*

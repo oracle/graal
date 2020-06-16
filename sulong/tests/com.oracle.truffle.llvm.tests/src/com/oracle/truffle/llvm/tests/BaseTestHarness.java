@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -50,6 +50,8 @@ import org.junit.Test;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
 
 public abstract class BaseTestHarness {
+
+    public static final String TEST_DIR_EXT = ".dir";
 
     public static final Set<String> supportedFiles = new HashSet<>(Arrays.asList("f90", "f", "f03", "c", "cpp", "cc", "C", "m"));
 

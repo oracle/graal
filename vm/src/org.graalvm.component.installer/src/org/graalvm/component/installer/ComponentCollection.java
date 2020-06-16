@@ -39,7 +39,11 @@ public interface ComponentCollection {
 
     void setAllowDistUpdate(boolean distUpgrade);
 
-    ComponentInfo findComponent(String id, Version.Match vm);
+    default ComponentInfo findComponent(String id, Version.Match vm) {
+        return findComponentMatch(id, vm, false);
+    }
+
+    ComponentInfo findComponentMatch(String id, Version.Match vm, boolean exactId);
 
     String shortenComponentId(ComponentInfo info);
 

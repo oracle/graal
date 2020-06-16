@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,6 +56,7 @@ import com.oracle.truffle.api.object.Shape;
  *
  * @since 0.17 or earlier
  */
+@SuppressWarnings("deprecation")
 public class PropertyImpl extends Property {
     private final Object key;
     private final Location location;

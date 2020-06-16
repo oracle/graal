@@ -24,37 +24,97 @@
  */
 package com.oracle.svm.configure.trace;
 
-import java.util.Arrays;
-import java.util.function.Supplier;
+import org.graalvm.compiler.phases.common.LazyValue;
 
-public class AccessAdvisor {
-    private boolean ignoreInternalAccesses = true;
+import com.oracle.svm.configure.filters.RuleNode;
+
+/**
+ * Decides if a recorded access should be included in a configuration. Also advises the agent's
+ * {@code AccessVerifier} classes which accesses to ignore when the agent is in restriction mode.
+ */
+public final class AccessAdvisor {
+
+    /** Filter to ignore accesses that <em>originate in</em> methods of these internal classes. */
+    private static final RuleNode internalCallerFilter;
+
+    /** Filter to ignore <em>accesses of</em> these classes and their members without a caller. */
+    private static final RuleNode accessWithoutCallerFilter;
+
+    static {
+        internalCallerFilter = RuleNode.createRoot();
+        internalCallerFilter.addOrGetChildren("**", RuleNode.Inclusion.Include);
+        internalCallerFilter.addOrGetChildren("java.**", RuleNode.Inclusion.Exclude);
+        internalCallerFilter.addOrGetChildren("javax.**", RuleNode.Inclusion.Exclude);
+        internalCallerFilter.addOrGetChildren("javax.security.auth.**", RuleNode.Inclusion.Include);
+        internalCallerFilter.addOrGetChildren("sun.**", RuleNode.Inclusion.Exclude);
+        internalCallerFilter.addOrGetChildren("com.sun.**", RuleNode.Inclusion.Exclude);
+        internalCallerFilter.addOrGetChildren("jdk.**", RuleNode.Inclusion.Exclude);
+        internalCallerFilter.addOrGetChildren("org.graalvm.compiler.**", RuleNode.Inclusion.Exclude);
+        internalCallerFilter.addOrGetChildren("org.graalvm.libgraal.**", RuleNode.Inclusion.Exclude);
+        internalCallerFilter.removeRedundantNodes();
+
+        accessWithoutCallerFilter = RuleNode.createRoot();
+        accessWithoutCallerFilter.addOrGetChildren("**", RuleNode.Inclusion.Include);
+        accessWithoutCallerFilter.addOrGetChildren("jdk.vm.ci.**", RuleNode.Inclusion.Exclude);
+        accessWithoutCallerFilter.addOrGetChildren("org.graalvm.compiler.**", RuleNode.Inclusion.Exclude);
+        accessWithoutCallerFilter.addOrGetChildren("org.graalvm.libgraal.**", RuleNode.Inclusion.Exclude);
+        accessWithoutCallerFilter.addOrGetChildren("[Ljava.lang.String;", RuleNode.Inclusion.Exclude);
+        // ^ String[]: for command-line argument arrays created before Java main method is called
+        accessWithoutCallerFilter.removeRedundantNodes();
+    }
+
+    public static RuleNode copyBuiltinCallerFilterTree() {
+        return internalCallerFilter.copy();
+    }
+
+    public static RuleNode copyBuiltinAccessFilterTree() {
+        RuleNode root = RuleNode.createRoot();
+        root.addOrGetChildren("**", RuleNode.Inclusion.Include);
+        return root;
+    }
+
+    private RuleNode callerFilter = internalCallerFilter;
+    private RuleNode accessFilter = null;
+    private boolean heuristicsEnabled = true;
     private boolean isInLivePhase = false;
     private int launchPhase = 0;
 
-    public void setIgnoreInternalAccesses(boolean enabled) {
-        ignoreInternalAccesses = enabled;
+    public void setHeuristicsEnabled(boolean enable) {
+        heuristicsEnabled = enable;
+    }
+
+    public void setCallerFilterTree(RuleNode rootNode) {
+        callerFilter = rootNode;
+    }
+
+    public void setAccessFilterTree(RuleNode rootNode) {
+        accessFilter = rootNode;
     }
 
     public void setInLivePhase(boolean live) {
         isInLivePhase = live;
     }
 
-    private static boolean isInternalClass(String qualifiedClass) {
-        assert qualifiedClass == null || qualifiedClass.indexOf('/') == -1 : "expecting Java-format qualifiers, not internal format";
-        return qualifiedClass != null && Arrays.asList("java.", "javax.", "sun.", "com.sun.", "jdk.", "org.graalvm.compiler.").stream().anyMatch(qualifiedClass::startsWith);
-    }
-
-    public boolean shouldIgnore(Supplier<String> callerClass) {
-        return ignoreInternalAccesses && (!isInLivePhase || isInternalClass(callerClass.get()));
-    }
-
-    public boolean shouldIgnoreJniMethodLookup(Supplier<String> queriedClass, Supplier<String> name, Supplier<String> signature, Supplier<String> callerClass) {
-        if (!ignoreInternalAccesses) {
-            return false;
-        }
-        if (shouldIgnore(callerClass)) {
+    public boolean shouldIgnore(LazyValue<String> queriedClass, LazyValue<String> callerClass) {
+        if (heuristicsEnabled && !isInLivePhase) {
             return true;
+        }
+        String qualifiedCaller = callerClass.get();
+        assert qualifiedCaller == null || qualifiedCaller.indexOf('/') == -1 : "expecting Java-format qualifiers, not internal format";
+        if (qualifiedCaller != null && !callerFilter.treeIncludes(qualifiedCaller)) {
+            return true;
+        }
+        // NOTE: queriedClass can be null for non-class accesses like resources
+        if (callerClass.get() == null && queriedClass.get() != null && !accessWithoutCallerFilter.treeIncludes(queriedClass.get())) {
+            return true;
+        }
+        return accessFilter != null && queriedClass.get() != null && !accessFilter.treeIncludes(queriedClass.get());
+    }
+
+    public boolean shouldIgnoreJniMethodLookup(LazyValue<String> queriedClass, LazyValue<String> name, LazyValue<String> signature, LazyValue<String> callerClass) {
+        assert !shouldIgnore(queriedClass, callerClass) : "must have been checked before";
+        if (!heuristicsEnabled) {
+            return false;
         }
         // Heuristic to ignore this sequence during startup:
         // 1. Lookup of LauncherHelper.getApplicationClass()
@@ -82,5 +142,19 @@ public class AccessAdvisor {
          * executing Java code (yet).
          */
         return false;
+    }
+
+    public boolean shouldIgnoreLoadClass(LazyValue<String> queriedClass, LazyValue<String> callerClass) {
+        assert !shouldIgnore(queriedClass, callerClass) : "must have been checked before";
+        if (!heuristicsEnabled) {
+            return false;
+        }
+        /*
+         * Without a caller, we always assume that the class loader was invoked directly by the VM,
+         * which indicates a system class (compiler, JVMCI, etc.) that we shouldn't need in our
+         * configuration. The class loader could also have been called via JNI in a manually
+         * attached native thread without Java frames, but that is unusual.
+         */
+        return callerClass.get() == null;
     }
 }

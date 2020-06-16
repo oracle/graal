@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,7 +37,6 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 @NodeInfo(shortName = "%", cycles = CYCLES_32/* div */)
@@ -50,7 +49,7 @@ public class RemNode extends BinaryArithmeticNode<Rem> implements Lowerable {
     }
 
     protected RemNode(NodeClass<? extends RemNode> c, ValueNode x, ValueNode y) {
-        super(c, ArithmeticOpTable::getRem, x, y);
+        super(c, getArithmeticOpTable(x).getRem(), x, y);
     }
 
     public static ValueNode create(ValueNode forX, ValueNode forY, NodeView view) {
@@ -64,8 +63,8 @@ public class RemNode extends BinaryArithmeticNode<Rem> implements Lowerable {
     }
 
     @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
+    protected BinaryOp<Rem> getOp(ArithmeticOpTable table) {
+        return table.getRem();
     }
 
     @Override

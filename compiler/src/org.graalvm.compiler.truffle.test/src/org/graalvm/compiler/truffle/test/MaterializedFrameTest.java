@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -83,7 +83,7 @@ public class MaterializedFrameTest extends PartialEvaluationTest {
     public void getFrameSlotKind() {
         RootNode rootNode = createRootNode();
         RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
-        StructuredGraph graph = partialEval((OptimizedCallTarget) callTarget, new Object[]{}, StructuredGraph.AllowAssumptions.YES, CompilationIdentifier.INVALID_COMPILATION_ID);
+        StructuredGraph graph = partialEval((OptimizedCallTarget) callTarget, new Object[]{}, CompilationIdentifier.INVALID_COMPILATION_ID);
 
         NodeIterable<MethodCallTargetNode> calls = graph.getNodes().filter(MethodCallTargetNode.class);
         assertTrue("Unexpected call(s): " + calls.snapshot(), calls.isEmpty());

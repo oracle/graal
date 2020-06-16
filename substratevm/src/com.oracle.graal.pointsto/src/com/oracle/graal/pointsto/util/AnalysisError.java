@@ -154,4 +154,17 @@ public class AnalysisError extends Error {
         throw new AnalysisError(cause);
     }
 
+    public static void guarantee(boolean condition) {
+        if (!condition) {
+            throw new AnalysisError("guarantee failed");
+        }
+    }
+
+    public static void guarantee(boolean condition, String format, Object... args) {
+        if (!condition) {
+            // Checkstyle: stop
+            throw new AnalysisError(String.format(format, args));
+            // Checkstyle: resume
+        }
+    }
 }

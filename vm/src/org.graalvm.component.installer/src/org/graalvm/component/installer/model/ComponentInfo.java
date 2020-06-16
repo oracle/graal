@@ -97,16 +97,33 @@ public final class ComponentInfo {
 
     private boolean nativeComponent;
 
+    private String tag = "";
+
+    /**
+     * Component direct dependencies. Contains component canonical IDs.
+     */
+    private Set<String> dependencies = Collections.emptySet();
+
     /**
      * Origin of the component.
      */
     private String origin;
 
-    public ComponentInfo(String id, String name, String versionString) {
+    /**
+     * The distribution type.
+     */
+    private DistributionType distributionType = DistributionType.OPTIONAL;
+
+    public ComponentInfo(String id, String name, String versionString, String tag) {
         this.id = id;
         this.versionString = versionString;
         this.name = name;
         this.version = Version.fromString(versionString);
+        this.tag = tag;
+    }
+
+    public ComponentInfo(String id, String name, String versionString) {
+        this(id, name, versionString, ""); // NOI18N
     }
 
     public ComponentInfo(String id, String name, Version v) {
@@ -126,6 +143,14 @@ public final class ComponentInfo {
 
     public String getName() {
         return name;
+    }
+
+    public DistributionType getDistributionType() {
+        return distributionType;
+    }
+
+    public void setDistributionType(DistributionType distributionType) {
+        this.distributionType = distributionType;
     }
 
     public Map<String, String> getRequiredGraalValues() {
@@ -226,6 +251,13 @@ public final class ComponentInfo {
         int hash = 5;
         hash = 37 * hash + Objects.hashCode(this.id);
         hash = 37 * hash + Objects.hashCode(this.version);
+        if (remoteURL != null) {
+            hash = 37 * hash + Objects.hashCode(this.remoteURL);
+        }
+        if (origin != null) {
+            hash = 37 * hash + Objects.hashCode(this.origin);
+        }
+        hash = 37 * hash + Objects.hashCode(this.tag);
         return hash;
     }
 
@@ -245,6 +277,15 @@ public final class ComponentInfo {
             return false;
         }
         if (!Objects.equals(this.version, other.version)) {
+            return false;
+        }
+        if (!Objects.equals(this.remoteURL, other.remoteURL)) {
+            return false;
+        }
+        if (!Objects.equals(this.origin, other.origin)) {
+            return false;
+        }
+        if (!Objects.equals(this.tag, other.tag)) {
             return false;
         }
         return true;
@@ -273,7 +314,8 @@ public final class ComponentInfo {
 
     @Override
     public String toString() {
-        return getId() + "[" + getVersion().toString() + "]"; // NOI18N
+        return getId() + "[" + getVersion().toString() +
+                        (tag.isEmpty() ? "" : "/" + tag) + "]"; // NOI18N
     }
 
     public static Comparator<ComponentInfo> versionComparator() {
@@ -321,5 +363,34 @@ public final class ComponentInfo {
         for (String s : vals.keySet()) {
             provideValue(s, vals.get(s));
         }
+    }
+
+    public void setDependencies(Set<String> deps) {
+        this.dependencies = deps;
+    }
+
+    public Set<String> getDependencies() {
+        return Collections.unmodifiableSet(dependencies);
+    }
+
+    /**
+     * @return True, if the Component is already installed.
+     */
+    public boolean isInstalled() {
+        return infoPath != null;
+    }
+
+    public String getTag() {
+        return tag;
+    }
+
+    /**
+     * Sets the component tag. WARNING: do not use this after Component has been constructed; the
+     * call will change the hashCode + equals !
+     * 
+     * @param tag component tag/serial
+     */
+    public void setTag(String tag) {
+        this.tag = tag;
     }
 }

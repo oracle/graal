@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,20 +24,20 @@
  */
 package com.oracle.svm.agent;
 
-import static com.oracle.svm.agent.Support.check;
-import static com.oracle.svm.agent.Support.checkJni;
-import static com.oracle.svm.agent.Support.checkNoException;
-import static com.oracle.svm.agent.Support.clearException;
-import static com.oracle.svm.agent.Support.fromCString;
-import static com.oracle.svm.agent.Support.getClassNameOr;
-import static com.oracle.svm.agent.Support.getFieldDeclaringClass;
-import static com.oracle.svm.agent.Support.getFieldName;
-import static com.oracle.svm.agent.Support.getMethodDeclaringClass;
-import static com.oracle.svm.agent.Support.handles;
-import static com.oracle.svm.agent.Support.jniFunctions;
-import static com.oracle.svm.agent.Support.jvmtiEnv;
-import static com.oracle.svm.agent.Support.jvmtiFunctions;
-import static com.oracle.svm.agent.Support.toCString;
+import static com.oracle.svm.jvmtiagentbase.Support.check;
+import static com.oracle.svm.jvmtiagentbase.Support.checkJni;
+import static com.oracle.svm.jvmtiagentbase.Support.checkNoException;
+import static com.oracle.svm.jvmtiagentbase.Support.clearException;
+import static com.oracle.svm.jvmtiagentbase.Support.fromCString;
+import static com.oracle.svm.jvmtiagentbase.Support.getClassNameOr;
+import static com.oracle.svm.jvmtiagentbase.Support.getFieldDeclaringClass;
+import static com.oracle.svm.jvmtiagentbase.Support.getFieldName;
+import static com.oracle.svm.jvmtiagentbase.Support.getMethodDeclaringClass;
+import static com.oracle.svm.jvmtiagentbase.Support.jniFunctions;
+import static com.oracle.svm.jvmtiagentbase.Support.jvmtiEnv;
+import static com.oracle.svm.jvmtiagentbase.Support.jvmtiFunctions;
+import static com.oracle.svm.jvmtiagentbase.Support.testException;
+import static com.oracle.svm.jvmtiagentbase.Support.toCString;
 import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
 import static org.graalvm.word.WordFactory.nullPointer;
 
@@ -49,21 +49,23 @@ import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.c.type.WordPointer;
 
-import com.oracle.svm.agent.jvmti.JvmtiEnv;
-import com.oracle.svm.agent.jvmti.JvmtiError;
+import com.oracle.svm.jvmtiagentbase.AgentIsolate;
+import com.oracle.svm.jvmtiagentbase.Support;
+import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEnv;
+import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiError;
 import com.oracle.svm.agent.restrict.JniAccessVerifier;
 import com.oracle.svm.configure.config.ConfigurationMethod;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIErrors;
 import com.oracle.svm.jni.nativeapi.JNIFieldId;
-import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.CallObjectMethod0FunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.DefineClassFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.FindClassFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.FromReflectedFieldFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.FromReflectedMethodFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.GetFieldIDFunctionPointer;
-import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.GetMemberIDFunctionPointer;
+import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.GetMethodIDFunctionPointer;
+import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.NewObjectArrayFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.ThrowNewFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.ToReflectedFieldFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.ToReflectedMethodFunctionPointer;
@@ -75,6 +77,7 @@ final class JniCallInterceptor {
     private static TraceWriter traceWriter;
 
     private static JniAccessVerifier accessVerifier;
+    private static NativeImageAgent agent;
 
     private static boolean shouldTrace() {
         return traceWriter != null;
@@ -99,7 +102,7 @@ final class JniCallInterceptor {
     }
 
     @CEntryPoint(name = "DefineClass")
-    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
+    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class)
     private static JNIObjectHandle defineClass(JNIEnvironment env, CCharPointer name, JNIObjectHandle loader, CCharPointer buf, int bufLen) {
         JNIObjectHandle callerClass = getCallerClass(env);
         JNIObjectHandle result = nullHandle();
@@ -121,7 +124,7 @@ final class JniCallInterceptor {
     }
 
     @CEntryPoint(name = "FindClass")
-    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
+    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class)
     private static JNIObjectHandle findClass(JNIEnvironment env, CCharPointer name) {
         JNIObjectHandle callerClass = getCallerClass(env);
         JNIObjectHandle result = nullHandle();
@@ -135,7 +138,7 @@ final class JniCallInterceptor {
     }
 
     @CEntryPoint(name = "GetMethodID")
-    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
+    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class)
     private static JNIMethodId getMethodID(JNIEnvironment env, JNIObjectHandle clazz, CCharPointer name, CCharPointer signature) {
         JNIObjectHandle callerClass = getCallerClass(env);
         JNIMethodId result = jniFunctions().getGetMethodID().invoke(env, clazz, name, signature);
@@ -150,7 +153,7 @@ final class JniCallInterceptor {
     }
 
     @CEntryPoint(name = "GetStaticMethodID")
-    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
+    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class)
     private static JNIMethodId getStaticMethodID(JNIEnvironment env, JNIObjectHandle clazz, CCharPointer name, CCharPointer signature) {
         JNIObjectHandle callerClass = getCallerClass(env);
         JNIMethodId result = jniFunctions().getGetStaticMethodID().invoke(env, clazz, name, signature);
@@ -165,7 +168,7 @@ final class JniCallInterceptor {
     }
 
     @CEntryPoint(name = "GetFieldID")
-    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
+    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class)
     private static JNIFieldId getFieldID(JNIEnvironment env, JNIObjectHandle clazz, CCharPointer name, CCharPointer signature) {
         JNIObjectHandle callerClass = getCallerClass(env);
         JNIFieldId result = jniFunctions().getGetFieldID().invoke(env, clazz, name, signature);
@@ -180,7 +183,7 @@ final class JniCallInterceptor {
     }
 
     @CEntryPoint(name = "GetStaticFieldID")
-    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
+    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class)
     private static JNIFieldId getStaticFieldID(JNIEnvironment env, JNIObjectHandle clazz, CCharPointer name, CCharPointer signature) {
         JNIObjectHandle callerClass = getCallerClass(env);
         JNIFieldId result = jniFunctions().getGetStaticFieldID().invoke(env, clazz, name, signature);
@@ -195,17 +198,17 @@ final class JniCallInterceptor {
     }
 
     @CEntryPoint(name = "ThrowNew")
-    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
+    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class)
     private static int throwNew(JNIEnvironment env, JNIObjectHandle clazz, CCharPointer message) {
         JNIObjectHandle callerClass = getCallerClass(env);
         int result;
         if (accessVerifier == null || accessVerifier.verifyThrowNew(env, clazz, callerClass)) {
             result = jniFunctions().getThrowNew().invoke(env, clazz, message);
         } else { // throw NoSuchMethodError like HotSpot
-            try (CCharPointerHolder errorMessage = toCString(Agent.MESSAGE_PREFIX + "configuration does not permit access to method: " +
+            try (CCharPointerHolder errorMessage = toCString(NativeImageAgent.MESSAGE_PREFIX + "configuration does not permit access to method: " +
                             getClassNameOr(env, clazz, "(null)", "(?)") + "." + ConfigurationMethod.CONSTRUCTOR_NAME + "(Ljava/lang/String;)V")) {
 
-                jniFunctions().getThrowNew().invoke(env, handles().javaLangNoSuchMethodError, errorMessage.get());
+                jniFunctions().getThrowNew().invoke(env, agent.handles().javaLangNoSuchMethodError, errorMessage.get());
             }
             result = JNIErrors.JNI_ERR();
         }
@@ -216,7 +219,7 @@ final class JniCallInterceptor {
     }
 
     @CEntryPoint(name = "FromReflectedMethod")
-    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
+    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class)
     private static JNIMethodId fromReflectedMethod(JNIEnvironment env, JNIObjectHandle method) {
         JNIObjectHandle callerClass = getCallerClass(env);
         JNIMethodId result = jniFunctions().getFromReflectedMethod().invoke(env, method);
@@ -245,14 +248,14 @@ final class JniCallInterceptor {
     }
 
     @CEntryPoint(name = "FromReflectedField")
-    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
+    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class)
     private static JNIFieldId fromReflectedField(JNIEnvironment env, JNIObjectHandle field) {
         JNIObjectHandle callerClass = getCallerClass(env);
         JNIFieldId result = jniFunctions().getFromReflectedField().invoke(env, field);
         JNIObjectHandle declaring = nullHandle();
         String name = TraceWriter.EXPLICIT_NULL;
         if (result.isNonNull()) {
-            declaring = jniFunctions().<CallObjectMethod0FunctionPointer> getCallObjectMethod().invoke(env, field, handles().javaLangReflectMemberGetDeclaringClass);
+            declaring = Support.callObjectMethod(env, field, agent.handles().javaLangReflectMemberGetDeclaringClass);
             name = getFieldName(declaring, result);
             if (accessVerifier != null && !accessVerifier.verifyFromReflectedField(env, declaring, name, result, callerClass)) {
                 result = nullPointer();
@@ -265,7 +268,7 @@ final class JniCallInterceptor {
     }
 
     @CEntryPoint(name = "ToReflectedMethod")
-    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
+    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class)
     private static JNIObjectHandle toReflectedMethod(JNIEnvironment env, JNIObjectHandle clazz, JNIMethodId method, boolean isStatic) {
         JNIObjectHandle callerClass = getCallerClass(env);
         JNIObjectHandle declaring = getMethodDeclaringClass(method);
@@ -290,7 +293,7 @@ final class JniCallInterceptor {
     }
 
     @CEntryPoint(name = "ToReflectedField")
-    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class, epilogue = AgentIsolate.Epilogue.class)
+    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class)
     private static JNIObjectHandle toReflectedField(JNIEnvironment env, JNIObjectHandle clazz, JNIFieldId field, boolean isStatic) {
         JNIObjectHandle callerClass = getCallerClass(env);
         JNIObjectHandle declaring = getFieldDeclaringClass(clazz, field);
@@ -305,9 +308,31 @@ final class JniCallInterceptor {
         return result;
     }
 
-    public static void onLoad(TraceWriter writer, JniAccessVerifier verifier) {
+    @CEntryPoint(name = "NewObjectArray")
+    @CEntryPointOptions(prologue = AgentIsolate.Prologue.class)
+    private static JNIObjectHandle newObjectArray(JNIEnvironment env, int length, JNIObjectHandle elementClass, JNIObjectHandle initialElement) {
+        JNIObjectHandle callerClass = getCallerClass(env);
+        JNIObjectHandle result = jniFunctions().getNewObjectArray().invoke(env, length, elementClass, initialElement);
+        JNIObjectHandle resultClass = nullHandle();
+        if (result.notEqual(nullHandle()) && !testException(env)) {
+            resultClass = jniFunctions().getGetObjectClass().invoke(env, result);
+            if (clearException(env)) {
+                resultClass = nullHandle();
+            }
+        }
+        if (accessVerifier != null && !accessVerifier.verifyNewObjectArray(env, resultClass, callerClass)) {
+            result = nullHandle();
+        }
+        if (shouldTrace()) {
+            traceCall(env, "NewObjectArray", resultClass, nullHandle(), callerClass, result.notEqual(nullHandle()));
+        }
+        return result;
+    }
+
+    public static void onLoad(TraceWriter writer, JniAccessVerifier verifier, NativeImageAgent nativeImageTracingAgent) {
         accessVerifier = verifier;
         traceWriter = writer;
+        JniCallInterceptor.agent = nativeImageTracingAgent;
     }
 
     public static void onVMStart(JvmtiEnv jvmti) {
@@ -325,6 +350,7 @@ final class JniCallInterceptor {
         functions.setToReflectedMethod(toReflectedMethodLiteral.getFunctionPointer());
         functions.setFromReflectedField(fromReflectedFieldLiteral.getFunctionPointer());
         functions.setToReflectedField(toReflectedFieldLiteral.getFunctionPointer());
+        functions.setNewObjectArray(newObjectArrayLiteral.getFunctionPointer());
         check(jvmti.getFunctions().SetJNIFunctionTable().invoke(jvmti, functions));
         check(jvmti.getFunctions().Deallocate().invoke(jvmti, functions));
     }
@@ -342,10 +368,10 @@ final class JniCallInterceptor {
     private static final CEntryPointLiteral<FindClassFunctionPointer> findClassLiteral = CEntryPointLiteral.create(JniCallInterceptor.class,
                     "findClass", JNIEnvironment.class, CCharPointer.class);
 
-    private static final CEntryPointLiteral<GetMemberIDFunctionPointer> getMethodIDLiteral = CEntryPointLiteral.create(JniCallInterceptor.class,
+    private static final CEntryPointLiteral<GetMethodIDFunctionPointer> getMethodIDLiteral = CEntryPointLiteral.create(JniCallInterceptor.class,
                     "getMethodID", JNIEnvironment.class, JNIObjectHandle.class, CCharPointer.class, CCharPointer.class);
 
-    private static final CEntryPointLiteral<GetMemberIDFunctionPointer> getStaticMethodIDLiteral = CEntryPointLiteral.create(JniCallInterceptor.class,
+    private static final CEntryPointLiteral<GetMethodIDFunctionPointer> getStaticMethodIDLiteral = CEntryPointLiteral.create(JniCallInterceptor.class,
                     "getStaticMethodID", JNIEnvironment.class, JNIObjectHandle.class, CCharPointer.class, CCharPointer.class);
 
     private static final CEntryPointLiteral<GetFieldIDFunctionPointer> getFieldIDLiteral = CEntryPointLiteral.create(JniCallInterceptor.class,
@@ -368,4 +394,7 @@ final class JniCallInterceptor {
 
     private static final CEntryPointLiteral<ToReflectedFieldFunctionPointer> toReflectedFieldLiteral = CEntryPointLiteral.create(JniCallInterceptor.class,
                     "toReflectedField", JNIEnvironment.class, JNIObjectHandle.class, JNIFieldId.class, boolean.class);
+
+    private static final CEntryPointLiteral<NewObjectArrayFunctionPointer> newObjectArrayLiteral = CEntryPointLiteral.create(JniCallInterceptor.class,
+                    "newObjectArray", JNIEnvironment.class, int.class, JNIObjectHandle.class, JNIObjectHandle.class);
 }

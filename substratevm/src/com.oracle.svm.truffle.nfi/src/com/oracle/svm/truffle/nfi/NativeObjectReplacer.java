@@ -38,7 +38,7 @@ public final class NativeObjectReplacer implements Function<Object, Object> {
     private final IdentityHashMap<Class<?>, Object> disallowedClasses;
 
     NativeObjectReplacer(DuringSetupAccess access) {
-        disallowedClasses = new IdentityHashMap<>(15);
+        disallowedClasses = new IdentityHashMap<>(16);
         disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.impl.ClosureNativePointer"), Boolean.FALSE);
         disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.impl.ClosureNativePointer$NativeDestructor"), Boolean.FALSE);
         disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.impl.LibFFILibrary"), Boolean.FALSE);
@@ -47,6 +47,7 @@ public final class NativeObjectReplacer implements Function<Object, Object> {
         disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.impl.LibFFIType$ArrayType"), Boolean.FALSE);
         disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.impl.LibFFIType$ClosureType"), Boolean.FALSE);
         disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.impl.LibFFIType$EnvType"), Boolean.FALSE);
+        disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.impl.LibFFIType$NullableType"), Boolean.FALSE);
         disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.impl.LibFFIType$ObjectType"), Boolean.FALSE);
         disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.impl.LibFFIType$SimpleType"), Boolean.FALSE);
         disallowedClasses.put(access.findClassByName("com.oracle.truffle.nfi.impl.LibFFIType$StringType"), Boolean.FALSE);

@@ -1,0 +1,7 @@
+import_export_memory/main;man-in-the-middle;memory
+import_export_functions/main;friend;man-in-the-middle
+import_export_table/main;man-in-the-middle;table-registry
+import_export_globals/main;man-in-the-middle;runtime
+global_initialization/main;mediator;runtime
+relative_data_section/main;constant-pools;runtime
+relative_elem_section/main;virtual-tables;runtime

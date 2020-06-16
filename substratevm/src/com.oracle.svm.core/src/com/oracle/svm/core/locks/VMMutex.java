@@ -24,11 +24,14 @@
  */
 package com.oracle.svm.core.locks;
 
+import org.graalvm.nativeimage.CurrentIsolate;
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -47,19 +50,20 @@ import com.oracle.svm.core.util.VMError;
  * with platform-specific implementations.
  */
 public class VMMutex implements AutoCloseable {
+    private static final UnsignedWord UNSPECIFIED_OWNER = WordFactory.unsigned(-1);
 
-    /** For assertions about locking. */
-    protected boolean locked;
+    private IsolateThread owner;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public VMMutex() {
     }
 
     /**
-     * Acquires the lock, with thread status transitions, blocking until the lock is available.
+     * Acquires the lock, with thread status transitions, blocking until the lock is available. Upon
+     * acquiring the mutex successfully, the current isolate thread is registered as the lock owner.
      * Recursive locking is not allowed.
      *
-     * Returns "this" for use in a try-with-resources statement.
+     * @return "this" for use in a try-with-resources statement.
      */
     public VMMutex lock() {
         throw VMError.shouldNotReachHere("Lock cannot be used during native image generation");
@@ -68,9 +72,28 @@ public class VMMutex implements AutoCloseable {
     /**
      * Like {@linkplain #lock()}, but without a thread status transitions. E.g., for locking before
      * everything is set up to track transitions.
+     *
+     * This method can only be called from uninterruptible code as it prevents the VM from entering
+     * a safepoint while waiting on the lock, which could result in deadlocks like the following:
+     * <ul>
+     * <li>Thread A calls mutex.lockNoTransition() and acquires the mutex</li>
+     * <li>Thread B calls mutex.lockNoTransition() and is blocked</li>
+     * <li>Thread A still holds the mutex but needs to trigger a GC. However, the safepoint can't be
+     * initiated as Thread B is still in the Java state but blocked in native code.</li>
+     * </ul>
      */
-    @Uninterruptible(reason = "Called from uninterruptible code.")
-    public VMMutex lockNoTransition() {
+    @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
+    public void lockNoTransition() {
+        throw VMError.shouldNotReachHere("Lock cannot be used during native image generation");
+    }
+
+    /**
+     * Like {@linkplain #lockNoTransition()}, but the lock owner is set to an unspecified isolate
+     * thread. Only use this method in places where {@linkplain CurrentIsolate#getCurrentThread()}
+     * can return null.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
+    public void lockNoTransitionUnspecifiedOwner() {
         throw VMError.shouldNotReachHere("Lock cannot be used during native image generation");
     }
 
@@ -79,6 +102,15 @@ public class VMMutex implements AutoCloseable {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public void unlock() {
+        throw VMError.shouldNotReachHere("Lock cannot be used during native image generation");
+    }
+
+    /**
+     * Like {@linkplain #unlock()}. Only use this method if the lock was acquired via
+     * {@linkplain #lockNoTransitionUnspecifiedOwner()}.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.")
+    public void unlockNoTransitionUnspecifiedOwner() {
         throw VMError.shouldNotReachHere("Lock cannot be used during native image generation");
     }
 
@@ -100,29 +132,63 @@ public class VMMutex implements AutoCloseable {
         unlock();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.")
-    public final void assertIsLocked(String message) {
-        assert locked : message;
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public final void assertIsOwner(String message) {
+        assert isOwner() : message;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public final void assertNotOwner(String message) {
+        assert !isOwner() : message;
+    }
+
+    /**
+     * This method is potentially racy and must only be called in places where we can guarantee that
+     * no incorrect {@link AssertionError}s are thrown because of potential races.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public final void assertIsNotLocked(String message) {
-        assert (!locked) : message;
+        assert owner.isNull() : message;
     }
 
-    public final void warnIfNotLocked(String message) {
-        if (!locked) {
-            Log.log().string("[VMMutex.warnIfNotlocked: ").string(message).string("]").newline();
-        }
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public final void guaranteeIsOwner(String message) {
+        VMError.guarantee(isOwner(), message);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public final void guaranteeNotOwner(String message) {
+        VMError.guarantee(!isOwner(), message);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public final boolean isOwner() {
+        assert CurrentIsolate.getCurrentThread().isNonNull() : "current thread must not be null - otherwise use an unspecified owner";
+        return owner == CurrentIsolate.getCurrentThread();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
-    public final void guaranteeIsLocked(String message) {
-        VMError.guarantee(locked, message);
+    public void setOwnerToCurrentThread() {
+        assertIsNotLocked("The owner can only be set if no other thread holds the mutex.");
+        assert CurrentIsolate.getCurrentThread().isNonNull() : "current thread must not be null - otherwise use an unspecified owner";
+        owner = CurrentIsolate.getCurrentThread();
     }
 
-    public static class TestingBackdoor {
-        public static boolean isLocked(VMMutex mutex) {
-            return mutex.locked;
-        }
+    @Uninterruptible(reason = "Called from uninterruptible code.")
+    public void setOwnerToUnspecified() {
+        assertIsNotLocked("The owner can only be set if no other thread holds the mutex.");
+        owner = (IsolateThread) UNSPECIFIED_OWNER;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.")
+    public void clearCurrentThreadOwner() {
+        assertIsOwner("Only the thread that holds the mutex can clear the owner.");
+        owner = WordFactory.nullPointer();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.")
+    public void clearUnspecifiedOwner() {
+        assert owner == (IsolateThread) UNSPECIFIED_OWNER;
+        owner = WordFactory.nullPointer();
     }
 }
