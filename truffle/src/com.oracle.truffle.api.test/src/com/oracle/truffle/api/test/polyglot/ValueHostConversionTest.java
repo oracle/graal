@@ -750,6 +750,7 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
         Number[] cannotConvert = {
                         0.1d, -0.1d,
                         0.2d, -0.2d,
+                        -(1L << 24) - 1, (1L << 24) + 1,
                         Double.MIN_VALUE, Double.MAX_VALUE,
         };
         for (Number number : cannotConvert) {
@@ -832,7 +833,9 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
                         Byte.MIN_VALUE, Byte.MAX_VALUE,
                         Short.MIN_VALUE, Short.MAX_VALUE,
                         Integer.MIN_VALUE, Integer.MAX_VALUE,
-                        (long) Integer.MIN_VALUE, (long) Integer.MAX_VALUE, -(1L << 53) + 1, (1L << 53) - 1,
+                        (long) Integer.MIN_VALUE, (long) Integer.MAX_VALUE,
+                        -(1L << 53) + 1, (1L << 53) - 1,
+                        -(1L << 54), 1L << 54,
                         0f, -0f, Float.NaN, Float.NEGATIVE_INFINITY, Float.POSITIVE_INFINITY,
         };
         for (Number number : canConvert) {
@@ -842,7 +845,7 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
         }
 
         Number[] cannotConvert = {
-                        Long.MIN_VALUE, Long.MAX_VALUE, -(1L << 53), 1L << 53,
+                        -(1L << 53) - 1, (1L << 53) + 1,
         };
         for (Number number : cannotConvert) {
             assertFails(() -> context.asValue(number).asDouble(), ClassCastException.class);
