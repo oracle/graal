@@ -449,7 +449,7 @@ public final class CompilerDirectives {
     }
 
     @SuppressWarnings("serial")
-    static final class ShouldNotReachHere extends RuntimeException {
+    static final class ShouldNotReachHere extends AssertionError {
 
         ShouldNotReachHere(String message, Throwable cause) {
             super(message, cause);
