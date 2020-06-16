@@ -114,6 +114,12 @@ public final class GraalOptions {
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> UseLoopLimitChecks = new OptionKey<>(true);
 
+    @Option(help = "", type = OptionType.Debug)
+    public static final OptionKey<Boolean> LoopPredication = new OptionKey<>(true);
+
+    @Option(help = "", type = OptionType.Debug)
+    public static final OptionKey<Boolean> LoopPredicationMainPath = new OptionKey<>(true);
+
     // debugging settings
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> ZapStackOnMethodEntry = new OptionKey<>(false);
