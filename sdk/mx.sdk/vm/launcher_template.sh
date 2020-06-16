@@ -101,7 +101,7 @@ process_arg() {
 # Those can be specified as the `option_vars` argument of the LauncherConfig constructor.
 for var in <option_vars>; do
     read -ra opts <<< "${!var}"
-    for opt in ${opts[@]}; do
+    for opt in "${opts[@]}"; do
         [[ "$opt" == --vm.* ]] && process_vm_arg vm "${opt#--vm.}"
         [[ "$opt" == --jvm.* ]] && process_vm_arg jvm "${opt#--jvm.}"
     done
