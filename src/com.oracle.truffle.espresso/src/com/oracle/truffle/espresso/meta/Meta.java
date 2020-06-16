@@ -384,6 +384,9 @@ public final class Meta implements ContextAccess {
         java_lang_String_value = lookupFieldDiffVersion(java_lang_String, Name.value, Type._char_array, Name.value, Type._byte_array);
 
         java_lang_System_initializeSystemClass = java_lang_System.lookupDeclaredMethod(Name.initializeSystemClass, Signature._void);
+        java_lang_System_initPhase1 = java_lang_System.lookupDeclaredMethod(Name.initPhase1, Signature._void);
+        java_lang_System_initPhase2 = java_lang_System.lookupDeclaredMethod(Name.initPhase2, Signature._int_boolean_boolean);
+        java_lang_System_initPhase3 = java_lang_System.lookupDeclaredMethod(Name.initPhase3, Signature._void);
 
         sun_reflect_MagicAccessorImpl = knownKlassDiffVersion(Type.sun_reflect_MagicAccessorImpl, Type.jdk_internal_reflect_MagicAccessorImpl);
         sun_reflect_DelegatingClassLoader = knownKlassDiffVersion(Type.sun_reflect_DelegatingClassLoader, Type.jdk_internal_reflect_DelegatingClassLoader);
@@ -671,6 +674,9 @@ public final class Meta implements ContextAccess {
 
     public final ObjectKlass java_lang_System;
     public final Method java_lang_System_initializeSystemClass;
+    public final Method java_lang_System_initPhase1;
+    public final Method java_lang_System_initPhase2;
+    public final Method java_lang_System_initPhase3;
     public final Method java_lang_System_exit;
     public final Field java_lang_System_securityManager;
 

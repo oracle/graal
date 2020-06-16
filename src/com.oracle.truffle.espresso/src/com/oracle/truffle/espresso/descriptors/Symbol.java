@@ -235,6 +235,9 @@ public final class Symbol<T> extends ByteSequence {
         // j.l.System
         public static final Symbol<Name> getProperty = StaticSymbols.putName("getProperty");
         public static final Symbol<Name> initializeSystemClass = StaticSymbols.putName("initializeSystemClass");
+        public static final Symbol<Name> initPhase1 = StaticSymbols.putName("initPhase1");
+        public static final Symbol<Name> initPhase2 = StaticSymbols.putName("initPhase2");
+        public static final Symbol<Name> initPhase3 = StaticSymbols.putName("initPhase3");
         public static final Symbol<Name> security = StaticSymbols.putName("security");
         public static final Symbol<Name> setProperty = StaticSymbols.putName("setProperty");
 
@@ -648,6 +651,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> _void_int = StaticSymbols.putSignature(Type._void, Type._int);
         public static final Symbol<Signature> _void_long = StaticSymbols.putSignature(Type._void, Type._long);
         public static final Symbol<Signature> _void_long_int = StaticSymbols.putSignature(Type._void, Type._long, Type._int);
+        public static final Symbol<Signature> _int_boolean_boolean = StaticSymbols.putSignature(Type._int, Type._boolean, Type._boolean);
 
         public static final Symbol<Signature> Boolean_boolean = StaticSymbols.putSignature(Type.java_lang_Boolean, Type._boolean);
         public static final Symbol<Signature> Byte_byte = StaticSymbols.putSignature(Type.java_lang_Byte, Type._byte);
