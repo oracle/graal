@@ -40,16 +40,14 @@
  */
 package com.oracle.truffle.object;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.FinalLocationException;
 import com.oracle.truffle.api.object.IncompatibleLocationException;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.LongLocation;
 import com.oracle.truffle.api.object.Shape;
-
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 
 /** @since 0.17 or earlier */
 @SuppressWarnings("deprecation")
@@ -270,6 +268,14 @@ public abstract class LocationImpl extends Location {
      * @since 0.17 or earlier
      */
     public abstract void accept(LocationVisitor locationVisitor);
+
+    protected LocationImpl getInternalLocation() {
+        return this;
+    }
+
+    static boolean isSameLocation(LocationImpl loc1, LocationImpl loc2) {
+        return loc1 == loc2 || loc1.getInternalLocation().equals(loc2.getInternalLocation());
+    }
 
     /**
      * Boxed values need to be compared by value not by reference.

@@ -41,6 +41,10 @@
 package com.oracle.truffle.object;
 
 import static com.oracle.truffle.object.LayoutImpl.ACCESS;
+import static com.oracle.truffle.object.LocationImpl.expectBoolean;
+import static com.oracle.truffle.object.LocationImpl.expectDouble;
+import static com.oracle.truffle.object.LocationImpl.expectInteger;
+import static com.oracle.truffle.object.LocationImpl.expectLong;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -50,6 +54,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.locks.Lock;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -65,6 +70,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.FinalLocationException;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.IncompatibleLocationException;
 import com.oracle.truffle.api.object.Location;
@@ -72,6 +78,8 @@ import com.oracle.truffle.api.object.LocationFactory;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.utilities.AlwaysValidAssumption;
+import com.oracle.truffle.api.utilities.NeverValidAssumption;
 
 @ExportLibrary(value = DynamicObjectLibrary.class, receiverType = DynamicObject.class, priority = 10, transitionLimit = "5")
 abstract class DynamicObjectLibraryImpl {
@@ -280,23 +288,25 @@ abstract class DynamicObjectLibraryImpl {
     }
 
     @ExportMessage
-    public static boolean updateShape(@SuppressWarnings("unused") DynamicObject object) {
-        return false;
+    public static boolean updateShape(DynamicObject object,
+                    @Shared("cachedShape") @Cached(value = "object.getShape()", allowUncached = true) Shape cachedShape) {
+        if (cachedShape.isValid()) {
+            return false;
+        } else {
+            return updateShapeImpl(object);
+        }
+    }
+
+    @TruffleBoundary
+    static boolean updateShapeImpl(DynamicObject object) {
+        return ((ShapeImpl) object.getShape()).getLayout().getStrategy().updateShape(object);
     }
 
     @ExportMessage
-    public static boolean resetShape(DynamicObject object, Shape otherShape) {
-        if (((ShapeImpl) otherShape).hasInstanceProperties()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new IllegalArgumentException("Shape must not contain any instance properties.");
-        }
-        Shape currentShape = object.getShape();
-        if (currentShape == otherShape) {
-            return false;
-        }
-        ACCESS.invalidateAllPropertyAssumptions(currentShape);
-        ACCESS.resizeAndSetShape(object, currentShape, otherShape);
-        return true;
+    public static boolean resetShape(DynamicObject object, Shape otherShape,
+                    @Shared("cachedShape") @Cached(value = "object.getShape()", allowUncached = true) Shape cachedShape,
+                    @Cached ResetShapeNode setCache) {
+        return setCache.execute(object, cachedShape, otherShape);
     }
 
     @ExportMessage
@@ -311,8 +321,8 @@ abstract class DynamicObjectLibraryImpl {
         return ((ShapeImpl) cachedShape).getPropertyArray();
     }
 
-    private static CoreLocation getLocation(Property existing) {
-        return (CoreLocation) existing.getLocation();
+    private static LocationImpl getLocation(Property existing) {
+        return (LocationImpl) existing.getLocation();
     }
 
     @TruffleBoundary
@@ -325,7 +335,7 @@ abstract class DynamicObjectLibraryImpl {
         if (existingProperty != null && !Flags.isUpdateFlags(putFlags) && existingProperty.getLocation().canSet(value)) {
             try {
                 getLocation(existingProperty).set(object, value, false);
-            } catch (IncompatibleLocationException e) {
+            } catch (IncompatibleLocationException | FinalLocationException e) {
                 throw shouldNotHappen(e);
             }
             return true;
@@ -336,45 +346,53 @@ abstract class DynamicObjectLibraryImpl {
 
     private static boolean putUncachedSlow(DynamicObject object, Object key, Object value, long putFlags) {
         CompilerAsserts.neverPartOfCompilation();
-        ShapeImpl oldShape = (ShapeImpl) ACCESS.getShape(object);
-        Property existingProperty = oldShape.getProperty(key);
+        updateShapeImpl(object);
+        ShapeImpl oldShape;
+        Property existingProperty;
         Shape newShape;
         Property property;
-        if (existingProperty == null) {
-            if (Flags.isSetExisting(putFlags)) {
-                return false;
-            } else {
-                LocationFactory locationFactory = getLocationFactory(putFlags);
-                newShape = oldShape.getLayout().getStrategy().defineProperty(oldShape, key, value, Flags.getPropertyFlags(putFlags), locationFactory, existingProperty, putFlags);
+        do {
+            oldShape = (ShapeImpl) ACCESS.getShape(object);
+            existingProperty = oldShape.getProperty(key);
+            if (existingProperty == null) {
+                if (Flags.isSetExisting(putFlags)) {
+                    return false;
+                } else {
+                    LayoutStrategy strategy = oldShape.getLayout().getStrategy();
+                    LocationFactory locationFactory = getLocationFactory(strategy, putFlags);
+                    newShape = strategy.defineProperty(oldShape, key, value, Flags.getPropertyFlags(putFlags), locationFactory, existingProperty, putFlags);
+                    property = newShape.getProperty(key);
+                }
+            } else if (Flags.isUpdateFlags(putFlags) && Flags.getPropertyFlags(putFlags) != existingProperty.getFlags()) {
+                LayoutStrategy strategy = oldShape.getLayout().getStrategy();
+                LocationFactory locationFactory = getLocationFactory(strategy, putFlags);
+                newShape = strategy.defineProperty(oldShape, key, value, Flags.getPropertyFlags(putFlags), locationFactory, existingProperty, putFlags);
                 property = newShape.getProperty(key);
-            }
-        } else if (Flags.isUpdateFlags(putFlags) && Flags.getPropertyFlags(putFlags) != existingProperty.getFlags()) {
-            LocationFactory locationFactory = getLocationFactory(putFlags);
-            newShape = oldShape.getLayout().getStrategy().defineProperty(oldShape, key, value, Flags.getPropertyFlags(putFlags), locationFactory, existingProperty, putFlags);
-            property = newShape.getProperty(key);
-        } else {
-            if (existingProperty.getLocation().canSet(value)) {
-                newShape = oldShape;
-                property = existingProperty;
             } else {
-                LocationFactory locationFactory = getLocationFactory(putFlags);
-                newShape = oldShape.getLayout().getStrategy().defineProperty(oldShape, key, value, existingProperty.getFlags(), locationFactory, existingProperty, putFlags);
-                property = newShape.getProperty(key);
+                if (existingProperty.getLocation().canSet(value)) {
+                    newShape = oldShape;
+                    property = existingProperty;
+                } else {
+                    LayoutStrategy strategy = oldShape.getLayout().getStrategy();
+                    LocationFactory locationFactory = getLocationFactory(strategy, putFlags);
+                    newShape = strategy.defineProperty(oldShape, key, value, existingProperty.getFlags(), locationFactory, existingProperty, putFlags);
+                    property = newShape.getProperty(key);
+                }
             }
-        }
+        } while (updateShapeImpl(object));
 
         assert ACCESS.getShape(object) == oldShape;
         if (oldShape != newShape) {
             ACCESS.growAndSetShape(object, oldShape, newShape);
             try {
-                ((CoreLocation) property.getLocation()).setInternal(object, value, false);
+                getLocation(property).setInternal(object, value, false);
             } catch (IncompatibleLocationException e) {
                 throw shouldNotHappen(e);
             }
         } else {
             try {
-                ((CoreLocation) property.getLocation()).set(object, value, false);
-            } catch (IncompatibleLocationException e) {
+                getLocation(property).set(object, value, false);
+            } catch (IncompatibleLocationException | FinalLocationException e) {
                 throw shouldNotHappen(e);
             }
         }
@@ -395,22 +413,14 @@ abstract class DynamicObjectLibraryImpl {
         }
     };
 
-    static LocationFactory getLocationFactory(long putFlags) {
+    static LocationFactory getLocationFactory(LayoutStrategy strategy, long putFlags) {
         if (Flags.isConstant(putFlags)) {
             return CONSTANT_LOCATION_FACTORY;
         } else if (Flags.isDeclaration(putFlags)) {
             return DECLARED_LOCATION_FACTORY;
         } else {
-            return getDefaultLocationFactory(putFlags);
+            return strategy.getDefaultLocationFactory(putFlags);
         }
-    }
-
-    private static LocationFactory getDefaultLocationFactory(long putFlags) {
-        return new LocationFactory() {
-            public Location createLocation(Shape shape, Object value) {
-                return ((CoreAllocator) ((ShapeImpl) shape).allocator()).locationForValue(value, true, value != null, putFlags);
-            }
-        };
     }
 
     private static void shiftPropertyValuesAfterRemove(DynamicObject object, ShapeImpl oldShape, ShapeImpl newShape) {
@@ -418,13 +428,13 @@ abstract class DynamicObjectLibraryImpl {
         for (ListIterator<Property> iterator = newShape.getPropertyListInternal(false).listIterator(); iterator.hasNext();) {
             Property to = iterator.next();
             Property from = oldShape.getProperty(to.getKey());
-            CoreLocation fromLoc = getLocation(from);
-            CoreLocation toLoc = getLocation(to);
-            if (CoreLocations.isSameLocation(toLoc, fromLoc)) {
+            LocationImpl fromLoc = getLocation(from);
+            LocationImpl toLoc = getLocation(to);
+            if (LocationImpl.isSameLocation(toLoc, fromLoc)) {
                 continue;
             }
             assert !toLoc.isValue();
-            Move move = new Move(fromLoc, toLoc);
+            Move move = new Move(fromLoc, toLoc, oldShape.getLayout().getStrategy());
             moves.add(move);
         }
         if (!isSorted(moves)) {
@@ -450,12 +460,14 @@ abstract class DynamicObjectLibraryImpl {
     }
 
     private static class Move implements Comparable<Move> {
-        private final CoreLocation fromLoc;
-        private final CoreLocation toLoc;
+        private final LocationImpl fromLoc;
+        private final LocationImpl toLoc;
+        private final LayoutStrategy strategy;
 
-        Move(CoreLocation fromLoc, CoreLocation toLoc) {
+        Move(LocationImpl fromLoc, LocationImpl toLoc, LayoutStrategy strategy) {
             this.fromLoc = fromLoc;
             this.toLoc = toLoc;
+            this.strategy = strategy;
         }
 
         public void accept(DynamicObject obj, boolean last) {
@@ -479,8 +491,8 @@ abstract class DynamicObjectLibraryImpl {
 
         @Override
         public int compareTo(Move other) {
-            int order = Integer.compare(CoreLocations.getLocationOrdinal(fromLoc), CoreLocations.getLocationOrdinal(other.fromLoc));
-            assert order == Integer.compare(CoreLocations.getLocationOrdinal(toLoc), CoreLocations.getLocationOrdinal(other.toLoc));
+            int order = Integer.compare(strategy.getLocationOrdinal(fromLoc), strategy.getLocationOrdinal(other.fromLoc));
+            assert order == Integer.compare(strategy.getLocationOrdinal(toLoc), strategy.getLocationOrdinal(other.toLoc));
             return -order;
         }
     }
@@ -932,35 +944,35 @@ abstract class DynamicObjectLibraryImpl {
             public Object getOrDefault(DynamicObject object, Shape cachedShape, Object key, Object defaultValue) {
                 CompilerAsserts.partialEvaluationConstant(cachedShape);
                 assert assertCachedKeyAndShape(object, cachedShape, key);
-                return ((CoreLocation) cachedProperty.getLocation()).get(object, guard(object, cachedShape));
+                return getLocation(cachedProperty).get(object, guard(object, cachedShape));
             }
 
             @Override
             public int getIntOrDefault(DynamicObject object, Shape cachedShape, Object key, Object defaultValue) throws UnexpectedResultException {
                 CompilerAsserts.partialEvaluationConstant(cachedShape);
                 assert assertCachedKeyAndShape(object, cachedShape, key);
-                return ((CoreLocation) cachedProperty.getLocation()).getInt(object, guard(object, cachedShape));
+                return getLocation(cachedProperty).getInt(object, guard(object, cachedShape));
             }
 
             @Override
             public long getLongOrDefault(DynamicObject object, Shape cachedShape, Object key, Object defaultValue) throws UnexpectedResultException {
                 CompilerAsserts.partialEvaluationConstant(cachedShape);
                 assert assertCachedKeyAndShape(object, cachedShape, key);
-                return ((CoreLocation) cachedProperty.getLocation()).getLong(object, guard(object, cachedShape));
+                return getLocation(cachedProperty).getLong(object, guard(object, cachedShape));
             }
 
             @Override
             public double getDoubleOrDefault(DynamicObject object, Shape cachedShape, Object key, Object defaultValue) throws UnexpectedResultException {
                 CompilerAsserts.partialEvaluationConstant(cachedShape);
                 assert assertCachedKeyAndShape(object, cachedShape, key);
-                return ((CoreLocation) cachedProperty.getLocation()).getDouble(object, guard(object, cachedShape));
+                return getLocation(cachedProperty).getDouble(object, guard(object, cachedShape));
             }
 
             @Override
             public boolean getBooleanOrDefault(DynamicObject object, Shape cachedShape, Object key, Object defaultValue) throws UnexpectedResultException {
                 CompilerAsserts.partialEvaluationConstant(cachedShape);
                 assert assertCachedKeyAndShape(object, cachedShape, key);
-                return ((CoreLocation) cachedProperty.getLocation()).getBoolean(object, guard(object, cachedShape));
+                return getLocation(cachedProperty).getBoolean(object, guard(object, cachedShape));
             }
 
             @Override
@@ -1095,22 +1107,22 @@ abstract class DynamicObjectLibraryImpl {
 
             @Override
             public int getIntOrDefault(DynamicObject object, Shape cachedShape, Object key, Object defaultValue) throws UnexpectedResultException {
-                return CoreLocation.expectInteger(defaultValue);
+                return expectInteger(defaultValue);
             }
 
             @Override
             public long getLongOrDefault(DynamicObject object, Shape cachedShape, Object key, Object defaultValue) throws UnexpectedResultException {
-                return CoreLocation.expectLong(defaultValue);
+                return expectLong(defaultValue);
             }
 
             @Override
             public double getDoubleOrDefault(DynamicObject object, Shape cachedShape, Object key, Object defaultValue) throws UnexpectedResultException {
-                return CoreLocation.expectDouble(defaultValue);
+                return expectDouble(defaultValue);
             }
 
             @Override
             public boolean getBooleanOrDefault(DynamicObject object, Shape cachedShape, Object key, Object defaultValue) throws UnexpectedResultException {
-                return CoreLocation.expectBoolean(defaultValue);
+                return expectBoolean(defaultValue);
             }
 
             @Override
@@ -1125,11 +1137,13 @@ abstract class DynamicObjectLibraryImpl {
         protected boolean putImpl(DynamicObject object, Shape cachedShape, Object key, Object value, long putFlags, Property oldProperty) {
             Shape oldShape = cachedShape;
             PutCacheData start = cache;
-            if (start == PutCacheData.GENERIC) {
+            if (start == PutCacheData.GENERIC || !cachedShape.isValid()) {
                 return putUncached(object, key, value, putFlags);
             }
             for (PutCacheData c = start; c != null; c = c.next) {
-                if (c.putFlags == putFlags) {
+                if (!c.isValid()) {
+                    break;
+                } else if (c.putFlags == putFlags) {
                     Property newProperty = c.property;
                     if (newProperty == null) {
                         assert Flags.isSetExisting(putFlags);
@@ -1138,12 +1152,15 @@ abstract class DynamicObjectLibraryImpl {
                         Shape newShape = c.newShape;
                         if (newShape != oldShape) {
                             ACCESS.growAndSetShape(object, oldShape, newShape);
+                        } else if (newProperty.getLocation().isFinal()) {
+                            continue;
                         }
                         try {
-                            ((CoreLocation) newProperty.getLocation()).set(object, value, object.getShape() == oldShape);
-                        } catch (IncompatibleLocationException e) {
+                            getLocation(newProperty).set(object, value, object.getShape() == oldShape);
+                        } catch (IncompatibleLocationException | FinalLocationException e) {
                             throw shouldNotHappen(e);
                         }
+                        c.maybeUpdateShape(object);
                         return true;
                     }
                 }
@@ -1157,33 +1174,44 @@ abstract class DynamicObjectLibraryImpl {
         protected boolean putIntImpl(DynamicObject object, Shape cachedShape, Object key, int value, long putFlags, Property oldProperty) {
             Shape oldShape = cachedShape;
             PutCacheData start = cache;
-            if (start == PutCacheData.GENERIC) {
+            if (start == PutCacheData.GENERIC || !cachedShape.isValid()) {
                 return putUncached(object, key, value, putFlags);
             }
             for (PutCacheData c = start; c != null; c = c.next) {
-                if (c.putFlags == putFlags) {
+                if (!c.isValid()) {
+                    break;
+                } else if (c.putFlags == putFlags) {
                     Property newProperty = c.property;
                     if (newProperty == null) {
                         assert Flags.isSetExisting(putFlags);
                         return false;
-                    } else if (newProperty.getLocation() instanceof CoreLocations.IntLocation) {
-                        Shape newShape = c.newShape;
-                        if (newShape != oldShape) {
-                            ACCESS.growAndSetShape(object, oldShape, newShape);
+                    } else {
+                        Location location = newProperty.getLocation();
+                        if (location instanceof CoreLocations.IntLocation) {
+                            Shape newShape = c.newShape;
+                            if (newShape != oldShape) {
+                                ACCESS.growAndSetShape(object, oldShape, newShape);
+                            } else if (location.isFinal()) {
+                                continue;
+                            }
+                            ((CoreLocations.IntLocation) newProperty.getLocation()).setInt(object, value, object.getShape() == oldShape);
+                            c.maybeUpdateShape(object);
+                            return true;
+                        } else if (location.canStore(value)) {
+                            Shape newShape = c.newShape;
+                            if (newShape != oldShape) {
+                                ACCESS.growAndSetShape(object, oldShape, newShape);
+                            } else if (location.isFinal()) {
+                                continue;
+                            }
+                            try {
+                                getLocation(newProperty).set(object, value, object.getShape() == oldShape);
+                            } catch (IncompatibleLocationException | FinalLocationException e) {
+                                throw shouldNotHappen(e);
+                            }
+                            c.maybeUpdateShape(object);
+                            return true;
                         }
-                        ((CoreLocations.IntLocation) newProperty.getLocation()).setInt(object, value, object.getShape() == oldShape);
-                        return true;
-                    } else if (newProperty.getLocation().canSet(value)) {
-                        Shape newShape = c.newShape;
-                        if (newShape != oldShape) {
-                            ACCESS.growAndSetShape(object, oldShape, newShape);
-                        }
-                        try {
-                            ((CoreLocation) newProperty.getLocation()).set(object, value, object.getShape() == oldShape);
-                        } catch (IncompatibleLocationException e) {
-                            throw shouldNotHappen(e);
-                        }
-                        return true;
                     }
                 }
             }
@@ -1205,24 +1233,33 @@ abstract class DynamicObjectLibraryImpl {
                     if (newProperty == null) {
                         assert Flags.isSetExisting(putFlags);
                         return false;
-                    } else if (newProperty.getLocation() instanceof CoreLocations.LongLocation) {
-                        Shape newShape = c.newShape;
-                        if (newShape != oldShape) {
-                            ACCESS.growAndSetShape(object, oldShape, newShape);
+                    } else {
+                        Location location = newProperty.getLocation();
+                        if (location instanceof CoreLocations.LongLocation) {
+                            Shape newShape = c.newShape;
+                            if (newShape != oldShape) {
+                                ACCESS.growAndSetShape(object, oldShape, newShape);
+                            } else if (location.isFinal()) {
+                                continue;
+                            }
+                            ((CoreLocations.LongLocation) newProperty.getLocation()).setLong(object, value, object.getShape() == oldShape);
+                            c.maybeUpdateShape(object);
+                            return true;
+                        } else if (location.canStore(value)) {
+                            Shape newShape = c.newShape;
+                            if (newShape != oldShape) {
+                                ACCESS.growAndSetShape(object, oldShape, newShape);
+                            } else if (location.isFinal()) {
+                                continue;
+                            }
+                            try {
+                                getLocation(newProperty).set(object, value, object.getShape() == oldShape);
+                            } catch (IncompatibleLocationException | FinalLocationException e) {
+                                throw shouldNotHappen(e);
+                            }
+                            c.maybeUpdateShape(object);
+                            return true;
                         }
-                        ((CoreLocations.LongLocation) newProperty.getLocation()).setLong(object, value, object.getShape() == oldShape);
-                        return true;
-                    } else if (newProperty.getLocation().canSet(value)) {
-                        Shape newShape = c.newShape;
-                        if (newShape != oldShape) {
-                            ACCESS.growAndSetShape(object, oldShape, newShape);
-                        }
-                        try {
-                            ((CoreLocation) newProperty.getLocation()).set(object, value, object.getShape() == oldShape);
-                        } catch (IncompatibleLocationException e) {
-                            throw shouldNotHappen(e);
-                        }
-                        return true;
                     }
                 }
             }
@@ -1250,6 +1287,7 @@ abstract class DynamicObjectLibraryImpl {
                             ACCESS.growAndSetShape(object, oldShape, newShape);
                         }
                         ((CoreLocations.DoubleLocation) newProperty.getLocation()).setDouble(object, value, object.getShape() == oldShape);
+                        c.maybeUpdateShape(object);
                         return true;
                     } else if (newProperty.getLocation().canSet(value)) {
                         Shape newShape = c.newShape;
@@ -1261,6 +1299,7 @@ abstract class DynamicObjectLibraryImpl {
                         } catch (IncompatibleLocationException e) {
                             throw shouldNotHappen(e);
                         }
+                        c.maybeUpdateShape(object);
                         return true;
                     }
                 }
@@ -1289,6 +1328,7 @@ abstract class DynamicObjectLibraryImpl {
                             ACCESS.growAndSetShape(object, oldShape, newShape);
                         }
                         ((CoreLocations.BooleanLocation) newProperty.getLocation()).setBoolean(object, value, object.getShape() == oldShape);
+                        c.maybeUpdateShape(object);
                         return true;
                     } else if (newProperty.getLocation().canSet(value)) {
                         Shape newShape = c.newShape;
@@ -1300,6 +1340,7 @@ abstract class DynamicObjectLibraryImpl {
                         } catch (IncompatibleLocationException e) {
                             throw shouldNotHappen(e);
                         }
+                        c.maybeUpdateShape(object);
                         return true;
                     }
                 }
@@ -1311,11 +1352,23 @@ abstract class DynamicObjectLibraryImpl {
 
         protected KeyCacheNode insertIntoPutCache(DynamicObject object, Shape cachedShape, Object value, long putFlags, Property property) {
             CompilerAsserts.neverPartOfCompilation();
+            if (!cachedShape.isValid()) {
+                return Generic.instance();
+            }
             Lock lock = getLock();
             lock.lock();
             try {
+                PutCacheData tail = filterValid(this.cache);
+
                 ShapeImpl oldShape = (ShapeImpl) cachedShape;
                 ShapeImpl newShape = getNewShape(object, value, putFlags, property, oldShape);
+
+                if (!oldShape.isValid()) {
+                    // If shape was invalidated, other locations may have changed, too,
+                    // so we need to update the object's shape first.
+                    // Cache entries with an invalid cache entry directly go to the slow path.
+                    return Generic.instance();
+                }
 
                 Property newProperty;
                 if (newShape == oldShape) {
@@ -1325,7 +1378,8 @@ abstract class DynamicObjectLibraryImpl {
                     assert newProperty.getLocation().canSet(value);
                 }
 
-                this.cache = new PutCacheData(putFlags, newShape, newProperty, this.cache);
+                Assumption newShapeValid = getShapeValidAssumption(oldShape, newShape);
+                this.cache = new PutCacheData(putFlags, newShape, newProperty, newShapeValid, tail);
                 return this;
             } finally {
                 lock.unlock();
@@ -1338,14 +1392,16 @@ abstract class DynamicObjectLibraryImpl {
                     return oldShape;
                 } else {
                     int propertyFlags = Flags.getPropertyFlags(putFlags);
-                    return oldShape.defineProperty(cachedKey, value, propertyFlags, getLocationFactory(putFlags));
+                    LayoutStrategy strategy = oldShape.getLayout().getStrategy();
+                    return oldShape.defineProperty(cachedKey, value, propertyFlags, getLocationFactory(strategy, putFlags));
                 }
             }
 
             if (Flags.isUpdateFlags(putFlags)) {
                 if (Flags.getPropertyFlags(putFlags) != property.getFlags()) {
                     int propertyFlags = Flags.getPropertyFlags(putFlags);
-                    return oldShape.defineProperty(cachedKey, value, propertyFlags, getLocationFactory(putFlags));
+                    LayoutStrategy strategy = oldShape.getLayout().getStrategy();
+                    return oldShape.defineProperty(cachedKey, value, propertyFlags, getLocationFactory(strategy, putFlags));
                 }
             }
 
@@ -1353,7 +1409,8 @@ abstract class DynamicObjectLibraryImpl {
             if (!location.isDeclared() && !location.canSet(value)) {
                 // generalize
                 assert oldShape == ACCESS.getShape(object);
-                ShapeImpl newShape = oldShape.getLayout().getStrategy().definePropertyGeneralize(oldShape, property, value, getLocationFactory(putFlags), putFlags);
+                LayoutStrategy strategy = oldShape.getLayout().getStrategy();
+                ShapeImpl newShape = strategy.definePropertyGeneralize(oldShape, property, value, getLocationFactory(strategy, putFlags), putFlags);
                 assert newShape != oldShape;
                 return newShape;
             } else if (location.isDeclared()) {
@@ -1364,6 +1421,29 @@ abstract class DynamicObjectLibraryImpl {
                 assert location.canSet(value);
                 return oldShape;
             }
+        }
+
+        private static Assumption getShapeValidAssumption(Shape oldShape, Shape newShape) {
+            if (oldShape == newShape) {
+                return AlwaysValidAssumption.INSTANCE;
+            }
+            return newShape.isValid() ? newShape.getValidAssumption() : NeverValidAssumption.INSTANCE;
+        }
+    }
+
+    static <T extends CacheData<T>> T filterValid(T cache) {
+        if (cache == null) {
+            return null;
+        }
+        T filteredNext = filterValid(cache.next);
+        if (cache.isValid()) {
+            if (filteredNext == cache.next) {
+                return cache;
+            } else {
+                return cache.withNext(filteredNext);
+            }
+        } else {
+            return filteredNext;
         }
     }
 
@@ -1378,20 +1458,44 @@ abstract class DynamicObjectLibraryImpl {
         CacheData(T next) {
             this.next = next;
         }
+
+        protected boolean isValid() {
+            return true;
+        }
+
+        protected abstract T withNext(T newNext);
     }
 
     static class PutCacheData extends CacheData<PutCacheData> {
-        static final PutCacheData GENERIC = new PutCacheData(0, null, null, null);
+        static final PutCacheData GENERIC = new PutCacheData(0, null, null, null, null);
 
         final long putFlags;
         final Shape newShape;
         final Property property;
+        final Assumption newShapeValidAssumption;
 
-        PutCacheData(long putFlags, Shape newShape, Property property, PutCacheData next) {
+        PutCacheData(long putFlags, Shape newShape, Property property, Assumption newShapeValidAssumption, PutCacheData next) {
             super(next);
             this.putFlags = putFlags;
             this.newShape = newShape;
             this.property = property;
+            this.newShapeValidAssumption = newShapeValidAssumption;
+        }
+
+        @Override
+        protected boolean isValid() {
+            return newShapeValidAssumption == NeverValidAssumption.INSTANCE || newShapeValidAssumption.isValid();
+        }
+
+        protected void maybeUpdateShape(DynamicObject store) {
+            if (newShapeValidAssumption == NeverValidAssumption.INSTANCE) {
+                updateShapeImpl(store);
+            }
+        }
+
+        @Override
+        protected PutCacheData withNext(PutCacheData newNext) {
+            return new PutCacheData(putFlags, newShape, property, newShapeValidAssumption, newNext);
         }
     }
 
@@ -1478,8 +1582,11 @@ abstract class DynamicObjectLibraryImpl {
         @Specialization(guards = "otherShape == cachedOtherShape")
         static boolean doCached(DynamicObject object, Shape cachedShape, @SuppressWarnings("unused") Shape otherShape,
                         @Cached(value = "verifyResetShape(cachedShape, otherShape)", allowUncached = true) Shape cachedOtherShape) {
+            if (cachedShape == cachedOtherShape) {
+                return false;
+            }
             ACCESS.resizeAndSetShape(object, cachedShape, cachedOtherShape);
-            return cachedShape != cachedOtherShape;
+            return true;
         }
 
         static Shape verifyResetShape(Shape currentShape, Shape otherShape) {

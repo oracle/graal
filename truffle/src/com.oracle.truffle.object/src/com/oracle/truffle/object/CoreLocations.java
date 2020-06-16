@@ -691,8 +691,13 @@ abstract class CoreLocations {
             longLocation.setLong(store, value, condition);
         }
 
-        public final LongLocation getInternalLocation() {
+        public final LongLocation getInternalLongLocation() {
             return longLocation;
+        }
+
+        @Override
+        protected final LocationImpl getInternalLocation() {
+            return (LocationImpl) longLocation;
         }
 
         @Override

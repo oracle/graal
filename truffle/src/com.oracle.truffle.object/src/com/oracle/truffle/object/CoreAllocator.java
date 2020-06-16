@@ -231,7 +231,7 @@ class CoreAllocator extends ShapeImpl.BaseAllocator {
             return locationForValue(value, false, value != null);
         } else if (oldLocation instanceof TypedLocation && ((TypedLocation) oldLocation).getType().isPrimitive()) {
             if (!shared && ((TypedLocation) oldLocation).getType() == int.class) {
-                LongLocation primLocation = ((PrimitiveLocationDecorator) oldLocation).getInternalLocation();
+                LongLocation primLocation = ((PrimitiveLocationDecorator) oldLocation).getInternalLongLocation();
                 boolean allowedIntToLong = layout.isAllowedIntToLong() || Flags.isImplicitCastIntToLong(putFlags);
                 boolean allowedIntToDouble = layout.isAllowedIntToDouble() || Flags.isImplicitCastIntToDouble(putFlags);
                 if (allowedIntToLong && value instanceof Long) {

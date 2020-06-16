@@ -67,16 +67,14 @@ public abstract class LayoutStrategy {
     protected LayoutStrategy() {
     }
 
-    private static final LocationFactory DEFAULT_LOCATION_FACTORY = new LocationFactory() {
-        public Location createLocation(Shape shape, Object value) {
-            return ((ShapeImpl) shape).allocator().locationForValue(value, true, value != null);
-        }
-    };
-
     /** @since 0.18 */
-    protected LocationFactory getDefaultLocationFactory() {
-        return DEFAULT_LOCATION_FACTORY;
+    protected final LocationFactory getDefaultLocationFactory() {
+        return getDefaultLocationFactory(0);
     }
+
+    protected abstract LocationFactory getDefaultLocationFactory(long putFlags);
+
+    protected abstract int getLocationOrdinal(Location location);
 
     /** @since 0.17 or earlier */
     protected abstract boolean updateShape(DynamicObject object);
