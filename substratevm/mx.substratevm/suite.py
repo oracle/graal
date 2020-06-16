@@ -908,6 +908,7 @@ suite = {
                 "name" : "org.graalvm.nativeimage.builder",
                 "exports" : [
                     "com.oracle.svm.hosted                        to java.base",
+                    "com.oracle.svm.hosted.server                 to java.base",
                     "com.oracle.svm.hosted.agent                  to java.instrument",
                     "com.oracle.svm.core.graal.nodes              to jdk.internal.vm.compiler",
                     "* to org.graalvm.nativeimage.driver",
