@@ -131,8 +131,8 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
 
     @Test
     public void testLongDefault() throws InteropException {
-        assertNumber(Long.MIN_VALUE, false, false, false, true, true, false);
-        assertNumber((long) Integer.MIN_VALUE - 1, false, false, false, true, true, true);
+        assertNumber(Long.MIN_VALUE, false, false, false, true, true, true);
+        assertNumber((long) Integer.MIN_VALUE - 1, false, false, false, true, false, true);
         assertNumber((long) Integer.MIN_VALUE, false, false, true, true, true, true);
         assertNumber((long) Short.MIN_VALUE - 1, false, false, true, true, true, true);
         assertNumber((long) Short.MIN_VALUE, false, true, true, true, true, true);
@@ -143,8 +143,8 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
         assertNumber((long) Byte.MAX_VALUE + 1, false, true, true, true, true, true);
         assertNumber((long) Short.MAX_VALUE, false, true, true, true, true, true);
         assertNumber((long) Short.MAX_VALUE + 1, false, false, true, true, true, true);
-        assertNumber((long) Integer.MAX_VALUE, false, false, true, true, true, true);
-        assertNumber(Long.MAX_VALUE, false, false, false, true, true, false);
+        assertNumber((long) Integer.MAX_VALUE, false, false, true, true, false, true);
+        assertNumber(Long.MAX_VALUE, false, false, false, true, true, true);
     }
 
     @Test

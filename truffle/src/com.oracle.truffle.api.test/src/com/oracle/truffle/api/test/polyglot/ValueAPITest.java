@@ -1032,15 +1032,15 @@ public class ValueAPITest {
         assertFails(() -> nofloat.as(Float.class), ClassCastException.class,
                         "Cannot convert '1.7976931348623157E308'(language: Java, type: java.lang.Double) to Java type 'java.lang.Float': Invalid or lossy primitive coercion.");
 
-        Value nodouble = context.asValue(9007199254740992L);
+        Value nodouble = context.asValue(9007199254740993L);
 
         assertFails(() -> nodouble.asDouble(), ClassCastException.class,
-                        "Cannot convert '9007199254740992'(language: Java, type: java.lang.Long) to Java type 'double' using Value.asDouble(): Invalid or lossy primitive coercion. " +
+                        "Cannot convert '9007199254740993'(language: Java, type: java.lang.Long) to Java type 'double' using Value.asDouble(): Invalid or lossy primitive coercion. " +
                                         "You can ensure that the value can be converted using Value.fitsInDouble().");
         assertFails(() -> nodouble.as(double.class), ClassCastException.class,
-                        "Cannot convert '9007199254740992'(language: Java, type: java.lang.Long) to Java type 'double': Invalid or lossy primitive coercion.");
+                        "Cannot convert '9007199254740993'(language: Java, type: java.lang.Long) to Java type 'double': Invalid or lossy primitive coercion.");
         assertFails(() -> nodouble.as(Double.class), ClassCastException.class,
-                        "Cannot convert '9007199254740992'(language: Java, type: java.lang.Long) to Java type 'java.lang.Double': Invalid or lossy primitive coercion.");
+                        "Cannot convert '9007199254740993'(language: Java, type: java.lang.Long) to Java type 'java.lang.Double': Invalid or lossy primitive coercion.");
 
         Value noString = context.asValue(false);
 
