@@ -74,6 +74,7 @@ import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.AllocatableValue;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
@@ -438,9 +439,11 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
         }
         if ((0 == shift1 + shift2) || (src.getStackKind().getBitCount() == shift1 + shift2)) {
             return builder -> {
-                Value a = operand(src);
-                Value b = x instanceof LeftShiftNode ? operand(shiftAmt2) : operand(shiftAmt1);
-                return getArithmeticLIRGenerator().emitBinary(LIRKind.combine(a, b), AArch64ArithmeticOp.ROR, false, a, b);
+                AllocatableValue a = gen.asAllocatable(operand(src));
+                JavaConstant b = x instanceof LeftShiftNode ? shiftAmt2.asJavaConstant() : shiftAmt1.asJavaConstant();
+                Variable result = gen.newVariable(LIRKind.combine(a));
+                getArithmeticLIRGenerator().emitBinaryConst(result, AArch64ArithmeticOp.ROR, a, b);
+                return result;
             };
         }
         return null;

@@ -1052,17 +1052,25 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
      */
     private boolean isSafeConditionalInput(ValueNode value, AbstractBeginNode successor) {
         assert successor.hasNoUsages();
-        if (value.isConstant() || value instanceof ParameterNode || condition.inputs().contains(value)) {
-            // Assume constants are cheap to evaluate and Parameters are always evaluated. Any input
-            // to the condition itself is also unconditionally evaluated.
+        if (value.isConstant() || condition.inputs().contains(value)) {
+            // Assume constants are cheap to evaluate. Any input to the condition itself is also
+            // unconditionally evaluated.
             return true;
         }
 
-        if (value instanceof FixedNode && graph().isAfterFixedReadPhase()) {
-            List<Node> nodes = getNodesForBlock(successor);
-            // The successor block is empty so assume that this input evaluated before the
-            // condition.
-            return nodes != null && nodes.size() == 2;
+        if (graph().isAfterFixedReadPhase()) {
+            if (value instanceof ParameterNode) {
+                // Assume Parameters are always evaluated but only apply this logic to graphs after
+                // inlining. Checking for ParameterNode causes it to apply to graphs which are going
+                // to be inlined into other graphs which is incorrect.
+                return true;
+            }
+            if (value instanceof FixedNode) {
+                List<Node> nodes = getNodesForBlock(successor);
+                // The successor block is empty so assume that this input evaluated before the
+                // condition.
+                return nodes != null && nodes.size() == 2;
+            }
         }
         return false;
     }
