@@ -680,7 +680,7 @@ public abstract class Shape {
      * Returns {@code true} if this shape is {@link Shape#makeSharedShape() shared}.
      *
      * @see DynamicObjectLibrary#isShared(DynamicObject)
-     * @see DynamicObjectLibrary#makeShared(DynamicObject)
+     * @see DynamicObjectLibrary#markShared(DynamicObject)
      * @see Shape.Builder#shared(boolean)
      * @since 0.18
      */
@@ -695,7 +695,7 @@ public abstract class Shape {
      *
      * @return a cached and shared variant of this shape
      * @see #isShared()
-     * @see DynamicObjectLibrary#makeShared(DynamicObject)
+     * @see DynamicObjectLibrary#markShared(DynamicObject)
      * @since 0.18
      */
     public Shape makeSharedShape() {

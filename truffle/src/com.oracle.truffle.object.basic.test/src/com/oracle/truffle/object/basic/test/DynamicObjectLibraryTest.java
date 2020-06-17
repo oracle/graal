@@ -422,7 +422,7 @@ public class DynamicObjectLibraryTest extends AbstractParametrizedLibraryTest {
 
         DynamicObject o4 = createEmpty();
         lib.setShapeFlags(o4, flags);
-        lib.makeShared(o4);
+        lib.markShared(o4);
         assertEquals(flags, lib.getShapeFlags(o2));
 
         DynamicObjectLibrary cached = createLibraryForReceiver(o4);
@@ -466,7 +466,7 @@ public class DynamicObjectLibraryTest extends AbstractParametrizedLibraryTest {
 
         DynamicObject o1 = createEmpty();
         assertFalse(lib.isShared(o1));
-        lib.makeShared(o1);
+        lib.markShared(o1);
         assertTrue(lib.isShared(o1));
         lib.put(o1, "key", "value");
         assertTrue(lib.isShared(o1));

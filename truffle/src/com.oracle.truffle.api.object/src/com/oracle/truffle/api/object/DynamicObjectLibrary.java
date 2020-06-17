@@ -413,14 +413,16 @@ public abstract class DynamicObjectLibrary extends Library {
      * Makes this object shared.
      *
      * @throws UnsupportedOperationException if the object is already {@linkplain #isShared shared}.
+     * @see #isShared(DynamicObject)
      * @since 20.2.0
      */
-    public abstract void makeShared(DynamicObject object);
+    public abstract void markShared(DynamicObject object);
 
     /**
      * Checks whether this object is shared.
      *
      * @return {@code true} if the object is shared
+     * @see #markShared(DynamicObject)
      * @since 20.2.0
      */
     public abstract boolean isShared(DynamicObject object);

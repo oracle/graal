@@ -281,7 +281,7 @@ abstract class DynamicObjectLibraryImpl {
     }
 
     @ExportMessage
-    public static void makeShared(DynamicObject object,
+    public static void markShared(DynamicObject object,
                     @Shared("cachedShape") @Cached(value = "object.getShape()", allowUncached = true) Shape cachedShape,
                     @Cached MakeSharedNode setCache) {
         setCache.execute(object, cachedShape);

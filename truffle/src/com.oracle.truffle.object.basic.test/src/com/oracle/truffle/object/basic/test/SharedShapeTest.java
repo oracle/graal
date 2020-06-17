@@ -139,7 +139,7 @@ public class SharedShapeTest extends AbstractParametrizedLibraryTest {
         DOTestAsserts.assertShapeFields(object, 1, 0);
 
         // Share object
-        library.makeShared(object);
+        library.markShared(object);
 
         library.put(object, "b", 3);
         Location locationB1 = object.getShape().getProperty("b").getLocation();
@@ -172,7 +172,7 @@ public class SharedShapeTest extends AbstractParametrizedLibraryTest {
         Assert.assertEquals(false, rootShape.isShared());
         Assert.assertSame(sharedShape, rootShape.makeSharedShape());
         Assert.assertEquals(true, sharedShape.isShared());
-        library.makeShared(object);
+        library.markShared(object);
         Assert.assertSame(sharedShape, object.getShape());
 
         library.put(object, "a", 1);
@@ -180,7 +180,7 @@ public class SharedShapeTest extends AbstractParametrizedLibraryTest {
         Assert.assertEquals(true, sharedShapeWithA.isShared());
 
         DynamicObject object2 = rootShape.newInstance();
-        library.makeShared(object2);
+        library.markShared(object2);
         Assert.assertSame(sharedShape, object2.getShape());
         library.put(object2, "a", 1);
         Assert.assertSame(sharedShapeWithA, object2.getShape());
@@ -188,7 +188,7 @@ public class SharedShapeTest extends AbstractParametrizedLibraryTest {
         // Currently, sharing is a transition and transitions do not commute magically
         DynamicObject object3 = rootShape.newInstance();
         library.put(object3, "a", 1);
-        library.makeShared(object3);
+        library.markShared(object3);
         Assert.assertNotSame(sharedShapeWithA, object3.getShape());
     }
 
