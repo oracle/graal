@@ -761,7 +761,18 @@ def llvm_dis(args=None, out=None):
 
         # write output file and patch paths
         ll_path = parsed_args.output or get_ll_filename(in_file)
-        with open(ll_tmp_path, 'r') as ll_tmp_f, open(ll_path, 'w') as ll_f:
+
+        def _open_for_writing(path):
+            if path == "-":
+                return sys.stdout
+            return open(path, 'w')
+
+        def _open_for_reading(path):
+            if path == "-":
+                return sys.stdin
+            return open(path, 'r')
+
+        with _open_for_reading(ll_tmp_path) as ll_tmp_f, _open_for_writing(ll_path) as ll_f:
             ll_f.writelines((l.replace(tmp_path, in_file) for l in ll_tmp_f))
 
     finally:
