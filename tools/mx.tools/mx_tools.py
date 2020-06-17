@@ -252,19 +252,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
     include_by_default=True,
 ))
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
-    suite=_suite,
-    name='GraalVM Warmup',
-    short_name='wrm',
-    dir_name='warmup',
-    license_files=[],
-    third_party_license_files=[],
-    dependencies=['Truffle'],
-    truffle_jars=['tools:TRUFFLE_WARMUP_ESTIMATOR'],
-    support_distributions=['tools:TRUFFLE_WARMUP_ESTIMATOR_GRAALVM_SUPPORT'],
-    include_by_default=True,
-))
-
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJdkComponent(
     suite=_suite,
     name='VisualVM',
