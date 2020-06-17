@@ -75,14 +75,16 @@ bench-scala-dacapo: ${bench-common} ${default-heap} ${scala-dacapo-bench-notific
   targets: [bench, post-merge]
   run: [
     ${bench-jvmci.mx-scala-dacapo} ${bench-arguments}
-  ]
+  ],
+  timelimit: "45:00"
 }
 
 bench-scala-dacapo-timing: ${bench-common} ${default-heap} ${scala-dacapo-bench-notifications} {
   targets: [bench, daily]
   run: [
     ${bench-jvmci.mx-scala-dacapo-timing} ${bench-arguments}
-  ]
+  ],
+  timelimit: "45:00"
 }
 
 # SPECjbb2005-related targets
