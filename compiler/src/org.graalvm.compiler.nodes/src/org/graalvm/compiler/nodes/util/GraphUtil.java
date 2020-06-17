@@ -73,6 +73,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.ValueProxyNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
+import org.graalvm.compiler.nodes.extended.MultiGuardNode;
 import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
@@ -124,7 +125,7 @@ public class GraphUtil {
         debug.dump(DebugContext.DETAILED_LEVEL, node.graph(), "After fixing merges (killCFG %s)", node);
 
         // Mark non-fixed nodes
-        markUsages(markedNodes);
+        markUsagesForKill(markedNodes);
 
         // Detach marked nodes from non-marked nodes
         for (Node marked : markedNodes) {
@@ -223,19 +224,37 @@ public class GraphUtil {
         }
     }
 
-    private static void markUsages(EconomicSet<Node> markedNodes) {
+    private static void markUsagesForKill(EconomicSet<Node> markedNodes) {
         NodeStack workStack = new NodeStack(markedNodes.size() + 4);
         for (Node marked : markedNodes) {
             workStack.push(marked);
         }
+        ArrayList<MultiGuardNode> unmarkedMultiGuards = new ArrayList<>();
         while (!workStack.isEmpty()) {
             Node marked = workStack.pop();
             for (Node usage : marked.usages()) {
-                if (!markedNodes.contains(usage)) {
+                boolean doMark = true;
+                if (usage instanceof MultiGuardNode) {
+                    // Only mark a MultiGuardNode for deletion if all of its guards are marked for
+                    // deletion. Otherwise, we would kill nodes outside the path to be killed.
+                    MultiGuardNode multiGuard = (MultiGuardNode) usage;
+                    for (Node guard : multiGuard.inputs()) {
+                        if (!markedNodes.contains(guard)) {
+                            doMark = false;
+                            unmarkedMultiGuards.add(multiGuard);
+                        }
+                    }
+                }
+                if (doMark && !markedNodes.contains(usage)) {
                     workStack.push(usage);
                     markedNodes.add(usage);
                 }
             }
+            // Detach unmarked multi guards from the marked node
+            for (MultiGuardNode multiGuard : unmarkedMultiGuards) {
+                multiGuard.replaceFirstInput(marked, null);
+            }
+            unmarkedMultiGuards.clear();
         }
     }
 
