@@ -275,10 +275,18 @@ public abstract class LLVMInteropType implements TruffleObject {
     public static final class Clazz extends Struct {
 
         @CompilationFinal(dimensions = 1) final Method[] methods;
+        private Clazz superclass;
 
         Clazz(String name, StructMember[] members, Method[] methods, long size) {
             super(name, members, size);
             this.methods = methods;
+            this.superclass = null;
+        }
+
+        public void setSuperClass(Clazz superclass) {
+            if (this.superclass == null) {
+                this.superclass = superclass;
+            }
         }
 
         public Method getMethod(int i) {
@@ -298,6 +306,9 @@ public abstract class LLVMInteropType implements TruffleObject {
                     return method;
                 }
             }
+            if (superclass != null) {
+                return superclass.findMethod(memberName);
+            }
             return null;
         }
 
@@ -313,6 +324,9 @@ public abstract class LLVMInteropType implements TruffleObject {
                 } else if (method.getLinkageName().equals(memberName)) {
                     return method;
                 }
+            }
+            if (superclass != null) {
+                return superclass.findMethod(memberName, arguments);
             }
             return null;
         }
@@ -540,6 +554,14 @@ public abstract class LLVMInteropType implements TruffleObject {
             for (int i = 0; i < ret.members.length; i++) {
                 LLVMSourceMemberType member = type.getDynamicElement(i);
                 LLVMSourceType memberType = member.getElementType();
+                if (memberType instanceof LLVMSourceClassLikeType) {
+                    LLVMSourceClassLikeType sourceSuperClazz = (LLVMSourceClassLikeType) memberType;
+                    if (typeCache.containsKey(sourceSuperClazz)) {
+                        Clazz superClazz = (Clazz) typeCache.get(sourceSuperClazz);
+                        ret.setSuperClass(superClazz);
+                    }
+
+                }
                 long startOffset = member.getOffset() / 8;
                 long endOffset = startOffset + (memberType.getSize() + 7) / 8;
                 ret.members[i] = new StructMember(ret, member.getName(), startOffset, endOffset, get(memberType));
