@@ -151,18 +151,20 @@ abstract class CommonPointerLibraries {
         if (!(type instanceof LLVMInteropType.Clazz)) {
             throw UnsupportedTypeException.create(new Object[]{receiver}, receiver + " cannot be casted to LLVMInteropType.Clazz");
         }
-        LLVMInteropType.Clazz clazz = (LLVMInteropType.Clazz) receiver.getExportType();
-        Method method = clazz.findMethod(member);
-        if (method == null) {
-            throw UnknownIdentifierException.create(member);
-        }
-        LLVMFunction llvmFunction = LLVMLanguage.getContext().getGlobalScope().getFunction(method.getLinkageName());
         // change from receiver.foo(arguments) to interopLibrary.execute(foo, [receiver+arguments])
         Object[] newArguments = new Object[arguments.length + 1];
         newArguments[0] = receiver;
         for (int i = 0; i < arguments.length; i++) {
             newArguments[i + 1] = arguments[i];
         }
+        LLVMInteropType.Clazz clazz = (LLVMInteropType.Clazz) receiver.getExportType();
+
+        Method method = clazz.findMethod(member, newArguments);
+        if (method == null) {
+            throw UnknownIdentifierException.create(member);
+        }
+        LLVMFunction llvmFunction = LLVMLanguage.getContext().getGlobalScope().getFunction(method.getLinkageName());
+
         LLVMFunctionDescriptor fn = LLVMLanguage.getContext().createFunctionDescriptor(llvmFunction);
 
         return InteropLibrary.getUncached().execute(fn, newArguments);
