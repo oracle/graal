@@ -143,12 +143,13 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                 }
             } else {
                 if (configuredAccess == null) {
-                    resolveLanguages = config.allowedPublicLanguages;
-                } else {
-                    resolveLanguages = EconomicSet.create(Equivalence.DEFAULT, configuredAccess);
-                    resolveLanguages.add(thisLanguage.getId());
+                    // all access configuration
+                    configuredAccess = config.allowedPublicLanguages;
                 }
+                resolveLanguages = EconomicSet.create(Equivalence.DEFAULT, configuredAccess);
+                resolveLanguages.add(thisLanguage.getId());
             }
+
             Map<String, LanguageInfo> resolvedLanguages = new LinkedHashMap<>();
             for (String id : resolveLanguages) {
                 PolyglotLanguage resolvedLanguage = engine.idToLanguage.get(id);
