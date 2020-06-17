@@ -46,14 +46,14 @@ class ResultsPrinter {
 
     void printSimpleResults() {
         for (Results results : resultsList) {
-            stream.printf(LONG_FORMAT, results.rootName, "Best time", results.bestT);
-            stream.printf(LONG_FORMAT, results.rootName, "Best iter", results.bestI);
-            stream.printf(DOUBLE_FORMAT, results.rootName, "Epsilon", results.epsilon);
-            stream.printf(LONG_FORMAT, results.rootName, "Peak Start Iter", results.peakStartI);
-            stream.printf(LONG_FORMAT, results.rootName, "Peak Start Time", results.peakStartT);
-            stream.printf(LONG_FORMAT, results.rootName, "Warmup time", results.warmupTime);
-            stream.printf(DOUBLE_FORMAT, results.rootName, "Warmup cost", results.warmupCost);
-            stream.printf(LONG_FORMAT, results.rootName, "Iterations", results.samples.size());
+            stream.printf(LONG_FORMAT, results.location, "Best time", results.bestT);
+            stream.printf(LONG_FORMAT, results.location, "Best iter", results.bestI);
+            stream.printf(DOUBLE_FORMAT, results.location, "Epsilon", results.epsilon);
+            stream.printf(LONG_FORMAT, results.location, "Peak Start Iter", results.peakStartI);
+            stream.printf(LONG_FORMAT, results.location, "Peak Start Time", results.peakStartT);
+            stream.printf(LONG_FORMAT, results.location, "Warmup time", results.warmupTime);
+            stream.printf(DOUBLE_FORMAT, results.location, "Warmup cost", results.warmupCost);
+            stream.printf(LONG_FORMAT, results.location, "Iterations", results.samples.size());
         }
     }
 
@@ -61,7 +61,7 @@ class ResultsPrinter {
         JSONArray output = new JSONArray();
         for (Results results : resultsList) {
             JSONObject jsonResults = new JSONObject();
-            jsonResults.put("root_name", results.rootName);
+            jsonResults.put("location", results.location);
             jsonResults.put("best_time", results.bestT);
             jsonResults.put("best_iteration", results.bestI);
             jsonResults.put("peak_start_iteration", results.peakStartI);
@@ -81,7 +81,7 @@ class ResultsPrinter {
         JSONArray output = new JSONArray();
         for (Results results : resultsList) {
             JSONObject jsonResults = new JSONObject();
-            jsonResults.put("root_name", results.rootName);
+            jsonResults.put("location", results.location);
             jsonResults.put("samples", new JSONArray(results.samples));
             output.put(jsonResults);
         }

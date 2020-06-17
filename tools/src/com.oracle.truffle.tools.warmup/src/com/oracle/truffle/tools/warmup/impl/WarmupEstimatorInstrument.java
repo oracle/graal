@@ -32,12 +32,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.logging.Level;
 
-import com.oracle.truffle.api.TruffleLogger;
-import com.oracle.truffle.api.instrumentation.EventContext;
-import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
@@ -46,6 +44,10 @@ import org.graalvm.options.OptionType;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.Option;
+import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.instrumentation.EventContext;
+import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
+import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
@@ -74,8 +76,8 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
                     });
     @Option(name = "", help = "Enable the Warmup Estimator (default: false).", category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL) //
     static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
-    @Option(name = "RootNames", help = "A comma separated list of names of roots being benchmarked, ie. that should be instrumented. NOTE: Only first occurrence of a name will be instrumented.", category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL) //
-    static final OptionKey<String> ROOT_NAMES = new OptionKey<>("");
+    @Option(name = "Locations", help = "A semicolon separated list of 'rootName,fileName,lineNumber' (e.g. 'fact,factoriel.js:14;fizzbuzz;fizz.js;17') of roots being benchmarked, ie. that should be instrumented. Filename and line are optional.", category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL) //
+    static final OptionKey<String> LOCATIONS = new OptionKey<>("");
     @Option(name = "OutputFile", help = "Save output to the given file. Output is printed to stdout by default.", category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL) //
     static final OptionKey<String> OUTPUT_FILE = new OptionKey<>("");
     @Option(name = "Output", help = "Can be: 'raw' for json array of raw samples; 'json' for included post processing of samples; 'simple' for just the human-readable post-processed result (default: simple)", category = OptionCategory.USER) static final OptionKey<Output> OUTPUT = new OptionKey<>(
@@ -83,8 +85,22 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
     @Option(name = "Epsilon", help = "Epsilon value. It's inferred if the value is 0. (default: 1.05)", category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL) //
     static final OptionKey<Double> EPSILON = new OptionKey<>(1.05);
 
+    private final Map<Location, WarmupEstimatorNode> nodes = new HashMap<>();
     private boolean enabled;
-    private final Map<String, WarmupEstimatorNode> nodes = new HashMap<>();
+
+    private static SourceSectionFilter filter(Location location) {
+        final SourceSectionFilter.Builder builder = SourceSectionFilter.newBuilder().//
+                        includeInternal(false).//
+                        tagIs(StandardTags.RootTag.class).//
+                        rootNameIs(location.rootName::equals);
+        if (location.line != null) {
+            builder.lineIs(location.line);
+        }
+        if (location.fileName != null) {
+            builder.sourceIs(s -> location.fileName.equals(s.getName()));
+        }
+        return builder.build();
+    }
 
     @Override
     protected OptionDescriptors getOptionDescriptors() {
@@ -95,54 +111,51 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
     protected void onCreate(Env env) {
         enabled = env.getOptions().get(WarmupEstimatorInstrument.ENABLED);
         if (enabled) {
-            final String[] rootNames = rootNames(env);
-            if (rootNames.length == 0) {
-                throw new IllegalArgumentException("RootNames must be set");
+            final List<Location> locations = locations(env);
+            if (locations.size() == 0) {
+                throw new IllegalArgumentException("Locations must be set");
             }
-            env.getInstrumenter().attachExecutionEventFactory(filter(rootNames), context -> createNode(env, context));
+            final Instrumenter instrumenter = env.getInstrumenter();
+            for (Location location : locations) {
+                instrumenter.attachExecutionEventFactory(filter(location), context -> createNode(env, context, location));
+            }
         }
     }
 
-    private synchronized ExecutionEventNode createNode(Env env, EventContext context) {
+    private List<Location> locations(Env env) {
+        final ArrayList<Location> locations = new ArrayList<>();
+        final String locationsOption = env.getOptions().get(LOCATIONS);
+        if (locationsOption.isEmpty()) {
+            throw new IllegalArgumentException("Locations must be set");
+        }
+        final String[] split = locationsOption.split(";");
+        for (String locationString : split) {
+            final String[] strings = locationString.split(",");
+            final String rootName = strings[0];
+            final String fileName = strings.length > 1 ? strings[1] : null;
+            final Integer line = strings.length == 3 ? Integer.parseInt(strings[2]) : null;
+            locations.add(new Location(rootName, fileName, line));
+        }
+        return locations;
+    }
+
+    private synchronized ExecutionEventNode createNode(Env env, EventContext context, Location location) {
         final TruffleLogger logger = env.getLogger(this.getClass());
-        final String rootName = context.getInstrumentedNode().getRootNode().getName();
-        WarmupEstimatorNode node = nodes.get(rootName);
+        WarmupEstimatorNode node = nodes.get(location);
         if (node == null) {
-            logger.log(Level.INFO, "Instrumenting root named " + rootName + " on " + context.getInstrumentedSourceSection());
+            logger.log(Level.INFO, "Instrumenting root like " + location + " on " + context.getInstrumentedSourceSection());
             node = new WarmupEstimatorNode();
-            nodes.put(rootName, node);
+            nodes.put(location, node);
             return node;
         }
-        logger.log(Level.WARNING, "Ignoring multiple roots named " + rootName + " on " + context.getInstrumentedSourceSection());
+        logger.log(Level.WARNING, "Ignoring multiple roots like " + location + " on " + context.getInstrumentedSourceSection());
         return null;
-    }
-
-    private static SourceSectionFilter filter(String[] rootNames) {
-        return SourceSectionFilter.newBuilder().//
-                        includeInternal(false).//
-                        tagIs(StandardTags.RootTag.class).//
-                        rootNameIs(name -> contains(rootNames, name)).//
-                        build();
-    }
-
-    private static String[] rootNames(Env env) {
-        final String rootNamesOpt = env.getOptions().get(ROOT_NAMES);
-        return rootNamesOpt.split(",");
-    }
-
-    private static boolean contains(String[] rootNames, String name) {
-        for (String rootName : rootNames) {
-            if (rootName.equals(name)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     @Override
     protected void onDispose(Env env) {
         if (nodes.isEmpty()) {
-            env.getLogger(this.getClass()).log(Level.WARNING, "No roots with names " + ROOT_NAMES.getValue(env.getOptions()) + " found during execution.");
+            env.getLogger(this.getClass()).log(Level.WARNING, "No roots like " + LOCATIONS.getValue(env.getOptions()) + " found during execution.");
         }
         final OptionValues options = env.getOptions();
         final List<Results> results = results(EPSILON.getValue(options));
@@ -165,10 +178,10 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
 
     private List<Results> results(Double epsilon) {
         final List<Results> results = new ArrayList<>();
-        for (String rootName : nodes.keySet()) {
-            final WarmupEstimatorNode node = nodes.get(rootName);
+        for (Location location : nodes.keySet()) {
+            final WarmupEstimatorNode node = nodes.get(location);
             final List<Long> times = node.getTimes();
-            results.add(new Results(rootName, times, epsilon));
+            results.add(new Results(location.toString(), times, epsilon));
         }
         return results;
     }
@@ -194,5 +207,41 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
         SIMPLE,
         JSON,
         RAW,
+    }
+
+    static class Location {
+        final String rootName;
+        final String fileName;
+        final Integer line;
+
+        Location(String rootName, String fileName, Integer line) {
+            this.rootName = rootName;
+            this.fileName = fileName;
+            this.line = line;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            Location location = (Location) o;
+            return Objects.equals(rootName, location.rootName) &&
+                            Objects.equals(fileName, location.fileName) &&
+                            Objects.equals(line, location.line);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(rootName, fileName, line);
+        }
+
+        @Override
+        public String toString() {
+            return rootName + (fileName != null ? ("," + fileName) : "") + (line != null ? ("," + line) : "");
+        }
     }
 }
