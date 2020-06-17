@@ -284,6 +284,22 @@ public abstract class LLVMInteropType implements TruffleObject {
             return null;
         }
 
+        @TruffleBoundary
+        public Method findMethod(String memberName, Object[] arguments) {
+            for (Method method : methods) {
+                if (method.getName().equals(memberName)) {
+                    // check parameters to resolve overloaded methods
+                    LLVMInteropType[] types = method.parameterTypes;
+                    if (types.length == arguments.length) {
+                        return method;
+                    }
+                } else if (method.getLinkageName().equals(memberName)) {
+                    return method;
+                }
+            }
+            return null;
+        }
+
     }
 
     public static final class StructMember {
