@@ -65,9 +65,9 @@ import sun.misc.Unsafe;
 @SuppressWarnings("deprecation")
 abstract class CoreLocations {
 
-    static final int LONG_FIELD_SIZE = 1;
-    static final int LONG_ARRAY_SIZE = 2;
-    static final int OBJECT_SIZE = 1;
+    static final int LONG_FIELD_SLOT_SIZE = 1;
+    static final int LONG_ARRAY_SLOT_SIZE = 2;
+    static final int OBJECT_SLOT_SIZE = 1;
     static final int MAX_DYNAMIC_FIELDS = 1000;
 
     public interface TypedLocation extends com.oracle.truffle.api.object.TypedLocation {
@@ -412,7 +412,7 @@ abstract class CoreLocations {
 
         @Override
         public final void setInternal(DynamicObject store, Object value, boolean condition) {
-            ((Object[]) getArray(store, false))[index] = value;
+            ((Object[]) getArray(store, condition))[index] = value;
         }
 
         @Override
@@ -430,12 +430,12 @@ abstract class CoreLocations {
 
         @Override
         public int objectArrayCount() {
-            return OBJECT_SIZE;
+            return OBJECT_SLOT_SIZE;
         }
 
         @Override
         public final void accept(LocationVisitor locationVisitor) {
-            locationVisitor.visitObjectArray(index, OBJECT_SIZE);
+            locationVisitor.visitObjectArray(index, OBJECT_SLOT_SIZE);
         }
     }
 
@@ -466,16 +466,21 @@ abstract class CoreLocations {
 
         @Override
         public int objectFieldCount() {
-            return OBJECT_SIZE;
+            return OBJECT_SLOT_SIZE;
         }
 
         @Override
         public final void accept(LocationVisitor locationVisitor) {
-            locationVisitor.visitObjectField(getIndex(), OBJECT_SIZE);
+            locationVisitor.visitObjectField(getIndex(), OBJECT_SLOT_SIZE);
         }
     }
 
     static class LongArrayLocation extends ArrayLocation implements LongLocation {
+        private static final Unsafe UNSAFE = getUnsafe();
+        private static final int ALIGN = LONG_ARRAY_SLOT_SIZE - 1;
+        private static final long ARRAY_INT_BASE_OFFSET = UNSAFE.arrayBaseOffset(int[].class);
+        private static final long ARRAY_INT_INDEX_SCALE = UNSAFE.arrayIndexScale(int[].class);
+
         protected final boolean allowInt;
 
         protected LongArrayLocation(int index, CoreLocation arrayLocation, boolean allowInt) {
@@ -512,13 +517,13 @@ abstract class CoreLocations {
         @Override
         public long getLong(DynamicObject store, boolean condition) {
             int[] array = (int[]) getArray(store, condition);
-            return decodeLong(array[index], array[index + 1]);
+            return UNSAFE.getLong(array, getOffset(array));
         }
 
         public final void setLongInternal(DynamicObject store, long value) {
             int[] array = (int[]) getArray(store, false);
-            array[index] = lowerInt(value);
-            array[index + 1] = upperInt(value);
+            long offset = getOffset(array);
+            UNSAFE.putLong(array, offset, value);
         }
 
         @Override
@@ -537,12 +542,12 @@ abstract class CoreLocations {
 
         @Override
         public int primitiveArrayCount() {
-            return LONG_ARRAY_SIZE;
+            return LONG_ARRAY_SLOT_SIZE;
         }
 
         @Override
         public final void accept(LocationVisitor locationVisitor) {
-            locationVisitor.visitPrimitiveArray(getIndex(), LONG_ARRAY_SIZE);
+            locationVisitor.visitPrimitiveArray(getIndex(), LONG_ARRAY_SLOT_SIZE);
         }
 
         @Override
@@ -553,6 +558,15 @@ abstract class CoreLocations {
         @Override
         public boolean isImplicitCastIntToLong() {
             return allowInt;
+        }
+
+        protected final long getOffset(int[] array) {
+            int idx = index;
+            if (idx < 0 || idx >= array.length - ALIGN) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw new ArrayIndexOutOfBoundsException(idx);
+            }
+            return ARRAY_INT_BASE_OFFSET + ARRAY_INT_INDEX_SCALE * idx;
         }
     }
 
@@ -663,7 +677,7 @@ abstract class CoreLocations {
 
         @Override
         public int primitiveFieldCount() {
-            return LONG_FIELD_SIZE;
+            return LONG_FIELD_SLOT_SIZE;
         }
 
         @Override
@@ -673,7 +687,7 @@ abstract class CoreLocations {
 
         @Override
         public void accept(LocationVisitor locationVisitor) {
-            locationVisitor.visitPrimitiveField(getIndex(), LONG_FIELD_SIZE);
+            locationVisitor.visitPrimitiveField(getIndex(), LONG_FIELD_SLOT_SIZE);
         }
 
         @Override
@@ -944,38 +958,30 @@ abstract class CoreLocations {
     }
 
     static final class DynamicLongFieldLocation extends SimpleLongFieldLocation {
-        private final long offsetLower;
-        private final long offsetUpper;
+        /** Field offset. */
+        private final long offset;
+        /** {@link DynamicObject} subclass holding field. */
         private final Class<? extends DynamicObject> tclass;
+
         private static final Unsafe UNSAFE = getUnsafe();
 
-        private DynamicLongFieldLocation(int index, long offsetLower, long offsetUpper, Class<? extends DynamicObject> declaringClass) {
+        DynamicLongFieldLocation(int index, long offset, Class<? extends DynamicObject> declaringClass) {
             super(index);
-            this.offsetLower = offsetLower;
-            this.offsetUpper = offsetUpper;
+            this.offset = offset;
             this.tclass = declaringClass;
-        }
-
-        DynamicLongFieldLocation(int index, Field lowerIntField, Field upperIntField) {
-            this(index, UNSAFE.objectFieldOffset(lowerIntField), UNSAFE.objectFieldOffset(upperIntField), lowerIntField.getDeclaringClass().asSubclass(DynamicObject.class));
-            if (lowerIntField.getType() != int.class) {
-                throw new IllegalArgumentException();
-            }
+            assert offset % Long.BYTES == 0; // must be aligned
         }
 
         @Override
         public long getLong(DynamicObject store, boolean condition) {
             receiverCheck(store);
-            int lower = UNSAFE.getInt(store, offsetLower);
-            int upper = UNSAFE.getInt(store, offsetUpper);
-            return decodeLong(lower, upper);
+            return UNSAFE.getLong(store, offset);
         }
 
         @Override
         public void setLong(DynamicObject store, long value, boolean condition) {
             receiverCheck(store);
-            UNSAFE.putInt(store, offsetLower, lowerInt(value));
-            UNSAFE.putInt(store, offsetUpper, upperInt(value));
+            UNSAFE.putLong(store, offset, value);
         }
 
         @Override

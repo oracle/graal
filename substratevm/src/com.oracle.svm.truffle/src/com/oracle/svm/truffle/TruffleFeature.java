@@ -1036,7 +1036,5 @@ final class Target_com_oracle_truffle_object_CoreLocations_DynamicObjectFieldLoc
 @TargetClass(className = "com.oracle.truffle.object.CoreLocations$DynamicLongFieldLocation", onlyWith = TruffleFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_object_CoreLocations_DynamicLongFieldLocation {
     @Alias @RecomputeFieldValue(kind = Kind.AtomicFieldUpdaterOffset)//
-    private long offsetLower;
-    @Alias @RecomputeFieldValue(kind = Kind.AtomicFieldUpdaterOffset)//
-    private long offsetUpper;
+    private long offset;
 }

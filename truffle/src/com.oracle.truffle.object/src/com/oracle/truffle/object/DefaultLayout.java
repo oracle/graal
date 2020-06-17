@@ -62,6 +62,8 @@ import com.oracle.truffle.api.object.Shape.Allocator;
 import com.oracle.truffle.object.CoreLocations.LongLocation;
 import com.oracle.truffle.object.CoreLocations.ObjectLocation;
 
+import sun.misc.Unsafe;
+
 class DefaultLayout extends LayoutImpl {
     private final ObjectLocation[] objectFields;
     private final LongLocation[] primitiveFields;
@@ -181,7 +183,7 @@ class DefaultLayout extends LayoutImpl {
     }
 
     protected int getLongFieldSize() {
-        return CoreLocations.LONG_FIELD_SIZE;
+        return CoreLocations.LONG_FIELD_SLOT_SIZE;
     }
 
     @Override
@@ -195,6 +197,7 @@ class DefaultLayout extends LayoutImpl {
         final LongLocation[] primitiveFields;
 
         private static final ConcurrentMap<Class<? extends DynamicObject>, LayoutInfo> LAYOUT_INFO_MAP = new ConcurrentHashMap<>();
+        private static final Unsafe UNSAFE = CoreLocations.getUnsafe();
 
         static LayoutInfo getOrCreateLayoutInfo(Class<? extends DynamicObject> dynamicObjectClass) {
             LayoutInfo layoutInfo = LAYOUT_INFO_MAP.get(dynamicObjectClass);
@@ -214,6 +217,11 @@ class DefaultLayout extends LayoutImpl {
             List<ObjectLocation> objectFieldList = new ArrayList<>();
             List<LongLocation> longFieldList = new ArrayList<>();
             Class<? extends DynamicObject> superclass = collectFields(subclass, objectFieldList, longFieldList);
+
+            if (objectFieldList.size() + longFieldList.size() > CoreLocations.MAX_DYNAMIC_FIELDS) {
+                throw new IllegalArgumentException("Too many @DynamicField annotated fields.");
+            }
+
             LayoutInfo newLayoutInfo;
             if (superclass != subclass) {
                 // This class does not declare any dynamic fields; reuse info from superclass
@@ -243,7 +251,6 @@ class DefaultLayout extends LayoutImpl {
             Class<? extends DynamicObject> layoutClass = collectFields(clazz.getSuperclass().asSubclass(DynamicObject.class), objectFieldList, primitiveFieldList);
 
             Class<? extends Annotation> dynamicFieldAnnotation = ACCESS.getDynamicFieldAnnotation();
-            Field lastIntField = null;
             boolean hasDynamicFields = false;
             for (Field field : clazz.getDeclaredFields()) {
                 if (Modifier.isStatic(field.getModifiers()) || field.isSynthetic()) {
@@ -252,21 +259,17 @@ class DefaultLayout extends LayoutImpl {
                 }
 
                 if (field.getAnnotation(dynamicFieldAnnotation) != null) {
-                    if (Modifier.isFinal(field.getModifiers())) {
-                        throw new IllegalArgumentException("@DynamicField annotated field must not be final: " + field);
-                    }
+                    checkDynamicFieldType(field);
+                    assert field.getDeclaringClass() == clazz;
+
                     hasDynamicFields = true;
                     if (field.getType() == Object.class) {
                         objectFieldList.add(new CoreLocations.DynamicObjectFieldLocation(objectFieldList.size(), field));
-                    } else if (field.getType() == int.class) {
-                        if (lastIntField == null) {
-                            lastIntField = field;
-                        } else {
-                            primitiveFieldList.add(new CoreLocations.DynamicLongFieldLocation(primitiveFieldList.size(), lastIntField, field));
-                            lastIntField = null;
+                    } else if (field.getType() == long.class) {
+                        long offset = UNSAFE.objectFieldOffset(field);
+                        if (offset % Long.BYTES == 0) {
+                            primitiveFieldList.add(new CoreLocations.DynamicLongFieldLocation(primitiveFieldList.size(), offset, clazz));
                         }
-                    } else {
-                        throw new IllegalArgumentException("@DynamicField annotated field type must be either Object or int: " + field);
                     }
                 }
             }
@@ -275,6 +278,15 @@ class DefaultLayout extends LayoutImpl {
                 layoutClass = clazz;
             }
             return layoutClass;
+        }
+
+        private static void checkDynamicFieldType(Field field) {
+            if (field.getType() != Object.class && field.getType() != int.class && field.getType() != long.class) {
+                throw new IllegalArgumentException("@DynamicField annotated field type must be either Object or int or long: " + field);
+            }
+            if (Modifier.isFinal(field.getModifiers())) {
+                throw new IllegalArgumentException("@DynamicField annotated field must not be final: " + field);
+            }
         }
 
         @Override

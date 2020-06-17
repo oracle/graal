@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.object;
 
-import static com.oracle.truffle.object.CoreLocations.OBJECT_SIZE;
+import static com.oracle.truffle.object.CoreLocations.OBJECT_SLOT_SIZE;
 
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.object.CoreLocations.BooleanLocation;
@@ -108,7 +108,7 @@ class CoreAllocator extends ShapeImpl.BaseAllocator {
     public Location newObjectLocation(boolean useFinal, boolean nonNull) {
         if (com.oracle.truffle.object.ObjectStorageOptions.InObjectFields) {
             int insertPos = objectFieldSize;
-            if (insertPos + OBJECT_SIZE <= getLayout().getObjectFieldCount()) {
+            if (insertPos + OBJECT_SLOT_SIZE <= getLayout().getObjectFieldCount()) {
                 return advance((Location) getLayout().getObjectFieldLocation(insertPos));
             }
         }
