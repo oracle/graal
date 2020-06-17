@@ -355,7 +355,11 @@ public class LanguageSPITest {
                 future.get();
                 fail();
             } catch (ExecutionException e) {
-                PolyglotException polyglotException = (PolyglotException) e.getCause();
+                Throwable cause = e.getCause();
+                if (!(cause instanceof PolyglotException)) {
+                    throw new AssertionError(cause);
+                }
+                PolyglotException polyglotException = (PolyglotException) cause;
                 assertTrue(polyglotException.isCancelled());
             }
             engine.close();
