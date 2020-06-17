@@ -171,7 +171,7 @@ bench-renaissance: ${bench-common} ${default-heap} ${renaissance-bench-notificat
 bench-renaissance-0-10-0: ${bench-common} ${default-heap} ${renaissance-bench-notifications} {
   targets: [bench, weekly]
   run: [
-    ${bench-jvmci.mx-renaissance} ${bench-arguments} ["--bench-suite-version=0.10.0"]
+    ${bench-jvmci.mx-renaissance} ["--bench-suite-version=0.10.0"] ${bench-arguments}
   ]
   timelimit: "3:00:00"
 }
