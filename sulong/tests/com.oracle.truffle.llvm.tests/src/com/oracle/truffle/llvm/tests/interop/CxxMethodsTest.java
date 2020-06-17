@@ -38,8 +38,9 @@ public class CxxMethodsTest extends InteropTestBase {
 
     private static Value allocPoint;
     private static Value freePoint;
+    private static Value allocXtendPoint;
+    private static Value freeXtendPoint;
 
-    private static Value getX;
     private static Value getY;
     private static Value setX;
     private static Value setY;
@@ -57,7 +58,8 @@ public class CxxMethodsTest extends InteropTestBase {
 
         allocPoint = testLibrary.getMember("allocNativePoint");
         freePoint = testLibrary.getMember("freeNativePoint");
-        getX = testLibrary.getMember("getX");
+        allocXtendPoint = testLibrary.getMember("allocNativeXtendPoint");
+        freeXtendPoint = testLibrary.getMember("freeNativeXtendPoint");
         getY = testLibrary.getMember("getY");
         setX = testLibrary.getMember("setX");
         setY = testLibrary.getMember("setY");
@@ -110,7 +112,7 @@ public class CxxMethodsTest extends InteropTestBase {
         Value point2 = allocPoint.execute();
         try {
             point.invokeMember("setX", 3);
-            Assert.assertEquals("getX()==3 after setX(3)", 3, getX.execute(point).asInt());
+            Assert.assertEquals("getX()==3 after setX(3)", 3, point.invokeMember("getX").asInt());
             setY.execute(point, -4);
             setX.execute(point2, -6);
             testLibrary.invokeMember("setY", point2, 8);
@@ -144,6 +146,31 @@ public class CxxMethodsTest extends InteropTestBase {
             point.invokeMember("methodWhichDoesNotExist");
         } finally {
             testLibrary.invokeMember("freeNativePoint", point);
+        }
+    }
+
+    @Test
+    public void testOverloadedMethods() {
+        Value xPoint = allocXtendPoint.execute();
+        try {
+            xPoint.invokeMember("setZ", 1);
+            Assert.assertEquals("getZ()", 1, xPoint.invokeMember("getZ").asInt());
+            Assert.assertEquals("getZ(2)", 3, xPoint.invokeMember("getZ", 2).asInt());
+        } finally {
+            freeXtendPoint.execute(xPoint);
+        }
+    }
+
+    @Test
+    public void testInheritedMethodsFromSuperclass() {
+        Value xPoint = allocXtendPoint.execute();
+        try {
+            xPoint.invokeMember("setX", 6);
+            xPoint.invokeMember("setY", 7);
+            Assert.assertEquals("direct call: getX()", 12, xPoint.invokeMember("getX").asInt());
+            Assert.assertEquals("superclass::getY()", 7, xPoint.invokeMember("getY").asInt());
+        } finally {
+            freeXtendPoint.execute(xPoint);
         }
     }
 

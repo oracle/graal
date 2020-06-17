@@ -32,7 +32,7 @@
 #include <math.h>
 
 class Point {
-    private: 
+    protected: 
 	int x;
 	int y;
     public: 
@@ -45,6 +45,20 @@ class Point {
 };
 
 POLYGLOT_DECLARE_CLASS(Point)
+
+class XtendPoint: public Point {
+    private:
+	int z;
+    public:
+	XtendPoint();
+	int getZ();
+	void setZ(int val);
+	int getZ(int constant);
+	int getX();		
+};
+
+POLYGLOT_DECLARE_CLASS(XtendPoint)
+
 
 //class methods
 
@@ -75,10 +89,35 @@ double Point::squaredEuclideanDistance(Point* other) {
 	return dX*dX+dY*dY;
 }
 
+XtendPoint::XtendPoint() {
+	z=0;
+}
+
+int XtendPoint::getZ() {
+	return z;
+}
+
+void XtendPoint::setZ(int dZ) {
+	z=dZ;
+}
+
+int XtendPoint::getZ(int constantOffset) {
+	return z+constantOffset;
+}
+
+int XtendPoint::getX() {
+	return x*2;
+}
+
 //functions
 void *allocNativePoint() {
     Point *ret = (Point*) malloc(sizeof(*ret));
     return polyglot_from_Point(ret);
+}
+
+void *allocNativeXtendPoint() {
+    XtendPoint *ret = (XtendPoint*) malloc(sizeof(*ret));
+    return polyglot_from_XtendPoint(ret);
 }
 
 void swap(Point *p, Point *q) {
@@ -88,6 +127,10 @@ void swap(Point *p, Point *q) {
 }
 
 void freeNativePoint(Point *p) {
+    free(p);
+}
+
+void freeNativeXtendPoint(XtendPoint *p) {
     free(p);
 }
 
