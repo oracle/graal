@@ -138,6 +138,7 @@ public final class Meta implements ContextAccess {
         java_lang_Long_value = java_lang_Long.lookupDeclaredField(Name.value, Type._long);
 
         java_lang_String_hash = java_lang_String.lookupDeclaredField(Name.hash, Type._int);
+        java_lang_String_coder = java_lang_String.lookupDeclaredField(Name.coder, Type._byte);
         java_lang_String_hashCode = java_lang_String.lookupDeclaredMethod(Name.hashCode, Signature._int);
         java_lang_String_length = java_lang_String.lookupDeclaredMethod(Name.length, Signature._int);
 
@@ -512,6 +513,7 @@ public final class Meta implements ContextAccess {
     // Guest String.
     public final Field java_lang_String_value;
     public final Field java_lang_String_hash;
+    public final Field java_lang_String_coder;
     public final Method java_lang_String_hashCode;
     public final Method java_lang_String_length;
 
@@ -1024,6 +1026,10 @@ public final class Meta implements ContextAccess {
             return null;
         }
         Meta meta = str.getKlass().getMeta();
+        if (meta.getContext().getJavaVersion() >= 9) {
+            byte[] value = ((StaticObject) meta.java_lang_String_value.get(str)).unwrap();
+            return HostJava.createString(StringUtil.toChars(value));
+        }
         char[] value = ((StaticObject) meta.java_lang_String_value.get(str)).unwrap();
         return HostJava.createString(value);
     }
@@ -1036,8 +1042,14 @@ public final class Meta implements ContextAccess {
         final char[] value = HostJava.getStringValue(hostString);
         final int hash = HostJava.getStringHash(hostString);
         StaticObject guestString = java_lang_String.allocateInstance();
-        java_lang_String_value.set(guestString, StaticObject.wrap(value, this));
-        java_lang_String_hash.set(guestString, hash);
+        if (getContext().getJavaVersion() >= 9) {
+            java_lang_String_value.set(guestString, StaticObject.wrap(StringUtil.toBytes(value), this));
+            java_lang_String_coder.set(guestString, StringUtil.UTF16);
+            java_lang_String_hash.set(guestString, hash);
+        } else {
+            java_lang_String_value.set(guestString, StaticObject.wrap(value, this));
+            java_lang_String_hash.set(guestString, hash);
+        }
         // String.hashCode must be equivalent for host and guest.
         assert hostString.hashCode() == (int) java_lang_String_hashCode.invokeDirect(guestString);
         return guestString;

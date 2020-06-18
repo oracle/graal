@@ -205,6 +205,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> hash = StaticSymbols.putName("hash");
         public static final Symbol<Name> hashCode = StaticSymbols.putName("hashCode");
         public static final Symbol<Name> length = StaticSymbols.putName("length");
+        public static final Symbol<Name> coder = StaticSymbols.putName("coder");
 
         // j.l.Throwable
         public static final Symbol<Name> backtrace = StaticSymbols.putName("backtrace");
@@ -651,6 +652,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> _void_int = StaticSymbols.putSignature(Type._void, Type._int);
         public static final Symbol<Signature> _void_long = StaticSymbols.putSignature(Type._void, Type._long);
         public static final Symbol<Signature> _void_long_int = StaticSymbols.putSignature(Type._void, Type._long, Type._int);
+        public static final Symbol<Signature> _void_char_array = StaticSymbols.putSignature(Type._void, Type._char_array);
+        public static final Symbol<Signature> _char_array = StaticSymbols.putSignature(Type._char_array);
         public static final Symbol<Signature> _int_boolean_boolean = StaticSymbols.putSignature(Type._int, Type._boolean, Type._boolean);
 
         public static final Symbol<Signature> Boolean_boolean = StaticSymbols.putSignature(Type.java_lang_Boolean, Type._boolean);

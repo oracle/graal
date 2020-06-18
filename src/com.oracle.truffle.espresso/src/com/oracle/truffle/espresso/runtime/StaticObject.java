@@ -396,6 +396,11 @@ public final class StaticObject implements TruffleObject {
     public void setField(Field field, Object value) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
         assert !field.getKind().isSubWord();
+        assert !(value instanceof StaticObject) ||
+                        (StaticObject.isNull((StaticObject) value)) ||
+                        field.isHidden() ||
+                        getKlass().getMeta().resolveSymbol(field.getType(), getKlass().getDefiningClassLoader()) //
+                                        .isAssignableFrom(((StaticObject) value).getKlass());
         if (field.isVolatile()) {
             setFieldVolatile(field, value);
         } else {
