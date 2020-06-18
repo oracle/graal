@@ -90,6 +90,27 @@ public class GeneratorUtils {
         return builder.build();
     }
 
+    public static CodeTree createShouldNotReachHere() {
+        ProcessorContext context = ProcessorContext.getInstance();
+        CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
+        builder.startThrow().startStaticCall(context.getTypes().CompilerDirectives, "shouldNotReachHere").end().end();
+        return builder.build();
+    }
+
+    public static CodeTree createShouldNotReachHere(String message) {
+        ProcessorContext context = ProcessorContext.getInstance();
+        CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
+        builder.startThrow().startStaticCall(context.getTypes().CompilerDirectives, "shouldNotReachHere").doubleQuote(message).end().end();
+        return builder.build();
+    }
+
+    public static CodeTree createShouldNotReachHere(CodeTree causeExpression) {
+        ProcessorContext context = ProcessorContext.getInstance();
+        CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
+        builder.startThrow().startStaticCall(context.getTypes().CompilerDirectives, "shouldNotReachHere").tree(causeExpression).end().end();
+        return builder.build();
+    }
+
     public static CodeTree createTransferToInterpreter() {
         ProcessorContext context = ProcessorContext.getInstance();
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();

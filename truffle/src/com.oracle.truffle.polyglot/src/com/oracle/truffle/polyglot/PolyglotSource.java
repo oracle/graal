@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.polyglot;
 
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
+
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -275,7 +277,7 @@ class PolyglotSource extends AbstractSourceImpl {
         } else if (origin instanceof URL) {
             builder = com.oracle.truffle.api.source.Source.newBuilder(language, (URL) origin);
         } else {
-            throw new AssertionError();
+            throw shouldNotReachHere();
         }
 
         if (origin instanceof File || origin instanceof URL) {
@@ -306,7 +308,7 @@ class PolyglotSource extends AbstractSourceImpl {
         } catch (RuntimeException e) {
             throw e;
         } catch (Exception e) {
-            throw new AssertionError(e);
+            throw shouldNotReachHere(e);
         }
     }
 

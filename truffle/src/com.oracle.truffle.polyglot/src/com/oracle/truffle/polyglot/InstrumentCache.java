@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.polyglot;
 
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
@@ -379,7 +381,7 @@ final class InstrumentCache {
                     loadInstrumentImpl((TruffleInstrument.Provider) loader.loadClass(DEBUGGER_PROVIDER).getConstructor().newInstance(), list,
                                     classNamesUsed);
                 } catch (Exception e) {
-                    throw new AssertionError("Failed to discover debugger instrument.", e);
+                    throw shouldNotReachHere("Failed to discover debugger instrument.", e);
                 }
             }
         }

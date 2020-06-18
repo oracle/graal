@@ -47,7 +47,6 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.NoSuchElementException;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 public final class ReadOnlyArrayList<T> implements List<T> {
@@ -60,7 +59,6 @@ public final class ReadOnlyArrayList<T> implements List<T> {
         this.first = first;
         this.last = last;
         if (first > last) {
-            CompilerDirectives.transferToInterpreter();
             throw new IllegalArgumentException();
         }
     }
@@ -116,13 +114,11 @@ public final class ReadOnlyArrayList<T> implements List<T> {
 
     @Override
     public boolean add(Object e) {
-        CompilerDirectives.transferToInterpreter();
         throw new UnsupportedOperationException();
     }
 
     @Override
     public boolean remove(Object o) {
-        CompilerDirectives.transferToInterpreter();
         throw new UnsupportedOperationException();
     }
 
@@ -138,31 +134,26 @@ public final class ReadOnlyArrayList<T> implements List<T> {
 
     @Override
     public boolean addAll(Collection<? extends T> c) {
-        CompilerDirectives.transferToInterpreter();
         throw new UnsupportedOperationException();
     }
 
     @Override
     public boolean addAll(int index, Collection<? extends T> c) {
-        CompilerDirectives.transferToInterpreter();
         throw new UnsupportedOperationException();
     }
 
     @Override
     public boolean removeAll(Collection<?> c) {
-        CompilerDirectives.transferToInterpreter();
         throw new UnsupportedOperationException();
     }
 
     @Override
     public boolean retainAll(Collection<?> c) {
-        CompilerDirectives.transferToInterpreter();
         throw new UnsupportedOperationException();
     }
 
     @Override
     public void clear() {
-        CompilerDirectives.transferToInterpreter();
         throw new UnsupportedOperationException();
     }
 
@@ -170,7 +161,6 @@ public final class ReadOnlyArrayList<T> implements List<T> {
     public T get(int index) {
         int at = first + index;
         if (at < first || at >= last) {
-            CompilerDirectives.transferToInterpreter();
             throw new ArrayIndexOutOfBoundsException();
         }
         T ret = arr[at];
@@ -179,19 +169,16 @@ public final class ReadOnlyArrayList<T> implements List<T> {
 
     @Override
     public T set(int index, Object element) {
-        CompilerDirectives.transferToInterpreter();
         throw new UnsupportedOperationException();
     }
 
     @Override
     public void add(int index, Object element) {
-        CompilerDirectives.transferToInterpreter();
         throw new UnsupportedOperationException();
     }
 
     @Override
     public T remove(int index) {
-        CompilerDirectives.transferToInterpreter();
         throw new UnsupportedOperationException();
     }
 
@@ -277,7 +264,6 @@ public final class ReadOnlyArrayList<T> implements List<T> {
         @Override
         public T next() {
             if (index >= last) {
-                CompilerDirectives.transferToInterpreter();
                 throw new NoSuchElementException();
             }
             return arr[index++];
@@ -291,7 +277,6 @@ public final class ReadOnlyArrayList<T> implements List<T> {
         @Override
         public T previous() {
             if (first == index) {
-                CompilerDirectives.transferToInterpreter();
                 throw new NoSuchElementException();
             }
             return arr[--index];
@@ -309,19 +294,16 @@ public final class ReadOnlyArrayList<T> implements List<T> {
 
         @Override
         public void remove() {
-            CompilerDirectives.transferToInterpreter();
             throw new UnsupportedOperationException();
         }
 
         @Override
         public void set(Object e) {
-            CompilerDirectives.transferToInterpreter();
             throw new UnsupportedOperationException();
         }
 
         @Override
         public void add(Object e) {
-            CompilerDirectives.transferToInterpreter();
             throw new UnsupportedOperationException();
         }
 

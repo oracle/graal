@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api.object;
 
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
+
 import java.util.EnumSet;
 import java.util.ServiceLoader;
 
@@ -151,7 +153,7 @@ public abstract class Layout {
             ServiceLoader<LayoutFactory> serviceLoader = ServiceLoader.load(LayoutFactory.class, Layout.class.getClassLoader());
             layoutFactory = selectLayoutFactory(serviceLoader);
             if (layoutFactory == null) {
-                throw new AssertionError("LayoutFactory not found");
+                throw shouldNotReachHere("LayoutFactory not found");
             }
         }
         return layoutFactory;

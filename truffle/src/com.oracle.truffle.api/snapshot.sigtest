@@ -36,6 +36,7 @@ meth public static <%0 extends java.lang.Object> void partialEvaluationConstant(
 meth public static void neverPartOfCompilation()
 meth public static void neverPartOfCompilation(java.lang.String)
 supr java.lang.Object
+hcls ShouldNotReachHere
 
 CLSS public final com.oracle.truffle.api.CompilerDirectives
 fld public final static double FASTPATH_PROBABILITY = 0.9999
@@ -60,6 +61,10 @@ meth public static void interpreterOnly(java.lang.Runnable)
 meth public static void materialize(java.lang.Object)
 meth public static void transferToInterpreter()
 meth public static void transferToInterpreterAndInvalidate()
+meth public static java.lang.RuntimeException shouldNotReachHere()
+meth public static java.lang.RuntimeException shouldNotReachHere(java.lang.String)
+meth public static java.lang.RuntimeException shouldNotReachHere(java.lang.String,java.lang.Throwable)
+meth public static java.lang.RuntimeException shouldNotReachHere(java.lang.Throwable)
 supr java.lang.Object
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.CompilerDirectives$CompilationFinal

@@ -932,7 +932,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         PolyglotLanguage foundLanguage = getLanguage(languageClass, true);
         PolyglotLanguageContext context = foundLanguage.getCurrentLanguageContext();
         if (!context.isCreated()) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw PolyglotEngineException.illegalState(String.format("A context for language %s was not yet created.", languageClass.getName()));
         }
         return context.getLanguageInstance();
@@ -1613,8 +1613,8 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, info.getThread() == Thread.currentThread())) {
             info.leave(this);
         } else {
-            if (singleThreadPerContext.isValid()) {
-                CompilerDirectives.transferToInterpreter();
+            if (singleThreadPerContext.isValid() && singleContext.isValid()) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
             }
             polyglotContext.leaveThreadChanged();
         }

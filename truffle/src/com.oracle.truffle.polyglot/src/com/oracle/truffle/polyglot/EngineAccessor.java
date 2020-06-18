@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.polyglot;
 
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.ref.Reference;
@@ -300,7 +302,7 @@ final class EngineAccessor extends Accessor {
             PolyglotLanguageContext context = PolyglotContextImpl.requireContext().getLanguageContext(languageClass);
             TruffleLanguage.Env env = context.env;
             if (env == null) {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw PolyglotEngineException.illegalState("Current context is not yet initialized or already disposed.");
             }
             return (C) LANGUAGE.getContext(env);
@@ -319,7 +321,7 @@ final class EngineAccessor extends Accessor {
             PolyglotContextImpl context = PolyglotContextImpl.requireContext();
             TruffleLanguage.Env env = context.getLanguageContext(languageClass).env;
             if (env == null) {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw PolyglotEngineException.illegalState("Current context is not yet initialized or already disposed.");
             }
             return (T) EngineAccessor.LANGUAGE.getLanguage(env);
@@ -346,7 +348,7 @@ final class EngineAccessor extends Accessor {
 
         private static PolyglotEngineImpl getEngine(Object polyglotObject) throws AssertionError {
             if (!(polyglotObject instanceof PolyglotImpl.VMObject)) {
-                throw new AssertionError();
+                throw shouldNotReachHere();
             }
             return ((PolyglotImpl.VMObject) polyglotObject).getEngine();
         }
@@ -363,8 +365,7 @@ final class EngineAccessor extends Accessor {
                 try {
                     return engine.getLanguage(lib.getLanguage(value), false);
                 } catch (UnsupportedMessageException e) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw new AssertionError(e);
+                    throw shouldNotReachHere(e);
                 }
             } else {
                 return null;
@@ -377,8 +378,7 @@ final class EngineAccessor extends Accessor {
                 try {
                     return engine.getLanguage(lib.getLanguage(value), false);
                 } catch (UnsupportedMessageException e) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw new AssertionError(e);
+                    throw shouldNotReachHere(e);
                 }
             } else {
                 return null;
@@ -601,7 +601,7 @@ final class EngineAccessor extends Accessor {
             } else if (polyglotObject instanceof EmbedderFileSystemContext) {
                 return false;
             } else {
-                throw new AssertionError();
+                throw shouldNotReachHere();
             }
             return polyglotContext.inContextPreInitialization;
         }
@@ -651,7 +651,7 @@ final class EngineAccessor extends Accessor {
             } else if (guestObject instanceof TruffleObject) {
                 return guestObject;
             } else {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw new IllegalArgumentException("Provided value not an interop value.");
             }
         }
@@ -766,7 +766,7 @@ final class EngineAccessor extends Accessor {
         @Override
         public Throwable asHostException(Throwable exception) {
             if (!(exception instanceof HostException)) {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw new IllegalArgumentException("Provided value not a host exception.");
             }
             return ((HostException) exception).getOriginal();
@@ -790,8 +790,7 @@ final class EngineAccessor extends Accessor {
                 try {
                     return lib.getMetaObject(value);
                 } catch (UnsupportedMessageException e) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw new AssertionError("Unexpected unsupported message.", e);
+                    throw shouldNotReachHere("Unexpected unsupported message.", e);
                 }
             }
             return null;
