@@ -348,7 +348,7 @@ _renaissance_config = {
     "scala-kmeans"     : ("scala-stdlib", 12),
     "mnemonics"        : ("jdk-streams", 12),
     "par-mnemonics"    : ("jdk-streams", 12),
-    "rx-scrabble"      : ("rx", 11),
+    "rx-scrabble"      : ("rx", 12),
     "als"              : ("apache-spark", 11),
     "chi-square"       : ("apache-spark", 11),
     "db-shootout"      : ("database", 11), # GR-17975, GR-17943 (with --report-unsupported-elements-at-runtime)
