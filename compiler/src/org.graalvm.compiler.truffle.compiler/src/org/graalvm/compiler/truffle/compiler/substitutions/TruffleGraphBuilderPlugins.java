@@ -112,6 +112,7 @@ public class TruffleGraphBuilderPlugins {
 
     public static void registerInvocationPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification, Providers providers, KnownTruffleTypes types) {
         MetaAccessProvider metaAccess = providers.getMetaAccess();
+        registerObjectsPlugins(plugins, metaAccess);
         registerOptimizedAssumptionPlugins(plugins, metaAccess, types);
         registerExactMathPlugins(plugins, metaAccess);
         registerGraalCompilerDirectivesPlugins(plugins, metaAccess);
@@ -119,6 +120,21 @@ public class TruffleGraphBuilderPlugins {
         registerCompilerAssertsPlugins(plugins, metaAccess, canDelayIntrinsification);
         registerOptimizedCallTargetPlugins(plugins, metaAccess, canDelayIntrinsification, types);
         registerFrameWithoutBoxingPlugins(plugins, metaAccess, canDelayIntrinsification, providers.getConstantReflection(), types);
+    }
+
+    private static void registerObjectsPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess) {
+        ResolvedJavaType objectsType = TruffleCompilerRuntime.getRuntime().resolveType(metaAccess, "java.util.Objects");
+        Registration r = new Registration(plugins, new ResolvedJavaSymbol(objectsType));
+        InvocationPlugin plugin = new InvocationPlugin() {
+
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
+                ValueNode nullChecked = b.nullCheckedValue(arg);
+                b.addPush(JavaKind.Object, nullChecked);
+                return true;
+            }
+        };
+        r.register1("requireNonNull", Object.class, plugin);
     }
 
     public static void registerOptimizedAssumptionPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, KnownTruffleTypes types) {

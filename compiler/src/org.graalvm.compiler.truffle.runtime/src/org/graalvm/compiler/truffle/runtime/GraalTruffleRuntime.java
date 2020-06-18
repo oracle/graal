@@ -40,6 +40,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 import java.util.concurrent.ExecutionException;
@@ -373,6 +374,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                         FrameWithoutBoxing.class,
                         BranchProfile.class,
                         ConditionProfile.class,
+                        Objects.class,
         }) {
             m.put(c.getName(), c);
         }
