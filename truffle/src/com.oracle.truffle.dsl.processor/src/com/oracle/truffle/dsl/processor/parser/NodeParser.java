@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -2413,16 +2413,19 @@ public final class NodeParser extends AbstractParser<NodeData> {
     private void parseCached(CacheExpression cache, SpecializationData specialization, DSLExpressionResolver originalResolver, Parameter parameter) {
         DSLExpressionResolver resolver = originalResolver;
         AnnotationMirror cachedAnnotation = cache.getMessageAnnotation();
+        AnnotationValue adopt = null;
         if (!cache.hasErrors()) {
+            adopt = getAnnotationValue(cachedAnnotation, "adopt", false);
             AnnotationMirror cached = findAnnotationMirror(cache.getParameter().getVariableElement(), types.Cached);
             cache.setDimensions(getAnnotationValue(Integer.class, cached, "dimensions"));
+            boolean disabledAdopt = adopt != null && Boolean.FALSE.equals(adopt.getValue());
             if (parameter.getType().getKind() == TypeKind.ARRAY &&
-                            !isSubtype(((ArrayType) parameter.getType()).getComponentType(), types.NodeInterface)) {
+                            (disabledAdopt || !isSubtype(((ArrayType) parameter.getType()).getComponentType(), types.NodeInterface))) {
                 if (cache.getDimensions() == -1) {
                     cache.addWarning("The cached dimensions attribute must be specified for array types.");
                 }
             } else {
-                if (cache.getDimensions() != -1) {
+                if (!disabledAdopt && cache.getDimensions() != -1) {
                     cache.addError("The dimensions attribute has no affect for the type %s.", getSimpleName(parameter.getType()));
                 }
             }
@@ -2505,6 +2508,16 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 cache.setUncachedExpression(cache.getDefaultExpression());
             }
         }
+
+        if (adopt != null) {
+            TypeMirror type = parameter.getType();
+            if (type == null || !ElementUtils.isAssignable(type, types.NodeInterface) &&
+                            !(type.getKind() == TypeKind.ARRAY && isAssignable(((ArrayType) type).getComponentType(), types.NodeInterface))) {
+                cache.addError("Type '%s' is neither a NodeInterface type, nor an array of NodeInterface types and therefore it can not be adopted. Remove the adopt attribute to resolve this.",
+                                Objects.toString(type));
+            }
+        }
+        cache.setAdopt(getAnnotationValue(Boolean.class, cachedAnnotation, "adopt", true));
     }
 
     private DSLExpression resolveCachedExpression(DSLExpressionResolver resolver, CacheExpression cache, TypeMirror targetType, DSLExpression expression, String originalString) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@ import java.lang.annotation.Target;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeInterface;
 
 // Workaround for Eclipse formatter behaving different when running on JDK 9.
 // @formatter:off
@@ -337,6 +338,21 @@ public @interface Cached {
      * @since 20.2
      */
     boolean weak() default false;
+
+    /**
+     * Specifies whether the cached parameter values of type {@link NodeInterface} should be adopted
+     * as its child by the current node. The default value is <code>true</code>, therefore all
+     * cached values of type {@link NodeInterface} and arrays of the same type are adopted. If the
+     * value is set to <code>false</code>, then no adoption is performed. It is useful to set adopt
+     * to <code>false</code> when nodes need to be referenced more than once in the AST.
+     * <p>
+     * If the type of the field is an {@link NodeInterface} array and adopt is set to
+     * <code>false</code>, then the compilation final {@link Cached#dimensions() dimensions}
+     * attribute needs to be specified explicitly.
+     *
+     * @since 20.2
+     */
+    boolean adopt() default true;
 
     /**
      * Allows sharing between multiple Cached parameters between multiple specializations or

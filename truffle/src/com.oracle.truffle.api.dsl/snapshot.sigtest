@@ -13,6 +13,7 @@ CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.Cached
 innr public abstract interface static !annotation Exclusive
 innr public abstract interface static !annotation Shared
 intf java.lang.annotation.Annotation
+meth public abstract !hasdefault boolean adopt()
 meth public abstract !hasdefault boolean allowUncached()
 meth public abstract !hasdefault boolean weak()
 meth public abstract !hasdefault int dimensions()
