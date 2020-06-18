@@ -116,13 +116,17 @@ final class FileSystems {
         return fileSystem instanceof InternalFileSystem && ((InternalFileSystem) fileSystem).hasAllAccess();
     }
 
+    static boolean hasNoAccess(FileSystem fileSystem) {
+        return fileSystem instanceof InternalFileSystem && ((InternalFileSystem) fileSystem).hasNoAccess();
+    }
+
     static boolean isInternal(FileSystem fileSystem) {
         return fileSystem instanceof InternalFileSystem;
     }
 
     static boolean hasNoIOFileSystem(TruffleFile file) {
         FileSystem fileSystem = EngineAccessor.LANGUAGE.getFileSystem(file);
-        if (fileSystem.getClass() == DeniedIOFileSystem.class) {
+        if (hasNoAccess(fileSystem)) {
             return true;
         }
         if (fileSystem.getClass() == LanguageHomeFileSystem.class) {
@@ -270,6 +274,11 @@ final class FileSystems {
         @Override
         public boolean hasAllAccess() {
             return delegate instanceof InternalFileSystem && ((InternalFileSystem) delegate).hasAllAccess();
+        }
+
+        @Override
+        public boolean hasNoAccess() {
+            return delegate instanceof InternalFileSystem && ((InternalFileSystem) delegate).hasNoAccess();
         }
 
         @Override
@@ -701,6 +710,11 @@ final class FileSystems {
         }
 
         @Override
+        public boolean hasNoAccess() {
+            return false;
+        }
+
+        @Override
         public Path parsePath(URI uri) {
             try {
                 return delegate.getPath(uri);
@@ -929,6 +943,11 @@ final class FileSystems {
         }
 
         @Override
+        public boolean hasNoAccess() {
+            return true;
+        }
+
+        @Override
         public Path parsePath(final URI uri) {
             try {
                 return Paths.get(uri);
@@ -1034,6 +1053,11 @@ final class FileSystems {
 
         LanguageHomeFileSystem() {
             this.fullIO = newDefaultFileSystem();
+        }
+
+        @Override
+        public boolean hasNoAccess() {
+            return false;
         }
 
         @Override
@@ -1168,6 +1192,11 @@ final class FileSystems {
         }
 
         @Override
+        public boolean hasNoAccess() {
+            return false;
+        }
+
+        @Override
         public Path parsePath(URI uri) {
             throw new UnsupportedOperationException("ParsePath not supported on InvalidFileSystem");
         }
@@ -1285,6 +1314,8 @@ final class FileSystems {
 
     private interface InternalFileSystem extends FileSystem {
         boolean hasAllAccess();
+
+        boolean hasNoAccess();
     }
 
     private static SecurityException forbidden(final Path path) {

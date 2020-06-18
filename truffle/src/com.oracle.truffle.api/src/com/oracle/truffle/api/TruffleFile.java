@@ -1620,13 +1620,18 @@ public final class TruffleFile {
             if (this.equals(other)) {
                 return true;
             }
-            // We need to convert the paths to absolute paths to ensure
-            // that the SecurityException is thrown when this file is an internal file
-            // and the other is public file.
-            return fileSystemContext.fileSystem.isSameFile(
-                            getAbsoluteFile().normalizedPath,
-                            other.getAbsoluteFile().normalizedPath,
-                            options);
+            // When the IO is disabled one file can be public with no IO filesystem and
+            // the second internal with language home filesystem.
+            // The language home filesystem allows canonical path resolution and isSameFile.
+            // The no IO filesystem does not support canonical path resolution nor isSameFile.
+            // We should be symentric and fail independent of the file order.
+            FileSystem fs;
+            if (LanguageAccessor.engineAccess().hasNoAccess(other.fileSystemContext.fileSystem)) {
+                fs = other.fileSystemContext.fileSystem;
+            } else {
+                fs = fileSystemContext.fileSystem;
+            }
+            return fs.isSameFile(normalizedPath, other.normalizedPath, options);
         } catch (IOException | SecurityException e) {
             throw e;
         } catch (Throwable t) {
