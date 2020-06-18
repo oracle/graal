@@ -78,7 +78,7 @@ public class CommonConstants {
 
     public static final String SYSPROP_JAVA_VERSION = "java.specification.version"; // NOI18N
 
-    public static final String ENV_VARIABLE_PREFIX = "GRAAVLM_"; // NOI18N
+    public static final String ENV_VARIABLE_PREFIX = "GRAALVM_"; // NOI18N
 
     /**
      * Env variable that controls catalog URL.
