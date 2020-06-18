@@ -151,6 +151,7 @@ public class ComponentInstaller extends Launcher {
         globalOptions.put(Commands.LONG_OPTION_AUTO_YES, Commands.OPTION_AUTO_YES);
 
         globalOptions.put(Commands.OPTION_NON_INTERACTIVE, "");
+        globalOptions.put(Commands.LONG_OPTION_NON_INTERACTIVE, Commands.OPTION_NON_INTERACTIVE);
 
         globalOptions.put(Commands.OPTION_PRINT_VERSION, "");
         globalOptions.put(Commands.OPTION_SHOW_VERSION, "");
