@@ -44,18 +44,22 @@ import org.graalvm.compiler.nodes.AbstractEndNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.ControlSinkNode;
 import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.GuardPhiNode;
+import org.graalvm.compiler.nodes.GuardProxyNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
+import org.graalvm.compiler.nodes.MemoryProxyNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.SafepointNode;
@@ -63,13 +67,16 @@ import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
+import org.graalvm.compiler.nodes.ValueProxyNode;
 import org.graalvm.compiler.nodes.VirtualState.NodePositionClosure;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
+import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.OpaqueNode;
+import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.memory.MemoryPhiNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.util.IntegerHelper;
@@ -168,6 +175,7 @@ public class LoopFragmentInside extends LoopFragment {
          */
         LoopBeginNode mainLoopBegin = loop.loopBegin();
         ArrayList<ValueNode> backedgeValues = new ArrayList<>();
+        EconomicMap<Node, Node> new2OldPhis = EconomicMap.create();
         for (PhiNode mainPhiNode : mainLoopBegin.phis()) {
             ValueNode originalNode = mainPhiNode.valueAt(1);
             ValueNode duplicatedNode = getDuplicatedNode(originalNode);
@@ -177,6 +185,9 @@ public class LoopFragmentInside extends LoopFragment {
                 } else {
                     assert originalNode.isConstant() || loop.isOutsideLoop(originalNode) : "Not duplicated node " + originalNode;
                 }
+            }
+            if (duplicatedNode != null) {
+                new2OldPhis.put(duplicatedNode, originalNode);
             }
             backedgeValues.add(duplicatedNode);
         }
@@ -188,7 +199,7 @@ public class LoopFragmentInside extends LoopFragment {
             }
         }
 
-        placeNewSegmentAndCleanup(loop);
+        placeNewSegmentAndCleanup(loop, new2OldPhis);
 
         // Remove any safepoints from the original copy leaving only the duplicated one
         assert loop.whole().nodes().filter(SafepointNode.class).count() == nodes().filter(SafepointNode.class).count();
@@ -240,7 +251,7 @@ public class LoopFragmentInside extends LoopFragment {
         mainLoopBegin.getDebug().dump(DebugContext.VERBOSE_LEVEL, mainLoopBegin.graph(), "After insertWithinAfter %s", mainLoopBegin);
     }
 
-    private void placeNewSegmentAndCleanup(LoopEx loop) {
+    private void placeNewSegmentAndCleanup(LoopEx loop, EconomicMap<Node, Node> new2OldPhis) {
         CountedLoopInfo mainCounted = loop.counted();
         LoopBeginNode mainLoopBegin = loop.loopBegin();
         // Discard the segment entry and its flow, after if merging it into the loop
@@ -256,6 +267,63 @@ public class LoopFragmentInside extends LoopFragment {
         AbstractBeginNode trueSuccessor = newSegmentLoopTest.trueSuccessor();
         for (Node usage : trueSuccessor.anchored().snapshot()) {
             usage.replaceFirstInput(trueSuccessor, loopTest.trueSuccessor());
+        }
+
+        if (graph.hasValueProxies()) {
+
+            // rewire non-counted exits with their merges (which are required to be there)
+            for (LoopExitNode exit : mainLoopBegin.loopExits().snapshot()) {
+                if (exit == mainCounted.getCountedExit()) {
+                    continue;
+                }
+                FixedNode next = exit.next();
+
+                AbstractBeginNode begin = getDuplicatedNode(exit);
+                if (next instanceof EndNode) {
+                    AbstractMergeNode merge = ((EndNode) next).merge();
+                    assert merge instanceof MergeNode : "Can only merge loop exits on regular merges";
+
+                    assert begin.next() == null;
+                    LoopExitNode lex = graph.add(new LoopExitNode(mainLoopBegin));
+
+                    createExitStateForNewSegmentNonEarlyExit(graph, exit, lex, new2OldPhis);
+
+                    EndNode end = graph.add(new EndNode());
+                    begin.setNext(lex);
+                    lex.setNext(end);
+                    merge.addForwardEnd(end);
+                    for (PhiNode phi : merge.phis()) {
+                        if (phi instanceof ValuePhiNode) {
+                            ValueNode input = phi.valueAt((EndNode) next);
+                            ValueNode replacement = null;
+                            if (input instanceof ConstantNode || input instanceof ParameterNode) {
+                                replacement = input;
+                            } else {
+                                replacement = graph.addOrUnique(new ValueProxyNode(getNodeOfExitPathInUnrolledSegment((ValueProxyNode) input, new2OldPhis), lex));
+                            }
+                            phi.addInput(replacement);
+                        } else if (phi instanceof MemoryPhiNode) {
+                            ValueNode input = phi.valueAt((EndNode) next);
+                            ValueNode replacement = getNodeOfExitPathInUnrolledSegment((ProxyNode) input, new2OldPhis);
+                            phi.addInput(graph.addOrUnique(new MemoryProxyNode((MemoryKill) replacement, lex, ((MemoryPhiNode) phi).getLocationIdentity())));
+                        }
+                    }
+                } else if (next instanceof ControlSinkNode) {
+                    ControlSinkNode sink = (ControlSinkNode) next;
+                    ControlSinkNode sinkCopy = (ControlSinkNode) sink.copyWithInputs(true);
+                    LoopExitNode lex = graph.add(new LoopExitNode(mainLoopBegin));
+                    for (ProxyNode proxy : exit.proxies()) {
+                        assert proxy instanceof ValueProxyNode : "A sink can only consume a value not a guard/memory edge " + proxy;
+                        ValueNode replacement = getNodeOfExitPathInUnrolledSegment(proxy, new2OldPhis);
+                        proxy.replaceAtMatchingUsages(graph.addOrUnique(new ValueProxyNode(replacement, lex)), x -> x == sinkCopy);
+                    }
+                    createExitStateForNewSegmentNonEarlyExit(graph, exit, lex, new2OldPhis);
+                    begin.setNext(lex);
+                    lex.setNext(sinkCopy);
+                } else {
+                    GraalError.shouldNotReachHere("Can only unroll loops where the early exits either merge on the same node or sink immediately");
+                }
+            }
         }
 
         // remove if test
@@ -280,6 +348,69 @@ public class LoopFragmentInside extends LoopFragment {
             newSegmentEnd.safeDelete();
         }
         graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After placing segment");
+    }
+
+    private void createExitStateForNewSegmentNonEarlyExit(StructuredGraph graph, LoopExitNode exit, LoopExitNode lex, EconomicMap<Node, Node> new2OldPhis) {
+        assert exit.stateAfter() != null;
+        FrameState exitState = exit.stateAfter();
+        FrameState duplicate = exitState.duplicateWithVirtualState();
+        graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After duplicating state %s for new exit %s", exitState, lex);
+        duplicate.applyToNonVirtual(new NodePositionClosure<Node>() {
+
+            @Override
+            public void apply(Node from, Position p) {
+                ValueNode to = (ValueNode) p.get(from);
+                // all inputs that are proxies need replacing the other ones are implictily not
+                // produced inside this loop
+                if (to instanceof ProxyNode) {
+                    ProxyNode originalProxy = (ProxyNode) to;
+                    if (originalProxy.proxyPoint() == exit) {
+                        // create a new proxy for this value
+                        ValueNode replacement = getNodeOfExitPathInUnrolledSegment(originalProxy, new2OldPhis);
+                        if (originalProxy instanceof ValueProxyNode) {
+                            p.set(from, graph.addOrUnique(new ValueProxyNode(replacement, lex)));
+                        } else if (originalProxy instanceof GuardProxyNode) {
+                            p.set(from, graph.addOrUnique(new GuardProxyNode((GuardingNode) replacement, lex)));
+                        } else if (originalProxy instanceof MemoryProxyNode) {
+                            p.set(from, graph.addOrUnique(new MemoryProxyNode((MemoryKill) replacement, lex, ((MemoryProxyNode) originalProxy).getKilledLocationIdentity())));
+                        } else {
+                            GraalError.shouldNotReachHere("Unknown proxy type " + originalProxy);
+                        }
+                    }
+                }
+                if (original().contains(to)) {
+                    p.set(from, getDuplicatedNode(to));
+                }
+            }
+        });
+        graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After duplicating state replacing values with inputs proxied %s", duplicate);
+        lex.setStateAfter(duplicate);
+
+    }
+
+    private ValueNode getNodeOfExitPathInUnrolledSegment(ProxyNode proxy, EconomicMap<Node, Node> new2OldPhis) {
+        ValueNode originalNode = proxy.getOriginalNode();
+        ValueNode replacement = null;
+        if (original().contains(originalNode) || proxy.proxyPoint().loopBegin().isPhiAtMerge(originalNode)) {
+            ValueNode nextIterationVal = getDuplicatedNode(originalNode);
+            if (nextIterationVal == null) {
+                assert proxy.proxyPoint().loopBegin().isPhiAtMerge(originalNode);
+                LoopBeginNode mainLoopBegin = proxy.proxyPoint().loopBegin();
+                LoopEndNode endBeforeSegment = mainLoopBegin.getSingleLoopEnd();
+                PhiNode loopPhi = (PhiNode) originalNode;
+                ValueNode phiInputAtOriginalSegment = loopPhi.valueAt(endBeforeSegment);
+                // this is already the duplicated node since the segment is already added to the
+                // graph
+                replacement = (ValueNode) new2OldPhis.get(phiInputAtOriginalSegment);
+                assert replacement != null;
+            } else {
+                replacement = nextIterationVal;
+            }
+        } else {
+            // dominating node, re-use
+            replacement = originalNode;
+        }
+        return replacement;
     }
 
     private static EndNode getBlockEnd(FixedNode node) {
