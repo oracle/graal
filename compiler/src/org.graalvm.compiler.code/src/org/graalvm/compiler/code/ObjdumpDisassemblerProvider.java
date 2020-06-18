@@ -36,6 +36,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
 import org.graalvm.util.CollectionsUtil;
 
@@ -58,10 +62,35 @@ import jdk.vm.ci.services.Services;
 @ServiceProvider(DisassemblerProvider.class)
 public class ObjdumpDisassemblerProvider implements DisassemblerProvider {
 
-    private final String objdump = getObjdump();
+    static class Options {
+        // @formatter:off
+        @Option(help = "Comma separated list of candidate GNU objdump executables. If not specified, " +
+                "disassembling via GNU objdump is disabled. Otherwise, the first existing executable in the list is used.",
+                type = OptionType.Debug)
+        static final OptionKey<String> ObjdumpExecutables = new OptionKey<>(null);
+        // @formatter:on
+    }
+
+    // cached validity of candidate objdump executables.
+    private Map<String, Boolean> objdumpCache = new HashMap<>();
+
+    private static Process createProcess(String[] cmd) {
+        ProcessBuilder pb = new ProcessBuilder(cmd);
+        try {
+            return pb.start();
+        } catch (IOException e) {
+        }
+        return null;
+    }
 
     @Override
-    public String disassembleCompiledCode(CodeCacheProvider codeCache, CompilationResult compResult) {
+    public boolean isAvailable(OptionValues options) {
+        return getObjdump(options) != null;
+    }
+
+    @Override
+    public String disassembleCompiledCode(OptionValues options, CodeCacheProvider codeCache, CompilationResult compResult) {
+        String objdump = getObjdump(options);
         if (objdump == null) {
             return null;
         }
@@ -113,8 +142,10 @@ public class ObjdumpDisassemblerProvider implements DisassemblerProvider {
                     putAnnotation(annotations, infopoint.pcOffset, "{infopoint: " + infopoint.reason + "}");
                 }
             }
-            ProcessBuilder pb = new ProcessBuilder(cmdline);
-            Process proc = pb.start();
+            Process proc = createProcess(cmdline);
+            if (proc == null) {
+                return null;
+            }
             InputStream is = proc.getInputStream();
             StringBuilder sb = new StringBuilder();
 
@@ -179,29 +210,49 @@ public class ObjdumpDisassemblerProvider implements DisassemblerProvider {
     /**
      * Searches for a valid GNU objdump executable.
      */
-    private static String getObjdump() {
-        // On macOS, `brew install binutils` will provide
-        // an executable named gobjdump
-        for (String candidate : new String[]{"objdump", "gobjdump"}) {
-            try {
-                String[] cmd = {candidate, "--version"};
-                ProcessBuilder pb = new ProcessBuilder(cmd);
-                Process proc = pb.start();
-                InputStream is = proc.getInputStream();
-                int exitValue = proc.waitFor();
-                if (exitValue == 0) {
-                    byte[] buf = new byte[is.available()];
-                    int pos = 0;
-                    while (pos < buf.length) {
-                        int read = is.read(buf, pos, buf.length - pos);
-                        pos += read;
-                    }
-                    String output = new String(buf);
-                    if (output.contains("GNU objdump")) {
+    private String getObjdump(OptionValues options) {
+        // for security, user must provide the possible objdump locations.
+        String candidates = Options.ObjdumpExecutables.getValue(options);
+        if (candidates != null && !candidates.isEmpty()) {
+            for (String candidate : candidates.split(",")) {
+                // first checking to see if a cached verdict for this candidate exists.
+                Boolean cachedQuery = objdumpCache.get(candidate);
+                if (cachedQuery != null) {
+                    if (cachedQuery.booleanValue()) {
                         return candidate;
+                    } else {
+                        // this candidate was previously determined to not be acceptable.
+                        continue;
                     }
                 }
-            } catch (IOException | InterruptedException e) {
+                try {
+                    String[] cmd = {candidate, "--version"};
+                    Process proc = createProcess(cmd);
+                    if (proc == null) {
+                        // bad candidate.
+                        objdumpCache.put(candidate, Boolean.FALSE);
+                        return null;
+                    }
+                    InputStream is = proc.getInputStream();
+                    int exitValue = proc.waitFor();
+                    if (exitValue == 0) {
+                        byte[] buf = new byte[is.available()];
+                        int pos = 0;
+                        while (pos < buf.length) {
+                            int read = is.read(buf, pos, buf.length - pos);
+                            pos += read;
+                        }
+                        String output = new String(buf);
+                        if (output.contains("GNU objdump")) {
+                            // this candidate meets the criteria.
+                            objdumpCache.put(candidate, Boolean.TRUE);
+                            return candidate;
+                        }
+                    }
+                } catch (IOException | InterruptedException e) {
+                }
+                // bad candidate.
+                objdumpCache.put(candidate, Boolean.FALSE);
             }
         }
         return null;

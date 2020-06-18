@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -951,6 +951,18 @@ final class Target_com_oracle_truffle_polyglot_PolyglotContextImpl_SingleContext
 @Delete
 @TargetClass(className = "java.lang.ProcessBuilder", onlyWith = {TruffleFeature.IsEnabled.class, TruffleFeature.IsCreateProcessDisabled.class})
 final class Target_java_lang_ProcessBuilder {
+}
+
+// If allowProcess() is disabled at build time, then we ensure ObjdumpDisassemblerProvider does not
+// try to invoke the nonexistent ProcessBuilder.
+@TargetClass(className = "org.graalvm.compiler.code.ObjdumpDisassemblerProvider", onlyWith = {TruffleFeature.IsEnabled.class, TruffleFeature.IsCreateProcessDisabled.class})
+final class Target_org_graalvm_compiler_code_ObjdumpDisassemblerProvider {
+
+    @Substitute
+    @SuppressWarnings("unused")
+    static Process createProcess(String[] cmd) {
+        return null;
+    }
 }
 
 @TargetClass(className = "com.oracle.truffle.polyglot.LanguageCache", onlyWith = TruffleFeature.IsEnabled.class)

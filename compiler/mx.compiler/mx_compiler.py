@@ -816,6 +816,10 @@ def _parseVmArgs(args, addDefaultArgs=True):
     if not any(a.startswith('-Dgraal.PrintGraph=') for a in args):
         argsPrefix.append('-Dgraal.PrintGraph=Network')
 
+    # Likewise, one can assume that objdump is safe to access when using mx.
+    if not any(a.startswith('-Dgraal.ObjdumpExecutables=') for a in args):
+        argsPrefix.append('-Dgraal.ObjdumpExecutables=objdump,gobjdump')
+
     return argsPrefix + args
 
 def _check_bootstrap_config(args):
