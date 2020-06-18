@@ -62,11 +62,12 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
         try {
             return Output.valueOf(optionString.toUpperCase());
         } catch (IllegalArgumentException e) {
-            StringBuilder message = new StringBuilder("Output can be one of: ");
+            StringBuilder message = new StringBuilder("Wrong output specified. Output can be one of:");
             for (Output output : Output.values()) {
-                message.append(output.toString().toLowerCase());
                 message.append(" ");
+                message.append(output.toString().toLowerCase());
             }
+            message.append(". For example: --output=" + Output.SIMPLE.toString());
             throw new IllegalArgumentException(message.toString());
         }
     });
@@ -74,7 +75,9 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
     static final OptionType<List<Location>> LOCATION_OPTION_TYPE = new OptionType<>("Location", optionString -> {
         final List<Location> locations = new ArrayList<>();
         if (optionString.isEmpty()) {
-            throw new IllegalArgumentException("Root option must be set");
+            throw new IllegalArgumentException("Root option must be set. " +
+                            "If no root is set nothing can be instrumented. " +
+                            "Root must be specified as 'rootName:fileName:lineNumber' e.g. --" + ID + "Root=foo:foo.js:14");
         }
         final String[] split = optionString.split(",");
         for (String locationString : split) {
