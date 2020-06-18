@@ -148,15 +148,15 @@ public class ListInstalledCommand extends QueryCommandBase {
                 exceptions.add(ex);
             }
         }
-        if (components.isEmpty()) {
-            feedback.message("LIST_NoComponentsFound");
-            return false;
-        }
         if (!exceptions.isEmpty()) {
             feedback.error("LIST_ErrorInComponentMetadata", null);
             for (Exception e : exceptions) {
                 feedback.error("LIST_ErrorInComponentMetadataItem", e, e.getLocalizedMessage());
             }
+        }
+        if (components.isEmpty()) {
+            feedback.message("LIST_NoComponentsFound");
+            return false;
         }
         return true;
     }
