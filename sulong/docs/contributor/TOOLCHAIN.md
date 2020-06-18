@@ -154,7 +154,7 @@ On the implementation side, _the toolchain_ consists of multiple ingredients:
   The LLVM.org component might not be installed by default. If that is the case, it can be installed via `gu install llvm-toolchain`.
 * The **toolchain wrappers** are GraalVM launchers that invoke the tools from the LLVM.org component with special flags
   to produce results that can be executed by the GraalVM LLVM runtime. The Java and `mx` APIs return paths to those wrappers.
-  The `$GRAALVM/bin/lli --print-toolchain-path` can be used to get their location.
+  The command `$GRAALVM/bin/lli --print-toolchain-path` can be used to get their location.
   The wrappers are shipped with the GraalVM LLVM runtime and do not need to be installed separately.
   They are meant to be drop in replacements for the C/C++ compiler when compiling a native project.
   The goal is to produce a GraalVM LLVM runtime executable result by simply pointing any build system to those wrappers,
