@@ -58,7 +58,7 @@ public class WarmupEstimatorTest {
 
     @Test
     public void testBasic() {
-        try (Context context = defaultContext().option(WarmupEstimatorInstrument.ID + ".Locations", "foo").build()) {
+        try (Context context = defaultContext().option(WarmupEstimatorInstrument.ID + ".Root", "foo").build()) {
             context.eval(defaultSource);
         }
         final String output = out.toString();
@@ -73,8 +73,8 @@ public class WarmupEstimatorTest {
     }
 
     @Test
-    public void testMultiRoot() {
-        try (Context context = defaultContext().option(WarmupEstimatorInstrument.ID + ".Locations", "foo;bar").build()) {
+    public void testMultiRootName() {
+        try (Context context = defaultContext().option(WarmupEstimatorInstrument.ID + ".Root", "foo,bar").build()) {
             context.eval(defaultSource);
         }
         final String output = out.toString();
@@ -83,8 +83,28 @@ public class WarmupEstimatorTest {
     }
 
     @Test
+    public void testMultiRootLine() {
+        try (Context context = defaultContext().option(WarmupEstimatorInstrument.ID + ".Root", "::2,::3").build()) {
+            context.eval(defaultSource);
+        }
+        final String output = out.toString();
+        assertContains(output, "::2");
+        assertContains(output, "::3");
+    }
+
+    @Test
+    public void testMultiRootNameLine() {
+        try (Context context = defaultContext().option(WarmupEstimatorInstrument.ID + ".Root", "foo::2,bar::3").build()) {
+            context.eval(defaultSource);
+        }
+        final String output = out.toString();
+        assertContains(output, "foo::2");
+        assertContains(output, "bar::3");
+    }
+
+    @Test
     public void testRawOutput() {
-        try (Context context = defaultContext().option(WarmupEstimatorInstrument.ID + ".Locations", "foo").option(WarmupEstimatorInstrument.ID + ".Output", "raw").build()) {
+        try (Context context = defaultContext().option(WarmupEstimatorInstrument.ID + ".Root", "foo").option(WarmupEstimatorInstrument.ID + ".Output", "raw").build()) {
             context.eval(defaultSource);
         }
         final String output = out.toString();

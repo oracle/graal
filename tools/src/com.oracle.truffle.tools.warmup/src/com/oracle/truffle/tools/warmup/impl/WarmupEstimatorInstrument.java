@@ -29,11 +29,11 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.Function;
 import java.util.logging.Level;
 
 import org.graalvm.options.OptionCategory;
@@ -58,32 +58,47 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
     public static final String ID = "warmup";
     public static final String VERSION = "0.0.1";
 
-    static final OptionType<Output> CLI_OUTPUT_TYPE = new OptionType<>("Output",
-                    new Function<String, Output>() {
-                        @Override
-                        public Output apply(String s) {
-                            try {
-                                return Output.valueOf(s.toUpperCase());
-                            } catch (IllegalArgumentException e) {
-                                StringBuilder message = new StringBuilder("Output can be one of: ");
-                                for (Output output : Output.values()) {
-                                    message.append(output.toString().toLowerCase());
-                                    message.append(" ");
-                                }
-                                throw new IllegalArgumentException(message.toString());
-                            }
-                        }
-                    });
-    @Option(name = "", help = "Enable the Warmup Estimator (default: false).", category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL) //
+    static final OptionType<Output> CLI_OUTPUT_TYPE = new OptionType<>("Output", optionString -> {
+        try {
+            return Output.valueOf(optionString.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            StringBuilder message = new StringBuilder("Output can be one of: ");
+            for (Output output : Output.values()) {
+                message.append(output.toString().toLowerCase());
+                message.append(" ");
+            }
+            throw new IllegalArgumentException(message.toString());
+        }
+    });
+
+    static final OptionType<List<Location>> LOCATION_OPTION_TYPE = new OptionType<>("Location", optionString -> {
+        final List<Location> locations = new ArrayList<>();
+        if (optionString.isEmpty()) {
+            throw new IllegalArgumentException("Root option must be set");
+        }
+        final String[] split = optionString.split(",");
+        for (String locationString : split) {
+            final String[] strings = locationString.split(":");
+            final String rootName = strings[0];
+            final String fileName = strings.length > 1 ? strings[1] : "";
+            final Integer line = strings.length == 3 && !"".equals(strings[2]) ? Integer.parseInt(strings[2]) : null;
+            locations.add(new Location(rootName, fileName, line));
+        }
+        return locations;
+    });
+
+    @Option(name = "", help = "Enable the Warmup Estimator (default: false).", category = OptionCategory.USER) //
     static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
-    @Option(name = "Locations", help = "A semicolon separated list of 'rootName,fileName,lineNumber' (e.g. 'fact,factoriel.js:14;fizzbuzz;fizz.js;17') of roots being benchmarked, ie. that should be instrumented. Filename and line are optional.", //
-                    category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL) //
-    static final OptionKey<String> LOCATIONS = new OptionKey<>("");
-    @Option(name = "OutputFile", help = "Save output to the given file. Output is printed to stdout by default.", category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL) //
+    // @formatter: off
+    @Option(help = "Specifies the root representing a benchmark iteration as 'rootName:fileName:lineNumber' where any of the parts are optional. Multiple entries can be specified separated by commas. (e.g. 'main::,foo:foo.js:,fact:factorial.js:14').", category = OptionCategory.USER)
+    // @formatter: on
+    static final OptionKey<List<Location>> Root = new OptionKey<>(Collections.emptyList(), LOCATION_OPTION_TYPE);
+    @Option(name = "OutputFile", help = "Save output to the given file. Output is printed to stdout by default.", category = OptionCategory.USER) //
     static final OptionKey<String> OUTPUT_FILE = new OptionKey<>("");
     @Option(name = "Output", help = "Can be: 'raw' for json array of raw samples; 'json' for included post processing of samples; 'simple' for just the human-readable post-processed result (default: simple)", //
-                    category = OptionCategory.USER) static final OptionKey<Output> OUTPUT = new OptionKey<>(Output.SIMPLE, CLI_OUTPUT_TYPE);
-    @Option(name = "Epsilon", help = "Epsilon value. It's inferred if the value is 0. (default: 1.05)", category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL) //
+                    category = OptionCategory.USER) //
+    static final OptionKey<Output> OUTPUT = new OptionKey<>(Output.SIMPLE, CLI_OUTPUT_TYPE);
+    @Option(name = "Epsilon", help = "Sets the epsilon value which specifies the tolerance for peak performance detection. It's inferred if the value is 0. (default: 1.05)", category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL) //
     static final OptionKey<Double> EPSILON = new OptionKey<>(1.05);
 
     private final Map<Location, WarmupEstimatorNode> nodes = new HashMap<>();
@@ -92,13 +107,17 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
     private static SourceSectionFilter filter(Location location) {
         final SourceSectionFilter.Builder builder = SourceSectionFilter.newBuilder().//
                         includeInternal(false).//
-                        tagIs(StandardTags.RootTag.class).//
-                        rootNameIs(location.rootName::equals);
-        if (location.line != null) {
-            builder.lineIs(location.line);
+                        tagIs(StandardTags.RootTag.class);
+        if (!"".equals(location.rootName)) {
+            builder.rootNameIs(location.rootName::equals);
         }
-        if (location.fileName != null) {
+        if (!"".equals(location.fileName)) {
             builder.sourceIs(s -> location.fileName.equals(s.getName()));
+        }
+        if (location.line != null) {
+            // TODO: does this work? it shouldn't
+            // builder.lineIs(location.line);
+            builder.lineStartsIn(SourceSectionFilter.IndexRange.byLength(location.line, 1));
         }
         return builder.build();
     }
@@ -110,9 +129,10 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
 
     @Override
     protected void onCreate(Env env) {
-        enabled = env.getOptions().get(WarmupEstimatorInstrument.ENABLED);
+        final OptionValues options = env.getOptions();
+        enabled = options.get(WarmupEstimatorInstrument.ENABLED);
         if (enabled) {
-            final List<Location> locations = locations(env);
+            final List<Location> locations = options.get(Root);
             if (locations.size() == 0) {
                 throw new IllegalArgumentException("Locations must be set");
             }
@@ -121,23 +141,6 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
                 instrumenter.attachExecutionEventFactory(filter(location), context -> createNode(env, context, location));
             }
         }
-    }
-
-    private static List<Location> locations(Env env) {
-        final ArrayList<Location> locations = new ArrayList<>();
-        final String locationsOption = env.getOptions().get(LOCATIONS);
-        if (locationsOption.isEmpty()) {
-            throw new IllegalArgumentException("Locations must be set");
-        }
-        final String[] split = locationsOption.split(";");
-        for (String locationString : split) {
-            final String[] strings = locationString.split(",");
-            final String rootName = strings[0];
-            final String fileName = strings.length > 1 ? strings[1] : null;
-            final Integer line = strings.length == 3 ? Integer.parseInt(strings[2]) : null;
-            locations.add(new Location(rootName, fileName, line));
-        }
-        return locations;
     }
 
     private synchronized ExecutionEventNode createNode(Env env, EventContext context, Location location) {
@@ -156,7 +159,7 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
     @Override
     protected void onDispose(Env env) {
         if (nodes.isEmpty()) {
-            env.getLogger(this.getClass()).log(Level.WARNING, "No roots like " + LOCATIONS.getValue(env.getOptions()) + " found during execution.");
+            env.getLogger(this.getClass()).log(Level.WARNING, "No roots like " + Root.getValue(env.getOptions()) + " found during execution.");
         }
         final OptionValues options = env.getOptions();
         final List<Results> results = results(EPSILON.getValue(options));
@@ -210,7 +213,7 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
         RAW,
     }
 
-    static class Location {
+    static final class Location {
         final String rootName;
         final String fileName;
         final Integer line;
@@ -226,7 +229,7 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
             if (this == o) {
                 return true;
             }
-            if (o == null || getClass() != o.getClass()) {
+            if (o == null || o instanceof Location) {
                 return false;
             }
             Location location = (Location) o;
@@ -242,7 +245,18 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
 
         @Override
         public String toString() {
-            return rootName + (fileName != null ? ("," + fileName) : "") + (line != null ? ("," + line) : "");
+            StringBuilder builder = new StringBuilder(rootName);
+            if (!"".equals(fileName))  {
+                builder.append(':');
+                builder.append(fileName);
+            } else if (line != null) {
+                builder.append(':');
+            }
+            if (line != null) {
+                builder.append(':');
+                builder.append(line);
+            }
+            return builder.toString();
         }
     }
 }
