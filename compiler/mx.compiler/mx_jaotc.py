@@ -184,7 +184,7 @@ jaotc_group_config = {
         'javac':   [jaotc_common_opts],
         'modules': [jaotc_common_opts],
     },
-    'weekly': {
+    'daily': {
         'tests': ['graal-jlink', 'java.base'],
         'modules': jaotc_common_gc_compressed,
     },
