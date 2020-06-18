@@ -273,7 +273,35 @@ typedef uint64_t julong;
     V(JVM_Yield) \
     /* V(JVM_handle_linux_signal) */ \
     /* Invocation API */ \
-    V(JNI_GetCreatedJavaVMs)
+    V(JNI_GetCreatedJavaVMs) \
+    /* Java 11 VM methods */ \
+    V(JVM_AddModuleExports) \
+    V(JVM_AddModuleExportsToAll) \
+    V(JVM_AddModuleExportsToAllUnnamed) \
+    V(JVM_AddReadsModule) \
+    V(JVM_AreNestMates) \
+    V(JVM_BeforeHalt) \
+    V(JVM_CallStackWalk) \
+    V(JVM_ConstantPoolGetClassRefIndexAt) \
+    V(JVM_ConstantPoolGetNameAndTypeRefIndexAt) \
+    V(JVM_ConstantPoolGetNameAndTypeRefInfoAt) \
+    V(JVM_ConstantPoolGetTagAt) \
+    V(JVM_DefineModule) \
+    V(JVM_GetAndClearReferencePendingList) \
+    V(JVM_GetNanoTimeAdjustment) \
+    V(JVM_GetNestHost) \
+    V(JVM_GetNestMembers) \
+    V(JVM_GetSimpleBinaryName) \
+    V(JVM_GetVmArguments) \
+    V(JVM_HasReferencePendingList) \
+    V(JVM_InitClassName) \
+    V(JVM_InitializeFromArchive) \
+    V(JVM_InitStackTraceElement) \
+    V(JVM_InitStackTraceElementArray) \
+    V(JVM_MoreStackWalk) \
+    /* V(JVM_RegisterJDKInternalMiscUnsafeMethods) */ \
+    V(JVM_SetBootLoaderUnnamedModule) \
+    V(JVM_WaitForReferencePendingList)
 
 #ifdef __cplusplus
 extern "C" {
@@ -739,6 +767,69 @@ jbyteArray (*JVM_GetMethodParameterAnnotations)(JNIEnv *env, jobject method);
 
 // Invocation API
 jint (*JNI_GetCreatedJavaVMs)(JavaVM **vm_buf, jsize buf_len, jsize *numVMs);
+
+// Java 11 VM methods
+void (*JVM_AddModuleExports)(JNIEnv *env, jobject from_module, const char* package, jobject to_module);
+
+void (*JVM_AddModuleExportsToAllUnnamed)(JNIEnv *env, jobject from_module, const char* package);
+
+void (*JVM_AddModuleExportsToAll)(JNIEnv *env, jobject from_module, const char* package);
+
+void (*JVM_AddReadsModule)(JNIEnv *env, jobject from_module, jobject source_module);
+
+jboolean (*JVM_AreNestMates)(JNIEnv *env, jclass current, jclass member);
+
+void (*JVM_BeforeHalt)();
+
+jobject (*JVM_CallStackWalk)(JNIEnv *env, jobject stackStream, jlong mode,
+                      jint skip_frames, jint frame_count, jint start_index,
+                      jobjectArray frames);
+
+jint (*JVM_ConstantPoolGetClassRefIndexAt)
+            (JNIEnv *env, jobject obj, jobject unused, jint index);
+
+jint (*JVM_ConstantPoolGetNameAndTypeRefIndexAt)
+            (JNIEnv *env, jobject obj, jobject unused, jint index);
+
+jobjectArray (*JVM_ConstantPoolGetNameAndTypeRefInfoAt)
+            (JNIEnv *env, jobject obj, jobject unused, jint index);
+
+jbyte (*JVM_ConstantPoolGetTagAt)
+            (JNIEnv *env, jobject unused, jobject jcpool, jint index);
+
+void (*JVM_DefineModule)(JNIEnv *env, jobject module, jboolean is_open, jstring version,
+                     jstring location, const char* const* packages, jsize num_packages);
+
+jobject (*JVM_GetAndClearReferencePendingList)(JNIEnv *env);
+
+jlong (*JVM_GetNanoTimeAdjustment)(JNIEnv *env, jclass ignored, jlong offset_secs);
+
+jclass (*JVM_GetNestHost)(JNIEnv *env, jclass current);
+
+jobjectArray (*JVM_GetNestMembers)(JNIEnv *env, jclass current);
+
+jstring (*JVM_GetSimpleBinaryName)(JNIEnv *env, jclass ofClass);
+
+jobjectArray (*JVM_GetVmArguments)(JNIEnv *env);
+
+jboolean (*JVM_HasReferencePendingList)(JNIEnv *env);
+
+jstring (*JVM_InitClassName)(JNIEnv *env, jclass cls);
+
+void (*JVM_InitializeFromArchive)(JNIEnv* env, jclass cls);
+
+void (*JVM_InitStackTraceElement)(JNIEnv* env, jobject element, jobject stackFrameInfo);
+
+void (*JVM_InitStackTraceElementArray)(JNIEnv *env, jobjectArray elements, jobject throwable);
+
+jint (*JVM_MoreStackWalk)(JNIEnv *env, jobject stackStream, jlong mode, jlong anchor,
+                      jint frame_count, jint start_index,
+                      jobjectArray frames);
+
+void (*JVM_SetBootLoaderUnnamedModule)(JNIEnv *env, jobject module);
+
+void (*JVM_WaitForReferencePendingList)(JNIEnv *env);
+
 };
 
 struct MokapotEnv_ {

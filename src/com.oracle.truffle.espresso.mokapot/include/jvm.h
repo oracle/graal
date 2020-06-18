@@ -1423,6 +1423,65 @@ JVM_SetSockOpt(jint fd, int level, int optname, const char *optval, int optlen);
 JNIEXPORT int JNICALL
 JVM_GetHostName(char* name, int namelen);
 
+// region JDK 11 new VM methods
+
+JNIEXPORT void JNICALL JVM_AddModuleExports(JNIEnv *env, jobject from_module, const char* package, jobject to_module);
+
+JNIEXPORT void JNICALL JVM_AddModuleExportsToAllUnnamed(JNIEnv *env, jobject from_module, const char* package);
+
+JNIEXPORT void JNICALL JVM_AddModuleExportsToAll(JNIEnv *env, jobject from_module, const char* package);
+
+JNIEXPORT void JNICALL JVM_AddReadsModule(JNIEnv *env, jobject from_module, jobject source_module);
+
+JNIEXPORT jboolean JNICALL JVM_AreNestMates(JNIEnv *env, jclass current, jclass member);
+
+JNIEXPORT void JNICALL JVM_BeforeHalt();
+
+JNIEXPORT jobject JNICALL JVM_CallStackWalk(JNIEnv *env, jobject stackStream, jlong mode,
+                  jint skip_frames, jint frame_count, jint start_index,
+                  jobjectArray frames);
+
+JNIEXPORT jint JNICALL JVM_ConstantPoolGetClassRefIndexAt(JNIEnv *env, jobject obj, jobject unused, jint index);
+
+JNIEXPORT jint JNICALL JVM_ConstantPoolGetNameAndTypeRefIndexAt(JNIEnv *env, jobject obj, jobject unused, jint index);
+
+JNIEXPORT jobjectArray JNICALL JVM_ConstantPoolGetNameAndTypeRefInfoAt(JNIEnv *env, jobject obj, jobject unused, jint index);
+
+JNIEXPORT jbyte JNICALL JVM_ConstantPoolGetTagAt(JNIEnv *env, jobject unused, jobject jcpool, jint index);
+
+JNIEXPORT void JNICALL JVM_DefineModule(JNIEnv *env, jobject module, jboolean is_open, jstring version,
+                 jstring location, const char* const* packages, jsize num_packages);
+
+JNIEXPORT jobject JNICALL JVM_GetAndClearReferencePendingList(JNIEnv *env);
+
+JNIEXPORT jlong JNICALL JVM_GetNanoTimeAdjustment(JNIEnv *env, jclass ignored, jlong offset_secs);
+
+JNIEXPORT jclass JNICALL JVM_GetNestHost(JNIEnv *env, jclass current);
+
+JNIEXPORT jobjectArray JNICALL JVM_GetNestMembers(JNIEnv *env, jclass current);
+
+JNIEXPORT jstring JNICALL JVM_GetSimpleBinaryName(JNIEnv *env, jclass ofClass);
+
+JNIEXPORT jobjectArray JNICALL JVM_GetVmArguments(JNIEnv *env);
+
+JNIEXPORT jboolean JNICALL JVM_HasReferencePendingList(JNIEnv *env);
+
+JNIEXPORT jstring JNICALL JVM_InitClassName(JNIEnv *env, jclass cls);
+
+JNIEXPORT void JNICALL JVM_InitializeFromArchive(JNIEnv* env, jclass cls);
+
+JNIEXPORT void JNICALL JVM_InitStackTraceElement(JNIEnv* env, jobject element, jobject stackFrameInfo);
+
+JNIEXPORT void JNICALL JVM_InitStackTraceElementArray(JNIEnv *env, jobjectArray elements, jobject throwable);
+
+JNIEXPORT jint JNICALL JVM_MoreStackWalk(JNIEnv *env, jobject stackStream, jlong mode, jlong anchor,
+                  jint frame_count, jint start_index,
+                  jobjectArray frames);
+
+JNIEXPORT void JNICALL JVM_SetBootLoaderUnnamedModule(JNIEnv *env, jobject module);
+
+JNIEXPORT void JNICALL JVM_WaitForReferencePendingList(JNIEnv *env);
+
 /*
  * The standard printing functions supported by the Java VM. (Should they
  * be renamed to JVM_* in the future?

@@ -258,6 +258,35 @@ SUNWprivate_1.1 {
                 JVM_Write;
                 JVM_Yield;
                 JVM_handle_linux_signal;
+                
+                # JDK 11
+                 JVM_AddModuleExports;
+				 JVM_AddModuleExportsToAll;
+				 JVM_AddModuleExportsToAllUnnamed;
+				 JVM_AddReadsModule;
+				 JVM_AreNestMates;
+				 JVM_BeforeHalt;
+				 JVM_CallStackWalk;
+				 JVM_ConstantPoolGetClassRefIndexAt;
+				 JVM_ConstantPoolGetNameAndTypeRefIndexAt;
+				 JVM_ConstantPoolGetNameAndTypeRefInfoAt;
+				 JVM_ConstantPoolGetTagAt;
+				 JVM_DefineModule;
+				 JVM_GetAndClearReferencePendingList;
+				 JVM_GetNanoTimeAdjustment;
+				 JVM_GetNestHost;
+				 JVM_GetNestMembers;
+				 JVM_GetSimpleBinaryName;
+				 JVM_GetVmArguments;
+				 JVM_HasReferencePendingList;
+				 JVM_InitClassName;
+				 JVM_InitializeFromArchive;
+				 JVM_InitStackTraceElement;
+				 JVM_InitStackTraceElementArray;
+				 JVM_MoreStackWalk;
+				 JVM_RegisterJDKInternalMiscUnsafeMethods;
+				 JVM_SetBootLoaderUnnamedModule;
+				 JVM_WaitForReferencePendingList;
 
                 # miscellaneous functions
                 jio_fprintf;

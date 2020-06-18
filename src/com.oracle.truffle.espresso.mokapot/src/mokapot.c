@@ -1260,163 +1260,137 @@ JNIEXPORT jbyteArray JNICALL JVM_GetMethodParameterAnnotations(JNIEnv *env, jobj
 
 // region JDK 11 new VM methods
 
-JNIEXPORT void JNICALL
-JVM_AddModuleExports(JNIEnv *env, jobject from_module, const char* package, jobject to_module) {
+JNIEXPORT void JNICALL JVM_AddModuleExports(JNIEnv *env, jobject from_module, const char* package, jobject to_module) {
   UNIMPLEMENTED(JVM_AddModuleExports);
   return;
 }
 
-JNIEXPORT void JNICALL
-JVM_AddModuleExportsToAllUnnamed(JNIEnv *env, jobject from_module, const char* package) {
+JNIEXPORT void JNICALL JVM_AddModuleExportsToAllUnnamed(JNIEnv *env, jobject from_module, const char* package) {
   UNIMPLEMENTED(JVM_AddModuleExportsToAllUnnamed);
   return;
 }
 
-JNIEXPORT void JNICALL
-JVM_AddModuleExportsToAll(JNIEnv *env, jobject from_module, const char* package) {
+JNIEXPORT void JNICALL JVM_AddModuleExportsToAll(JNIEnv *env, jobject from_module, const char* package) {
   UNIMPLEMENTED(JVM_AddModuleExportsToAll);
   return;
 }
 
-JNIEXPORT void JNICALL
-JVM_AddReadsModule(JNIEnv *env, jobject from_module, jobject source_module) {
+JNIEXPORT void JNICALL JVM_AddReadsModule(JNIEnv *env, jobject from_module, jobject source_module) {
   UNIMPLEMENTED(JVM_AddReadsModule);
   return;
 }
 
-JNIEXPORT jboolean JNICALL
-JVM_AreNestMates(JNIEnv *env, jclass current, jclass member) {
+JNIEXPORT jboolean JNICALL JVM_AreNestMates(JNIEnv *env, jclass current, jclass member) {
   UNIMPLEMENTED(JVM_AreNestMates);
   return 0;
 }
 
-JNIEXPORT void JNICALL
-JVM_BeforeHalt() {
+JNIEXPORT void JNICALL JVM_BeforeHalt() {
   UNIMPLEMENTED(JVM_BeforeHalt);
   return;
 }
 
-JNIEXPORT jobject JNICALL
-JVM_CallStackWalk(JNIEnv *env, jobject stackStream, jlong mode,
+JNIEXPORT jobject JNICALL JVM_CallStackWalk(JNIEnv *env, jobject stackStream, jlong mode,
                   jint skip_frames, jint frame_count, jint start_index,
                   jobjectArray frames) {
   UNIMPLEMENTED(JVM_CallStackWalk);
   return NULL;
 }
 
-JNIEXPORT jint JNICALL JVM_ConstantPoolGetClassRefIndexAt
-        (JNIEnv *env, jobject obj, jobject unused, jint index) {
+JNIEXPORT jint JNICALL JVM_ConstantPoolGetClassRefIndexAt(JNIEnv *env, jobject obj, jobject unused, jint index) {
   UNIMPLEMENTED(JVM_ConstantPoolGetClassRefIndexAt);
   return 0;
 }
 
-JNIEXPORT jint JNICALL JVM_ConstantPoolGetNameAndTypeRefIndexAt
-        (JNIEnv *env, jobject obj, jobject unused, jint index) {
+JNIEXPORT jint JNICALL JVM_ConstantPoolGetNameAndTypeRefIndexAt(JNIEnv *env, jobject obj, jobject unused, jint index) {
   UNIMPLEMENTED(JVM_ConstantPoolGetNameAndTypeRefIndexAt);
   return 0;
 }
 
-JNIEXPORT jobjectArray JNICALL JVM_ConstantPoolGetNameAndTypeRefInfoAt
-        (JNIEnv *env, jobject obj, jobject unused, jint index) {
+JNIEXPORT jobjectArray JNICALL JVM_ConstantPoolGetNameAndTypeRefInfoAt(JNIEnv *env, jobject obj, jobject unused, jint index) {
   UNIMPLEMENTED(JVM_ConstantPoolGetNameAndTypeRefInfoAt);
   return NULL;
 }
 
-JNIEXPORT jbyte JNICALL JVM_ConstantPoolGetTagAt
-        (JNIEnv *env, jobject unused, jobject jcpool, jint index) {
+JNIEXPORT jbyte JNICALL JVM_ConstantPoolGetTagAt(JNIEnv *env, jobject unused, jobject jcpool, jint index) {
   UNIMPLEMENTED(JVM_ConstantPoolGetTagAt);
   return 0;
 }
 
-JNIEXPORT void JNICALL
-JVM_DefineModule(JNIEnv *env, jobject module, jboolean is_open, jstring version,
+JNIEXPORT void JNICALL JVM_DefineModule(JNIEnv *env, jobject module, jboolean is_open, jstring version,
                  jstring location, const char* const* packages, jsize num_packages) {
   UNIMPLEMENTED(JVM_DefineModule);
   return;
 }
 
-JNIEXPORT jobject JNICALL
-JVM_GetAndClearReferencePendingList(JNIEnv *env) {
+JNIEXPORT jobject JNICALL JVM_GetAndClearReferencePendingList(JNIEnv *env) {
   UNIMPLEMENTED(JVM_GetAndClearReferencePendingList);
   return NULL;
 }
 
-JNIEXPORT jlong JNICALL
-JVM_GetNanoTimeAdjustment(JNIEnv *env, jclass ignored, jlong offset_secs) {
+JNIEXPORT jlong JNICALL JVM_GetNanoTimeAdjustment(JNIEnv *env, jclass ignored, jlong offset_secs) {
   UNIMPLEMENTED(JVM_GetNanoTimeAdjustment);
   return 0;
 }
 
-JNIEXPORT jclass JNICALL
-JVM_GetNestHost(JNIEnv *env, jclass current) {
+JNIEXPORT jclass JNICALL JVM_GetNestHost(JNIEnv *env, jclass current) {
   UNIMPLEMENTED(JVM_GetNestHost);
   return NULL;
 }
 
-JNIEXPORT jobjectArray JNICALL
-JVM_GetNestMembers(JNIEnv *env, jclass current) {
+JNIEXPORT jobjectArray JNICALL JVM_GetNestMembers(JNIEnv *env, jclass current) {
   UNIMPLEMENTED(JVM_GetNestMembers);
   return NULL;
 }
 
-JNIEXPORT jstring JNICALL
-JVM_GetSimpleBinaryName(JNIEnv *env, jclass ofClass) {
+JNIEXPORT jstring JNICALL JVM_GetSimpleBinaryName(JNIEnv *env, jclass ofClass) {
   UNIMPLEMENTED(JVM_GetSimpleBinaryName);
   return NULL;
 }
 
-JNIEXPORT jobjectArray JNICALL
-JVM_GetVmArguments(JNIEnv *env) {
+JNIEXPORT jobjectArray JNICALL JVM_GetVmArguments(JNIEnv *env) {
   UNIMPLEMENTED(JVM_GetVmArguments);
   return NULL;
 }
 
-JNIEXPORT jboolean JNICALL
-JVM_HasReferencePendingList(JNIEnv *env) {
+JNIEXPORT jboolean JNICALL JVM_HasReferencePendingList(JNIEnv *env) {
   UNIMPLEMENTED(JVM_HasReferencePendingList);
   return 0;
 }
 
-JNIEXPORT jstring JNICALL
-JVM_InitClassName(JNIEnv *env, jclass cls) {
+JNIEXPORT jstring JNICALL JVM_InitClassName(JNIEnv *env, jclass cls) {
   UNIMPLEMENTED(JVM_InitClassName);
   return NULL;
 }
 
-JNIEXPORT void JNICALL
-JVM_InitializeFromArchive(JNIEnv* env, jclass cls) {
+JNIEXPORT void JNICALL JVM_InitializeFromArchive(JNIEnv* env, jclass cls) {
   UNIMPLEMENTED(JVM_InitializeFromArchive);
   return;
 }
 
-JNIEXPORT void JNICALL
-JVM_InitStackTraceElement(JNIEnv* env, jobject element, jobject stackFrameInfo){
+JNIEXPORT void JNICALL JVM_InitStackTraceElement(JNIEnv* env, jobject element, jobject stackFrameInfo){
   UNIMPLEMENTED(JVM_InitStackTraceElement);
   return;
 }
 
-JNIEXPORT void JNICALL
-JVM_InitStackTraceElementArray(JNIEnv *env, jobjectArray elements, jobject throwable) {
+JNIEXPORT void JNICALL JVM_InitStackTraceElementArray(JNIEnv *env, jobjectArray elements, jobject throwable) {
   UNIMPLEMENTED(JVM_InitStackTraceElementArray);
   return;
 }
 
-JNIEXPORT jint JNICALL
-JVM_MoreStackWalk(JNIEnv *env, jobject stackStream, jlong mode, jlong anchor,
+JNIEXPORT jint JNICALL JVM_MoreStackWalk(JNIEnv *env, jobject stackStream, jlong mode, jlong anchor,
                   jint frame_count, jint start_index,
                   jobjectArray frames) {
   UNIMPLEMENTED(JVM_MoreStackWalk);
   return 0;
 }
 
-JNIEXPORT void JNICALL
-JVM_SetBootLoaderUnnamedModule(JNIEnv *env, jobject module) {
+JNIEXPORT void JNICALL JVM_SetBootLoaderUnnamedModule(JNIEnv *env, jobject module) {
   UNIMPLEMENTED(JVM_SetBootLoaderUnnamedModule);
   return;
 }
 
-JNIEXPORT void JNICALL
-JVM_WaitForReferencePendingList(JNIEnv *env) {
+JNIEXPORT void JNICALL JVM_WaitForReferencePendingList(JNIEnv *env) {
   UNIMPLEMENTED(JVM_WaitForReferencePendingList);
   return;
 }
