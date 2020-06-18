@@ -392,6 +392,11 @@ final class FileSystems {
             return wrap(delegate.getTempDirectory());
         }
 
+        @Override
+        public boolean isSameFile(Path path1, Path path2, LinkOption... options) throws IOException {
+            return delegate.isSameFile(unwrap(path1), unwrap(path2), options);
+        }
+
         Path wrap(Path path) {
             return path == null ? null : factory.apply(path);
         }
@@ -853,6 +858,19 @@ final class FileSystems {
             return result;
         }
 
+        @Override
+        public boolean isSameFile(Path path1, Path path2, LinkOption... options) throws IOException {
+            if (isFollowLinks(options)) {
+                Path absolutePath1 = resolveRelative(path1);
+                Path absolutePath2 = resolveRelative(path2);
+                return delegate.isSameFile(absolutePath1, absolutePath2);
+            } else {
+                // The FileSystemProvider.isSameFile always resolves symlinks
+                // we need to use the default implementation comparing the canonical paths
+                return InternalFileSystem.super.isSameFile(path1, path2, options);
+            }
+        }
+
         private Path resolveRelative(Path path) {
             return !path.isAbsolute() && userDir != null ? toAbsolutePath(path) : path;
         }
@@ -1002,6 +1020,11 @@ final class FileSystems {
         public Path readSymbolicLink(Path link) throws IOException {
             throw forbidden(link);
         }
+
+        @Override
+        public boolean isSameFile(Path path1, Path path2, LinkOption... options) throws IOException {
+            throw forbidden(path1);
+        }
     }
 
     private static class LanguageHomeFileSystem extends DeniedIOFileSystem {
@@ -1090,6 +1113,11 @@ final class FileSystems {
         @Override
         public Path toRealPath(Path path, LinkOption... linkOptions) throws IOException {
             return fullIO.toRealPath(path, linkOptions);
+        }
+
+        @Override
+        public boolean isSameFile(Path path1, Path path2, LinkOption... options) throws IOException {
+            return fullIO.isSameFile(path1, path2, options);
         }
 
         private boolean inLanguageHome(final Path path) {

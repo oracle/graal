@@ -1599,6 +1599,41 @@ public final class TruffleFile {
         return detectMimeType(null);
     }
 
+    /**
+     * Tests if this and the given {@link TruffleFile} locate the same file. If both
+     * {@code TruffleFile} objects are {@link TruffleFile#equals(Object) equal} then this method
+     * returns {@code true} without any checks. Otherwise, this method checks if both
+     * {@link TruffleFile}s locate the same file. Depending on the {@link FileSystem} implementation
+     * it may require to access both files.
+     *
+     * @param other the other {@link TruffleFile}
+     * @return {@code true} if this and the given {@link TruffleFile} locate the same file
+     * @throws IOException in case of IO error
+     * @throws SecurityException if the {@link FileSystem} denied the operation
+     * @since 20.2.0
+     */
+    @TruffleBoundary
+    public boolean isSameFile(TruffleFile other, LinkOption... options) throws IOException {
+        try {
+            checkFileOperationPreconditions();
+            other.checkFileOperationPreconditions();
+            if (this.equals(other)) {
+                return true;
+            }
+            // We need to convert the paths to absolute paths to ensure
+            // that the SecurityException is thrown when this file is an internal file
+            // and the other is public file.
+            return fileSystemContext.fileSystem.isSameFile(
+                            getAbsoluteFile().normalizedPath,
+                            other.getAbsoluteFile().normalizedPath,
+                            options);
+        } catch (IOException | SecurityException e) {
+            throw e;
+        } catch (Throwable t) {
+            throw wrapHostException(t);
+        }
+    }
+
     @TruffleBoundary
     String detectMimeType(Set<String> validMimeTypes) {
         try {

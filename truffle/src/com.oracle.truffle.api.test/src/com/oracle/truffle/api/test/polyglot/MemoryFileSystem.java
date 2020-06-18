@@ -1080,7 +1080,7 @@ public final class MemoryFileSystem implements FileSystem {
 
         @Override
         public Path toRealPath(LinkOption... options) throws IOException {
-            return new MemoryPath(delegate.toRealPath(options));
+            return this;
         }
 
         @Override

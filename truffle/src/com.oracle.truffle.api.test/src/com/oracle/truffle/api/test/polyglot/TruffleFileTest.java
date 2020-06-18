@@ -441,6 +441,17 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         assertTrue("Failed to check methods: " + untestedMethods.stream().map(Method::getName).collect(Collectors.joining(", ")), untestedMethods.isEmpty());
     }
 
+    @Test
+    public void testIsSameFile() throws IOException {
+        setupEnv(Context.create());
+        TruffleFile publicFile = languageEnv.getPublicTruffleFile("a");
+        TruffleFile internalFile = languageEnv.getInternalTruffleFile("a");
+        assertTrue(publicFile.isSameFile(publicFile));
+        assertTrue(internalFile.isSameFile(internalFile));
+        assertFails(() -> publicFile.isSameFile(internalFile), SecurityException.class);
+        assertFails(() -> internalFile.isSameFile(publicFile), SecurityException.class);
+    }
+
     private static Type erase(Type type) {
         if (type instanceof ParameterizedType) {
             return ((ParameterizedType) type).getRawType();
@@ -677,6 +688,11 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         @Override
         public void copy(Path source, Path target, CopyOption... options) throws IOException {
             fail();
+        }
+
+        @Override
+        public boolean isSameFile(Path path1, Path path2, LinkOption... options) throws IOException {
+            throw fail();
         }
 
         private static RuntimeException fail() {
