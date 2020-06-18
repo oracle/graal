@@ -1,5 +1,5 @@
 suite = {
-    "mxversion": "5.263.7",
+    "mxversion": "5.265.3",
     "name": "substratevm",
     "version" : "20.2.0",
     "release" : False,
@@ -630,6 +630,20 @@ suite = {
         },
 
         "com.oracle.svm.thirdparty": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.core",
+            ],
+            "checkstyle": "com.oracle.svm.truffle",
+            "javaCompliance": "8+",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+            ],
+            "workingSets": "SVM",
+        },
+
+        "com.oracle.svm.bench": {
             "subDir": "src",
             "sourceDirs": ["src"],
             "dependencies": [

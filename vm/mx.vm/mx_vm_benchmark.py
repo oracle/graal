@@ -324,7 +324,7 @@ class NativeImageVM(GraalVm):
                 if include_bench_out:
                     self.bench_out(s)
                 else:
-                    mx.logv(s)
+                    mx.logv(s, end='')
                 return v
             return writeFun
 
@@ -334,7 +334,7 @@ class NativeImageVM(GraalVm):
                 if include_bench_err:
                     self.bench_err(s)
                 else:
-                    mx.logv(s)
+                    mx.logv(s, end='')
                 return v
             return writeFun
 
