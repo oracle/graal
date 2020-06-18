@@ -89,9 +89,8 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
 
     @Option(name = "", help = "Enable the Warmup Estimator (default: false).", category = OptionCategory.USER) //
     static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
-    // @formatter: off
-    @Option(help = "Specifies the root representing a benchmark iteration as 'rootName:fileName:lineNumber' where any of the parts are optional. Multiple entries can be specified separated by commas. (e.g. 'main::,foo:foo.js:,fact:factorial.js:14').", category = OptionCategory.USER)
-    // @formatter: on
+    @Option(help = "Specifies the root representing a benchmark iteration as 'rootName:fileName:lineNumber' where any of the parts are optional. " +
+                    "Multiple entries can be specified separated by commas. (e.g. 'main::,foo:foo.js:,fact:factorial.js:14').", category = OptionCategory.USER) //
     static final OptionKey<List<Location>> Root = new OptionKey<>(Collections.emptyList(), LOCATION_OPTION_TYPE);
     @Option(name = "OutputFile", help = "Save output to the given file. Output is printed to stdout by default.", category = OptionCategory.USER) //
     static final OptionKey<String> OUTPUT_FILE = new OptionKey<>("");
@@ -246,7 +245,7 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
         @Override
         public String toString() {
             StringBuilder builder = new StringBuilder(rootName);
-            if (!"".equals(fileName))  {
+            if (!"".equals(fileName)) {
                 builder.append(':');
                 builder.append(fileName);
             } else if (line != null) {

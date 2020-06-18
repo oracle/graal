@@ -27,6 +27,7 @@ package com.oracle.truffle.tools.warmup.impl;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.locks.Lock;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -38,7 +39,7 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 class WarmupEstimatorNode extends ExecutionEventNode {
 
     private final List<Long> times;
-    private FrameSlot startSlot;
+    @CompilerDirectives.CompilationFinal private volatile FrameSlot startSlot;
 
     WarmupEstimatorNode() {
         this.times = new ArrayList<>();
@@ -48,7 +49,13 @@ class WarmupEstimatorNode extends ExecutionEventNode {
     protected void onEnter(VirtualFrame frame) {
         if (this.startSlot == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            startSlot = frame.getFrameDescriptor().findOrAddFrameSlot(this, FrameSlotKind.Long);
+            Lock lock = getLock();
+            lock.lock();
+            try {
+                startSlot = frame.getFrameDescriptor().findOrAddFrameSlot(this, FrameSlotKind.Long);
+            } finally {
+                lock.unlock();
+            }
         }
         frame.setLong(startSlot, System.nanoTime());
     }
