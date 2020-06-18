@@ -127,7 +127,9 @@ public class TypeInitializerGraph {
     }
 
     private void addInitializerDependencies(AnalysisType t) {
-        addInterfaceDependencies(t, t.getInterfaces());
+        if (t.isInstanceClass()) {
+            addInterfaceDependencies(t, t.getInterfaces());
+        }
         if (t.getSuperclass() != null) {
             addDependency(t, t.getSuperclass());
         }
