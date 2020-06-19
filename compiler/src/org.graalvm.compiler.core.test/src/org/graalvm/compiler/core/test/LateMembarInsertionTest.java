@@ -195,45 +195,6 @@ public class LateMembarInsertionTest extends GraalCompilerTest {
         verifyMembars("volatileFieldStore", membarsExpected());
     }
 
-    // Unused field load should be optimized out and leave no barrier behind
-    @SuppressWarnings("unused")
-    public static void volatileFieldStoreUnusedVolatileFieldLoadVolatileFieldStore(int v2) {
-        VolatileAccess2.field = v2;
-        int v1 = VolatileAccess.field;
-        VolatileAccess2.field = v2;
-    }
-
-    @Test
-    public void test09() {
-        StructuredGraph graph = getFinalGraph(getResolvedJavaMethod("volatileFieldStoreUnusedVolatileFieldLoadVolatileFieldStore"));
-        List<TypePair> accesses = getAccesses(graph);
-
-        Assert.assertEquals(accesses.size(), 2);
-        Assert.assertEquals(accesses.get(0).getType(), volatileAccess2Type);
-        Assert.assertEquals(accesses.get(1).getType(), volatileAccess2Type);
-        Assert.assertTrue(accesses.get(0).isWrite());
-        Assert.assertTrue(accesses.get(1).isWrite());
-        Assert.assertEquals(membarsExpected() ? 4 : 0, getMembars(graph).size());
-    }
-
-    // Unused field load should be optimized out and leave no barrier behind
-    @SuppressWarnings("unused")
-    public static void unusedVolatileFieldLoadVolatileFieldStore(int v2) {
-        int v1 = VolatileAccess.field;
-        VolatileAccess2.field = v2;
-    }
-
-    @Test
-    public void test10() {
-        StructuredGraph graph = getFinalGraph(getResolvedJavaMethod("unusedVolatileFieldLoadVolatileFieldStore"));
-        List<TypePair> accesses = getAccesses(graph);
-
-        Assert.assertEquals(accesses.size(), 1);
-        Assert.assertEquals(accesses.get(0).getType(), volatileAccess2Type);
-        Assert.assertTrue(accesses.get(0).isWrite());
-        Assert.assertEquals(membarsExpected() ? 2 : 0, getMembars(graph).size());
-    }
-
     public static int unsafeVolatileFieldLoad(Object o, long offset) {
         return UNSAFE.getIntVolatile(o, offset);
     }

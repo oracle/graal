@@ -43,20 +43,11 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.LocationIdentity;
 
 @NodeInfo(nameTemplate = "VolatileRead#{p#location/s}", allowedUsageTypes = Memory, cycles = CYCLES_2, size = SIZE_1)
-public class VolatileReadNode extends ReadNode implements SingleMemoryKill, Lowerable, Simplifiable {
+public class VolatileReadNode extends ReadNode implements SingleMemoryKill, Lowerable {
     public static final NodeClass<VolatileReadNode> TYPE = NodeClass.create(VolatileReadNode.class);
 
-    public VolatileReadNode(AddressNode address, LocationIdentity location, Stamp stamp, BarrierType barrierType) {
-        super(TYPE, address, location, stamp, null, barrierType, false, null);
-    }
-
-    @Override
-    public void simplify(SimplifierTool tool) {
-        if (lastLocationAccess != null && hasOnlyUsagesOfType(Memory)) {
-            replaceAtUsages(lastLocationAccess.asNode(), Memory);
-            assert hasNoUsages();
-            graph().removeFixed(this);
-        }
+    public VolatileReadNode(AddressNode address, Stamp stamp, BarrierType barrierType) {
+        super(TYPE, address, LocationIdentity.any(), stamp, null, barrierType, false, null);
     }
 
     @Override
