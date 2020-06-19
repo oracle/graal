@@ -50,6 +50,7 @@ import org.graalvm.collections.Equivalence;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.utilities.NeverValidAssumption;
 
 /**
@@ -715,7 +716,7 @@ public abstract class Shape {
      */
     public int getFlags() {
         CompilerAsserts.neverPartOfCompilation();
-        throw new UnsupportedOperationException();
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     /**
@@ -728,7 +729,7 @@ public abstract class Shape {
      */
     protected Shape setFlags(int newFlags) {
         CompilerAsserts.neverPartOfCompilation();
-        throw new UnsupportedOperationException();
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     /**
@@ -771,7 +772,7 @@ public abstract class Shape {
      */
     public Object getDynamicType() {
         CompilerAsserts.neverPartOfCompilation();
-        throw new UnsupportedOperationException();
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     /**
@@ -785,7 +786,7 @@ public abstract class Shape {
      */
     protected Shape setDynamicType(Object objectType) {
         CompilerAsserts.neverPartOfCompilation();
-        throw new UnsupportedOperationException();
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     /**
@@ -925,7 +926,7 @@ public abstract class Shape {
      */
     public Shape makeSharedShape() {
         CompilerAsserts.neverPartOfCompilation();
-        throw new UnsupportedOperationException();
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     /**
@@ -967,7 +968,7 @@ public abstract class Shape {
      */
     public boolean allPropertiesMatch(@SuppressWarnings("unused") Predicate<Property> predicate) {
         CompilerAsserts.neverPartOfCompilation();
-        throw new UnsupportedOperationException();
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     /**

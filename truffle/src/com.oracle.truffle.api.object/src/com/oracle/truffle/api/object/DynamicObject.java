@@ -118,7 +118,7 @@ public abstract class DynamicObject implements TruffleObject {
     /**
      * This constructor is obsolete, do not use it. Use {@link #DynamicObject(Shape)} instead.
      *
-     * @throws UnsupportedOperationException
+     * @throws AssertionError
      * @since 0.8 or earlier
      * @deprecated This obsolete constructor has been replaced by {@link #DynamicObject(Shape)} and
      *             will be removed in the future.
@@ -126,7 +126,7 @@ public abstract class DynamicObject implements TruffleObject {
     @Deprecated
     protected DynamicObject() {
         CompilerAsserts.neverPartOfCompilation();
-        throw new UnsupportedOperationException();
+        throw CompilerDirectives.shouldNotReachHere();
     }
 
     /**
