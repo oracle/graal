@@ -910,6 +910,77 @@ public class FloatStamp extends PrimitiveStamp {
 
                     null, null, null,
 
+                    new BinaryOp.Max(true, true) {
+
+                        @Override
+                        public Constant foldConstant(Constant const1, Constant const2) {
+                            PrimitiveConstant a = (PrimitiveConstant) const1;
+                            PrimitiveConstant b = (PrimitiveConstant) const2;
+                            assert a.getJavaKind() == b.getJavaKind();
+                            switch (a.getJavaKind()) {
+                                case Float:
+                                    return JavaConstant.forFloat(Math.max(a.asFloat(), b.asFloat()));
+                                case Double:
+                                    return JavaConstant.forDouble(Math.max(a.asDouble(), b.asDouble()));
+                                default:
+                                    throw GraalError.shouldNotReachHere();
+                            }
+                        }
+
+                        @Override
+                        public Stamp foldStamp(Stamp s1, Stamp s2) {
+                            if (s1.isEmpty()) {
+                                return s1;
+                            }
+                            if (s2.isEmpty()) {
+                                return s2;
+                            }
+                            FloatStamp stamp1 = (FloatStamp) s1;
+                            FloatStamp stamp2 = (FloatStamp) s2;
+                            Stamp folded = maybeFoldConstant(this, stamp1, stamp2);
+                            if (folded != null) {
+                                return folded;
+                            }
+
+                            return new FloatStamp(stamp1.getBits(), Math.max(stamp1.lowerBound, stamp2.lowerBound), Math.max(stamp1.upperBound, stamp2.upperBound), false);
+                        }
+                    },
+
+                    new BinaryOp.Min(true, true) {
+
+                        @Override
+                        public Constant foldConstant(Constant const1, Constant const2) {
+                            PrimitiveConstant a = (PrimitiveConstant) const1;
+                            PrimitiveConstant b = (PrimitiveConstant) const2;
+                            assert a.getJavaKind() == b.getJavaKind();
+                            switch (a.getJavaKind()) {
+                                case Float:
+                                    return JavaConstant.forFloat(Math.min(a.asFloat(), b.asFloat()));
+                                case Double:
+                                    return JavaConstant.forDouble(Math.min(a.asDouble(), b.asDouble()));
+                                default:
+                                    throw GraalError.shouldNotReachHere();
+                            }
+                        }
+
+                        @Override
+                        public Stamp foldStamp(Stamp s1, Stamp s2) {
+                            if (s1.isEmpty()) {
+                                return s1;
+                            }
+                            if (s2.isEmpty()) {
+                                return s2;
+                            }
+                            FloatStamp stamp1 = (FloatStamp) s1;
+                            FloatStamp stamp2 = (FloatStamp) s2;
+                            Stamp folded = maybeFoldConstant(this, stamp1, stamp2);
+                            if (folded != null) {
+                                return folded;
+                            }
+                            return new FloatStamp(stamp1.getBits(), Math.min(stamp1.lowerBound, stamp2.lowerBound), Math.min(stamp1.upperBound, stamp2.upperBound), false);
+                        }
+                    },
+
                     new FloatConvertOp(F2I) {
 
                         @Override

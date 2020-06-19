@@ -33,9 +33,12 @@ import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.Una
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.TAN;
 
 import org.graalvm.compiler.lir.aarch64.AArch64ArithmeticLIRGeneratorTool.RoundingMode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AbsNode;
 import org.graalvm.compiler.nodes.calc.IntegerMulHighNode;
+import org.graalvm.compiler.nodes.calc.MaxNode;
+import org.graalvm.compiler.nodes.calc.MinNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
@@ -167,6 +170,7 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 }
             });
         }
+        registerMinMax(r);
     }
 
     private static void registerFMA(Registration r) {
@@ -213,6 +217,27 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 return true;
             }
         });
+    }
+
+    private static void registerMinMax(Registration r) {
+        JavaKind[] supportedKinds = {JavaKind.Float, JavaKind.Double};
+
+        for (JavaKind kind : supportedKinds) {
+            r.register2("max", kind.toJavaClass(), kind.toJavaClass(), new InvocationPlugin() {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
+                    b.push(kind, b.append(MaxNode.create(x, y, NodeView.DEFAULT)));
+                    return true;
+                }
+            });
+            r.register2("min", kind.toJavaClass(), kind.toJavaClass(), new InvocationPlugin() {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
+                    b.push(kind, b.append(MinNode.create(x, y, NodeView.DEFAULT)));
+                    return true;
+                }
+            });
+        }
     }
 
     private static void registerUnaryMath(Registration r, String name, UnaryOperation operation) {
