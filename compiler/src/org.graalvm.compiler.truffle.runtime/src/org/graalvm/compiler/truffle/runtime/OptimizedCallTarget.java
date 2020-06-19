@@ -538,8 +538,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     /**
      * Returns <code>true</code> if the call target was already compiled or was compiled
      * synchronously. Returns <code>false</code> if compilation was not scheduled or is happening in
-     * the background. Use {@link #isSubmittedForCompilation()} to find out whether it is submitted for
-     * compilation.
+     * the background. Use {@link #isSubmittedForCompilation()} to find out whether it is submitted
+     * for compilation.
      */
     public final boolean compile(boolean lastTierCompilation) {
         if (!needsCompile(lastTierCompilation)) {
@@ -1240,7 +1240,21 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return compilationTask;
     }
 
+    /**
+     * This marks the end or cancellation of the compilation.
+     *
+     * Once the compilation has started it may only ever be called by the thread performing the
+     * compilation, and after the compilation is completely done (either successfully or not
+     * successfully).
+     */
     final synchronized void resetCompilationTask() {
+        /*
+         * We synchronize because this is called from the compilation threads so we want to make
+         * sure we have finished setting the compilationTask in #compile. Otherwise
+         * `this.compilationTask = null` might run before then the field is set in #compile and this
+         * will get stuck in a "compiling" state.
+         */
+        assert this.compilationTask != null;
         this.compilationTask = null;
     }
 
