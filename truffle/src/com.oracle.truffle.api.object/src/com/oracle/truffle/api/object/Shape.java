@@ -96,7 +96,7 @@ public abstract class Shape {
 
     /**
      * Internal superclass shared by {@link Builder} and {@link DerivedBuilder}.
-     * 
+     *
      * @since 20.2.0
      */
     abstract static class AbstractBuilder<T extends AbstractBuilder<T>> {
@@ -560,7 +560,9 @@ public abstract class Shape {
      * @return the shape after defining the property
      * @since 0.8 or earlier
      * @deprecated Use {@link #defineProperty(Object, Object, int)} or
-     *             {@link #addConstantProperty(Object, Object, int)}
+     *             {@link DynamicObjectLibrary#put(DynamicObject, Object, Object)} or
+     *             {@link DynamicObjectLibrary#putWithFlags(DynamicObject, Object, Object, int)} or
+     *             {@link DynamicObjectLibrary#putConstant(DynamicObject, Object, Object, int)}
      */
     @Deprecated
     public abstract Shape defineProperty(Object key, Object value, int flags, LocationFactory locationFactory);
@@ -928,20 +930,6 @@ public abstract class Shape {
      */
     protected boolean hasInstanceProperties() {
         return true;
-    }
-
-    /**
-     * Add a new constant property to the shape, yielding a new or cached shape.
-     *
-     * @param key the key of the property to add
-     * @param value the constant value of the property to add
-     * @param propertyFlags the property's flags
-     * @return a new shape with the property
-     * @throws IllegalArgumentException if the property already exists in the shape
-     * @since 20.2.0
-     */
-    public Shape addConstantProperty(Object key, Object value, int propertyFlags) {
-        return Shape.newBuilder(this).addConstantProperty(key, value, propertyFlags).build();
     }
 
     /**

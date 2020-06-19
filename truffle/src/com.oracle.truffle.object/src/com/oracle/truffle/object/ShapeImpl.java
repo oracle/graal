@@ -1197,18 +1197,6 @@ public abstract class ShapeImpl extends Shape {
     /** @since 20.2.0 */
     @TruffleBoundary
     @Override
-    public Shape addConstantProperty(Object key, Object value, int propertyFlags) {
-        if (getProperty(key) != null) {
-            throw new IllegalArgumentException("Property already exists");
-        }
-        Location location = allocator().constantLocation(value);
-        Property property = Property.create(key, location, propertyFlags);
-        return addProperty(property);
-    }
-
-    /** @since 20.2.0 */
-    @TruffleBoundary
-    @Override
     public Assumption getPropertyAssumption(Object key) {
         if (allowPropertyAssumptions()) {
             Assumption propertyAssumption = getOrCreatePropertyAssumptions().getPropertyAssumption(key);
