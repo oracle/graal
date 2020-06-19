@@ -75,6 +75,10 @@ public class FunctionPointerLogHandler implements LogHandler {
         }
     }
 
+    public CFunctionPointer getFatalErrorFunctionPointer() {
+        return fatalErrorFunctionPointer;
+    }
+
     interface LogFunctionPointer extends CFunctionPointer {
         @InvokeCFunctionPointer
         void invoke(CCharPointer bytes, UnsignedWord length);

@@ -73,6 +73,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedPluginFactory;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
 import org.graalvm.compiler.nodes.spi.SnippetParameterInfo;
+import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.compiler.options.OptionDescriptorsMap;
@@ -89,10 +90,14 @@ import org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPlug
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.libgraal.LibGraal;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.VMRuntime;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -108,7 +113,9 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.jni.JNIRuntimeAccess;
+import com.oracle.svm.core.log.FunctionPointerLogHandler;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.option.XOptions;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -134,6 +141,15 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.services.Services;
 
 public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFeature {
+
+    static class Options {
+        // @formatter:off
+        @Option(help = "Converts an exception triggered by the CrashAt option into a fatal error " +
+                       "if a non-null pointer was passed in the _fatal option to JNI_CreateJavaVM. " +
+                       "This option exists for the purpose of testing fatal error handling in libgraal.")
+        static final RuntimeOptionKey<Boolean> CrashAtIsFatal = new RuntimeOptionKey<>(false);
+        // @formatter:on
+    }
 
     private HotSpotReplacementsImpl hotSpotSubstrateReplacements;
 
@@ -667,6 +683,28 @@ final class Target_org_graalvm_compiler_core_GraalServiceThread {
     @SuppressWarnings("static-method")
     void afterRun() {
         LibGraal.detachCurrentThread(false);
+    }
+}
+
+@TargetClass(className = "org.graalvm.compiler.core.GraalCompiler", onlyWith = LibGraalFeature.IsEnabled.class)
+final class Target_org_graalvm_compiler_core_GraalCompiler {
+    @SuppressWarnings("unused")
+    @Substitute()
+    private static void notifyCrash(String crashMessage) {
+        if (LibGraalFeature.Options.CrashAtIsFatal.getValue()) {
+            LogHandler handler = ImageSingletons.lookup(LogHandler.class);
+            if (handler instanceof FunctionPointerLogHandler) {
+                FunctionPointerLogHandler fpHandler = (FunctionPointerLogHandler) handler;
+                if (fpHandler.getFatalErrorFunctionPointer().isNonNull()) {
+                    try (CCharPointerHolder holder = CTypeConversion.toCString(crashMessage)) {
+                        handler.log(holder.get(), WordFactory.unsigned(crashMessage.getBytes().length));
+                    }
+                    handler.fatalError();
+                }
+            }
+            // If changing this message, update the test for it in mx_vm_gate.py
+            System.out.println("CrashAtIsFatal: no fatalError function pointer installed");
+        }
     }
 }
 
