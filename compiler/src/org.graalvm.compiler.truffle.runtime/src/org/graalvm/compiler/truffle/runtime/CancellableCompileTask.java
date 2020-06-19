@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
+import java.lang.ref.WeakReference;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -32,13 +33,13 @@ import java.util.concurrent.TimeoutException;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 
 public final class CancellableCompileTask implements TruffleCompilationTask {
-    private final OptimizedCallTarget target;
+    private final WeakReference<OptimizedCallTarget> targetRef;
     private volatile Future<?> future;
     private volatile boolean cancelled;
     private final boolean lastTierCompilation;
 
-    public CancellableCompileTask(OptimizedCallTarget target, boolean lastTierCompilation) {
-        this.target = target;
+    public CancellableCompileTask(WeakReference<OptimizedCallTarget> targetRef, boolean lastTierCompilation) {
+        this.targetRef = targetRef;
         this.lastTierCompilation = lastTierCompilation;
     }
 
@@ -81,7 +82,10 @@ public final class CancellableCompileTask implements TruffleCompilationTask {
     }
 
     public synchronized void finished() {
-        target.resetCompilationTask();
+        final OptimizedCallTarget target = targetRef.get();
+        if (target != null) {
+            target.resetCompilationTask();
+        }
     }
 
     @Override
