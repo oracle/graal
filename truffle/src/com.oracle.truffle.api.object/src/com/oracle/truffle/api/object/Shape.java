@@ -587,6 +587,8 @@ public abstract class Shape {
     /**
      * Get a list of all properties that this Shape stores.
      *
+     * Properties with a {@link HiddenKey} are not included.
+     *
      * @return list of properties
      * @since 0.8 or earlier
      */
@@ -612,6 +614,9 @@ public abstract class Shape {
 
     /**
      * Get a list of all property keys in insertion order.
+     *
+     *
+     * Properties with a {@link HiddenKey} are not included.
      *
      * @since 0.8 or earlier
      */

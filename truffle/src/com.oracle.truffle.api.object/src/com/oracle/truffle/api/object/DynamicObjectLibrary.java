@@ -450,6 +450,8 @@ public abstract class DynamicObjectLibrary extends Library {
      * Gets a snapshot of the object's property keys, in insertion order. The returned array may
      * have been cached and must not be mutated.
      *
+     * Properties with a {@link HiddenKey} are not included.
+     *
      * @return a read-only array of the object's property keys.
      * @since 20.2.0
      */
@@ -458,6 +460,8 @@ public abstract class DynamicObjectLibrary extends Library {
     /**
      * Gets an array snapshot of the object's properties, in insertion order. The returned array may
      * have been cached and must not be mutated.
+     *
+     * Properties with a {@link HiddenKey} are not included.
      *
      * @return a read-only array of the object's properties.
      * @since 20.2.0
