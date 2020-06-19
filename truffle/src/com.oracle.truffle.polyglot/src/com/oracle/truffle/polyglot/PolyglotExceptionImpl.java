@@ -251,9 +251,14 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
     }
 
     private void printStackTrace(PrintStreamOrWriter s) {
-        // Guard against malicious overrides of Throwable.equals by
-        // using a Set with identity equality semantics.
         synchronized (s.lock()) {
+            // For an internal error without guest frames print only the internal error.
+            if (isInternalError() && (guestFrames == null || guestFrames.isEmpty())) {
+                s.print(impl.getClass().getName() + ": ");
+                s.printStackTrace(exception);
+                s.println("Internal GraalVM error, please report at https://github.com/oracle/graal/issues/.");
+                return;
+            }
             // Print our stack trace
             if (isInternalError() || getMessage() == null || getMessage().isEmpty()) {
                 s.println(impl);
@@ -383,6 +388,9 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
         /** Returns the object to be locked when using this StreamOrWriter. */
         abstract Object lock();
 
+        /** Prints the specified string. */
+        abstract void print(Object o);
+
         /** Prints the specified string as a line on this StreamOrWriter. */
         abstract void println(Object o);
 
@@ -399,6 +407,11 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
         @Override
         Object lock() {
             return printStream;
+        }
+
+        @Override
+        void print(Object o) {
+            printStream.print(o);
         }
 
         @Override
@@ -422,6 +435,11 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
         @Override
         Object lock() {
             return printWriter;
+        }
+
+        @Override
+        void print(Object o) {
+            printWriter.print(o);
         }
 
         @Override

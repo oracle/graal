@@ -1574,7 +1574,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         if (needsEnter(context)) {
             return enter(context);
         }
-        assert PolyglotContextImpl.requireContext() != null;
+        assert PolyglotContextImpl.currentNotEntered() != null;
         return NO_ENTER;
     }
 

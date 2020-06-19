@@ -418,10 +418,15 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
 
     /**
      * May be used anywhere to lookup the context.
+     *
+     * @throws IllegalStateException when there is no current context available.
      */
     static PolyglotContextImpl requireContext() {
         PolyglotContextImpl context = currentNotEntered();
-        assert context != null : "No current context available.";
+        if (context == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw PolyglotEngineException.illegalState("There is no current context available.");
+        }
         return context;
     }
 
