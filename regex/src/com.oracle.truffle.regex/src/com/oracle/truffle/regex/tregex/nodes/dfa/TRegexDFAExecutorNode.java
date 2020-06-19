@@ -553,10 +553,10 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
     private int execTransition(TRegexDFAExecutorLocals locals, DFAStateNode state, int i) {
         CompilerAsserts.partialEvaluationConstant(state);
         CompilerAsserts.partialEvaluationConstant(i);
-        state.successorFound(locals, this, i);
         if (recordExecution()) {
             debugRecorder.recordTransition(locals.getIndex(), state.getId(), i);
         }
+        state.successorFound(locals, this, i);
         return state.successors[i];
     }
 

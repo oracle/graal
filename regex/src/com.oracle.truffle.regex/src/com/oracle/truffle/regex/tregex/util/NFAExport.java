@@ -389,7 +389,7 @@ public final class NFAExport {
     private String labelTransition(NFAStateTransition transition, int priority) {
         StringBuilder sb = new StringBuilder();
         if (!(transition.getTarget(forward).isFinalState(forward))) {
-            sb.append(transition.getTarget(forward).getCharSet());
+            sb.append(transition.getCodePointSet());
         }
         if (fullLabels) {
             sb.append(", p").append(priority).append(", ").append(transition.getGroupBoundaries());

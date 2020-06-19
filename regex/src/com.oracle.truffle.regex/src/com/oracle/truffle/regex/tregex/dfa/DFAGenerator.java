@@ -398,7 +398,7 @@ public final class DFAGenerator implements JsonConvertible {
                 if (!target.isFinalState(isForward()) && (!state.isBackwardPrefixState() || target.hasPrefixStates())) {
                     anyPrefixStateSuccessors |= target.hasPrefixStates();
                     allPrefixStateSuccessors &= target.hasPrefixStates();
-                    canonicalizer.addArgument(nfaTransition, target.getCharSet());
+                    canonicalizer.addArgument(nfaTransition, isForward() ? nfaTransition.getCodePointSet() : target.getCharSet());
                 } else if (isForward() && target.isUnAnchoredFinalState()) {
                     assert target == nfa.getReverseUnAnchoredEntry().getSource();
                     break outer;
@@ -752,7 +752,7 @@ public final class DFAGenerator implements JsonConvertible {
                     if (i == literalStart && !prefixNFAStates.contains(t.getTarget())) {
                         continue;
                     }
-                    if (c.intersects(t.getTarget().getCharSet())) {
+                    if (c.intersects(t.getCodePointSet())) {
                         nextState.add(t.getTarget());
                     }
                 }

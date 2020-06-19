@@ -96,6 +96,7 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
                             (short) transitionIDCounter.inc(),
                             getUnAnchoredInitialState(),
                             getUnAnchoredInitialState(),
+                            ast.getEncoding().getFullSet(),
                             GroupBoundaries.getEmptyInstance());
             this.transitions[initialLoopBack.getId()] = initialLoopBack;
         }

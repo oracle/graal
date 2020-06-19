@@ -64,4 +64,9 @@ public class PythonTests extends RegexTestBase {
         test("^(\\s*)([rRuUbB]{,2})(\"\"\"(?:.|\\n)*?\"\"\")", "", "R\"\"\"\"\"\"", 0, true, 0, 7, 0, 0, 0, 1, 1, 7);
         test("A{,}", "", "AAAA", 0, true, 0, 4);
     }
+
+    @Test
+    public void gr23871() {
+        test("[^ ]+?(?:-(?:(?<=[a-z]{2}-)|(?<=[a-z]-[a-z]-)))", "su", "this-is-a-useful-feature", 8, true, 8, 10);
+    }
 }

@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.regex.tregex.automaton;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 /**
  * Represents a set of NFA transitions to be used in {@link TransitionBuilder}.
  */
@@ -71,5 +73,11 @@ public class TransitionSet<SI extends StateIndex<? super S>, S extends AbstractS
 
     public T getTransition(int i) {
         return transitions[i];
+    }
+
+    @TruffleBoundary
+    @Override
+    public String toString() {
+        return targetStateSet.toString();
     }
 }
