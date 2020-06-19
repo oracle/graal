@@ -1,0 +1,10 @@
+> cat > ${TMP_DIR}/test.py
+< print('Ahoj')
+> graalpython --insight=agent-python.py --experimental-options ${TMP_DIR}/test.py
+Python: Insight version 0.6 is launching
+Python: Hooks are ready!
+Python: observed loading of site.py
+Python: observed loading of _sitebuiltins.py
+Please note: This Python implementation is in the very early stages, and can run little more than basic benchmarks at this point.
+Python: observed loading of test.py
+Ahoj
