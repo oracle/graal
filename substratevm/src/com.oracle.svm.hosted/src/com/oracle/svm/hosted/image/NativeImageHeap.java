@@ -29,12 +29,14 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import java.lang.reflect.Array;
 import java.lang.reflect.Modifier;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -474,14 +476,40 @@ public final class NativeImageHeap implements ImageHeap {
         heapLayouter.assignObjectToPartition(info, !written || immutable, references, relocatable);
     }
 
-    private static HostedType requireType(Optional<HostedType> optionalType, Object object, Object reason) {
+    private HostedType requireType(Optional<HostedType> optionalType, Object object, Object reason) {
         if (!optionalType.isPresent() || !optionalType.get().isInstantiated()) {
             throw reportIllegalType(object, reason);
         }
         return optionalType.get();
     }
 
-    static RuntimeException reportIllegalType(Object object, Object reason) {
+    RuntimeException reportIllegalType(Object object, Object reason) {
+        try {
+            if (object.getClass().getName().contains("SubstrateFieldLocationIdentity") ||
+                            (reason instanceof ObjectInfo && ((ObjectInfo) reason).object.getClass().getName().contains("ImageHeapInfo"))) {
+                System.out.println("GR-22808: printing out additional diagnostics");
+                System.out.println("Reason:");
+                printObject(object);
+
+                Object cur = reason;
+                while (cur instanceof ObjectInfo) {
+                    ObjectInfo curInfo = (ObjectInfo) cur;
+                    printObject(curInfo.object);
+                    cur = curInfo.reason;
+                }
+
+                System.out.println();
+                System.out.println("All object in the image heap (this is going to be long!):");
+                List<Map.Entry<Object, ObjectInfo>> entries = new ArrayList<>(objects.entrySet());
+                entries.sort((e1, e2) -> Integer.compare(e1.getValue().id, e2.getValue().id));
+                for (Map.Entry<Object, ObjectInfo> e : entries) {
+                    printObject(e.getKey());
+                }
+            }
+        } catch (Throwable t) {
+            System.out.println("GR-22808: exception printing diagnostic information: " + t);
+        }
+
         StringBuilder msg = new StringBuilder();
         msg.append("Image heap writing found a class not seen during static analysis. ");
         msg.append("Did a static field or an object referenced from a static field change during native image generation? ");
@@ -498,6 +526,89 @@ public final class NativeImageHeap implements ImageHeap {
         msg.append(System.lineSeparator()).append("  reachable through:").append(System.lineSeparator());
         fillReasonStack(msg, reason);
         throw UserError.abort(msg.toString());
+    }
+
+    private void printObject(Object object) {
+        try {
+            System.out.println("= object of class: " + object.getClass().getTypeName() + "  identityHashCode: " + Integer.toHexString(System.identityHashCode(object)));
+            ObjectInfo info = objects.get(object);
+            if (info == null) {
+                System.out.println("  no ObjectInfo found");
+            } else {
+                System.out.println("  ObjectInfo: id: " + info.id);
+                System.out.println("    clazz: " + info.clazz);
+                System.out.println("    object: id " + id(info.object) + "  class: " + info.object.getClass().getTypeName() + "  identityHashCode: " +
+                                Integer.toHexString(System.identityHashCode(info.object)));
+                System.out.println("    size: " + info.size);
+                System.out.println("    identityHashCode: " + Integer.toHexString(info.identityHashCode));
+                System.out.println("    partition: " + info.partition);
+                System.out.println("    offsetInPartition: " + info.offsetInPartition);
+            }
+
+            final Optional<HostedType> optionalType = getMetaAccess().optionalLookupJavaType(object.getClass());
+            if (!optionalType.isPresent()) {
+                System.out.println("  no HostedType found");
+            } else {
+                HostedType type = optionalType.get();
+
+                if (type.isInstanceClass()) {
+                    System.out.println("  fields:");
+                    HostedInstanceClass clazz = (HostedInstanceClass) type;
+                    JavaConstant con = SubstrateObjectConstant.forObject(object);
+
+                    for (HostedField field : clazz.getInstanceFields(true)) {
+                        try {
+                            if (field.isAccessed()) {
+                                if (field.getJavaKind() == JavaKind.Object) {
+                                    JavaConstant fieldValueConstant = field.readValue(con);
+                                    if (fieldValueConstant.getJavaKind() == JavaKind.Object) {
+                                        Object fieldValue = SubstrateObjectConstant.asObject(fieldValueConstant);
+                                        if (fieldValue == null) {
+                                            System.out.println("    field " + field.getName() + ": null");
+                                        } else {
+                                            System.out.println("    field " + field.getName() + ": id " + id(fieldValue) + "  class: " + fieldValue.getClass().getTypeName() + "  identityHashCode: " +
+                                                            Integer.toHexString(System.identityHashCode(fieldValue)));
+                                        }
+                                    }
+                                }
+                            }
+                        } catch (Throwable t) {
+                            System.out.println("    error printing field " + field.getName() + ": " + t);
+                        }
+                    }
+
+                } else if (type.isArray()) {
+                    System.out.println("  array elements:");
+                    if (object instanceof Object[]) {
+                        Object[] array = (Object[]) object;
+                        for (int i = 0; i < array.length; i++) {
+                            Object element = array[i];
+                            if (element == null) {
+                                System.out.println("    element " + i + ": null");
+                            } else {
+                                try {
+                                    System.out.println("    element " + i + ": id " + id(element) + "  class: " + element.getClass().getTypeName() + "  identityHashCode: " +
+                                                    Integer.toHexString(System.identityHashCode(element)));
+                                } catch (Throwable t) {
+                                    System.out.println("    error printing array element " + i + ": " + t);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Throwable t) {
+            System.out.println("error printing object: " + t);
+        }
+    }
+
+    private int id(Object object) {
+        ObjectInfo info = objects.get(object);
+        if (info == null) {
+            return -1;
+        } else {
+            return info.id;
+        }
     }
 
     private static StringBuilder fillReasonStack(StringBuilder msg, Object reason) {
@@ -522,7 +633,7 @@ public final class NativeImageHeap implements ImageHeap {
 
     /** Add an object to the model of the native image heap. */
     private ObjectInfo addToImageHeap(Object object, HostedClass clazz, long size, int identityHashCode, Object reason) {
-        ObjectInfo info = new ObjectInfo(object, size, clazz, identityHashCode, reason);
+        ObjectInfo info = new ObjectInfo(object, size, clazz, identityHashCode, reason, objects.size());
         assert !objects.containsKey(object);
         objects.put(object, info);
         return info;
@@ -614,7 +725,9 @@ public final class NativeImageHeap implements ImageHeap {
          */
         final Object reason;
 
-        ObjectInfo(Object object, long size, HostedClass clazz, int identityHashCode, Object reason) {
+        final int id;
+
+        ObjectInfo(Object object, long size, HostedClass clazz, int identityHashCode, Object reason, int id) {
             this.object = object;
             this.clazz = clazz;
             this.partition = null;
@@ -622,6 +735,7 @@ public final class NativeImageHeap implements ImageHeap {
             this.size = size;
             this.identityHashCode = identityHashCode;
             this.reason = reason;
+            this.id = id;
         }
 
         @Override

@@ -125,9 +125,9 @@ public final class NativeImageHeapWriter {
         assert (index % heap.getObjectLayout().getReferenceSize() == 0) : "index " + index + " must be reference-aligned.";
     }
 
-    private static void verifyTargetDidNotChange(Object target, Object reason, Object targetInfo) {
+    private void verifyTargetDidNotChange(Object target, Object reason, Object targetInfo) {
         if (targetInfo == null) {
-            throw NativeImageHeap.reportIllegalType(target, reason);
+            throw heap.reportIllegalType(target, reason);
         }
     }
 
@@ -137,7 +137,7 @@ public final class NativeImageHeapWriter {
         try {
             value = field.readValue(receiver);
         } catch (AnalysisError.TypeNotFoundError ex) {
-            throw NativeImageHeap.reportIllegalType(ex.getType(), info);
+            throw heap.reportIllegalType(ex.getType(), info);
         }
 
         if (value.getJavaKind() == JavaKind.Object && SubstrateObjectConstant.asObject(value) instanceof RelocatedPointer) {
@@ -381,7 +381,7 @@ public final class NativeImageHeapWriter {
                     try {
                         element = heap.getAnalysisUniverse().replaceObject(oarray[i]);
                     } catch (AnalysisError.TypeNotFoundError ex) {
-                        throw NativeImageHeap.reportIllegalType(ex.getType(), info);
+                        throw heap.reportIllegalType(ex.getType(), info);
                     }
 
                     assert (oarray[i] instanceof RelocatedPointer) == (element instanceof RelocatedPointer);
