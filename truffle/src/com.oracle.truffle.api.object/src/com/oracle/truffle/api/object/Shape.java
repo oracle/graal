@@ -45,6 +45,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Predicate;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Equivalence;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.utilities.NeverValidAssumption;
@@ -107,15 +110,7 @@ public abstract class Shape {
          */
         public abstract T shapeFlags(int flags);
 
-        /**
-         * If {@code true}, makes the object shared (default: {@code false}).
-         *
-         * @see Shape#isShared()
-         * @since 20.2.0
-         */
-        public abstract T shared(boolean isShared);
-
-        static int checkShapeFlags(int flags) {
+        static int checkFlags(int flags) {
             if ((flags & ~OBJECT_FLAGS_MASK) != 0) {
                 throw new IllegalArgumentException("flags must be in the range (0, 255)");
             }
@@ -150,7 +145,7 @@ public abstract class Shape {
         private Object sharedData;
         private Assumption singleContextAssumption;
 
-        private Builder() {
+        Builder() {
         }
 
         /**
@@ -169,6 +164,7 @@ public abstract class Shape {
          * @since 20.2.0
          */
         public Builder layout(Class<? extends DynamicObject> layoutClass) {
+            CompilerAsserts.neverPartOfCompilation();
             if (!DynamicObject.class.isAssignableFrom(layoutClass)) {
                 throw new IllegalArgumentException(String.format("Expected a subclass of %s but got: %s",
                                 DynamicObject.class.getName(), layoutClass.getTypeName()));
@@ -220,6 +216,7 @@ public abstract class Shape {
          * @since 20.2.0
          */
         public Builder layout(Layout layout) {
+            CompilerAsserts.neverPartOfCompilation();
             if (!DynamicObject.class.isAssignableFrom(layout.getType())) {
                 throw new IllegalArgumentException(String.format("Expected a subclass of %s but got: %s",
                                 DynamicObject.class.getName(), layout.getType().getTypeName()));
@@ -239,6 +236,7 @@ public abstract class Shape {
          */
         @Override
         public Builder dynamicType(Object dynamicType) {
+            CompilerAsserts.neverPartOfCompilation();
             this.dynamicType = checkDynamicType(dynamicType);
             return this;
         }
@@ -253,7 +251,8 @@ public abstract class Shape {
          */
         @Override
         public Builder shapeFlags(int flags) {
-            this.shapeFlags = checkShapeFlags(flags);
+            CompilerAsserts.neverPartOfCompilation();
+            this.shapeFlags = checkFlags(flags);
             return this;
         }
 
@@ -265,8 +264,8 @@ public abstract class Shape {
          * @see DynamicObjectLibrary#markShared(DynamicObject)
          * @since 20.2.0
          */
-        @Override
         public Builder shared(boolean isShared) {
+            CompilerAsserts.neverPartOfCompilation();
             this.shared = isShared;
             return this;
         }
@@ -287,6 +286,7 @@ public abstract class Shape {
          * @since 20.2.0
          */
         public Builder propertyAssumptions(boolean enable) {
+            CompilerAsserts.neverPartOfCompilation();
             this.propertyAssumptions = enable;
             return this;
         }
@@ -299,6 +299,7 @@ public abstract class Shape {
          * @since 20.2.0
          */
         public Builder sharedData(Object sharedData) {
+            CompilerAsserts.neverPartOfCompilation();
             this.sharedData = sharedData;
             return this;
         }
@@ -313,6 +314,7 @@ public abstract class Shape {
          * @since 20.2.0
          */
         public Builder singleContextAssumption(Assumption assumption) {
+            CompilerAsserts.neverPartOfCompilation();
             this.singleContextAssumption = assumption;
             return this;
         }
@@ -323,6 +325,7 @@ public abstract class Shape {
          * @since 20.2.0
          */
         public Shape build() {
+            CompilerAsserts.neverPartOfCompilation();
             int flags = shapeFlags;
             if (shared) {
                 flags = shapeFlags | OBJECT_SHARED;
@@ -335,6 +338,122 @@ public abstract class Shape {
 
             assert shape.isShared() == shared && shape.getFlags() == shapeFlags && shape.getDynamicType() == dynamicType;
             return shape;
+        }
+    }
+
+    /**
+     * Creates a new derived shape builder that allows changing a root shape's flags and dynamic
+     * type and adding constant properties.
+     *
+     * @param baseShape the shape to be modified
+     * @see Shape#newBuilder()
+     * @since 20.2.0
+     */
+    public static DerivedBuilder newBuilder(Shape baseShape) {
+        CompilerAsserts.neverPartOfCompilation();
+        return new DerivedBuilder(baseShape);
+    }
+
+    /**
+     * Builder class to construct initial {@link Shape} instances. A builder instance is not
+     * thread-safe and must not be used from multiple threads at the same time.
+     *
+     * @see Shape#newBuilder()
+     * @since 20.2.0
+     */
+    @SuppressWarnings("hiding")
+    public static final class DerivedBuilder extends AbstractBuilder<DerivedBuilder> {
+
+        private final Shape baseShape;
+        private Object dynamicType;
+        private int shapeFlags;
+        private EconomicMap<Object, Property> properties;
+
+        DerivedBuilder(Shape baseShape) {
+            this.baseShape = baseShape;
+            this.dynamicType = baseShape.getDynamicType();
+            this.shapeFlags = baseShape.getFlags();
+        }
+
+        /**
+         * {@inheritDoc}
+         *
+         * @throws NullPointerException {@inheritDoc}
+         * @throws IllegalArgumentException {@inheritDoc}
+         * @see DynamicObjectLibrary#getDynamicType(DynamicObject)
+         * @see DynamicObjectLibrary#setDynamicType(DynamicObject, Object)
+         * @since 20.2.0
+         */
+        @Override
+        public DerivedBuilder dynamicType(Object dynamicType) {
+            CompilerAsserts.neverPartOfCompilation();
+            this.dynamicType = checkDynamicType(dynamicType);
+            return this;
+        }
+
+        /**
+         * {@inheritDoc}
+         *
+         * @throws IllegalArgumentException {@inheritDoc}
+         * @see DynamicObjectLibrary#getShapeFlags(DynamicObject)
+         * @see DynamicObjectLibrary#setShapeFlags(DynamicObject, int)
+         * @since 20.2.0
+         */
+        @Override
+        public DerivedBuilder shapeFlags(int flags) {
+            CompilerAsserts.neverPartOfCompilation();
+            this.shapeFlags = checkFlags(flags);
+            return this;
+        }
+
+        /**
+         * Adds a constant property to the shape. Must not already exist.
+         *
+         * @param key the property's key
+         * @param value the property's value
+         * @param flags the property's flags
+         * @throws NullPointerException if the key is {@code null}
+         * @throws IllegalArgumentException if a property with the key already exists
+         * @see DynamicObjectLibrary#putConstant(DynamicObject, Object, Object, int)
+         * @since 20.2.0
+         */
+        public DerivedBuilder addConstantProperty(Object key, Object value, int flags) {
+            CompilerAsserts.neverPartOfCompilation();
+            Objects.requireNonNull(key, "key");
+            checkFlags(flags);
+            if (properties == null) {
+                properties = EconomicMap.create(Equivalence.DEFAULT);
+            }
+            if (baseShape.getProperty(key) != null || properties.containsKey(key)) {
+                throw new IllegalArgumentException("Property already exists");
+            }
+            Location location = baseShape.allocator().constantLocation(value);
+            properties.put(key, Property.create(key, location, flags));
+            return this;
+        }
+
+        /**
+         * Builds a derived shape from the base shape supplied to the constructor using the
+         * configuration of this builder.
+         *
+         * @return a new or cached shape
+         * @since 20.2.0
+         */
+        public Shape build() {
+            CompilerAsserts.neverPartOfCompilation();
+            Shape derivedShape = baseShape;
+            if (dynamicType != derivedShape.getDynamicType()) {
+                derivedShape = derivedShape.setDynamicType(dynamicType);
+            }
+            if (shapeFlags != derivedShape.getFlags()) {
+                derivedShape = derivedShape.setFlags(shapeFlags);
+            }
+            if (properties != null) {
+                for (Property property : properties.getValues()) {
+                    derivedShape = derivedShape.addProperty(property);
+                }
+            }
+            return derivedShape;
         }
     }
 
@@ -765,8 +884,7 @@ public abstract class Shape {
      * @since 20.2.0
      */
     public Shape addConstantProperty(Object key, Object value, int propertyFlags) {
-        CompilerAsserts.neverPartOfCompilation();
-        throw new UnsupportedOperationException();
+        return Shape.newBuilder(this).addConstantProperty(key, value, propertyFlags).build();
     }
 
     /**

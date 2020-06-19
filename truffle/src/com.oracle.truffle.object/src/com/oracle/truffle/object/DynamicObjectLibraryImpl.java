@@ -81,6 +81,9 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.utilities.AlwaysValidAssumption;
 import com.oracle.truffle.api.utilities.NeverValidAssumption;
 
+/**
+ * The implementation of {@link DynamicObjectLibrary}.
+ */
 @ExportLibrary(value = DynamicObjectLibrary.class, receiverType = DynamicObject.class, priority = 10, transitionLimit = "5")
 abstract class DynamicObjectLibraryImpl {
 
