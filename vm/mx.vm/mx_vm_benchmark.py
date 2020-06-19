@@ -441,11 +441,7 @@ class NativeImageVM(GraalVm):
                     if stages.change_stage('instrument-image', str(i)):
                         executable_name_args = ['-H:Name=' + instrumentation_image_name]
                         pgo_verification_output_path = os.path.join(config.output_dir, instrumentation_image_name + '-probabilities.log')
-<<<<<<< HEAD
-                        pgo_args = ['--pgo=' + profile_path, '-H:+VerifyPGOProfiles', '-H:VerificationDumpFile=' + pgo_verification_output_path] + config.extra_optimization_image_args
-=======
                         pgo_args = ['--pgo=' + latest_profile_path, '-H:+VerifyPGOProfiles', '-H:VerificationDumpFile=' + pgo_verification_output_path]
->>>>>>> d4df7993989ce9c1d6c02685cb94034ac15cc24e
                         instrument_args = ['--pgo-instrument'] + ([] if i == 0 else pgo_args)
                         instrument_args += ['-H:+InlineAllExplored'] if self.pgo_inline_explored else []
                         instrument_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'EnablePGOContextSensitivity']
@@ -477,16 +473,6 @@ class NativeImageVM(GraalVm):
             if stages.change_stage('image'):
                 executable_name_args = ['-H:Name=' + final_image_name]
                 pgo_verification_output_path = os.path.join(config.output_dir, final_image_name + '-probabilities.log')
-<<<<<<< HEAD
-                if self.pgo_instrumented_iterations > 0 or self.hotspot_pgo:
-                    pgo_args = ['--pgo=' + profile_path, '-H:+VerifyPGOProfiles', '-H:VerificationDumpFile=' + pgo_verification_output_path] + config.extra_optimization_image_args
-                else:
-                    pgo_args = []
-                final_image_args = base_image_build_args + executable_name_args + pgo_args
-                mx.log('Building the final image with: ')
-                mx.log(' ' + ' '.join([pipes.quote(str(arg)) for arg in final_image_args]))
-                mx.run(final_image_args, out=None, err=None, cwd=image_cwd, nonZeroIsFatal=non_zero_is_fatal)
-=======
                 pgo_args = ['--pgo=' + latest_profile_path, '-H:+VerifyPGOProfiles', '-H:VerificationDumpFile=' + pgo_verification_output_path] if self.pgo_instrumented_iterations > 0 or self.hotspot_pgo else []
                 final_image_command = base_image_build_args + executable_name_args + pgo_args
                 with stages.set_command(final_image_command) as s:
@@ -494,7 +480,6 @@ class NativeImageVM(GraalVm):
                     if s.exit_code == 0:
                         image_size = os.stat(image_path).st_size
                         out('Final image size: ' + str(image_size) + ' B')
->>>>>>> d4df7993989ce9c1d6c02685cb94034ac15cc24e
 
             # Execute the benchmark
             if stages.change_stage('run'):
