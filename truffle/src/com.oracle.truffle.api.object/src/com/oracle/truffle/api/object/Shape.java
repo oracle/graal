@@ -81,7 +81,11 @@ public abstract class Shape {
     static final int OBJECT_PROPERTY_ASSUMPTIONS = 1 << 17;
 
     /**
-     * Creates a new root shape builder.
+     * Creates a new initial shape builder.
+     *
+     *
+     * The builder instance is not thread-safe and must not be used from multiple threads at the
+     * same time.
      *
      * @since 20.2.0
      */
@@ -90,6 +94,11 @@ public abstract class Shape {
         return new Builder();
     }
 
+    /**
+     * Internal superclass shared by {@link Builder} and {@link DerivedBuilder}.
+     * 
+     * @since 20.2.0
+     */
     abstract static class AbstractBuilder<T extends AbstractBuilder<T>> {
         /**
          * Sets initial dynamic object type identifier.
@@ -110,12 +119,19 @@ public abstract class Shape {
          */
         public abstract T shapeFlags(int flags);
 
-        static int checkFlags(int flags) {
-            if ((flags & ~OBJECT_FLAGS_MASK) != 0) {
-                throw new IllegalArgumentException("flags must be in the range (0, 255)");
-            }
-            return flags;
-        }
+        /**
+         * Adds a property with a constant value to the shape. The key must not be {@code null} and
+         * must not be equal to any previously added property's key.
+         *
+         * @param key the property's key
+         * @param value the property's value
+         * @param flags the property's flags
+         * @throws NullPointerException if the key is {@code null}
+         * @throws IllegalArgumentException if a property with the key already exists
+         * @see DynamicObjectLibrary#putConstant(DynamicObject, Object, Object, int)
+         * @since 20.2.0
+         */
+        public abstract T addConstantProperty(Object key, Object value, int flags);
 
         static Object checkDynamicType(Object dynamicType) {
             Objects.requireNonNull(dynamicType, "dynamicType");
@@ -124,11 +140,20 @@ public abstract class Shape {
             }
             return dynamicType;
         }
+
+        static int checkShapeFlags(int flags) {
+            if ((flags & ~OBJECT_FLAGS_MASK) != 0) {
+                throw new IllegalArgumentException("flags must be in the range (0, 255)");
+            }
+            return flags;
+        }
     }
 
     /**
-     * Builder class to construct initial {@link Shape} instances. A builder instance is not
-     * thread-safe and must not be used from multiple threads at the same time.
+     * Builder class to construct initial {@link Shape} instances.
+     *
+     * The builder instance is not thread-safe and must not be used from multiple threads at the
+     * same time.
      *
      * @see Shape#newBuilder()
      * @since 20.2.0
@@ -144,6 +169,7 @@ public abstract class Shape {
         private boolean propertyAssumptions;
         private Object sharedData;
         private Assumption singleContextAssumption;
+        private EconomicMap<Object, Property> properties;
 
         Builder() {
         }
@@ -252,7 +278,7 @@ public abstract class Shape {
         @Override
         public Builder shapeFlags(int flags) {
             CompilerAsserts.neverPartOfCompilation();
-            this.shapeFlags = checkFlags(flags);
+            this.shapeFlags = checkShapeFlags(flags);
             return this;
         }
 
@@ -320,7 +346,30 @@ public abstract class Shape {
         }
 
         /**
-         * Builds a new root shape using the configuration of this builder.
+         * {@inheritDoc}
+         *
+         * @throws NullPointerException {@inheritDoc}
+         * @throws IllegalArgumentException {@inheritDoc}
+         * @see DynamicObjectLibrary#putConstant(DynamicObject, Object, Object, int)
+         * @since 20.2.0
+         */
+        @Override
+        public Builder addConstantProperty(Object key, Object value, int flags) {
+            CompilerAsserts.neverPartOfCompilation();
+            Objects.requireNonNull(key, "key");
+            if (properties == null) {
+                properties = EconomicMap.create(Equivalence.DEFAULT);
+            }
+            if (properties.containsKey(key)) {
+                throw new IllegalArgumentException(String.format("Property already exists: %s.", key));
+            }
+            Location location = layout.createAllocator().constantLocation(value);
+            properties.put(key, Property.create(key, location, flags));
+            return this;
+        }
+
+        /**
+         * Builds a new shape using the configuration of this builder.
          *
          * @since 20.2.0
          */
@@ -336,6 +385,12 @@ public abstract class Shape {
 
             Shape shape = layout.buildShape(dynamicType, sharedData, flags, singleContextAssumption);
 
+            if (properties != null) {
+                for (Property property : properties.getValues()) {
+                    shape = shape.addProperty(property);
+                }
+            }
+
             assert shape.isShared() == shared && shape.getFlags() == shapeFlags && shape.getDynamicType() == dynamicType;
             return shape;
         }
@@ -344,6 +399,9 @@ public abstract class Shape {
     /**
      * Creates a new derived shape builder that allows changing a root shape's flags and dynamic
      * type and adding constant properties.
+     *
+     * The builder instance is not thread-safe and must not be used from multiple threads at the
+     * same time.
      *
      * @param baseShape the shape to be modified
      * @see Shape#newBuilder()
@@ -355,10 +413,12 @@ public abstract class Shape {
     }
 
     /**
-     * Builder class to construct initial {@link Shape} instances. A builder instance is not
-     * thread-safe and must not be used from multiple threads at the same time.
+     * Builder class to construct derived {@link Shape} instances.
      *
-     * @see Shape#newBuilder()
+     * The builder instance is not thread-safe and must not be used from multiple threads at the
+     * same time.
+     *
+     * @see Shape#newBuilder(Shape)
      * @since 20.2.0
      */
     @SuppressWarnings("hiding")
@@ -402,30 +462,27 @@ public abstract class Shape {
         @Override
         public DerivedBuilder shapeFlags(int flags) {
             CompilerAsserts.neverPartOfCompilation();
-            this.shapeFlags = checkFlags(flags);
+            this.shapeFlags = checkShapeFlags(flags);
             return this;
         }
 
         /**
-         * Adds a constant property to the shape. Must not already exist.
+         * {@inheritDoc}
          *
-         * @param key the property's key
-         * @param value the property's value
-         * @param flags the property's flags
-         * @throws NullPointerException if the key is {@code null}
-         * @throws IllegalArgumentException if a property with the key already exists
+         * @throws NullPointerException {@inheritDoc}
+         * @throws IllegalArgumentException {@inheritDoc}
          * @see DynamicObjectLibrary#putConstant(DynamicObject, Object, Object, int)
          * @since 20.2.0
          */
+        @Override
         public DerivedBuilder addConstantProperty(Object key, Object value, int flags) {
             CompilerAsserts.neverPartOfCompilation();
             Objects.requireNonNull(key, "key");
-            checkFlags(flags);
             if (properties == null) {
                 properties = EconomicMap.create(Equivalence.DEFAULT);
             }
             if (baseShape.getProperty(key) != null || properties.containsKey(key)) {
-                throw new IllegalArgumentException("Property already exists");
+                throw new IllegalArgumentException(String.format("Property already exists: %s.", key));
             }
             Location location = baseShape.allocator().constantLocation(value);
             properties.put(key, Property.create(key, location, flags));
