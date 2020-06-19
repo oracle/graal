@@ -1522,7 +1522,7 @@ public class Breakpoint {
                 } catch (UnsupportedMessageException e) {
                 }
             }
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new IllegalArgumentException("Unsupported return type " + result + " in condition.");
         }
 

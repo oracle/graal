@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.nodes.Node;
 
@@ -61,13 +62,13 @@ final class InteropAccessor extends Accessor {
         if (AssertUtils.isInteropValue(obj)) {
             return true;
         }
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         Class<?> clazz = obj != null ? obj.getClass() : null;
         return yieldAnError(clazz);
     }
 
+    @TruffleBoundary
     private static boolean yieldAnError(Class<?> clazz) {
-        CompilerDirectives.transferToInterpreter();
         StringBuilder sb = new StringBuilder();
         sb.append(clazz == null ? "null" : clazz.getName());
         sb.append(" isn't allowed Truffle interop type!\n");

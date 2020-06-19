@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api.interop;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -87,7 +86,6 @@ final class DefaultLongExports {
         if (b == l) {
             return b;
         }
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -98,7 +96,6 @@ final class DefaultLongExports {
         if (s == l) {
             return s;
         }
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -109,7 +106,6 @@ final class DefaultLongExports {
         if (i == l) {
             return i;
         }
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -120,7 +116,6 @@ final class DefaultLongExports {
         if (f == l) {
             return f;
         }
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -130,7 +125,6 @@ final class DefaultLongExports {
         if (NumberUtils.inSafeDoubleRange(l)) {
             return l;
         }
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 

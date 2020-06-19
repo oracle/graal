@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.sl.runtime;
 
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
+
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
@@ -47,7 +49,6 @@ import java.util.Collections;
 import java.util.List;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
@@ -266,8 +267,7 @@ public final class SLContext {
         } else if (a instanceof SLContext) {
             return a;
         }
-        CompilerDirectives.transferToInterpreter();
-        throw new IllegalStateException(a + " is not a Truffle value");
+        throw shouldNotReachHere("Value is not a truffle value.");
     }
 
     @TruffleBoundary

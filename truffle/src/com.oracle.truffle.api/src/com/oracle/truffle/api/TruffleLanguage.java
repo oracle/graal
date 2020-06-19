@@ -1893,7 +1893,7 @@ public abstract class TruffleLanguage<C> {
          */
         public Object asHostObject(Object value) {
             if (!isHostObject(value)) {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw new ClassCastException();
             }
             try {

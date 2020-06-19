@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.polyglot;
 
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 
 import java.io.PrintStream;
@@ -288,7 +289,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         if (env != null) {
             return LANGUAGE.getContext(env);
         } else {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             return null;
         }
     }
@@ -340,9 +341,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     Env requireEnv() {
         Env localEnv = this.env;
         if (localEnv == null) {
-            CompilerDirectives.transferToInterpreter();
-            throw new AssertionError(
-                            "No language context is active on this thread.");
+            throw shouldNotReachHere("No language context is active on this thread.");
         }
         return localEnv;
     }
@@ -741,7 +740,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
 
     static final class Generic {
         private Generic() {
-            throw new AssertionError("no instances");
+            throw shouldNotReachHere("no instances");
         }
     }
 
@@ -913,7 +912,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             assert value instanceof TruffleObject;
             return value;
         } else {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw PolyglotEngineException.illegalArgument(String.format("The value '%s' cannot be passed from one context to another. " +
                             "The current context is 0x%x and the argument value originates from context 0x%x.",
                             PolyglotValue.getValueInfo(null, value), context.hashCode(), valueContext.hashCode()));
@@ -984,8 +983,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                     return receiver;
                 }
             } catch (UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new AssertionError(e);
+                throw shouldNotReachHere(e);
             }
         }
         return getLanguageViewNoCheck(receiver);
@@ -999,8 +997,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                             lib.getLanguage(result) == languageClass : String.format("The returned language view of language '%s' must return the class '%s' for InteropLibrary.getLanguage." +
                                             "Fix the implementation of %s.getLanguageView to resolve this.", languageClass.getTypeName(), languageClass.getTypeName(), languageClass.getTypeName());
         } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new AssertionError(e);
+            throw shouldNotReachHere(e);
         }
         return true;
     }
@@ -1013,8 +1010,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                             lib.getLanguage(result) == languageClass : String.format("The returned scoped view of language '%s' must return the class '%s' for InteropLibrary.getLanguage." +
                                             "Fix the implementation of %s.getScopedView to resolve this.", languageClass.getTypeName(), languageClass.getTypeName(), languageClass.getTypeName());
         } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new AssertionError(e);
+            throw shouldNotReachHere(e);
         }
         return true;
     }

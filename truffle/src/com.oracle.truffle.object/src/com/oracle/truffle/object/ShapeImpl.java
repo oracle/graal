@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.object;
 
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
+
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -1278,7 +1280,7 @@ public abstract class ShapeImpl extends Shape {
             try {
                 return (BaseAllocator) super.clone();
             } catch (CloneNotSupportedException e) {
-                throw new AssertionError(e);
+                throw shouldNotReachHere(e);
             }
         }
 

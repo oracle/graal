@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.polyglot;
 
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
+
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -113,8 +115,7 @@ abstract class HostFieldDesc {
             try {
                 return reflectGet(field, receiver);
             } catch (IllegalAccessException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
+                throw shouldNotReachHere(e);
             }
         }
 
@@ -123,8 +124,7 @@ abstract class HostFieldDesc {
             try {
                 reflectSet(field, receiver, value);
             } catch (IllegalAccessException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new IllegalStateException(e);
+                throw shouldNotReachHere(e);
             }
         }
 

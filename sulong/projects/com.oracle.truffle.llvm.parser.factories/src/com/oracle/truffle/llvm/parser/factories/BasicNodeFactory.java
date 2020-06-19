@@ -1608,6 +1608,10 @@ public class BasicNodeFactory implements NodeFactory {
             intrinsicName = intrinsicName.substring(0, intrinsicName.length() - typeSuffix.length());
         }
 
+        if ("llvm.prefetch".equals(intrinsicName)) {
+            return LLVMPrefetchNodeGen.create(args[1], args[2], args[3], args[4]);
+        }
+
         if ("llvm.is.constant".equals(intrinsicName)) {
             return LLVMIsConstantNodeGen.create(args[1]);
         }

@@ -60,9 +60,9 @@ abstract class HostToGuestRootNode extends RootNode {
     @CompilationFinal private boolean seenNonEnter;
 
     @CompilationFinal private volatile ContextProfile profile;
-    private final BranchProfile exceptionBranch = BranchProfile.create();
 
     private final PolyglotEngineImpl engine;
+    private final BranchProfile error = BranchProfile.create();
 
     HostToGuestRootNode() {
         super(null);
@@ -107,7 +107,7 @@ abstract class HostToGuestRootNode extends RootNode {
                 }
             }
         } catch (Throwable e) {
-            exceptionBranch.enter();
+            error.enter();
             throw PolyglotImpl.guestToHostException((languageContext), e);
         }
     }

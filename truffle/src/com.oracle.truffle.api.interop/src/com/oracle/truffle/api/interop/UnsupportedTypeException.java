@@ -42,7 +42,7 @@
 package com.oracle.truffle.api.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleException;
 
 /**
  * An exception thrown if a {@link TruffleObject} does not support the type of one ore more
@@ -56,13 +56,14 @@ public final class UnsupportedTypeException extends InteropException {
 
     private final Object[] suppliedValues;
 
-    private UnsupportedTypeException(Exception cause, Object[] suppliedValues) {
-        super(cause);
+    private UnsupportedTypeException(String message, Object[] suppliedValues) {
+        super(message); // GR-23961 - after language adoption we should initialize the cause with
+                        // null.
         this.suppliedValues = suppliedValues;
     }
 
-    private UnsupportedTypeException(String message, Object[] suppliedValues) {
-        super(message);
+    private UnsupportedTypeException(String message, Object[] suppliedValues, Throwable cause) {
+        super(message, cause);
         this.suppliedValues = suppliedValues;
     }
 
@@ -83,9 +84,7 @@ public final class UnsupportedTypeException extends InteropException {
      *
      * @since 19.0
      */
-    @TruffleBoundary
     public static UnsupportedTypeException create(Object[] suppliedValues) {
-        CompilerDirectives.transferToInterpreter();
         return new UnsupportedTypeException((String) null, suppliedValues);
     }
 
@@ -95,10 +94,32 @@ public final class UnsupportedTypeException extends InteropException {
      *
      * @since 19.0
      */
-    @TruffleBoundary
     public static UnsupportedTypeException create(Object[] suppliedValues, String hint) {
-        CompilerDirectives.transferToInterpreter();
         return new UnsupportedTypeException(hint, suppliedValues);
+    }
+
+    /**
+     * Creates an {@link UnsupportedTypeException} to indicate that an argument type is not
+     * supported.
+     * <p>
+     * In addition a cause may be provided. The cause should only be set if the guest language code
+     * caused this problem. An example for this is a language specific proxy mechanism that invokes
+     * guest language code to describe an object. If the guest language code fails to execute and
+     * this interop exception is a valid interpretation of the error, then the error should be
+     * provided as cause. The cause can then be used by the source language as new exception cause
+     * if the {@link InteropException} is translated to a source language error. If the
+     * {@link InteropException} is discarded, then the cause will most likely get discarded by the
+     * source language as well. Note that the cause must be of type {@link TruffleException} in
+     * addition to {@link Throwable} otherwise an {@link IllegalArgumentException} is thrown.
+     * <p>
+     * This method is designed to be used in {@link CompilerDirectives#inCompiledCode() compiled}
+     * code paths.
+     *
+     * @param cause the guest language exception that caused the error.
+     * @since 20.2
+     */
+    public static UnsupportedTypeException create(Object[] suppliedValues, String hint, Throwable cause) {
+        return new UnsupportedTypeException(hint, suppliedValues, cause);
     }
 
 }

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.polyglot;
 
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 
 import java.io.IOException;
@@ -389,7 +390,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             if (singleContext.contextThreadLocal.isSet()) {
                 return singleContext.singleContext;
             } else {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 return null;
             }
         } else {
@@ -906,7 +907,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         try {
             stringResult = UNCACHED.asString(UNCACHED.toDisplayString(languageContext.getLanguageView(result), true));
         } catch (UnsupportedMessageException e) {
-            throw new AssertionError(e);
+            throw shouldNotReachHere(e);
         }
         try {
             OutputStream out = languageContext.context.config.out;

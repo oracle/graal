@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.interop;
 
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 import static com.oracle.truffle.api.interop.AssertUtils.preCondition;
 import static com.oracle.truffle.api.interop.AssertUtils.validArgument;
 import static com.oracle.truffle.api.interop.AssertUtils.validArguments;
@@ -2619,7 +2620,7 @@ public abstract class InteropLibrary extends Library {
             try {
                 return delegate.asTimeZone(receiver).getRules().isFixedOffset();
             } catch (InteropException e) {
-                throw new AssertionError(violationInvariant(receiver));
+                throw shouldNotReachHere(violationInvariant(receiver));
             }
         }
 
@@ -3027,7 +3028,7 @@ public abstract class InteropLibrary extends Library {
                 try {
                     hashCode = library.identityHashCode(receiver);
                 } catch (Exception t) {
-                    throw new AssertionError(t);
+                    throw shouldNotReachHere(t);
                 }
             }
             return true;
@@ -3082,7 +3083,7 @@ public abstract class InteropLibrary extends Library {
                 verifyIsSameOrUndefined(delegate, state, receiver, other);
                 verifyIsSameOrUndefined(otherDelegate, otherDelegate.isIdenticalOrUndefined(other, receiver), other, receiver);
             } catch (UnsupportedMessageException e) {
-                throw new AssertionError(e);
+                throw shouldNotReachHere(e);
             }
             return true;
         }

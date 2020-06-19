@@ -250,7 +250,7 @@ abstract class CoreLocations {
         @Override
         public final void setInternal(DynamicObject store, Object value, boolean condition) throws IncompatibleLocationException {
             if (!canStore(value)) {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw new UnsupportedOperationException();
             }
         }

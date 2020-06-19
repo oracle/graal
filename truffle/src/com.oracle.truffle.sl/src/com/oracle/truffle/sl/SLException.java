@@ -40,8 +40,9 @@
  */
 package com.oracle.truffle.sl;
 
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -127,8 +128,7 @@ public class SLException extends RuntimeException implements TruffleException {
                     try {
                         qualifiedName = UNCACHED_LIB.asString(UNCACHED_LIB.getMetaQualifiedName(valueLib.getMetaObject(value)));
                     } catch (UnsupportedMessageException e) {
-                        CompilerDirectives.transferToInterpreter();
-                        throw new AssertionError(e);
+                        throw shouldNotReachHere(e);
                     }
                     result.append(qualifiedName);
                     result.append(" ");

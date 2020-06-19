@@ -1059,7 +1059,7 @@ public abstract class Launcher {
 
     private void printJvmHelp() {
         println("JVM options:");
-        launcherOption("--vm.classpath <...>", "A " + File.pathSeparator + " separated list of classpath entries that will be added to the JVM's classpath");
+        launcherOption("--vm.classpath=<...>", "A " + File.pathSeparator + " separated list of classpath entries that will be added to the JVM's classpath");
         launcherOption("--vm.D<name>=<value>", "Set a system property");
         launcherOption("--vm.esa", "Enable system assertions");
         launcherOption("--vm.ea[:<packagename>...|:<classname>]", "Enable assertions with specified granularity");

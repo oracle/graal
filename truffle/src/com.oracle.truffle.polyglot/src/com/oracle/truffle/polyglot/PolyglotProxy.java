@@ -64,12 +64,11 @@ import org.graalvm.polyglot.proxy.ProxyTime;
 import org.graalvm.polyglot.proxy.ProxyTimeZone;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -709,7 +708,6 @@ final class PolyglotProxy implements TruffleObject {
         protected Object executeImpl(Object proxy, Object[] arguments) {
             LocalTime time = ((ProxyTime) proxy).asTime();
             if (time == null) {
-                CompilerDirectives.transferToInterpreter();
                 throw new AssertionError("The returned time must not be null.");
             }
             return time;
