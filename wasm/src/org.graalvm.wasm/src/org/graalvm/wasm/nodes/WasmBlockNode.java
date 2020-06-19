@@ -2440,13 +2440,16 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
 
     @ExplodeLoop
     private void unwindStack(VirtualFrame frame, int stackPointer, int continuationStackPointer, int returnLength) {
+        CompilerAsserts.partialEvaluationConstant(stackPointer);
         CompilerAsserts.partialEvaluationConstant(returnLength);
-        for (int i = 0; i != returnLength; ++i) {
+        for (int i = 0; i < returnLength; ++i) {
             long value = pop(frame, stackPointer + i - 1);
             push(frame, continuationStackPointer + i, value);
         }
-        for (int i = continuationStackPointer + returnLength; i != stackPointer; ++i) {
-            pop(frame, i);
+        if (CompilerDirectives.isPartialEvaluationConstant(continuationStackPointer)) {
+            for (int i = continuationStackPointer + returnLength; i < stackPointer; ++i) {
+                pop(frame, i);
+            }
         }
     }
 
