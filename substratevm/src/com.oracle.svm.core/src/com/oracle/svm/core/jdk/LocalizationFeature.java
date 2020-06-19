@@ -39,6 +39,7 @@ import java.util.Arrays;
 import java.util.Locale;
 import java.util.Map;
 import java.util.List;
+import java.util.MissingResourceException;
 import java.util.Objects;
 import java.util.ResourceBundle;
 import java.util.spi.CalendarDataProvider;
@@ -48,6 +49,7 @@ import java.util.spi.LocaleNameProvider;
 import java.util.spi.LocaleServiceProvider;
 import java.util.spi.TimeZoneNameProvider;
 
+import com.oracle.svm.core.util.UserError;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
@@ -258,7 +260,25 @@ public abstract class LocalizationFeature implements Feature {
         if (bundleName.isEmpty()) {
             return;
         }
-        addBundleToCache(bundleName, ModuleSupport.getResourceBundle(bundleName, imageLocale, Thread.currentThread().getContextClassLoader()));
+
+        ResourceBundle resourceBundle;
+        try {
+            resourceBundle = ModuleSupport.getResourceBundle(bundleName, imageLocale, Thread.currentThread().getContextClassLoader());
+        } catch (MissingResourceException mre) {
+            if (!bundleName.contains("/")) {
+                throw mre;
+            }
+            // Due to a possible bug in the JDK, bundle names not following proper naming convention
+            // need to be
+            // converted to fully qualified class names before loading can succeed.
+            // see GR-24211
+            String dotBundleName = bundleName.replace("/", ".");
+            resourceBundle = ModuleSupport.getResourceBundle(dotBundleName, imageLocale, Thread.currentThread().getContextClassLoader());
+        }
+        UserError.guarantee(resourceBundle != null, "The bundle named: %s, has not been found. " + "" +
+                        "If the bundle is part of a module, verify the bundle name is a fully qualified class name. Otherwise " +
+                        "verify the bundle path is accessible in the classpath.", bundleName);
+        addBundleToCache(bundleName, resourceBundle);
     }
 
     private void addBundleToCache(String bundleName, ResourceBundle bundle) {
