@@ -77,12 +77,12 @@ or `java.library.path` Java property is properly set.
 
 Before making calls to the `Native.add` method, we need to create a Substrate VM
 isolate. Substrate VM provides special built-in to allow that:
-`CEntryPoint.Builtin.CreateIsolate`. Define another method along your other
-existing `@CEntryPoint` methods. Let it return `long` and take no parameters:
+`CEntryPoint.Builtin.CREATE_ISOLATE`. Define another method along your other
+existing `@CEntryPoint` methods. Let it return `IsolateThread` and take no parameters:
 ```java
 public final class NativeImpl {
-    @CEntryPoint(name = "Java_org_pkg_apinative_Native_createIsolate", builtin=CEntryPoint.Builtin.CreateIsolate)
-    public static native long createIsolate();
+    @CEntryPoint(name = "Java_org_pkg_apinative_Native_createIsolate", builtin=CEntryPoint.Builtin.CREATE_ISOLATE)
+    public static native IsolateThread createIsolate();
 }
 ```
 SubstrateVM then generates default native implementation of the
