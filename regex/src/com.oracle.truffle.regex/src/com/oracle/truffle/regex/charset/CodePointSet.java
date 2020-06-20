@@ -44,27 +44,22 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.buffer.IntRangesBuffer;
+import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
 public final class CodePointSet extends ImmutableSortedListOfIntRanges implements Comparable<CodePointSet>, JsonConvertible {
 
-    public static final int MIN_VALUE = Character.MIN_CODE_POINT;
-    public static final int MAX_VALUE = Character.MAX_CODE_POINT;
     private static final CodePointSet CONSTANT_EMPTY = new CodePointSet(new int[0]);
-    private static final CodePointSet CONSTANT_FULL = new CodePointSet(new int[]{MIN_VALUE, MAX_VALUE});
 
     private static final CodePointSet[] CONSTANT_ASCII = new CodePointSet[128];
-    private static final CodePointSet[] CONSTANT_INVERSE_ASCII = new CodePointSet[128];
     private static final CodePointSet[] CONSTANT_CASE_FOLD_ASCII = new CodePointSet[26];
 
     static {
         CONSTANT_ASCII[0] = new CodePointSet(new int[]{0, 0});
-        CONSTANT_INVERSE_ASCII[0] = new CodePointSet(new int[]{1, Character.MAX_CODE_POINT});
         for (int i = 1; i < 128; i++) {
             CONSTANT_ASCII[i] = new CodePointSet(new int[]{i, i});
-            CONSTANT_INVERSE_ASCII[i] = new CodePointSet(new int[]{0, i - 1, i + 1, Character.MAX_CODE_POINT});
         }
         for (int i = 'A'; i <= 'Z'; i++) {
             CONSTANT_CASE_FOLD_ASCII[i - 'A'] = new CodePointSet(new int[]{i, i, Character.toLowerCase(i), Character.toLowerCase(i)});
@@ -73,7 +68,7 @@ public final class CodePointSet extends ImmutableSortedListOfIntRanges implement
 
     private CodePointSet(int[] ranges) {
         super(ranges);
-        assert ranges.length == 0 || ranges[0] >= MIN_VALUE && ranges[ranges.length - 1] <= MAX_VALUE;
+        assert ranges.length == 0 || ranges[0] >= 0 && ranges[ranges.length - 1] >= 0;
     }
 
     public int[] getRanges() {
@@ -82,10 +77,6 @@ public final class CodePointSet extends ImmutableSortedListOfIntRanges implement
 
     public static CodePointSet getEmpty() {
         return CONSTANT_EMPTY;
-    }
-
-    public static CodePointSet getFull() {
-        return CONSTANT_FULL;
     }
 
     public static CodePointSet createNoDedup(int... ranges) {
@@ -123,14 +114,8 @@ public final class CodePointSet extends ImmutableSortedListOfIntRanges implement
             if (ranges[0] == ranges[1] && ranges[0] < 128) {
                 return CONSTANT_ASCII[ranges[0]];
             }
-            if (ranges[0] == Character.MIN_CODE_POINT && ranges[1] == Character.MAX_CODE_POINT) {
-                return CONSTANT_FULL;
-            }
         }
         if (length == 4) {
-            if (ranges[0] == Character.MIN_CODE_POINT && ranges[3] == Character.MAX_CODE_POINT && ranges[2] <= 128 && ranges[1] + 2 == ranges[2]) {
-                return CONSTANT_INVERSE_ASCII[ranges[1] + 1];
-            }
             if (ranges[0] == ranges[1] && ranges[0] >= 'A' && ranges[0] <= 'Z' && ranges[2] == ranges[3] && ranges[2] == (ranges[0] | 0x20)) {
                 return CONSTANT_CASE_FOLD_ASCII[ranges[0] - 'A'];
             }
@@ -151,12 +136,6 @@ public final class CodePointSet extends ImmutableSortedListOfIntRanges implement
 
     @SuppressWarnings("unchecked")
     @Override
-    public CodePointSet createFull() {
-        return getFull();
-    }
-
-    @SuppressWarnings("unchecked")
-    @Override
     public CodePointSet create(RangesBuffer buffer) {
         assert buffer instanceof IntRangesBuffer;
         return create((IntRangesBuffer) buffer);
@@ -169,56 +148,47 @@ public final class CodePointSet extends ImmutableSortedListOfIntRanges implement
         return ranges.length == buf.length() && rangesEqual(ranges, buf.getBuffer(), ranges.length);
     }
 
+    @SuppressWarnings("unchecked")
     @Override
-    public int getMinValue() {
-        return MIN_VALUE;
+    public CodePointSet createInverse(Encoding encoding) {
+        return createInverse(this, encoding);
     }
 
-    @Override
-    public int getMaxValue() {
-        return MAX_VALUE;
+    public static CodePointSet createInverse(SortedListOfRanges src, Encoding encoding) {
+        if (src.matchesNothing()) {
+            return encoding.getFullSet();
+        }
+        return new CodePointSet(createInverseArray(src, encoding));
     }
 
     @SuppressWarnings("unchecked")
     @Override
-    public CodePointSet createInverse() {
-        return createInverse(this);
-    }
-
-    public static CodePointSet createInverse(SortedListOfRanges src) {
-        assert src.getMinValue() == Character.MIN_CODE_POINT;
-        assert src.getMaxValue() == Character.MAX_CODE_POINT;
-        if (src.matchesNothing()) {
-            return getFull();
+    public <T extends ImmutableSortedListOfRanges> T createIntersectionSingleRange(T o) {
+        assert size() == 1 && !o.isEmpty();
+        if (getMin() <= o.getMin() && getMax() >= o.getMax()) {
+            return o;
         }
-        if (src.matchesSingleAscii()) {
-            return CONSTANT_INVERSE_ASCII[src.getMin()];
+        int iLo = 0;
+        int iHi = o.size() - 1;
+        while (iLo < o.size() && o.getHi(iLo) < getMin()) {
+            iLo++;
         }
-        return new CodePointSet(createInverseArray(src));
+        while (iHi >= 0 && o.getLo(iHi) > getMax()) {
+            iHi--;
+        }
+        if (iHi < iLo) {
+            return (T) createEmpty();
+        }
+        int[] intersection = Arrays.copyOfRange(((CodePointSet) o).ranges, iLo * 2, (iHi + 1) * 2);
+        intersection[0] = Math.max(intersection[0], getMin());
+        intersection[intersection.length - 1] = Math.min(intersection[intersection.length - 1], getMax());
+        return (T) create(intersection);
     }
 
     @Override
     public int compareTo(CodePointSet o) {
         if (this == o) {
             return 0;
-        }
-        if (matchesEverything()) {
-            if (o.matchesEverything()) {
-                return 0;
-            }
-            return 1;
-        }
-        if (matchesNothing()) {
-            if (o.matchesNothing()) {
-                return 0;
-            }
-            return -1;
-        }
-        if (o.matchesEverything()) {
-            return -1;
-        }
-        if (o.matchesNothing()) {
-            return 1;
         }
         int cmp = size() - o.size();
         if (cmp != 0) {
@@ -281,17 +251,37 @@ public final class CodePointSet extends ImmutableSortedListOfIntRanges implement
         return getRanges();
     }
 
-    public char[] inverseToCharArray() {
-        char[] array = new char[inverseValueCount()];
+    public byte[] inverseToByteArray(Encoding encoding) {
+        byte[] array = new byte[inverseValueCount(encoding)];
         int index = 0;
         int lastHi = -1;
         for (int i = 0; i < size(); i++) {
             for (int j = lastHi + 1; j < getLo(i); j++) {
+                assert j <= 0xff;
+                array[index++] = (byte) j;
+            }
+            lastHi = getHi(i);
+        }
+        for (int j = lastHi + 1; j <= encoding.getMaxValue(); j++) {
+            assert j <= 0xff;
+            array[index++] = (byte) j;
+        }
+        return array;
+    }
+
+    public char[] inverseToCharArray(Encoding encoding) {
+        char[] array = new char[inverseValueCount(encoding)];
+        int index = 0;
+        int lastHi = -1;
+        for (int i = 0; i < size(); i++) {
+            for (int j = lastHi + 1; j < getLo(i); j++) {
+                assert j <= Character.MAX_VALUE;
                 array[index++] = (char) j;
             }
             lastHi = getHi(i);
         }
-        for (int j = lastHi + 1; j <= getMaxValue(); j++) {
+        for (int j = lastHi + 1; j <= encoding.getMaxValue(); j++) {
+            assert j <= Character.MAX_VALUE;
             array[index++] = (char) j;
         }
         return array;

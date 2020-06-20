@@ -45,10 +45,11 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.regex.charset.CompressedCodePointSet;
 import com.oracle.truffle.regex.charset.Range;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.util.MathUtil;
-import com.oracle.truffle.regex.util.CompilationFinalBitSet;
+import com.oracle.truffle.regex.util.BitSets;
 
 /**
  * Character matcher that compiles to a binary search in a sorted list of ranges, like
@@ -68,11 +69,13 @@ import com.oracle.truffle.regex.util.CompilationFinalBitSet;
  * - ranges:   [0x02-0x06,          0x1000, 0x1020-0x1030]
  * - bit-sets: [[0x02, 0x04, 0x06], null,   null         ]
  * </pre>
+ *
+ * @see CompressedCodePointSet
  */
 public abstract class HybridBitSetMatcher extends InvertibleCharMatcher {
 
     @CompilationFinal(dimensions = 1) private final int[] sortedRanges;
-    @CompilationFinal(dimensions = 1) private final CompilationFinalBitSet[] bitSets;
+    @CompilationFinal(dimensions = 2) private final long[][] bitSets;
 
     /**
      * Constructs a new {@link HybridBitSetMatcher}.
@@ -81,20 +84,19 @@ public abstract class HybridBitSetMatcher extends InvertibleCharMatcher {
      * @param bitSets the bit sets that match the low bytes if the character under inspection has
      *            the corresponding high byte.
      */
-    HybridBitSetMatcher(boolean invert, int[] sortedRanges, CompilationFinalBitSet[] bitSets) {
+    HybridBitSetMatcher(boolean invert, int[] sortedRanges, long[][] bitSets) {
         super(invert);
         this.sortedRanges = sortedRanges;
         this.bitSets = bitSets;
         assert bitSets.length == sortedRanges.length / 2;
     }
 
-    public static HybridBitSetMatcher create(boolean invert, int[] sortedRanges, CompilationFinalBitSet[] bitSets) {
-        return HybridBitSetMatcherNodeGen.create(invert, sortedRanges, bitSets);
+    public static HybridBitSetMatcher create(boolean invert, CompressedCodePointSet ccps) {
+        return HybridBitSetMatcherNodeGen.create(invert, ccps.getRanges(), ccps.getBitSets());
     }
 
     @Specialization
-    public boolean match(int c, boolean compactString) {
-        assert !compactString : "this matcher should be avoided via ProfilingCharMatcher on compact strings";
+    public boolean match(int c) {
         CompilerAsserts.partialEvaluationConstant(this);
         return matchTree(0, (sortedRanges.length >>> 1) - 1, c);
     }
@@ -112,7 +114,7 @@ public abstract class HybridBitSetMatcher extends InvertibleCharMatcher {
         } else if (c > sortedRanges[(mid << 1) + 1]) {
             return matchTree(mid + 1, toIndex, c);
         } else {
-            return result(bitSets[mid] == null || bitSets[mid].get(lowByte(c)));
+            return result(bitSets[mid] == null || BitSets.get(bitSets[mid], lowByte(c)));
         }
     }
 
@@ -129,7 +131,7 @@ public abstract class HybridBitSetMatcher extends InvertibleCharMatcher {
             if (bitSets[i / 2] == null) {
                 sb.append(Range.toString(sortedRanges[i], sortedRanges[i + 1]));
             } else {
-                sb.append("[range: ").append(Range.toString(sortedRanges[i], sortedRanges[i + 1])).append(", bs: ").append(bitSets[i / 2]).append("]");
+                sb.append("[range: ").append(Range.toString(sortedRanges[i], sortedRanges[i + 1])).append(", bs: ").append(BitSets.toString(bitSets[i / 2])).append("]");
             }
         }
         return sb.append("]").toString();

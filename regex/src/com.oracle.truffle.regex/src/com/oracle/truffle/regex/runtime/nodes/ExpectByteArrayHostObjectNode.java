@@ -38,39 +38,28 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.nodes.input;
+package com.oracle.truffle.regex.runtime.nodes;
 
-import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.regex.tregex.util.Boundaries;
+import com.oracle.truffle.regex.RegexLanguage;
+import com.oracle.truffle.regex.RegexLanguage.RegexContext;
 
-public abstract class InputLastIndexOfNode extends Node {
+@GenerateUncached
+public abstract class ExpectByteArrayHostObjectNode extends Node {
 
-    public static InputLastIndexOfNode create() {
-        return InputLastIndexOfNodeGen.create();
-    }
-
-    public abstract int execute(Object input, char c, int fromIndex, int maxIndex);
+    public abstract byte[] execute(Object arg);
 
     @Specialization
-    public int lastIndexOf(String input, char c, int fromIndex, int maxIndex) {
-        int index = Boundaries.stringLastIndexOf(input, c, fromIndex);
-        if (index < maxIndex) {
-            return -1;
-        }
-        return index;
+    static byte[] doByteArray(byte[] input) {
+        return input;
     }
 
     @Specialization
-    public int lastIndexOf(TruffleObject input, char c, int fromIndex, int maxIndex,
-                    @Cached("create()") InputReadNode charAtNode) {
-        for (int i = fromIndex; i >= maxIndex; i--) {
-            if (charAtNode.execute(input, i) == c) {
-                return i;
-            }
-        }
-        return -1;
+    static byte[] doBoxed(Object input,
+                    @CachedContext(RegexLanguage.class) RegexContext context) {
+        return (byte[]) context.getEnv().asHostObject(input);
     }
 }

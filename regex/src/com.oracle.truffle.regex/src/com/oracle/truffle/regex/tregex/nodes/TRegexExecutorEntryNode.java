@@ -118,6 +118,11 @@ public abstract class TRegexExecutorEntryNode extends Node {
 
     public abstract Object execute(Object input, int fromIndex, int index, int maxIndex);
 
+    @Specialization
+    Object doByteArray(byte[] input, int fromIndex, int index, int maxIndex) {
+        return executor.execute(executor.createLocals(input, fromIndex, index, maxIndex), false);
+    }
+
     @Specialization(guards = "isCompactString(input)")
     Object doStringCompact(String input, int fromIndex, int index, int maxIndex) {
         return executor.execute(executor.createLocals(input, fromIndex, index, maxIndex), true);

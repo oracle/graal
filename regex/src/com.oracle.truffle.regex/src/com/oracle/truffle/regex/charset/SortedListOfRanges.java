@@ -42,6 +42,7 @@ package com.oracle.truffle.regex.charset;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.chardata.CharacterSet;
+import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 
 /**
  * A storage-agnostic implementation of a sorted list of disjoint integer ranges with inclusive
@@ -63,16 +64,6 @@ public interface SortedListOfRanges extends CharacterSet {
      * Returns the number of disjoint ranges contained in this list.
      */
     int size();
-
-    /**
-     * Returns the minimum value that may be contained in an instance of this list.
-     */
-    int getMinValue();
-
-    /**
-     * Returns the maximum value that may be contained in an instance of this list.
-     */
-    int getMaxValue();
 
     /**
      * Append all ranges from {@code startIndex} (inclusive) to {@code endIndex} (exclusive) to the
@@ -103,13 +94,13 @@ public interface SortedListOfRanges extends CharacterSet {
 
     /**
      * Returns the number of disjoint ranges contained in the inverse (as defined by
-     * {@link ImmutableSortedListOfRanges#createInverse()}) of this list.
+     * {@link ImmutableSortedListOfRanges#createInverse(Encoding)}) of this list.
      */
-    default int sizeOfInverse() {
+    default int sizeOfInverse(Encoding encoding) {
         if (isEmpty()) {
             return 1;
         }
-        return (getMin() == getMinValue() ? 0 : 1) + size() - (getMax() == getMaxValue() ? 1 : 0);
+        return (getMin() == encoding.getMinValue() ? 0 : 1) + size() - (getMax() == encoding.getMaxValue() ? 1 : 0);
     }
 
     /**
@@ -132,18 +123,18 @@ public interface SortedListOfRanges extends CharacterSet {
      * Returns the smallest value contained in the inverse of this set. Must not be called on empty
      * or full sets.
      */
-    default int inverseGetMin() {
-        assert !isEmpty() && !matchesEverything();
-        return getMin() == getMinValue() ? getHi(0) + 1 : getMinValue();
+    default int inverseGetMin(Encoding encoding) {
+        assert !isEmpty() && !matchesEverything(encoding);
+        return getMin() == encoding.getMinValue() ? getHi(0) + 1 : encoding.getMinValue();
     }
 
     /**
      * Returns the largest value contained in the inverse of this set. Must not be called on empty
      * or full sets.
      */
-    default int inverseGetMax() {
-        assert !isEmpty() && !matchesEverything();
-        return getMax() == getMaxValue() ? getLo(size() - 1) - 1 : getMaxValue();
+    default int inverseGetMax(Encoding encoding) {
+        assert !isEmpty() && !matchesEverything(encoding);
+        return getMax() == encoding.getMaxValue() ? getLo(size() - 1) - 1 : encoding.getMaxValue();
     }
 
     /**
@@ -633,10 +624,11 @@ public interface SortedListOfRanges extends CharacterSet {
     }
 
     /**
-     * Returns {@code true} iff this set contains {@link #getMinValue()} and {@link #getMaxValue()}.
+     * Returns {@code true} iff this set contains {@link Encoding#getMinValue()} and
+     * {@link Encoding#getMaxValue()}.
      */
-    default boolean matchesMinAndMax() {
-        return matchesSomething() && getMin() == getMinValue() && getMax() == getMaxValue();
+    default boolean matchesMinAndMax(Encoding encoding) {
+        return matchesSomething() && getMin() == encoding.getMinValue() && getMax() == encoding.getMaxValue();
     }
 
     /**
@@ -692,20 +684,20 @@ public interface SortedListOfRanges extends CharacterSet {
     }
 
     /**
-     * Returns the total number of values (from {@link #getMinValue()} to {@link #getMaxValue()})
-     * <i>not</i> contained in this list.
+     * Returns the total number of values (from {@link Encoding#getMinValue()} to
+     * {@link Encoding#getMaxValue()}) <i>not</i> contained in this list.
      */
-    default int inverseValueCount() {
-        return (getMaxValue() - getMinValue()) + 1 - valueCount();
+    default int inverseValueCount(Encoding encoding) {
+        return (encoding.getMaxValue() - encoding.getMinValue()) + 1 - valueCount();
     }
 
     /**
-     * Returns {@code true} if this list is equal to [{@link #getMinValue()} {@link #getMaxValue()}
-     * ].
+     * Returns {@code true} if this list is equal to [{@link Encoding#getMinValue()}
+     * {@link Encoding#getMaxValue()} ].
      */
-    default boolean matchesEverything() {
+    default boolean matchesEverything(Encoding encoding) {
         // ranges should be consolidated to one
-        return size() == 1 && getLo(0) == getMinValue() && getHi(0) == getMaxValue();
+        return size() == 1 && getLo(0) == encoding.getMinValue() && getHi(0) == encoding.getMaxValue();
     }
 
     default boolean equalsListOfRanges(SortedListOfRanges o) {
@@ -752,11 +744,7 @@ public interface SortedListOfRanges extends CharacterSet {
         if (matchesSingleChar()) {
             return Range.toString(getLo(0), getHi(0));
         }
-        if (matchesMinAndMax()) {
-            return "[^" + inverseRangesToString() + "]";
-        } else {
-            return "[" + rangesToString() + "]";
-        }
+        return "[" + rangesToString() + "]";
     }
 
     @TruffleBoundary
@@ -769,20 +757,20 @@ public interface SortedListOfRanges extends CharacterSet {
     }
 
     @TruffleBoundary
-    default String inverseRangesToString() {
+    default String inverseRangesToString(Encoding encoding) {
         StringBuilder sb = new StringBuilder();
         if (matchesNothing()) {
-            sb.append(Range.toString(getMinValue(), getMaxValue()));
+            sb.append(Range.toString(encoding.getMinValue(), encoding.getMaxValue()));
             return sb.toString();
         }
-        if (getLo(0) > getMinValue()) {
-            sb.append(Range.toString(getMinValue(), getLo(0) - 1));
+        if (getLo(0) > encoding.getMinValue()) {
+            sb.append(Range.toString(encoding.getMinValue(), getLo(0) - 1));
         }
         for (int ia = 1; ia < size(); ia++) {
             sb.append(Range.toString(getHi(ia - 1) + 1, getLo(ia) - 1));
         }
-        if (getHi(size() - 1) < getMaxValue()) {
-            sb.append(Range.toString(getHi(size() - 1) + 1, getMaxValue()));
+        if (getHi(size() - 1) < encoding.getMaxValue()) {
+            sb.append(Range.toString(getHi(size() - 1) + 1, encoding.getMaxValue()));
         }
         return sb.toString();
     }

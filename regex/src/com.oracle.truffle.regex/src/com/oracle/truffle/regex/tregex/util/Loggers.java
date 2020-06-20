@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,38 +38,18 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.matchers;
+package com.oracle.truffle.regex.tregex.util;
 
-/**
- * Abstract character matcher that allows matching behavior to be inverted with a constructor
- * parameter.
- */
-public abstract class InvertibleCharMatcher extends CharMatcher {
+import com.oracle.truffle.api.TruffleLogger;
 
-    private final boolean invert;
+public final class Loggers {
 
-    /**
-     * Construct a new {@link InvertibleCharMatcher}.
-     *
-     * @param invert if this is set to true, the result of {@link #execute(int)} is always inverted.
-     */
-    protected InvertibleCharMatcher(boolean invert) {
-        this.invert = invert;
-    }
-
-    protected boolean result(boolean result) {
-        return result != invert;
-    }
-
-    protected String modifiersToString() {
-        return invert ? "!" : "";
-    }
-
-    static int highByte(int i) {
-        return i >> Byte.SIZE;
-    }
-
-    static int lowByte(int i) {
-        return i & 0xff;
-    }
+    public static final TruffleLogger LOG_SWITCH_TO_EAGER = TruffleLogger.getLogger("regex", "SwitchToEager");
+    public static final TruffleLogger LOG_TOTAL_COMPILATION_TIME = TruffleLogger.getLogger("regex", "TotalCompilationTime");
+    public static final TruffleLogger LOG_PHASES = TruffleLogger.getLogger("regex", "Phases");
+    public static final TruffleLogger LOG_BAILOUT_MESSAGES = TruffleLogger.getLogger("regex", "BailoutMessages");
+    public static final TruffleLogger LOG_AUTOMATON_SIZES = TruffleLogger.getLogger("regex", "AutomatonSizes");
+    public static final TruffleLogger LOG_COMPILER_FALLBACK = TruffleLogger.getLogger("regex", "CompilerFallback");
+    public static final TruffleLogger LOG_INTERNAL_ERRORS = TruffleLogger.getLogger("regex", "InternalErrors");
+    public static final TruffleLogger LOG_TREGEX_COMPILATIONS = TruffleLogger.getLogger("regex", "TRegexCompilations");
 }

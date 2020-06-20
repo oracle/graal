@@ -85,7 +85,7 @@ public class LaTexExport {
                     replacement = "\\\\textbackslash ";
                     break;
                 default:
-                    throw new IllegalStateException();
+                    throw Exceptions.shouldNotReachHere();
             }
             m.appendReplacement(escapedString, replacement);
         }

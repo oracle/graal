@@ -44,7 +44,6 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.regex.charset.RangesBuffer;
-import com.oracle.truffle.regex.tregex.buffer.CharRangesBuffer;
 import com.oracle.truffle.regex.tregex.buffer.IntRangesBuffer;
 
 public class RangesBufferTest {
@@ -55,12 +54,6 @@ public class RangesBufferTest {
         }
     }
 
-    private static CharRangesBuffer createCharRangesBuffer(int[] content) {
-        CharRangesBuffer buf = new CharRangesBuffer();
-        appendAll(buf, content);
-        return buf;
-    }
-
     private static IntRangesBuffer createIntRangesBuffer(int[] content) {
         IntRangesBuffer buf = new IntRangesBuffer();
         appendAll(buf, content);
@@ -68,10 +61,7 @@ public class RangesBufferTest {
     }
 
     private static boolean equals(RangesBuffer buf, int[] content) {
-        if (buf instanceof IntRangesBuffer) {
-            return equals((IntRangesBuffer) buf, content);
-        }
-        return equals((CharRangesBuffer) buf, content);
+        return equals((IntRangesBuffer) buf, content);
     }
 
     private static boolean equals(IntRangesBuffer buf, int[] content) {
@@ -80,18 +70,6 @@ public class RangesBufferTest {
         }
         for (int i = 0; i < content.length / 2; i++) {
             if (buf.getLo(i) != content[i * 2] || buf.getHi(i) != content[i * 2 + 1]) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private static boolean equals(CharRangesBuffer buf, int[] content) {
-        if (buf.size() != content.length / 2) {
-            return false;
-        }
-        for (int i = 0; i < content.length / 2; i++) {
-            if (buf.getLo(i) != (char) content[i * 2] || buf.getHi(i) != (char) content[i * 2 + 1]) {
                 return false;
             }
         }
@@ -115,34 +93,23 @@ public class RangesBufferTest {
 
     private static void checkAddRange(int[] buf, int lo, int hi, int[] expected) {
         checkAddRange(createIntRangesBuffer(buf), lo, hi, expected);
-        checkAddRange(createCharRangesBuffer(buf), lo, hi, expected);
-    }
-
-    private static void checkAddRange(int[] buf, int lo, int hi, int[] expected, boolean intBuffer) {
-        if (intBuffer) {
-            checkAddRange(createIntRangesBuffer(buf), lo, hi, expected);
-        } else {
-            checkAddRange(createCharRangesBuffer(buf), lo, hi, expected);
-        }
     }
 
     @Test
     public void testAddRange() {
+        int max = Character.MAX_VALUE;
         checkAddRange(new int[]{}, 0, 1, new int[]{0, 1});
-        for (boolean intBuffer : new boolean[]{true, false}) {
-            int max = intBuffer ? Character.MAX_CODE_POINT : Character.MAX_VALUE;
-            checkAddRange(new int[]{}, 0, max, new int[]{0, max}, intBuffer);
-            checkAddRange(new int[]{0, 0}, 0, max, new int[]{0, max}, intBuffer);
-            checkAddRange(new int[]{1, 1}, 0, max, new int[]{0, max}, intBuffer);
-            checkAddRange(new int[]{0, 2}, 0, max, new int[]{0, max}, intBuffer);
-            checkAddRange(new int[]{max - 1, max}, 0, max, new int[]{0, max}, intBuffer);
-            checkAddRange(new int[]{max - 1, max - 1}, 0, max, new int[]{0, max}, intBuffer);
-            checkAddRange(new int[]{max, max}, 0, max, new int[]{0, max}, intBuffer);
-            checkAddRange(new int[]{2, 2, 4, 4, 6, 7}, 0, max, new int[]{0, max}, intBuffer);
-            checkAddRange(new int[]{2, 2, 4, 4, 6, 7}, 0, max, new int[]{0, max}, intBuffer);
-            checkAddRange(new int[]{2, 2, 4, 4, 6, 7}, max, max, new int[]{2, 2, 4, 4, 6, 7, max, max}, intBuffer);
-            checkAddRange(new int[]{2, 2, 4, 4, 6, 7, max, max}, max - 1, max - 1, new int[]{2, 2, 4, 4, 6, 7, max - 1, max}, intBuffer);
-        }
+        checkAddRange(new int[]{}, 0, max, new int[]{0, max});
+        checkAddRange(new int[]{0, 0}, 0, max, new int[]{0, max});
+        checkAddRange(new int[]{1, 1}, 0, max, new int[]{0, max});
+        checkAddRange(new int[]{0, 2}, 0, max, new int[]{0, max});
+        checkAddRange(new int[]{max - 1, max}, 0, max, new int[]{0, max});
+        checkAddRange(new int[]{max - 1, max - 1}, 0, max, new int[]{0, max});
+        checkAddRange(new int[]{max, max}, 0, max, new int[]{0, max});
+        checkAddRange(new int[]{2, 2, 4, 4, 6, 7}, 0, max, new int[]{0, max});
+        checkAddRange(new int[]{2, 2, 4, 4, 6, 7}, 0, max, new int[]{0, max});
+        checkAddRange(new int[]{2, 2, 4, 4, 6, 7}, max, max, new int[]{2, 2, 4, 4, 6, 7, max, max});
+        checkAddRange(new int[]{2, 2, 4, 4, 6, 7, max, max}, max - 1, max - 1, new int[]{2, 2, 4, 4, 6, 7, max - 1, max});
         checkAddRange(new int[]{2, 2, 4, 4, 6, 7}, 2, 2, new int[]{2, 2, 4, 4, 6, 7});
         checkAddRange(new int[]{2, 2, 4, 4, 6, 7}, 9, 9, new int[]{2, 2, 4, 4, 6, 7, 9, 9});
         checkAddRange(new int[]{2, 2, 4, 4, 6, 7}, 8, 8, new int[]{2, 2, 4, 4, 6, 8});

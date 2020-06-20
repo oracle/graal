@@ -124,7 +124,7 @@ public abstract class StateTransitionCanonicalizer<SI extends StateIndex<? super
 
     /**
      * Merges NFA transitions according to their expected character sets as returned
-     * {@link TransitionBuilder#getMatcherBuilder()}, in the following way: <br>
+     * {@link TransitionBuilder#getCodePointSet()}, in the following way: <br>
      * <ul>
      * <li>The result of the algorithm is a list of transitions where no two elements have an
      * intersection in their respective set of expected characters. We initially define the result
@@ -289,7 +289,7 @@ public abstract class StateTransitionCanonicalizer<SI extends StateIndex<? super
         TB last = null;
         for (TB tb : resultBuffer1) {
             if (last != null && canMerge(last, tb)) {
-                last.setMatcherBuilder(last.getMatcherBuilder().union(tb.getMatcherBuilder(), compilationBuffer));
+                last.setMatcherBuilder(last.getCodePointSet().union(tb.getCodePointSet(), compilationBuffer));
             } else {
                 resultBuffer2.add(tb);
                 last = tb;

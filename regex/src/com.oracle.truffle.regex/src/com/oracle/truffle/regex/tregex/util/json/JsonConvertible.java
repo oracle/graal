@@ -41,7 +41,7 @@
 
 package com.oracle.truffle.regex.tregex.util.json;
 
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 public interface JsonConvertible {
 

@@ -55,8 +55,8 @@ import com.oracle.truffle.regex.tregex.parser.ast.Term;
 /**
  * An AST visitor that produces a deep copy of a given {@link Term} and its subtree, and registers
  * all new nodes in the {@link RegexAST} provided at instantiation. This visitor should be preferred
- * over recursively copying with {@link RegexASTNode#copy(RegexAST, boolean)} whenever possible,
- * since it is non-recursive. Note that this visitor is not thread-safe!
+ * over recursively copying with {@link RegexASTNode#copy(RegexAST)} whenever possible, since it is
+ * non-recursive. Note that this visitor is not thread-safe!
  *
  * @see DepthFirstTraversalRegexASTVisitor
  */
@@ -95,7 +95,7 @@ public class CopyVisitor extends DepthFirstTraversalRegexASTVisitor {
 
     @Override
     protected void visit(Sequence sequence) {
-        Sequence copy = sequence.copy(ast, false);
+        Sequence copy = sequence.copy(ast);
         ((Group) curParent).add(copy);
         curParent = copy;
     }
@@ -141,7 +141,7 @@ public class CopyVisitor extends DepthFirstTraversalRegexASTVisitor {
     }
 
     private Term doCopy(Term t) {
-        Term copy = t.copy(ast, false);
+        Term copy = t.copy(ast);
         ast.addSourceSections(copy, ast.getSourceSections(t));
         if (curParent == null) {
             assert copyRoot == null;

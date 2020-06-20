@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,53 +38,31 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+package com.oracle.truffle.regex.tregex.util;
 
-package com.oracle.truffle.regex.tregex.matchers;
-
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.Specialization;
 
-public abstract class ProfilingCharMatcher extends CharMatcher {
+public class Exceptions {
 
-    @Child private CharMatcher byteMatcher;
-    @Child private CharMatcher charMatcher;
-
-    ProfilingCharMatcher(CharMatcher byteMatcher, CharMatcher charMatcher) {
-        this.byteMatcher = byteMatcher;
-        this.charMatcher = charMatcher;
+    public static RuntimeException shouldNotReachHere() {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        return illegalStateException();
     }
 
-    public static ProfilingCharMatcher create(CharMatcher byteMatcher, CharMatcher charMatcher) {
-        return ProfilingCharMatcherNodeGen.create(byteMatcher, charMatcher);
-    }
-
-    @Specialization(guards = "compactString")
-    boolean matchCompactString(int c, boolean compactString) {
-        return byteMatcher.execute(c, compactString);
-    }
-
-    @Specialization(guards = {"!compactString", "isByte(c)"})
-    boolean matchByte(int c, boolean compactString) {
-        return byteMatcher.execute(c, compactString);
-    }
-
-    @Specialization(guards = "!compactString", replaces = "matchByte")
-    boolean matchChar(int c, boolean compactString) {
-        return charMatcher.execute(c, compactString);
-    }
-
-    static boolean isByte(int c) {
-        return c < 256;
-    }
-
-    @Override
-    public int estimatedCost() {
-        return charMatcher.estimatedCost();
+    public static RuntimeException shouldNotReachHere(String msg) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        return illegalStateException(msg);
     }
 
     @TruffleBoundary
-    @Override
-    public String toString() {
-        return charMatcher.toString();
+    private static RuntimeException illegalStateException() {
+        return new IllegalStateException();
     }
+
+    @TruffleBoundary
+    private static IllegalStateException illegalStateException(String msg) {
+        return new IllegalStateException(msg);
+    }
+
 }

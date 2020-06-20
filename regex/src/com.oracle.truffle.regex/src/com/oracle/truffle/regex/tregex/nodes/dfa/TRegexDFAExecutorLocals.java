@@ -49,7 +49,6 @@ import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
 public final class TRegexDFAExecutorLocals extends TRegexExecutorLocals {
 
     private int curMinIndex;
-    private int successorIndex;
     private int result;
     private short lastTransition;
     private int lastIndex;
@@ -86,14 +85,6 @@ public final class TRegexDFAExecutorLocals extends TRegexExecutorLocals {
     public void setLastTransition(short lastTransition) {
         lastIndex = getIndex();
         this.lastTransition = lastTransition;
-    }
-
-    public int getSuccessorIndex() {
-        return successorIndex;
-    }
-
-    public void setSuccessorIndex(int successorIndex) {
-        this.successorIndex = successorIndex;
     }
 
     public int getLastIndex() {

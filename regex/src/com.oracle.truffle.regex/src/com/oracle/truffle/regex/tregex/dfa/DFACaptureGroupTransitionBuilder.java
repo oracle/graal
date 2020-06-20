@@ -80,7 +80,7 @@ public class DFACaptureGroupTransitionBuilder extends DFAStateTransitionBuilder 
 
     @Override
     public DFAStateTransitionBuilder createNodeSplitCopy() {
-        return new DFACaptureGroupTransitionBuilder(getMatcherBuilder(), getTransitionSet(), dfaGen);
+        return new DFACaptureGroupTransitionBuilder(getCodePointSet(), getTransitionSet(), dfaGen);
     }
 
     public void setLazyTransition(DFACaptureGroupLazyTransition lazyTransition) {

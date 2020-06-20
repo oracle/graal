@@ -52,16 +52,35 @@ public abstract class InputIndexOfNode extends Node {
         return InputIndexOfNodeGen.create();
     }
 
-    public abstract int execute(Object input, int fromIndex, int maxIndex, char[] chars);
+    public abstract int execute(Object input, int fromIndex, int maxIndex, Object chars);
 
     @Specialization
-    public int indexOf(String input, int fromIndex, int maxIndex, char[] chars) {
+    public int doBytes(byte[] input, int fromIndex, int maxIndex, byte[] bytes) {
+        return ArrayUtils.indexOf(input, fromIndex, maxIndex, bytes);
+    }
+
+    @Specialization
+    public int doChars(String input, int fromIndex, int maxIndex, char[] chars) {
         return ArrayUtils.indexOf(input, fromIndex, maxIndex, chars);
     }
 
     @Specialization
-    public int indexOf(TruffleObject input, int fromIndex, int maxIndex, char[] chars,
-                    @Cached("create()") InputReadNode charAtNode) {
+    public int doTruffleObjBytes(TruffleObject input, int fromIndex, int maxIndex, byte[] bytes,
+                    @Cached InputReadNode charAtNode) {
+        for (int i = fromIndex; i < maxIndex; i++) {
+            int c = charAtNode.execute(input, i);
+            for (byte v : bytes) {
+                if (c == Byte.toUnsignedInt(v)) {
+                    return i;
+                }
+            }
+        }
+        return -1;
+    }
+
+    @Specialization
+    public int doTruffleObjChars(TruffleObject input, int fromIndex, int maxIndex, char[] chars,
+                    @Cached InputReadNode charAtNode) {
         for (int i = fromIndex; i < maxIndex; i++) {
             int c = charAtNode.execute(input, i);
             for (char v : chars) {
@@ -71,9 +90,5 @@ public abstract class InputIndexOfNode extends Node {
             }
         }
         return -1;
-    }
-
-    static boolean maskIsZero(char mask) {
-        return mask == 0;
     }
 }
