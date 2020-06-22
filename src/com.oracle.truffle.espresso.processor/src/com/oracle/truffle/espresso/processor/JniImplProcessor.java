@@ -101,8 +101,7 @@ public class JniImplProcessor extends IntrinsicsProcessor {
                 String classFile = spawnSubstitutor(
                                 className,
                                 targetMethodName,
-                                espressoTypes,
-                                helper);
+                                espressoTypes, helper);
                 commitSubstitution(jniMethod, substitutorName, classFile);
             }
         }

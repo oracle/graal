@@ -766,14 +766,31 @@ public abstract class EspressoProcessor extends AbstractProcessor {
     /**
      * Creates the substitutor.
      *
-     * @param className The name of the class where the substituted method is found.
+     *
+     * @param className The name of the host class where the substituted method is found.
      * @param targetMethodName The name of the substituted method.
      * @param parameterTypeName The list of *Host* parameter types of the substituted method.
      * @param helper A helper structure.
      * @return The string forming the substitutor.
      */
     String spawnSubstitutor(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
-        String substitutorName = getSubstitutorClassName(className, targetMethodName, parameterTypeName);
+        return spawnSubstitutor(className, className, targetMethodName, parameterTypeName, helper);
+    }
+
+    /**
+     * Creates the substitutor.
+     *
+     * @param hostName The name of the host class where the substitution is to be found.
+     * @param guestName The "Target_"-formatted name of the guest class where the substituted method
+     *            is found. Should often be the same as hostName, but can differ if, for example, a
+     *            class was renamed in Java 11.
+     * @param targetMethodName The name of the substituted method.
+     * @param parameterTypeName The list of *Host* parameter types of the substituted method.
+     * @param helper A helper structure.
+     * @return The string forming the substitutor.
+     */
+    String spawnSubstitutor(String hostName, String guestName, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
+        String substitutorName = getSubstitutorClassName(guestName, targetMethodName, parameterTypeName);
         StringBuilder classFile = new StringBuilder();
         // Header
         classFile.append(COPYRIGHT);
@@ -788,7 +805,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
         classFile.append(generateImports(substitutorName, targetMethodName, parameterTypeName, helper));
 
         // Class
-        classFile.append(generateGeneratedBy(className, targetMethodName, parameterTypeName, helper)).append("\n");
+        classFile.append(generateGeneratedBy(guestName, targetMethodName, parameterTypeName, helper)).append("\n");
         classFile.append(PUBLIC_FINAL_CLASS).append(substitutorName).append(EXTENSION);
 
         // Instance Factory
@@ -810,7 +827,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
 
         // Invoke method
         classFile.append(TAB_1).append(OVERRIDE).append("\n");
-        classFile.append(generateInvoke(className, targetMethodName, parameterTypeName, helper));
+        classFile.append(generateInvoke(guestName, targetMethodName, parameterTypeName, helper));
 
         // End
         return classFile.toString();

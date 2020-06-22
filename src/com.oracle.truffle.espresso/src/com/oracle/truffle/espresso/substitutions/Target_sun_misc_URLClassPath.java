@@ -27,7 +27,7 @@ import java.net.URL;
 
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-@EspressoSubstitutions
+@EspressoSubstitutions(java11 = "Target_jdk_internal_misc_URLClassPath")
 public final class Target_sun_misc_URLClassPath {
     /**
      * These ... new JVM_ functions uses hotspot internals to improve sun.misc.URLClassPath search

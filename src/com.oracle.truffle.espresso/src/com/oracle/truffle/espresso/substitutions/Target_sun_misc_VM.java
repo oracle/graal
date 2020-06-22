@@ -23,7 +23,7 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
-@EspressoSubstitutions
+@EspressoSubstitutions(java11 = "Target_jdk_internal_misc_VM")
 public final class Target_sun_misc_VM {
     @Substitution
     public static void initialize() {

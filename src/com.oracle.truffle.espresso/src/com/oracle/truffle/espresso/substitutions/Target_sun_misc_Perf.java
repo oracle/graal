@@ -33,7 +33,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  * These (incomplete) substitutions are just a band-aid to run critical internal code (e.g.
  * ClassLoader). The Perf API is currently unsupported.
  */
-@EspressoSubstitutions
+@EspressoSubstitutions(java11 = "Target_jdk_internal_misc_Perf")
 public final class Target_sun_misc_Perf {
 
     // the Variability enum must be kept in synchronization with the

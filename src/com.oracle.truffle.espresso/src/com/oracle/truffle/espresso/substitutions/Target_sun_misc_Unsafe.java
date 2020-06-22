@@ -51,7 +51,7 @@ import com.oracle.truffle.espresso.vm.UnsafeAccess;
 
 import sun.misc.Unsafe;
 
-@EspressoSubstitutions
+@EspressoSubstitutions(java11 = "Target_jdk_internal_misc_Unsafe")
 public final class Target_sun_misc_Unsafe {
 
     static final int SAFETY_FIELD_OFFSET = 123456789;
@@ -1239,5 +1239,74 @@ public final class Target_sun_misc_Unsafe {
     @SuppressWarnings("unused")
     public static int getLoadAverage(@Host(Unsafe.class) StaticObject self, @Host(double[].class) StaticObject loadavg, int nelems) {
         return -1; // unobtainable
+    }
+
+    // Java 11 new methods:
+
+    @Substitution(hasReceiver = true)
+    @SuppressWarnings("unused")
+    public static int addressSize0(@Host(Unsafe.class) StaticObject self) {
+        return UNSAFE.addressSize();
+    }
+
+    @Substitution(hasReceiver = true)
+    @SuppressWarnings("unused")
+    public static boolean isBigEndian0(@Host(Unsafe.class) StaticObject self) {
+        return !isLittleEndian();
+    }
+
+    public static boolean isLittleEndian() {
+        long region = UNSAFE.allocateMemory(4);
+        UNSAFE.putInt(region, 1);
+        byte b = UNSAFE.getByte(region);
+        UNSAFE.freeMemory(region);
+        return b != 0;
+    }
+
+    @Substitution(hasReceiver = true)
+    @SuppressWarnings("unused")
+    public static boolean unalignedAccess0(@Host(Unsafe.class) StaticObject self) {
+        // Be conservative, unobtainable
+        return false;
+    }
+
+    @Substitution(hasReceiver = true)
+    @SuppressWarnings("unused")
+    public static long objectFieldOffset1(@Host(Unsafe.class) StaticObject self, @Host(value = Class.class) StaticObject cl, @Host(value = String.class) StaticObject guestName,
+                    @InjectMeta Meta meta) {
+        Klass k = cl.getMirrorKlass();
+        String hostName = Meta.toHostString(guestName);
+        if (k instanceof ObjectKlass) {
+            ObjectKlass kl = (ObjectKlass) k;
+            for (Field f : kl.getFieldTable()) {
+                if (f.getNameAsString().equals(hostName)) {
+                    return SAFETY_FIELD_OFFSET + f.getSlot();
+                }
+            }
+            for (Field f : kl.getStaticFieldTable()) {
+                if (f.getNameAsString().equals(hostName)) {
+                    return SAFETY_FIELD_OFFSET + f.getSlot();
+                }
+            }
+        }
+        throw Meta.throwException(meta.java_lang_InternalError);
+    }
+
+    @Substitution(hasReceiver = true)
+    public static boolean compareAndSetObject(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset,
+                    @Host(Object.class) StaticObject before, @Host(Object.class) StaticObject after) {
+        return compareAndSwapObject(self, holder, offset, before, after);
+    }
+
+    @Substitution(hasReceiver = true)
+    public static boolean compareAndSetInt(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, int before,
+                    int after) {
+        return compareAndSwapInt(self, holder, offset, before, after);
+    }
+
+    @Substitution(hasReceiver = true)
+    public static boolean compareAndSetLong(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, long before,
+                    long after) {
+        return compareAndSwapLong(self, holder, offset, before, after);
     }
 }

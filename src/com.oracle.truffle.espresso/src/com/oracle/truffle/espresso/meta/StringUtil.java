@@ -24,7 +24,7 @@
 package com.oracle.truffle.espresso.meta;
 
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.substitutions.Target_jdk_internal_misc_Unsafe;
+import com.oracle.truffle.espresso.substitutions.Target_sun_misc_Unsafe;
 
 /**
  * Helper for converting Java 8 strings to and from Java 11 strings.
@@ -105,7 +105,7 @@ public class StringUtil {
     }
 
     private static boolean isBigEndian() {
-        return Target_jdk_internal_misc_Unsafe.isBigEndian0(StaticObject.NULL);
+        return Target_sun_misc_Unsafe.isBigEndian0(StaticObject.NULL);
     }
 
     private static final int HI_BYTE_SHIFT;

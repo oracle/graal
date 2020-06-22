@@ -29,7 +29,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 
 import sun.misc.Signal;
 
-@EspressoSubstitutions
+@EspressoSubstitutions(java11 = "Target_jdk_internal_misc_Signal")
 public final class Target_sun_misc_Signal {
     @Substitution
     @TruffleBoundary

@@ -112,8 +112,7 @@ public class VMImplProcessor extends IntrinsicsProcessor {
                 String classFile = spawnSubstitutor(
                                 className,
                                 targetMethodName,
-                                espressoTypes,
-                                h);
+                                espressoTypes, h);
                 commitSubstitution(VMmethod, substitutorName, classFile);
             }
         }

@@ -32,4 +32,6 @@ import java.lang.annotation.Target;
 @Target(value = {TYPE})
 public @interface EspressoSubstitutions {
     Class<?> value() default EspressoSubstitutions.class;
+
+    String java11() default "";
 }
