@@ -203,6 +203,10 @@ public final class VM extends NativeEnv implements ContextAccess {
         /* verifyLibrary = */ loadLibraryInternal(bootLibraryPath, "verify", false);
         TruffleObject libJava = loadLibraryInternal(bootLibraryPath, "java");
 
+        if (getContext().getJavaVersion() > 8) {
+            return libJava;
+        }
+
         // The JNI_OnLoad handling is normally done by method load in
         // java.lang.ClassLoader$NativeLibrary, but the VM loads the base library
         // explicitly so we have to check for JNI_OnLoad as well

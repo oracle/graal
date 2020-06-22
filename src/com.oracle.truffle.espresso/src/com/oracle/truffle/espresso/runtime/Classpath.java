@@ -34,10 +34,62 @@ import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 
 public final class Classpath {
+    public static final String JAVA_BASE = "java.base";
+
+    /**
+     * Creates a classpath {@link Entry} from a given file system path.
+     *
+     * @param name a file system path denoting a classpath entry
+     */
+    public static Entry createEntry(String name) {
+        final File pathFile = new File(name);
+        if (pathFile.isDirectory()) {
+            return new Directory(pathFile);
+        } else {
+            // regular file.
+
+            EspressoContext context = EspressoLanguage.getCurrentContext();
+            if (context.getJavaVersion() >= 9) {
+                JImageLibrary library = context.jimageLibrary();
+                TruffleObject image = library.open(name);
+                if (!InteropLibrary.getUncached().isNull(image)) {
+                    return new Modules(pathFile, library, image);
+                }
+            }
+            if (name.endsWith(".zip") || name.endsWith(".jar")) {
+                if (pathFile.exists() && pathFile.isFile()) {
+                    return new Archive(pathFile);
+                }
+            }
+        }
+        return new PlainFile(pathFile);
+    }
+
+    /**
+     * Creates a classpath {@link Entry} from a given file system path, but forces it to never be a
+     * modules entry. Useful if trying to obtain a classpath {@link Entry} when there is no
+     * {@link EspressoContext} available.
+     * 
+     * @param name a file system path denoting a classpath entry
+     */
+    public static Entry createNonModuleEntry(String name) {
+        final File pathFile = new File(name);
+        if (pathFile.isDirectory()) {
+            return new Directory(pathFile);
+        } else if (name.endsWith(".zip") || name.endsWith(".jar")) {
+            if (pathFile.exists() && pathFile.isFile()) {
+                return new Archive(pathFile);
+            }
+        }
+        return new PlainFile(pathFile);
+    }
 
     private static final List<Entry> EMPTY_LIST = Collections.emptyList();
 
@@ -104,6 +156,7 @@ public final class Classpath {
         public ZipFile zipFile() {
             return null;
         }
+
     }
 
     /**
@@ -137,12 +190,14 @@ public final class Classpath {
         public boolean contains(String path) {
             return false;
         }
+
     }
 
     /**
      * Represents a classpath entry that is a path to an existing directory.
      */
     public static final class Directory extends Entry {
+
         private final File directory;
 
         public Directory(File directory) {
@@ -177,6 +232,7 @@ public final class Classpath {
         public boolean contains(String path) {
             return new File(directory, File.separatorChar == '/' ? path : path.replace('/', File.separatorChar)).exists();
         }
+
     }
 
     /**
@@ -185,6 +241,7 @@ public final class Classpath {
     static final class Archive extends Entry {
 
         private final File file;
+
         private ZipFile zipFile;
 
         Archive(File file) {
@@ -236,6 +293,44 @@ public final class Classpath {
         public boolean isArchive() {
             return true;
         }
+
+    }
+
+    /**
+     * Represents a classpath entry that is a path to a jimage modules file.
+     */
+    static final class Modules extends Entry {
+        private File file;
+
+        private JImageHelper helper;
+
+        Modules(File file, JImageLibrary library, TruffleObject jimage) {
+            this.file = file;
+            this.helper = new JImageHelper(library, jimage);
+        }
+
+        @Override
+        public File file() {
+            return file;
+        }
+
+        @Override
+        public boolean contains(String path) {
+            String moduleName = helper.packageToModule(path);
+            byte[] classBytes = helper.getClassBytes(moduleName, path);
+            return classBytes != null;
+        }
+
+        @Override
+        ClasspathFile readFile(String archiveName, String fsPath) {
+            String moduleName = helper.packageToModule(archiveName);
+            byte[] classBytes = helper.getClassBytes(moduleName, archiveName);
+            if (classBytes == null) {
+                return null;
+            }
+            return new ClasspathFile(classBytes, this, fsPath);
+        }
+
     }
 
     /**
@@ -245,23 +340,6 @@ public final class Classpath {
      */
     public List<Entry> entries() {
         return entries;
-    }
-
-    /**
-     * Creates a classpath {@link Entry} from a given file system path.
-     *
-     * @param name a file system path denoting a classpath entry
-     */
-    public static Entry createEntry(String name) {
-        final File pathFile = new File(name);
-        if (pathFile.isDirectory()) {
-            return new Directory(pathFile);
-        } else if (name.endsWith(".zip") || name.endsWith(".jar")) {
-            if (pathFile.exists() && pathFile.isFile()) {
-                return new Archive(pathFile);
-            }
-        }
-        return new PlainFile(pathFile);
     }
 
     /**

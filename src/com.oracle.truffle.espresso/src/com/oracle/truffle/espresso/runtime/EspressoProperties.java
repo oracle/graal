@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.runtime;
 
 import java.io.File;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -46,6 +47,10 @@ import com.oracle.truffle.espresso.meta.EspressoError;
  * OS/architecture-specific properties should be added here.
  */
 public interface EspressoProperties {
+    String BOOT_MODULES_NAME = "modules";
+
+    BootClassPathType bootClassPathType();
+
     Path javaHome();
 
     Path espressoLibraryPath();
@@ -61,6 +66,7 @@ public interface EspressoProperties {
     List<Path> extDirs();
 
     abstract class Builder {
+        private BootClassPathType version;
         private Path javaHome;
         private Path espressoLibraryPath;
         private List<Path> classpath;
@@ -82,6 +88,15 @@ public interface EspressoProperties {
         abstract List<Path> defaultBootLibraryPath();
 
         abstract List<Path> defaultExtDirs();
+
+        public BootClassPathType bootClassPathVersion() {
+            return version;
+        }
+
+        public Builder bootClassPathVersion(BootClassPathType bootClasspathVersion) {
+            this.version = bootClasspathVersion;
+            return this;
+        }
 
         public Builder javaHome(Path newJavaHome) {
             this.javaHome = newJavaHome;
@@ -148,6 +163,7 @@ public interface EspressoProperties {
 
         public EspressoProperties build() {
             return new EspressoProperties() {
+                private final BootClassPathType javaVersion = Builder.this.bootClassPathVersion();
                 private final Path javaHome = Objects.requireNonNull(Builder.this.javaHome(), "javaHome not defined");
                 private final List<Path> classpath = Objects.requireNonNull(Builder.this.classpath(), "classpath not defined");
                 private final List<Path> bootClasspath = Objects.requireNonNull(Builder.this.bootClasspath(), "bootClasspath not defined");
@@ -155,6 +171,11 @@ public interface EspressoProperties {
                 private final List<Path> bootLibraryPath = Objects.requireNonNull(Builder.this.bootLibraryPath(), "bootLibraryPath not defined");
                 private final List<Path> extDirs = Objects.requireNonNull(Builder.this.extDirs(), "extDirs not defined");
                 private final Path espressoLibraryPath = Objects.requireNonNull(Builder.this.espressoLibraryPath(), "espressoLibraryPath not defined");
+
+                @Override
+                public BootClassPathType bootClassPathType() {
+                    return javaVersion;
+                }
 
                 @Override
                 public Path javaHome() {
@@ -265,16 +286,24 @@ public interface EspressoProperties {
 
 abstract class PlatformBuilder extends EspressoProperties.Builder {
 
+    private static final Path RT_JAR = Paths.get("lib", "rt.jar");
+
+    private static final Path MODULES_IMAGE = Paths.get("lib", EspressoProperties.BOOT_MODULES_NAME);
+
+    private static final Path MODULES_EXPLODED = Paths.get(EspressoProperties.BOOT_MODULES_NAME, Classpath.JAVA_BASE);
+
     private static final List<Path> BOOT_CLASSPATH = Collections.unmodifiableList(
                     Arrays.asList(
+                                    RT_JAR,
                                     Paths.get("lib", "resources.jar"),
-                                    Paths.get("lib", "rt.jar"),
                                     Paths.get("lib", "sunrsasign.jar"),
                                     Paths.get("lib", "jsse.jar"),
                                     Paths.get("lib", "jce.jar"),
                                     Paths.get("lib", "charsets.jar"),
                                     Paths.get("lib", "jfr.jar"),
                                     Paths.get("classes")));
+
+    private static final int PATHS_SIZE = BOOT_CLASSPATH.size();
 
     // TODO(peterssen): Enforce we are on amd64.
     // Note that os.arch may yield different values for the same architecture e.g. amd64 vs x86_64.
@@ -289,11 +318,30 @@ abstract class PlatformBuilder extends EspressoProperties.Builder {
 
     @Override
     List<Path> defaultBootClasspath() {
-        List<Path> paths = new ArrayList<>(BOOT_CLASSPATH.size());
-        for (Path p : BOOT_CLASSPATH) {
-            paths.add(javaHome().resolve(p));
+        Path path = javaHome().resolve(RT_JAR);
+        if (Files.isReadable(path)) {
+            bootClassPathVersion(BootClassPathType.RT_JAR);
+            List<Path> paths = new ArrayList<>(PATHS_SIZE);
+            for (Path p : BOOT_CLASSPATH) {
+                paths.add(javaHome().resolve(p));
+            }
+            return paths;
         }
-        return paths;
+        path = javaHome().resolve(MODULES_IMAGE);
+        if (Files.isReadable(path)) {
+            bootClassPathVersion(BootClassPathType.IMAGE);
+            List<Path> paths = new ArrayList<>(1);
+            paths.add(path);
+            return paths;
+        }
+        path = javaHome().resolve(MODULES_EXPLODED);
+        if (Files.isDirectory(path)) {
+            bootClassPathVersion(BootClassPathType.EXPLODED);
+            List<Path> paths = new ArrayList<>(1);
+            paths.add(path);
+            return paths;
+        }
+        throw EspressoError.shouldNotReachHere("Cannot find boot class path.");
     }
 
     @Override
@@ -365,7 +413,10 @@ final class LinuxBuilder extends PlatformBuilder {
 
     @Override
     List<Path> defaultBootLibraryPath() {
-        return Collections.singletonList(javaHome().resolve("lib").resolve(CPU_ARCH));
+        List<Path> paths = new ArrayList<>();
+        paths.add(javaHome().resolve("lib").resolve(CPU_ARCH));
+        paths.add(javaHome().resolve("lib"));
+        return paths;
     }
 
     @Override
