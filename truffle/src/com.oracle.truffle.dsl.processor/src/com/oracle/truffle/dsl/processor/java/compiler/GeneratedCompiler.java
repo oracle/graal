@@ -83,4 +83,10 @@ public class GeneratedCompiler extends AbstractCompiler {
         return elements;
     }
 
+    @Override
+    protected boolean emitDeprecationWarningImpl(ProcessingEnvironment environment, Element element) {
+        // TODO:
+        return false;
+    }
+
 }

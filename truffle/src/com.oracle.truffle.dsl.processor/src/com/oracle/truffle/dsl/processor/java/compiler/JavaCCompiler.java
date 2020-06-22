@@ -40,11 +40,14 @@
  */
 package com.oracle.truffle.dsl.processor.java.compiler;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.List;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
+import javax.tools.JavaFileObject;
 
 public class JavaCCompiler extends AbstractCompiler {
 
@@ -67,4 +70,97 @@ public class JavaCCompiler extends AbstractCompiler {
         return type.getEnclosedElements();
     }
 
+    @Override
+    protected boolean emitDeprecationWarningImpl(ProcessingEnvironment environment, Element element) {
+        try {
+            ReflectionSupport reflect = new ReflectionSupport();
+            Object javacContext = reflect.getJavacContext(environment);
+            Object trees = reflect.getTrees(environment);
+            Object elementTreePath = reflect.getPath(trees, element);
+            if (elementTreePath == null) {
+                return false;
+            }
+            Object log = reflect.getLog(javacContext);
+            Object check = reflect.getCheck(javacContext);
+            Object prev = reflect.useSource(log, reflect.getFile(elementTreePath));
+            try {
+                reflect.warnDeprecated(check, elementTreePath, element);
+            } finally {
+                reflect.useSource(log, prev);
+            }
+            return true;
+        } catch (ReflectiveOperationException reflectiveException) {
+            return false;
+        }
+    }
+
+    private static final class ReflectionSupport {
+
+        final Class<?> check;
+        final Class<?> context;
+        final Class<?> diagnosticPosition;
+        final Class<?> javacProcessingEnvironment;
+        final Class<?> jcCompilationUnit;
+        final Class<?> log;
+        final Class<?> symbol;
+        final Class<?> trees;
+        final Class<?> treePath;
+
+        ReflectionSupport() throws ClassNotFoundException {
+            check = Class.forName("com.sun.tools.javac.comp.Check");
+            context = Class.forName("com.sun.tools.javac.util.Context");
+            diagnosticPosition = Class.forName("com.sun.tools.javac.util.JCDiagnostic$DiagnosticPosition");
+            javacProcessingEnvironment = Class.forName("com.sun.tools.javac.processing.JavacProcessingEnvironment");
+            jcCompilationUnit = Class.forName("com.sun.tools.javac.tree.JCTree$JCCompilationUnit");
+            log = Class.forName("com.sun.tools.javac.util.Log");
+            symbol = Class.forName("com.sun.tools.javac.code.Symbol");
+            trees = Class.forName("com.sun.source.util.Trees");
+            treePath = Class.forName("com.sun.source.util.TreePath");
+        }
+
+        Object getJavacContext(ProcessingEnvironment environment) throws ReflectiveOperationException {
+            Method getContextMethod = javacProcessingEnvironment.getMethod("getContext");
+            return getContextMethod.invoke(environment);
+        }
+
+        Object getTrees(ProcessingEnvironment environment) throws ReflectiveOperationException {
+            Method treesInstanceMethod = trees.getMethod("instance", ProcessingEnvironment.class);
+            return treesInstanceMethod.invoke(null, environment);
+        }
+
+        Object getPath(Object treesInstance, Element element) throws ReflectiveOperationException {
+            Method getTreeMethod = trees.getMethod("getPath", Element.class);
+            return getTreeMethod.invoke(treesInstance, element);
+        }
+
+        Object getLog(Object javacContext) throws ReflectiveOperationException {
+            Method logInstanceMethod = log.getMethod("instance", context);
+            return logInstanceMethod.invoke(null, javacContext);
+        }
+
+        Object getCheck(Object javacContext) throws ReflectiveOperationException {
+            Method checkInstanceMethod = check.getMethod("instance", context);
+            return checkInstanceMethod.invoke(null, javacContext);
+        }
+
+        Object getFile(Object treePathInstance) throws ReflectiveOperationException {
+            Method getLeafMethod = treePath.getMethod("getCompilationUnit");
+            Object compilationUnitTree = getLeafMethod.invoke(treePathInstance);
+            Field sourceFileField = jcCompilationUnit.getDeclaredField("sourcefile");
+            return sourceFileField.get(compilationUnitTree);
+        }
+
+        Object useSource(Object logInstance, Object currentFile) throws ReflectiveOperationException {
+            Method useSourceMethod = log.getMethod("useSource", JavaFileObject.class);
+            return useSourceMethod.invoke(logInstance, currentFile);
+        }
+
+        void warnDeprecated(Object checkInstance, Object treePathInstance, Element element) throws ReflectiveOperationException {
+            Method getLeafMethod = treePath.getMethod("getLeaf");
+            Object elementTree = getLeafMethod.invoke(treePathInstance);
+            Method warnDeprecatedMethod = check.getDeclaredMethod("warnDeprecated", diagnosticPosition, symbol);
+            warnDeprecatedMethod.setAccessible(true);
+            warnDeprecatedMethod.invoke(checkInstance, elementTree, element);
+        }
+    }
 }
