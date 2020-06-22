@@ -60,8 +60,8 @@ public @interface TruffleFromLibGraal {
         AsCompilableTruffleAST(Object.class, Object.class, long.class),
         AsJavaConstant(long.class, Object.class),
         CallNodeHashCode(int.class, Object.class),
-        // TODO: fix
-        CancelCompilation(void.class, Object.class),
+        // TODO: make sure this is OK
+        CancelCompilation(void.class, Object.class, String.class),
         CompilableToString(String.class, Object.class),
         ConsumeOptimizedAssumptionDependency(void.class, Consumer.class, Object.class),
         CreateInliningPlan(Object.class, Object.class, Object.class, Object.class),
