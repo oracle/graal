@@ -29,6 +29,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Descriptor;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Member;
+import com.oracle.truffle.espresso.impl.Method;
 
 /**
  * Interface denoting a field or method entry in a constant pool.
@@ -120,6 +121,11 @@ public interface MemberRefConstant extends PoolConstant {
             return true;
         }
         Klass memberKlass = member.getDeclaringKlass();
+        if (member instanceof Method && Name.clone.equals(member.getName()) && memberKlass.isJavaLangObject()) {
+            if (resolvedKlass.isArray()) {
+                return true;
+            }
+        }
         if (member.isProtected()) {
             if (!member.isStatic()) {
                 if (resolvedKlass.isAssignableFrom(accessingKlass) || accessingKlass.isAssignableFrom(resolvedKlass)) {
