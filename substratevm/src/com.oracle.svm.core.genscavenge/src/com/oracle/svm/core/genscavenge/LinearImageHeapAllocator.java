@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,28 +22,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.image;
+package com.oracle.svm.core.genscavenge;
 
-/**
- * This class is responsible for computing and storing the layout of the native image heap. A native
- * image heap consist of multiple {@link ImageHeapPartition}s. Every object in the native image heap
- * is assigned to a position within a {@link ImageHeapPartition}.
- */
-public interface ImageHeapLayouter {
-    /**
-     * Returns all native image heap partitions.
-     */
-    ImageHeapPartition[] getPartitions();
+public class LinearImageHeapAllocator {
+    private long position;
 
-    /**
-     * Assign an object to the most suitable partition.
-     */
-    void assignObjectToPartition(ImageHeapObject info, boolean immutable, boolean references, boolean relocatable);
+    public LinearImageHeapAllocator(long position) {
+        this.position = position;
+    }
 
-    /**
-     * This method places all heap partitions as one contiguous memory block in one section. After
-     * calling that method, all native image heap objects are assigned their final address. This
-     * address must not change anymore.
-     */
-    ImageHeapLayoutInfo layout(ImageHeap imageHeap, int pageSize);
+    public long getPosition() {
+        return position;
+    }
+
+    public long allocate(long size) {
+        long begin = position;
+        position += size;
+        return begin;
+    }
+
+    public void align(int multiple) {
+        allocate(computePadding(position, multiple));
+    }
+
+    static long computePadding(long offset, int alignment) {
+        long remainder = offset % alignment;
+        return remainder == 0 ? 0 : alignment - remainder;
+    }
 }

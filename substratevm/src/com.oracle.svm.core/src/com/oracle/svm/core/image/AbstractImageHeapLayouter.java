@@ -24,15 +24,12 @@
  */
 package com.oracle.svm.core.image;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.core.common.CompressEncoding;
-import org.graalvm.nativeimage.ImageSingletons;
+import java.util.ArrayList;
+import java.util.List;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.util.VMError;
 
-public abstract class AbstractImageHeapLayouter<T extends ImageHeapPartition> implements ImageHeapLayouter {
+public abstract class AbstractImageHeapLayouter<T extends AbstractImageHeapLayouter.AbstractImageHeapPartition> implements ImageHeapLayouter {
     /** A partition holding objects with only read-only primitive values, but no references. */
     private static final int READ_ONLY_PRIMITIVE = 0;
     /** A partition holding objects with read-only references and primitive values. */
@@ -75,55 +72,42 @@ public abstract class AbstractImageHeapLayouter<T extends ImageHeapPartition> im
 
     @Override
     public void assignObjectToPartition(ImageHeapObject info, boolean immutable, boolean references, boolean relocatable) {
-        ImageHeapPartition partition = choosePartition(immutable, references, relocatable);
+        T partition = choosePartition(immutable, references, relocatable);
         info.setHeapPartition(partition);
+        partition.assign(info);
     }
 
     @Override
-    public ImageHeapLayout layoutPartitionsAsContiguousHeap(String sectionName, int pageSize) {
-        VMError.guarantee(SubstrateOptions.SpawnIsolates.getValue());
-
-        // the read only relocatable values must be located in their own page(s)
-        getReadOnlyPrimitive().addPadding(computePadding(getReadOnlyPrimitive().getSize() + getReadOnlyReference().getSize(), pageSize));
-        getReadOnlyRelocatable().addPadding(computePadding(getReadOnlyRelocatable().getSize(), pageSize));
-
-        getReadOnlyPrimitive().setSection(sectionName, 0);
-        getReadOnlyReference().setSection(sectionName, getReadOnlyPrimitive().getOffsetInSection() + getReadOnlyPrimitive().getSize());
-        getReadOnlyRelocatable().setSection(sectionName, getReadOnlyReference().getOffsetInSection() + getReadOnlyReference().getSize());
-        getWritablePrimitive().setSection(sectionName, getReadOnlyRelocatable().getOffsetInSection() + getReadOnlyRelocatable().getSize());
-        getWritableReference().setSection(sectionName, getWritablePrimitive().getOffsetInSection() + getWritablePrimitive().getSize());
-
+    public ImageHeapLayoutInfo layout(ImageHeap imageHeap, int pageSize) {
         int objectAlignment = ConfigurationValues.getObjectLayout().getAlignment();
-        assert getReadOnlyPrimitive().getOffsetInSection() == 0;
-        assert getReadOnlyReference().getOffsetInSection() % objectAlignment == 0;
-        assert getReadOnlyRelocatable().getOffsetInSection() % pageSize == 0;
-        assert getWritablePrimitive().getOffsetInSection() % pageSize == 0;
-        assert getWritableReference().getOffsetInSection() % objectAlignment == 0;
+        assert pageSize % objectAlignment == 0 : "Page size does not match object alignment";
 
-        return createLayout();
+        for (T partition : getPartitions()) {
+            int startAlignment = objectAlignment;
+            int endAlignment = objectAlignment;
+            if (partition == getReadOnlyRelocatable()) {
+                startAlignment = pageSize;
+                endAlignment = pageSize;
+            } else if (partition == getWritablePrimitive()) {
+                startAlignment = pageSize;
+            } else if (partition == getWritableReference()) {
+                endAlignment = pageSize;
+            }
+            partition.setStartAlignment(startAlignment);
+            partition.setEndAlignment(endAlignment);
+        }
+
+        doLayout(imageHeap);
+
+        for (T partition : getPartitions()) {
+            assert partition.getStartOffset() % partition.getStartAlignment() == 0;
+            assert (partition.getStartOffset() + partition.getSize()) % partition.getEndAlignment() == 0;
+        }
+
+        return createLayoutInfo();
     }
 
-    @Override
-    public ImageHeapLayout layoutPartitionsAsSeparatedHeap(String readOnlySectionName, long readOnlySectionOffset, String writableSectionName, long writableSectionOffset) {
-        VMError.guarantee(!SubstrateOptions.SpawnIsolates.getValue());
-
-        getReadOnlyPrimitive().setSection(readOnlySectionName, readOnlySectionOffset);
-        getReadOnlyReference().setSection(readOnlySectionName, getReadOnlyPrimitive().getOffsetInSection() + getReadOnlyPrimitive().getSize());
-        getReadOnlyRelocatable().setSection(readOnlySectionName, getReadOnlyReference().getOffsetInSection() + getReadOnlyReference().getSize());
-
-        getWritablePrimitive().setSection(writableSectionName, writableSectionOffset);
-        getWritableReference().setSection(writableSectionName, getWritablePrimitive().getOffsetInSection() + getWritablePrimitive().getSize());
-
-        int objectAlignment = ConfigurationValues.getObjectLayout().getAlignment();
-        assert getReadOnlyPrimitive().getOffsetInSection() % objectAlignment == 0;
-        assert getReadOnlyReference().getOffsetInSection() % objectAlignment == 0;
-        assert getReadOnlyRelocatable().getOffsetInSection() % objectAlignment == 0;
-
-        assert getWritablePrimitive().getOffsetInSection() % objectAlignment == 0;
-        assert getWritableReference().getOffsetInSection() % objectAlignment == 0;
-
-        return createLayout();
-    }
+    protected abstract void doLayout(ImageHeap imageHeap);
 
     protected T getReadOnlyPrimitive() {
         return getPartitions()[READ_ONLY_PRIMITIVE];
@@ -145,18 +129,7 @@ public abstract class AbstractImageHeapLayouter<T extends ImageHeapPartition> im
         return getPartitions()[WRITABLE_REFERENCE];
     }
 
-    private static long computePadding(long offset, int alignment) {
-        long remainder = offset % alignment;
-        return remainder == 0 ? 0 : alignment - remainder;
-    }
-
-    private ImageHeapPartition choosePartition(boolean immutable, boolean references, boolean relocatable) {
-        if (SubstrateOptions.UseOnlyWritableBootImageHeap.getValue()) {
-            if (!useHeapBase()) {
-                return getWritableReference();
-            }
-        }
-
+    private T choosePartition(boolean immutable, boolean references, boolean relocatable) {
         if (immutable) {
             if (relocatable) {
                 return getReadOnlyRelocatable();
@@ -167,95 +140,62 @@ public abstract class AbstractImageHeapLayouter<T extends ImageHeapPartition> im
         }
     }
 
-    private ImageHeapLayout createLayout() {
-        long readOnlySectionSize = getReadOnlyPrimitive().getSize() + getReadOnlyReference().getSize() + getReadOnlyRelocatable().getSize();
-        long writableSectionSize = getWritablePrimitive().getSize() + getWritableReference().getSize();
-        long readOnlyRelocatableOffsetInSection = getReadOnlyRelocatable().getOffsetInSection();
-        long readOnlyRelocatableSize = getReadOnlyRelocatable().getSize();
-        return new ImageHeapLayout(getReadOnlyPrimitive().getOffsetInSection(), readOnlySectionSize, getWritablePrimitive().getOffsetInSection(), writableSectionSize,
-                        readOnlyRelocatableOffsetInSection, readOnlyRelocatableSize);
-    }
-
-    @Fold
-    protected static boolean useHeapBase() {
-        return SubstrateOptions.SpawnIsolates.getValue() && ImageSingletons.lookup(CompressEncoding.class).hasBase();
+    private ImageHeapLayoutInfo createLayoutInfo() {
+        long writableBegin = getWritablePrimitive().getStartOffset();
+        long writableEnd = getWritableReference().getStartOffset() + getWritableReference().getSize();
+        long writableSize = writableEnd - writableBegin;
+        long imageHeapSize = writableEnd;
+        return new ImageHeapLayoutInfo(writableBegin, writableSize, getReadOnlyRelocatable().getStartOffset(), getReadOnlyRelocatable().getSize(), imageHeapSize);
     }
 
     protected abstract T[] createPartitionsArray(int count);
 
     protected abstract T createPartition(String name, boolean containsReferences, boolean writable);
 
-    public static class ImageHeapLayout {
-        private final long readOnlyOffsetInSection;
-        private final long readOnlySize;
-
-        private final long writableOffsetInSection;
-        private final long writableSize;
-
-        private final long readOnlyRelocatableOffsetInSection;
-        private final long readOnlyRelocatableSize;
-
-        public ImageHeapLayout(long readOnlyOffsetInSection, long readOnlySize, long writableOffsetInSection, long writableSize, long readOnlyRelocatableOffsetInSection,
-                        long readOnlyRelocatableSize) {
-            this.readOnlyOffsetInSection = readOnlyOffsetInSection;
-            this.readOnlySize = readOnlySize;
-            this.writableOffsetInSection = writableOffsetInSection;
-            this.writableSize = writableSize;
-            this.readOnlyRelocatableOffsetInSection = readOnlyRelocatableOffsetInSection;
-            this.readOnlyRelocatableSize = readOnlyRelocatableSize;
-        }
-
-        public long getReadOnlyOffsetInSection() {
-            return readOnlyOffsetInSection;
-        }
-
-        public long getReadOnlySize() {
-            return readOnlySize;
-        }
-
-        public long getWritableOffsetInSection() {
-            return writableOffsetInSection;
-        }
-
-        public long getWritableSize() {
-            return writableSize;
-        }
-
-        public long getReadOnlyRelocatableOffsetInSection() {
-            return readOnlyRelocatableOffsetInSection;
-        }
-
-        public long getReadOnlyRelocatableSize() {
-            return readOnlyRelocatableSize;
-        }
-
-        public boolean isReadOnlyRelocatable(int offset) {
-            return offset >= readOnlyRelocatableOffsetInSection && offset < readOnlyRelocatableOffsetInSection + readOnlyRelocatableSize;
-        }
-
-        public long getImageHeapSize() {
-            return getReadOnlySize() + getWritableSize();
-        }
-    }
-
     /**
      * The native image heap comes in partitions. Each partition holds objects with different
      * properties (read-only/writable, primitives/objects).
      */
     public abstract static class AbstractImageHeapPartition implements ImageHeapPartition {
-        private static final long INVALID_SECTION_OFFSET = -1L;
-
         private final String name;
         private final boolean writable;
 
-        private String sectionName;
-        private long offsetInSection;
+        private int startAlignment = -1;
+        private int endAlignment = -1;
+        private final List<ImageHeapObject> objects = new ArrayList<>();
 
         public AbstractImageHeapPartition(String name, boolean writable) {
             this.name = name;
             this.writable = writable;
-            this.sectionName = null;
-            this.offsetInSection = INVALID_SECTION_OFFSET;
+        }
+
+        public void assign(ImageHeapObject obj) {
+            assert obj.getPartition() == this;
+            objects.add(obj);
+        }
+
+        public void setStartAlignment(int alignment) {
+            assert this.startAlignment == -1 : "Start alignment already assigned: " + this.startAlignment;
+            this.startAlignment = alignment;
+        }
+
+        public final int getStartAlignment() {
+            assert startAlignment >= 0 : "Start alignment not yet assigned";
+            return startAlignment;
+        }
+
+        public void setEndAlignment(int endAlignment) {
+            assert this.endAlignment == -1 : "End alignment already assigned: " + this.endAlignment;
+            this.endAlignment = endAlignment;
+        }
+
+        public final int getEndAlignment() {
+            assert endAlignment >= 0 : "End alignment not yet assigned";
+            return endAlignment;
+        }
+
+        public List<ImageHeapObject> getObjects() {
+            return objects;
         }
 
         @Override
@@ -266,24 +206,6 @@ public abstract class AbstractImageHeapLayouter<T extends ImageHeapPartition> im
         @Override
         public boolean isWritable() {
             return writable;
-        }
-
-        @Override
-        public void setSection(String sectionName, long offsetInSection) {
-            this.sectionName = sectionName;
-            this.offsetInSection = offsetInSection;
-        }
-
-        @Override
-        public String getSectionName() {
-            assert sectionName != null : "Partition " + name + " should have a section name by now.";
-            return sectionName;
-        }
-
-        @Override
-        public long getOffsetInSection() {
-            assert offsetInSection != INVALID_SECTION_OFFSET : "Partition " + name + " should have an offset by now.";
-            return offsetInSection;
         }
 
         @Override

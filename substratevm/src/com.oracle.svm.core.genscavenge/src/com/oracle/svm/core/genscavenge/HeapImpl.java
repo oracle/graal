@@ -376,22 +376,27 @@ public final class HeapImpl extends Heap {
         if (classList == null) {
             /* Two threads might race to set classList, but they compute the same result. */
             List<Class<?>> list = new ArrayList<>(1024);
-            Object firstObject = imageHeapInfo.firstReadOnlyReferenceObject;
-            Object lastObject = imageHeapInfo.lastReadOnlyReferenceObject;
-            Pointer firstPointer = Word.objectToUntrackedPointer(firstObject);
-            Pointer lastPointer = Word.objectToUntrackedPointer(lastObject);
-            Pointer currentPointer = firstPointer;
-            while (currentPointer.belowOrEqual(lastPointer)) {
-                Object currentObject = KnownIntrinsics.convertUnknownValue(currentPointer.toObject(), Object.class);
-                if (currentObject instanceof Class<?>) {
-                    Class<?> asClass = (Class<?>) currentObject;
-                    list.add(asClass);
-                }
-                currentPointer = LayoutEncoding.getObjectEnd(currentObject);
-            }
+            addClassObjectsInPartition(list, imageHeapInfo.firstReadOnlyReferenceObject, imageHeapInfo.lastReadOnlyReferenceObject);
+            addClassObjectsInPartition(list, imageHeapInfo.firstReadOnlyRelocatableObject, imageHeapInfo.lastReadOnlyRelocatableObject);
             classList = Collections.unmodifiableList(list);
         }
         return classList;
+    }
+
+    private static void addClassObjectsInPartition(List<Class<?>> list, Object firstObject, Object lastObject) {
+        if (firstObject == null) {
+            return;
+        }
+        Pointer currentPointer = Word.objectToUntrackedPointer(firstObject);
+        Pointer lastPointer = Word.objectToUntrackedPointer(lastObject);
+        while (currentPointer.belowOrEqual(lastPointer)) {
+            Object currentObject = KnownIntrinsics.convertUnknownValue(currentPointer.toObject(), Object.class);
+            if (currentObject instanceof Class<?>) {
+                Class<?> asClass = (Class<?>) currentObject;
+                list.add(asClass);
+            }
+            currentPointer = LayoutEncoding.getObjectEnd(currentObject);
+        }
     }
 
     /*

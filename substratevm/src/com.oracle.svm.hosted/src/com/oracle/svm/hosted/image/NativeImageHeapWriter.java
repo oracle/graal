@@ -48,9 +48,8 @@ import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.image.AbstractImageHeapLayouter.ImageHeapLayout;
+import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.meta.HostedClass;
@@ -68,10 +67,10 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public final class NativeImageHeapWriter {
     private final NativeImageHeap heap;
-    private final ImageHeapLayout heapLayout;
+    private final ImageHeapLayoutInfo heapLayout;
     private long sectionOffsetOfARelocatablePointer;
 
-    public NativeImageHeapWriter(NativeImageHeap heap, ImageHeapLayout heapLayout) {
+    public NativeImageHeapWriter(NativeImageHeap heap, ImageHeapLayoutInfo heapLayout) {
         this.heap = heap;
         this.heapLayout = heapLayout;
         this.sectionOffsetOfARelocatablePointer = -1;
@@ -82,15 +81,15 @@ public final class NativeImageHeapWriter {
      * image.
      */
     @SuppressWarnings("try")
-    public long writeHeap(DebugContext debug, final RelocatableBuffer roBuffer, final RelocatableBuffer rwBuffer) {
+    public long writeHeap(DebugContext debug, RelocatableBuffer buffer) {
         try (Indent perHeapIndent = debug.logAndIndent("BootImageHeap.writeHeap:")) {
             for (ObjectInfo info : heap.getObjects()) {
                 assert !heap.isBlacklisted(info.getObject());
-                writeObject(info, roBuffer, rwBuffer);
+                writeObject(info, buffer);
             }
             // Only static fields that are writable get written to the native image heap,
             // the read-only static fields have been inlined into the code.
-            writeStaticFields(rwBuffer);
+            writeStaticFields(buffer);
         }
         return sectionOffsetOfARelocatablePointer;
     }
@@ -283,19 +282,11 @@ public final class NativeImageHeapWriter {
         }
     }
 
-    private static RelocatableBuffer bufferForPartition(final ObjectInfo info, final RelocatableBuffer roBuffer, final RelocatableBuffer rwBuffer) {
-        VMError.guarantee(info != null, "[BootImageHeap.bufferForPartition: info is null]");
-        VMError.guarantee(info.getPartition() != null, "[BootImageHeap.bufferForPartition: info.partition is null]");
-
-        return info.getPartition().isWritable() ? rwBuffer : roBuffer;
-    }
-
-    private void writeObject(ObjectInfo info, final RelocatableBuffer roBuffer, final RelocatableBuffer rwBuffer) {
+    private void writeObject(ObjectInfo info, RelocatableBuffer buffer) {
         /*
          * Write a reference from the object to its hub. This lives at layout.getHubOffset() from
          * the object base.
          */
-        final RelocatableBuffer buffer = bufferForPartition(info, roBuffer, rwBuffer);
         ObjectLayout objectLayout = heap.getObjectLayout();
         final int indexInBuffer = info.getIndexInBuffer(objectLayout.getHubOffset());
         assert objectLayout.isAligned(indexInBuffer);

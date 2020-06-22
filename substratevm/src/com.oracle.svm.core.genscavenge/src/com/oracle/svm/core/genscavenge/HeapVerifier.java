@@ -210,9 +210,10 @@ public final class HeapVerifier {
         ImageHeapInfo info = HeapImpl.getImageHeapInfo();
         boolean ropResult = verifyBootImageObjects(info.firstReadOnlyPrimitiveObject, info.lastReadOnlyPrimitiveObject);
         boolean rorResult = verifyBootImageObjects(info.firstReadOnlyReferenceObject, info.lastReadOnlyReferenceObject);
+        boolean rolResult = verifyBootImageObjects(info.firstReadOnlyRelocatableObject, info.lastReadOnlyRelocatableObject);
         boolean rwpResult = verifyBootImageObjects(info.firstWritablePrimitiveObject, info.lastWritablePrimitiveObject);
         boolean rwrResult = verifyBootImageObjects(info.firstWritableReferenceObject, info.lastWritableReferenceObject);
-        return ropResult && rorResult && rwpResult && rwrResult;
+        return ropResult && rorResult && rolResult && rwpResult && rwrResult;
     }
 
     private boolean verifyBootImageObjects(Object firstObject, Object lastObject) {
