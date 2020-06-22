@@ -303,7 +303,7 @@ abstract class PlatformBuilder extends EspressoProperties.Builder {
                                     Paths.get("lib", "jfr.jar"),
                                     Paths.get("classes")));
 
-    private static final int PATHS_SIZE = BOOT_CLASSPATH.size() + 1;
+    private static final int PATHS_SIZE = BOOT_CLASSPATH.size();
 
     // TODO(peterssen): Enforce we are on amd64.
     // Note that os.arch may yield different values for the same architecture e.g. amd64 vs x86_64.

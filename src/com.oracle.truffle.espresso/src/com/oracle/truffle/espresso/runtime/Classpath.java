@@ -39,6 +39,46 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 
 public final class Classpath {
+    /**
+     * Creates a classpath {@link Entry} from a given file system path.
+     *
+     * @param name a file system path denoting a classpath entry
+     */
+    public static Entry createEntry(String name) {
+        final File pathFile = new File(name);
+        EspressoContext context = EspressoLanguage.getCurrentContext();
+        if (pathFile.getName().equals(EspressoProperties.BOOT_MODULES_NAME) &&
+                        context.getVmProperties().bootClassPathType().isModule()) {
+            return new Modules(pathFile, context);
+        }
+        if (pathFile.isDirectory()) {
+            return new Directory(pathFile);
+        } else if (name.endsWith(".zip") || name.endsWith(".jar")) {
+            if (pathFile.exists() && pathFile.isFile()) {
+                return new Archive(pathFile);
+            }
+        }
+        return new PlainFile(pathFile);
+    }
+
+    /**
+     * Creates a classpath {@link Entry} from a given file system path, but forces it to never be a
+     * modules entry. Useful if trying to obtain a classpath {@link Entry} when there is no
+     * {@link EspressoContext} available.
+     * 
+     * @param name a file system path denoting a classpath entry
+     */
+    public static Entry createNonModuleEntry(String name) {
+        final File pathFile = new File(name);
+        if (pathFile.isDirectory()) {
+            return new Directory(pathFile);
+        } else if (name.endsWith(".zip") || name.endsWith(".jar")) {
+            if (pathFile.exists() && pathFile.isFile()) {
+                return new Archive(pathFile);
+            }
+        }
+        return new PlainFile(pathFile);
+    }
 
     private static final List<Entry> EMPTY_LIST = Collections.emptyList();
 
@@ -105,6 +145,7 @@ public final class Classpath {
         public ZipFile zipFile() {
             return null;
         }
+
     }
 
     /**
@@ -138,12 +179,14 @@ public final class Classpath {
         public boolean contains(String path) {
             return false;
         }
+
     }
 
     /**
      * Represents a classpath entry that is a path to an existing directory.
      */
     public static final class Directory extends Entry {
+
         private final File directory;
 
         public Directory(File directory) {
@@ -178,6 +221,7 @@ public final class Classpath {
         public boolean contains(String path) {
             return new File(directory, File.separatorChar == '/' ? path : path.replace('/', File.separatorChar)).exists();
         }
+
     }
 
     /**
@@ -186,6 +230,7 @@ public final class Classpath {
     static final class Archive extends Entry {
 
         private final File file;
+
         private ZipFile zipFile;
 
         Archive(File file) {
@@ -237,6 +282,7 @@ public final class Classpath {
         public boolean isArchive() {
             return true;
         }
+
     }
 
     /**
@@ -244,6 +290,7 @@ public final class Classpath {
      */
     static final class Modules extends Entry {
         private File file;
+
         private ModulesReaderHelper helper;
 
         Modules(File file, EspressoContext context) {
@@ -270,6 +317,7 @@ public final class Classpath {
             }
             return new ClasspathFile(classBytes, this, fsPath);
         }
+
     }
 
     /**
@@ -279,28 +327,6 @@ public final class Classpath {
      */
     public List<Entry> entries() {
         return entries;
-    }
-
-    /**
-     * Creates a classpath {@link Entry} from a given file system path.
-     *
-     * @param name a file system path denoting a classpath entry
-     */
-    public static Entry createEntry(String name) {
-        final File pathFile = new File(name);
-        EspressoContext context = EspressoLanguage.getCurrentContext();
-        if (pathFile.getName().equals(EspressoProperties.BOOT_MODULES_NAME) &&
-                        context.getVmProperties().bootClassPathType().isModule()) {
-            return new Modules(pathFile, context);
-        }
-        if (pathFile.isDirectory()) {
-            return new Directory(pathFile);
-        } else if (name.endsWith(".zip") || name.endsWith(".jar")) {
-            if (pathFile.exists() && pathFile.isFile()) {
-                return new Archive(pathFile);
-            }
-        }
-        return new PlainFile(pathFile);
     }
 
     /**
