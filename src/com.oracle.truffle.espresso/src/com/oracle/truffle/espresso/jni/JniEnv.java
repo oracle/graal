@@ -1564,7 +1564,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public @Host(String.class) StaticObject NewString(@Pointer TruffleObject unicodePtr, int len) {
         final char[] array = new char[len];
         StaticObject value = StaticObject.wrap(array, getMeta());
-        // SetCharArrayRegion(value, 0, len, unicodePtr);
+        SetCharArrayRegion(value, 0, len, unicodePtr);
         // StaticObject guestString = getMeta().java_lang_String.allocateInstance();
         // getMeta().java_lang_String_value.set(guestString, value);
         return getMeta().toGuestString(new String(array));
