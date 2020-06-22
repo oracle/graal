@@ -104,6 +104,9 @@ public abstract class Shape {
         /**
          * Sets initial dynamic object type identifier.
          *
+         * See {@link DynamicObjectLibrary#setDynamicType(DynamicObject, Object)} for more
+         * information.
+         *
          * @param dynamicType type identifier object; an instance of {@link ObjectType}
          * @throws NullPointerException if the type is {@code null}
          * @throws IllegalArgumentException if the type is not an instance of {@link ObjectType}
@@ -113,6 +116,8 @@ public abstract class Shape {
 
         /**
          * Sets initial shape flags (default: 0). Currently limited to 8 bits.
+         *
+         * See {@link DynamicObjectLibrary#setShapeFlags(DynamicObject, int)} for more information.
          *
          * @param flags an int value in the range from 0 to 255 (inclusive)
          * @throws IllegalArgumentException if the flags value is not in the supported range
@@ -707,7 +712,13 @@ public abstract class Shape {
     public abstract int getId();
 
     /**
-     * Returns the shape flags.
+     * Returns the language-specific shape flags previously set using
+     * {@link DynamicObjectLibrary#setShapeFlags(DynamicObject, int)} or
+     * {@link Shape.Builder#shapeFlags(int)}. If no shape flags were explicitly set, the default of
+     * 0 is returned.
+     *
+     * These flags may be used to tag objects that possess characteristics that need to be queried
+     * efficiently on fast and slow paths. For example, they can be used to mark objects as frozen.
      *
      * @see DynamicObjectLibrary#getShapeFlags(DynamicObject)
      * @see DynamicObjectLibrary#setShapeFlags(DynamicObject, int)
