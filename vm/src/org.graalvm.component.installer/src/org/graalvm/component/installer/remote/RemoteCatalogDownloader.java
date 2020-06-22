@@ -203,8 +203,8 @@ public class RemoteCatalogDownloader implements SoftwareChannel {
 
     List<SoftwareChannelSource> readChannelSources() {
         List<SoftwareChannelSource> res;
-        Map<String, String> lcEnv = lowercaseMap(System.getenv());
-        res = readChannelSources(CommonConstants.ENV_VARIABLE_PREFIX, lcEnv);
+        Map<String, String> lcEnv = lowercaseMap(input.parameters(false));
+        res = readChannelSources(CommonConstants.ENV_VARIABLE_PREFIX.toLowerCase(Locale.ENGLISH), lcEnv);
         if (res != null && !res.isEmpty()) {
             return res;
         }
