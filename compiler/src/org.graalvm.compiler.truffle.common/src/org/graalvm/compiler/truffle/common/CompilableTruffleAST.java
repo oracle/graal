@@ -92,7 +92,7 @@ public interface CompilableTruffleAST {
     /**
      * Cancel the compilation of this truffle ast.
      */
-    boolean cancelCompilation(Object source, CharSequence reason);
+    boolean cancelCompilation(CharSequence reason);
 
     /**
      * @param ast the ast to compare to

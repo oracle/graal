@@ -623,7 +623,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             invalidateCode();
             runtime().getListener().onCompilationInvalidated(this, source, reason);
         }
-        cancelCompilation(source, reason);
+        cancelCompilation(reason);
     }
 
     final OptimizedCallTarget cloneUninitialized() {
@@ -676,9 +676,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     @Override
-    public boolean cancelCompilation(Object source, CharSequence reason) {
+    public boolean cancelCompilation(CharSequence reason) {
         if (cancelAndResetCompilationTask()) {
-            runtime().getListener().onCompilationDequeued(this, source, reason);
+            runtime().getListener().onCompilationDequeued(this, null, reason);
             return true;
         }
         return false;
