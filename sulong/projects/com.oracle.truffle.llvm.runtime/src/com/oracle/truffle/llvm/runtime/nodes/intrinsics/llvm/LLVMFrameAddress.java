@@ -61,7 +61,7 @@ public abstract class LLVMFrameAddress extends LLVMBuiltin {
                     @CachedLanguage LLVMLanguage language) {
         if (frameLevel == 0) {
             StackPointer pointer = (StackPointer) FrameUtil.getObjectSafe(frame, getStackPointerSlot());
-            return LLVMNativePointer.create(pointer.get(language.getLLVMMemory()));
+            return LLVMNativePointer.create(pointer.get(this, language.getLLVMMemory()));
         } else {
             return LLVMNativePointer.createNull();
         }

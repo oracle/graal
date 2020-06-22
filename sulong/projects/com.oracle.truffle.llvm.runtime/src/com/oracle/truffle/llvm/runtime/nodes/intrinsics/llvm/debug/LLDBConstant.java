@@ -376,13 +376,13 @@ abstract class LLDBConstant implements LLVMDebugValue {
         private static Object getHandleValue(long address) {
             LLVMContext context = LLVMLanguage.getContext();
             if (context.getHandleContainer().isHandle(address)) {
-                LLVMManagedPointer value = context.getHandleContainer().getValue(address);
+                LLVMManagedPointer value = context.getHandleContainer().getValue(null, address);
                 if (value != null) {
                     return value.getObject();
                 }
             }
             if (context.getDerefHandleContainer().isHandle(address)) {
-                LLVMManagedPointer value = context.getDerefHandleContainer().getValue(address);
+                LLVMManagedPointer value = context.getDerefHandleContainer().getValue(null, address);
                 if (value != null) {
                     return value.getObject();
                 }

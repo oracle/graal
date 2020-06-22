@@ -46,7 +46,7 @@ public abstract class LLVMFloatStoreNode extends LLVMStoreNodeCommon {
     @Specialization(guards = "!isAutoDerefHandle(language, addr)")
     protected void doOp(LLVMNativePointer addr, float value,
                     @CachedLanguage LLVMLanguage language) {
-        language.getLLVMMemory().putFloat(addr, value);
+        language.getLLVMMemory().putFloat(this, addr, value);
     }
 
     @Specialization(guards = "isAutoDerefHandle(language, addr)")

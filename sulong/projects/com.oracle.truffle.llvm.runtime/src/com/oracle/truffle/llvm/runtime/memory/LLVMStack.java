@@ -35,6 +35,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.except.LLVMStackOverflowError;
 
 /**
@@ -74,9 +75,9 @@ public final class LLVMStack {
             this.uniquesRegionBasePointer = uniquesRegionBasePointer;
         }
 
-        public long get(LLVMMemory memory) {
+        public long get(Node location, LLVMMemory memory) {
             if (basePointer == 0) {
-                basePointer = getStackPointer(memory);
+                basePointer = getStackPointer(location, memory);
                 stackPointer = basePointer;
             }
             return stackPointer;
@@ -151,13 +152,13 @@ public final class LLVMStack {
                 this.uniquesRegionAlignment = uniquesRegionAlignment;
             }
 
-            void allocate(VirtualFrame frame, LLVMMemory memory, FrameSlot stackPointerSlot) {
+            void allocate(Node location, VirtualFrame frame, LLVMMemory memory, FrameSlot stackPointerSlot) {
                 if (uniquesRegionSize == 0) {
                     // UniquesRegion is empty - nothing to allocate
                     return;
                 }
                 StackPointer basePointer = (StackPointer) FrameUtil.getObjectSafe(frame, stackPointerSlot);
-                long stackPointer = basePointer.get(memory);
+                long stackPointer = basePointer.get(location, memory);
                 assert stackPointer != 0;
                 long uniquesRegionPointer = getAlignedBasePointer(stackPointer);
                 basePointer.setUniquesRegionPointer(uniquesRegionPointer);
@@ -189,19 +190,19 @@ public final class LLVMStack {
     }
 
     @TruffleBoundary
-    private void allocate(LLVMMemory memory) {
+    private void allocate(Node location, LLVMMemory memory) {
         long size = stackSize;
-        long stackAllocation = memory.allocateMemory(size).asNative();
+        long stackAllocation = memory.allocateMemory(location, size).asNative();
         lowerBounds = stackAllocation;
         upperBounds = stackAllocation + size;
         isAllocated = true;
         stackPointer = upperBounds;
     }
 
-    private long getStackPointer(LLVMMemory memory) {
+    private long getStackPointer(Node location, LLVMMemory memory) {
         if (!isAllocated) {
             CompilerDirectives.transferToInterpreter();
-            allocate(memory);
+            allocate(location, memory);
         }
         return this.stackPointer;
     }
@@ -216,7 +217,7 @@ public final class LLVMStack {
             /*
              * It can be that the stack was never allocated.
              */
-            memory.free(lowerBounds);
+            memory.free(null, lowerBounds);
             lowerBounds = 0;
             upperBounds = 0;
             stackPointer = 0;
@@ -226,9 +227,9 @@ public final class LLVMStack {
 
     public static final int NO_ALIGNMENT_REQUIREMENTS = 1;
 
-    public static long allocateStackMemory(VirtualFrame frame, LLVMMemory memory, FrameSlot stackPointerSlot, final long size, final int alignment) {
+    public static long allocateStackMemory(Node location, VirtualFrame frame, LLVMMemory memory, FrameSlot stackPointerSlot, final long size, final int alignment) {
         StackPointer basePointer = (StackPointer) FrameUtil.getObjectSafe(frame, stackPointerSlot);
-        long stackPointer = basePointer.get(memory);
+        long stackPointer = basePointer.get(location, memory);
         assert stackPointer != 0;
         long alignedAllocation = getAlignedAllocation(stackPointer, size, alignment);
         basePointer.set(alignedAllocation);

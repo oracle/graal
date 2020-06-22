@@ -53,7 +53,7 @@ public abstract class LLVMDoubleLoadNode extends LLVMLoadNode {
     protected double doDoubleNative(LLVMNativePointer addr,
                     @Cached("createRawIdentityProfile()") DoubleValueProfile profile,
                     @CachedLanguage LLVMLanguage language) {
-        return profile.profile(language.getLLVMMemory().getDouble(addr));
+        return profile.profile(language.getLLVMMemory().getDouble(this, addr));
     }
 
     @Specialization(guards = "isAutoDerefHandle(language, addr)")

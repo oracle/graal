@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,28 +27,17 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop;
+package com.oracle.truffle.llvm.runtime.except;
 
-import com.oracle.truffle.api.dsl.CachedContext;
-import com.oracle.truffle.api.dsl.NodeChild;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.api.nodes.Node;
 
-@NodeChild(type = LLVMExpressionNode.class)
-public abstract class LLVMTruffleDerefHandleToManaged extends LLVMIntrinsic {
+/**
+ * Indicates an memory failure that is not a {@link LLVMAllocationFailureException}.
+ */
+public class LLVMMemoryException extends LLVMException {
+    private static final long serialVersionUID = -7961890942838521316L;
 
-    @Specialization
-    protected LLVMNativePointer doIntrinsic(LLVMManagedPointer value,
-                    @CachedContext(LLVMLanguage.class) LLVMContext context) {
-        LLVMNativePointer handle = context.getDerefHandleContainer().allocate(this, value.getObject());
-        if (value.getOffset() != 0) {
-            return handle.increment(value.getOffset());
-        }
-        return handle;
+    public LLVMMemoryException(Node node, Throwable cause) {
+        super(node, cause.getMessage(), cause);
     }
 }

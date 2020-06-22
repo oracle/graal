@@ -117,10 +117,10 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         protected Object doOp(VirtualFrame frame, LLVMNativePointer address, byte comparisonValue, byte newValue,
                         @CachedLanguage LLVMLanguage language) {
             LLVMMemory memory = language.getLLVMMemory();
-            CMPXCHGI8 compareAndSwapI8 = memory.compareAndSwapI8(address, comparisonValue, newValue);
+            CMPXCHGI8 compareAndSwapI8 = memory.compareAndSwapI8(this, address, comparisonValue, newValue);
             LLVMNativePointer allocation = allocateResult(frame, memory);
-            memory.putI8(allocation, compareAndSwapI8.getValue());
-            memory.putI1(allocation.increment(secondValueOffset), compareAndSwapI8.isSwap());
+            memory.putI8(this, allocation, compareAndSwapI8.getValue());
+            memory.putI1(this, allocation.increment(secondValueOffset), compareAndSwapI8.isSwap());
             return allocation;
         }
 
@@ -128,10 +128,10 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         protected Object doOp(VirtualFrame frame, LLVMNativePointer address, short comparisonValue, short newValue,
                         @CachedLanguage LLVMLanguage language) {
             LLVMMemory memory = language.getLLVMMemory();
-            CMPXCHGI16 compareAndSwapI16 = memory.compareAndSwapI16(address, comparisonValue, newValue);
+            CMPXCHGI16 compareAndSwapI16 = memory.compareAndSwapI16(this, address, comparisonValue, newValue);
             LLVMNativePointer allocation = allocateResult(frame, memory);
-            memory.putI16(allocation, compareAndSwapI16.getValue());
-            memory.putI1(allocation.increment(secondValueOffset), compareAndSwapI16.isSwap());
+            memory.putI16(this, allocation, compareAndSwapI16.getValue());
+            memory.putI1(this, allocation.increment(secondValueOffset), compareAndSwapI16.isSwap());
             return allocation;
         }
 
@@ -139,10 +139,10 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         protected Object doOp(VirtualFrame frame, LLVMNativePointer address, int comparisonValue, int newValue,
                         @CachedLanguage LLVMLanguage language) {
             LLVMMemory memory = language.getLLVMMemory();
-            CMPXCHGI32 compareAndSwapI32 = memory.compareAndSwapI32(address, comparisonValue, newValue);
+            CMPXCHGI32 compareAndSwapI32 = memory.compareAndSwapI32(this, address, comparisonValue, newValue);
             LLVMNativePointer allocation = allocateResult(frame, memory);
-            memory.putI32(allocation, compareAndSwapI32.getValue());
-            memory.putI1(allocation.increment(secondValueOffset), compareAndSwapI32.isSwap());
+            memory.putI32(this, allocation, compareAndSwapI32.getValue());
+            memory.putI1(this, allocation.increment(secondValueOffset), compareAndSwapI32.isSwap());
             return allocation;
         }
 
@@ -150,10 +150,10 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
         protected Object doOp(VirtualFrame frame, LLVMNativePointer address, long comparisonValue, long newValue,
                         @CachedLanguage LLVMLanguage language) {
             LLVMMemory memory = language.getLLVMMemory();
-            CMPXCHGI64 compareAndSwapI64 = memory.compareAndSwapI64(address, comparisonValue, newValue);
+            CMPXCHGI64 compareAndSwapI64 = memory.compareAndSwapI64(this, address, comparisonValue, newValue);
             LLVMNativePointer allocation = allocateResult(frame, memory);
-            memory.putI64(allocation, compareAndSwapI64.getValue());
-            memory.putI1(allocation.increment(secondValueOffset), compareAndSwapI64.isSwap());
+            memory.putI64(this, allocation, compareAndSwapI64.getValue());
+            memory.putI1(this, allocation.increment(secondValueOffset), compareAndSwapI64.isSwap());
             return allocation;
         }
 
@@ -176,8 +176,8 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
                 if (success) {
                     write.executeWithTarget(address, newValue);
                 }
-                memory.putI8(allocation, currentValue);
-                memory.putI1(allocation.increment(secondValueOffset), success);
+                memory.putI8(this, allocation, currentValue);
+                memory.putI1(this, allocation.increment(secondValueOffset), success);
                 return allocation;
             }
         }
@@ -195,8 +195,8 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
                 if (success) {
                     write.executeWithTarget(address, newValue);
                 }
-                memory.putI16(allocation, currentValue);
-                memory.putI1(allocation.increment(secondValueOffset), success);
+                memory.putI16(this, allocation, currentValue);
+                memory.putI1(this, allocation.increment(secondValueOffset), success);
                 return allocation;
             }
         }
@@ -214,8 +214,8 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
                 if (success) {
                     write.executeWithTarget(address, newValue);
                 }
-                memory.putI32(allocation, currentValue);
-                memory.putI1(allocation.increment(secondValueOffset), success);
+                memory.putI32(this, allocation, currentValue);
+                memory.putI1(this, allocation.increment(secondValueOffset), success);
                 return allocation;
             }
         }
@@ -233,8 +233,8 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
                 if (success) {
                     write.executeWithTarget(address, newValue);
                 }
-                memory.putI64(allocation, currentValue);
-                memory.putI1(allocation.increment(secondValueOffset), success);
+                memory.putI64(this, allocation, currentValue);
+                memory.putI1(this, allocation.increment(secondValueOffset), success);
                 return allocation;
             }
         }
@@ -249,7 +249,7 @@ public abstract class LLVMCompareExchangeNode extends LLVMExpressionNode {
 
         private LLVMNativePointer allocateResult(VirtualFrame frame, LLVMMemory memory) {
             try {
-                return LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, memory, getStackPointerSlot(), resultSize, 8));
+                return LLVMNativePointer.create(LLVMStack.allocateStackMemory(this, frame, memory, getStackPointerSlot(), resultSize, 8));
             } catch (LLVMStackOverflowError soe) {
                 CompilerDirectives.transferToInterpreter();
                 throw new LLVMAllocationFailureException(this, soe);

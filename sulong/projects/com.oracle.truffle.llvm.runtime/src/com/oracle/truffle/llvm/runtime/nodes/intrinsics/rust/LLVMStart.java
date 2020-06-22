@@ -147,19 +147,19 @@ public abstract class LLVMStart extends LLVMIntrinsic {
             }
 
             long readFn(LLVMMemory memory, long address) {
-                return memory.getPointer(address + offsetFn).asNative();
+                return memory.getPointer(null, address + offsetFn).asNative();
             }
 
             long coerceMainForFn(LLVMMemory memory, long mainAddress) {
                 if (fnExpectsCoercedMain) {
-                    return memory.getPointer(mainAddress).asNative();
+                    return memory.getPointer(null, mainAddress).asNative();
                 }
                 return mainAddress;
             }
 
             @SuppressWarnings("static-method")
             long readDropInPlace(LLVMMemory memory, long address) {
-                return memory.getPointer(address).asNative();
+                return memory.getPointer(null, address).asNative();
             }
 
             static LangStartVtableType create(DataLayout datalayout, Type vtableType) throws TypeOverflowException {
