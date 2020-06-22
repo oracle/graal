@@ -424,9 +424,6 @@
 							"request": "launch",
 							"name": "Launch R Term",
 							"runtimeExecutable": "R",
-							"runtimeArgs": [
-								"--inspect.Suspend=false"
-							],
 							"console": "integratedTerminal"
 						}
 					},
