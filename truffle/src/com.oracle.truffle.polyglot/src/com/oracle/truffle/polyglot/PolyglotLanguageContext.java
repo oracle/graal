@@ -656,7 +656,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                         throw interop.throwException(t);
                     }
                 } catch (UnsupportedMessageException um) {
-                    t.addSuppressed(um);
+                    CompilerDirectives.shouldNotReachHere(um);
                 }
                 LOG.log(Level.FINE, "Exception during patching context of language: {0}", this.language.getId());
                 // The conversion to the host exception happens in the

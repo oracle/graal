@@ -65,7 +65,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
@@ -98,6 +97,7 @@ import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.L
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.NodeLibrary;
+import com.oracle.truffle.api.interop.TruffleException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -1082,6 +1082,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
 
         @Child InstrumentedNode tryNode;
         @Children private final CatchNode[] catchNodes;
+        @Child InteropLibrary interop;
 
         TryCatchNode(BaseNode[] children) {
             super();
@@ -1091,6 +1092,7 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             catchNodes = new CatchNode[cn];
             System.arraycopy(children, tn, catchNodes, 0, cn);
             tryNode = new TryNode(tryNodes, catchNodes);
+            interop = InteropLibrary.getFactory().createDispatched(5);
         }
 
         @Override
@@ -1126,8 +1128,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             try {
                 return tryNode.execute(frame);
             } catch (Exception ex) {
-                if (ex instanceof TruffleException) {
-                    Object exceptionObject = getExceptionObject((TruffleException) ex);
+                if (interop.isException(ex)) {
+                    Object exceptionObject = interop.toDisplayString(ex);
                     if (exceptionObject != null) {
                         String type = InstrumentationTestLanguage.toString(exceptionObject);
                         for (CatchNode cn : catchNodes) {
@@ -1309,7 +1311,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             return new TestLanguageException(type, message, this);
         }
 
-        public static class TestLanguageException extends RuntimeException implements TruffleException {
+        @ExportLibrary(InteropLibrary.class)
+        public static class TestLanguageException extends TruffleException {
 
             private static final long serialVersionUID = 2709459650157465163L;
 
@@ -1327,12 +1330,14 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
                 return throwNode;
             }
 
-            public boolean isInternalError() {
-                return type.equals("internal");
+            @ExportMessage
+            public TruffleException.Kind getExceptionKind() {
+                return type.equals("internal") ? TruffleException.Kind.INTERNAL_ERROR : TruffleException.Kind.GUEST_LANGUAGE_ERROR;
             }
 
-            @Override
-            public Object getExceptionObject() {
+            @ExportMessage
+            @TruffleBoundary
+            public String toDisplayString(boolean allowSideEffects) {
                 return type + ": " + getMessage();
             }
 
@@ -3114,11 +3119,6 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
     @TruffleBoundary
     private static String toString(Object object) {
         return object.toString();
-    }
-
-    @TruffleBoundary
-    private static Object getExceptionObject(TruffleException ex) {
-        return ex.getExceptionObject();
     }
 
     public static final class SpecialServiceImpl implements SpecialService {

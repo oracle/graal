@@ -79,7 +79,7 @@ import com.oracle.truffle.api.source.SourceSection;
  *                         interop.throwException(ex);
  *                     }
  *                 } catch (UnsupportedMessageException ume) {
- *                     ex.addSuppressed(ume);
+ *                     CompilerDirectives.shouldNotReachHere(ume);
  *                 }
  *             }
  *             throw ex;
@@ -276,8 +276,7 @@ public abstract class TruffleException extends RuntimeException implements Truff
         try {
             return InteropLibrary.getUncached().getExceptionExitStatus(this);
         } catch (UnsupportedMessageException um) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new AssertionError("Unsupported message", um);
+            throw CompilerDirectives.shouldNotReachHere(um);
         }
     }
 
@@ -299,11 +298,11 @@ public abstract class TruffleException extends RuntimeException implements Truff
         try {
             return InteropLibrary.getUncached().getExceptionKind(this);
         } catch (UnsupportedMessageException um) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new AssertionError("Unsupported message", um);
+            throw CompilerDirectives.shouldNotReachHere(um);
         }
     }
 
+    @SuppressWarnings("deprecation")
     private static Throwable checkCause(Throwable t) {
         if (t != null && !(t instanceof com.oracle.truffle.api.TruffleException)) {
             throw new IllegalArgumentException("The " + t + " must be TruffleException subclass.");

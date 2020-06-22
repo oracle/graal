@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api.debug;
 
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
@@ -55,7 +54,8 @@ import com.oracle.truffle.api.nodes.Node;
  *
  * @since 0.12
  */
-final class KillException extends ThreadDeath implements TruffleException {
+@SuppressWarnings("deprecation")
+final class KillException extends ThreadDeath implements com.oracle.truffle.api.TruffleException {
     private static final long serialVersionUID = -8638020836970813894L;
     private final Node node;
 

@@ -47,7 +47,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
@@ -239,7 +238,7 @@ public final class DebugException extends RuntimeException {
     @Override
     public void printStackTrace(PrintStream s) {
         super.printStackTrace(s);
-        if (!(exception instanceof TruffleException)) {
+        if (!isTruffleException(exception)) {
             s.print(CAUSE_CAPTION);
             exception.printStackTrace(s);
         }
@@ -253,7 +252,7 @@ public final class DebugException extends RuntimeException {
     @Override
     public void printStackTrace(PrintWriter s) {
         super.printStackTrace(s);
-        if (!(exception instanceof TruffleException)) {
+        if (!isTruffleException(exception)) {
             s.print(CAUSE_CAPTION);
             exception.printStackTrace(s);
         }
@@ -264,8 +263,9 @@ public final class DebugException extends RuntimeException {
      *
      * @since 19.0
      */
+    @SuppressWarnings("deprecation")
     public boolean isInternalError() {
-        if (exception != null && (!(exception instanceof TruffleException) || ((TruffleException) exception).isInternalError())) {
+        if (exception != null && (!isTruffleException(exception) || ((com.oracle.truffle.api.TruffleException) exception).isInternalError())) {
             if (exception instanceof DebugException) {
                 return ((DebugException) exception).isInternalError();
             }
@@ -280,11 +280,12 @@ public final class DebugException extends RuntimeException {
      * @return an exception object, or <code>null</code>
      * @since 19.0
      */
+    @SuppressWarnings("deprecation")
     public DebugValue getExceptionObject() {
-        if (!(exception instanceof TruffleException)) {
+        if (!isTruffleException(exception)) {
             return null;
         }
-        Object obj = ((TruffleException) exception).getExceptionObject();
+        Object obj = ((com.oracle.truffle.api.TruffleException) exception).getExceptionObject();
         if (obj == null) {
             return null;
         }
@@ -304,9 +305,10 @@ public final class DebugException extends RuntimeException {
      * @return the thrown location, or <code>null</code> when the thrown location is not known.
      * @since 19.0
      */
+    @SuppressWarnings("deprecation")
     public SourceSection getThrowLocation() {
-        if (exception instanceof TruffleException) {
-            SourceSection location = ((TruffleException) exception).getSourceLocation();
+        if (isTruffleException(exception)) {
+            SourceSection location = ((com.oracle.truffle.api.TruffleException) exception).getSourceLocation();
             if (location != null) {
                 return location;
             }
@@ -329,7 +331,7 @@ public final class DebugException extends RuntimeException {
         if (!isCatchNodeComputed) {
             synchronized (this) {
                 if (!isCatchNodeComputed) {
-                    if (exception instanceof TruffleException) {
+                    if (isTruffleException(exception)) {
                         catchLocation = BreakpointExceptionFilter.getCatchNode(throwLocation, exception);
                         if (catchLocation != null) {
                             catchLocation.setSuspendedEvent(suspendedEvent);
@@ -426,5 +428,10 @@ public final class DebugException extends RuntimeException {
             }
             return clon;
         }
+    }
+
+    @SuppressWarnings("deprecation")
+    private static boolean isTruffleException(Throwable t) {
+        return t instanceof com.oracle.truffle.api.TruffleException;
     }
 }

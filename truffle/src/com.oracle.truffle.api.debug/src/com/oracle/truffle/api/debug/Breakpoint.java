@@ -1204,8 +1204,7 @@ public class Breakpoint {
             try {
                 uncatchable = interop.isException(exception) && !interop.isExceptionCatchable(exception);
             } catch (UnsupportedMessageException um) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                exception.addSuppressed(um);
+                CompilerDirectives.shouldNotReachHere(um);
             }
             if (!(exception instanceof ControlFlowException || uncatchable)) {
                 onNode(frame, false, null, exception);
@@ -1249,8 +1248,7 @@ public class Breakpoint {
             try {
                 uncatchable = interop.isException(exception) && !interop.isExceptionCatchable(exception);
             } catch (UnsupportedMessageException um) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                exception.addSuppressed(um);
+                CompilerDirectives.shouldNotReachHere(um);
             }
             if (!(exception instanceof ControlFlowException || uncatchable)) {
                 SessionList sessions = computeUniqueActiveSessions();

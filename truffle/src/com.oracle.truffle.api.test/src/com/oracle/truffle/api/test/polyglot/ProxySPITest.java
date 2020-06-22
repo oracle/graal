@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -71,10 +72,11 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.oracle.truffle.api.TruffleException;
+//import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.TruffleException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -852,11 +854,15 @@ public class ProxySPITest extends AbstractPolyglotTest {
         } catch (InteropException e) {
             Assert.fail();
         } catch (RuntimeException e) {
-            if (!(e instanceof TruffleException)) {
+            InteropLibrary interop = InteropLibrary.getUncached();
+            if (!interop.isException(e)) {
                 Assert.fail();
             }
-            TruffleException te = (TruffleException) e;
-            Assert.assertFalse(te.isInternalError());
+            try {
+                Assert.assertFalse(TruffleException.Kind.INTERNAL_ERROR.equals(interop.getExceptionKind(e)));
+            } catch (UnsupportedMessageException um) {
+                CompilerDirectives.shouldNotReachHere(um);
+            }
             Assert.assertEquals("Host Error", ((Exception) e).getMessage());
             Assert.assertTrue(languageEnv.asHostException(e) instanceof TestError);
         }

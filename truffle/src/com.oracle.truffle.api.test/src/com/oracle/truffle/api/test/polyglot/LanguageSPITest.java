@@ -90,7 +90,6 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.truffle.api.interop.TruffleException;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -106,6 +105,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.TruffleException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -283,13 +283,13 @@ public class LanguageSPITest {
     }
 
     @SuppressWarnings("serial")
-    private static class Interrupted extends TruffleException {
+    @ExportLibrary(InteropLibrary.class)
+    static class Interrupted extends TruffleException {
 
-// TODO
-// @Override
-// public boolean isCancelled() {
-// return true;
-// }
+        @ExportMessage
+        public TruffleException.Kind getExceptionKind() {
+            return TruffleException.Kind.CANCEL;
+        }
 
         @Override
         public Node getLocation() {
@@ -298,7 +298,8 @@ public class LanguageSPITest {
     }
 
     @SuppressWarnings({"serial", "deprecation"})
-    private static final class ParseException extends RuntimeException implements com.oracle.truffle.api.TruffleException {
+    @ExportLibrary(InteropLibrary.class)
+    static final class ParseException extends TruffleException {
         private final Source source;
         private final int start;
         private final int length;
@@ -310,9 +311,9 @@ public class LanguageSPITest {
             this.length = length;
         }
 
-        @Override
-        public boolean isSyntaxError() {
-            return true;
+        @ExportMessage
+        public TruffleException.Kind getExceptionKind() {
+            return TruffleException.Kind.SYNTAX_ERROR;
         }
 
         @Override
@@ -321,6 +322,7 @@ public class LanguageSPITest {
         }
 
         @Override
+        @ExportMessage.Ignore
         public SourceSection getSourceLocation() {
             return source.createSection(start, length);
         }

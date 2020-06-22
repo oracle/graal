@@ -1209,6 +1209,7 @@ public abstract class InteropLibrary extends Library {
      * @since 19.3
      */
     @Abstract(ifExported = {"throwException"})
+    @SuppressWarnings("deprecation")
     public boolean isException(Object receiver) {
         return false;
     }

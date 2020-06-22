@@ -48,10 +48,10 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.interop.TruffleException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
@@ -171,7 +171,7 @@ public class RootNodeTest {
     }
 
     @SuppressWarnings("serial")
-    class TestException extends RuntimeException implements TruffleException {
+    class TestException extends TruffleException {
         MaterializedFrame frame;
 
         TestException(VirtualFrame frame) {

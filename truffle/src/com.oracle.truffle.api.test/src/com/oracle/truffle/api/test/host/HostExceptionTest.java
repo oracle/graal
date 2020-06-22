@@ -66,7 +66,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -483,7 +482,7 @@ public class HostExceptionTest {
                 CompilerDirectives.transferToInterpreter();
                 throw new AssertionError(e);
             } catch (Exception ex) {
-                if (ex instanceof TruffleException) {
+                if (interop.isException(ex)) {
                     return checkAndUnwrapException(ex);
                 }
                 throw ex;
@@ -493,14 +492,11 @@ public class HostExceptionTest {
 
     @TruffleBoundary
     Object checkAndUnwrapException(Throwable ex) {
-        Object exceptionObject = ((TruffleException) ex).getExceptionObject();
-        assertNotNull(exceptionObject);
-        assertTrue(env.isHostObject(exceptionObject));
+        assertTrue(env.isHostObject(ex));
         assertNotNull("Unexpected exception: " + ex, expectedException);
-        assertThat(env.asHostObject(exceptionObject), instanceOf(expectedException));
+        assertThat(env.asHostObject(ex), instanceOf(expectedException));
         assertThat(ProxyLanguage.getCurrentContext().getEnv().asHostException(ex), instanceOf(expectedException));
-        assertTrue(InteropLibrary.getFactory().getUncached().isException(exceptionObject));
-        return exceptionObject;
+        return ex;
     }
 
     class RunnerRootNode extends RootNode {
@@ -562,12 +558,10 @@ public class HostExceptionTest {
                 CompilerDirectives.transferToInterpreter();
                 throw new AssertionError(e);
             } catch (Exception ex) {
-                if (ex instanceof TruffleException) {
-                    Object exObj = ((TruffleException) ex).getExceptionObject();
-                    assertTrue(env.isHostObject(exObj));
-                    assertTrue(interop.isException(exObj));
+                if (interop.isException(ex)) {
+                    assertTrue(env.isHostObject(ex));
                     try {
-                        throw interop.throwException(exObj);
+                        throw interop.throwException(ex);
                     } catch (UnsupportedMessageException e) {
                         throw new AssertionError(e);
                     }

@@ -106,7 +106,7 @@ public class AbstractTruffleExceptionTest extends AbstractPolyglotTest {
             }
         });
         verifyingHandler.expect(BlockNode.Kind.TRY);
-        assertFails(() -> context.eval(ProxyLanguage.ID, "Test"), PolyglotException.class);
+        assertFails(() -> context.eval(ProxyLanguage.ID, "Test"), PolyglotException.class, (e) -> Assert.assertTrue(e.isCancelled()));
     }
 
     @Test
@@ -132,7 +132,7 @@ public class AbstractTruffleExceptionTest extends AbstractPolyglotTest {
             }
         });
         verifyingHandler.expect(BlockNode.Kind.TRY);
-        assertFails(() -> context.eval(ProxyLanguage.ID, "Test"), PolyglotException.class);
+        assertFails(() -> context.eval(ProxyLanguage.ID, "Test"), PolyglotException.class, (e) -> Assert.assertTrue(e.isCancelled()));
     }
 
     private Context createContext() {
@@ -232,16 +232,16 @@ public class AbstractTruffleExceptionTest extends AbstractPolyglotTest {
             } catch (Throwable ex) {
                 if (interop.isException(ex)) {
                     try {
-                        Assert.assertEquals(TruffleException.Kind.GUEST_LANGUAGE_ERROR, interop.getExceptionKind(ex));
-                        Assert.assertEquals(0, interop.getExceptionExitStatus(ex));
                         runFinalization = interop.isExceptionCatchable(ex);
+                        Assert.assertEquals(runFinalization ? TruffleException.Kind.GUEST_LANGUAGE_ERROR : TruffleException.Kind.CANCEL, interop.getExceptionKind(ex));
+                        Assert.assertEquals(0, interop.getExceptionExitStatus(ex));
                         if (runFinalization && catchBlock != null) {
                             return catchBlock.execute(frame);
                         } else {
                             interop.throwException(ex);
                         }
                     } catch (UnsupportedMessageException ume) {
-                        ex.addSuppressed(ume);
+                        CompilerDirectives.shouldNotReachHere(ume);
                     }
                 }
                 throw ex;
@@ -258,7 +258,7 @@ public class AbstractTruffleExceptionTest extends AbstractPolyglotTest {
         private final Object exceptionObject;
         @Child InteropLibrary interop;
 
-        public ThrowNode(Object exceptionObject) {
+        ThrowNode(Object exceptionObject) {
             this.exceptionObject = exceptionObject;
             interop = InteropLibrary.getFactory().create(exceptionObject);
         }
@@ -268,8 +268,7 @@ public class AbstractTruffleExceptionTest extends AbstractPolyglotTest {
             try {
                 throw interop.throwException(exceptionObject);
             } catch (UnsupportedMessageException um) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                throw new AssertionError("Unsupported message", um);
+                throw CompilerDirectives.shouldNotReachHere(um);
             }
         }
     }
@@ -320,6 +319,11 @@ public class AbstractTruffleExceptionTest extends AbstractPolyglotTest {
         }
 
         @Override
+        public boolean isCancelled() {
+            return true;
+        }
+
+        @Override
         public Node getLocation() {
             return location;
         }
@@ -367,6 +371,7 @@ public class AbstractTruffleExceptionTest extends AbstractPolyglotTest {
     }
 
     @SuppressWarnings("serial")
+    @ExportLibrary(InteropLibrary.class)
     static final class AbstractTruffleExceptionImpl extends TruffleException {
 
         private final boolean catchable;
@@ -383,6 +388,41 @@ public class AbstractTruffleExceptionTest extends AbstractPolyglotTest {
 
         void setLocation(Node node) {
             this.location = node;
+        }
+
+        @ExportMessage
+        public boolean isException() {
+            return true;
+        }
+
+        @ExportMessage
+        public boolean isExceptionCatchable() {
+            return catchable;
+        }
+
+        @ExportMessage
+        public Kind getExceptionKind() {
+            return catchable ? Kind.GUEST_LANGUAGE_ERROR : Kind.CANCEL;
+        }
+
+        @ExportMessage
+        public int getExceptionExitStatus() {
+            return 0;
+        }
+
+        @ExportMessage
+        public RuntimeException throwException() {
+            throw this;
+        }
+
+        @ExportMessage
+        public boolean hasSourceLocation() {
+            return location != null;
+        }
+
+        @ExportMessage
+        public SourceSection getSourceLocation() {
+            return location.getEncapsulatingSourceSection();
         }
     }
 
@@ -408,7 +448,8 @@ public class AbstractTruffleExceptionTest extends AbstractPolyglotTest {
         }
 
         @Override
-        public void close() throws SecurityException {
+        public void close() {
+            Assert.assertTrue("All expected events must be consumed. Remaining events: " + String.join(", ", expected), expected.isEmpty());
         }
     }
 

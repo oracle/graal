@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.tck.instrumentation;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -173,7 +174,7 @@ public class DebugALot extends TruffleInstrument implements SuspendedCallback {
                 interop.throwException(t);
             }
         } catch (UnsupportedMessageException um) {
-            t.addSuppressed(um);
+            CompilerDirectives.shouldNotReachHere(um);
         }
     }
 

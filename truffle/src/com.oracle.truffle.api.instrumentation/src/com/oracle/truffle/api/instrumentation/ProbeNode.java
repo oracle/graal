@@ -292,8 +292,7 @@ public final class ProbeNode extends Node {
                     interop.throwException(exception);
                 }
             } catch (UnsupportedMessageException um) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                exception.addSuppressed(um);
+                CompilerDirectives.shouldNotReachHere(um);
             }
         }
         EventChainNode localChain = lazyUpdate(frame);
@@ -668,8 +667,7 @@ public final class ProbeNode extends Node {
                 interop.throwException(t);
             }
         } catch (UnsupportedMessageException um) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            t.addSuppressed(um);
+            CompilerDirectives.shouldNotReachHere(um);
         }
         final Object polyglotEngine = InstrumentAccessor.engineAccess().getCurrentPolyglotEngine();
         if (b.getInstrumenter() instanceof EngineInstrumenter || (polyglotEngine != null && InstrumentAccessor.engineAccess().isInstrumentExceptionsAreThrown(polyglotEngine))) {

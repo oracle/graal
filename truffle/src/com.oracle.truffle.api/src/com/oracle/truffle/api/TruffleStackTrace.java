@@ -289,6 +289,7 @@ public final class TruffleStackTrace extends Exception {
      * @since 19.0
      */
     @TruffleBoundary
+    @SuppressWarnings("deprecation")
     public static TruffleStackTrace fillIn(Throwable throwable) {
         if (throwable instanceof ControlFlowException) {
             return EMPTY;
@@ -431,6 +432,7 @@ public final class TruffleStackTrace extends Exception {
         innerAddStackFrameInfo(callNode, root, t, currentFrame);
     }
 
+    @SuppressWarnings("deprecation")
     private static void innerAddStackFrameInfo(Node callNode, RootCallTarget root, Throwable t, MaterializedFrame currentFrame) {
         if (!(t instanceof TruffleException) || ((TruffleException) t).isInternalError()) {
             // capture as much information as possible for host and internal errors

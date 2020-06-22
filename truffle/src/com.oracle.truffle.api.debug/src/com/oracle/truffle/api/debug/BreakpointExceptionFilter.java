@@ -46,7 +46,6 @@ import java.util.WeakHashMap;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.debug.DebugException.CatchLocation;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
@@ -91,8 +90,9 @@ final class BreakpointExceptionFilter {
     }
 
     @TruffleBoundary
+    @SuppressWarnings("deprecation")
     private Match testExceptionCaught(Node throwNode, Throwable exception) {
-        if (!(exception instanceof TruffleException)) {
+        if (!(exception instanceof com.oracle.truffle.api.TruffleException)) {
             return uncaught ? Match.MATCHED : Match.UNMATCHED;
         }
         CatchLocation catchLocation = getCatchNode(throwNode, exception);
@@ -127,11 +127,12 @@ final class BreakpointExceptionFilter {
         return catchLocationPtr[0];
     }
 
+    @SuppressWarnings("deprecation")
     private static Node getCatchNodeImpl(Node node, Throwable exception) {
         if (node instanceof InstrumentableNode) {
             InstrumentableNode inode = (InstrumentableNode) node;
             if (inode.isInstrumentable() && inode.hasTag(TryBlockTag.class)) {
-                Object exceptionObject = ((TruffleException) exception).getExceptionObject();
+                Object exceptionObject = ((com.oracle.truffle.api.TruffleException) exception).getExceptionObject();
                 Object nodeObject = inode.getNodeObject();
                 if (nodeObject != null && exceptionObject != null) {
                     InteropLibrary library = InteropLibrary.getFactory().getUncached(nodeObject);

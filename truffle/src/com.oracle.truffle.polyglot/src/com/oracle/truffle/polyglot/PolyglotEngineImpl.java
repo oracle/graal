@@ -94,7 +94,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
@@ -1361,8 +1360,8 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         }
     }
 
-    @SuppressWarnings("serial")
-    static final class CancelExecution extends ThreadDeath implements TruffleException {
+    @SuppressWarnings({"deprecation", "serial"})
+    static final class CancelExecution extends ThreadDeath implements com.oracle.truffle.api.TruffleException {
 
         private final Node location;
         private final String cancelMessage;
