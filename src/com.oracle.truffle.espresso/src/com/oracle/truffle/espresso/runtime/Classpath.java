@@ -34,11 +34,15 @@ import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 
 public final class Classpath {
+    public static final String JAVA_BASE = "java.base";
+
     /**
      * Creates a classpath {@link Entry} from a given file system path.
      *
@@ -46,16 +50,23 @@ public final class Classpath {
      */
     public static Entry createEntry(String name) {
         final File pathFile = new File(name);
-        EspressoContext context = EspressoLanguage.getCurrentContext();
-        if (pathFile.getName().equals(EspressoProperties.BOOT_MODULES_NAME) &&
-                        context.getVmProperties().bootClassPathType().isModule()) {
-            return new Modules(pathFile, context);
-        }
         if (pathFile.isDirectory()) {
             return new Directory(pathFile);
-        } else if (name.endsWith(".zip") || name.endsWith(".jar")) {
-            if (pathFile.exists() && pathFile.isFile()) {
-                return new Archive(pathFile);
+        } else {
+            // regular file.
+
+            EspressoContext context = EspressoLanguage.getCurrentContext();
+            if (context.getJavaVersion() >= 9) {
+                JImageLibrary library = context.jimageLibrary();
+                TruffleObject image = library.open(name);
+                if (!InteropLibrary.getUncached().isNull(image)) {
+                    return new Modules(pathFile, library, image);
+                }
+            }
+            if (name.endsWith(".zip") || name.endsWith(".jar")) {
+                if (pathFile.exists() && pathFile.isFile()) {
+                    return new Archive(pathFile);
+                }
             }
         }
         return new PlainFile(pathFile);
@@ -291,11 +302,11 @@ public final class Classpath {
     static final class Modules extends Entry {
         private File file;
 
-        private ModulesReaderHelper helper;
+        private JImageHelper helper;
 
-        Modules(File file, EspressoContext context) {
+        Modules(File file, JImageLibrary library, TruffleObject jimage) {
             this.file = file;
-            this.helper = ModulesReaderHelper.create(file, context);
+            this.helper = new JImageHelper(library, jimage);
         }
 
         @Override
@@ -305,7 +316,9 @@ public final class Classpath {
 
         @Override
         public boolean contains(String path) {
-            return true;
+            String moduleName = helper.packageToModule(path);
+            byte[] classBytes = helper.getClassBytes(moduleName, path);
+            return classBytes != null;
         }
 
         @Override

@@ -290,7 +290,7 @@ abstract class PlatformBuilder extends EspressoProperties.Builder {
 
     private static final Path MODULES_IMAGE = Paths.get("lib", EspressoProperties.BOOT_MODULES_NAME);
 
-    private static final Path MODULES_EXPLODED = Paths.get(EspressoProperties.BOOT_MODULES_NAME);
+    private static final Path MODULES_EXPLODED = Paths.get(EspressoProperties.BOOT_MODULES_NAME, Classpath.JAVA_BASE);
 
     private static final List<Path> BOOT_CLASSPATH = Collections.unmodifiableList(
                     Arrays.asList(

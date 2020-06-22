@@ -24,7 +24,7 @@
 package com.oracle.truffle.espresso.runtime;
 
 import static com.oracle.truffle.espresso.jni.NativeLibrary.lookupAndBind;
-import static com.oracle.truffle.espresso.runtime.ModulesReaderHelper.JAVA_BASE;
+import static com.oracle.truffle.espresso.runtime.Classpath.JAVA_BASE;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -123,11 +123,9 @@ class JImageLibrary extends NativeEnv implements ContextAccess {
         }
     }
 
-    public TruffleObject init(String name) {
+    public TruffleObject open(String name) {
         ByteBuffer error = allocateDirect(1, JavaKind.Int);
-        TruffleObject jimage = (TruffleObject) execute(open, getNativeString(name), byteBufferPointer(error));
-        EspressoError.guarantee(!InteropLibrary.getFactory().getUncached().isNull(jimage), "Failed to load modules image");
-        return jimage;
+        return (TruffleObject) execute(open, getNativeString(name), byteBufferPointer(error));
     }
 
     public void close(TruffleObject jimage) {
