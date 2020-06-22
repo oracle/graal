@@ -53,10 +53,22 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
         new LLVMLauncher().launch(args);
     }
 
+    private enum ToolchainAPIFunction {
+        TOOL,
+        PATHS,
+        IDENTIFIER;
+
+        @Override
+        public String toString() {
+            return super.toString().toLowerCase();
+        }
+    }
+
     String[] programArgs;
     File file;
     private VersionAction versionAction = VersionAction.None;
-    private boolean printToolchainPath = false;
+    private ToolchainAPIFunction toolchainAPI = null;
+    private String toolchainAPIArg = null;
 
     @Override
     protected void launch(Context.Builder contextBuilder) {
@@ -92,7 +104,25 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
                     versionAction = VersionAction.PrintAndExit;
                     break;
                 case "--print-toolchain-path":
-                    printToolchainPath = true;
+                    toolchainAPI = ToolchainAPIFunction.PATHS;
+                    toolchainAPIArg = "PATH";
+                    break;
+                case "--print-toolchain-api-tool":
+                    toolchainAPI = ToolchainAPIFunction.TOOL;
+                    if (!iterator.hasNext()) {
+                        throw abort("Missing argument for " + option);
+                    }
+                    toolchainAPIArg = iterator.next();
+                    break;
+                case "--print-toolchain-api-paths":
+                    toolchainAPI = ToolchainAPIFunction.PATHS;
+                    if (!iterator.hasNext()) {
+                        throw abort("Missing argument for " + option);
+                    }
+                    toolchainAPIArg = iterator.next();
+                    break;
+                case "--print-toolchain-api-identifier":
+                    toolchainAPI = ToolchainAPIFunction.IDENTIFIER;
                     break;
                 default:
                     // options with argument
@@ -163,7 +193,7 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
 
     @Override
     protected void validateArguments(Map<String, String> polyglotOptions) {
-        if (file == null && versionAction != VersionAction.PrintAndExit && !printToolchainPath) {
+        if (file == null && versionAction != VersionAction.PrintAndExit && toolchainAPI == null) {
             throw abort("No bitcode file provided.", 6);
         }
     }
@@ -179,7 +209,10 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
         printOption("--lib <libraries>", "add library (*.bc or precompiled library *.so/*.dylib)");
         printOption("--version", "print the version and exit");
         printOption("--show-version", "print the version and continue");
-        printOption("--print-toolchain-path", "print the toolchain path and exit");
+        printOption("--print-toolchain-path", "print the toolchain path and exit (shortcut for `--print-toolchain-api-paths PATH`)");
+        printOption("--print-toolchain-api-tool <name>", "print the location of a toolchain API tool and exit");
+        printOption("--print-toolchain-api-paths <name>", "print toolchain API paths and exit");
+        printOption("--print-toolchain-api-identifier", "print the toolchain API identifier and exit");
     }
 
     @Override
@@ -187,7 +220,11 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
         args.addAll(Arrays.asList(
                         "-L", "--lib",
                         "--version",
-                        "--show-version"));
+                        "--show-version",
+                        "--print-toolchain-path",
+                        "--print-toolchain-api-paths",
+                        "--print-toolchain-api-tool",
+                        "--print-toolchain-api-identifier"));
     }
 
     protected static void printOption(String option, String description) {
@@ -205,8 +242,8 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
         contextBuilder.arguments(getLanguageId(), programArgs);
         try (Context context = contextBuilder.build()) {
             runVersionAction(versionAction, context.getEngine());
-            if (printToolchainPath) {
-                printToolchainPath(context);
+            if (toolchainAPI != null) {
+                printToolchainAPI(context);
                 return 0;
             }
             Value library = context.eval(Source.newBuilder(getLanguageId(), file).build());
@@ -228,18 +265,33 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
         }
     }
 
-    private void printToolchainPath(Context context) {
-        Value paths = context.getBindings(getLanguageId()).getMember("toolchain_api_paths").execute("PATH");
-        if (paths == null) {
-            throw abort("Unexpected result from toolchain_api_paths intrinsic: PATH not found");
+    private void printToolchainAPI(Context context) {
+        Value bindings = context.getBindings(getLanguageId());
+        final Value result;
+        switch (toolchainAPI) {
+            case TOOL:
+                result = bindings.getMember("toolchain_api_tool").execute(toolchainAPIArg);
+                break;
+            case PATHS:
+                result = bindings.getMember("toolchain_api_paths").execute(toolchainAPIArg);
+                break;
+            case IDENTIFIER:
+                result = bindings.getMember("toolchain_api_identifier").execute();
+                break;
+            default:
+                // should not reach here. this should be caught by the option parser
+                throw abort("Unknown --print-toolchain-api function: " + toolchainAPI);
         }
-        long arraySize = paths.getArraySize();
-        if (arraySize != 1) {
-            throw abort("Unexpected result from toolchain_api_paths intrinsic: array size " + arraySize);
+        if (result.isNull()) {
+            throw abort("Unknown entry for --print-toolchain-api-" + toolchainAPI + ": " + toolchainAPIArg);
         }
-        Value path = paths.getArrayElement(0);
-        String pathStr = path.asString();
-        System.out.println(pathStr);
+        if (result.hasArrayElements()) {
+            for (int i = 0; i < result.getArraySize(); i++) {
+                System.out.println(result.getArrayElement(i).asString());
+            }
+        } else {
+            System.out.println(result.asString());
+        }
     }
 
     private static void printStackTraceSkipTrailingHost(PolyglotException e) {

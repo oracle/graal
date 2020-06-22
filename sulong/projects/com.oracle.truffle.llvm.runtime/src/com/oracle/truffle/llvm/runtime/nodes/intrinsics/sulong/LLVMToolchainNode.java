@@ -45,6 +45,7 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMReadStringNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 public abstract class LLVMToolchainNode extends LLVMIntrinsic {
     @NodeChild(value = "name", type = LLVMExpressionNode.class)
@@ -56,7 +57,7 @@ public abstract class LLVMToolchainNode extends LLVMIntrinsic {
                         @Cached LLVMReadStringNode readString) {
             TruffleFile path = getToolPath(ctx.getToolchain(), readString.executeWithTarget(name));
             if (path == null) {
-                return null;
+                return LLVMNativePointer.createNull();
             }
             return LLVMManagedPointer.create(path.toString());
         }
@@ -76,7 +77,7 @@ public abstract class LLVMToolchainNode extends LLVMIntrinsic {
                         @Cached LLVMReadStringNode readString) {
             List<TruffleFile> paths = getPaths(ctx.getToolchain(), readString.executeWithTarget(path));
             if (paths == null) {
-                return null;
+                return LLVMNativePointer.createNull();
             }
             return LLVMContext.toTruffleObjects(toArray(paths));
         }
