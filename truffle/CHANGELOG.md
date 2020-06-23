@@ -19,7 +19,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Deprecated and renamed `TruffleFile.getMimeType` to [TruffleFile.detectMimeType](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#detectMimeType--). The new method no longer throws `IOException` but returns `null` instead.
 * The languages are responsible for stopping and joining the stopped `Thread`s in the [TruffleLanguage.finalizeContext](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html#finalizeContext-C-).
 * Added Truffle DSL `@Bind` annotation to common out expression for use in guards and specialization methods.
-* Added support for @Cached annotations to be weak using `@Cached(value ="...", weak = true)`. 
+* Added the ability to disable adoption for DSL cached expressions with type node using `@Cached(value ="...", weak = true)`.
+* Added an option not to adopt the parameter annotated by @Cached, using `@Cached(value ="...", adopt = false)`.
 * Added `TruffleWeakReference` utility to be used on partial evaluated code paths instead of the default JDK `WeakReference`.
 * Removed deprecated API in `com.oracle.truffle.api.source.Source`. The APIs were deprecated in 19.0.
 * Added `CompilerDirectives.shouldNotReachHere()` as a short-cut for languages to indicate that a path should not be reachable neither in compiled nor interpreted code paths.

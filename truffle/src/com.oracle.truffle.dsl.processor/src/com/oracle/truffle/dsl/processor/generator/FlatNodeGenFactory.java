@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -782,14 +782,14 @@ public class FlatNodeGenFactory {
                 Modifier visibility = Modifier.PRIVATE;
 
                 CodeVariableElement cachedField;
-                if (isAssignable(type, types.NodeInterface)) {
+                if (isAssignable(type, types.NodeInterface) && cache.isAdopt()) {
                     cachedField = createNodeField(visibility, type, fieldName, types.Node_Child);
-                } else if (isNodeInterfaceArray(type)) {
+                } else if (isNodeInterfaceArray(type) && cache.isAdopt()) {
                     cachedField = createNodeField(visibility, type, fieldName, types.Node_Children);
                 } else {
                     cachedField = createNodeField(visibility, type, fieldName, null);
                     AnnotationMirror mirror = findAnnotationMirror(parameter.getVariableElement().getAnnotationMirrors(), types.Cached);
-                    int dimensions = getAnnotationValue(Integer.class, mirror, "dimensions");
+                    int dimensions = mirror == null ? 0 : getAnnotationValue(Integer.class, mirror, "dimensions");
                     setFieldCompilationFinal(cachedField, dimensions);
                 }
                 clazz.getEnclosedElements().add(cachedField);
@@ -826,9 +826,9 @@ public class FlatNodeGenFactory {
                 TypeMirror type = parameter.getType();
                 Modifier visibility = useSpecializationClass ? null : Modifier.PRIVATE;
                 CodeVariableElement cachedField;
-                if (isAssignable(type, types.NodeInterface)) {
+                if (isAssignable(type, types.NodeInterface) && cache.isAdopt()) {
                     cachedField = createNodeField(visibility, type, fieldName, types.Node_Child);
-                } else if (isNodeInterfaceArray(type)) {
+                } else if (isNodeInterfaceArray(type) && cache.isAdopt()) {
                     cachedField = createNodeField(visibility, type, fieldName, types.Node_Children);
                 } else {
                     cachedField = createNodeField(visibility, type, fieldName, null);
@@ -4064,16 +4064,23 @@ public class FlatNodeGenFactory {
                 }
                 if (castType == null) {
                     CodeTreeBuilder noCast = new CodeTreeBuilder(null);
-                    noCast.startCall(insertTarget, insertName);
+                    if (cache.isAdopt()) {
+                        noCast.startCall(insertTarget, insertName);
+                    }
                     noCast.tree(value);
-                    noCast.end();
+                    if (cache.isAdopt()) {
+                        noCast.end();
+                    }
                     value = noCast.build();
                 } else {
                     builder.declaration(cache.getDefaultExpression().getResolvedType(), fieldName, value);
-                    builder.startIf().string(fieldName).instanceOf(castType).end().startBlock();
-                    builder.startStatement().startCall(insertTarget, insertName);
-                    builder.startGroup().cast(castType).string(fieldName).end();
-                    builder.end().end();
+                    if (cache.isAdopt()) {
+                        builder.startIf().string(fieldName).instanceOf(castType).end().startBlock();
+                        builder.startStatement();
+                        builder.startCall(insertTarget, insertName);
+                        builder.startGroup().cast(castType).string(fieldName).end();
+                        builder.end().end();
+                    }
                     builder.end();
                     value = CodeTreeBuilder.singleString(fieldName);
                 }
