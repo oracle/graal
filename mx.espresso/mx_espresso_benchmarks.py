@@ -58,6 +58,41 @@ class EspressoVm(GuestVm, JavaVm):
             return self.host_vm().run(cwd, mx_espresso._espresso_standalone_command(self._options + args))
 
 
+class EspressoMinHeapVm(EspressoVm):
+    # Runs benchmarks multiple times until it finds the minimum size of max heap (`-Xmx`) required to complete the execution within a given overhead factor.
+    # The minimum heap size is stored in an extra dimension.
+
+    def name(self):
+        return super(EspressoMinHeapVm, self).name() + '-minheap'
+
+    def cmd_line_args(self, args):
+        _args = self._options + args                                  # prepend the default arguments of this guest VM
+        _args = mx_espresso._espresso_standalone_command(_args)       # add the arguments to run espresso-standalone
+        _args = self.host_vm().post_process_command_line_args(_args)  # add the default arguments of the selected host VM
+        return _args
+
+    def extra_dimensions(self, cwd, args, min_heap, exit_code, stdout):
+        _args = ['-Xmx{}M'.format(min_heap)] + args
+        self.host_vm().extract_vm_info(_args)
+        return self.host_vm().dimensions(cwd, _args, exit_code, stdout)
+
+    def run(self, cwd, args):
+        if hasattr(self.host_vm(), 'run_launcher'):
+            mx.abort('The {} guest VM cannot run on a GraalVM host vm'.format(self.name()))
+        _args = self.cmd_line_args(args)
+        bench_name = '# MinHeap'
+        out = mx.TeeOutputCapture(mx.OutputCapture())
+        exit_code = mx.run_java_min_heap(args=_args, benchName=bench_name, overheadFactor=2.0, minHeap=0, maxHeap=2048, out=out, err=None, cwd=cwd, jdk=mx.get_jdk(tag='jvmci'))
+        stdout = out.underlying.data
+        if exit_code == 0:
+            match = re.search(bench_name + ' (?P<min_heap>[0-9]+)', stdout)
+            assert match is not None and match.group('min_heap') is not None, stdout
+            dims = self.extra_dimensions(cwd, args, match.group('min_heap'), exit_code, stdout)
+        else:
+            dims = {}
+        return exit_code, stdout, dims
+
+
 # Benchmark-specific parameter from AWFY rebench.conf
 _awfyConfig = {
     "DeltaBlue"  : 12000,
@@ -162,6 +197,11 @@ class AWFYBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Averaging
         self.addAverageAcrossLatestResults(results)
         return results
 
+
+# Register soon-to-become-default configurations.
+mx_benchmark.java_vm_registry.add_vm(EspressoVm('default', []), _suite)
+mx_benchmark.java_vm_registry.add_vm(EspressoVm('inline-accessors', ['--experimental-options', '--java.InlineFieldAccessors']), _suite)
+mx_benchmark.java_vm_registry.add_vm(EspressoMinHeapVm('default', []), _suite)
 
 mx_benchmark.add_bm_suite(AWFYBenchmarkSuite())
 
