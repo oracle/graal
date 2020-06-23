@@ -90,6 +90,16 @@ export function deactivate(): Thenable<void> {
 function config() {
 	const graalVMHome = vscode.workspace.getConfiguration('graalvm').get('home') as string;
 	if (graalVMHome) {
+		const termConfig = vscode.workspace.getConfiguration('terminal.integrated');
+		let section: string = '';
+		if (process.platform === 'linux') {
+			section = 'env.linux';
+		} else if (process.platform === 'darwin') {
+			section = 'env.mac';
+		}
+		let env: any = termConfig.get(section);
+		env.GRAALVM_HOME = graalVMHome;
+		termConfig.update(section, env, true);
 		const javaConfig = vscode.workspace.getConfiguration('java');
 		if (javaConfig) {
 			const home = javaConfig.inspect('home');

@@ -48,12 +48,6 @@ function setConfig(path: string) {
 	if (term) {
 		config.update(section, path, true);
 	}
-	let termArgs = config.get('rterm.option') as string[];
-	if (termArgs.indexOf('--inspect') < 0) {
-		termArgs.push('--inspect');
-		termArgs.push('--inspect.Suspend=false');
-		config.update('rterm.option', termArgs, true);
-	}
 	const startRLS = vscode.workspace.getConfiguration('graalvm').get('languageServer.startRLanguageServer') as boolean;
 	if (startRLS) {
 		if (!isRPackageInstalled(R_LANGUAGE_SERVER_PACKAGE_NAME)) {
