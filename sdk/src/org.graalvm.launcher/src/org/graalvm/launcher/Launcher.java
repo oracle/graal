@@ -1315,8 +1315,12 @@ public abstract class Launcher {
                 setSystemProperty(arg.substring("D".length()));
             } else if (arg.startsWith("XX:")) {
                 setRuntimeOption(arg.substring("XX:".length()));
-            } else if (arg.startsWith("X") && isXOption(arg)) {
-                setXOption(arg.substring("X".length()));
+            } else if (arg.startsWith("X")) {
+                if (isXOption(arg)) {
+                    setXOption(arg.substring("X".length()));
+                } else {
+                    throw abort("Unrecognized vm option: '--vm." + arg + "'. Some VM options may be only supported in --jvm mode.");
+                }
             } else {
                 throw abort("Unrecognized vm option: '--vm." + arg + "'. Such arguments should start with '--vm.D', '--vm.XX:', or '--vm.X'");
             }
