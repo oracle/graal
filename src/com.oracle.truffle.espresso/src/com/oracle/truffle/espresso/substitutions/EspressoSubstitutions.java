@@ -33,5 +33,6 @@ import java.lang.annotation.Target;
 public @interface EspressoSubstitutions {
     Class<?> value() default EspressoSubstitutions.class;
 
+    // TODO(garcia) Design a better way to do versioning.
     String java11() default "";
 }

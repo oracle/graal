@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.jni;
 
+import static com.oracle.truffle.espresso.EspressoOptions.SpecCompliancyMode.STRICT;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.CharBuffer;
@@ -80,8 +82,6 @@ import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Class;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
-
-import static com.oracle.truffle.espresso.EspressoOptions.SpecCompliancyMode.STRICT;
 
 public final class JniEnv extends NativeEnv implements ContextAccess {
 
@@ -1562,6 +1562,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
 
     @JniImpl
     public @Host(String.class) StaticObject NewString(@Pointer TruffleObject unicodePtr, int len) {
+        // TODO(garcia) : works only for UTF16 encoded strings.
         final char[] array = new char[len];
         StaticObject value = StaticObject.wrap(array, getMeta());
         SetCharArrayRegion(value, 0, len, unicodePtr);

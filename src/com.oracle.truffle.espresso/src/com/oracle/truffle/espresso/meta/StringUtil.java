@@ -27,8 +27,10 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Target_sun_misc_Unsafe;
 
 /**
- * Helper for converting Java 8 strings to and from Java 11 strings.
+ * Helper for converting Java 8 strings to and from Java 11 strings. Taken from the java 11 String
+ * implementation.
  */
+// TODO(garcia): Support more than UTF16
 public class StringUtil {
     static final byte LATIN1 = 0;
     static final byte UTF16 = 1;

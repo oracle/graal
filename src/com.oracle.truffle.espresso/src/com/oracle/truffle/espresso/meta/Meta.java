@@ -381,6 +381,7 @@ public final class Meta implements ContextAccess {
         java_lang_management_ThreadInfo = knownKlass(Type.java_lang_management_ThreadInfo);
 
         // Classes and Members that differ from Java 8 to 11
+        // TODO(garcia) Decide on a naming convention for these classes
 
         java_lang_String_value = lookupFieldDiffVersion(java_lang_String, Name.value, Type._char_array, Name.value, Type._byte_array);
 
@@ -1027,6 +1028,7 @@ public final class Meta implements ContextAccess {
         }
         Meta meta = str.getKlass().getMeta();
         if (meta.getContext().getJavaVersion() >= 9) {
+            // TODO(garcia): make it work for other than UTF16
             byte[] value = ((StaticObject) meta.java_lang_String_value.get(str)).unwrap();
             return HostJava.createString(StringUtil.toChars(value));
         }
@@ -1043,6 +1045,7 @@ public final class Meta implements ContextAccess {
         final int hash = HostJava.getStringHash(hostString);
         StaticObject guestString = java_lang_String.allocateInstance();
         if (getContext().getJavaVersion() >= 9) {
+            // TODO(garcia): avoid expensive array copies
             java_lang_String_value.set(guestString, StaticObject.wrap(StringUtil.toBytes(value), this));
             java_lang_String_coder.set(guestString, StringUtil.UTF16);
             java_lang_String_hash.set(guestString, hash);
