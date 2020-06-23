@@ -169,7 +169,7 @@ class FieldTable {
             }
         }
 
-        objectFields += setHiddenFields(thisKlass.getType(), tmpFields, thisKlass, objectFields);
+        objectFields += setHiddenFields(thisKlass.getType(), tmpFields, thisKlass, linkedKlass, objectFields);
 
         return new CreationResult(tmpFields.toArray(Field.EMPTY_ARRAY), tmpStatics.toArray(Field.EMPTY_ARRAY), fields, schedule.nextLeftoverHoles,
                         primitiveOffsets[N_PRIMITIVES - 1], staticPrimitiveOffsets[N_PRIMITIVES - 1], objectFields, staticObjectFields);
@@ -191,58 +191,58 @@ class FieldTable {
         return superTotalByteCount + order[i].getByteCount() - r;
     }
 
-    private static int setHiddenFields(Symbol<Type> type, ArrayList<Field> tmpTable, ObjectKlass thisKlass, int fieldIndex) {
+    private static int setHiddenFields(Symbol<Type> type, ArrayList<Field> tmpTable, ObjectKlass thisKlass, LinkedKlass linkedKlass, int fieldIndex) {
         // Gimmick to not forget to return correct increment. Forgetting results in dramatic JVM
         // crashes.
         int c = 0;
 
         if (type == Type.java_lang_invoke_MemberName) {
-            tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_VMTARGET));
-            tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_VMINDEX));
+            tmpTable.add(Field.createHidden(thisKlass, linkedKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_VMTARGET));
+            tmpTable.add(Field.createHidden(thisKlass, linkedKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_VMINDEX));
             return c;
         } else if (type == Type.java_lang_reflect_Method) {
-            tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS));
-            tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_METHOD_KEY));
+            tmpTable.add(Field.createHidden(thisKlass, linkedKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS));
+            tmpTable.add(Field.createHidden(thisKlass, linkedKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_METHOD_KEY));
             return c;
         } else if (type == Type.java_lang_reflect_Constructor) {
-            tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS));
-            tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_CONSTRUCTOR_KEY));
+            tmpTable.add(Field.createHidden(thisKlass, linkedKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS));
+            tmpTable.add(Field.createHidden(thisKlass, linkedKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_CONSTRUCTOR_KEY));
             return c;
         } else if (type == Type.java_lang_reflect_Field) {
-            tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS));
-            tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_FIELD_KEY));
+            tmpTable.add(Field.createHidden(thisKlass, linkedKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS));
+            tmpTable.add(Field.createHidden(thisKlass, linkedKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_FIELD_KEY));
             return c;
         } else if (type == Type.java_lang_ref_Reference) {
             // All references (including strong) get an extra hidden field, this simplifies the code
             // for weak/soft/phantom/final references.
-            tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_HOST_REFERENCE));
+            tmpTable.add(Field.createHidden(thisKlass, linkedKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_HOST_REFERENCE));
             return c;
         } else if (type == Type.java_lang_Throwable) {
-            tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_FRAMES));
+            tmpTable.add(Field.createHidden(thisKlass, linkedKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_FRAMES));
             return c;
         } else if (type == Type.java_lang_Thread) {
-            tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_HOST_THREAD));
-            tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_IS_ALIVE));
-            tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_INTERRUPTED));
-            tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_DEATH));
-            tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_DEATH_THROWABLE));
-            tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_SUSPEND_LOCK));
+            tmpTable.add(Field.createHidden(thisKlass, linkedKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_HOST_THREAD));
+            tmpTable.add(Field.createHidden(thisKlass, linkedKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_IS_ALIVE));
+            tmpTable.add(Field.createHidden(thisKlass, linkedKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_INTERRUPTED));
+            tmpTable.add(Field.createHidden(thisKlass, linkedKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_DEATH));
+            tmpTable.add(Field.createHidden(thisKlass, linkedKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_DEATH_THROWABLE));
+            tmpTable.add(Field.createHidden(thisKlass, linkedKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_SUSPEND_LOCK));
 
             EspressoContext context = thisKlass.getContext();
             if (context.EnableManagement) {
                 // Only used for j.l.management bookkeeping.
-                tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_THREAD_BLOCKED_OBJECT));
-                tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_THREAD_BLOCKED_COUNT));
-                tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_THREAD_WAITED_COUNT));
+                tmpTable.add(Field.createHidden(thisKlass, linkedKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_THREAD_BLOCKED_OBJECT));
+                tmpTable.add(Field.createHidden(thisKlass, linkedKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_THREAD_BLOCKED_COUNT));
+                tmpTable.add(Field.createHidden(thisKlass, linkedKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_THREAD_WAITED_COUNT));
             }
             return c;
         } else if (type == Type.java_lang_Class) {
-            tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_SIGNERS));
-            tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_MIRROR_KLASS));
-            tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_PROTECTION_DOMAIN));
+            tmpTable.add(Field.createHidden(thisKlass, linkedKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_SIGNERS));
+            tmpTable.add(Field.createHidden(thisKlass, linkedKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_MIRROR_KLASS));
+            tmpTable.add(Field.createHidden(thisKlass, linkedKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_PROTECTION_DOMAIN));
             return c;
         } else if (type == Type.java_lang_ClassLoader) {
-            tmpTable.add(Field.createHidden(thisKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_CLASS_LOADER_REGISTRY));
+            tmpTable.add(Field.createHidden(thisKlass, linkedKlass, tmpTable.size(), fieldIndex + c++, Name.HIDDEN_CLASS_LOADER_REGISTRY));
             return c;
         } else {
             return c;

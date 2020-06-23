@@ -133,7 +133,7 @@ public interface MemberRefConstant extends PoolConstant {
             }
         }
         if (f.isProtected() || f.isPackagePrivate()) {
-            if (accessingKlass.sameRuntimePackage(fieldKlass)) {
+            if (accessingKlass.sameRuntimePackage(fieldKlass.getDefiningClassLoader(), fieldKlass)) {
                 return true;
             }
         }
@@ -177,7 +177,7 @@ public interface MemberRefConstant extends PoolConstant {
             }
         }
         if (m.isProtected() || m.isPackagePrivate()) {
-            if (accessingKlass.sameRuntimePackage(methodKlass)) {
+            if (accessingKlass.sameRuntimePackage(methodKlass.getDefiningClassLoader(), methodKlass)) {
                 return true;
             }
         }

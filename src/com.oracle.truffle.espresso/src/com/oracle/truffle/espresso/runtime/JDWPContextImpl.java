@@ -26,6 +26,9 @@ package com.oracle.truffle.espresso.runtime;
 import java.lang.reflect.Array;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 import com.oracle.truffle.api.TruffleLanguage;
@@ -38,6 +41,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.ClassRedefinition;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.Method.MethodVersion;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.jdwp.api.CallFrame;
@@ -627,12 +631,63 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public int redefineClasses(RedefineInfo[] redefineInfos) {
-        for (RedefineInfo redefineInfo : redefineInfos) {
-            int result = ClassRedefinition.redefineClass((Klass) redefineInfo.getKlass(), redefineInfo.getClassBytes(), context, getIds());
+        // list of sub classes that needs to refresh things like vtable
+        List<ObjectKlass> refreshSubClasses = new ArrayList<>();
+        // We have to redefine super classes prior to subclasses
+        List<RedefineInfo> sorted = sort(redefineInfos);
+        for (RedefineInfo redefineInfo : sorted) {
+            int result = ClassRedefinition.redefineClass((Klass) redefineInfo.getKlass(), redefineInfo.getClassBytes(), context, getIds(), refreshSubClasses);
             if (result != 0) {
                 return result;
             }
         }
+        // refresh subclasses when needed
+        Collections.sort(refreshSubClasses, new SubClassHierarchyComparator());
+        for (ObjectKlass subKlass : refreshSubClasses) {
+            subKlass.onSuperKlassUpdate();
+        }
         return 0;
+    }
+
+    public List<RedefineInfo> sort(RedefineInfo[] klasses) {
+        List<RedefineInfo> result = new ArrayList<>(Arrays.asList(klasses));
+        Collections.sort(result, new HierarchyComparator());
+        return result;
+    }
+
+    private static class HierarchyComparator implements Comparator<RedefineInfo> {
+        public int compare(RedefineInfo r1, RedefineInfo r2) {
+            Klass k1 = (Klass) r1.getKlass();
+            Klass k2 = (Klass) r1.getKlass();
+            // we need to do this check because isAssignableFrom is true in this case
+            // and we would get an order that doesn't exist
+            if (k1.equals(k2)) {
+                return 0;
+            }
+            if (k1.isAssignableFrom(k2)) {
+                return -1;
+            } else if (k2.isAssignableFrom(k1)) {
+                return 1;
+            }
+            // no hierarchy
+            return 0;
+        }
+    }
+
+    private static class SubClassHierarchyComparator implements Comparator<ObjectKlass> {
+        public int compare(ObjectKlass k1, ObjectKlass k2) {
+            // we need to do this check because isAssignableFrom is true in this case
+            // and we would get an order that doesn't exist
+            if (k1.equals(k2)) {
+                return 0;
+            }
+            if (k1.isAssignableFrom(k2)) {
+                return -1;
+            } else if (k2.isAssignableFrom(k1)) {
+                return 1;
+            }
+            // no hierarchy
+            return 0;
+        }
     }
 }

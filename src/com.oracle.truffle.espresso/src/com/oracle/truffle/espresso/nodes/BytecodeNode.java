@@ -354,7 +354,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         super(method);
         CompilerAsserts.neverPartOfCompilation();
         CodeAttribute codeAttribute = method.getCodeAttribute();
-        this.bs = new BytecodeStream(codeAttribute.getCode());
+        this.bs = new BytecodeStream(codeAttribute.getOriginalCode());
         FrameSlot[] slots = frameDescriptor.getSlots().toArray(new FrameSlot[0]);
 
         this.locals = Arrays.copyOfRange(slots, 0, codeAttribute.getMaxLocals());

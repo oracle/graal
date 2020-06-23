@@ -79,14 +79,14 @@ public final class Field extends Member<Type> implements FieldRef {
         this.holder = holder;
     }
 
-    public static Field createHidden(ObjectKlass holder, int hiddenSlot, int hiddenIndex, Symbol<Name> name) {
-        return new Field(holder, hiddenSlot, hiddenIndex, name);
+    public static Field createHidden(ObjectKlass holder, LinkedKlass linkedHolderKlass, int hiddenSlot, int hiddenIndex, Symbol<Name> name) {
+        return new Field(holder, linkedHolderKlass, hiddenSlot, hiddenIndex, name);
     }
 
-    private Field(ObjectKlass holder, int hiddenSlot, int hiddenIndex, Symbol<Name> name) {
+    private Field(ObjectKlass holder, LinkedKlass linkedHolderKlass, int hiddenSlot, int hiddenIndex, Symbol<Name> name) {
         super(null, name);
         this.holder = holder;
-        this.linkedField = new LinkedField(new ParserField(0, name, Type.java_lang_Object, null), holder.getLinkedKlass(), -1);
+        this.linkedField = new LinkedField(new ParserField(0, name, Type.java_lang_Object, null), linkedHolderKlass, -1);
         this.slot = hiddenSlot;
         this.fieldIndex = hiddenIndex;
     }

@@ -30,6 +30,10 @@ import com.oracle.truffle.espresso.runtime.Attribute;
 public final class LinkedMethod {
     private final ParserMethod parserMethod;
 
+    public ParserMethod getParserMethod() {
+        return parserMethod;
+    }
+
     // int vtableSlot; // not all methods have vtable entry
     protected int getFlags() {
         return parserMethod.getFlags();

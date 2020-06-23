@@ -234,7 +234,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         if (accessingKlass == null) {
             return true;
         }
-        if (klass.isPublic() || klass.sameRuntimePackage(accessingKlass)) {
+        if (klass.isPublic() || klass.sameRuntimePackage(klass.getDefiningClassLoader(), accessingKlass)) {
             return true;
         }
         return (klass.getMeta().sun_reflect_MagicAccessorImpl.isAssignableFrom(accessingKlass));
@@ -923,8 +923,8 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return name;
     }
 
-    public boolean sameRuntimePackage(Klass other) {
-        return this.getDefiningClassLoader() == other.getDefiningClassLoader() && this.getRuntimePackage().equals(other.getRuntimePackage());
+    public boolean sameRuntimePackage(StaticObject classLoader, Klass other) {
+        return getDefiningClassLoader() == classLoader && this.getRuntimePackage().equals(other.getRuntimePackage());
     }
 
     // region jdwp-specific

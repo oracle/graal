@@ -31,6 +31,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
  * 3 pass interface table constructor helper:
@@ -60,6 +61,7 @@ final class InterfaceTables {
     private final ObjectKlass thisKlass;
     private final ObjectKlass superKlass;
     private final ObjectKlass[] superInterfaces;
+    private final Method[] declaredMethods;
     private final ArrayList<Entry[]> tmpTables = new ArrayList<>();
     private final ArrayList<ObjectKlass> tmpKlassTable = new ArrayList<>();
     private final ArrayList<Method> mirandas = new ArrayList<>();
@@ -121,10 +123,11 @@ final class InterfaceTables {
         }
     }
 
-    private InterfaceTables(ObjectKlass thisKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces) {
+    private InterfaceTables(ObjectKlass thisKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces, Method[] declaredMethods) {
         this.thisKlass = thisKlass;
         this.superKlass = superKlass;
         this.superInterfaces = superInterfaces;
+        this.declaredMethods = declaredMethods;
     }
 
     /**
@@ -182,31 +185,31 @@ final class InterfaceTables {
      */
     // checkstyle: resume
     // @formatter:on
-    public static CreationResult create(ObjectKlass thisKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces) {
-        return new InterfaceTables(thisKlass, superKlass, superInterfaces).create();
+    public static CreationResult create(ObjectKlass thisKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces, Method[] declaredMethods) {
+        return new InterfaceTables(thisKlass, superKlass, superInterfaces, declaredMethods).create();
     }
 
     /**
      * Performs second and third step of itable creation.
      * 
-     * @param thisKlass the klass for which we are creating an itable
+     * @param vtable the vtable of the klass for which we are creating an itable
+     * @param mirandas the mirandas of the klass for which we are creating an itable
+     * @param declaredMethods the declared methods of the klass for which we are creating an itable
      * @param tables The helper table obtained from first step
      * @param iklassTable the interfaces directly and indirectly implemented by thisKlass
      * @return the final itable
      */
-    public static Method[][] fixTables(ObjectKlass thisKlass, Entry[][] tables, ObjectKlass[] iklassTable) {
+    public static Method[][] fixTables(Method[] vtable, Method[] mirandas, Method[] declaredMethods, Entry[][] tables, ObjectKlass[] iklassTable) {
         ArrayList<Method[]> tmpTables = new ArrayList<>();
-        Method[] vtable = thisKlass.getVTable();
-        Method[] mirandas = thisKlass.getMirandaMethods();
 
         // Second step
         // Remember here that the interfaces are sorted, most specific at the end.
         for (int i = iklassTable.length - 1; i >= 0; i--) {
-            fixVTable(tables[i], vtable, mirandas, thisKlass.getDeclaredMethods(), iklassTable[i].getInterfaceMethodsTable());
+            fixVTable(tables[i], vtable, mirandas, declaredMethods, iklassTable[i].getInterfaceMethodsTable());
         }
         // Third step
         for (Entry[] entries : tables) {
-            tmpTables.add(getITable(entries, vtable, mirandas, thisKlass.getDeclaredMethods()));
+            tmpTables.add(getITable(entries, vtable, mirandas, declaredMethods));
         }
         return tmpTables.toArray(EMPTY_METHOD_DUAL_ARRAY);
     }
@@ -238,7 +241,7 @@ final class InterfaceTables {
                 Method im = interfMethods[i];
                 Symbol<Name> mname = im.getName();
                 Symbol<Signature> sig = im.getRawSignature();
-                res[i] = lookupLocation(im, mname, sig);
+                res[i] = lookupLocation(im, mname, sig, interf.getDefiningClassLoader());
             }
             tmpTables.add(res);
             tmpKlassTable.add(interf);
@@ -330,18 +333,18 @@ final class InterfaceTables {
 
     // lookup helpers
 
-    private Entry lookupLocation(Method im, Symbol<Name> mname, Symbol<Signature> sig) {
+    private Entry lookupLocation(Method im, Symbol<Name> mname, Symbol<Signature> sig, StaticObject classLoader) {
         Method m = null;
         int index = -1;
         if (superKlass != null) {
-            index = superKlass.lookupVirtualMethod(mname, sig, thisKlass);
+            index = superKlass.lookupVirtualMethod(mname, sig, thisKlass, classLoader);
         }
         if (index != -1) {
             m = superKlass.vtableLookup(index);
             assert index == m.getVTableIndex();
             return new Entry(Location.SUPERVTABLE, index);
         }
-        index = getDeclaredMethodIndex(thisKlass.getDeclaredMethods(), mname, sig);
+        index = getDeclaredMethodIndex(declaredMethods, mname, sig);
         if (index != -1) {
             return new Entry(Location.DECLARED, index);
         }
