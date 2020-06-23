@@ -62,22 +62,7 @@ suite = {
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
-                ],
-                "os_arch": {
-                    "linux": {
-                        "sparcv9": {
-                            "ignore": True
-                        },
-                        "<others>": {
-                            "ignore": False
-                        }
-                    },
-                    "<others>": {
-                        "<others>": {
-                            "ignore": False
-                        }
-                    }
-                }
+                ]
             },
             {
                 "name": "fastr",
