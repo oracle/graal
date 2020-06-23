@@ -24,6 +24,7 @@
 package com.oracle.truffle.espresso.substitutions;
 
 import java.lang.reflect.Array;
+import java.nio.ByteOrder;
 import java.security.ProtectionDomain;
 import java.util.Arrays;
 import java.util.concurrent.locks.LockSupport;
@@ -1252,15 +1253,7 @@ public final class Target_sun_misc_Unsafe {
     @Substitution(hasReceiver = true)
     @SuppressWarnings("unused")
     public static boolean isBigEndian0(@Host(Unsafe.class) StaticObject self) {
-        return !isLittleEndian();
-    }
-
-    public static boolean isLittleEndian() {
-        long region = UNSAFE.allocateMemory(4);
-        UNSAFE.putInt(region, 1);
-        byte b = UNSAFE.getByte(region);
-        UNSAFE.freeMemory(region);
-        return b != 0;
+        return ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN;
     }
 
     @Substitution(hasReceiver = true)
