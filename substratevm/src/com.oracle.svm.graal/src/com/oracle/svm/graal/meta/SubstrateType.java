@@ -451,6 +451,21 @@ public class SubstrateType extends NodeClass implements SharedType, Replaced {
     }
 
     @Override
+    public void link() {
+        throw VMError.unimplemented();
+    }
+
+    @Override
+    public boolean hasDefaultMethods() {
+        return hub.hasDefaultMethods();
+    }
+
+    @Override
+    public boolean declaresDefaultMethods() {
+        return hub.declaresDefaultMethods();
+    }
+
+    @Override
     public boolean isCloneableWithAllocation() {
         return SubstrateMetaAccess.singleton().lookupJavaType(Cloneable.class).isAssignableFrom(this);
     }

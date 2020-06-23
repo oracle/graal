@@ -127,6 +127,21 @@ public class LambdaSubstitutionType implements ResolvedJavaType, OriginalClassPr
     }
 
     @Override
+    public void link() {
+        original.link();
+    }
+
+    @Override
+    public boolean hasDefaultMethods() {
+        return original.hasDefaultMethods();
+    }
+
+    @Override
+    public boolean declaresDefaultMethods() {
+        return original.declaresDefaultMethods();
+    }
+
+    @Override
     public boolean isAssignableFrom(ResolvedJavaType other) {
         return original.isAssignableFrom(other);
     }
