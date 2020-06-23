@@ -138,6 +138,10 @@ mx_benchmark.parsers["temporary_workdir_parser"] = ParserEntry(
 )
 
 
+# Adds a java VM from JAVA_HOME without any assumption about it
+mx_benchmark.add_java_vm(mx_benchmark.DefaultJavaVm('java_home', 'default'), _suite, 1)
+
+
 class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
     def __init__(self, raw_name, raw_config_name, extra_args):
         super(JvmciJdkVm, self).__init__()
