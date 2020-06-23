@@ -478,7 +478,7 @@ public class SubstrateOptions {
         }
     };
 
-    private static void defaultDebugInfoValueUpdateHandler(EconomicMap<OptionKey<?>, Object> values, Integer oldValue, Integer newValue) {
+    private static void defaultDebugInfoValueUpdateHandler(EconomicMap<OptionKey<?>, Object> values, @SuppressWarnings("unused") Integer oldValue, Integer newValue) {
         // force update of TrackNodeSourcePosition
         if (newValue > 0 && !Boolean.TRUE.equals(values.get(TrackNodeSourcePosition))) {
             TrackNodeSourcePosition.update(values, true);
