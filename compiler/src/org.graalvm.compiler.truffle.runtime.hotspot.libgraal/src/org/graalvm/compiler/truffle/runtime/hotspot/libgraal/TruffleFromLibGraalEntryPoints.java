@@ -411,10 +411,9 @@ final class TruffleFromLibGraalEntryPoints {
         return ((Decision) decision).shouldInline();
     }
 
-    // TODO: implement correctly
     @TruffleFromLibGraal(CancelCompilation)
-    static void cancelCompilation(Object compilableTruffleAST, String reason) {
-        ((CompilableTruffleAST) compilableTruffleAST).cancelCompilation(reason);
+    static boolean cancelCompilation(Object compilableTruffleAST, String reason) {
+        return ((CompilableTruffleAST) compilableTruffleAST).cancelCompilation(reason);
     }
 
     @TruffleFromLibGraal(FindCallNode)

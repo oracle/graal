@@ -38,6 +38,7 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLi
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.GetNonTrivialNodeCount;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.OnCompilationFailed;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callAsJavaConstant;
+import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callCancelCompilation;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callCompilableToString;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callCreateStringSupplier;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSCompilableTruffleASTGen.callGetCompilableCallCount;
@@ -226,9 +227,9 @@ final class HSCompilableTruffleAST extends HSObject implements CompilableTruffle
     @TruffleFromLibGraal(CancelCompilation)
     @Override
     public boolean cancelCompilation(CharSequence reason) {
-        // callCancelInstalledTask(env(), getHandle());
-        // TODO: Implement
-        return false;
+        JNIEnv env = env();
+        JString jniReason = JNIUtil.createHSString(env, reason.toString());
+        return callCancelCompilation(env, getHandle(), jniReason);
     }
 
     @TruffleFromLibGraal(IsSameOrSplit)
