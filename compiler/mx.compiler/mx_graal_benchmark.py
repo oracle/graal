@@ -34,7 +34,7 @@ import itertools
 import mx
 import mx_benchmark
 import mx_compiler
-from mx_java_benchmark import DaCapoBenchmarkSuite, ScalaDaCapoBenchmarkSuite
+from mx_java_benchmarks import DaCapoBenchmarkSuite, ScalaDaCapoBenchmarkSuite
 
 _suite = mx.suite('compiler')
 
