@@ -25,6 +25,7 @@
 package org.graalvm.compiler.truffle.runtime.hotspot.libgraal;
 
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilerIdleDelay;
 import static org.graalvm.libgraal.LibGraalScope.getIsolateThread;
 
 import java.io.IOException;
@@ -43,6 +44,7 @@ import com.oracle.truffle.api.TruffleRuntime;
 
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 
 /**
  * A {@link TruffleRuntime} that uses libgraal for compilation.
@@ -96,9 +98,8 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
     }
 
     @Override
-    protected long getCompilerIdleDelay() {
-        // TODO: introduce a polyglot option (GR-23129)
-        return 1000L;
+    protected long getCompilerIdleDelay(OptimizedCallTarget callTarget) {
+        return callTarget.getOptionValue(CompilerIdleDelay);
     }
 
     @SuppressWarnings("try")

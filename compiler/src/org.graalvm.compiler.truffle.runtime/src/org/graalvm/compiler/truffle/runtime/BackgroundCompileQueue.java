@@ -86,7 +86,7 @@ public class BackgroundCompileQueue {
 
             ThreadFactory factory = newThreadFactory("TruffleCompilerThread", callTarget);
 
-            long compilerIdleDelay = runtime.getCompilerIdleDelay();
+            long compilerIdleDelay = runtime.getCompilerIdleDelay(callTarget);
             long keepAliveTime = compilerIdleDelay >= 0 ? compilerIdleDelay : 0;
             ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(threads, threads,
                             keepAliveTime, TimeUnit.MILLISECONDS,
@@ -96,7 +96,7 @@ public class BackgroundCompileQueue {
                     return new RequestFutureTask<>((RequestImpl<T>) callable);
                 }
             };
-            if (compilerIdleDelay >= 0) {
+            if (compilerIdleDelay > 0) {
                 threadPoolExecutor.allowCoreThreadTimeOut(true);
             }
             return compilationExecutorService = threadPoolExecutor;
