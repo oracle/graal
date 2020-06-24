@@ -1600,14 +1600,23 @@ public final class TruffleFile {
     }
 
     /**
-     * Tests if this and the given {@link TruffleFile} locate the same file. If both
+     * Tests if this and the given {@link TruffleFile} refer to the same physical file. If both
      * {@code TruffleFile} objects are {@link TruffleFile#equals(Object) equal} then this method
-     * returns {@code true} without any checks. Otherwise, this method checks if both
-     * {@link TruffleFile}s locate the same file. Depending on the {@link FileSystem} implementation
-     * it may require to access both files.
+     * returns {@code true} without any checks. If the {@link TruffleFile}s have different
+     * filesystems then this method returns {@code false}. Otherwise, this method checks if both
+     * {@link TruffleFile}s refer to the same physical file. Depending on the {@link FileSystem}
+     * implementation it may require to read the files attributes. This implies:
+     * <ul>
+     * <li>Public and Internal files with disabled IO are never the same.
+     * <li>Public and Internal files with allowed IO are potentially the same.
+     * <li>Files created by different languages are potentially the same.
+     * <li>Files created during the Context pre-initialization and files created during Context
+     * execution are potentially the same.
+     * </ul>
      *
      * @param other the other {@link TruffleFile}
-     * @return {@code true} if this and the given {@link TruffleFile} locate the same file
+     * @return {@code true} if this and the given {@link TruffleFile} refer to the same physical
+     *         file
      * @throws IOException in case of IO error
      * @throws SecurityException if the {@link FileSystem} denied the operation
      * @since 20.2.0
@@ -1620,18 +1629,10 @@ public final class TruffleFile {
             if (this.equals(other)) {
                 return true;
             }
-            // When the IO is disabled one file can be public with no IO filesystem and
-            // the second internal with language home filesystem.
-            // The language home filesystem allows canonical path resolution and isSameFile.
-            // The no IO filesystem does not support canonical path resolution nor isSameFile.
-            // We should be symentric and fail independent of the file order.
-            FileSystem fs;
-            if (LanguageAccessor.engineAccess().hasNoAccess(other.fileSystemContext.fileSystem)) {
-                fs = other.fileSystemContext.fileSystem;
-            } else {
-                fs = fileSystemContext.fileSystem;
+            if (!fileSystemContext.fileSystem.equals(other.fileSystemContext.fileSystem)) {
+                return false;
             }
-            return fs.isSameFile(normalizedPath, other.normalizedPath, options);
+            return fileSystemContext.fileSystem.isSameFile(normalizedPath, other.normalizedPath, options);
         } catch (IOException | SecurityException e) {
             throw e;
         } catch (Throwable t) {

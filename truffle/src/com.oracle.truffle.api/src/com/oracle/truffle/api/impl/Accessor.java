@@ -354,8 +354,6 @@ public abstract class Accessor {
 
         public abstract boolean hasAllAccess(FileSystem fs);
 
-        public abstract boolean hasNoAccess(FileSystem fs);
-
         public abstract String getLanguageHome(Object engineObject);
 
         public abstract void addToHostClassPath(Object polyglotLanguageContext, TruffleFile entries);

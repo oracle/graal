@@ -400,7 +400,7 @@ public interface FileSystem {
     }
 
     /**
-     * Tests if the given paths locate the same file.
+     * Tests if the given paths refer to the same physical file.
      *
      * The default implementation firstly converts the paths into absolute paths. If the absolute
      * paths are equal it returns {@code true} without checking if the file exists. Otherwise, this
@@ -413,7 +413,7 @@ public interface FileSystem {
      * @param path1 the path to the file
      * @param path2 the other path
      * @param options the options determining how the symbolic links should be handled
-     * @return {@code true} if the given paths locate the same file
+     * @return {@code true} if the given paths refer to the same physical file
      * @throws IOException in case of IO error
      * @throws SecurityException if this {@link FileSystem} denied the operation
      * @since 20.2.0

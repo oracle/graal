@@ -43,6 +43,7 @@ package com.oracle.truffle.api.test.polyglot;
 import static java.nio.charset.StandardCharsets.UTF_16;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -443,13 +444,38 @@ public class TruffleFileTest extends AbstractPolyglotTest {
 
     @Test
     public void testIsSameFile() throws IOException {
+        String path = Paths.get(".").toAbsolutePath().toString();
         setupEnv(Context.create());
-        TruffleFile publicFile = languageEnv.getPublicTruffleFile("a");
-        TruffleFile internalFile = languageEnv.getInternalTruffleFile("a");
+        TruffleFile publicFile = languageEnv.getPublicTruffleFile(path);
+        TruffleFile internalFile = languageEnv.getInternalTruffleFile(path);
         assertTrue(publicFile.isSameFile(publicFile));
         assertTrue(internalFile.isSameFile(internalFile));
-        assertFails(() -> publicFile.isSameFile(internalFile), SecurityException.class);
-        assertFails(() -> internalFile.isSameFile(publicFile), SecurityException.class);
+        assertFalse(publicFile.isSameFile(internalFile));
+        assertFalse(internalFile.isSameFile(publicFile));
+        setupEnv(Context.newBuilder().allowIO(true).build());
+        context.initialize("DuplicateMimeTypeLanguage1");
+        publicFile = languageEnv.getPublicTruffleFile(path);
+        internalFile = languageEnv.getInternalTruffleFile(path);
+        assertTrue(publicFile.isSameFile(publicFile));
+        assertTrue(internalFile.isSameFile(internalFile));
+        assertTrue(publicFile.isSameFile(internalFile));
+        assertTrue(internalFile.isSameFile(publicFile));
+        TruffleLanguage.Env otherLanguageEnv = DuplicateMimeTypeLanguage1.getCurrentLanguageContext(DuplicateMimeTypeLanguage1.class).getEnv();
+        TruffleFile otherLanguagePublicFile = otherLanguageEnv.getPublicTruffleFile(path);
+        TruffleFile otherLanguageInternalFile = otherLanguageEnv.getInternalTruffleFile(path);
+        assertTrue(publicFile.isSameFile(otherLanguagePublicFile));
+        assertTrue(publicFile.isSameFile(otherLanguageInternalFile));
+        assertTrue(internalFile.isSameFile(otherLanguagePublicFile));
+        assertTrue(internalFile.isSameFile(otherLanguageInternalFile));
+        assertTrue(otherLanguagePublicFile.isSameFile(publicFile));
+        assertTrue(otherLanguagePublicFile.isSameFile(internalFile));
+        assertTrue(otherLanguageInternalFile.isSameFile(publicFile));
+        assertTrue(otherLanguageInternalFile.isSameFile(internalFile));
+        TruffleFile finalPublicFile = publicFile;
+        TruffleFile finalInternalFile = internalFile;
+        assertFails(() -> finalPublicFile.isSameFile(null), NullPointerException.class);
+        assertFails(() -> finalPublicFile.isSameFile(finalInternalFile, (LinkOption[]) null), NullPointerException.class);
+        assertFails(() -> finalPublicFile.isSameFile(finalInternalFile, (LinkOption) null), NullPointerException.class);
     }
 
     private static Type erase(Type type) {
