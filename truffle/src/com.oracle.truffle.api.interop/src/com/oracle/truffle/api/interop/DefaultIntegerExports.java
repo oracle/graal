@@ -74,7 +74,7 @@ final class DefaultIntegerExports {
     static boolean fitsInFloat(Integer receiver) {
         int i = receiver;
         float f = i;
-        return f == i;
+        return (int) f == i;
     }
 
     @ExportMessage
@@ -101,7 +101,7 @@ final class DefaultIntegerExports {
     static float asFloat(Integer receiver) throws UnsupportedMessageException {
         int i = receiver;
         float f = i;
-        if (f == i) {
+        if ((int) f == i) {
             return f;
         }
         throw UnsupportedMessageException.create();
