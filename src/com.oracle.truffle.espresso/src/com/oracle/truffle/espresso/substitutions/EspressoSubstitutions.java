@@ -33,5 +33,5 @@ import java.lang.annotation.Target;
 public @interface EspressoSubstitutions {
     Class<?> value() default EspressoSubstitutions.class;
 
-    Class<? extends SubstitutionNamesProvider> classNameProvider() default SubstitutionNamesProvider.NoProvider.class;
+    Class<? extends SubstitutionNamesProvider> nameProvider() default SubstitutionNamesProvider.NoProvider.class;
 }

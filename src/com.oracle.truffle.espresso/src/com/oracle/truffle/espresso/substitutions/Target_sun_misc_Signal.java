@@ -29,9 +29,9 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 
 import sun.misc.Signal;
 
-@EspressoSubstitutions(classNameProvider = Target_sun_misc_Signal.SharedSignal.class)
+@EspressoSubstitutions(nameProvider = Target_sun_misc_Signal.SharedSignal.class)
 public final class Target_sun_misc_Signal {
-    @Substitution(classNameProvider = SharedSignalAppend0.class)
+    @Substitution(nameProvider = SharedSignalAppend0.class)
     @TruffleBoundary
     public static int findSignal(@Host(String.class) StaticObject name) {
         return new Signal(Meta.toHostString(name)).getNumber();

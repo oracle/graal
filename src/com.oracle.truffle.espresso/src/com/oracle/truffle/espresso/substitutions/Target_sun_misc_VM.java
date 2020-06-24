@@ -23,7 +23,7 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
-@EspressoSubstitutions(classNameProvider = Target_sun_misc_VM.SharedVM.class)
+@EspressoSubstitutions(nameProvider = Target_sun_misc_VM.SharedVM.class)
 public final class Target_sun_misc_VM {
     @Substitution
     public static void initialize() {

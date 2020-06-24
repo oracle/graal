@@ -35,5 +35,5 @@ public @interface Substitution {
 
     boolean hasReceiver() default false;
 
-    Class<? extends SubstitutionNamesProvider> classNameProvider() default SubstitutionNamesProvider.NoProvider.class;
+    Class<? extends SubstitutionNamesProvider> nameProvider() default SubstitutionNamesProvider.NoProvider.class;
 }
