@@ -617,7 +617,7 @@ class ScalaDaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-
 
     def daCapoIterations(self):
         result = _daCapoScalaConfig.copy()
-        if not java_home_includes_corba(java_home):
+        if not java_home.javaCompliance < '11':
             mx.warn('Removing scaladacapo:actors from benchmarks because corba has been removed since JDK11 (http://openjdk.java.net/jeps/320)')
             del result['actors']
         return result
