@@ -562,6 +562,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                 ensureInitialized();
                 if (!isSubmittedForCompilation()) {
                     try {
+                        assert compilationTask == null;
                         this.compilationTask = task = runtime().submitForCompilation(this, lastTierCompilation);
                     } catch (RejectedExecutionException e) {
                         return false;

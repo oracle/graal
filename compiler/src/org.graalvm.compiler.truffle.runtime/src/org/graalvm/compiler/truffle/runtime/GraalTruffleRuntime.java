@@ -730,11 +730,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             @Override
             protected void execute(CancellableCompileTask task, WeakReference<OptimizedCallTarget> targetRef) {
                 OptimizedCallTarget callTarget = targetRef.get();
-                if (callTarget != null) {
+                if (callTarget != null && task.start()) {
                     try {
-                        if (!task.isCancelled()) {
-                            doCompile(callTarget, task);
-                        }
+                        doCompile(callTarget, task);
                     } finally {
                         task.finished();
                     }

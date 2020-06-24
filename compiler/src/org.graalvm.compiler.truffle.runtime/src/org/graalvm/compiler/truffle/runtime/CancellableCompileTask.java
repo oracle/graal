@@ -34,9 +34,10 @@ import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 
 public final class CancellableCompileTask implements TruffleCompilationTask {
     private final WeakReference<OptimizedCallTarget> targetRef;
+    private final boolean lastTierCompilation;
     private volatile Future<?> future;
     private volatile boolean cancelled;
-    private final boolean lastTierCompilation;
+    private volatile boolean started;
 
     public CancellableCompileTask(WeakReference<OptimizedCallTarget> targetRef, boolean lastTierCompilation) {
         this.targetRef = targetRef;
@@ -67,10 +68,7 @@ public final class CancellableCompileTask implements TruffleCompilationTask {
     public synchronized boolean cancel() {
         if (!cancelled) {
             cancelled = true;
-            // Successfully canceling the future (without interrupting if running) means we removed
-            // the
-            // task from the compilation queue before it started.
-            if (future.cancel(false)) {
+            if (!started) {
                 finished();
             }
             return true;
@@ -83,6 +81,15 @@ public final class CancellableCompileTask implements TruffleCompilationTask {
         if (target != null) {
             target.resetCompilationTask();
         }
+    }
+
+    public synchronized boolean start() {
+        assert !started : "Should not start a stared task";
+        if (cancelled) {
+            return false;
+        }
+        started = true;
+        return true;
     }
 
     @Override
