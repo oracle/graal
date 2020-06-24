@@ -47,14 +47,18 @@ public class SubstitutionProcessor extends EspressoProcessor {
     private TypeElement substitutionAnnotation;
     // @Host
     private TypeElement host;
+    // NoProvider.class
+    private TypeElement noProvider;
 
     // @Substitutions.java11()
-    private ExecutableElement java11Element;
+    private ExecutableElement espressoSubstitutionsClassNameProvider;
 
     // @Substitution.hasReceiver()
     private ExecutableElement hasReceiverElement;
     // @Substitution.methodName()
     private ExecutableElement methodNameElement;
+    // @Substitution.methodName()
+    private ExecutableElement substitutionClassNameProvider;
 
     // @Host.value()
     private ExecutableElement hostValueElement;
@@ -68,6 +72,7 @@ public class SubstitutionProcessor extends EspressoProcessor {
     private static final String ESPRESSO_SUBSTITUTIONS = SUBSTITUTION_PACKAGE + "." + "EspressoSubstitutions";
     private static final String METHOD_SUBSTITUTION = SUBSTITUTION_PACKAGE + "." + "Substitution";
     private static final String HOST = SUBSTITUTION_PACKAGE + "." + "Host";
+    private static final String NO_PROVIDER = SUBSTITUTION_PACKAGE + "." + "SubstitutionNamesProvider" + "." + "NoProvider";
 
     private static final String SUBSTITUTOR = "Substitutor";
     private static final String COLLECTOR = "SubstitutorCollector";
@@ -75,32 +80,32 @@ public class SubstitutionProcessor extends EspressoProcessor {
 
     private static final String INVOKE = "invoke(Object[] " + ARGS_NAME + ") {\n";
 
+    private static final String GET_METHOD_NAME = "getMethodNames";
+    private static final String SUBSTITUTION_CLASS_NAMES = "substitutionClassNames";
+
+    private static final String INSTANCE = "INSTANCE";
+
     public SubstitutionProcessor() {
         super(SUBSTITUTION_PACKAGE, SUBSTITUTOR, COLLECTOR, COLLECTOR_INSTANCE_NAME);
     }
 
     static class SubstitutorHelper extends SubstitutionHelper {
-        String targetClassName;
+        final String targetClassName;
         final String guestMethodName;
         final List<String> guestTypeNames;
         final String returnType;
         final boolean hasReceiver;
-
-        String beforeSpoofingTargetClassName;
+        final TypeMirror nameProvider;
 
         public SubstitutorHelper(EspressoProcessor processor, ExecutableElement method, String targetClassName, String guestMethodName, List<String> guestTypeNames, String returnType,
-                        boolean hasReceiver) {
+                        boolean hasReceiver, TypeMirror nameProvider) {
             super(processor, method);
             this.targetClassName = targetClassName;
             this.guestMethodName = guestMethodName;
             this.guestTypeNames = guestTypeNames;
             this.returnType = returnType;
             this.hasReceiver = hasReceiver;
-        }
-
-        public void spoofTargetClassName(String targetClassName) {
-            this.beforeSpoofingTargetClassName = this.targetClassName;
-            this.targetClassName = targetClassName;
+            this.nameProvider = nameProvider;
         }
     }
 
@@ -141,17 +146,16 @@ public class SubstitutionProcessor extends EspressoProcessor {
         return str.toString();
     }
 
-    private void processElement(Element espressoSubstitution) {
-        assert espressoSubstitution.getKind() == ElementKind.CLASS;
-        TypeElement typeElement = (TypeElement) espressoSubstitution;
+    private void processElement(Element substitution) {
+        assert substitution.getKind() == ElementKind.CLASS;
+        TypeElement typeElement = (TypeElement) substitution;
 
         // Extract the class name. (Of the form Target_[...]).
         String className = typeElement.getSimpleName().toString();
+        // Extract the default name provider, if it is specified.
+        TypeMirror defaultNameProvider = getNameProvider(getAnnotation(substitution, espressoSubstitutions), espressoSubstitutionsClassNameProvider);
 
-        // If java11 name is specified, extract it
-        String java11ClassName = getAnnotatedStringElement(typeElement, java11Element, espressoSubstitutions);
-
-        for (Element method : espressoSubstitution.getEnclosedElements()) {
+        for (Element method : substitution.getEnclosedElements()) {
             // Find the methods annotated with @Substitution.
             AnnotationMirror subst = getAnnotation(method, substitutionAnnotation);
             if (subst != null) {
@@ -167,8 +171,8 @@ public class SubstitutionProcessor extends EspressoProcessor {
 
                 if (!classes.contains(substitutorName)) {
                     // Obtain the name of the substituted method.
-                    Map<? extends ExecutableElement, ? extends AnnotationValue> elementValues = processingEnv.getElementUtils().getElementValuesWithDefaults(subst);
-                    AnnotationValue methodNameValue = elementValues.get(methodNameElement);
+                    AnnotationValue methodNameValue = getAttribute(subst, methodNameElement);
+                    assert methodNameValue.getValue() instanceof String;
                     String actualMethodName = (String) methodNameValue.getValue();
                     if (actualMethodName.length() == 0) {
                         actualMethodName = targetMethodName;
@@ -178,13 +182,16 @@ public class SubstitutionProcessor extends EspressoProcessor {
                     List<String> guestTypes = getGuestTypes((ExecutableElement) method);
 
                     // Obtain the hasReceiver() value from the @Substitution annotation.
-                    AnnotationValue hasReceiverValue = elementValues.get(hasReceiverElement);
+                    AnnotationValue hasReceiverValue = getAttribute(subst, hasReceiverElement);
                     assert hasReceiverValue != null;
                     boolean hasReceiver = (boolean) hasReceiverValue.getValue();
 
                     // Obtain the fully qualified guest return type of the method.
                     String returnType = getReturnTypeFromHost((ExecutableElement) method);
-                    SubstitutorHelper helper = new SubstitutorHelper(this, (ExecutableElement) method, className, actualMethodName, guestTypes, returnType, hasReceiver);
+
+                    TypeMirror nameProvider = getNameProvider(subst, substitutionClassNameProvider);
+                    nameProvider = nameProvider == null ? defaultNameProvider : nameProvider;
+                    SubstitutorHelper helper = new SubstitutorHelper(this, (ExecutableElement) method, className, actualMethodName, guestTypes, returnType, hasReceiver, nameProvider);
 
                     // Create the contents of the source file
                     String classFile = spawnSubstitutor(
@@ -192,19 +199,21 @@ public class SubstitutionProcessor extends EspressoProcessor {
                                     targetMethodName,
                                     espressoTypes, helper);
                     commitSubstitution(substitutionAnnotation, substitutorName, classFile);
-
-                    // Copy the result for creating a substitution for the java 11 class
-                    if (java11ClassName.length() > 0) {
-                        helper.spoofTargetClassName(java11ClassName);
-                        classFile = spawnSubstitutor(
-                                        java11ClassName,
-                                        targetMethodName,
-                                        espressoTypes, helper);
-                        commitSubstitution(substitutionAnnotation, getSubstitutorClassName(java11ClassName, targetMethodName, espressoTypes), classFile);
-                    }
                 }
             }
         }
+    }
+
+    private TypeMirror getNameProvider(AnnotationMirror annotation, ExecutableElement attribute) {
+        AnnotationValue provider = getAttribute(annotation, attribute);
+        if (provider != null) {
+            assert provider.getValue() instanceof TypeMirror;
+            TypeMirror value = (TypeMirror) provider.getValue();
+            if (!processingEnv.getTypeUtils().isSameType(value, noProvider.asType())) {
+                return value;
+            }
+        }
+        return null;
     }
 
     private String getAnnotatedStringElement(TypeElement typeElement, ExecutableElement element, TypeElement annotation) {
@@ -352,10 +361,11 @@ public class SubstitutionProcessor extends EspressoProcessor {
         this.espressoSubstitutions = processingEnv.getElementUtils().getTypeElement(ESPRESSO_SUBSTITUTIONS);
         this.substitutionAnnotation = processingEnv.getElementUtils().getTypeElement(METHOD_SUBSTITUTION);
         this.host = processingEnv.getElementUtils().getTypeElement(HOST);
+        this.noProvider = processingEnv.getElementUtils().getTypeElement(NO_PROVIDER);
         for (Element e : espressoSubstitutions.getEnclosedElements()) {
             if (e.getKind() == ElementKind.METHOD) {
-                if (e.getSimpleName().contentEquals("java11")) {
-                    this.java11Element = (ExecutableElement) e;
+                if (e.getSimpleName().contentEquals("classNameProvider")) {
+                    this.espressoSubstitutionsClassNameProvider = (ExecutableElement) e;
                 }
             }
         }
@@ -366,6 +376,9 @@ public class SubstitutionProcessor extends EspressoProcessor {
                 }
                 if (e.getSimpleName().contentEquals("hasReceiver")) {
                     this.hasReceiverElement = (ExecutableElement) e;
+                }
+                if (e.getSimpleName().contentEquals("classNameProvider")) {
+                    this.substitutionClassNameProvider = (ExecutableElement) e;
                 }
             }
         }
@@ -396,7 +409,7 @@ public class SubstitutionProcessor extends EspressoProcessor {
     }
 
     @Override
-    String generateFactoryConstructorBody(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
+    String generateFactoryConstructorAndBody(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
         StringBuilder str = new StringBuilder();
         SubstitutorHelper h = (SubstitutorHelper) helper;
         str.append(TAB_3).append("super(\n");
@@ -407,6 +420,29 @@ public class SubstitutionProcessor extends EspressoProcessor {
         str.append(TAB_4).append(h.hasReceiver).append("\n");
         str.append(TAB_3).append(");\n");
         str.append(TAB_2).append("}\n");
+
+        if (h.nameProvider != null) {
+            str.append(generateNameProviders(targetMethodName, h));
+        }
+
+        return str.toString();
+    }
+
+    private String generateNameProviders(String targetMethodName, SubstitutorHelper h) {
+        StringBuilder str = new StringBuilder();
+        String nameProvider = h.nameProvider.toString().substring((SUBSTITUTION_PACKAGE + ".").length());
+
+        str.append("\n");
+        str.append(TAB_2).append(OVERRIDE).append("\n");
+        str.append(TAB_2).append(PUBLIC_FINAL).append(" ").append("String[] ").append(GET_METHOD_NAME).append("() {\n");
+        str.append(TAB_3).append("return ").append(nameProvider);
+        str.append(".").append(INSTANCE).append(".").append(GET_METHOD_NAME).append("(").append(generateString(targetMethodName)).append(");\n");
+        str.append(TAB_2).append("}\n\n");
+        str.append(TAB_2).append(OVERRIDE).append("\n");
+        str.append(TAB_2).append(PUBLIC_FINAL).append(" ").append("String[] ").append(SUBSTITUTION_CLASS_NAMES).append("() {\n");
+        str.append(TAB_3).append("return ").append(nameProvider);
+        str.append(".").append(INSTANCE).append(".").append(SUBSTITUTION_CLASS_NAMES).append("();\n");
+        str.append(TAB_2).append("}\n");
         return str.toString();
     }
 
@@ -415,9 +451,6 @@ public class SubstitutionProcessor extends EspressoProcessor {
         String targetClass = className;
         StringBuilder str = new StringBuilder();
         SubstitutorHelper h = (SubstitutorHelper) helper;
-        if (h.beforeSpoofingTargetClassName != null) {
-            targetClass = h.beforeSpoofingTargetClassName;
-        }
         str.append(TAB_1).append(PUBLIC_FINAL_OBJECT).append(INVOKE);
         int argIndex = 0;
         for (String argType : parameterTypeName) {

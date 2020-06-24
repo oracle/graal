@@ -156,7 +156,7 @@ public class VMImplProcessor extends IntrinsicsProcessor {
     }
 
     @Override
-    String generateFactoryConstructorBody(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
+    String generateFactoryConstructorAndBody(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
         StringBuilder str = new StringBuilder();
         VMHelper h = (VMHelper) helper;
         str.append(TAB_3).append("super(\n");

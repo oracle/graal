@@ -182,7 +182,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
      *
      * @see EspressoProcessor#SUBSTITUTOR
      */
-    abstract String generateFactoryConstructorBody(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper);
+    abstract String generateFactoryConstructorAndBody(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper);
 
     /**
      * Generates the string that corresponds to the code of the invoke method for the current
@@ -268,13 +268,13 @@ public abstract class EspressoProcessor extends AbstractProcessor {
     private static final String AT_LINK = "@link ";
     private static final String FACTORY_IS_NULL = "InteropLibrary.getFactory().getUncached().isNull";
     private static final String PRIVATE_STATIC_FINAL = "private static final";
-    private static final String PUBLIC_FINAL = "public final";
     private static final String PRIVATE_FINAL = "private final";
     private static final String PUBLIC_STATIC_FINAL = "public static final";
     private static final String PUBLIC_STATIC_FINAL_CLASS = "public static final class ";
     private static final String PUBLIC_FINAL_CLASS = "public final class ";
-    private static final String OVERRIDE = "@Override";
     private static final String SUPPRESS_UNUSED = "@SuppressWarnings(\"unused\")";
+    static final String PUBLIC_FINAL = "public final";
+    static final String OVERRIDE = "@Override";
 
     static final String STATIC_OBJECT_NULL = "StaticObject.NULL";
 
@@ -367,6 +367,11 @@ public abstract class EspressoProcessor extends AbstractProcessor {
     }
 
     // Utility Methods
+
+    AnnotationValue getAttribute(AnnotationMirror annotation, Element attribute) {
+        Map<? extends ExecutableElement, ? extends AnnotationValue> elementValues = processingEnv.getElementUtils().getElementValuesWithDefaults(annotation);
+        return elementValues.get(attribute);
+    }
 
     static AnnotationMirror getAnnotation(TypeMirror e, TypeElement type) {
         for (AnnotationMirror annotationMirror : e.getAnnotationMirrors()) {
@@ -640,7 +645,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
         str.append(" = new ").append(FACTORY).append("();").append("\n\n");
         str.append(TAB_1).append(PUBLIC_STATIC_FINAL_CLASS).append(FACTORY).append(" extends ").append(SUBSTITUTOR).append(".").append(FACTORY).append(" {\n");
         str.append(TAB_2).append("private ").append(FACTORY).append("() {\n");
-        str.append(generateFactoryConstructorBody(className, targetMethodName, parameterTypeName, helper)).append("\n");
+        str.append(generateFactoryConstructorAndBody(className, targetMethodName, parameterTypeName, helper)).append("\n");
         str.append(TAB_2).append(OVERRIDE).append("\n");
         str.append(TAB_2).append(PUBLIC_FINAL).append(" ").append(SUBSTITUTOR).append(" ").append(CREATE).append("(");
         str.append(META_CLASS).append(META_VAR).append(") {\n");
@@ -774,23 +779,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
      * @return The string forming the substitutor.
      */
     String spawnSubstitutor(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
-        return spawnSubstitutor(className, className, targetMethodName, parameterTypeName, helper);
-    }
-
-    /**
-     * Creates the substitutor.
-     *
-     * @param hostName The name of the host class where the substitution is to be found.
-     * @param guestName The "Target_"-formatted name of the guest class where the substituted method
-     *            is found. Should often be the same as hostName, but can differ if, for example, a
-     *            class was renamed in Java 11.
-     * @param targetMethodName The name of the substituted method.
-     * @param parameterTypeName The list of *Host* parameter types of the substituted method.
-     * @param helper A helper structure.
-     * @return The string forming the substitutor.
-     */
-    String spawnSubstitutor(String hostName, String guestName, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
-        String substitutorName = getSubstitutorClassName(guestName, targetMethodName, parameterTypeName);
+        String substitutorName = getSubstitutorClassName(className, targetMethodName, parameterTypeName);
         StringBuilder classFile = new StringBuilder();
         // Header
         classFile.append(COPYRIGHT);
@@ -805,7 +794,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
         classFile.append(generateImports(substitutorName, targetMethodName, parameterTypeName, helper));
 
         // Class
-        classFile.append(generateGeneratedBy(guestName, targetMethodName, parameterTypeName, helper)).append("\n");
+        classFile.append(generateGeneratedBy(className, targetMethodName, parameterTypeName, helper)).append("\n");
         classFile.append(PUBLIC_FINAL_CLASS).append(substitutorName).append(EXTENSION);
 
         // Instance Factory
@@ -827,7 +816,7 @@ public abstract class EspressoProcessor extends AbstractProcessor {
 
         // Invoke method
         classFile.append(TAB_1).append(OVERRIDE).append("\n");
-        classFile.append(generateInvoke(guestName, targetMethodName, parameterTypeName, helper));
+        classFile.append(generateInvoke(className, targetMethodName, parameterTypeName, helper));
 
         // End
         return classFile.toString();
