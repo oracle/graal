@@ -82,6 +82,7 @@ public final class SpecializationData extends TemplateMethod {
     private final Set<SpecializationData> excludedBy = new LinkedHashSet<>();
     private String insertBeforeName;
     private SpecializationData insertBefore;
+    private boolean replaced;
     private boolean reachable;
     private boolean reachesFallback;
     private int index;
@@ -105,6 +106,7 @@ public final class SpecializationData extends TemplateMethod {
         copy.guards.addAll(guards);
         copy.caches = new ArrayList<>(caches);
         copy.assumptionExpressions = new ArrayList<>(assumptionExpressions);
+        copy.replaced = replaced;
         copy.replaces.addAll(replaces);
         copy.replacesNames.addAll(replacesNames);
         copy.excludedBy.addAll(excludedBy);
@@ -316,8 +318,16 @@ public final class SpecializationData extends TemplateMethod {
         this.reachable = reachable;
     }
 
+    public void setReplaced(boolean replaced) {
+        this.replaced = replaced;
+    }
+
     public boolean isReachable() {
         return reachable;
+    }
+
+    public boolean isReplaced() {
+        return replaced;
     }
 
     public boolean isPolymorphic() {
@@ -586,6 +596,11 @@ public final class SpecializationData extends TemplateMethod {
 
         if (prev.isGuardBindsCache()) {
             // may fallthrough due to limit
+            return true;
+        }
+
+        if (node.isGenerateUncached() && !isReplaced() && prev.isReplaced()) {
+            // becomes reachable in the uncached node
             return true;
         }
 
