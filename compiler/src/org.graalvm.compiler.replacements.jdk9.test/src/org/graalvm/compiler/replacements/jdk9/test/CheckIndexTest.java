@@ -34,6 +34,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
@@ -219,5 +220,14 @@ public class CheckIndexTest extends MethodSubstitutionTest {
         };
         final Registration objects = new Registration(invocationPlugins, Objects.class);
         objects.register1("requireNonNull", Object.class, requireNonNullPlugin);
+    }
+
+    @Override
+    protected InlineInvokePlugin.InlineInfo bytecodeParserShouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
+        // Ensure non-intrinsified Unsafe methods are inlined.
+        if (method.getDeclaringClass().getUnqualifiedName().equals("Unsafe")) {
+            return InlineInvokePlugin.InlineInfo.createStandardInlineInfo(method);
+        }
+        return super.bytecodeParserShouldInlineInvoke(b, method, args);
     }
 }
