@@ -307,11 +307,4 @@ public class LateMembarInsertionTest extends GraalCompilerTest {
         return javaType;
     }
 
-    private static List<Node> getMembars(StructuredGraph graph) {
-        StructuredGraph.ScheduleResult schedule = graph.getLastSchedule();
-        ControlFlowGraph cfg = schedule.getCFG();
-        Block[] blocks = cfg.getBlocks();
-
-        return Arrays.stream(blocks).flatMap(b -> schedule.nodesFor(b).stream()).filter(n -> n instanceof MembarNode).collect(Collectors.toList());
-    }
 }
