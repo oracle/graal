@@ -28,6 +28,10 @@ suite = {
           {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
          ]
       },
+      {
+        "name" : "java-benchmarks",
+        "subdir": True
+      }
     ]
   },
 
