@@ -62,6 +62,7 @@ import com.oracle.truffle.llvm.parser.StackManager;
 import com.oracle.truffle.llvm.parser.binary.BinaryParser;
 import com.oracle.truffle.llvm.parser.binary.BinaryParserResult;
 import com.oracle.truffle.llvm.parser.factories.BasicPlatformCapability;
+import com.oracle.truffle.llvm.parser.factories.PlatformCapabilityBase;
 import com.oracle.truffle.llvm.parser.model.GlobalSymbol;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
@@ -160,7 +161,7 @@ final class Runner {
      * Parses a {@code source} and all its (explicit and implicit) dependencies.
      *
      * @return a {@link CallTarget} that on execute initializes (i.e., initalize globals, run
-     * constructors, etc.) the module represented by {@code source} and all dependencies.
+     *         constructors, etc.) the module represented by {@code source} and all dependencies.
      */
     public static CallTarget parse(LLVMContext context, AtomicInteger bitcodeID, Source source) {
         return new Runner(context, bitcodeID).parseWithDependencies(source);
@@ -249,7 +250,15 @@ final class Runner {
         @Children DirectCallNode[] dependencies; // pointing to the CallTargets of our dependencies
 
         private enum LLVMLoadingPhase {
-            ALL, BUILD_SCOPES, INIT_SYMBOLS, INIT_EXTERNALS, INIT_GLOBALS, INIT_MODULE, INIT_CONTEXT, INIT_OVERWRITE, INIT_DONE;
+            ALL,
+            BUILD_SCOPES,
+            INIT_SYMBOLS,
+            INIT_EXTERNALS,
+            INIT_GLOBALS,
+            INIT_MODULE,
+            INIT_CONTEXT,
+            INIT_OVERWRITE,
+            INIT_DONE;
 
             boolean isActive(LLVMLoadingPhase phase) {
                 return phase == this || phase == ALL;
@@ -257,7 +266,7 @@ final class Runner {
         }
 
         private LoadModulesNode(Runner runner, String name, LLVMParserResult parserResult, LLVMContext context,
-                                FrameDescriptor rootFrame, boolean lazyParsing, RootCallTarget mainFunctionCallTarget, List<CallTarget> callTargets, Source source) throws TypeOverflowException {
+                        FrameDescriptor rootFrame, boolean lazyParsing, RootCallTarget mainFunctionCallTarget, List<CallTarget> callTargets, Source source) throws TypeOverflowException {
 
             super(runner.language, rootFrame);
             this.mainFunctionCallTarget = mainFunctionCallTarget;
@@ -273,7 +282,8 @@ final class Runner {
 
             this.initContext = runner.context.createInitializeContextNode(rootFrame);
             String moduleName = parserResult.getRuntime().getLibrary().toString();
-            this.initSymbols = new InitializeSymbolsNode(parserResult, parserResult.getRuntime().getNodeFactory(), lazyParsing, isInternalSulongLibrary(context, parserResult.getRuntime().getLibrary()), moduleName);
+            this.initSymbols = new InitializeSymbolsNode(parserResult, parserResult.getRuntime().getNodeFactory(), lazyParsing,
+                            isInternalSulongLibrary(context, parserResult.getRuntime().getLibrary()), moduleName);
             this.initScopes = new InitializeScopeNode(parserResult);
             this.initExternals = new InitializeExternalNode(parserResult);
             this.initGlobals = new InitializeGlobalNode(rootFrame, parserResult, moduleName);
@@ -292,7 +302,7 @@ final class Runner {
         }
 
         protected static LoadModulesNode create(String name, RootCallTarget mainFunctionCallTarget, Runner runner, LLVMParserResult parserResult, FrameDescriptor rootFrame,
-                               boolean lazyParsing, LLVMContext context, List<CallTarget> callTargets, Source source) {
+                        boolean lazyParsing, LLVMContext context, List<CallTarget> callTargets, Source source) {
             LoadModulesNode node = null;
             try {
                 node = new LoadModulesNode(runner, name, parserResult, context, rootFrame, lazyParsing, mainFunctionCallTarget, callTargets, source);
@@ -304,7 +314,7 @@ final class Runner {
 
         @ExplodeLoop
         LLVMLocalScope loadModule(VirtualFrame frame,
-                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
+                        @CachedContext(LLVMLanguage.class) LLVMContext context) {
 
             if (context.isLibraryAlreadyLoaded(bitcodeID)) {
                 return null;
@@ -316,7 +326,8 @@ final class Runner {
                 LLVMLoadingPhase phase;
                 LLVMLocalScope localScope;
                 BitSet visited;
-                //if no argument or first argument is not an enum of ours then it is a root, and we will need to create a fresh global scope, what do we do for local scope?
+                // if no argument or first argument is not an enum of ours then it is a root, and we
+                // will need to create a fresh global scope, what do we do for local scope?
                 if (frame.getArguments().length == 3 && (frame.getArguments()[0] instanceof LLVMLoadingPhase)) {
                     phase = (LLVMLoadingPhase) frame.getArguments()[0];
                     localScope = (LLVMLocalScope) frame.getArguments()[1];
@@ -330,7 +341,7 @@ final class Runner {
                     throw new IllegalStateException("LoadModulesNode is called with unexpected arguments");
                 }
 
-                //(PLi:) The scopes needs to be built even for already loaded libraries.
+                // (PLi:) The scopes needs to be built even for already loaded libraries.
                 if (LLVMLoadingPhase.BUILD_SCOPES.isActive(phase)) {
                     if (!visited.get(bitcodeID)) {
                         visited.set(bitcodeID);
@@ -344,12 +355,12 @@ final class Runner {
                     }
                 }
 
-            /*
-             * The ordering of executing these four initialization nodes is very important. The
-             * defined symbols and the external symbols must be initialized before (the value
-             * in) the global symbols can be initialized. The overwriting of symbols can only be
-             * done once all the globals are initialised and allocated in the symbol table.
-             */
+                /*
+                 * The ordering of executing these four initialization nodes is very important. The
+                 * defined symbols and the external symbols must be initialized before (the value
+                 * in) the global symbols can be initialized. The overwriting of symbols can only be
+                 * done once all the globals are initialised and allocated in the symbol table.
+                 */
                 if (LLVMLoadingPhase.INIT_SYMBOLS.isActive(phase)) {
                     if (LLVMLoadingPhase.ALL == phase) {
                         visited.clear();
@@ -451,7 +462,6 @@ final class Runner {
             }
         }
 
-
         @Override
         public Object execute(VirtualFrame frame) {
 
@@ -472,7 +482,7 @@ final class Runner {
 
         @TruffleBoundary
         private BitSet createBitset() {
-            //TODO based on the bitcode ID;
+            // TODO based on the bitcode ID;
             return new BitSet(dependencies.length);
         }
 
@@ -495,12 +505,6 @@ final class Runner {
 
     }
 
-    /*
-         source -> parse the source -> parserResult for the source -> dependencies (list of sources)
-        -> parse the dependencies (produce list of call targets) -> resolve rename symbols (if internal)
-        -> add external symbols to scopes ->  add filescope to language (if source is internal)
-     */
-
     /**
      * Parses a bitcode module and all its dependencies and return a {@code CallTarget} that
      * performs all necessary module initialization on execute.
@@ -510,15 +514,24 @@ final class Runner {
         // (breadth-first)
         ArrayList<Source> dependenciesSource = getDefaultLibraries();
 
-        // To stop libraries with circular dependencies to be stuck in a loop, i.e. libsulong depends on libuslong.
-        removeDependency(source, dependenciesSource);
+        // To stop libraries with circular dependencies to be stuck in a loop, i.e. libsulong
+        // depends on libuslong.
+        removeCyclicDependency(source, dependenciesSource);
 
         LLVMParserResult result = parseLibraryWithSource(source, library, bytes, dependenciesSource);
-        boolean isInternalLibrary = context.isInternalLibrary(result.getRuntime().getLibrary());
+
+        boolean isInternalLibrary;
+        if (result == null) {
+            // if result is null, then it does not contain bitcode. (NFI can handle it later if it's
+            // a native file.)
+            return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
+        } else {
+            isInternalLibrary = context.isInternalLibrary(result.getRuntime().getLibrary());
+        }
         assert !library.isNative();
 
         // Need to clear libsulong++ if we are already in libsulong++.
-        removeDependency(source, dependenciesSource);
+        removeCyclicDependency(source, dependenciesSource);
 
         ArrayList<CallTarget> dependenciesCalltarget = new ArrayList<>();
         for (Source dependencySource : dependenciesSource) {
@@ -547,9 +560,42 @@ final class Runner {
         return createLibraryCallTarget(source.getName(), result, dependenciesCalltarget, source);
     }
 
-    private static void removeDependency(Source source, ArrayList<Source> dependenciesSource){
-        if (dependenciesSource.contains(source)) {
-            dependenciesSource.remove(source);
+    private void removeCyclicDependency(Source source, ArrayList<Source> dependenciesSource) {
+        dependenciesSource.remove(source);
+
+        if (source.getName().equals(BasicPlatformCapability.LIBSULONG_FILENAME)) {
+            removeDependency(dependenciesSource, BasicPlatformCapability.LIBSULONGXX_FILENAME);
+        }
+
+        if (source.getName().equals(BasicPlatformCapability.LIBSULONGXX_FILENAME)) {
+            removeDependency(dependenciesSource, BasicPlatformCapability.LIBSULONG_FILENAME);
+        }
+
+        if (env.getOptions().get(SulongEngineOption.LOAD_CXX_LIBRARIES)) {
+            // If the option --llvm.loadC++Libraries is used then libsulong++ will be loaded for
+            // both
+            // libc++ and libc++abi as default libraries. This will cause a cyclic dependency of
+            // libsulong++ -> libc++ -> libsulong++ -> .. or
+            // libsuling++ -> libc++ -> libc++abi -> libsulong++ -> ..
+            if (source.getName().contains(PlatformCapabilityBase.LIBCXX_PREFIX)) {
+                removeDependency(dependenciesSource, BasicPlatformCapability.LIBSULONGXX_FILENAME);
+            } else if (source.getName().contains(PlatformCapabilityBase.LIBCXXABI_PREFIX)) {
+                removeDependency(dependenciesSource, BasicPlatformCapability.LIBSULONGXX_FILENAME);
+            }
+        }
+    }
+
+    private static void removeDependency(ArrayList<Source> sources, String remove) {
+        Source toRemove = null;
+        for (Source dependency : sources) {
+            if (dependency != null) {
+                if (dependency.getName().equals(remove)) {
+                    toRemove = dependency;
+                }
+            }
+        }
+        if (toRemove != null) {
+            sources.remove(toRemove);
         }
     }
 
@@ -606,8 +652,7 @@ final class Runner {
      */
     abstract static class AllocExternalSymbolNode extends LLVMNode {
 
-        @SuppressWarnings("unused")
-        static final AllocExternalSymbolNode[] EMPTY = {};
+        @SuppressWarnings("unused") static final AllocExternalSymbolNode[] EMPTY = {};
         final LLVMSymbol symbol;
 
         AllocExternalSymbolNode(LLVMSymbol symbol) {
@@ -628,12 +673,12 @@ final class Runner {
 
         @Specialization(guards = {"cachedLocalSymbol != null", "localScope.get(symbol.getName()) == cachedLocalSymbol", "!(containsSymbol(cachedLocalSymbol))"})
         LLVMPointer allocateFromLocalScopeCached(@SuppressWarnings("unused") LLVMLocalScope localScope,
-                                                 @SuppressWarnings("unused") LLVMScope globalScope,
-                                                 @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
-                                                 @SuppressWarnings("unused") NFIContextExtension nfiContextExtension,
-                                                 @SuppressWarnings("unused") @Cached("localScope.get(symbol.getName())") LLVMSymbol cachedLocalSymbol,
-                                                 @Cached("create(cachedLocalSymbol)") LLVMAccessSymbolNode accessSymbol,
-                                                 @CachedContext(LLVMLanguage.class) LLVMContext context) {
+                        @SuppressWarnings("unused") LLVMScope globalScope,
+                        @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
+                        @SuppressWarnings("unused") NFIContextExtension nfiContextExtension,
+                        @SuppressWarnings("unused") @Cached("localScope.get(symbol.getName())") LLVMSymbol cachedLocalSymbol,
+                        @Cached("create(cachedLocalSymbol)") LLVMAccessSymbolNode accessSymbol,
+                        @CachedContext(LLVMLanguage.class) LLVMContext context) {
             LLVMPointer pointer = accessSymbol.execute();
             context.registerSymbol(symbol, pointer);
             return pointer;
@@ -641,10 +686,10 @@ final class Runner {
 
         @Specialization(replaces = "allocateFromLocalScopeCached", guards = {"localScope.get(symbol.getName()) != null", "!(containsSymbol(localScope.get(symbol.getName())))"})
         LLVMPointer allocateFromLocalScope(LLVMLocalScope localScope,
-                                           @SuppressWarnings("unused") LLVMScope globalScope,
-                                           @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
-                                           @SuppressWarnings("unused") NFIContextExtension nfiContextExtension,
-                                           @CachedContext(LLVMLanguage.class) LLVMContext context) {
+                        @SuppressWarnings("unused") LLVMScope globalScope,
+                        @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
+                        @SuppressWarnings("unused") NFIContextExtension nfiContextExtension,
+                        @CachedContext(LLVMLanguage.class) LLVMContext context) {
             LLVMSymbol function = localScope.get(symbol.getName());
             while (function.isAlias()) {
                 function = ((LLVMAlias) function).getTarget();
@@ -665,9 +710,9 @@ final class Runner {
          */
         @Fallback
         LLVMPointer allocateFromLocalScopeFallback(@SuppressWarnings("unused") LLVMLocalScope localScope,
-                                                   @SuppressWarnings("unused") LLVMScope globalScope,
-                                                   @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
-                                                   @SuppressWarnings("unused") NFIContextExtension nfiContextExtension) {
+                        @SuppressWarnings("unused") LLVMScope globalScope,
+                        @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
+                        @SuppressWarnings("unused") NFIContextExtension nfiContextExtension) {
             return null;
         }
 
@@ -685,26 +730,26 @@ final class Runner {
         }
 
         @Specialization(guards = {"localScope.get(symbol.getName()) == null", "cachedGlobalSymbol != null", "globalScope.get(symbol.getName()) == cachedGlobalSymbol",
-                "!(containsSymbol(cachedGlobalSymbol))"})
+                        "!(containsSymbol(cachedGlobalSymbol))"})
         LLVMPointer allocateFromGlobalScopeCached(@SuppressWarnings("unused") LLVMLocalScope localScope,
-                                                  @SuppressWarnings("unused") LLVMScope globalScope,
-                                                  @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
-                                                  @SuppressWarnings("unused") NFIContextExtension nfiContextExtension,
-                                                  @SuppressWarnings("unused") @Cached("globalScope.get(symbol.getName())") LLVMSymbol cachedGlobalSymbol,
-                                                  @Cached("create(cachedGlobalSymbol)") LLVMAccessSymbolNode accessSymbol,
-                                                  @CachedContext(LLVMLanguage.class) LLVMContext context) {
+                        @SuppressWarnings("unused") LLVMScope globalScope,
+                        @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
+                        @SuppressWarnings("unused") NFIContextExtension nfiContextExtension,
+                        @SuppressWarnings("unused") @Cached("globalScope.get(symbol.getName())") LLVMSymbol cachedGlobalSymbol,
+                        @Cached("create(cachedGlobalSymbol)") LLVMAccessSymbolNode accessSymbol,
+                        @CachedContext(LLVMLanguage.class) LLVMContext context) {
             LLVMPointer pointer = accessSymbol.execute();
             context.registerSymbol(symbol, pointer);
             return pointer;
         }
 
         @Specialization(replaces = "allocateFromGlobalScopeCached", guards = {"localScope.get(symbol.getName()) == null", "globalScope.get(symbol.getName()) != null",
-                "!(containsSymbol(globalScope.get(symbol.getName())))"})
+                        "!(containsSymbol(globalScope.get(symbol.getName())))"})
         LLVMPointer allocateFromGlobalScope(@SuppressWarnings("unused") LLVMLocalScope localScope,
-                                            LLVMScope globalScope,
-                                            @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
-                                            @SuppressWarnings("unused") NFIContextExtension nfiContextExtension,
-                                            @CachedContext(LLVMLanguage.class) LLVMContext context) {
+                        LLVMScope globalScope,
+                        @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
+                        @SuppressWarnings("unused") NFIContextExtension nfiContextExtension,
+                        @CachedContext(LLVMLanguage.class) LLVMContext context) {
             LLVMSymbol function = globalScope.get(symbol.getName());
             assert function.isFunction();
             while (function.isAlias()) {
@@ -741,12 +786,12 @@ final class Runner {
 
         @TruffleBoundary
         @Specialization(guards = {"intrinsicProvider != null", "localScope.get(symbol.getName()) == null", "globalScope.get(symbol.getName()) == null",
-                "!symbol.isDefined()", "intrinsicProvider.isIntrinsified(symbol.getName())", "symbol.isFunction()"})
+                        "!symbol.isDefined()", "intrinsicProvider.isIntrinsified(symbol.getName())", "symbol.isFunction()"})
         LLVMPointer allocateIntrinsicFunction(@SuppressWarnings("unused") LLVMLocalScope localScope,
-                                              @SuppressWarnings("unused") LLVMScope globalScope,
-                                              LLVMIntrinsicProvider intrinsicProvider,
-                                              @SuppressWarnings("unused") NFIContextExtension nfiContextExtension,
-                                              @CachedContext(LLVMLanguage.class) LLVMContext context) {
+                        @SuppressWarnings("unused") LLVMScope globalScope,
+                        LLVMIntrinsicProvider intrinsicProvider,
+                        @SuppressWarnings("unused") NFIContextExtension nfiContextExtension,
+                        @CachedContext(LLVMLanguage.class) LLVMContext context) {
             LLVMFunctionDescriptor functionDescriptor = context.createFunctionDescriptor(symbol.asFunction());
             functionDescriptor.getFunctionCode().define(intrinsicProvider, nodeFactory);
             return LLVMManagedPointer.create(functionDescriptor);
@@ -761,13 +806,13 @@ final class Runner {
          */
         @TruffleBoundary
         @Specialization(guards = {"localScope.get(symbol.getName()) == null", "globalScope.get(symbol.getName()) == null",
-                "!symbol.isDefined()", "!intrinsicProvider.isIntrinsified(symbol.getName())", "nfiContextExtension != null",
-                "symbol.isFunction()"})
+                        "!symbol.isDefined()", "!intrinsicProvider.isIntrinsified(symbol.getName())", "nfiContextExtension != null",
+                        "symbol.isFunction()"})
         LLVMPointer allocateNativeFunction(@SuppressWarnings("unused") LLVMLocalScope localScope,
-                                           @SuppressWarnings("unused") LLVMScope globalScope,
-                                           @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
-                                           NFIContextExtension nfiContextExtension,
-                                           @CachedContext(LLVMLanguage.class) LLVMContext context) {
+                        @SuppressWarnings("unused") LLVMScope globalScope,
+                        @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
+                        NFIContextExtension nfiContextExtension,
+                        @CachedContext(LLVMLanguage.class) LLVMContext context) {
             NativeLookupResult nativeFunction = nfiContextExtension.getNativeFunctionOrNull(context, symbol.getName());
             if (nativeFunction != null) {
                 LLVMFunctionDescriptor functionDescriptor = context.createFunctionDescriptor(symbol.asFunction());
@@ -793,13 +838,13 @@ final class Runner {
 
         @TruffleBoundary
         @Specialization(guards = {"localScope.get(symbol.getName()) == null", "globalScope.get(symbol.getName()) == null",
-                "!symbol.isDefined()", "!intrinsicProvider.isIntrinsified(symbol.getName())", "nfiContextExtension != null",
-                "symbol.isGlobalVariable()"})
+                        "!symbol.isDefined()", "!intrinsicProvider.isIntrinsified(symbol.getName())", "nfiContextExtension != null",
+                        "symbol.isGlobalVariable()"})
         LLVMPointer allocateNativeGlobal(@SuppressWarnings("unused") LLVMLocalScope localScope,
-                                         @SuppressWarnings("unused") LLVMScope globalScope,
-                                         @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
-                                         NFIContextExtension nfiContextExtension,
-                                         @CachedContext(LLVMLanguage.class) LLVMContext context) {
+                        @SuppressWarnings("unused") LLVMScope globalScope,
+                        @SuppressWarnings("unused") LLVMIntrinsicProvider intrinsicProvider,
+                        NFIContextExtension nfiContextExtension,
+                        @CachedContext(LLVMLanguage.class) LLVMContext context) {
             NativePointerIntoLibrary pointer = nfiContextExtension.getNativeHandle(context, symbol.getName());
             if (pointer != null) {
                 if (!symbol.isDefined()) {
@@ -990,21 +1035,15 @@ final class Runner {
      */
     private static final class InitializeSymbolsNode extends LLVMNode {
 
-        @Child
-        LLVMAllocateNode allocRoSection;
-        @Child
-        LLVMAllocateNode allocRwSection;
-        @Child
-        LLVMCheckSymbolNode checkGlobals;
-        @Child
-        LLVMWriteSymbolNode writeSymbols;
+        @Child LLVMAllocateNode allocRoSection;
+        @Child LLVMAllocateNode allocRwSection;
+        @Child LLVMCheckSymbolNode checkGlobals;
+        @Child LLVMWriteSymbolNode writeSymbols;
 
-        @Children
-        final AllocGlobalNode[] allocGlobals;
+        @Children final AllocGlobalNode[] allocGlobals;
         final String moduleName;
 
-        @Children
-        final AllocSymbolNode[] allocFuncs;
+        @Children final AllocSymbolNode[] allocFuncs;
 
         private final LLVMScope fileScope;
         private NodeFactory nodeFactory;
@@ -1065,9 +1104,10 @@ final class Runner {
             this.writeSymbols = LLVMWriteSymbolNodeGen.create();
         }
 
-        /*public boolean shouldInitialize(LLVMContext ctx) {
-            return !ctx.isScopeLoaded(fileScope);
-        }*/
+        /*
+         * public boolean shouldInitialize(LLVMContext ctx) { return !ctx.isScopeLoaded(fileScope);
+         * }
+         */
 
         @SuppressWarnings({"unchecked", "rawtypes"})
         public void initializeSymbolTable(LLVMContext context) {
@@ -1176,48 +1216,6 @@ final class Runner {
     }
 
     /**
-     * @return The sulong default libraries, if any were parsed.
-
-    private ExternalLibrary[] parseDependencies(ParseContext parseContext) {
-        // at first, we are only parsing the direct dependencies of the main bitcode file
-        int directDependencies = parseContext.dependencyQueueSize();
-        for (int i = 0; i < directDependencies; i++) {
-            ExternalLibrary lib = parseContext.dependencyQueueRemoveFirst();
-            parseLibrary(lib, parseContext);
-        }
-
-        // then, we are parsing the default libraries
-        ExternalLibrary[] sulongLibraries = getDefaultDependencies(parseContext);
-
-        // finally we are dealing with all indirect dependencies
-        while (!parseContext.dependencyQueueIsEmpty()) {
-            ExternalLibrary lib = parseContext.dependencyQueueRemoveFirst();
-            parseLibrary(lib, parseContext);
-        }
-        return sulongLibraries;
-    }*/
-
-    /**
-     * Returns the default dependencies (as {@link ExternalLibrary} and adds their
-     * {@link LLVMParserResult parser results} to the current {@link ParseContext}. The default
-     * dependencies are cached in the {@link #loader}.
-
-    private ExternalLibrary[] getDefaultDependencies(ParseContext parseContext) {
-        if (loader.getCachedDefaultDependencies() == null) {
-            synchronized (loader) {
-                if (loader.getCachedDefaultDependencies() == null) {
-                    ParseContext newParseContext = ParseContext.create();
-                    ExternalLibrary[] defaultLibraries = getDefaultLibraries();
-                    List<LLVMParserResult> parserResults = newParseContext.getParserResults();
-                    loader.setDefaultLibraries(defaultLibraries, parserResults);
-                }
-            }
-        }
-        parseContext.parserResultsAddAll(loader.getCachedDefaultDependencies());
-        return loader.getCachedSulongLibraries();
-    }*/
-
-    /**
      * Marker for renamed symbols. Keep in sync with `sulong-internal.h`.
      */
     static final String SULONG_RENAME_MARKER = "___sulong_import_";
@@ -1246,10 +1244,10 @@ final class Runner {
                         LLVMFunction originalSymbol = scope.getFunction(originalName);
                         if (originalSymbol == null) {
                             throw new LLVMLinkerException(
-                                    String.format("The symbol %s could not be imported because the symbol %s was not found in library %s", external.getName(), originalName, lib));
+                                            String.format("The symbol %s could not be imported because the symbol %s was not found in library %s", external.getName(), originalName, lib));
                         }
                         LLVMFunction newFunction = LLVMFunction.create(name, originalSymbol.getLibrary(), originalSymbol.getFunction(), originalSymbol.getType(),
-                                parserResult.getRuntime().getBitcodeID(), external.getIndex(), external.isExported());
+                                        parserResult.getRuntime().getBitcodeID(), external.getIndex(), external.isExported());
                         parserResult.getRuntime().getFileScope().register(newFunction);
                         it.remove();
                         parserResult.getDefinedFunctions().add(external);
@@ -1266,7 +1264,7 @@ final class Runner {
                     LLVMFunction originalSymbol = scope.getFunction(originalName);
                     if (originalSymbol == null) {
                         throw new LLVMLinkerException(
-                                String.format("The symbol %s could not be imported because the symbol %s was not found in library %s", external.getName(), originalName, lib));
+                                        String.format("The symbol %s could not be imported because the symbol %s was not found in library %s", external.getName(), originalName, lib));
                     }
                     LLVMAlias alias = new LLVMAlias(parserResult.getRuntime().getLibrary(), name, originalSymbol, originalSymbol.isExported());
                     parserResult.getRuntime().getFileScope().register(alias);
@@ -1288,36 +1286,6 @@ final class Runner {
         }
         return name.substring(0, index);
     }
-
-    /**
-     * Parses the {@link ExternalLibrary} {@code lib} and returns its {@link LLVMParserResult}.
-     * Explicit and implicit dependencies of {@code lib} are added to the
-     *  The returned
-     * {@link LLVMParserResult} is also added to the The {@code lib} parameter is add to the {@link LLVMContext#addExternalLibrary
-     * context}.
-     *
-     * @param lib          the library to be parsed
-     * @param parseContext
-     * @return the parser result corresponding to {@code lib}
-     *
-    private LLVMParserResult parseLibrary(ExternalLibrary lib, ParseContext parseContext) {
-        if (lib.hasFile() && !lib.getFile().isRegularFile() || lib.getPath() == null || !lib.getPath().toFile().isFile()) {
-            if (!lib.isNative()) {
-                throw new LLVMParserException("'" + lib.getPath() + "' is not a file or does not exist.");
-            } else {
-                // lets assume that this is not a bitcode file and the NFI is going to handle it
-                return null;
-            }
-        }
-        TruffleFile file = lib.hasFile() ? lib.getFile() : context.getEnv().getInternalTruffleFile(lib.getPath().toUri());
-        Source source;
-        try {
-            source = Source.newBuilder("llvm", file).internal(lib.isInternal()).build();
-        } catch (IOException | SecurityException | OutOfMemoryError ex) {
-            throw new LLVMParserException("Error reading file " + lib.getPath() + ".");
-        }
-        return parseLibraryWithSource(source, lib, source.getBytes(), parseContext);
-    }*/
 
     /**
      * Parses a binary (bitcode with optional meta information from an ELF, Mach-O object file).
@@ -1360,14 +1328,13 @@ final class Runner {
 
     /**
      * Parses a single bitcode module and returns its {@link LLVMParserResult}. Explicit and
-     * implicit dependencies of {@code lib} are added to the
-     * . The returned
-     * {@link LLVMParserResult} is also added to the. This method ensures that the {@code library} parameter is added to the
+     * implicit dependencies of {@code lib} are added to the . The returned {@link LLVMParserResult}
+     * is also added to the. This method ensures that the {@code library} parameter is added to the
      * {@link LLVMContext#ensureExternalLibraryAdded context}.
      *
-     * @param source       the {@link Source} of the library to be parsed
-     * @param library      the {@link ExternalLibrary} corresponding to the library to be parsed
-     * @param bytes        the bytes of the library to be parsed
+     * @param source the {@link Source} of the library to be parsed
+     * @param library the {@link ExternalLibrary} corresponding to the library to be parsed
+     * @param bytes the bytes of the library to be parsed
      * @return the parser result corresponding to {@code lib}
      */
     private LLVMParserResult parseLibraryWithSource(Source source, ExternalLibrary library, ByteSequence bytes, ArrayList<Source> sourceDependencies) {
@@ -1391,8 +1358,8 @@ final class Runner {
 
     /**
      * Converts the {@link BinaryParserResult#getLibraries() dependencies} of a
-     * {@link BinaryParserResult} into {@link ExternalLibrary}s and add them to the
-     *  if not already in there.
+     * {@link BinaryParserResult} into {@link ExternalLibrary}s and add them to the if not already
+     * in there.
      */
     private void processDependencies(ExternalLibrary library, BinaryParserResult binaryParserResult, ArrayList<Source> dependenciesSource, ArrayList<ExternalLibrary> dependencies) {
         for (String lib : context.preprocessDependencies(library, binaryParserResult.getLibraries())) {
@@ -1421,11 +1388,9 @@ final class Runner {
             }
         }
 
-        for(String name : new String[]{BasicPlatformCapability.LIBSULONG_FILENAME, BasicPlatformCapability.LIBSULONGXX_FILENAME}) {
-            if (lib.getName().equalsIgnoreCase(name)){
-                if(lib.isNative()){
-                    lib.makeBitcodeLibrary();
-                }
+        if (lib.getName().equalsIgnoreCase(BasicPlatformCapability.LIBSULONG_FILENAME) || lib.getName().equalsIgnoreCase(BasicPlatformCapability.LIBSULONGXX_FILENAME)) {
+            if (lib.isNative()) {
+                lib.makeBitcodeLibrary();
             }
         }
 
@@ -1447,73 +1412,22 @@ final class Runner {
         for (FunctionSymbol function : parserResult.getExternalFunctions()) {
             if (!fileScope.contains(function.getName())) {
                 fileScope.register(LLVMFunction.create(function.getName(), null, new LLVMFunctionCode.UnresolvedFunction(), function.getType(), parserResult.getRuntime().getBitcodeID(),
-                        function.getIndex(), false));
+                                function.getIndex(), false));
             }
         }
         for (GlobalVariable global : parserResult.getExternalGlobals()) {
             if (!fileScope.contains(global.getName())) {
                 fileScope.register(
-                        LLVMGlobal.create(global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly(), global.getIndex(), parserResult.getRuntime().getBitcodeID(),
-                                false));
+                                LLVMGlobal.create(global.getName(), global.getType(), global.getSourceSymbol(), global.isReadOnly(), global.getIndex(), parserResult.getRuntime().getBitcodeID(),
+                                                false));
             }
         }
 
     }
-
-/*    private static InitializationOrder computeInitializationOrder(List<LLVMParserResult> parserResults, ExternalLibrary[] defaultLibraries) {
-        List<ExternalLibrary> sulongExternalLibraries = Arrays.asList(defaultLibraries);
-        InitializationOrder initializationOrder = new InitializationOrder();
-        EconomicMap<ExternalLibrary, LLVMParserResult> dependencyToParserResult = EconomicMap.create(Equivalence.IDENTITY);
-        EconomicSet<LLVMParserResult> visited = EconomicSet.create(Equivalence.IDENTITY);
-        /*
-         * Split libraries into Sulong-specific ones and others, so that we can handle the
-         * Sulong-specific ones separately.
-         */
-       /* for (LLVMParserResult parserResult : parserResults) {
-            ExternalLibrary library = parserResult.getRuntime().getLibrary();
-            dependencyToParserResult.put(library, parserResult);
-            if (sulongExternalLibraries.contains(library)) {
-                initializationOrder.addSulongLibraries(parserResult);
-                visited.add(parserResult);
-            } else {
-                initializationOrder.addScopeInitializationLibraries(parserResult);
-            }
-        }
-
-        for (LLVMParserResult otherlib : initializationOrder.getScopeInitializationOrderLibraries()) {
-            if (!visited.contains(otherlib)) {
-                addModuleToInitializationOrder(otherlib, initializationOrder, dependencyToParserResult, visited);
-                assert initializationOrder.getModuleInitializationOrderLibraries().contains(otherlib);
-            }
-        }
-        assert initializationOrder.getModuleInitializationOrderLibraries().containsAll(initializationOrder.getScopeInitializationOrderLibraries());
-        return initializationOrder;
-    }
-
-    private static void addModuleToInitializationOrder(LLVMParserResult module, InitializationOrder initializationOrder, EconomicMap<ExternalLibrary, LLVMParserResult> dependencyToParserResult,
-                                                       EconomicSet<LLVMParserResult> visited) {
-        if (visited.contains(module)) {
-            /*
-             * We don't know if the module has already been added to the initialization order list
-             * or if we are still processing its dependencies. In the second case we found a cycle,
-             * which we silently ignore.
-             */
-            /*return;
-        }
-        visited.add(module);
-        for (ExternalLibrary dep : module.getDependencies()) {
-            LLVMParserResult depLib = dependencyToParserResult.get(dep);
-            if (depLib != null) {
-                addModuleToInitializationOrder(depLib, initializationOrder, dependencyToParserResult, visited);
-            }
-        }
-        initializationOrder.addModuleInitializationLibraries(module);
-    }*/
 
     abstract static class StaticInitsNode extends LLVMStatementNode {
 
-        @Children
-        final LLVMStatementNode[] statements;
+        @Children final LLVMStatementNode[] statements;
         final Object moduleName;
         final String prefix;
 
@@ -1526,7 +1440,7 @@ final class Runner {
         @ExplodeLoop
         @Specialization
         public void doInit(VirtualFrame frame,
-                           @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
+                        @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
             if (ctx.loaderTraceStream() != null) {
                 traceExecution(ctx);
             }
@@ -1552,8 +1466,7 @@ final class Runner {
      * @see InitializeExternalNode
      */
     private static final class InitializeScopeNode extends LLVMNode {
-        @Children
-        final AllocScopeNode[] allocScopes;
+        @Children final AllocScopeNode[] allocScopes;
         private final LLVMScope fileScope;
 
         InitializeScopeNode(LLVMParserResult result) {
@@ -1569,20 +1482,13 @@ final class Runner {
 
         void execute(LLVMContext context, LLVMLocalScope localScope) {
             synchronized (context) {
+                localScope.addMissingLinkageName(fileScope);
                 for (int i = 0; i < allocScopes.length; i++) {
                     AllocScopeNode allocScope = allocScopes[i];
                     allocScope.allocateScope(context, localScope);
                 }
             }
         }
-
-        /*public boolean shouldInitialize(LLVMContext ctx) {
-            return !ctx.isScopeLoadedForScopes(fileScope);
-        }
-
-        public void initializeScope(LLVMContext context) {
-            context.registerScopeForScopes(fileScope);
-        }*/
     }
 
     /**
@@ -1602,10 +1508,8 @@ final class Runner {
      * @see InitializeOverwriteNode
      */
     private static final class InitializeExternalNode extends LLVMNode {
-        @Child
-        LLVMWriteSymbolNode writeSymbols;
-        @Children
-        AllocExternalSymbolNode[] allocExternalSymbols;
+        @Child LLVMWriteSymbolNode writeSymbols;
+        @Children AllocExternalSymbolNode[] allocExternalSymbols;
         private final NodeFactory nodeFactory;
 
         InitializeExternalNode(LLVMParserResult result) {
@@ -1681,10 +1585,8 @@ final class Runner {
      */
     private static final class InitializeOverwriteNode extends LLVMNode {
 
-        @Children
-        final AllocExternalSymbolNode[] allocExternalSymbols;
-        @Child
-        LLVMWriteSymbolNode writeSymbols;
+        @Children final AllocExternalSymbolNode[] allocExternalSymbols;
+        @Child LLVMWriteSymbolNode writeSymbols;
 
         InitializeOverwriteNode(LLVMParserResult result) {
             this.writeSymbols = LLVMWriteSymbolNodeGen.create();
@@ -1742,10 +1644,8 @@ final class Runner {
 
         private final DataLayout dataLayout;
 
-        @Child
-        StaticInitsNode globalVarInit;
-        @Child
-        LLVMMemoryOpNode protectRoData;
+        @Child StaticInitsNode globalVarInit;
+        @Child LLVMMemoryOpNode protectRoData;
 
         InitializeGlobalNode(FrameDescriptor rootFrame, LLVMParserResult parserResult, Object moduleName) {
             this.dataLayout = parserResult.getDataLayout();
@@ -1782,8 +1682,7 @@ final class Runner {
         private final RootCallTarget destructor;
         private final DataLayout dataLayout;
 
-        @Child
-        StaticInitsNode constructor;
+        @Child StaticInitsNode constructor;
 
         InitializeModuleNode(Runner runner, LLVMParserResult parserResult, Object moduleName) {
             this.destructor = runner.createDestructor(parserResult, moduleName);
@@ -1877,7 +1776,7 @@ final class Runner {
     }
 
     private static LLVMStatementNode[] resolveStructor(LLVMScope fileScope, GlobalVariable globalSymbol, Comparator<Pair<Integer, ?>> priorityComparator, DataLayout dataLayout,
-                                                       NodeFactory nodeFactory) {
+                    NodeFactory nodeFactory) {
         if (!(globalSymbol.getValue() instanceof ArrayConstant)) {
             // array globals of length 0 may be initialized with scalar null
             return LLVMStatementNode.NO_STATEMENTS;
@@ -1949,7 +1848,7 @@ final class Runner {
             FrameDescriptor rootFrame = StackManager.createRootFrame();
             // check if the functions should be resolved eagerly or lazyly.
             boolean lazyParsing = context.getEnv().getOptions().get(SulongEngineOption.LAZY_PARSING);
-            LoadModulesNode loadModules = LoadModulesNode.create(name, mainFunctionCallTarget,this,  parserResult, rootFrame, lazyParsing, context, callTargets, source);
+            LoadModulesNode loadModules = LoadModulesNode.create(name, mainFunctionCallTarget, this, parserResult, rootFrame, lazyParsing, context, callTargets, source);
             return Truffle.getRuntime().createCallTarget(loadModules);
         }
     }
@@ -1965,8 +1864,8 @@ final class Runner {
         if (mainSymbol != null && mainSymbol.isFunction() && mainSymbol.isDefined()) {
             /*
              * The `isLLVMIRFunction` check makes sure the `main` function is really defined in
-             * bitcode. This prevents us from finding a native `main` function (e.g. the `main`
-             * of the VM we're running in).
+             * bitcode. This prevents us from finding a native `main` function (e.g. the `main` of
+             * the VM we're running in).
              */
 
             LLVMFunction mainFunction = mainSymbol.asFunction();
@@ -1986,7 +1885,7 @@ final class Runner {
     private LLVMFunctionDescriptor findAndSetSulongSpecificFunctions() {
 
         LLVMFunctionDescriptor startFunction;
-        LLVMSymbol initContext ;
+        LLVMSymbol initContext;
         LLVMSymbol disposeContext;
         LLVMScope fileScope = language.getInternalFileScopes("libsulong");
 
@@ -2015,44 +1914,4 @@ final class Runner {
         context.setSulongDisposeContext(disposeContext.asFunction());
         return startFunction;
     }
-
-    /**
-     * InitializationOrder contains three set of libraries, the sulong libraries and all other
-     * libraries in two different order. The scopeInitializationOrderLibraries is the order the
-     * libraries are parsed. While the moduleInitializationOrderLibraries is the order the libraries
-     * are initialised for the modules.
-     * <p>
-     * InitializationOrder is created in computeInitializationOrder.
-     *
-    private static final class InitializationOrder {
-        private final ArrayList<LLVMParserResult> sulongLibraries;
-        private final ArrayList<LLVMParserResult> moduleInitializationOrderLibraries;
-        private final ArrayList<LLVMParserResult> scopeInitializationOrderLibraries;
-
-        private InitializationOrder() {
-            this.sulongLibraries = new ArrayList<>();
-            this.moduleInitializationOrderLibraries = new ArrayList<>();
-            this.scopeInitializationOrderLibraries = new ArrayList<>();
-        }
-
-        public ArrayList<LLVMParserResult> getModuleInitializationOrderLibraries() {
-            return moduleInitializationOrderLibraries;
-        }
-
-        public ArrayList<LLVMParserResult> getScopeInitializationOrderLibraries() {
-            return scopeInitializationOrderLibraries;
-        }
-
-        public void addSulongLibraries(LLVMParserResult sulongLibrary) {
-            sulongLibraries.add(sulongLibrary);
-        }
-
-        public void addModuleInitializationLibraries(LLVMParserResult moduleInitializationLibrary) {
-            moduleInitializationOrderLibraries.add(moduleInitializationLibrary);
-        }
-
-        public void addScopeInitializationLibraries(LLVMParserResult scopeInitializationLibrary) {
-            scopeInitializationOrderLibraries.add(scopeInitializationLibrary);
-        }
-    }*/
 }

@@ -196,7 +196,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         return internalFileScopes.get(libraryName);
     }
 
-    public void addInternalFileScope(String libraryName, LLVMScope scope){
+    public void addInternalFileScope(String libraryName, LLVMScope scope) {
         internalFileScopes.put(libraryName, scope);
     }
 
@@ -204,11 +204,11 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         return internalExternalLibraries.get(source);
     }
 
-    public void addInternalExternalLibrary(Source source, ExternalLibrary externalLibrary){
+    public void addInternalExternalLibrary(Source source, ExternalLibrary externalLibrary) {
         internalExternalLibraries.put(source, externalLibrary);
     }
 
-    public boolean containsInternalExternalLibrary(Source source){
+    public boolean containsInternalExternalLibrary(Source source) {
         return internalExternalLibraries.containsKey(source);
     }
 

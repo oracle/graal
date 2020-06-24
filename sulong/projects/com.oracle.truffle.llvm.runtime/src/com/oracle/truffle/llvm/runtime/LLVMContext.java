@@ -766,7 +766,6 @@ public final class LLVMContext {
         libraryLoaded[id] = true;
     }
 
-
     public LLVMLanguage getLanguage() {
         return language;
     }
@@ -985,7 +984,7 @@ public final class LLVMContext {
     }
 
     @TruffleBoundary
-    public LLVMPointer getReadOnlyGlobals(int id){
+    public LLVMPointer getReadOnlyGlobals(int id) {
         synchronized (globalsStoreLock) {
             return globalsReadOnlyStore.get(id);
         }

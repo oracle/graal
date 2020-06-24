@@ -150,10 +150,7 @@ public class LLVMScope implements TruffleObject {
     }
 
     @TruffleBoundary
-    public void addMissingEntries(LLVMScope other) {
-        for (Entry<String, LLVMSymbol> entry : other.symbols.entrySet()) {
-            symbols.putIfAbsent(entry.getKey(), entry.getValue());
-        }
+    public void addMissingLinkageName(LLVMScope other) {
         for (Entry<String, String> entry : other.linkageNames.entrySet()) {
             linkageNames.putIfAbsent(entry.getKey(), entry.getValue());
         }
