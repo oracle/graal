@@ -11,7 +11,7 @@ addons:
 
 # Use Trusty to get enough RAM
 sudo: required
-dist: trusty
+dist: xenial
 
 jdk:
     - openjdk11
