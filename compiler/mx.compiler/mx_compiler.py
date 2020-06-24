@@ -205,7 +205,7 @@ def _check_jvmci_version(jdk):
             mx.run([jdk.javac, '-d', sdu.directory, unqualified_source_path])
     mx.run([jdk.java, '-cp', binDir, unqualified_name])
 
-if os.environ.get('JVMCI_VERSION_CHECK', None) != 'ignore' and os.environ.get('SKIP_JDK_CHECKS', None) != 'true':
+if os.environ.get('JVMCI_VERSION_CHECK', None) != 'ignore':
     _check_jvmci_version(jdk)
 
 mx_gate.add_jacoco_includes(['org.graalvm.compiler.*'])
