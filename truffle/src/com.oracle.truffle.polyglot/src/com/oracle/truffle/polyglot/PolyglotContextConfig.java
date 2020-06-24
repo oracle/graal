@@ -153,6 +153,9 @@ final class PolyglotContextConfig {
             // everyone has access to host or internal languages
             return true;
         }
+        if (from == to) {
+            return true;
+        }
         if (from == null) {
             // embedder access
             if (allowedPublicLanguages.contains(to.info.getId())) {
