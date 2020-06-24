@@ -76,7 +76,7 @@ final class NativeImageServer extends NativeImage {
     private static final String pKeyMaxServers = "MaxServers";
     private static final String machineProperties = "machine.properties";
 
-    private boolean useServer = true;
+    private boolean useServer = false;
     private boolean verboseServer = false;
     private String sessionName = null;
 
