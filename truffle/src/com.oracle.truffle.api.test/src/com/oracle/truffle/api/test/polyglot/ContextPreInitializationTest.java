@@ -84,7 +84,6 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.junit.After;
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -121,7 +120,6 @@ public class ContextPreInitializationTest {
     public void setUp() throws Exception {
         // Initialize IMPL
         Class.forName("org.graalvm.polyglot.Engine$ImplHolder", true, ContextPreInitializationTest.class.getClassLoader());
-        Assume.assumeTrue(false);
     }
 
     @After
@@ -1340,7 +1338,7 @@ public class ContextPreInitializationTest {
         Path testFolder = Files.createTempDirectory("testSources").toRealPath();
         try {
             Path buildtimeHome = Files.createDirectories(testFolder.resolve("build").resolve(FIRST));
-            Path buildtimeResource = Files.write(buildtimeHome.resolve("lib.test"), Collections.singleton("test"));
+            Path buildtimeResource = Files.write(buildtimeHome.resolve("testSourceInLanguageHome.test"), Collections.singleton("test"));
             Path runtimeHome = Files.createDirectories(testFolder.resolve("exec").resolve(FIRST));
             Path runtimeResource = Files.copy(buildtimeResource, runtimeHome.resolve(buildtimeResource.getFileName()));
             System.setProperty(String.format("org.graalvm.language.%s.home", FIRST), buildtimeHome.toString());
@@ -1389,7 +1387,7 @@ public class ContextPreInitializationTest {
         try {
             Path buildtimeHome = Files.createDirectories(testFolder.resolve("build").resolve(FIRST));
             Path runtimeHome = Files.createDirectories(testFolder.resolve("exec").resolve(FIRST));
-            Path resource = Files.write(testFolder.resolve("lib.test"), Collections.singleton("test"));
+            Path resource = Files.write(testFolder.resolve("testSourceOutsideLanguageHome.test"), Collections.singleton("test"));
             System.setProperty(String.format("org.graalvm.language.%s.home", FIRST), buildtimeHome.toString());
             AtomicReference<com.oracle.truffle.api.source.Source> buildtimeCachedSource = new AtomicReference<>();
             AtomicReference<com.oracle.truffle.api.source.Source> buildtimeUnCachedSource = new AtomicReference<>();
@@ -1434,7 +1432,7 @@ public class ContextPreInitializationTest {
         Path testFolder = Files.createTempDirectory("testSources").toRealPath();
         try {
             Path buildtimeHome = Files.createDirectories(testFolder.resolve("build").resolve(FIRST));
-            Path buildtimeResource = Files.write(buildtimeHome.resolve("lib.test"), Collections.singleton("test"));
+            Path buildtimeResource = Files.write(buildtimeHome.resolve("testSourceNotPatchedContext.test"), Collections.singleton("test"));
             Path runtimeHome = Files.createDirectories(testFolder.resolve("exec").resolve(FIRST));
             Path runtimeResource = Files.copy(buildtimeResource, runtimeHome.resolve(buildtimeResource.getFileName()));
             System.setProperty(String.format("org.graalvm.language.%s.home", FIRST), buildtimeHome.toString());
