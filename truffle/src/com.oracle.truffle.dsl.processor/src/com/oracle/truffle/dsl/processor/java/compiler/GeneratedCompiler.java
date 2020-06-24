@@ -85,7 +85,6 @@ public class GeneratedCompiler extends AbstractCompiler {
 
     @Override
     protected boolean emitDeprecationWarningImpl(ProcessingEnvironment environment, Element element) {
-        // TODO:
         return false;
     }
 

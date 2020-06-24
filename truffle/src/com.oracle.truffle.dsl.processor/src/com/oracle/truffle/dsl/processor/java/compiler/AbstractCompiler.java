@@ -50,19 +50,25 @@ import javax.tools.Diagnostic;
 
 public abstract class AbstractCompiler implements Compiler {
 
-    protected static Object method(Object o, String methodName) throws Exception {
+    protected static Object method(Object o, String methodName) throws ReflectiveOperationException {
         Method method = o.getClass().getMethod(methodName);
         method.setAccessible(true);
         return method.invoke(o);
     }
 
-    protected static Object method(Object o, String methodName, Class<?>[] paramTypes, Object... values) throws Exception {
+    protected static Object method(Object o, String methodName, Class<?>[] paramTypes, Object... values) throws ReflectiveOperationException {
         Method method = o.getClass().getMethod(methodName, paramTypes);
         method.setAccessible(true);
         return method.invoke(o, values);
     }
 
-    protected static Object field(Object o, String fieldName) throws Exception {
+    protected static Object staticMethod(Class<?> clz, String methodName, Class<?>[] paramTypes, Object... values) throws ReflectiveOperationException {
+        Method method = clz.getMethod(methodName, paramTypes);
+        method.setAccessible(true);
+        return method.invoke(null, values);
+    }
+
+    protected static Object field(Object o, String fieldName) throws ReflectiveOperationException {
         if (o == null) {
             return null;
         }
