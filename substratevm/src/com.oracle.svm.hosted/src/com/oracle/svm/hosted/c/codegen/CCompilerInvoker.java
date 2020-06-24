@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -442,7 +442,7 @@ public abstract class CCompilerInvoker {
     public static Optional<Path> lookupSearchPath(String name) {
         return Arrays.stream(System.getenv("PATH").split(File.pathSeparator))
                         .map(entry -> Paths.get(entry, name))
-                        .filter(Files::isExecutable)
+                        .filter(p -> Files.isExecutable(p) && !Files.isDirectory(p))
                         .findFirst();
     }
 
