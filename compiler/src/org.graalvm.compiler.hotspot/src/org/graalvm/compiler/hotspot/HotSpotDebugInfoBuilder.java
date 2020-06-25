@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,6 +36,8 @@ import org.graalvm.compiler.graph.GraalGraphError;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.hotspot.meta.DefaultHotSpotLoweringProvider;
 import org.graalvm.compiler.lir.VirtualStackSlot;
+import org.graalvm.compiler.nodeinfo.Verbosity;
+import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.FullInfopointNode;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -63,7 +65,7 @@ public class HotSpotDebugInfoBuilder extends DebugInfoBuilder {
     private HotSpotCodeCacheProvider codeCacheProvider;
 
     public HotSpotDebugInfoBuilder(NodeValueMap nodeValueMap, HotSpotLockStack lockStack, HotSpotLIRGenerator gen) {
-        super(nodeValueMap, gen.getResult().getLIR().getDebug());
+        super(nodeValueMap, gen.getProviders().getMetaAccessExtensionProvider(), gen.getResult().getLIR().getDebug());
         this.lockStack = lockStack;
         this.codeCacheProvider = gen.getProviders().getCodeCache();
     }
@@ -98,7 +100,7 @@ public class HotSpotDebugInfoBuilder extends DebugInfoBuilder {
         if (node instanceof ForeignCallNode) {
             ForeignCallNode call = (ForeignCallNode) node;
             ForeignCallDescriptor descriptor = call.getDescriptor();
-            if (DefaultHotSpotLoweringProvider.RuntimeCalls.runtimeCalls.containsValue(descriptor)) {
+            if (DefaultHotSpotLoweringProvider.RuntimeCalls.runtimeCalls.containsValue(descriptor.getSignature())) {
                 return true;
             }
         }
@@ -117,6 +119,9 @@ public class HotSpotDebugInfoBuilder extends DebugInfoBuilder {
                     assert topState.stackSize() >= -stackEffect : "expected at least " + (-stackEffect) + " stack depth : " + topState;
                 }
             }
+        }
+        if (node instanceof DeoptimizeNode) {
+            assert !topState.duringCall() : topState.toString(Verbosity.Debugger);
         }
         return true;
     }

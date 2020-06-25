@@ -40,12 +40,12 @@
  */
 package com.oracle.truffle.regex;
 
+import java.util.Arrays;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.tregex.parser.RegexFeatureSet;
 import com.oracle.truffle.regex.tregex.parser.flavors.PythonFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
-
-import java.util.Arrays;
 
 public final class RegexOptions {
 
@@ -90,7 +90,7 @@ public final class RegexOptions {
 
     @CompilerDirectives.TruffleBoundary
     public static RegexOptions parse(String optionsString) throws RegexSyntaxException {
-        int options = UTF_16_EXPLODE_ASTRAL_SYMBOLS;
+        int options = 0;
         RegexFlavor flavor = null;
         RegexFeatureSet featureSet = RegexFeatureSet.DEFAULT;
         for (String propValue : optionsString.split(",")) {
@@ -160,9 +160,9 @@ public final class RegexOptions {
     private static RegexFeatureSet parseFeatureSet(String optionsString, String value) throws RegexSyntaxException {
         switch (value) {
             case FEATURE_SET_TREGEX_JONI:
-                return RegexFeatureSet.TREGEX_JONI;
+                return RegexFeatureSet.DEFAULT;
             case FEATURE_SET_JONI:
-                return RegexFeatureSet.JONI;
+                return RegexFeatureSet.DEFAULT;
             default:
                 throw optionsSyntaxErrorUnexpectedValue(optionsString, FEATURE_SET_NAME, value, FEATURE_SET_TREGEX_JONI, FEATURE_SET_JONI);
         }
@@ -212,18 +212,9 @@ public final class RegexOptions {
     /**
      * Explode astral symbols ({@code 0x10000 - 0x10FFFF}) into sub-automata where every state
      * matches one {@code char} as opposed to one code point.
-     *
-     * TODO: enabled by default - disable.
      */
     public boolean isUTF16ExplodeAstralSymbols() {
         return isBitSet(UTF_16_EXPLODE_ASTRAL_SYMBOLS);
-    }
-
-    /**
-     * TODO: remove this.
-     */
-    public RegexOptions withoutUTF16ExplodeAstralSymbols() {
-        return new RegexOptions(options & ~UTF_16_EXPLODE_ASTRAL_SYMBOLS, flavor, featureSet);
     }
 
     public RegexFlavor getFlavor() {
@@ -280,11 +271,7 @@ public final class RegexOptions {
         } else if (flavor == PythonFlavor.BYTES_INSTANCE) {
             sb.append(FLAVOR_NAME + "=" + FLAVOR_PYTHON_BYTES + ",");
         }
-        if (featureSet == RegexFeatureSet.TREGEX_JONI) {
-            sb.append(FEATURE_SET_NAME + "=" + FEATURE_SET_TREGEX_JONI + ",");
-        } else if (featureSet == RegexFeatureSet.JONI) {
-            sb.append(FEATURE_SET_NAME + "=" + FEATURE_SET_JONI + ",");
-        }
+        sb.append(FEATURE_SET_NAME + "=Default");
         return sb.toString();
     }
 

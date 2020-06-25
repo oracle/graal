@@ -26,10 +26,13 @@ package com.oracle.svm.core.graal.aarch64;
 
 import org.graalvm.compiler.core.aarch64.AArch64LoweringProviderMixin;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.calc.FloatConvertNode;
+import org.graalvm.compiler.nodes.memory.VolatileReadNode;
+import org.graalvm.compiler.nodes.memory.VolatileWriteNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
 
@@ -43,8 +46,10 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 
 public class SubstrateAArch64LoweringProvider extends SubstrateBasicLoweringProvider implements AArch64LoweringProviderMixin {
 
-    public SubstrateAArch64LoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig, TargetDescription target) {
-        super(metaAccess, foreignCalls, platformConfig, target);
+    public SubstrateAArch64LoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig,
+                    MetaAccessExtensionProvider metaAccessExtensionProvider,
+                    TargetDescription target) {
+        super(metaAccess, foreignCalls, platformConfig, metaAccessExtensionProvider, target);
     }
 
     @SuppressWarnings("unchecked")
@@ -59,6 +64,9 @@ public class SubstrateAArch64LoweringProvider extends SubstrateBasicLoweringProv
             // expect to see a ConvertNode and throws an error, just do nothing here.
         } else if (n instanceof CodeSynchronizationNode) {
             lowerCodeSynchronizationNode((CodeSynchronizationNode) n);
+        } else if (n instanceof VolatileReadNode || n instanceof VolatileWriteNode) {
+            // AArch64 emits its own code sequence for volatile accesses. We don't want it lowered
+            // to memory barriers + a regular access.
         } else {
             super.lower(n, tool);
         }

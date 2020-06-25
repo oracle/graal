@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,8 +52,8 @@ import jdk.tools.jaotc.binformat.pecoff.JPECoffRelocObject;
  *
  * <p>
  * This class holds information necessary to create platform-specific binary containers such as
- * ELFContainer for Linux and Solaris operating systems or MachOContainer for Mac OS or PEContainer
- * for MS Windows operating systems.
+ * ELFContainer for Linux or MachOContainer for Mac OS or PEContainer for MS Windows operating
+ * systems.
  *
  * <p>
  * Method APIs provided by this class are used to construct and populate platform-independent
@@ -557,7 +557,6 @@ public final class BinaryContainer implements SymbolTable {
         String osName = System.getProperty("os.name");
         switch (osName) {
             case "Linux":
-            case "SunOS":
                 JELFRelocObject elfobj = JELFRelocObject.newInstance(this, outputFileName);
                 elfobj.createELFRelocObject(relocationTable, symbolTable.values());
                 break;

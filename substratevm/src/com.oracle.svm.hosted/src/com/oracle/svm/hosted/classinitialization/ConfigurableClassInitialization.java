@@ -218,37 +218,44 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
     @Override
     public void initializeAtRunTime(String name, String reason) {
         UserError.guarantee(!configurationSealed, "The class initialization configuration can be changed only before the phase analysis.");
-        classInitializationConfiguration.insert(name, InitKind.RUN_TIME, reason);
         Class<?> clazz = loader.findClassByName(name, false);
         if (clazz != null) {
+            classInitializationConfiguration.insert(name, InitKind.RUN_TIME, reason, true);
             initializeAtRunTime(clazz, reason);
+        } else {
+            classInitializationConfiguration.insert(name, InitKind.RUN_TIME, reason, false);
         }
     }
 
     @Override
     public void initializeAtBuildTime(String name, String reason) {
         UserError.guarantee(!configurationSealed, "The class initialization configuration can be changed only before the phase analysis.");
-        classInitializationConfiguration.insert(name, InitKind.BUILD_TIME, reason);
+
         Class<?> clazz = loader.findClassByName(name, false);
         if (clazz != null) {
+            classInitializationConfiguration.insert(name, InitKind.BUILD_TIME, reason, true);
             initializeAtBuildTime(clazz, reason);
+        } else {
+            classInitializationConfiguration.insert(name, InitKind.BUILD_TIME, reason, false);
         }
     }
 
     @Override
     public void rerunInitialization(String name, String reason) {
         UserError.guarantee(!configurationSealed, "The class initialization configuration can be changed only before the phase analysis.");
-        classInitializationConfiguration.insert(name, InitKind.RERUN, reason);
         Class<?> clazz = loader.findClassByName(name, false);
         if (clazz != null) {
+            classInitializationConfiguration.insert(name, InitKind.RERUN, reason, true);
             rerunInitialization(clazz, reason);
+        } else {
+            classInitializationConfiguration.insert(name, InitKind.RERUN, reason, false);
         }
     }
 
     @Override
     public void initializeAtRunTime(Class<?> clazz, String reason) {
         UserError.guarantee(!configurationSealed, "The class initialization configuration can be changed only before the phase analysis.");
-        classInitializationConfiguration.insert(clazz.getTypeName(), InitKind.RUN_TIME, reason);
+        classInitializationConfiguration.insert(clazz.getTypeName(), InitKind.RUN_TIME, reason, true);
         setSubclassesAsRunTime(clazz);
         checkEagerInitialization(clazz);
 
@@ -352,7 +359,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
     @Override
     public void rerunInitialization(Class<?> clazz, String reason) {
         UserError.guarantee(!configurationSealed, "The class initialization configuration can be changed only before the phase analysis.");
-        classInitializationConfiguration.insert(clazz.getTypeName(), InitKind.RERUN, reason);
+        classInitializationConfiguration.insert(clazz.getTypeName(), InitKind.RERUN, reason, true);
         checkEagerInitialization(clazz);
 
         try {
@@ -382,7 +389,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
     @Override
     public void initializeAtBuildTime(Class<?> aClass, String reason) {
         UserError.guarantee(!configurationSealed, "The class initialization configuration can be changed only before the phase analysis.");
-        classInitializationConfiguration.insert(aClass.getTypeName(), InitKind.BUILD_TIME, reason);
+        classInitializationConfiguration.insert(aClass.getTypeName(), InitKind.BUILD_TIME, reason, true);
         forceInitializeHosted(aClass, reason, false);
     }
 
@@ -398,7 +405,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         loader.findSubclasses(clazz, false).stream()
                         .filter(c -> !c.equals(clazz))
                         .filter(c -> !(c.isInterface() && !ClassInitializationFeature.declaresDefaultMethods(metaAccess.lookupJavaType(c))))
-                        .forEach(c -> classInitializationConfiguration.insert(c.getTypeName(), InitKind.RUN_TIME, "subtype of " + clazz.getTypeName()));
+                        .forEach(c -> classInitializationConfiguration.insert(c.getTypeName(), InitKind.RUN_TIME, "subtype of " + clazz.getTypeName(), true));
     }
 
     @Override
@@ -454,7 +461,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         if (clazz == null) {
             return;
         }
-        classInitializationConfiguration.insert(clazz.getTypeName(), InitKind.BUILD_TIME, reason);
+        classInitializationConfiguration.insert(clazz.getTypeName(), InitKind.BUILD_TIME, reason, true);
         InitKind initKind = ensureClassInitialized(clazz, allowInitializationErrors);
         classInitKinds.put(clazz, initKind);
 
@@ -465,7 +472,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
     private void forceInitializeInterfaces(Class<?>[] interfaces, String reason) {
         for (Class<?> iface : interfaces) {
             if (ClassInitializationFeature.declaresDefaultMethods(metaAccess.lookupJavaType(iface))) {
-                classInitializationConfiguration.insert(iface.getTypeName(), InitKind.BUILD_TIME, reason);
+                classInitializationConfiguration.insert(iface.getTypeName(), InitKind.BUILD_TIME, reason, true);
 
                 ensureClassInitialized(iface, false);
                 classInitKinds.put(iface, InitKind.BUILD_TIME);
@@ -632,7 +639,9 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
                             typeClassLoader == NativeImageGenerator.class.getClassLoader() ||
                             typeClassLoader == com.sun.crypto.provider.SunJCE.class.getClassLoader() ||
                             /* JDK 11 */
-                            typeClassLoader == OptionKey.class.getClassLoader()) {
+                            typeClassLoader == OptionKey.class.getClassLoader() ||
+                            /* JDK 15 */
+                            typeClassLoader == ConfigurableClassInitialization.class.getClassLoader()) {
                 return InitKind.BUILD_TIME;
             }
         }

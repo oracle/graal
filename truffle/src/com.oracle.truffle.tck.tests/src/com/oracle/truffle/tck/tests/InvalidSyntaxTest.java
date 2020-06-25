@@ -42,9 +42,9 @@ package com.oracle.truffle.tck.tests;
 
 import java.io.IOException;
 import java.util.AbstractMap;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Objects;
+import java.util.TreeSet;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.junit.AfterClass;
@@ -62,7 +62,7 @@ public class InvalidSyntaxTest {
     @Parameterized.Parameters(name = "{0}")
     public static Collection<Object[]> createInvalidSyntaxTests() {
         context = new TestContext(InvalidSyntaxTest.class);
-        final Collection<Object[]> result = new ArrayList<>();
+        final Collection<Object[]> result = new TreeSet<>((a, b) -> ((String) a[0]).compareTo(((String) b[0])));
         for (String language : TestUtil.getRequiredLanguages(context)) {
             for (Source src : context.getInstalledProviders().get(language).createInvalidSyntaxScripts(context.getContext())) {
                 result.add(new Object[]{

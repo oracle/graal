@@ -40,12 +40,12 @@
  */
 package com.oracle.truffle.regex.tregex.parser.flavors;
 
+import java.util.Map;
+
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.UnsupportedRegexException;
-
-import java.util.Map;
 
 /**
  * Allows the parsing and translating of a foreign regular expression into an ECMAScript regular

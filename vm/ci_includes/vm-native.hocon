@@ -12,7 +12,7 @@ builds += [
       [export, "SVM_SUITE="${svm_suite}]
       [mx, --dynamicimports, "$SVM_SUITE,graalpython", --disable-polyglot, --disable-libpolyglot, "--force-bash-launchers=lli,native-image", gate, --no-warning-as-error, --tags, "build,python"]
     ]
-    timelimit: "35:00"
+    timelimit: "45:00"
     name: gate-vm-native-graalpython
   }
   ${vm_java_8} ${svm-common-linux-amd64} ${gate_vm_linux} {

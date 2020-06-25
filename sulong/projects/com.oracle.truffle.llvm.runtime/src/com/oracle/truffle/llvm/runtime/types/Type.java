@@ -41,9 +41,22 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLazyException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
+import com.oracle.truffle.llvm.runtime.types.visitors.RecursiveTypeCheckVisitor;
 import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
+import java.util.Arrays;
+import java.util.List;
+
 public abstract class Type {
+
+    /**
+     * Checks whether adding {@code type} to {@code this} would create a cycle. The only allowed
+     * cycles are via pointers to named structs.
+     */
+    protected boolean verifyCycleFree(Type type) {
+        RecursiveTypeCheckVisitor.check(this, type);
+        return true;
+    }
 
     /**
      * Indicates that calculations based on properties {@link Type} would overflow. For example,
@@ -82,6 +95,61 @@ public abstract class Type {
     }
 
     public static final Type[] EMPTY_ARRAY = {};
+
+    /**
+     * Encapsulates an array of {@link Type types}. Use to ensure that the array reference is not
+     * leaked and modified out of place. The {@link TypeArrayBuilder} is never stored in a
+     * {@link Type} but only used for construction.
+     */
+    public static class TypeArrayBuilder {
+        private Type[] types;
+
+        public TypeArrayBuilder(int size) {
+            this.types = new Type[size];
+        }
+
+        public void set(int idx, Type type) {
+            check();
+            types[idx] = type;
+        }
+
+        public Type get(int idx) {
+            check();
+            return types[idx];
+        }
+
+        public int size() {
+            check();
+            return types.length;
+        }
+
+        public List<Type> asList() {
+            return Arrays.asList(getRawArray());
+        }
+
+        private Type[] getRawArray() {
+            check();
+            Type[] ret = this.types;
+            this.types = null;
+            return ret;
+        }
+
+        private void check() {
+            if (types == null) {
+                throw new IllegalStateException("TypeArray already finalized");
+            }
+        }
+    }
+
+    /**
+     * Gets the raw type array stored in a {@link TypeArrayBuilder}. This method "finalizes" the
+     * type array, i.e., the elements can no longer be {@linkplain TypeArrayBuilder#get accessed} or
+     * {@linkplain TypeArrayBuilder#set modified}. This method can only be called once for a give
+     * {@link TypeArrayBuilder}.
+     */
+    public static Type[] getRawTypeArray(TypeArrayBuilder types) {
+        return types.getRawArray();
+    }
 
     public abstract long getBitSize() throws TypeOverflowException;
 

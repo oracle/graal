@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -216,7 +216,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             if (probability(FREQUENT_PROBABILITY, writtenValue.notEqual(0))) {
                 // Calculate the address of the card to be enqueued to the
                 // thread local card queue.
-                Word cardAddress = cardTableAddress().add(oop.unsignedShiftRight(cardTableShift()));
+                Word cardAddress = cardTableAddress(oop);
 
                 byte cardByte = cardAddress.readByte(0, GC_CARD_LOCATION);
                 counters.g1EffectiveAfterNullPostWriteBarrierCounter.inc();
@@ -296,10 +296,8 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
         Word indexAddress = thread.add(cardQueueIndexOffset());
         long indexValue = thread.readWord(cardQueueIndexOffset(), CARD_QUEUE_INDEX_LOCATION).rawValue();
 
-        int cardShift = cardTableShift();
-        Word cardStart = cardTableAddress();
-        Word start = cardStart.add(getPointerToFirstArrayElement(address, length, elementStride).unsignedShiftRight(cardShift));
-        Word end = cardStart.add(getPointerToLastArrayElement(address, length, elementStride).unsignedShiftRight(cardShift));
+        Word start = cardTableAddress(getPointerToFirstArrayElement(address, length, elementStride));
+        Word end = cardTableAddress(getPointerToLastArrayElement(address, length, elementStride));
 
         Word cur = start;
         do {
@@ -348,9 +346,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
 
     protected abstract byte youngCardValue();
 
-    protected abstract Word cardTableAddress();
-
-    protected abstract int cardTableShift();
+    protected abstract Word cardTableAddress(Pointer oop);
 
     protected abstract int logOfHeapRegionGrainBytes();
 
@@ -396,7 +392,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             Word parentWord = Word.objectToTrackedPointer(parent);
             Word childWord = Word.objectToTrackedPointer(child);
             boolean success = validateOop(validateObjectCallDescriptor(), parentWord, childWord);
-            AssertionNode.assertion(false, success, "Verification ERROR, Parent: %p Child: %p\n", parentWord.rawValue(), childWord.rawValue());
+            AssertionNode.dynamicAssert(success, "Verification ERROR, Parent: %p Child: %p\n", parentWord.rawValue(), childWord.rawValue());
         }
     }
 

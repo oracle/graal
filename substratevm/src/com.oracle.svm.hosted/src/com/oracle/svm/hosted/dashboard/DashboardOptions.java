@@ -29,6 +29,7 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
 
 class DashboardOptions {
+
     @Option(help = "Enable dashboard dumps to the specified file.", type = OptionType.Expert)//
     static final HostedOptionKey<String> DashboardDump = new HostedOptionKey<>(null);
 
@@ -43,4 +44,7 @@ class DashboardOptions {
 
     @Option(help = "In the dashboard dump, include the information about the points-to analysis.", type = OptionType.Expert)//
     static final HostedOptionKey<Boolean> DashboardPointsTo = new HostedOptionKey<>(false);
+
+    @Option(help = "Set dashboard to use pretty print.", type = OptionType.Expert)//
+    static final HostedOptionKey<Boolean> DashboardPretty = new HostedOptionKey<>(false);
 }

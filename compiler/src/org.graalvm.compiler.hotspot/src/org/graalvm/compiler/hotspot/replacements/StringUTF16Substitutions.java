@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,8 +57,7 @@ public class StringUTF16Substitutions {
         }
         byte[] val = (byte[]) NewArrayNode.newUninitializedArray(Byte.TYPE, length << 1);
         // the intrinsic does not perform bounds/type checks, so it can be used here.
-        // Using KillsAny variant since we are reading and writing 2 different types.
-        ArrayCopyCallNode.disjointArraycopyKillsAny(value, srcBegin, val, 0, length, JavaKind.Char, HotSpotReplacementsUtil.getHeapWordSize(INJECTED_VMCONFIG));
+        ArrayCopyCallNode.disjointArraycopyKillsInit(value, srcBegin, val, 0, length, JavaKind.Char, HotSpotReplacementsUtil.getHeapWordSize(INJECTED_VMCONFIG));
         return val;
     }
 
@@ -72,7 +71,7 @@ public class StringUTF16Substitutions {
             DeoptimizeNode.deopt(DeoptimizationAction.None, DeoptimizationReason.BoundsCheckException);
         }
         // The intrinsic does not perform bounds/type checks, so it can be used here.
-        // Using KillsAny variant since we are reading and writing 2 different types.
-        ArrayCopyCallNode.disjointArraycopyKillsAny(value, srcBegin, dst, dstBegin, length, JavaKind.Char, HotSpotReplacementsUtil.getHeapWordSize(INJECTED_VMCONFIG));
+        ArrayCopyCallNode.disjointArraycopyDifferentKinds(value, srcBegin, dst, dstBegin, length, JavaKind.Char, JavaKind.Byte, JavaKind.Char,
+                        HotSpotReplacementsUtil.getHeapWordSize(INJECTED_VMCONFIG));
     }
 }

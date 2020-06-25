@@ -50,7 +50,7 @@ public abstract class LLVMAMD64SyscallMmapNode extends LLVMSyscallOperationNode 
     protected long doOp(LLVMNativePointer addr, long len, long prot, long flags, long fildes, long off,
                     @CachedLanguage LLVMLanguage language) {
         if (mapAnonymousProfile.profile((flags & LLVMAMD64Memory.MAP_ANONYMOUS) != 0)) {
-            LLVMNativePointer ptr = language.getLLVMMemory().allocateMemory(len);
+            LLVMNativePointer ptr = language.getLLVMMemory().allocateMemory(this, len);
             return ptr.asNative();
         }
         return -LLVMAMD64Error.ENOMEM;

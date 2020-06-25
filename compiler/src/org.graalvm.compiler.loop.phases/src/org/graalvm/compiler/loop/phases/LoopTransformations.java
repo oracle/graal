@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -97,8 +97,7 @@ public abstract class LoopTransformations {
         LoopBeginNode loopBegin = loop.loopBegin();
         StructuredGraph graph = loopBegin.graph();
         int initialNodeCount = graph.getNodeCount();
-        SimplifierTool defaultSimplifier = GraphUtil.getDefaultSimplifier(context.getMetaAccess(), context.getConstantReflection(), context.getConstantFieldProvider(),
-                        canonicalizer.getCanonicalizeReads(), graph.getAssumptions(), graph.getOptions());
+        SimplifierTool defaultSimplifier = GraphUtil.getDefaultSimplifier(context, canonicalizer.getCanonicalizeReads(), graph.getAssumptions(), graph.getOptions());
         /*
          * IMPORTANT: Canonicalizations inside the body of the remaining loop can introduce new
          * control flow that is not automatically picked up by the control flow graph computation of

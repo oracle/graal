@@ -1132,7 +1132,7 @@ public class LLVMInteropTest {
             return context.getEnv().importSymbol("test_to_native");
         }
 
-        @ExportMessage(limit = "3")
+        @ExportMessage
         @SuppressWarnings("unused")
         void toNative(@CachedContext(LLVMLanguage.class) LLVMContext context,
                         @Cached(value = "getTestToNative(context)", allowUncached = true) Object testToNative,

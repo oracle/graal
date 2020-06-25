@@ -3,6 +3,7 @@
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
 ## Version 20.2.0
+* Added new internal engine option `ShowInternalStackFrames` to show internal frames specific to the language implementation in stack traces.
 * Added new identity APIs to `InteropLibrary`:
     * `hasIdentity(Object receiver)` to find out whether an object specifies identity
 	* `isIdentical(Object receiver, Object other, InteropLibrary otherLib)` to compare the identity of two object
@@ -10,8 +11,22 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 	* `identityHashCode(Object receiver)` useful to implement maps that depend on identity.
 * Added `TriState` utility class represents three states TRUE, FALSE and UNDEFINED.
 * Added `InteropLibrary.getUncached()` and `InteropLibrary.getUncached(Object)` short-cut methods for convenience.
-
+* Enabled by default the new inlining heuristic in which inlining budgets are based on Graal IR node counts and not Truffle Node counts.
 * Added `ConditionProfile#create()` as an alias of `createBinaryProfile()` so it can be used like `@Cached ConditionProfile myProfile`. 
+* Improved `AssumedValue` utility class: Code that reads the value but can not constant fold it does not need to deopt when the value changes.
+* A `TruffleFile` for an empty path is no more resolved to the current working directory.
+* Added [`SourceBuilder.canonicalizePath(boolean)`](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/source/Source.SourceBuilder.html) to control whether the `Source#getPath()` should be canonicalized.
+* Deprecated and renamed `TruffleFile.getMimeType` to [TruffleFile.detectMimeType](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#detectMimeType--). The new method no longer throws `IOException` but returns `null` instead.
+* The languages are responsible for stopping and joining the stopped `Thread`s in the [TruffleLanguage.finalizeContext](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.html#finalizeContext-C-).
+* Added Truffle DSL `@Bind` annotation to common out expression for use in guards and specialization methods.
+* Added the ability to disable adoption for DSL cached expressions with type node using `@Cached(value ="...", weak = true)`.
+* Added an option not to adopt the parameter annotated by @Cached, using `@Cached(value ="...", adopt = false)`.
+* Added `TruffleWeakReference` utility to be used on partial evaluated code paths instead of the default JDK `WeakReference`.
+* Removed deprecated API in `com.oracle.truffle.api.source.Source`. The APIs were deprecated in 19.0.
+* Added `CompilerDirectives.shouldNotReachHere()` as a short-cut for languages to indicate that a path should not be reachable neither in compiled nor interpreted code paths.
+* All subclasses of `InteropException` do no longer provide a Java stack trace. They are intended to be thrown, immediately caught by the caller and not re-thrown. As a result they can now be allocated on compiled code paths and do no longer require a `@TruffleBoundary` or `transferToInterpreterAndInvalidate()` before use. Languages are encouraged to remove `@TruffleBoundary` annotations or leading `transferToInterpreterAndInvalidate()` method calls before interop exceptions are thrown. 
+* All `InteropException` subclasses now offer a new `create` factory method to provide a cause. This cause should only be used if user provided guest application code caused the problem.
+* The use of `InteropException.initCause` is now deprecated for performance reasons. Instead pass the cause when the `InteropException` is constructed. The method `initCause` will throw `UnsupportedOperationException` in future versions. Please validate all calls to `Throwable.initCause` for language or tool implementation code.
 
 ## Version 20.1.0
 * Added `@GenerateLibrary(dynamicDispatchEnabled = false)` that allows to disable dynamic dispatch semantics for a library. The default is `true`.
@@ -19,7 +34,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * The use of `@NodeField` is now permitted in combination with `@GenerateUncached`, but it throws UnsupportedOperationException when it is used.
 * It is now possible to specify a setter with `@NodeField`. The generated field then will be mutable.
 * Removed deprecated interoperability APIs that were deprecated in 19.0.0. 
-* Removed deprecated instrumentation APIs that were deprecated in 0.33.
+* Removed deprecated instrumentation APIs that were deprecated in 0.33
 * The `PerformanceWarningsAreFatal` and `TracePerformanceWarnings` engine options take a comma separated list of performance warning types. Allowed warning types are `call` to enable virtual call warnings, `instanceof` to enable virtual instance of warnings and `store` to enables virtual store warnings. There are also `all` and `none` types to enable (disable) all performance warnings.
 * Added [DebugValue#getRawValue()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebugValue.html) for raw guest language object lookup from same language.
 * Added [DebugStackFrame#getRawNode()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/debug/DebugStackFrame.html) for root node lookup from same language.
@@ -35,7 +50,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added new meta-data APIs to `InteropLibrary`:
 	* `has/getLanguage(Object receiver)` to access the original language of an object.
 	* `has/getSourceLocation(Object receiver)` to access the source location of an object (e.g. of function or classes).
-	* `has/toDisplayString(Object receiver, boolean allowsSideEffect)` to produce a human readable string.
+	* `toDisplayString(Object receiver, boolean allowsSideEffect)` to produce a human readable string.
 	* `has/getMetaObject(Object receiver)` to access the meta-object of an object.
 	* `isMetaObject(Object receiver)` to find out whether an object is a meta-object (e.g. Java class)
 	* `getMetaQualifiedName(Object receiver)` to get the qualified name of the meta-object

@@ -28,6 +28,14 @@ builds += [
     targets : [gate],
     name: "gate-tools-javadoc"
   },
+  ${windows-amd64} ${oraclejdk8}  ${toolsGateLite} {
+    packages : {
+      msvc : "==10.0"
+    },
+    targets : [gate],
+    name: "gate-tools-windows-8"
+  },
+
   ${solaris-sparcv9} ${oraclejdk8Only} ${toolsGateLite} ${toolsWeekly} {
     name: "gate-tools-solaris-lite-8"
   }
@@ -36,5 +44,8 @@ builds += [
   }
   ${darwin-amd64} ${oraclejdk11} ${toolsGateLite} ${toolsWeekly} {
     name: "gate-tools-mac-lite-oraclejdk-11"
+  }
+  ${linux-aarch64} ${labsjdk11} ${toolsGateLite} ${toolsWeekly} {
+    name: "gate-tools-linux-aarch64-lite-labsjdk-11"
   }
 ]

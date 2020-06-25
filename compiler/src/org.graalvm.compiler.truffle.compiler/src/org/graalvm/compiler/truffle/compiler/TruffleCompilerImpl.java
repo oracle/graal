@@ -36,8 +36,6 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Compi
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExcludeAssertions;
 
 import java.io.PrintStream;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 import java.util.ArrayList;
@@ -45,7 +43,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.code.CompilationResult;
@@ -315,16 +312,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     private static void notifyCompilableOfFailure(CompilableTruffleAST compilable, Throwable e) {
         BailoutException bailout = e instanceof BailoutException ? (BailoutException) e : null;
         boolean permanentBailout = bailout != null ? bailout.isPermanent() : false;
-        final Supplier<String> reasonAndStackTrace = new Supplier<String>() {
-
-            @Override
-            public String get() {
-                StringWriter sw = new StringWriter();
-                e.printStackTrace(new PrintWriter(sw));
-                return sw.toString();
-            }
-        };
-        compilable.onCompilationFailed(reasonAndStackTrace, bailout != null, permanentBailout);
+        compilable.onCompilationFailed(() -> CompilableTruffleAST.serializeException(e), bailout != null, permanentBailout);
     }
 
     @Override

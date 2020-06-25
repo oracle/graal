@@ -40,15 +40,12 @@
  */
 package com.oracle.truffle.regex;
 
+import java.util.logging.Level;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
-
-import java.util.logging.Level;
-
-import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_BAILOUT_MESSAGES;
-import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_COMPILER_FALLBACK;
-import static com.oracle.truffle.regex.tregex.util.DebugUtil.LOG_TOTAL_COMPILATION_TIME;
+import com.oracle.truffle.regex.tregex.util.Loggers;
 
 public class RegexCompilerWithFallback implements RegexCompiler {
 
@@ -79,9 +76,9 @@ public class RegexCompilerWithFallback implements RegexCompiler {
             if (shouldLog) {
                 elapsedTimeMain = timer.getElapsed();
             }
-            LOG_COMPILER_FALLBACK.finer(() -> "Primary compiler used: " + regexSource);
+            Loggers.LOG_COMPILER_FALLBACK.finer(() -> "Primary compiler used: " + regexSource);
         } catch (UnsupportedRegexException mainBailout) {
-            LOG_BAILOUT_MESSAGES.fine(() -> mainBailout.getReason() + ": " + regexSource);
+            Loggers.LOG_BAILOUT_MESSAGES.fine(() -> mainBailout.getReason() + ": " + regexSource);
             try {
                 if (shouldLog) {
                     timer.start();
@@ -90,9 +87,9 @@ public class RegexCompilerWithFallback implements RegexCompiler {
                 if (shouldLog) {
                     elapsedTimeFallback = timer.getElapsed();
                 }
-                LOG_COMPILER_FALLBACK.fine(() -> String.format("Secondary compiler used (primary bailout due to '%s'): %s", mainBailout.getReason(), regexSource));
+                Loggers.LOG_COMPILER_FALLBACK.fine(() -> String.format("Secondary compiler used (primary bailout due to '%s'): %s", mainBailout.getReason(), regexSource));
             } catch (UnsupportedRegexException fallbackBailout) {
-                LOG_COMPILER_FALLBACK.fine(() -> String.format("No compiler handled following regex (primary bailout: '%s'; secondary bailout: '%s'): %s", mainBailout.getReason(),
+                Loggers.LOG_COMPILER_FALLBACK.fine(() -> String.format("No compiler handled following regex (primary bailout: '%s'; secondary bailout: '%s'): %s", mainBailout.getReason(),
                                 fallbackBailout.getReason(), regexSource));
                 String bailoutReasons = String.format("%s; %s", mainBailout.getReason(), fallbackBailout.getReason());
                 throw new UnsupportedRegexException(bailoutReasons, regexSource);
@@ -105,11 +102,11 @@ public class RegexCompilerWithFallback implements RegexCompiler {
     }
 
     private static boolean shouldLogCompilationTime() {
-        return LOG_TOTAL_COMPILATION_TIME.isLoggable(Level.FINE);
+        return Loggers.LOG_TOTAL_COMPILATION_TIME.isLoggable(Level.FINE);
     }
 
     private static void logCompilationTime(RegexSource regexSource, long elapsedTimeMain, long elapsedTimeFallback) {
-        LOG_TOTAL_COMPILATION_TIME.log(Level.FINE, "{0}, {1}, {2}, {3}", new Object[]{
+        Loggers.LOG_TOTAL_COMPILATION_TIME.log(Level.FINE, "{0}, {1}, {2}, {3}", new Object[]{
                         DebugUtil.Timer.elapsedToString(elapsedTimeMain + elapsedTimeFallback),
                         DebugUtil.Timer.elapsedToString(elapsedTimeMain),
                         DebugUtil.Timer.elapsedToString(elapsedTimeFallback),

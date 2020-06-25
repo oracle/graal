@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,9 +28,9 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 long function(char t1[4], char t2[4]) {
-  return t1 == t2;
+    return t1 == t2;
 }
 
 int main() {
-  return function("asdf", "asdf");
+    return function("asdf", "asdf");
 }

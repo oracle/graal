@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -217,6 +217,13 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Manually set the number of compiler threads", category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> CompilerThreads = new OptionKey<>(0);
 
+    @Option(help = "Set the time in milliseconds an idle Truffle compiler thread will wait for new tasks before terminating. " +
+            "New compiler threads will be started once new compilation tasks are submitted. " +
+            "Select '0' to never terminate the Truffle compiler thread. " +
+            "The option is not supported by all Truffle runtimes. On the runtime which doesn't support it the option has no effect.",
+            category = OptionCategory.EXPERT)
+    public static final OptionKey<Long> CompilerIdleDelay = new OptionKey<>(1000L);
+
     @Option(help = "Minimum number of invocations or loop iterations needed to compile a guest language root.",
                     category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> CompilationThreshold = new OptionKey<>(1000);
@@ -321,7 +328,7 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<Integer> InliningRecursionDepth = new OptionKey<>(2);
 
     @Option(help = "Use language-agnostic inlining (overrides the TruffleFunctionInlining setting, option is experimental).", category = OptionCategory.EXPERT)
-    public static final OptionKey<Boolean> LanguageAgnosticInlining = new OptionKey<>(false);
+    public static final OptionKey<Boolean> LanguageAgnosticInlining = new OptionKey<>(true);
 
     // Splitting
 

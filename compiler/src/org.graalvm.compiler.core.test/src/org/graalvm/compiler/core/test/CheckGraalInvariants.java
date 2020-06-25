@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,6 +40,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -150,13 +151,23 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         }
 
         protected String getClassPath() {
-            String bootclasspath;
+            String classpath;
             if (JavaVersionUtil.JAVA_SPEC <= 8) {
-                bootclasspath = System.getProperty("sun.boot.class.path");
+                classpath = System.getProperty("sun.boot.class.path");
             } else {
-                bootclasspath = JRT_CLASS_PATH_ENTRY;
+                classpath = JRT_CLASS_PATH_ENTRY;
             }
-            return bootclasspath;
+
+            // Also process classes that go into the libgraal native image.
+            String javaClassPath = System.getProperty("java.class.path");
+            if (javaClassPath != null) {
+                for (String path : javaClassPath.split(File.pathSeparator)) {
+                    if (path.contains("libgraal") && !path.contains("processor")) {
+                        classpath += File.pathSeparator + path;
+                    }
+                }
+            }
+            return classpath;
         }
 
         protected boolean shouldLoadClass(String className) {
@@ -345,6 +356,8 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         verifiers.add(new VerifyGetOptionsUsage());
         verifiers.add(new VerifyUnsafeAccess());
 
+        loadVerifiers(verifiers);
+
         VerifyFoldableMethods foldableMethodsVerifier = new VerifyFoldableMethods();
         if (tool.shouldVerifyFoldableMethods()) {
             verifiers.add(foldableMethodsVerifier);
@@ -468,6 +481,13 @@ public class CheckGraalInvariants extends GraalCompilerTest {
                 msg.append(e);
             }
             Assert.fail(msg.toString());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void loadVerifiers(List<VerifyPhase<CoreProviders>> verifiers) {
+        for (VerifyPhase<CoreProviders> verifier : ServiceLoader.load(VerifyPhase.class)) {
+            verifiers.add(verifier);
         }
     }
 

@@ -125,6 +125,7 @@ public final class SLObjectType extends ObjectType {
     }
 
     @ExportMessage
+    @TruffleBoundary
     static int identityHashCode(DynamicObject receiver) {
         return System.identityHashCode(receiver);
     }

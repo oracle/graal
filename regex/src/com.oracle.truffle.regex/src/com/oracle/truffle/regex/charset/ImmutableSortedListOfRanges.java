@@ -40,13 +40,16 @@
  */
 package com.oracle.truffle.regex.charset;
 
+import java.util.Iterator;
+
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
+import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 
 /**
  * Extensions of {@link SortedListOfRanges} specific to immutable implementations. Any methods of
  * this interface that return a list instance may return references to existing objects.
  */
-public interface ImmutableSortedListOfRanges extends SortedListOfRanges {
+public interface ImmutableSortedListOfRanges extends SortedListOfRanges, Iterable<Range> {
 
     /**
      * Returns an empty list.
@@ -54,20 +57,15 @@ public interface ImmutableSortedListOfRanges extends SortedListOfRanges {
     <T extends SortedListOfRanges> T createEmpty();
 
     /**
-     * Returns [{@link #getMinValue()} {@link #getMaxValue()}].
-     */
-    <T extends SortedListOfRanges> T createFull();
-
-    /**
      * Returns an immutable equivalent of the given {@code buffer}.
      */
     <T extends SortedListOfRanges> T create(RangesBuffer buffer);
 
     /**
-     * Returns a list containing all values of [{@link #getMinValue()} {@link #getMaxValue()}]
-     * <i>not</i> contained in this list.
+     * Returns a list containing all values of [{@link Encoding#getMinValue()}
+     * {@link Encoding#getMaxValue()}] <i>not</i> contained in this list.
      */
-    <T extends SortedListOfRanges> T createInverse();
+    <T extends SortedListOfRanges> T createInverse(Encoding encoding);
 
     /**
      * Returns a buffer from the given {@code compilationBuffer} that is compatible with this list's
@@ -106,11 +104,19 @@ public interface ImmutableSortedListOfRanges extends SortedListOfRanges {
     }
 
     /**
-     * Converts {@code target} to the intersection of this list and {@code o} and returns an
-     * immutable equivalent.
+     * Returns the intersection of this list and {@code o}, using {@code tmp} as working buffer.
      */
     @SuppressWarnings("unchecked")
     default <T extends ImmutableSortedListOfRanges> T createIntersection(T o, RangesBuffer tmp) {
+        if (isEmpty() || o.isEmpty()) {
+            return createEmpty();
+        }
+        if (size() == 1) {
+            return createIntersectionSingleRange(o);
+        }
+        if (o.size() == 1) {
+            return o.createIntersectionSingleRange((T) this);
+        }
         tmp.clear();
         for (int ia = 0; ia < size(); ia++) {
             int search = o.binarySearch(getLo(ia));
@@ -135,6 +141,8 @@ public interface ImmutableSortedListOfRanges extends SortedListOfRanges {
         }
         return create(tmp);
     }
+
+    <T extends ImmutableSortedListOfRanges> T createIntersectionSingleRange(T o);
 
     /**
      * Returns the result of the subtraction of {@code o} from this list. Uses
@@ -220,11 +228,11 @@ public interface ImmutableSortedListOfRanges extends SortedListOfRanges {
             // no intersection possible
             return new IntersectAndSubtractResult<>((T) this, o, createEmpty());
         }
-        if (matchesEverything()) {
-            return new IntersectAndSubtractResult<>(o.createInverse(), createEmpty(), o);
+        if (matchesEverything(compilationBuffer.getEncoding())) {
+            return new IntersectAndSubtractResult<>(o.createInverse(compilationBuffer.getEncoding()), createEmpty(), o);
         }
-        if (o.matchesEverything()) {
-            return new IntersectAndSubtractResult<>(createEmpty(), createInverse(), (T) this);
+        if (o.matchesEverything(compilationBuffer.getEncoding())) {
+            return new IntersectAndSubtractResult<>(createEmpty(), createInverse(compilationBuffer.getEncoding()), (T) this);
         }
         if (equals(o)) {
             return new IntersectAndSubtractResult<>(createEmpty(), createEmpty(), (T) this);
@@ -378,10 +386,10 @@ public interface ImmutableSortedListOfRanges extends SortedListOfRanges {
      */
     @SuppressWarnings("unchecked")
     default <T extends ImmutableSortedListOfRanges> T union(T o, RangesBuffer target) {
-        if (matchesNothing() || o.matchesEverything()) {
+        if (matchesNothing() || o.size() == 1 && o.getMin() <= getMin() && o.getMax() >= getMax()) {
             return o;
         }
-        if (matchesEverything() || o.matchesNothing()) {
+        if (o.matchesNothing() || size() == 1 && getMin() <= o.getMin() && getMax() >= o.getMax()) {
             return (T) this;
         }
         SortedListOfRanges.union(this, o, target);
@@ -392,5 +400,32 @@ public interface ImmutableSortedListOfRanges extends SortedListOfRanges {
             return o;
         }
         return create(target);
+    }
+
+    @Override
+    default Iterator<Range> iterator() {
+        return new ImmutableSortedListOfRangesIterator(this);
+    }
+
+    final class ImmutableSortedListOfRangesIterator implements Iterator<Range> {
+
+        private final ImmutableSortedListOfRanges ranges;
+        private int i = 0;
+
+        private ImmutableSortedListOfRangesIterator(ImmutableSortedListOfRanges ranges) {
+            this.ranges = ranges;
+        }
+
+        @Override
+        public boolean hasNext() {
+            return i < ranges.size();
+        }
+
+        @Override
+        public Range next() {
+            Range ret = new Range(ranges.getLo(i), ranges.getHi(i));
+            i++;
+            return ret;
+        }
     }
 }

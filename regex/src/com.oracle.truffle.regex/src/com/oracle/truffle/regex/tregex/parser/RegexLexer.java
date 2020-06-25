@@ -53,6 +53,8 @@ import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.charset.UnicodeProperties;
+import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
+import com.oracle.truffle.regex.tregex.util.Exceptions;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 public final class RegexLexer {
@@ -67,6 +69,7 @@ public final class RegexLexer {
     private final RegexSource source;
     private final String pattern;
     private final RegexFlags flags;
+    private final Encoding encoding;
     private final RegexOptions options;
     private Token lastToken;
     private int index = 0;
@@ -80,6 +83,7 @@ public final class RegexLexer {
         this.source = source;
         this.pattern = source.getPattern();
         this.flags = flags;
+        this.encoding = source.getEncoding();
         this.options = options;
     }
 
@@ -257,7 +261,12 @@ public final class RegexLexer {
             CaseFoldTable.CaseFoldingAlgorithm caseFolding = flags.isUnicode() ? CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptUnicode : CaseFoldTable.CaseFoldingAlgorithm.ECMAScriptNonUnicode;
             CaseFoldTable.applyCaseFold(curCharClass, charClassCaseFoldTmp, caseFolding);
         }
-        return Token.createCharClass(invert ? CodePointSet.createInverse(curCharClass.get()) : curCharClass.toCodePointSet(), wasSingleChar);
+        CodePointSet cps = pruneCharClass(curCharClass.toCodePointSet());
+        return Token.createCharClass(invert ? cps.createInverse(encoding) : cps, wasSingleChar);
+    }
+
+    private CodePointSet pruneCharClass(CodePointSet cps) {
+        return encoding.getFullSet().createIntersection(cps, curCharClass.getTmp());
     }
 
     /* lexer */
@@ -266,7 +275,7 @@ public final class RegexLexer {
         final char c = consumeChar();
         switch (c) {
             case '.':
-                return Token.createCharClass(flags.isDotAll() ? Constants.DOT_ALL : Constants.DOT);
+                return Token.createCharClass(pruneCharClass(flags.isDotAll() ? Constants.DOT_ALL : Constants.DOT));
             case '^':
                 return Token.createCaret();
             case '$':
@@ -357,7 +366,7 @@ public final class RegexLexer {
                 // the case-folding step in the `charClass` method and call `Token::createCharClass`
                 // directly.
                 if (isPredefCharClass(c)) {
-                    return Token.createCharClass(parsePredefCharClass(c));
+                    return Token.createCharClass(pruneCharClass(parsePredefCharClass(c)));
                 } else if (flags.isUnicode() && (c == 'p' || c == 'P')) {
                     return charClass(parseUnicodeCharacterProperty(c == 'P'));
                 } else {
@@ -571,7 +580,7 @@ public final class RegexLexer {
         } else if (flags.isUnicode() && (c == 'p' || c == 'P')) {
             return parseUnicodeCharacterProperty(c == 'P');
         } else {
-            throw new IllegalStateException();
+            throw Exceptions.shouldNotReachHere();
         }
     }
 
@@ -608,7 +617,7 @@ public final class RegexLexer {
                     return Constants.NON_WORD_CHARS;
                 }
             default:
-                throw new IllegalStateException();
+                throw Exceptions.shouldNotReachHere();
         }
     }
 
@@ -624,8 +633,8 @@ public final class RegexLexer {
             throw syntaxError(ErrorMessages.ENDS_WITH_UNFINISHED_UNICODE_PROPERTY);
         }
         try {
-            CodePointSet propertySet = UnicodeProperties.getProperty(pattern.substring(namePos, index - 1));
-            return invert ? propertySet.createInverse() : propertySet;
+            CodePointSet propertySet = encoding.getFullSet().createIntersection(UnicodeProperties.getProperty(pattern.substring(namePos, index - 1)), curCharClass.getTmp());
+            return invert ? propertySet.createInverse(encoding) : propertySet;
         } catch (IllegalArgumentException e) {
             throw syntaxError(e.getMessage());
         }
@@ -855,6 +864,6 @@ public final class RegexLexer {
     }
 
     private RegexSyntaxException syntaxError(String msg) {
-        return new RegexSyntaxException(pattern, source.getFlags(), msg);
+        return new RegexSyntaxException(source, msg);
     }
 }

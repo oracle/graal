@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,10 +31,10 @@ char arr[5][5][5];
 int i[2][2] = { { 1, 2 }, { 3, 4 } };
 
 char foo() {
-  arr[1][1][i[1][1]] = 'a';
-  return arr[1][1][i[1][1]];
+    arr[1][1][i[1][1]] = 'a';
+    return arr[1][1][i[1][1]];
 }
 
 int main() {
-  return foo();
+    return foo();
 }

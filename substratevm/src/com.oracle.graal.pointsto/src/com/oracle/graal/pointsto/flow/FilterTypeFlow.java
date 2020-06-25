@@ -27,7 +27,6 @@ package com.oracle.graal.pointsto.flow;
 import org.graalvm.compiler.nodes.ValueNode;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
@@ -76,7 +75,7 @@ public class FilterTypeFlow extends TypeFlow<BytecodePosition> {
     public TypeState filter(BigBang bb, TypeState update) {
         if (update.isUnknown()) {
             // Filtering UnknownTypeState would otherwise return EmptyTypeState.
-            bb.reportIllegalUnknownUse((AnalysisMethod) source.getMethod(), source, "Illegal: Filter of UnknownTypeState objects.");
+            bb.reportIllegalUnknownUse(graphRef.getMethod(), source, "Illegal: Filter of UnknownTypeState objects.");
             return TypeState.forEmpty();
         }
 

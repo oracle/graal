@@ -43,6 +43,7 @@ import mx
 import mx_substratevm
 import mx_graal_benchmark
 import mx_benchmark
+import mx_compiler
 
 _suite = mx.suite("substratevm")
 
@@ -60,6 +61,7 @@ _NANOS_PER_SEC = 10 ** 9
 _conf_arg_prefix = '--config='
 _IMAGE_BENCH_REPETITIONS = 3
 _IMAGE_WARM_UP_ITERATIONS = 3
+_successful_stage_pattern = re.compile(r'Successfully finished the last specified stage:.*$', re.MULTILINE)
 
 @contextmanager
 def _timedelta(name, out=print):
@@ -312,12 +314,11 @@ def run_js(vmArgs, jsArgs, nonZeroIsFatal, out, err, cwd):
 def extract_archive(path, extracted_name):
     extracted_archive = mx.join(mx.dirname(path), extracted_name)
     if not mx.exists(extracted_archive):
-        os.makedirs(extracted_archive)
-        arc = zipfile.ZipFile(path, 'r')
-        arc.extractall(extracted_archive)
-        arc.close()
+        # There can be multiple processes doing this so be atomic about it
+        with mx_compiler.SafeDirectoryUpdater(extracted_archive, create=True) as sdu:
+            with zipfile.ZipFile(path, 'r') as zf:
+                zf.extractall(sdu.directory)
     return extracted_archive
-
 
 def list_jars(path):
     jars = []
@@ -347,7 +348,7 @@ _renaissance_config = {
     "scala-kmeans"     : ("scala-stdlib", 12),
     "mnemonics"        : ("jdk-streams", 12),
     "par-mnemonics"    : ("jdk-streams", 12),
-    "rx-scrabble"      : ("rx", 11),
+    "rx-scrabble"      : ("rx", 12),
     "als"              : ("apache-spark", 11),
     "chi-square"       : ("apache-spark", 11),
     "db-shootout"      : ("database", 11), # GR-17975, GR-17943 (with --report-unsupported-elements-at-runtime)
@@ -422,6 +423,11 @@ class RenaissanceNativeImageBenchmarkSuite(mx_graal_benchmark.RenaissanceBenchma
         benchmark_name = '-Dnative-image.benchmark.benchmark-name=' + bench_arg
 
         return agent_args + pgo_args + [benchmark_name] + ['-cp', self.create_classpath(bench_arg)] + vm_args + ['-jar', self.renaissancePath()] + run_args + [bench_arg]
+
+    def successPatterns(self):
+        return super(RenaissanceNativeImageBenchmarkSuite, self).successPatterns() + [
+            _successful_stage_pattern
+        ]
 
     def create_classpath(self, benchArg):
         harness_project = RenaissanceNativeImageBenchmarkSuite.RenaissanceProject('harness', benchmark_scalaversion(benchArg), self)
@@ -607,7 +613,7 @@ _daCapo_iterations = {
 }
 
 _daCapo_exclude_lib = {
-    'h2'          : ['derbytools.jar', 'derbyTesting.jar', 'derbyclient.jar', 'derbynet.jar']  # multiple derby classes occurrences on the classpath can cause a security error
+    'h2'          : ['derbytools.jar', 'derbyclient.jar', 'derbynet.jar']  # multiple derby classes occurrences on the classpath can cause a security error
 }
 
 class DaCapoNativeImageBenchmarkSuite(mx_graal_benchmark.DaCapoBenchmarkSuite, BaseDaCapoNativeImageBenchmarkSuite): #pylint: disable=too-many-ancestors
@@ -658,9 +664,14 @@ class DaCapoNativeImageBenchmarkSuite(mx_graal_benchmark.DaCapoBenchmarkSuite, B
 
     def create_classpath(self, benchmark):
         dacapo_extracted, dacapo_dat_resources, dacapo_nested_resources = self.create_dacapo_classpath(self.daCapoPath(), benchmark)
-        dacapo_jars = super(DaCapoNativeImageBenchmarkSuite, self).collect_unique_dependencies(os.path.join(dacapo_extracted, 'jar'), benchmark, _scala_daCapo_exclude_lib)
+        dacapo_jars = super(DaCapoNativeImageBenchmarkSuite, self).collect_unique_dependencies(os.path.join(dacapo_extracted, 'jar'), benchmark, _daCapo_exclude_lib)
         cp = ':'.join([dacapo_extracted] + dacapo_jars + dacapo_dat_resources + dacapo_nested_resources)
         return cp
+
+    def successPatterns(self):
+        return super(DaCapoNativeImageBenchmarkSuite, self).successPatterns() + [
+            _successful_stage_pattern
+        ]
 
 
 mx_benchmark.add_bm_suite(DaCapoNativeImageBenchmarkSuite())
@@ -704,7 +715,8 @@ _SCALA_DACAPO_EXTRA_VM_ARGS = {
                        '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.eclipse.mylyn.wikitext.core.parser.builder.HtmlDocumentBuilder$ElementInfo',
                        '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.eclipse.mylyn.wikitext.core.parser.DocumentBuilder$SpanType',
                        '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.eclipse.mylyn.wikitext.core.parser.DocumentBuilder',
-                       '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.eclipse.mylyn.wikitext.core.parser.ImageAttributes$Align']
+                       '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.eclipse.mylyn.wikitext.core.parser.ImageAttributes$Align'],
+    'tmt'           : ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath']
 }
 
 _scala_daCapo_exclude_lib = {
@@ -766,11 +778,21 @@ class ScalaDaCapoNativeImageBenchmarkSuite(mx_graal_benchmark.ScalaDaCapoBenchma
             cp += ':' + self.daCapoAdditionalLib()
         return cp
 
+
+    def successPatterns(self):
+        return super(ScalaDaCapoNativeImageBenchmarkSuite, self).successPatterns() + [
+            _successful_stage_pattern
+        ]
+
+
     @staticmethod
     def substitution_path():
-        bench_suite = mx.suite('nativeimage-benchmarks')
-        root_dir = mx.join(bench_suite.dir, "mxbuild")
-        return os.path.abspath(mx.join(root_dir, 'java/com.oracle.svm.bench.scaladacapo/bin/'))
+        bench_suite = mx.suite('substratevm')
+        root_dir = mx.join(bench_suite.dir, 'mxbuild')
+        path = os.path.abspath(mx.join(root_dir, 'src', 'com.oracle.svm.bench', 'bin'))
+        if not mx.exists(path):
+            mx.abort('Path to substitutions for scala dacapo not present: ' + path + '. Did you build all of substratevm?')
+        return path
 
 
 mx_benchmark.add_bm_suite(ScalaDaCapoNativeImageBenchmarkSuite())

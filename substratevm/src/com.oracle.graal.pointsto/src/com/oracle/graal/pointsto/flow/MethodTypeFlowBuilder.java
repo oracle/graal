@@ -34,7 +34,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.runtime.GraalJVMCICompiler;
 import org.graalvm.compiler.bytecode.Bytecode;
@@ -96,6 +95,7 @@ import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.nodes.java.NewMultiArrayNode;
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
+import org.graalvm.compiler.nodes.java.UnsafeCompareAndExchangeNode;
 import org.graalvm.compiler.nodes.java.UnsafeCompareAndSwapNode;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -105,7 +105,7 @@ import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.graph.MergeableState;
 import org.graalvm.compiler.phases.graph.PostOrderNodeIterator;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
-import org.graalvm.compiler.replacements.nodes.ArrayCopy;
+import org.graalvm.compiler.replacements.arraycopy.ArrayCopy;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.ObjectClone;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
@@ -144,7 +144,6 @@ import com.oracle.graal.pointsto.typestate.TypeState;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.runtime.JVMCI;
 
@@ -229,16 +228,13 @@ public class MethodTypeFlowBuilder {
                 }
 
                 // Register used types and fields before canonicalization can optimize them.
-                registerUsedElements(null);
+                registerUsedElements(false);
 
                 CanonicalizerPhase.create().apply(graph, bb.getProviders());
 
                 // Do it again after canonicalization changed type checks and field accesses.
-                EconomicMap<JavaConstant, BytecodePosition> objectConstants = EconomicMap.create();
-                registerUsedElements(objectConstants);
-                if (!objectConstants.isEmpty()) {
-                    methodFlow.objectConstants = objectConstants;
-                }
+                registerUsedElements(true);
+
             } catch (Throwable e) {
                 throw debug.handle(e);
             }
@@ -246,7 +242,7 @@ public class MethodTypeFlowBuilder {
         return true;
     }
 
-    public void registerUsedElements(EconomicMap<JavaConstant, BytecodePosition> objectConstants) {
+    public void registerUsedElements(boolean registerEmbeddedRoots) {
         for (Node n : graph.getNodes()) {
             if (n instanceof InstanceOfNode) {
                 InstanceOfNode node = (InstanceOfNode) n;
@@ -300,8 +296,8 @@ public class MethodTypeFlowBuilder {
                     assert StampTool.isExactType(cn);
                     AnalysisType type = (AnalysisType) StampTool.typeOrNull(cn);
                     type.registerAsInHeap();
-                    if (objectConstants != null) {
-                        objectConstants.put(cn.asJavaConstant(), cn.getNodeSourcePosition());
+                    if (registerEmbeddedRoots) {
+                        registerEmbeddedRoot(cn);
                     }
                 }
 
@@ -310,11 +306,21 @@ public class MethodTypeFlowBuilder {
                 registerForeignCall(bb, node.getDescriptor());
             } else if (n instanceof UnaryMathIntrinsicNode) {
                 UnaryMathIntrinsicNode node = (UnaryMathIntrinsicNode) n;
-                registerForeignCall(bb, node.getOperation().foreignCallDescriptor);
+                registerForeignCall(bb, bb.getProviders().getForeignCalls().getDescriptor(node.getOperation().foreignCallSignature));
             } else if (n instanceof BinaryMathIntrinsicNode) {
                 BinaryMathIntrinsicNode node = (BinaryMathIntrinsicNode) n;
-                registerForeignCall(bb, node.getOperation().foreignCallDescriptor);
+                registerForeignCall(bb, bb.getProviders().getForeignCalls().getDescriptor(node.getOperation().foreignCallSignature));
             }
+        }
+    }
+
+    private void registerEmbeddedRoot(ConstantNode cn) {
+        if (bb.scanningPolicy().trackConstant(bb, cn.asJavaConstant())) {
+            BytecodePosition position = cn.getNodeSourcePosition();
+            if (position == null) {
+                position = new BytecodePosition(null, method, 0);
+            }
+            bb.getUniverse().registerEmbeddedRoot(cn.asJavaConstant(), position);
         }
     }
 
@@ -1160,65 +1166,13 @@ public class MethodTypeFlowBuilder {
                     typeFlowGraphBuilder.registerSinkBuilder(storeBuilder);
                 }
 
+            } else if (n instanceof UnsafeCompareAndExchangeNode) {
+                UnsafeCompareAndExchangeNode node = (UnsafeCompareAndExchangeNode) n;
+                modelUnsafeReadAndWriteFlow(node, node.object(), node.newValue(), node.offset());
+
             } else if (n instanceof AtomicReadAndWriteNode) {
                 AtomicReadAndWriteNode node = (AtomicReadAndWriteNode) n;
-                checkUnsafeOffset(node.object(), node.offset());
-                if (node.object().getStackKind() == JavaKind.Object && node.newValue().getStackKind() == JavaKind.Object) {
-
-                    AnalysisType objectType = (AnalysisType) StampTool.typeOrNull(node.object());
-                    TypeFlowBuilder<?> objectBuilder = state.lookup(node.object());
-                    TypeFlowBuilder<?> newValueBuilder = state.lookup(node.newValue());
-
-                    TypeFlowBuilder<?> storeBuilder;
-                    TypeFlowBuilder<?> loadBuilder;
-
-                    if (objectType != null && objectType.isArray() && objectType.getComponentType().getJavaKind() == JavaKind.Object) {
-                        /*
-                         * Atomic read and write is essentially unsafe store and unsafe store to an
-                         * array object is essentially an array store since we don't have separate
-                         * type flows for different array elements.
-                         */
-                        storeBuilder = TypeFlowBuilder.create(bb, node, StoreIndexedTypeFlow.class, () -> {
-                            StoreIndexedTypeFlow storeTypeFlow = new StoreIndexedTypeFlow(node, objectType, objectBuilder.get(), newValueBuilder.get());
-                            methodFlow.addMiscEntry(storeTypeFlow);
-                            return storeTypeFlow;
-                        });
-
-                        loadBuilder = TypeFlowBuilder.create(bb, node, LoadIndexedTypeFlow.class, () -> {
-                            LoadIndexedTypeFlow loadTypeFlow = new LoadIndexedTypeFlow(node, objectType, objectBuilder.get(), methodFlow);
-                            methodFlow.addMiscEntry(loadTypeFlow);
-                            return loadTypeFlow;
-                        });
-
-                    } else {
-                        /*
-                         * Use the Object type as a conservative approximation for both the receiver
-                         * object type and the read/written values type.
-                         */
-                        AnalysisType nonNullObjectType = bb.getObjectType();
-                        storeBuilder = TypeFlowBuilder.create(bb, node, AtomicWriteTypeFlow.class, () -> {
-                            AtomicWriteTypeFlow storeTypeFlow = new AtomicWriteTypeFlow(node, nonNullObjectType, nonNullObjectType, objectBuilder.get(), newValueBuilder.get());
-                            methodFlow.addMiscEntry(storeTypeFlow);
-                            return storeTypeFlow;
-                        });
-
-                        loadBuilder = TypeFlowBuilder.create(bb, node, AtomicReadTypeFlow.class, () -> {
-                            AtomicReadTypeFlow loadTypeFlow = new AtomicReadTypeFlow(node, nonNullObjectType, nonNullObjectType, objectBuilder.get(), methodFlow);
-                            methodFlow.addMiscEntry(loadTypeFlow);
-                            return loadTypeFlow;
-                        });
-
-                    }
-
-                    storeBuilder.addUseDependency(newValueBuilder);
-                    storeBuilder.addObserverDependency(objectBuilder);
-                    loadBuilder.addObserverDependency(objectBuilder);
-
-                    /* Offset stores must not be removed. */
-                    typeFlowGraphBuilder.registerSinkBuilder(storeBuilder);
-
-                    state.add(node, loadBuilder);
-                }
+                modelUnsafeReadAndWriteFlow(node, node.object(), node.newValue(), node.offset());
 
             } else if (n instanceof ArrayCopy) {
                 ArrayCopy node = (ArrayCopy) n;
@@ -1392,17 +1346,18 @@ public class MethodTypeFlowBuilder {
                          * method declaring class.
                          */
                         AnalysisType receiverType = invoke.getInvokeKind().hasReceiver() ? (AnalysisType) invoke.getReceiverType() : null;
+                        BytecodePosition invokeLocation = InvokeTypeFlow.findBytecodePosition(invoke);
                         InvokeTypeFlow invokeFlow = null;
                         switch (target.invokeKind()) {
                             case Static:
-                                invokeFlow = new StaticInvokeTypeFlow(invoke, receiverType, targetMethod, actualParameters, actualReturn, location);
+                                invokeFlow = new StaticInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
                                 break;
                             case Special:
-                                invokeFlow = bb.analysisPolicy().createSpecialInvokeTypeFlow(invoke, receiverType, targetMethod, actualParameters, actualReturn, location);
+                                invokeFlow = bb.analysisPolicy().createSpecialInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
                                 break;
                             case Virtual:
                             case Interface:
-                                invokeFlow = bb.analysisPolicy().createVirtualInvokeTypeFlow(invoke, receiverType, targetMethod, actualParameters, actualReturn, location);
+                                invokeFlow = bb.analysisPolicy().createVirtualInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
                                 break;
                             default:
                                 throw shouldNotReachHere();
@@ -1480,6 +1435,84 @@ public class MethodTypeFlowBuilder {
                 });
 
                 state.add(node, resultBuilder);
+            }
+        }
+
+        /**
+         * Model an unsafe-read-and-write operation.
+         *
+         * In the analysis this is used to model both {@link AtomicReadAndWriteNode}, i.e., an
+         * atomic read-and-write operation like
+         * {@link sun.misc.Unsafe#getAndSetObject(Object, long, Object)}, and a
+         * {@link UnsafeCompareAndExchangeNode}, i.e., an atomic compare-and-swap operation like
+         * jdk.internal.misc.Unsafe#compareAndExchangeObject(Object, long, Object, Object) where the
+         * result is the current value of the memory location that was compared. The
+         * jdk.internal.misc.Unsafe.compareAndExchangeObject(Object, long, Object, Object) operation
+         * is similar to the
+         * {@link sun.misc.Unsafe#compareAndSwapObject(Object, long, Object, Object)} operation.
+         * However, from the analysis stand point in both the "expected" value is ignored, but
+         * Unsafe.compareAndExchangeObject() returns the previous value, therefore it is equivalent
+         * to the model for Unsafe.getAndSetObject().
+         */
+        private void modelUnsafeReadAndWriteFlow(ValueNode node, ValueNode object, ValueNode newValue, ValueNode offset) {
+            assert node instanceof UnsafeCompareAndExchangeNode || node instanceof AtomicReadAndWriteNode;
+
+            checkUnsafeOffset(object, offset);
+
+            if (object.getStackKind() == JavaKind.Object && newValue.getStackKind() == JavaKind.Object) {
+                AnalysisType objectType = (AnalysisType) StampTool.typeOrNull(object);
+                TypeFlowBuilder<?> objectBuilder = state.lookup(object);
+                TypeFlowBuilder<?> newValueBuilder = state.lookup(newValue);
+
+                TypeFlowBuilder<?> storeBuilder;
+                TypeFlowBuilder<?> loadBuilder;
+
+                if (objectType != null && objectType.isArray() && objectType.getComponentType().getJavaKind() == JavaKind.Object) {
+                    /*
+                     * Atomic read and write is essentially unsafe store and unsafe store to an
+                     * array object is essentially an array store since we don't have separate type
+                     * flows for different array elements.
+                     */
+                    storeBuilder = TypeFlowBuilder.create(bb, node, StoreIndexedTypeFlow.class, () -> {
+                        StoreIndexedTypeFlow storeTypeFlow = new StoreIndexedTypeFlow(node, objectType, objectBuilder.get(), newValueBuilder.get());
+                        methodFlow.addMiscEntry(storeTypeFlow);
+                        return storeTypeFlow;
+                    });
+
+                    loadBuilder = TypeFlowBuilder.create(bb, node, LoadIndexedTypeFlow.class, () -> {
+                        LoadIndexedTypeFlow loadTypeFlow = new LoadIndexedTypeFlow(node, objectType, objectBuilder.get(), methodFlow);
+                        methodFlow.addMiscEntry(loadTypeFlow);
+                        return loadTypeFlow;
+                    });
+
+                } else {
+                    /*
+                     * Use the Object type as a conservative approximation for both the receiver
+                     * object type and the read/written values type.
+                     */
+                    AnalysisType nonNullObjectType = bb.getObjectType();
+                    storeBuilder = TypeFlowBuilder.create(bb, node, AtomicWriteTypeFlow.class, () -> {
+                        AtomicWriteTypeFlow storeTypeFlow = new AtomicWriteTypeFlow(node, nonNullObjectType, nonNullObjectType, objectBuilder.get(), newValueBuilder.get());
+                        methodFlow.addMiscEntry(storeTypeFlow);
+                        return storeTypeFlow;
+                    });
+
+                    loadBuilder = TypeFlowBuilder.create(bb, node, AtomicReadTypeFlow.class, () -> {
+                        AtomicReadTypeFlow loadTypeFlow = new AtomicReadTypeFlow(node, nonNullObjectType, nonNullObjectType, objectBuilder.get(), methodFlow);
+                        methodFlow.addMiscEntry(loadTypeFlow);
+                        return loadTypeFlow;
+                    });
+
+                }
+
+                storeBuilder.addUseDependency(newValueBuilder);
+                storeBuilder.addObserverDependency(objectBuilder);
+                loadBuilder.addObserverDependency(objectBuilder);
+
+                /* Offset stores must not be removed. */
+                typeFlowGraphBuilder.registerSinkBuilder(storeBuilder);
+
+                state.add(node, loadBuilder);
             }
         }
     }

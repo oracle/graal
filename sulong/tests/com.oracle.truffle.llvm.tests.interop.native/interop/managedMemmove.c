@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,18 +31,18 @@
 #include <polyglot.h>
 
 void get_types(void (*ret)(polyglot_typeid typeid)) {
-  ret(polyglot_array_typeid(polyglot_i8_typeid(), 0));
-  ret(polyglot_array_typeid(polyglot_i16_typeid(), 0));
-  ret(polyglot_array_typeid(polyglot_i32_typeid(), 0));
-  ret(polyglot_array_typeid(polyglot_i64_typeid(), 0));
-  ret(polyglot_array_typeid(polyglot_float_typeid(), 0));
-  ret(polyglot_array_typeid(polyglot_double_typeid(), 0));
+    ret(polyglot_array_typeid(polyglot_i8_typeid(), 0));
+    ret(polyglot_array_typeid(polyglot_i16_typeid(), 0));
+    ret(polyglot_array_typeid(polyglot_i32_typeid(), 0));
+    ret(polyglot_array_typeid(polyglot_i64_typeid(), 0));
+    ret(polyglot_array_typeid(polyglot_float_typeid(), 0));
+    ret(polyglot_array_typeid(polyglot_double_typeid(), 0));
 }
 
 void do_memmove(void *target, void *source, size_t n) {
-  memmove(target, source, n);
+    memmove(target, source, n);
 }
 
 void do_memset(void *target, int c, size_t n) {
-  memset(target, c, n);
+    memset(target, c, n);
 }

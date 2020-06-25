@@ -261,7 +261,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJdkComponent(
     third_party_license_files=[],
     dependencies=[],
     support_distributions=['tools:VISUALVM_GRAALVM_SUPPORT'],
-    provided_executables=['bin/<exe:jvisualvm>']
+    provided_executables=[('tools:VISUALVM_PLATFORM_SPECIFIC', './bin/<exe:jvisualvm>')]
 ))
 
 for mode in ['jvm', 'native']:

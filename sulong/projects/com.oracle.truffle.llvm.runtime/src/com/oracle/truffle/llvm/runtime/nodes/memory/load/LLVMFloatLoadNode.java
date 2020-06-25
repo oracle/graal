@@ -53,7 +53,7 @@ public abstract class LLVMFloatLoadNode extends LLVMLoadNode {
     protected float doFloatNative(LLVMNativePointer addr,
                     @Cached("createRawIdentityProfile()") FloatValueProfile profile,
                     @CachedLanguage LLVMLanguage language) {
-        return profile.profile(language.getLLVMMemory().getFloat(addr));
+        return profile.profile(language.getLLVMMemory().getFloat(this, addr));
     }
 
     @Specialization(guards = "isAutoDerefHandle(language, addr)")

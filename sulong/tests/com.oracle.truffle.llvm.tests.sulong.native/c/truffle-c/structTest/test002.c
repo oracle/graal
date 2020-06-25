@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,12 +28,12 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 struct test {
-  int a;
-  long b;
-  int c[3];
+    int a;
+    long b;
+    int c[3];
 };
 
 int main() {
-  struct test t = { 1, 2, { 4, 8, 16 } };
-  return t.a + t.b + t.c[0] + t.c[1] + t.c[2];
+    struct test t = { 1, 2, { 4, 8, 16 } };
+    return t.a + t.b + t.c[0] + t.c[1] + t.c[2];
 }

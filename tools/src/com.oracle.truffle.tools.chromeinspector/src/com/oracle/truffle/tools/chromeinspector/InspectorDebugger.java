@@ -189,6 +189,15 @@ public final class InspectorDebugger extends DebuggerDomain {
     }
 
     @Override
+    protected void notifyDisabled() {
+        // We might call startSession() in the constructor, without doEnable().
+        // That means that doDisable() might not have been called.
+        if (debuggerSession != null) {
+            doDisable();
+        }
+    }
+
+    @Override
     public void setAsyncCallStackDepth(int maxDepth) throws CommandProcessException {
         if (maxDepth >= 0) {
             debuggerSession.setAsynchronousStackDepth(maxDepth);

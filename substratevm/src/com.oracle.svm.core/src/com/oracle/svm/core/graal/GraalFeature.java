@@ -37,23 +37,22 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
-import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
+import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
-import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 
 public interface GraalFeature extends Feature {
 
     /**
      * Called to register foreign calls.
-     *
+     * 
      * @param runtimeConfig The runtime configuration.
      * @param providers Providers that the lowering can use.
      * @param snippetReflection Snippet reflection providers.
      * @param foreignCalls The foreign call registry to add to.
      * @param hosted True if registering for ahead-of-time compilation, false otherwise
      */
-    default void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection,
-                    Map<SubstrateForeignCallDescriptor, SubstrateForeignCallLinkage> foreignCalls, boolean hosted) {
+    default void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection, SubstrateForeignCallsProvider foreignCalls,
+                    boolean hosted) {
     }
 
     /**

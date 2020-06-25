@@ -161,8 +161,7 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
         t.getGroupBoundaries().applyExploded(stack(), offsetCaptureGroups(), index);
     }
 
-    public void resetToInitialState(int newIndex) {
-        setIndex(newIndex);
+    public void resetToInitialState() {
         clearCaptureGroups();
         clearQuantifierCounts();
         // no need to reset zero-width quantifier indices, they will always be overwritten before
@@ -235,22 +234,16 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
     public int pop() {
         assert sp > stackBase;
         sp -= stackFrameSize;
+        restoreIndex();
         return stack()[offsetIP()];
     }
 
-    @Override
-    public int getIndex() {
-        return stack()[sp];
+    public void saveIndex(int index) {
+        stack()[sp] = index;
     }
 
-    @Override
-    public void setIndex(int i) {
-        stack()[sp] = i;
-    }
-
-    @Override
-    public void incIndex(int i) {
-        stack()[sp] += i;
+    public void restoreIndex() {
+        setIndex(stack()[sp]);
     }
 
     public int setPc(int pc) {

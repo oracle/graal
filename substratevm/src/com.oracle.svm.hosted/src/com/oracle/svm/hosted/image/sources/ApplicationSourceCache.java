@@ -26,50 +26,26 @@
 
 package com.oracle.svm.hosted.image.sources;
 
+import static com.oracle.svm.hosted.image.sources.SourceCacheType.APPLICATION;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-
-import static com.oracle.svm.hosted.image.sources.SourceCacheType.APPLICATION;
 
 public class ApplicationSourceCache extends SourceCache {
-    /**
-     * Create an application source cache.
-     */
-    protected ApplicationSourceCache() {
-        initSrcRoots();
-    }
 
     @Override
     protected final SourceCacheType getType() {
         return APPLICATION;
     }
 
-    private void initSrcRoots() {
-        /* Add dirs or jars found in the classpath */
-        for (String classPathEntry : classPathEntries) {
-            tryClassPathRoot(classPathEntry);
-        }
-        for (String sourcePathEntry : sourcePathEntries) {
-            trySourceRoot(sourcePathEntry);
-        }
-    }
-
-    private void tryClassPathRoot(String classPathEntry) {
-        trySourceRoot(classPathEntry, true);
-    }
-
-    private void trySourceRoot(String sourcePathEntry) {
-        trySourceRoot(sourcePathEntry, false);
-    }
-
-    private void trySourceRoot(String sourceRoot, boolean fromClassPath) {
+    @Override
+    protected void trySourceRoot(Path sourceRoot, boolean fromClassPath) {
         try {
-            Path sourcePath = Paths.get(sourceRoot);
+            Path sourcePath = sourceRoot;
             String fileNameString = sourcePath.getFileName().toString();
             if (fileNameString.endsWith(".jar") || fileNameString.endsWith(".zip")) {
                 if (fromClassPath && fileNameString.endsWith(".jar")) {

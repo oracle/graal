@@ -39,7 +39,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMLoadNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
@@ -88,7 +88,7 @@ public final class LLDBSupport {
 
         final LLVMManagedPointer managedPointer = LLVMManagedPointer.cast(pointer);
         final Object target = managedPointer.getObject();
-        return LLVMNativeLibrary.getFactory().getUncached().isInternalObject(target);
+        return !LLVMAsForeignLibrary.getFactory().getUncached().isForeign(target);
     }
 
     private static boolean isByteAligned(long bits) {

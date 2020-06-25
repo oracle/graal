@@ -45,7 +45,6 @@ import java.util.AbstractList;
 import java.util.List;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -55,6 +54,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValueNode;
 import com.oracle.truffle.polyglot.PolyglotListFactory.CacheFactory.GetNodeGen;
 import com.oracle.truffle.polyglot.PolyglotListFactory.CacheFactory.RemoveNodeGen;
@@ -270,7 +270,8 @@ class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
             @SuppressWarnings("unused")
             Object doCached(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
                             @CachedLibrary("receiver") InteropLibrary interop,
-                            @Cached ToHostNode toHost) {
+                            @Cached ToHostNode toHost,
+                            @Cached BranchProfile error) {
                 Object key = args[ARGUMENT_OFFSET];
                 Object result = null;
                 assert key instanceof Integer;
@@ -278,10 +279,10 @@ class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
                 try {
                     return toHost.execute(interop.readArrayElement(receiver, index), cache.valueClass, cache.valueType, languageContext, true);
                 } catch (InvalidArrayIndexException e) {
-                    CompilerDirectives.transferToInterpreter();
+                    error.enter();
                     throw HostInteropErrors.invalidListIndex(languageContext, receiver, cache.valueType, index);
                 } catch (UnsupportedMessageException e) {
-                    CompilerDirectives.transferToInterpreter();
+                    error.enter();
                     throw HostInteropErrors.listUnsupported(languageContext, receiver, cache.valueType, "get()");
                 }
             }
@@ -308,7 +309,8 @@ class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
             @SuppressWarnings("unused")
             Object doCached(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
                             @CachedLibrary("receiver") InteropLibrary interop,
-                            @Cached ToGuestValueNode toGuest) {
+                            @Cached ToGuestValueNode toGuest,
+                            @Cached BranchProfile error) {
                 Object key = args[ARGUMENT_OFFSET];
                 assert key instanceof Integer;
                 int index = (int) key;
@@ -316,13 +318,13 @@ class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
                 try {
                     interop.writeArrayElement(receiver, index, value);
                 } catch (InvalidArrayIndexException e) {
-                    CompilerDirectives.transferToInterpreter();
+                    error.enter();
                     throw HostInteropErrors.invalidListIndex(languageContext, receiver, cache.valueType, index);
                 } catch (UnsupportedMessageException e) {
-                    CompilerDirectives.transferToInterpreter();
+                    error.enter();
                     throw HostInteropErrors.listUnsupported(languageContext, receiver, cache.valueType, "set");
                 } catch (UnsupportedTypeException e) {
-                    CompilerDirectives.transferToInterpreter();
+                    error.enter();
                     throw HostInteropErrors.invalidListValue(languageContext, receiver, cache.valueType, (int) key, value);
                 }
                 return null;
@@ -344,17 +346,18 @@ class PolyglotList<T> extends AbstractList<T> implements HostWrapper {
             @Specialization(limit = "LIMIT")
             @SuppressWarnings("unused")
             Object doCached(PolyglotLanguageContext languageContext, Object receiver, Object[] args,
-                            @CachedLibrary("receiver") InteropLibrary interop) {
+                            @CachedLibrary("receiver") InteropLibrary interop,
+                            @Cached BranchProfile error) {
                 Object key = args[ARGUMENT_OFFSET];
                 assert key instanceof Integer;
                 int index = (int) key;
                 try {
                     interop.removeArrayElement(receiver, index);
                 } catch (InvalidArrayIndexException e) {
-                    CompilerDirectives.transferToInterpreter();
+                    error.enter();
                     throw HostInteropErrors.invalidListIndex(languageContext, receiver, cache.valueType, index);
                 } catch (UnsupportedMessageException e) {
-                    CompilerDirectives.transferToInterpreter();
+                    error.enter();
                     throw HostInteropErrors.listUnsupported(languageContext, receiver, cache.valueType, "remove");
                 }
                 return null;

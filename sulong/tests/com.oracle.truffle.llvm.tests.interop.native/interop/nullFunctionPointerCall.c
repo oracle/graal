@@ -35,10 +35,10 @@
  * "unreachable" instruction.
  */
 __attribute__((noinline)) void call_and_print(const char *(*fun)()) {
-  printf("%s\n", fun());
+    printf("%s\n", fun());
 }
 
 int main() {
-  call_and_print(NULL);
-  return 0;
+    call_and_print(NULL);
+    return 0;
 }

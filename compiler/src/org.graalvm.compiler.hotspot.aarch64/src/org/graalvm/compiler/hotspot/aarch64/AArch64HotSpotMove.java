@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,7 +38,7 @@ import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.core.common.CompressEncoding;
-import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.hotspot.HotSpotMarkId;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.StandardOp.LoadConstantOp;
@@ -90,12 +90,10 @@ public class AArch64HotSpotMove {
         public static final LIRInstructionClass<BaseMove> TYPE = LIRInstructionClass.create(BaseMove.class);
 
         @LIRInstruction.Def({REG, HINT}) protected AllocatableValue result;
-        private final GraalHotSpotVMConfig config;
 
-        public BaseMove(AllocatableValue result, GraalHotSpotVMConfig config) {
+        public BaseMove(AllocatableValue result) {
             super(TYPE);
             this.result = result;
-            this.config = config;
         }
 
         @Override
@@ -106,7 +104,7 @@ public class AArch64HotSpotMove {
                 masm.add(64, scratch, scratch, 1);
                 masm.ldr(64, asRegister(result), AArch64Address.createBaseRegisterOnlyAddress(scratch));
                 masm.nop();
-                crb.recordMark(config.MARKID_NARROW_KLASS_BASE_ADDRESS);
+                crb.recordMark(HotSpotMarkId.NARROW_KLASS_BASE_ADDRESS);
             }
         }
 
@@ -139,8 +137,9 @@ public class AArch64HotSpotMove {
             Register resultRegister = asRegister(result);
             Register ptr = asRegister(input);
             Register base = (isRegister(baseRegister) ? asRegister(baseRegister) : zr);
+            boolean pic = GeneratePIC.getValue(crb.getOptions());
             // result = (ptr - base) >> shift
-            if (!encoding.hasBase()) {
+            if (!pic && !encoding.hasBase()) {
                 if (encoding.hasShift()) {
                     masm.lshr(64, resultRegister, ptr, encoding.getShift());
                 } else {
@@ -189,7 +188,8 @@ public class AArch64HotSpotMove {
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
             Register inputRegister = asRegister(input);
             Register resultRegister = asRegister(result);
-            Register base = encoding.hasBase() ? asRegister(baseRegister) : null;
+            boolean pic = GeneratePIC.getValue(crb.getOptions());
+            Register base = pic || encoding.hasBase() ? asRegister(baseRegister) : null;
             emitUncompressCode(masm, inputRegister, resultRegister, base, encoding.getShift(), nonNull);
         }
 
@@ -234,7 +234,7 @@ public class AArch64HotSpotMove {
     // masm.cmov(64, result, result, ARMv8.zr, ARMv8Assembler.ConditionFlag.NE);
     // }
 
-    public static void decodeKlassPointer(CompilationResultBuilder crb, AArch64MacroAssembler masm, Register result, Register ptr, CompressEncoding encoding, GraalHotSpotVMConfig config) {
+    public static void decodeKlassPointer(CompilationResultBuilder crb, AArch64MacroAssembler masm, Register result, Register ptr, CompressEncoding encoding) {
         try (AArch64MacroAssembler.ScratchRegister sc = masm.getScratchRegister()) {
             Register scratch = sc.getRegister();
             boolean pic = GeneratePIC.getValue(crb.getOptions());
@@ -243,7 +243,7 @@ public class AArch64HotSpotMove {
                     masm.addressOf(scratch);
                     masm.ldr(64, scratch, AArch64Address.createBaseRegisterOnlyAddress(scratch));
                     masm.add(64, result, scratch, ptr, AArch64Assembler.ExtendType.UXTX, encoding.getShift());
-                    crb.recordMark(config.MARKID_NARROW_KLASS_BASE_ADDRESS);
+                    crb.recordMark(HotSpotMarkId.NARROW_KLASS_BASE_ADDRESS);
                 } else {
                     masm.mov(scratch, encoding.getBase());
                     masm.add(64, result, scratch, ptr, AArch64Assembler.ExtendType.UXTX, encoding.getShift());

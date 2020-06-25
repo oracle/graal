@@ -251,11 +251,14 @@ final class Target_java_lang_ClassLoader {
         return ClassForNameSupport.forNameOrNull(name, false);
     }
 
-    @Substitute //
-    @TargetElement(onlyWith = JDK11OrLater.class) //
-    ConcurrentHashMap<?, ?> createOrGetClassLoaderValueMap() {
-        throw VMError.unsupportedFeature("JDK11OrLater: Target_java_lang_ClassLoader.createOrGetClassLoaderValueMap()");
-    }
+    /**
+     * All ClassLoaderValue are reset at run time for now. See also
+     * {@link Target_jdk_internal_loader_BootLoader#CLASS_LOADER_VALUE_MAP} for resetting of the
+     * boot class loader.
+     */
+    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ConcurrentHashMap.class)//
+    @TargetElement(onlyWith = JDK11OrLater.class)//
+    ConcurrentHashMap<?, ?> classLoaderValueMap;
 
     @Substitute //
     @TargetElement(onlyWith = JDK11OrLater.class) //

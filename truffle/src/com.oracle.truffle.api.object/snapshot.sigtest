@@ -80,6 +80,7 @@ hfds serialVersionUID
 
 CLSS public final com.oracle.truffle.api.object.HiddenKey
 cons public init(java.lang.String)
+intf com.oracle.truffle.api.interop.TruffleObject
 meth public boolean equals(java.lang.Object)
 meth public int hashCode()
 meth public java.lang.String getName()

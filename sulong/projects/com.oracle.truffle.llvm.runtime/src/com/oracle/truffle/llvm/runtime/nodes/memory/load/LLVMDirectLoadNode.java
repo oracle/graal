@@ -61,7 +61,7 @@ public abstract class LLVMDirectLoadNode {
         @Specialization(guards = "!isAutoDerefHandle(language, addr)")
         protected LLVMIVarBit doIVarBitNative(LLVMNativePointer addr,
                         @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getIVarBit(addr, getBitWidth());
+            return language.getLLVMMemory().getIVarBit(this, addr, getBitWidth());
         }
 
         LLVMIVarBitDirectLoadNode createRecursive() {
@@ -105,7 +105,7 @@ public abstract class LLVMDirectLoadNode {
         @Specialization(guards = "!isAutoDerefHandle(language, addr)")
         protected LLVM80BitFloat do80BitFloatNative(LLVMNativePointer addr,
                         @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().get80BitFloat(addr);
+            return language.getLLVMMemory().get80BitFloat(this, addr);
         }
 
         @Specialization(guards = "isAutoDerefHandle(language, addr)")
@@ -140,7 +140,7 @@ public abstract class LLVMDirectLoadNode {
         @Specialization(guards = "!isAutoDerefHandle(language, addr)")
         protected LLVMNativePointer doNativePointer(LLVMNativePointer addr,
                         @CachedLanguage LLVMLanguage language) {
-            return language.getLLVMMemory().getPointer(addr);
+            return language.getLLVMMemory().getPointer(this, addr);
         }
 
         @Specialization(guards = "isAutoDerefHandle(language, addr)")

@@ -29,7 +29,6 @@ import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 
 @NodeInfo
 public final class OSRStartNode extends StartNode implements Lowerable {
@@ -37,11 +36,6 @@ public final class OSRStartNode extends StartNode implements Lowerable {
 
     public OSRStartNode() {
         super(TYPE);
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
     }
 
     public NodeIterable<OSRLocalNode> getOSRLocals() {

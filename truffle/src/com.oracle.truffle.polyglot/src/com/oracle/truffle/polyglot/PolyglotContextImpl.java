@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.polyglot;
 
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 
 import java.io.IOException;
@@ -81,7 +82,6 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
-import com.oracle.truffle.api.impl.Accessor.CastUnsafe;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -358,10 +358,10 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             contextImpl = contextImpls[language.index];
         } else {
             CompilerAsserts.partialEvaluationConstant(language);
-            CastUnsafe unsafe = language.engine.castUnsafe;
-            contextImpl = unsafe.castArrayFixedLength(contextImpls, language.engine.contextLength)[language.index];
+
+            contextImpl = EngineAccessor.RUNTIME.castArrayFixedLength(contextImpls, language.engine.contextLength)[language.index];
             Class<?> castClass = language.contextClass;
-            contextImpl = unsafe.unsafeCast(contextImpl, castClass, true, castClass != Void.class, true);
+            contextImpl = EngineAccessor.RUNTIME.unsafeCast(contextImpl, castClass, true, castClass != Void.class, true);
         }
         assert language.contextClass == (contextImpl == null ? Void.class : contextImpl.getClass()) : "Instable context class";
         return contextImpl;
@@ -390,7 +390,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             if (singleContext.contextThreadLocal.isSet()) {
                 return singleContext.singleContext;
             } else {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 return null;
             }
         } else {
@@ -411,17 +411,22 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         }
         assert context != null;
         if (CompilerDirectives.inCompiledCode()) {
-            context = enteredInEngine.castUnsafe.unsafeCast(context, PolyglotContextImpl.class, true, true, true);
+            context = EngineAccessor.RUNTIME.unsafeCast(context, PolyglotContextImpl.class, true, true, true);
         }
         return (PolyglotContextImpl) context;
     }
 
     /**
      * May be used anywhere to lookup the context.
+     *
+     * @throws IllegalStateException when there is no current context available.
      */
     static PolyglotContextImpl requireContext() {
         PolyglotContextImpl context = currentNotEntered();
-        assert context != null : "No current context available.";
+        if (context == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw PolyglotEngineException.illegalState("There is no current context available.");
+        }
         return context;
     }
 
@@ -488,7 +493,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             Thread closing = this.closingThread;
             if (needsInitialization) {
                 if (closing != null && closing != current) {
-                    throw PolyglotEngineException.illegalState("Can not create new threads in closing context.");
+                    throw PolyglotEngineException.illegalState("Can not create new threads in closing context.", true);
                 }
                 threads.put(current, threadInfo);
             }
@@ -839,15 +844,35 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     }
 
     @Override
+    public Value parse(String languageId, Object sourceImpl) {
+        PolyglotLanguage language = requirePublicLanguage(languageId);
+        PolyglotLanguageContext languageContext = getContext(language);
+        try {
+            Object prev = engine.enterIfNeeded(this);
+            try {
+                Source source = (Source) sourceImpl;
+                languageContext.checkAccess(null);
+                languageContext.ensureInitialized(null);
+                CallTarget target = languageContext.parseCached(null, source, null);
+                return languageContext.asValue(new PolyglotParsedEval(languageContext, source, target));
+            } finally {
+                engine.leaveIfNeeded(prev, this);
+            }
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException(languageContext, e);
+        }
+    }
+
+    @Override
     public Value eval(String languageId, Object sourceImpl) {
         PolyglotLanguage language = requirePublicLanguage(languageId);
         PolyglotLanguageContext languageContext = getContext(language);
         try {
             Object prev = engine.enterIfNeeded(this);
             try {
+                Source source = (Source) sourceImpl;
                 languageContext.checkAccess(null);
                 languageContext.ensureInitialized(null);
-                com.oracle.truffle.api.source.Source source = (com.oracle.truffle.api.source.Source) sourceImpl;
                 CallTarget target = languageContext.parseCached(null, source, null);
                 Object result = target.call(PolyglotImpl.EMPTY_ARGS);
                 Value hostValue;
@@ -879,7 +904,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
     }
 
     @TruffleBoundary
-    private static void printResult(PolyglotLanguageContext languageContext, Object result) {
+    static void printResult(PolyglotLanguageContext languageContext, Object result) {
         if (!LANGUAGE.isVisible(languageContext.env, result)) {
             return;
         }
@@ -887,7 +912,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         try {
             stringResult = UNCACHED.asString(UNCACHED.toDisplayString(languageContext.getLanguageView(result), true));
         } catch (UnsupportedMessageException e) {
-            throw new AssertionError(e);
+            throw shouldNotReachHere(e);
         }
         try {
             OutputStream out = languageContext.context.config.out;

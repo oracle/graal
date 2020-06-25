@@ -58,7 +58,6 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.IsDefined;
 import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Errno;
-import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.posix.headers.Pthread.pthread_attr_t;
 import com.oracle.svm.core.posix.headers.Sched;
@@ -228,15 +227,13 @@ class PosixParkEvent extends ParkEvent {
 
     PosixParkEvent() {
         /* Create a mutex. */
-        mutex = LibC.malloc(SizeOf.unsigned(Pthread.pthread_mutex_t.class));
-        VMError.guarantee(mutex.isNonNull(), "mutex allocation");
+        mutex = UnmanagedMemory.malloc(SizeOf.unsigned(Pthread.pthread_mutex_t.class));
         /* The attributes for the mutex. Can be null. */
         final Pthread.pthread_mutexattr_t mutexAttr = WordFactory.nullPointer();
         PosixUtils.checkStatusIs0(Pthread.pthread_mutex_init(mutex, mutexAttr), "mutex initialization");
 
         /* Create a condition variable. */
-        cond = LibC.malloc(SizeOf.unsigned(Pthread.pthread_cond_t.class));
-        VMError.guarantee(cond.isNonNull(), "condition variable allocation");
+        cond = UnmanagedMemory.malloc(SizeOf.unsigned(Pthread.pthread_cond_t.class));
         PosixUtils.checkStatusIs0(PthreadConditionUtils.initCondition(cond), "condition variable initialization");
     }
 

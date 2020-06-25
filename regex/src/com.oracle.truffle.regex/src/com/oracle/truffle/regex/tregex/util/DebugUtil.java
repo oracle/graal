@@ -40,27 +40,16 @@
  */
 package com.oracle.truffle.regex.tregex.util;
 
-import com.oracle.truffle.api.TruffleLogger;
-import com.oracle.truffle.regex.charset.Constants;
-import com.oracle.truffle.regex.charset.SortedListOfRanges;
-import com.oracle.truffle.regex.util.CompilationFinalBitSet;
-
 import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.charset.Constants;
+import com.oracle.truffle.regex.charset.SortedListOfRanges;
+import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 public class DebugUtil {
-
-    public static final TruffleLogger LOG_SWITCH_TO_EAGER = TruffleLogger.getLogger("regex", "SwitchToEager");
-    public static final TruffleLogger LOG_TOTAL_COMPILATION_TIME = TruffleLogger.getLogger("regex", "TotalCompilationTime");
-    public static final TruffleLogger LOG_PHASES = TruffleLogger.getLogger("regex", "Phases");
-    public static final TruffleLogger LOG_BAILOUT_MESSAGES = TruffleLogger.getLogger("regex", "BailoutMessages");
-    public static final TruffleLogger LOG_AUTOMATON_SIZES = TruffleLogger.getLogger("regex", "AutomatonSizes");
-    public static final TruffleLogger LOG_COMPILER_FALLBACK = TruffleLogger.getLogger("regex", "CompilerFallback");
-    public static final TruffleLogger LOG_INTERNAL_ERRORS = TruffleLogger.getLogger("regex", "InternalErrors");
-    public static final TruffleLogger LOG_TREGEX_COMPILATIONS = TruffleLogger.getLogger("regex", "TRegexCompilations");
 
     private static final CompilationFinalBitSet validSpecialCharsForFileNames = CompilationFinalBitSet.valueOf(
                     '^', '$', '.', '*', '+', '-', '?', '(', ')', '[', ']', '{', '}', '|');
@@ -168,5 +157,4 @@ public class DebugUtil {
             return String.format("%fms", elapsed / 1e6);
         }
     }
-
 }

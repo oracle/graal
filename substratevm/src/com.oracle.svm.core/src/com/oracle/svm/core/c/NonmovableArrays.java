@@ -77,6 +77,8 @@ public final class NonmovableArrays {
 
     private static final UninterruptibleUtils.AtomicLong runtimeArraysInExistence = new UninterruptibleUtils.AtomicLong(0);
 
+    private static final OutOfMemoryError OUT_OF_MEMORY_ERROR = new OutOfMemoryError("Could not allocate nonmovable array");
+
     @SuppressWarnings("unchecked")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static <T extends NonmovableArray<?>> T createArray(int length, Class<?> arrayType) {
@@ -89,6 +91,9 @@ public final class NonmovableArrays {
         assert LayoutEncoding.isArray(hub.getLayoutEncoding());
         UnsignedWord size = LayoutEncoding.getArraySize(hub.getLayoutEncoding(), length);
         Pointer array = ImageSingletons.lookup(UnmanagedMemorySupport.class).calloc(size);
+        if (array.isNull()) {
+            throw OUT_OF_MEMORY_ERROR;
+        }
         Heap.getHeap().getObjectHeader().initializeHeaderOfNewObject(array, hub, HeapKind.Unmanaged);
         array.writeInt(ConfigurationValues.getObjectLayout().getArrayLengthOffset(), length);
         // already zero-initialized thanks to calloc()

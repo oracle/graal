@@ -175,7 +175,7 @@ public class NativeImageMojo extends AbstractMojo {
         addClasspath(project.getArtifact());
         String classpathStr = classpath.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator));
 
-        Path nativeImageExecutable = getMojoJavaHome().resolve("bin").resolve(withExeSuffix("native-image"));
+        Path nativeImageExecutable = getMojoJavaHome().resolve("bin").resolve("native-image" + (OS.WINDOWS.isCurrent() ? ".cmd" : ""));
         if (Files.isExecutable(nativeImageExecutable)) {
             String nativeImageExecutableVersion = "Unknown";
             Process versionCheckProcess = null;
@@ -263,16 +263,9 @@ public class NativeImageMojo extends AbstractMojo {
             } catch (NativeImage.NativeImageError e) {
                 throw new MojoExecutionException("Error creating native image:", e);
             } catch (IllegalAccessError e) {
-                throw new MojoExecutionException("Image building on Java 11+ without native-image requires MAVEN_OPTS='--add-exports=java.base/jdk.internal.module=ALL-UNNAMED'");
+                throw new MojoExecutionException("Image building on Java 11+ without native-image requires MAVEN_OPTS='--add-exports=java.base/jdk.internal.module=ALL-UNNAMED'", e);
             }
         }
-    }
-
-    private String withExeSuffix(String basename) {
-        if (OS.getCurrent() == OS.WINDOWS) {
-            return basename + ".exe";
-        }
-        return basename;
     }
 
     private void addClasspath(Artifact artifact) throws MojoExecutionException {
@@ -421,7 +414,7 @@ public class NativeImageMojo extends AbstractMojo {
 
         @Override
         public Path getJavaExecutable() {
-            return getJavaHome().resolve("bin").resolve(withExeSuffix("java"));
+            return getJavaHome().resolve("bin").resolve("java" + (OS.WINDOWS.isCurrent() ? ".exe" : ""));
         }
 
         private List<Path> getSelectedArtifactPaths(String groupId, String... artifactIds) {

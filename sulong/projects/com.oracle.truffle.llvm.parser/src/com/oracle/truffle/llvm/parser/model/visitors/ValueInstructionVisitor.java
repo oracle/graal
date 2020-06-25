@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -47,6 +47,7 @@ import com.oracle.truffle.llvm.parser.model.symbols.instructions.PhiInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ReadModifyWriteInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.SelectInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ShuffleVectorInstruction;
+import com.oracle.truffle.llvm.parser.model.symbols.instructions.UnaryOperationInstruction;
 import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
 
 public abstract class ValueInstructionVisitor implements SymbolVisitor {
@@ -60,6 +61,11 @@ public abstract class ValueInstructionVisitor implements SymbolVisitor {
 
     @Override
     public void visit(BinaryOperationInstruction operation) {
+        visitValueInstruction(operation);
+    }
+
+    @Override
+    public void visit(UnaryOperationInstruction operation) {
         visitValueInstruction(operation);
     }
 

@@ -129,9 +129,9 @@ public final class DFACaptureGroupPartialTransition implements JsonConvertible {
      *            {@link DFACaptureGroupTrackingData#results} shall be updated to
      *            {@code currentIndex} in
      *            {@link #apply(TRegexDFAExecutorNode, DFACaptureGroupTrackingData, int)},
-     *            {@link #applyPreFinalStateTransition(TRegexDFAExecutorNode, DFACaptureGroupTrackingData, boolean, int)}
+     *            {@link #applyPreFinalStateTransition(TRegexDFAExecutorNode, DFACaptureGroupTrackingData, int)}
      *            and
-     *            {@link #applyFinalStateTransition(TRegexDFAExecutorNode, DFACaptureGroupTrackingData, boolean, int)}
+     *            {@link #applyFinalStateTransition(TRegexDFAExecutorNode, DFACaptureGroupTrackingData, int)}
      *            . In every row (1st dimension element) of this 2D array, the first value is the
      *            index of one row in {@link DFACaptureGroupTrackingData#results}, all following
      *            values are indices in that row that shall be set to {@code currentIndex}.
@@ -145,15 +145,15 @@ public final class DFACaptureGroupPartialTransition implements JsonConvertible {
      * @param indexClears denotes which index of which array in
      *            {@link DFACaptureGroupTrackingData#results} shall be updated to {@code 0} in
      *            {@link #apply(TRegexDFAExecutorNode, DFACaptureGroupTrackingData, int)},
-     *            {@link #applyPreFinalStateTransition(TRegexDFAExecutorNode, DFACaptureGroupTrackingData, boolean, int)}
+     *            {@link #applyPreFinalStateTransition(TRegexDFAExecutorNode, DFACaptureGroupTrackingData, int)}
      *            and
-     *            {@link #applyFinalStateTransition(TRegexDFAExecutorNode, DFACaptureGroupTrackingData, boolean, int)}
+     *            {@link #applyFinalStateTransition(TRegexDFAExecutorNode, DFACaptureGroupTrackingData, int)}
      *            , analogous to {@code indexUpdates}.
      * @param preReorderFinalStateResultIndex denotes the row (1st dimension element) of
      *            {@link DFACaptureGroupTrackingData#results} that corresponds to the NFA final
      *            state <em>before</em> the reordering given by {@code reorderSwaps} is applied.
      *            This is needed in
-     *            {@link #applyPreFinalStateTransition(TRegexDFAExecutorNode, DFACaptureGroupTrackingData, boolean, int)}
+     *            {@link #applyPreFinalStateTransition(TRegexDFAExecutorNode, DFACaptureGroupTrackingData, int)}
      *            when {@link TRegexDFAExecutorNode#isSearching()} is {@code true}, because in that
      *            case we need to be able to apply copy the current result corresponding to the NFA
      *            final state without doing any reordering.
@@ -202,9 +202,9 @@ public final class DFACaptureGroupPartialTransition implements JsonConvertible {
         applyIndexClear(d.results, d.currentResultOrder);
     }
 
-    public void applyPreFinalStateTransition(TRegexDFAExecutorNode executor, DFACaptureGroupTrackingData d, boolean searching, final int currentIndex) {
+    public void applyPreFinalStateTransition(TRegexDFAExecutorNode executor, DFACaptureGroupTrackingData d, final int currentIndex) {
         CompilerAsserts.partialEvaluationConstant(this);
-        if (!searching) {
+        if (!executor.isSearching()) {
             apply(executor, d, currentIndex);
             return;
         }
@@ -212,12 +212,12 @@ public final class DFACaptureGroupPartialTransition implements JsonConvertible {
             executor.getDebugRecorder().recordCGPartialTransition(currentIndex, id);
         }
         d.exportResult(preReorderFinalStateResultIndex);
-        applyFinalStateTransition(executor, d, true, currentIndex);
+        applyFinalStateTransition(executor, d, currentIndex);
     }
 
-    public void applyFinalStateTransition(TRegexDFAExecutorNode executor, DFACaptureGroupTrackingData d, boolean searching, int currentIndex) {
+    public void applyFinalStateTransition(TRegexDFAExecutorNode executor, DFACaptureGroupTrackingData d, int currentIndex) {
         CompilerAsserts.partialEvaluationConstant(this);
-        if (!searching) {
+        if (!executor.isSearching()) {
             apply(executor, d, currentIndex);
             return;
         }
@@ -247,7 +247,7 @@ public final class DFACaptureGroupPartialTransition implements JsonConvertible {
     @ExplodeLoop
     private void applyFinalStateTransitionIndexClears(DFACaptureGroupTrackingData d) {
         for (int i = 0; i < indexClears[0].getNumberOfIndices(); i++) {
-            d.currentResult[indexClears[0].getIndex(i)] = 0;
+            d.currentResult[indexClears[0].getIndex(i)] = -1;
         }
     }
 
@@ -286,7 +286,7 @@ public final class DFACaptureGroupPartialTransition implements JsonConvertible {
         for (IndexOperation indexClear : indexClears) {
             final int targetArray = indexClear.getTargetArray();
             for (int i = 0; i < indexClear.getNumberOfIndices(); i++) {
-                results[currentResultOrder[targetArray] + indexClear.getIndex(i)] = 0;
+                results[currentResultOrder[targetArray] + indexClear.getIndex(i)] = -1;
             }
         }
     }

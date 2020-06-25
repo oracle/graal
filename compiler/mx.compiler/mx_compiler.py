@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -486,7 +486,7 @@ def _gate_java_benchmark(args, successRe):
         if jvmErrorFile:
             jvmErrorFile = jvmErrorFile.group()
             mx.log('Dumping ' + jvmErrorFile)
-            with open(jvmErrorFile, 'rb') as fp:
+            with open(jvmErrorFile) as fp:
                 mx.log(fp.read())
             os.unlink(jvmErrorFile)
 
@@ -1078,10 +1078,6 @@ def java_base_unittest(args):
     finally:
         _graaljdk_override = None
 
-def microbench(*args):
-    mx.abort("`mx microbench` is deprecated.\n" +
-             "Use `mx benchmark jmh-whitebox:*` and `mx benchmark jmh-dist:*` instead!")
-
 def javadoc(args):
     # metadata package was deprecated, exclude it
     if not '--exclude-packages' in args:
@@ -1400,20 +1396,11 @@ def _graal_config():
     return __graal_config
 
 def _jvmci_jars():
-    if not isJDK8 and _is_jaotc_supported():
-        return [
-            'compiler:GRAAL',
-            'compiler:GRAAL_MANAGEMENT',
-            'compiler:GRAAL_TRUFFLE_JFR_IMPL',
-            'compiler:JAOTC',
-        ]
-    else:
-        # JAOTC is JDK 9+
-        return [
-            'compiler:GRAAL',
-            'compiler:GRAAL_MANAGEMENT',
-            'compiler:GRAAL_TRUFFLE_JFR_IMPL',
-        ]
+    return [
+        'compiler:GRAAL',
+        'compiler:GRAAL_MANAGEMENT',
+        'compiler:GRAAL_TRUFFLE_JFR_IMPL',
+    ] + (['compiler:JAOTC'] if not isJDK8 and _is_jaotc_supported() else [])
 
 # The community compiler component
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJvmciComponent(
@@ -1442,7 +1429,6 @@ mx.update_commands(_suite, {
     'java_base_unittest' : [java_base_unittest, 'Runs unittest on JDK java.base "only" module(s)'],
     'updategraalinopenjdk' : [updategraalinopenjdk, '[options]'],
     'renamegraalpackages' : [renamegraalpackages, '[options]'],
-    'microbench': [microbench, ''],
     'javadoc': [javadoc, ''],
     'makegraaljdk': [makegraaljdk_cli, '[options]'],
 })

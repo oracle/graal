@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,44 +30,44 @@
 #include "nanolibc.h"
 
 int main(void) {
-  char buf[64];
-  int fd;
-  ssize_t size;
-  off_t offset;
-  int i;
+    char buf[64];
+    int fd;
+    ssize_t size;
+    off_t offset;
+    int i;
 
-  fd = open("LICENSE", O_RDONLY, 0);
-  if (fd < 0) {
-    perror("Cannot open file");
-    return 1;
-  }
+    fd = open("LICENSE", O_RDONLY, 0);
+    if (fd < 0) {
+        perror("Cannot open file");
+        return 1;
+    }
 
-  size = read(fd, buf, sizeof(buf));
-  printf("size: %ld\n", size);
-  if (size < 0) {
-    perror("Cannot read file");
+    size = read(fd, buf, sizeof(buf));
+    printf("size: %ld\n", size);
+    if (size < 0) {
+        perror("Cannot read file");
+        close(fd);
+        return 1;
+    }
+    write(STDOUT_FILENO, buf, size);
+
+    offset = lseek(fd, -42, SEEK_END);
+    printf("offset: %ld\n", offset);
+    if (offset == (off_t) -1) {
+        perror("Cannot set file position");
+        close(fd);
+        return 1;
+    }
+
+    size = read(fd, buf, sizeof(buf));
+    printf("size: %ld\n", size);
+    if (size < 0) {
+        perror("Cannot read file");
+        close(fd);
+        return 1;
+    }
+    write(STDOUT_FILENO, buf, size);
+
     close(fd);
-    return 1;
-  }
-  write(STDOUT_FILENO, buf, size);
-
-  offset = lseek(fd, -42, SEEK_END);
-  printf("offset: %ld\n", offset);
-  if (offset == (off_t)-1) {
-    perror("Cannot set file position");
-    close(fd);
-    return 1;
-  }
-
-  size = read(fd, buf, sizeof(buf));
-  printf("size: %ld\n", size);
-  if (size < 0) {
-    perror("Cannot read file");
-    close(fd);
-    return 1;
-  }
-  write(STDOUT_FILENO, buf, size);
-
-  close(fd);
-  return 0;
+    return 0;
 }

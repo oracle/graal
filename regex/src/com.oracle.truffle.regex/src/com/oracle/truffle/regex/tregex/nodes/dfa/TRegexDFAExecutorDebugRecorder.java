@@ -144,7 +144,7 @@ public final class TRegexDFAExecutorDebugRecorder implements JsonConvertible {
 
         @TruffleBoundary
         public void setCgPartialTransitionID(int cgPartialTransitionID) {
-            assert this.cgPartialTransitionID == -1;
+            assert this.cgPartialTransitionID == -1 || this.cgPartialTransitionID == 0;
             this.cgPartialTransitionID = cgPartialTransitionID;
         }
 

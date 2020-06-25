@@ -49,7 +49,9 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
+import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.expression.DSLExpression;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Binary;
@@ -61,6 +63,7 @@ import com.oracle.truffle.dsl.processor.expression.DSLExpression.DSLExpressionVi
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.IntLiteral;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Negate;
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.Variable;
+import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 
@@ -104,7 +107,12 @@ public class DSLExpressionGenerator implements DSLExpressionVisitor {
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();
 
         if (call.getResolvedMethod().getKind() == ElementKind.CONSTRUCTOR) {
-            builder.startNew(call.getResolvedType());
+            TypeMirror type = call.getResolvedType();
+            if (type.getKind() == TypeKind.DECLARED && !((DeclaredType) type).getTypeArguments().isEmpty()) {
+                builder.startNew(ElementUtils.getDeclaredName(((DeclaredType) type), false) + "<>");
+            } else {
+                builder.startNew(call.getResolvedType());
+            }
         } else if (call.getReceiver() == null) {
             if (isStatic(method)) {
                 builder.startStaticCall(method);

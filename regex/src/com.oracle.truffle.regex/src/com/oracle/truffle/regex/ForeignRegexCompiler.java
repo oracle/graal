@@ -68,8 +68,8 @@ public class ForeignRegexCompiler implements RegexCompiler {
         return regexCompiler instanceof RegexCompiler ? (RegexCompiler) regexCompiler : new ForeignRegexCompiler(regexCompiler);
     }
 
-    @Override
     @TruffleBoundary
+    @Override
     public TruffleObject compile(RegexSource source) throws RegexSyntaxException, UnsupportedRegexException {
         try {
             return (TruffleObject) InteropLibrary.getFactory().getUncached().execute(foreignCompiler, source.getPattern(), source.getFlags());

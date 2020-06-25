@@ -91,15 +91,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
+import java.util.Random;
 import java.util.Set;
-import java.util.function.Supplier;
 
 import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-
-import java.util.Random;
 
 /**
  * An abstract representation of a file used by Truffle languages.
@@ -248,22 +246,28 @@ public final class TruffleFile {
     private final FileSystemContext fileSystemContext;
     private final Path path;
     private final Path normalizedPath;
+    private final boolean isEmptyPath;
 
     TruffleFile(final FileSystemContext fileSystemContext, final Path path) {
-        this(fileSystemContext, path, path.normalize());
+        this(fileSystemContext, path, path.normalize(), isEmptyPath(path));
     }
 
-    TruffleFile(final FileSystemContext fileSystemContext, final Path path, final Path normalizedPath) {
+    TruffleFile(final FileSystemContext fileSystemContext, final Path path, final Path normalizedPath, boolean isEmptyPath) {
         Objects.requireNonNull(fileSystemContext, "FileSystemContext must not be null.");
         Objects.requireNonNull(path, "Path must not be null.");
         Objects.requireNonNull(normalizedPath, "NormalizedPath must not be null.");
         this.fileSystemContext = fileSystemContext;
         this.path = path;
         this.normalizedPath = normalizedPath;
+        this.isEmptyPath = isEmptyPath;
     }
 
     Path getSPIPath() {
         return normalizedPath;
+    }
+
+    FileSystemContext getFileSystemContext() {
+        return fileSystemContext;
     }
 
     FileSystem getSPIFileSystem() {
@@ -513,7 +517,7 @@ public final class TruffleFile {
         }
         try {
             Path[] absolutePaths = toAbsolutePathImpl();
-            return new TruffleFile(fileSystemContext, absolutePaths[0], absolutePaths[1]);
+            return new TruffleFile(fileSystemContext, absolutePaths[0], absolutePaths[1], false);
         } catch (SecurityException se) {
             throw se;
         } catch (Throwable t) {
@@ -534,7 +538,7 @@ public final class TruffleFile {
     public TruffleFile getCanonicalFile(LinkOption... options) throws IOException {
         try {
             Path realPath = fileSystemContext.fileSystem.toRealPath(normalizedPath, options);
-            return new TruffleFile(fileSystemContext, realPath, realPath);
+            return new TruffleFile(fileSystemContext, realPath, realPath, false);
         } catch (IOException | SecurityException e) {
             throw e;
         } catch (Throwable t) {
@@ -648,6 +652,7 @@ public final class TruffleFile {
     @TruffleBoundary
     public void setLastModifiedTime(FileTime time, LinkOption... options) throws IOException {
         try {
+            checkFileOperationPreconditions();
             fileSystemContext.fileSystem.setAttribute(normalizedPath, "lastModifiedTime", time, options);
         } catch (IOException | SecurityException e) {
             throw e;
@@ -688,6 +693,7 @@ public final class TruffleFile {
     @TruffleBoundary
     public void setLastAccessTime(FileTime time, LinkOption... options) throws IOException {
         try {
+            checkFileOperationPreconditions();
             fileSystemContext.fileSystem.setAttribute(normalizedPath, "lastAccessTime", time, options);
         } catch (IOException | SecurityException e) {
             throw e;
@@ -728,6 +734,7 @@ public final class TruffleFile {
     @TruffleBoundary
     public void setCreationTime(FileTime time, LinkOption... options) throws IOException {
         try {
+            checkFileOperationPreconditions();
             fileSystemContext.fileSystem.setAttribute(normalizedPath, "creationTime", time, options);
         } catch (IOException | SecurityException e) {
             throw e;
@@ -749,6 +756,7 @@ public final class TruffleFile {
     @TruffleBoundary
     public Collection<TruffleFile> list() throws IOException {
         try {
+            checkFileOperationPreconditions();
             final Collection<TruffleFile> result = new ArrayList<>();
             final boolean normalized = isNormalized();
             try (DirectoryStream<Path> stream = fileSystemContext.fileSystem.newDirectoryStream(normalizedPath, AllFiles.INSTANCE)) {
@@ -756,7 +764,8 @@ public final class TruffleFile {
                     result.add(new TruffleFile(
                                     fileSystemContext,
                                     normalized ? p : path.resolve(p.getFileName()),
-                                    normalized ? p : normalizedPath.resolve(p.getFileName())));
+                                    normalized ? p : normalizedPath.resolve(p.getFileName()),
+                                    false));
                 }
             }
             return result;
@@ -785,6 +794,7 @@ public final class TruffleFile {
     @TruffleBoundary
     public SeekableByteChannel newByteChannel(Set<? extends OpenOption> options, FileAttribute<?>... attributes) throws IOException {
         try {
+            checkFileOperationPreconditions();
             return ByteChannelDecorator.create(fileSystemContext.fileSystem.newByteChannel(normalizedPath, options, attributes));
         } catch (IOException | UnsupportedOperationException | IllegalArgumentException | SecurityException e) {
             throw e;
@@ -982,6 +992,7 @@ public final class TruffleFile {
     @TruffleBoundary
     public void createDirectory(FileAttribute<?>... attributes) throws IOException {
         try {
+            checkFileOperationPreconditions();
             createDirectoryImpl(normalizedPath, attributes);
         } catch (IOException | UnsupportedOperationException | SecurityException e) {
             throw e;
@@ -1006,6 +1017,7 @@ public final class TruffleFile {
     @TruffleBoundary
     public void createDirectories(FileAttribute<?>... attributes) throws IOException {
         try {
+            checkFileOperationPreconditions();
             try {
                 createDirAndCheck(normalizedPath, attributes);
                 return;
@@ -1054,6 +1066,7 @@ public final class TruffleFile {
     @TruffleBoundary
     public void delete() throws IOException {
         try {
+            checkFileOperationPreconditions();
             fileSystemContext.fileSystem.delete(normalizedPath);
         } catch (IOException | SecurityException e) {
             throw e;
@@ -1083,6 +1096,8 @@ public final class TruffleFile {
     @TruffleBoundary
     public void move(TruffleFile target, CopyOption... options) throws IOException {
         try {
+            checkFileOperationPreconditions();
+            target.checkFileOperationPreconditions();
             fileSystemContext.fileSystem.move(normalizedPath, target.normalizedPath, options);
         } catch (IOException | UnsupportedOperationException | SecurityException e) {
             throw e;
@@ -1128,6 +1143,7 @@ public final class TruffleFile {
     @TruffleBoundary
     public void setPosixPermissions(Set<? extends PosixFilePermission> permissions, LinkOption... linkOptions) throws IOException {
         try {
+            checkFileOperationPreconditions();
             fileSystemContext.fileSystem.setAttribute(normalizedPath, "posix:permissions", permissions, linkOptions);
         } catch (IOException | SecurityException | UnsupportedOperationException e) {
             throw e;
@@ -1190,7 +1206,13 @@ public final class TruffleFile {
         if (isNormalized()) {
             return this;
         }
-        return new TruffleFile(fileSystemContext, normalizedPath, normalizedPath);
+        Path newPath;
+        if (!isEmptyPath && isEmptyPath(normalizedPath)) {
+            newPath = fileSystemContext.fileSystem.parsePath(".");
+        } else {
+            newPath = normalizedPath;
+        }
+        return new TruffleFile(fileSystemContext, newPath, normalizedPath, isEmptyPath);
     }
 
     /**
@@ -1313,6 +1335,7 @@ public final class TruffleFile {
     @TruffleBoundary
     public void createLink(TruffleFile target) throws IOException {
         try {
+            checkFileOperationPreconditions();
             fileSystemContext.fileSystem.createLink(normalizedPath, target.normalizedPath);
         } catch (IOException | SecurityException | UnsupportedOperationException e) {
             throw e;
@@ -1337,6 +1360,7 @@ public final class TruffleFile {
     @TruffleBoundary
     public void createSymbolicLink(TruffleFile target, FileAttribute<?>... attrs) throws IOException {
         try {
+            checkFileOperationPreconditions();
             fileSystemContext.fileSystem.createSymbolicLink(normalizedPath, target.path, attrs);
         } catch (IOException | SecurityException | UnsupportedOperationException e) {
             throw e;
@@ -1410,6 +1434,7 @@ public final class TruffleFile {
     @TruffleBoundary
     public DirectoryStream<TruffleFile> newDirectoryStream() throws IOException {
         try {
+            checkFileOperationPreconditions();
             return new TruffleFileDirectoryStream(this, fileSystemContext.fileSystem.newDirectoryStream(normalizedPath, AllFiles.INSTANCE));
         } catch (IOException | SecurityException e) {
             throw e;
@@ -1474,6 +1499,7 @@ public final class TruffleFile {
             throw new IllegalArgumentException("The maxDepth must be >= 0");
         }
         try {
+            checkFileOperationPreconditions();
             Walker walker = new Walker(this, maxDepth, options);
             for (Walker.Event event : walker) {
                 FileVisitResult result;
@@ -1536,6 +1562,8 @@ public final class TruffleFile {
     @TruffleBoundary
     public void copy(TruffleFile target, CopyOption... options) throws IOException {
         try {
+            checkFileOperationPreconditions();
+            target.checkFileOperationPreconditions();
             fileSystemContext.fileSystem.copy(normalizedPath, target.normalizedPath, options);
         } catch (IOException | UnsupportedOperationException | SecurityException e) {
             throw e;
@@ -1551,48 +1579,81 @@ public final class TruffleFile {
      * @throws IOException in case of IO error
      * @throws SecurityException if the {@link FileSystem} denied the operation
      * @since 19.0
+     * @deprecated use {@link #detectMimeType()}
      */
     @TruffleBoundary
+    @Deprecated
     public String getMimeType() throws IOException {
-        return getMimeType(null);
+        return detectMimeType(null);
+    }
+
+    /**
+     * Detects the {@link TruffleFile file} MIME type.
+     *
+     * @return the MIME type or {@code null} if the MIME type is not recognized
+     * @throws SecurityException if the {@link FileSystem} denied the operation
+     * @since 22.2
+     */
+    @TruffleBoundary
+    public String detectMimeType() {
+        return detectMimeType(null);
     }
 
     @TruffleBoundary
-    String getMimeType(Set<String> validMimeTypes) throws IOException {
+    String detectMimeType(Set<String> validMimeTypes) {
         try {
+            if (validMimeTypes != null && validMimeTypes.isEmpty()) {
+                return null;
+            }
+            checkFileOperationPreconditions();
             String result = fileSystemContext.fileSystem.getMimeType(normalizedPath);
             if (result != null && (validMimeTypes == null || validMimeTypes.contains(result))) {
                 return result;
             }
             for (FileTypeDetector detector : fileSystemContext.getFileTypeDetectors(validMimeTypes)) {
-                result = detector.findMimeType(this);
-                if (result != null && (validMimeTypes == null || validMimeTypes.contains(result))) {
-                    return result;
+                try {
+                    result = detector.findMimeType(this);
+                    if (result != null && (validMimeTypes == null || validMimeTypes.contains(result))) {
+                        return result;
+                    }
+                } catch (IOException ioe) {
+                    continue;
                 }
             }
             return null;
-        } catch (IOException | SecurityException e) {
+        } catch (IOException ioe) {
+            // invalid path
+            return null;
+        } catch (SecurityException e) {
             throw e;
         } catch (Throwable t) {
             throw wrapHostException(t);
         }
     }
 
-    Charset getEncoding(String mimeType) throws IOException {
+    Charset detectEncoding(String mimeType) {
         try {
             assert mimeType != null;
+            checkFileOperationPreconditions();
             Charset result = fileSystemContext.fileSystem.getEncoding(normalizedPath);
             if (result != null) {
                 return result;
             }
             for (FileTypeDetector detector : fileSystemContext.getFileTypeDetectors(Collections.singleton(mimeType))) {
-                result = detector.findEncoding(this);
-                if (result != null) {
-                    return result;
+                try {
+                    result = detector.findEncoding(this);
+                    if (result != null) {
+                        return result;
+                    }
+                } catch (IOException ioe) {
+                    continue;
                 }
             }
             return null;
-        } catch (IOException | UnsupportedOperationException | SecurityException e) {
+        } catch (IOException ioe) {
+            // invalid path
+            return null;
+        } catch (UnsupportedOperationException | SecurityException e) {
             throw e;
         } catch (Throwable t) {
             throw wrapHostException(t);
@@ -1601,6 +1662,7 @@ public final class TruffleFile {
 
     static TruffleFile createTempFile(TruffleFile targetDirectory, String prefix, String suffix, boolean dir, FileAttribute<?>... attrs) throws IOException {
         Objects.requireNonNull(targetDirectory, "TargetDirectory must be non null.");
+        targetDirectory.checkFileOperationPreconditions();
         String usePrefix = prefix != null ? prefix : "";
         String useSuffix = suffix != null ? suffix : (dir ? "" : ".tmp");
         while (true) {
@@ -1623,6 +1685,12 @@ public final class TruffleFile {
         }
     }
 
+    private void checkFileOperationPreconditions() throws IOException {
+        if (isEmptyPath) {
+            throw new NoSuchFileException("");
+        }
+    }
+
     private static TruffleFile createUniquePath(TruffleFile targetDirectory, String prefix, String suffix) {
         long n = TempFileRandomHolder.RANDOM.nextLong();
         n = n == Long.MIN_VALUE ? Long.MAX_VALUE : Math.abs(n);
@@ -1632,6 +1700,23 @@ public final class TruffleFile {
             throw new InvalidPathException(name, "Must be a simple name");
         }
         return result;
+    }
+
+    private static boolean isEmptyPath(Path path) {
+        if (path.isAbsolute()) {
+            return false;
+        }
+        // On Windows all '', '/', '\' represent an empty path.
+        // The path for '' has a single empty name as on Unix.
+        // The path for '/' or '\' have no name.
+        switch (path.getNameCount()) {
+            case 0:
+                return true;
+            case 1:
+                return path.getName(0).toString().isEmpty();
+            default:
+                return false;
+        }
     }
 
     private static final class TempFileRandomHolder {
@@ -1792,6 +1877,7 @@ public final class TruffleFile {
     @TruffleBoundary
     public <T> void setAttribute(AttributeDescriptor<T> attribute, T value, LinkOption... linkOptions) throws IOException {
         try {
+            checkFileOperationPreconditions();
             fileSystemContext.fileSystem.setAttribute(
                             normalizedPath,
                             createAttributeString(attribute.group, Collections.singleton(attribute.name)),
@@ -1824,6 +1910,7 @@ public final class TruffleFile {
             throw new IllegalArgumentException("No descriptors given.");
         }
         try {
+            checkFileOperationPreconditions();
             AttributeGroup group = null;
             List<String> attributeNames = new ArrayList<>();
             for (AttributeDescriptor<?> descriptor : useAttributes) {
@@ -1853,7 +1940,7 @@ public final class TruffleFile {
      * The implementations are registered using
      * {@link TruffleLanguage.Registration#fileTypeDetectors() TruffleLanguage registration}.
      *
-     * @see TruffleFile#getMimeType()
+     * @see TruffleFile#detectMimeType()
      * @see TruffleLanguage.Registration#fileTypeDetectors()
      * @since 19.0
      */
@@ -1885,22 +1972,25 @@ public final class TruffleFile {
     }
 
     static final class FileSystemContext {
-        final FileSystem fileSystem;
-        private final Supplier<Map<String, Collection<? extends FileTypeDetector>>> fileTypeDetectorsSupplier;
-        private volatile Map<String, Collection<? extends FileTypeDetector>> fileTypeDetectors;
 
-        FileSystemContext(FileSystem fileSystem, Supplier<Map<String, Collection<? extends FileTypeDetector>>> fileTypeDetectorsSupplier) {
-            Objects.requireNonNull(fileSystem, "FileSystem must be non null.");
-            Objects.requireNonNull(fileTypeDetectorsSupplier, "FileTypeDetectorsSupplier must be non null.");
+        // instance of PolyglotContextConfig or PolyglotSource.EmbedderFileSystemContext
+        final Object engineObject;
+
+        private volatile Map<String, Collection<? extends FileTypeDetector>> fileTypeDetectors;
+        final FileSystem fileSystem;
+
+        FileSystemContext(Object engineFileSystemContext, FileSystem fileSystem) {
+            Objects.requireNonNull(engineFileSystemContext);
+            Objects.requireNonNull(fileSystem);
+            this.engineObject = engineFileSystemContext;
             this.fileSystem = fileSystem;
-            this.fileTypeDetectorsSupplier = fileTypeDetectorsSupplier;
         }
 
         Iterable<? extends FileTypeDetector> getFileTypeDetectors(Set<String> mimeTypes) {
             Map<String, Collection<? extends FileTypeDetector>> result = fileTypeDetectors;
             if (result == null) {
-                result = fileTypeDetectorsSupplier.get();
-                assert result != null : "FileTypeDetectorsSupplier returned null.";
+                result = LanguageAccessor.engineAccess().getEngineFileTypeDetectors(engineObject);
+                assert result != null;
                 fileTypeDetectors = result;
             }
             Set<FileTypeDetector> filtered = new HashSet<>();
@@ -1936,6 +2026,7 @@ public final class TruffleFile {
 
     private boolean checkAccess(Set<? extends AccessMode> modes, LinkOption... linkOptions) {
         try {
+            checkFileOperationPreconditions();
             fileSystemContext.fileSystem.checkAccess(normalizedPath, modes, linkOptions);
             return true;
         } catch (IOException ioe) {
@@ -1953,6 +2044,7 @@ public final class TruffleFile {
     }
 
     private Object getAttributeImpl(final Path forPath, final String attribute, final LinkOption... options) throws IOException {
+        checkFileOperationPreconditions();
         final Map<String, Object> map = fileSystemContext.fileSystem.readAttributes(forPath, attribute, options);
         final int index = attribute.indexOf(':');
         final String key = index < 0 ? attribute : attribute.substring(index + 1);
@@ -2132,7 +2224,8 @@ public final class TruffleFile {
                     return new TruffleFile(
                                     directory.fileSystemContext,
                                     normalized ? path : directory.path.resolve(path.getFileName()),
-                                    normalized ? path : directory.normalizedPath.resolve(path.getFileName()));
+                                    normalized ? path : directory.normalizedPath.resolve(path.getFileName()),
+                                    false);
                 } catch (DirectoryIteratorException e) {
                     throw e;
                 } catch (Throwable t) {

@@ -170,7 +170,8 @@ public @interface CEntryPoint {
         /**
          * The annotated method returns the {@link IsolateThread} of the current thread in a
          * specified {@link Isolate}. It requires a parameter of type {@link Isolate} for the
-         * isolate in question, and a return type of {@link IsolateThread}. In case of an error,
+         * isolate in question, and a return type of {@link IsolateThread}. In case of an error or
+         * if the current thread is not attached to the specified isolate,
          * {@link WordFactory#nullPointer() NULL} is returned.
          *
          * @since 19.0

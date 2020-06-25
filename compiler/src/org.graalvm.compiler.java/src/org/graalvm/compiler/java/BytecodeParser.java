@@ -349,6 +349,7 @@ import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.PiNode;
+import org.graalvm.compiler.nodes.PluginReplacementNode;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StartNode;
 import org.graalvm.compiler.nodes.StateSplit;
@@ -396,6 +397,7 @@ import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.extended.StateSplitProxyNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -1537,18 +1539,6 @@ public class BytecodeParser implements GraphBuilderContext {
         return ConditionalNode.create((LogicNode) x, NodeView.DEFAULT);
     }
 
-    protected NewInstanceNode createNewInstance(ResolvedJavaType type, boolean fillContents) {
-        return new NewInstanceNode(type, fillContents);
-    }
-
-    protected NewArrayNode createNewArray(ResolvedJavaType elementType, ValueNode length, boolean fillContents) {
-        return new NewArrayNode(elementType, length, fillContents);
-    }
-
-    protected NewMultiArrayNode createNewMultiArray(ResolvedJavaType type, ValueNode[] dimensions) {
-        return new NewMultiArrayNode(type, dimensions);
-    }
-
     protected ValueNode genLoadField(ValueNode receiver, ResolvedJavaField field) {
         StampPair stamp = graphBuilderConfig.getPlugins().getOverridingStamp(this, field.getType(), false);
         if (stamp == null) {
@@ -1564,7 +1554,7 @@ public class BytecodeParser implements GraphBuilderContext {
         return new StateSplitProxyNode(fieldRead);
     }
 
-    protected ValueNode maybeEmitExplicitNullCheck(ValueNode receiver) {
+    public ValueNode maybeEmitExplicitNullCheck(ValueNode receiver) {
         if (StampTool.isPointerNonNull(receiver.stamp(NodeView.DEFAULT)) || !needsExplicitNullCheckException(receiver)) {
             return receiver;
         }
@@ -1601,7 +1591,7 @@ public class BytecodeParser implements GraphBuilderContext {
         return emitBytecodeExceptionCheck(condition, false, BytecodeExceptionKind.DIVISION_BY_ZERO);
     }
 
-    private AbstractBeginNode emitBytecodeExceptionCheck(LogicNode condition, boolean passingOnTrue, BytecodeExceptionKind exceptionKind, ValueNode... arguments) {
+    public AbstractBeginNode emitBytecodeExceptionCheck(LogicNode condition, boolean passingOnTrue, BytecodeExceptionKind exceptionKind, ValueNode... arguments) {
         if (passingOnTrue ? condition.isTautology() : condition.isContradiction()) {
             return null;
         }
@@ -2185,7 +2175,22 @@ public class BytecodeParser implements GraphBuilderContext {
         }
     }
 
-    @SuppressWarnings("try")
+    @Override
+    public void replacePlugin(GeneratedInvocationPlugin plugin, ResolvedJavaMethod targetMethod, ValueNode[] args, PluginReplacementNode.ReplacementFunction replacementFunction) {
+        assert replacementFunction != null;
+        JavaType returnType = maybeEagerlyResolve(targetMethod.getSignature().getReturnType(method.getDeclaringClass()), targetMethod.getDeclaringClass());
+        StampPair returnStamp = getReplacements().getGraphBuilderPlugins().getOverridingStamp(this, returnType, false);
+        if (returnStamp == null) {
+            returnStamp = StampFactory.forDeclaredType(getAssumptions(), returnType, false);
+        }
+        ValueNode node = new PluginReplacementNode(returnStamp.getTrustedStamp(), args, replacementFunction, plugin.getClass().getSimpleName());
+        if (returnType.getJavaKind() == JavaKind.Void) {
+            add(node);
+        } else {
+            addPush(returnType.getJavaKind(), node);
+        }
+    }
+
     protected boolean tryInvocationPlugin(InvokeKind invokeKind, ValueNode[] args, ResolvedJavaMethod targetMethod, JavaKind resultType) {
         InvocationPlugin plugin = graphBuilderConfig.getPlugins().getInvocationPlugins().lookupInvocation(targetMethod);
         if (plugin != null) {
@@ -2195,17 +2200,25 @@ public class BytecodeParser implements GraphBuilderContext {
                 return false;
             }
 
-            InvocationPluginReceiver pluginReceiver = invocationPluginReceiver.init(targetMethod, args);
-            assert invokeKind.isDirect() : "Cannot apply invocation plugin on an indirect call site.";
+            if (applyInvocationPlugin(invokeKind, args, targetMethod, resultType, plugin)) {
+                return !plugin.isDecorator();
+            }
+        }
+        return false;
+    }
 
-            InvocationPluginAssertions assertions = Assertions.assertionsEnabled() ? new InvocationPluginAssertions(plugin, args, targetMethod, resultType) : null;
-            try (DebugCloseable context = openNodeContext(targetMethod)) {
-                if (plugin.execute(this, targetMethod, pluginReceiver, args)) {
-                    assert assertions.check(true);
-                    return !plugin.isDecorator();
-                } else {
-                    assert assertions.check(false);
-                }
+    @SuppressWarnings("try")
+    protected boolean applyInvocationPlugin(InvokeKind invokeKind, ValueNode[] args, ResolvedJavaMethod targetMethod, JavaKind resultType, InvocationPlugin plugin) {
+        InvocationPluginReceiver pluginReceiver = invocationPluginReceiver.init(targetMethod, args);
+        assert invokeKind.isDirect() : "Cannot apply invocation plugin on an indirect call site.";
+
+        InvocationPluginAssertions assertions = Assertions.assertionsEnabled() ? new InvocationPluginAssertions(plugin, args, targetMethod, resultType) : null;
+        try (DebugCloseable context = openNodeContext(targetMethod)) {
+            if (plugin.execute(this, targetMethod, pluginReceiver, args)) {
+                assert assertions.check(true);
+                return true;
+            } else {
+                assert assertions.check(false);
             }
         }
         return false;
@@ -4584,7 +4597,7 @@ public class BytecodeParser implements GraphBuilderContext {
             }
         }
 
-        frameState.push(JavaKind.Object, append(createNewInstance(resolvedType, true)));
+        frameState.push(JavaKind.Object, append(new NewInstanceNode(resolvedType, true)));
     }
 
     /**
@@ -4627,7 +4640,7 @@ public class BytecodeParser implements GraphBuilderContext {
             }
         }
 
-        frameState.push(JavaKind.Object, append(createNewArray(elementType, length, true)));
+        frameState.push(JavaKind.Object, append(new NewArrayNode(elementType, length, true)));
     }
 
     private void genNewObjectArray(int cpi) {
@@ -4658,7 +4671,7 @@ public class BytecodeParser implements GraphBuilderContext {
             }
         }
 
-        frameState.push(JavaKind.Object, append(createNewArray(resolvedType, length, true)));
+        frameState.push(JavaKind.Object, append(new NewArrayNode(resolvedType, length, true)));
     }
 
     private void genNewMultiArray(int cpi) {
@@ -4696,7 +4709,7 @@ public class BytecodeParser implements GraphBuilderContext {
             }
         }
 
-        frameState.push(JavaKind.Object, append(createNewMultiArray(resolvedType, dims)));
+        frameState.push(JavaKind.Object, append(new NewMultiArrayNode(resolvedType, dims)));
     }
 
     protected void genGetField(int cpi, int opcode) {

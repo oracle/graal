@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,17 +30,17 @@
 void *global;
 
 void **returnPointerToGlobal() {
-  return &global;
+    return &global;
 }
 
 void *returnGlobal() {
-  return global;
+    return global;
 }
 
 void setter(void **target, void *value) {
-	*target = value;
+    *target = value;
 }
 
 int main() {
-  return 0;
+    return 0;
 }

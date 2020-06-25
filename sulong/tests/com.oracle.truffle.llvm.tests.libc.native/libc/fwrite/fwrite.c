@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,7 +31,7 @@
 #include <stdio.h>
 
 int main() {
-  char buffer[] = { 'x', 'y', 'z', '\n', 0 };
-  int written = fwrite(buffer, sizeof(char), sizeof(buffer), stdout);
-  printf("written: %d\n", written);
+    char buffer[] = { 'x', 'y', 'z', '\n', 0 };
+    int written = fwrite(buffer, sizeof(char), sizeof(buffer), stdout);
+    printf("written: %d\n", written);
 }

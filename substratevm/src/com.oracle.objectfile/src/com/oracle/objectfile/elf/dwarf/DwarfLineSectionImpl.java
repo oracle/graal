@@ -34,6 +34,7 @@ import com.oracle.objectfile.debugentry.DirEntry;
 import com.oracle.objectfile.debugentry.FileEntry;
 import com.oracle.objectfile.debugentry.PrimaryEntry;
 import com.oracle.objectfile.debugentry.Range;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange;
 import org.graalvm.compiler.debug.DebugContext;
 
 import java.util.Map;
@@ -320,7 +321,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         /*
          * 4 ubyte prologue length includes rest of header and dir + file table section.
          */
-        int prologueSize = classEntry.getLinePrologueSize() - 6;
+        int prologueSize = classEntry.getLinePrologueSize() - (4 + 2 + 4);
         pos = putInt(prologueSize, buffer, pos);
         /*
          * 1 ubyte min instruction length is always 1.
@@ -478,6 +479,32 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
             }
             pos = writeCopyOp(context, buffer, pos);
 
+            /*
+             * On AArch64 gdb expects to see a line record at the start of the method and a second
+             * one at the end of the prologue marking the point where the method code begins for
+             * real. If we don't provide it then gdb will skip to the second line record when we
+             * place a breakpoint on the method.
+             *
+             * We can identify the end of the prologue for normal methods by noting where the stack
+             * frame height is first adjusted. This should normally be no more a few instructions in
+             * total.
+             */
+            if (isAArch64() && !primaryEntry.getFrameSizeInfos().isEmpty()) {
+                DebugFrameSizeChange frameSizeChange = primaryEntry.getFrameSizeInfos().get(0);
+                assert frameSizeChange.getType() == DebugFrameSizeChange.Type.EXTEND;
+                long addressDelta = frameSizeChange.getOffset();
+                if (addressDelta < 16 && (primaryRange.getLo() + addressDelta) < primaryRange.getHi()) {
+                    /*
+                     * we should be able to write this with a special opcode as the prologue should
+                     * only be a few instructions
+                     */
+                    byte opcode = isSpecialOpcode(addressDelta, 0);
+                    assert opcode != DW_LNS_undefined;
+                    pos = writeSpecialOpcode(context, opcode, buffer, pos);
+                    pos = writeCopyOp(context, buffer, pos);
+                    address += addressDelta;
+                }
+            }
             /*
              * Now write a row for each subrange lo and hi.
              */

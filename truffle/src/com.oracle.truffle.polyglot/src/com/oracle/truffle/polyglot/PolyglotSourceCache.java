@@ -86,9 +86,7 @@ final class PolyglotSourceCache {
     }
 
     private static CallTarget parseImpl(PolyglotLanguageContext context, String[] argumentNames, Source source) {
-        if (!EngineAccessor.SOURCE.isLegacySource(source)) {
-            validateSource(context, source);
-        }
+        validateSource(context, source);
         CallTarget parsedTarget = LANGUAGE.parse(context.requireEnv(), source, null, argumentNames);
         if (parsedTarget == null) {
             throw new IllegalStateException(String.format("Parsing resulted in a null CallTarget for %s.", source));

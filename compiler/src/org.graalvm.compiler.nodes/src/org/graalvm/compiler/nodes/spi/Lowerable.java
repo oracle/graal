@@ -36,5 +36,7 @@ public interface Lowerable extends ValueNodeInterface {
      * Expand this node into lower level nodes expressing the same semantics. If the introduced
      * nodes are themselves lowerable, they should be recursively lowered as part of this call.
      */
-    void lower(LoweringTool tool);
+    default void lower(LoweringTool tool) {
+        tool.getLowerer().lower(asNode(), tool);
+    }
 }

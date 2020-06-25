@@ -24,12 +24,48 @@
  */
 package com.oracle.svm.core.os;
 
+import static com.oracle.svm.core.Isolates.IMAGE_HEAP_BEGIN;
+import static com.oracle.svm.core.Isolates.IMAGE_HEAP_END;
+import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_BEGIN;
+import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_END;
+
 import java.util.EnumSet;
 
+import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.c.function.CEntryPointErrors;
+
 public abstract class AbstractCommittedMemoryProvider implements CommittedMemoryProvider {
+
+    @Uninterruptible(reason = "Still being initialized.")
+    protected static int protectSingleIsolateImageHeap() {
+        assert !SubstrateOptions.SpawnIsolates.getValue() : "Must be handled by ImageHeapProvider when SpawnIsolates is enabled";
+        if (!SubstrateOptions.UseOnlyWritableBootImageHeap.getValue()) {
+            /*
+             * Set strict read-only and read+write permissions for the image heap (the entire image
+             * heap should already be read-only, but the linker/loader can place it in a segment
+             * that has the executable bit set unnecessarily)
+             *
+             * If UseOnlyWritableBootImageHeap is set, however, the image heap is writable and
+             * should remain so.
+             */
+            Pointer heapBegin = IMAGE_HEAP_BEGIN.get();
+            UnsignedWord heapSize = IMAGE_HEAP_END.get().subtract(heapBegin);
+            if (VirtualMemoryProvider.get().protect(heapBegin, heapSize, VirtualMemoryProvider.Access.READ) != 0) {
+                return CEntryPointErrors.PROTECT_HEAP_FAILED;
+            }
+            Pointer writableBegin = IMAGE_HEAP_WRITABLE_BEGIN.get();
+            UnsignedWord writableSize = IMAGE_HEAP_WRITABLE_END.get().subtract(writableBegin);
+            if (VirtualMemoryProvider.get().protect(writableBegin, writableSize, VirtualMemoryProvider.Access.READ | VirtualMemoryProvider.Access.WRITE) != 0) {
+                return CEntryPointErrors.PROTECT_HEAP_FAILED;
+            }
+        }
+        return CEntryPointErrors.NO_ERROR;
+    }
 
     @Override
     public boolean protect(PointerBase start, UnsignedWord nbytes, EnumSet<Access> accessFlags) {
@@ -46,5 +82,4 @@ public abstract class AbstractCommittedMemoryProvider implements CommittedMemory
         int success = VirtualMemoryProvider.get().protect(start, nbytes, vmAccessBits);
         return success == 0;
     }
-
 }

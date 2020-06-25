@@ -53,6 +53,7 @@ import com.oracle.truffle.regex.tregex.nodes.input.InputRegionMatchesNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputStartsWithNode;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.PreCalcResultVisitor;
+import com.oracle.truffle.regex.tregex.string.AbstractString;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
@@ -158,8 +159,8 @@ public abstract class LiteralRegexExecRootNode extends RegexExecRootNode impleme
 
     abstract static class NonEmptyLiteralRegexExecRootNode extends LiteralRegexExecRootNode {
 
-        protected final String literal;
-        protected final String mask;
+        protected final AbstractString literal;
+        protected final AbstractString mask;
 
         NonEmptyLiteralRegexExecRootNode(RegexLanguage language, RegexAST ast, PreCalcResultVisitor preCalcResultVisitor) {
             super(language, ast, preCalcResultVisitor);
@@ -169,7 +170,15 @@ public abstract class LiteralRegexExecRootNode extends RegexExecRootNode impleme
 
         @Override
         protected String getLiteral() {
-            return literal;
+            return literal.toString();
+        }
+
+        Object literalContent() {
+            return literal.content();
+        }
+
+        Object maskContent() {
+            return mask == null ? null : mask.content();
         }
     }
 
@@ -188,7 +197,7 @@ public abstract class LiteralRegexExecRootNode extends RegexExecRootNode impleme
 
         @Override
         protected RegexResult execute(Object input, int fromIndex) {
-            int start = indexOfStringNode.execute(input, fromIndex, inputLength(input), literal, mask);
+            int start = indexOfStringNode.execute(input, fromIndex, inputLength(input), literalContent(), maskContent());
             if (start == -1) {
                 return NoMatchResult.getInstance();
             }
@@ -211,7 +220,7 @@ public abstract class LiteralRegexExecRootNode extends RegexExecRootNode impleme
 
         @Override
         protected RegexResult execute(Object input, int fromIndex) {
-            if (fromIndex == 0 && startsWithNode.execute(input, literal, mask)) {
+            if (fromIndex == 0 && startsWithNode.execute(input, literalContent(), maskContent())) {
                 return resultFactory.createFromStart(0);
             } else {
                 return NoMatchResult.getInstance();
@@ -236,8 +245,8 @@ public abstract class LiteralRegexExecRootNode extends RegexExecRootNode impleme
 
         @Override
         protected RegexResult execute(Object input, int fromIndex) {
-            int matchStart = inputLength(input) - literal.length();
-            if ((sticky ? fromIndex == matchStart : fromIndex <= matchStart) && endsWithNode.execute(input, literal, mask)) {
+            int matchStart = inputLength(input) - literal.encodedLength();
+            if ((sticky ? fromIndex == matchStart : fromIndex <= matchStart) && endsWithNode.execute(input, literalContent(), maskContent())) {
                 return resultFactory.createFromEnd(inputLength(input));
             } else {
                 return NoMatchResult.getInstance();
@@ -260,7 +269,7 @@ public abstract class LiteralRegexExecRootNode extends RegexExecRootNode impleme
 
         @Override
         protected RegexResult execute(Object input, int fromIndex) {
-            if (fromIndex == 0 && equalsNode.execute(input, literal, mask)) {
+            if (fromIndex == 0 && equalsNode.execute(input, literalContent(), maskContent())) {
                 return resultFactory.createFromStart(0);
             } else {
                 return NoMatchResult.getInstance();
@@ -283,7 +292,7 @@ public abstract class LiteralRegexExecRootNode extends RegexExecRootNode impleme
 
         @Override
         protected RegexResult execute(Object input, int fromIndex) {
-            if (regionMatchesNode.execute(input, fromIndex, literal, 0, literal.length(), mask)) {
+            if (regionMatchesNode.execute(input, fromIndex, literalContent(), 0, literal.encodedLength(), maskContent())) {
                 return resultFactory.createFromStart(fromIndex);
             } else {
                 return NoMatchResult.getInstance();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -38,6 +38,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 
 public abstract class ToI16 extends ForeignToLLVM {
 
@@ -86,12 +87,13 @@ public abstract class ToI16 extends ForeignToLLVM {
         return (short) getSingleStringCharacter(value);
     }
 
-    @Specialization(limit = "5", guards = {"notLLVM(obj)", "interop.isNumber(obj)"})
+    @Specialization(limit = "5", guards = {"foreigns.isForeign(obj)", "interop.isNumber(foreigns.asForeign(obj))"})
     protected short fromForeign(Object obj,
-                    @CachedLibrary("obj") InteropLibrary interop,
+                    @CachedLibrary("obj") LLVMAsForeignLibrary foreigns,
+                    @CachedLibrary(limit = "3") InteropLibrary interop,
                     @Cached BranchProfile exception) {
         try {
-            return interop.asShort(obj);
+            return interop.asShort(foreigns.asForeign(obj));
         } catch (UnsupportedMessageException ex) {
             exception.enter();
             throw new LLVMPolyglotException(this, "Polyglot number can't be converted to short.");

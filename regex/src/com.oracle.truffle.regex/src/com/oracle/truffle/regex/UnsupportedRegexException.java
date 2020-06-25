@@ -44,7 +44,7 @@ import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.nodes.Node;
 
 @SuppressWarnings("serial")
-public class UnsupportedRegexException extends RuntimeException implements TruffleException {
+public final class UnsupportedRegexException extends RuntimeException implements TruffleException {
 
     private String reason;
     private RegexSource regexSrc;
@@ -102,7 +102,7 @@ public class UnsupportedRegexException extends RuntimeException implements Truff
      */
     @SuppressWarnings("sync-override")
     @Override
-    public final Throwable fillInStackTrace() {
+    public Throwable fillInStackTrace() {
         return this;
     }
 

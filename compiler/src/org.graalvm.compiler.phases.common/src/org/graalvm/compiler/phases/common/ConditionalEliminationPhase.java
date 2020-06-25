@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -287,8 +287,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
             this.map = graph.createNodeMap();
             this.pendingTests = new ArrayDeque<>();
             this.conditions = new ArrayDeque<>();
-            tool = GraphUtil.getDefaultSimplifier(context.getMetaAccess(), context.getConstantReflection(), context.getConstantFieldProvider(), false, graph.getAssumptions(), graph.getOptions(),
-                            context.getLowerer());
+            tool = GraphUtil.getDefaultSimplifier(context, false, graph.getAssumptions(), graph.getOptions());
             mergeMaps = EconomicMap.create(Equivalence.IDENTITY);
             infoElementProvider = new InfoElementProvider() {
 

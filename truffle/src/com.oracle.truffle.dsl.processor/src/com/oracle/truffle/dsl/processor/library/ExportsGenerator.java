@@ -886,17 +886,24 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             if (libraryExports.isFinalReceiver()) {
                 acceptsBuilder.string(receiverName, " instanceof ").type(exportReceiverType);
             } else {
+                TypeMirror receiverType = libraryExports.getReceiverType();
                 TypeMirror receiverClassType = new CodeTypeMirror.DeclaredCodeTypeMirror(context.getTypeElement(Class.class),
-                                Arrays.asList(new CodeTypeMirror.WildcardTypeMirror(libraryExports.getReceiverType(), null)));
+                                Arrays.asList(new CodeTypeMirror.WildcardTypeMirror(receiverType, null)));
                 if (libraryGen != null) {
                     libraryGen.add(new CodeVariableElement(modifiers(PRIVATE, FINAL), receiverClassType, "receiverClass_"));
                 }
 
                 if (constructor != null) {
-                    if (cached || ElementUtils.isObject(libraryExports.getReceiverType())) {
-                        constructor.appendBuilder().startStatement().string("this.receiverClass_ = " + receiverName + ".getClass()").end();
+                    boolean doCast = !((TypeElement) ((DeclaredType) receiverType).asElement()).getTypeParameters().isEmpty();
+                    CodeTreeBuilder builder = constructor.appendBuilder().startStatement().string("this.receiverClass_ = ");
+                    if (doCast) {
+                        builder.cast(receiverClassType);
+                        constructor.addAnnotationMirror(LibraryGenerator.createSuppressWarningsUnchecked(context));
+                    }
+                    if (cached || ElementUtils.isObject(receiverType)) {
+                        builder.string(receiverName + ".getClass()").end();
                     } else {
-                        constructor.appendBuilder().startStatement().string("this.receiverClass_ = (").cast(libraryExports.getReceiverType()).string(receiverName + ").getClass()").end();
+                        builder.string("(").cast(receiverType).string(receiverName + ").getClass()").end();
                     }
                 }
 

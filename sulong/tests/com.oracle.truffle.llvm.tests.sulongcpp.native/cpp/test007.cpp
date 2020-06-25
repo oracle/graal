@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,7 +32,7 @@
 class someClass {};
 
 int main(int argc, char *argv[]) {
-  int a;
-  someClass b;
-  return typeid(a) == typeid(b) ? 1 : 0;
+    int a;
+    someClass b;
+    return typeid(a) == typeid(b) ? 1 : 0;
 }

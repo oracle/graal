@@ -40,6 +40,7 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.word.WordBase;
 
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -47,10 +48,8 @@ import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.image.AbstractImageHeapLayouter.ImageHeapLayout;
+import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.hosted.meta.HostedClass;
@@ -68,10 +67,10 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public final class NativeImageHeapWriter {
     private final NativeImageHeap heap;
-    private final ImageHeapLayout heapLayout;
+    private final ImageHeapLayoutInfo heapLayout;
     private long sectionOffsetOfARelocatablePointer;
 
-    public NativeImageHeapWriter(NativeImageHeap heap, ImageHeapLayout heapLayout) {
+    public NativeImageHeapWriter(NativeImageHeap heap, ImageHeapLayoutInfo heapLayout) {
         this.heap = heap;
         this.heapLayout = heapLayout;
         this.sectionOffsetOfARelocatablePointer = -1;
@@ -82,15 +81,15 @@ public final class NativeImageHeapWriter {
      * image.
      */
     @SuppressWarnings("try")
-    public long writeHeap(DebugContext debug, final RelocatableBuffer roBuffer, final RelocatableBuffer rwBuffer) {
+    public long writeHeap(DebugContext debug, RelocatableBuffer buffer) {
         try (Indent perHeapIndent = debug.logAndIndent("BootImageHeap.writeHeap:")) {
             for (ObjectInfo info : heap.getObjects()) {
                 assert !heap.isBlacklisted(info.getObject());
-                writeObject(info, roBuffer, rwBuffer);
+                writeObject(info, buffer);
             }
             // Only static fields that are writable get written to the native image heap,
             // the read-only static fields have been inlined into the code.
-            writeStaticFields(rwBuffer);
+            writeStaticFields(buffer);
         }
         return sectionOffsetOfARelocatablePointer;
     }
@@ -125,16 +124,21 @@ public final class NativeImageHeapWriter {
         assert (index % heap.getObjectLayout().getReferenceSize() == 0) : "index " + index + " must be reference-aligned.";
     }
 
-    private static void verifyTargetDidNotChange(Object target, Object reason, Object targetInfo) {
+    private void verifyTargetDidNotChange(Object target, Object reason, Object targetInfo) {
         if (targetInfo == null) {
-            throw UserError.abort(String.format("Static field or an object referenced from a static field changed during native image generation?%n" +
-                            "  object:%s  of class: %s%n  reachable through:%n%s", target, target.getClass().getTypeName(), NativeImageHeap.fillReasonStack(new StringBuilder(), reason)));
+            throw heap.reportIllegalType(target, reason);
         }
     }
 
     private void writeField(RelocatableBuffer buffer, ObjectInfo fields, HostedField field, JavaConstant receiver, ObjectInfo info) {
         int index = fields.getIndexInBuffer(field.getLocation());
-        JavaConstant value = field.readValue(receiver);
+        JavaConstant value;
+        try {
+            value = field.readValue(receiver);
+        } catch (AnalysisError.TypeNotFoundError ex) {
+            throw heap.reportIllegalType(ex.getType(), info);
+        }
+
         if (value.getJavaKind() == JavaKind.Object && SubstrateObjectConstant.asObject(value) instanceof RelocatedPointer) {
             addNonDataRelocation(buffer, index, (RelocatedPointer) SubstrateObjectConstant.asObject(value));
         } else {
@@ -278,19 +282,11 @@ public final class NativeImageHeapWriter {
         }
     }
 
-    private static RelocatableBuffer bufferForPartition(final ObjectInfo info, final RelocatableBuffer roBuffer, final RelocatableBuffer rwBuffer) {
-        VMError.guarantee(info != null, "[BootImageHeap.bufferForPartition: info is null]");
-        VMError.guarantee(info.getPartition() != null, "[BootImageHeap.bufferForPartition: info.partition is null]");
-
-        return info.getPartition().isWritable() ? rwBuffer : roBuffer;
-    }
-
-    private void writeObject(ObjectInfo info, final RelocatableBuffer roBuffer, final RelocatableBuffer rwBuffer) {
+    private void writeObject(ObjectInfo info, RelocatableBuffer buffer) {
         /*
          * Write a reference from the object to its hub. This lives at layout.getHubOffset() from
          * the object base.
          */
-        final RelocatableBuffer buffer = bufferForPartition(info, roBuffer, rwBuffer);
         ObjectLayout objectLayout = heap.getObjectLayout();
         final int indexInBuffer = info.getIndexInBuffer(objectLayout.getHubOffset());
         assert objectLayout.isAligned(indexInBuffer);
@@ -372,7 +368,13 @@ public final class NativeImageHeapWriter {
                 assert oarray.length == length;
                 for (int i = 0; i < length; i++) {
                     final int elementIndex = info.getIndexInBuffer(objectLayout.getArrayElementOffset(kind, i));
-                    final Object element = heap.getAnalysisUniverse().replaceObject(oarray[i]);
+                    Object element;
+                    try {
+                        element = heap.getAnalysisUniverse().replaceObject(oarray[i]);
+                    } catch (AnalysisError.TypeNotFoundError ex) {
+                        throw heap.reportIllegalType(ex.getType(), info);
+                    }
+
                     assert (oarray[i] instanceof RelocatedPointer) == (element instanceof RelocatedPointer);
                     writeConstant(buffer, elementIndex, kind, element, info);
                 }

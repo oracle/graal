@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,8 +31,8 @@
 #include <stdio.h>
 
 int main() {
-  char arr[50];
-  memset(arr, 'a', 50 * sizeof(char));
-  strncpy(arr, "hello world!", 50);
-  printf("%s\n", arr);
+    char arr[50];
+    memset(arr, 'a', 50 * sizeof(char));
+    strncpy(arr, "hello world!", 50);
+    printf("%s\n", arr);
 }

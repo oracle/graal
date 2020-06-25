@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -533,7 +533,7 @@ public class GraphPrintVisitor implements Closeable {
 
     private void readNodeProperties(Node node) {
         NodeClass nodeClass = NodeClass.get(node);
-        for (Object field : nodeClass.getNodeFields()) {
+        for (Object field : nodeClass.getNodeFieldArray()) {
             if (isDataField(nodeClass, field)) {
                 String key = nodeClass.getFieldName(field);
                 if (!getElementByObject(node).getProperties().containsKey(key)) {
@@ -612,7 +612,7 @@ public class GraphPrintVisitor implements Closeable {
         LinkedHashMap<String, Node> nodes = new LinkedHashMap<>();
         NodeClass nodeClass = NodeClass.get(node);
 
-        for (Object field : nodeClass.getNodeFields()) {
+        for (Object field : nodeClass.getNodeFieldArray()) {
             if (nodeClass.isChildField(field)) {
                 Object value = nodeClass.getFieldObject(field, node);
                 if (value != null) {

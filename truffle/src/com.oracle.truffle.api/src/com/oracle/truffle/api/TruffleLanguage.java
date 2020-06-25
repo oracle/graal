@@ -61,7 +61,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.ServiceLoader;
-import java.util.function.Supplier;
+import java.util.concurrent.ExecutorService;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
@@ -78,6 +78,7 @@ import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleFile.FileSystemContext;
 import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.Frame;
@@ -590,10 +591,16 @@ public abstract class TruffleLanguage<C> {
      * case, the finalization order may be non-deterministic and/or not respect the order specified
      * by language dependencies.
      * <p>
-     * All threads {@link Env#createThread(Runnable) created} by a language must be stopped after
-     * finalizeContext was called. The languages are responsible for fulfilling that contract,
-     * otherwise an {@link AssertionError} is thrown. It is recommended to join all threads that
-     * were disposed.
+     * All threads {@link Env#createThread(Runnable) created} by a language must be stopped and
+     * joined during finalizeContext. The languages are responsible for fulfilling that contract,
+     * otherwise an {@link AssertionError} is thrown. It's not safe to use the
+     * {@link ExecutorService#awaitTermination(long, java.util.concurrent.TimeUnit)} to detect
+     * Thread termination as the polyglot thread may be cancelled before executing the executor
+     * worker.
+     * <p>
+     * Typical implementation looks like:
+     *
+     * {@link TruffleLanguageSnippets.AsyncThreadLanguage#finalizeContext}
      *
      * @see Registration#dependentLanguages() for specifying language dependencies.
      * @param context the context created by
@@ -1541,8 +1548,6 @@ public abstract class TruffleLanguage<C> {
         private final Map<String, Object> config;
         private final OptionValues options;
         private final String[] applicationArguments;
-        private final TruffleFile.FileSystemContext fileSystemContext;
-        private final TruffleFile.FileSystemContext internalFileSystemContext;
 
         @CompilationFinal volatile List<Object> services;
 
@@ -1555,8 +1560,7 @@ public abstract class TruffleLanguage<C> {
 
         @SuppressWarnings("unchecked")
         Env(Object polyglotLanguageContext, TruffleLanguage<?> language, OutputStream out, OutputStream err, InputStream in, Map<String, Object> config, OptionValues options,
-                        String[] applicationArguments,
-                        FileSystem fileSystem, FileSystem internalFileSystem, Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors) {
+                        String[] applicationArguments) {
             this.polyglotLanguageContext = polyglotLanguageContext;
             this.spi = (TruffleLanguage<Object>) language;
             this.in = in;
@@ -1566,8 +1570,14 @@ public abstract class TruffleLanguage<C> {
             this.options = options;
             this.applicationArguments = applicationArguments == null ? new String[0] : applicationArguments;
             this.valid = true;
-            this.fileSystemContext = new TruffleFile.FileSystemContext(fileSystem, fileTypeDetectors);
-            this.internalFileSystemContext = new TruffleFile.FileSystemContext(internalFileSystem, fileTypeDetectors);
+        }
+
+        TruffleFile.FileSystemContext getPublicFileSystemContext() {
+            return (TruffleFile.FileSystemContext) LanguageAccessor.engineAccess().getPublicFileSystemContext(polyglotLanguageContext);
+        }
+
+        TruffleFile.FileSystemContext getInternalFileSystemContext() {
+            return (TruffleFile.FileSystemContext) LanguageAccessor.engineAccess().getInternalFileSystemContext(polyglotLanguageContext);
         }
 
         Object getPolyglotLanguageContext() {
@@ -1883,7 +1893,7 @@ public abstract class TruffleLanguage<C> {
          */
         public Object asHostObject(Object value) {
             if (!isHostObject(value)) {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw new ClassCastException();
             }
             try {
@@ -2552,12 +2562,13 @@ public abstract class TruffleLanguage<C> {
         @TruffleBoundary
         public TruffleFile getPublicTruffleFile(String path) {
             checkDisposed();
+            FileSystemContext fs = getPublicFileSystemContext();
             try {
-                return new TruffleFile(fileSystemContext, fileSystemContext.fileSystem.parsePath(path));
+                return new TruffleFile(fs, fs.fileSystem.parsePath(path));
             } catch (UnsupportedOperationException e) {
                 throw e;
             } catch (Throwable t) {
-                throw TruffleFile.wrapHostException(t, fileSystemContext.fileSystem);
+                throw TruffleFile.wrapHostException(t, fs.fileSystem);
             }
         }
 
@@ -2575,12 +2586,13 @@ public abstract class TruffleLanguage<C> {
         @TruffleBoundary
         public TruffleFile getPublicTruffleFile(URI uri) {
             checkDisposed();
+            FileSystemContext fs = getPublicFileSystemContext();
             try {
-                return new TruffleFile(fileSystemContext, fileSystemContext.fileSystem.parsePath(uri));
+                return new TruffleFile(fs, fs.fileSystem.parsePath(uri));
             } catch (UnsupportedOperationException e) {
                 throw new FileSystemNotFoundException("FileSystem for: " + uri.getScheme() + " scheme is not supported.");
             } catch (Throwable t) {
-                throw TruffleFile.wrapHostException(t, fileSystemContext.fileSystem);
+                throw TruffleFile.wrapHostException(t, fs.fileSystem);
             }
         }
 
@@ -2602,12 +2614,13 @@ public abstract class TruffleLanguage<C> {
         @TruffleBoundary
         public TruffleFile getInternalTruffleFile(String path) {
             checkDisposed();
+            FileSystemContext fs = getInternalFileSystemContext();
             try {
-                return new TruffleFile(internalFileSystemContext, internalFileSystemContext.fileSystem.parsePath(path));
+                return new TruffleFile(fs, fs.fileSystem.parsePath(path));
             } catch (UnsupportedOperationException e) {
                 throw e;
             } catch (Throwable t) {
-                throw TruffleFile.wrapHostException(t, internalFileSystemContext.fileSystem);
+                throw TruffleFile.wrapHostException(t, fs.fileSystem);
             }
         }
 
@@ -2629,12 +2642,13 @@ public abstract class TruffleLanguage<C> {
         @TruffleBoundary
         public TruffleFile getInternalTruffleFile(URI uri) {
             checkDisposed();
+            FileSystemContext fs = getInternalFileSystemContext();
             try {
-                return new TruffleFile(internalFileSystemContext, internalFileSystemContext.fileSystem.parsePath(uri));
+                return new TruffleFile(fs, fs.fileSystem.parsePath(uri));
             } catch (UnsupportedOperationException e) {
                 throw new FileSystemNotFoundException("FileSystem for: " + uri.getScheme() + " scheme is not supported.");
             } catch (Throwable t) {
-                throw TruffleFile.wrapHostException(t, internalFileSystemContext.fileSystem);
+                throw TruffleFile.wrapHostException(t, fs.fileSystem);
             }
         }
 
@@ -2674,6 +2688,8 @@ public abstract class TruffleLanguage<C> {
             if (!currentWorkingDirectory.isDirectory()) {
                 throw new IllegalArgumentException("Current working directory must be directory.");
             }
+            FileSystemContext fileSystemContext = getPublicFileSystemContext();
+            FileSystemContext internalFileSystemContext = getInternalFileSystemContext();
             try {
                 fileSystemContext.fileSystem.setCurrentWorkingDirectory(currentWorkingDirectory.getSPIPath());
                 if (fileSystemContext.fileSystem != internalFileSystemContext.fileSystem) {
@@ -2695,10 +2711,11 @@ public abstract class TruffleLanguage<C> {
         @TruffleBoundary
         public String getFileNameSeparator() {
             checkDisposed();
+            FileSystemContext fs = getPublicFileSystemContext();
             try {
-                return fileSystemContext.fileSystem.getSeparator();
+                return fs.fileSystem.getSeparator();
             } catch (Throwable t) {
-                throw TruffleFile.wrapHostException(t, fileSystemContext.fileSystem);
+                throw TruffleFile.wrapHostException(t, fs.fileSystem);
             }
         }
 
@@ -2712,10 +2729,11 @@ public abstract class TruffleLanguage<C> {
         @TruffleBoundary
         public String getPathSeparator() {
             checkDisposed();
+            FileSystemContext fs = getPublicFileSystemContext();
             try {
-                return fileSystemContext.fileSystem.getPathSeparator();
+                return fs.fileSystem.getPathSeparator();
             } catch (Throwable t) {
-                throw TruffleFile.wrapHostException(t, fileSystemContext.fileSystem);
+                throw TruffleFile.wrapHostException(t, fs.fileSystem);
             }
         }
 
@@ -2772,9 +2790,10 @@ public abstract class TruffleLanguage<C> {
             if (!isCreateProcessAllowed()) {
                 throw new TruffleSecurityException("Process creation is not allowed, to enable it set Context.Builder.allowCreateProcess(true).");
             }
+            FileSystemContext fs = getPublicFileSystemContext();
             List<String> cmd = new ArrayList<>(command.length);
             Collections.addAll(cmd, command);
-            return LanguageAccessor.ioAccess().createProcessBuilder(polyglotLanguageContext, fileSystemContext.fileSystem, cmd);
+            return LanguageAccessor.ioAccess().createProcessBuilder(polyglotLanguageContext, fs.fileSystem, cmd);
         }
 
         /**
@@ -2826,13 +2845,14 @@ public abstract class TruffleLanguage<C> {
          */
         @TruffleBoundary
         public TruffleFile createTempFile(TruffleFile dir, String prefix, String suffix, FileAttribute<?>... attrs) throws IOException {
+            FileSystemContext fs = getPublicFileSystemContext();
             try {
-                TruffleFile useDir = dir == null ? new TruffleFile(fileSystemContext, fileSystemContext.fileSystem.getTempDirectory()) : dir;
+                TruffleFile useDir = dir == null ? new TruffleFile(fs, fs.fileSystem.getTempDirectory()) : dir;
                 return TruffleFile.createTempFile(useDir, prefix, suffix, false, attrs);
             } catch (UnsupportedOperationException | IllegalArgumentException | IOException | SecurityException e) {
                 throw e;
             } catch (Throwable t) {
-                throw TruffleFile.wrapHostException(t, fileSystemContext.fileSystem);
+                throw TruffleFile.wrapHostException(t, fs.fileSystem);
             }
         }
 
@@ -2861,13 +2881,14 @@ public abstract class TruffleLanguage<C> {
          */
         @TruffleBoundary
         public TruffleFile createTempDirectory(TruffleFile dir, String prefix, FileAttribute<?>... attrs) throws IOException {
+            FileSystemContext fs = getPublicFileSystemContext();
             try {
-                TruffleFile useDir = dir == null ? new TruffleFile(fileSystemContext, fileSystemContext.fileSystem.getTempDirectory()) : dir;
+                TruffleFile useDir = dir == null ? new TruffleFile(fs, fs.fileSystem.getTempDirectory()) : dir;
                 return TruffleFile.createTempFile(useDir, prefix, null, true, attrs);
             } catch (UnsupportedOperationException | IllegalArgumentException | IOException | SecurityException e) {
                 throw e;
             } catch (Throwable t) {
-                throw TruffleFile.wrapHostException(t, fileSystemContext.fileSystem);
+                throw TruffleFile.wrapHostException(t, fs.fileSystem);
             }
         }
 
@@ -3216,6 +3237,7 @@ class TruffleLanguageSnippets {
         }
 
         final Assumption singleThreaded = Truffle.getRuntime().createAssumption();
+        final List<Thread> startedThreads = new ArrayList<>();
 
     }
 
@@ -3359,6 +3381,60 @@ class TruffleLanguageSnippets {
         }
     }
     // END: TruffleLanguageSnippets.MultiThreadedLanguage#initializeThread
+
+    abstract
+    // BEGIN: TruffleLanguageSnippets.AsyncThreadLanguage#finalizeContext
+    class AsyncThreadLanguage extends TruffleLanguage<Context> {
+
+        @Override
+        protected Context createContext(Env env) {
+            return new Context(env);
+        }
+
+        @Override
+        protected boolean isThreadAccessAllowed(Thread thread,
+                        boolean singleThreaded) {
+            // allow access from any thread instead of just one
+            return true;
+        }
+
+        @Override
+        protected void initializeContext(Context context) throws Exception {
+            // create and start a Thread for the asynchronous task
+            // remeber the Thread reference to stop and join it in
+            // the finalizeContext
+            Thread t = context.env.createThread(new Runnable() {
+                @Override
+                public void run() {
+                    // asynchronous task
+                }
+            });
+            context.startedThreads.add(t);
+            t.start();
+        }
+
+        @Override
+        protected void finalizeContext(Context context) {
+            // stop and join all the created Threads
+            boolean interrupted = false;
+            for (int i = 0; i < context.startedThreads.size();) {
+                Thread threadToJoin  = context.startedThreads.get(i);
+                try {
+                    if (threadToJoin != Thread.currentThread()) {
+                        threadToJoin.interrupt();
+                        threadToJoin.join();
+                    }
+                    i++;
+                } catch (InterruptedException ie) {
+                    interrupted = true;
+                }
+            }
+            if (interrupted) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+    // END: TruffleLanguageSnippets.AsyncThreadLanguage#finalizeContext
 
 
 

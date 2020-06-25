@@ -43,14 +43,15 @@ package com.oracle.truffle.sl.runtime;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.sl.SLLanguage;
 
 @ExportLibrary(InteropLibrary.class)
@@ -140,9 +141,9 @@ final class FunctionsObject implements TruffleObject {
         }
 
         @ExportMessage
-        Object readArrayElement(long index) throws InvalidArrayIndexException {
+        Object readArrayElement(long index, @Cached BranchProfile error) throws InvalidArrayIndexException {
             if (!isArrayElementReadable(index)) {
-                CompilerDirectives.transferToInterpreter();
+                error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
             return names[(int) index];

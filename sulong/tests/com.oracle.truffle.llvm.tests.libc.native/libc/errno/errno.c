@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,8 +31,8 @@
 #include <errno.h>
 
 int main() {
-  // should be zero but currently fails using Native Sulong (see GR-6577):
-  // printf("errno: %d\n", errno);
-  errno = EINVAL;
-  printf("errno: %d\n", errno);
+    // should be zero but currently fails using Native Sulong (see GR-6577):
+    // printf("errno: %d\n", errno);
+    errno = EINVAL;
+    printf("errno: %d\n", errno);
 }

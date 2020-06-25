@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,20 +24,22 @@
  */
 package org.graalvm.compiler.hotspot;
 
-import static jdk.vm.ci.common.InitTimer.timer;
-import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
-import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
-import static org.graalvm.compiler.core.common.GraalOptions.HotSpotPrintInlining;
-import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfigAccess.JDK;
-
-import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.EnumMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Supplier;
-
+import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.code.stack.StackIntrospection;
+import jdk.vm.ci.common.InitTimer;
+import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaType;
+import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
+import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.runtime.JVMCI;
+import jdk.vm.ci.runtime.JVMCIBackend;
+import jdk.vm.ci.services.Services;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
@@ -78,22 +80,19 @@ import org.graalvm.compiler.replacements.SnippetCounter.Group;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 
-import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.code.stack.StackIntrospection;
-import jdk.vm.ci.common.InitTimer;
-import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
-import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
-import jdk.vm.ci.hotspot.HotSpotResolvedJavaType;
-import jdk.vm.ci.hotspot.HotSpotResolvedObjectType;
-import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.runtime.JVMCI;
-import jdk.vm.ci.runtime.JVMCIBackend;
-import jdk.vm.ci.services.Services;
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
+
+import static jdk.vm.ci.common.InitTimer.timer;
+import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
+import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
+import static org.graalvm.compiler.core.common.GraalOptions.HotSpotPrintInlining;
+import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfigAccess.JDK;
 
 //JaCoCo Exclude
 
@@ -103,8 +102,10 @@ import jdk.vm.ci.services.Services;
 public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
     private static final boolean IS_AOT = Boolean.parseBoolean(Services.getSavedProperties().get("com.oracle.graalvm.isaot"));
+
     /**
-     * A factory for {@link HotSpotGraalManagementRegistration} injected by {@code LibGraalFeature}.
+     * A factory for a {@link HotSpotGraalManagementRegistration} injected by
+     * {@code Target_org_graalvm_compiler_hotspot_HotSpotGraalRuntime}.
      */
     private static final Supplier<HotSpotGraalManagementRegistration> AOT_INJECTED_MANAGEMENT = null;
 
@@ -135,6 +136,8 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
     private final EconomicMap<Class<? extends Architecture>, HotSpotBackend> backends = EconomicMap.create(Equivalence.IDENTITY);
 
     private final GraalHotSpotVMConfig config;
+
+    private final Instrumentation instrumentation;
 
     /**
      * The options can be {@linkplain #setOptionValues(String[], String[]) updated} by external
@@ -175,6 +178,8 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         snippetCounterGroups = GraalOptions.SnippetCounters.getValue(options) ? new ArrayList<>() : null;
         CompilerConfiguration compilerConfiguration = compilerConfigurationFactory.createCompilerConfiguration();
         compilerConfigurationName = compilerConfigurationFactory.getName();
+
+        this.instrumentation = compilerConfigurationFactory.createInstrumentation(options);
 
         if (IS_AOT) {
             management = AOT_INJECTED_MANAGEMENT == null ? null : AOT_INJECTED_MANAGEMENT.get();
@@ -425,12 +430,22 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         return compilerConfigurationName;
     }
 
+    @Override
+    public Instrumentation getInstrumentation() {
+        return instrumentation;
+    }
+
     private long runtimeStartTime;
 
     /**
      * Called from compiler threads to check whether to bail out of a compilation.
      */
     private volatile boolean shutdown;
+
+    /**
+     * Shutdown hooks that should be run on the same thread doing the shutdown.
+     */
+    private List<Runnable> shutdownHooks = new ArrayList<>();
 
     /**
      * Take action related to entering a new execution phase.
@@ -443,8 +458,29 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         }
     }
 
-    void shutdown() {
+    /**
+     * Adds a {@link Runnable} that will be run when this runtime is {@link #shutdown()}. The
+     * runnable will be run on the same thread doing the shutdown. All the advice for regular
+     * {@linkplain Runtime#addShutdownHook(Thread) shutdown hooks} also applies here but even more
+     * so since the hook runs on the shutdown thread.
+     */
+    public synchronized void addShutdownHook(Runnable hook) {
+        if (!shutdown) {
+            shutdownHooks.add(hook);
+        }
+    }
+
+    synchronized void shutdown() {
         shutdown = true;
+
+        for (Runnable r : shutdownHooks) {
+            try {
+                r.run();
+            } catch (Throwable e) {
+                e.printStackTrace(TTY.out);
+            }
+        }
+
         metricValues.print(optionsRef.get());
 
         phaseTransition("final");

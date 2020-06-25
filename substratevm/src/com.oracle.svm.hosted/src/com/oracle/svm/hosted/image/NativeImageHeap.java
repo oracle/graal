@@ -29,12 +29,14 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import java.lang.reflect.Array;
 import java.lang.reflect.Modifier;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -48,6 +50,7 @@ import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -63,7 +66,6 @@ import com.oracle.svm.core.jdk.StringInternSupport;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.config.HybridLayout;
 import com.oracle.svm.hosted.meta.HostedArrayClass;
@@ -78,6 +80,7 @@ import com.oracle.svm.hosted.meta.UniverseBuilder;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * This class keeps track of all objects that should be part of the native image heap. It should not
@@ -170,10 +173,6 @@ public final class NativeImageHeap implements ImageHeap {
 
     protected ObjectLayout getObjectLayout() {
         return objectLayout;
-    }
-
-    public ImageHeapLayouter getHeapLayouter() {
-        return heapLayouter;
     }
 
     @Fold
@@ -282,12 +281,7 @@ public final class NativeImageHeap implements ImageHeap {
              * not seen - so this check actually protects against much more than just missing class
              * initialization information.
              */
-            throw VMError.shouldNotReachHere(String.format(
-                            "Image heap writing found a class not seen as instantiated during static analysis. Did a static field or an object referenced " +
-                                            "from a static field change during native image generation? For example, a lazily initialized cache could have been " +
-                                            "initialized during image generation, in which case you need to force eager initialization of the cache before static analysis " +
-                                            "or reset the cache using a field value recomputation.%n  class: %s%n  reachable through:%n%s",
-                            original, fillReasonStack(new StringBuilder(), reason)));
+            throw reportIllegalType(original, reason);
         }
 
         int identityHashCode;
@@ -416,48 +410,58 @@ public final class NativeImageHeap implements ImageHeap {
             }
 
             info = addToImageHeap(object, clazz, size, identityHashCode, reason);
-            recursiveAddObject(hub, false, info);
-            // Recursively add all the fields of the object.
-            final boolean fieldsAreImmutable = object instanceof String;
-            for (HostedField field : clazz.getInstanceFields(true)) {
-                if (field.isAccessed() && !field.equals(hybridArrayField) && !field.equals(hybridBitsetField)) {
-                    boolean fieldRelocatable = false;
-                    if (field.getJavaKind() == JavaKind.Object) {
-                        assert field.hasLocation();
-                        JavaConstant fieldValueConstant = field.readValue(con);
-                        if (fieldValueConstant.getJavaKind() == JavaKind.Object) {
-                            Object fieldValue = SubstrateObjectConstant.asObject(fieldValueConstant);
-                            if (spawnIsolates()) {
-                                fieldRelocatable = fieldValue instanceof RelocatedPointer;
+            try {
+                recursiveAddObject(hub, false, info);
+                // Recursively add all the fields of the object.
+                final boolean fieldsAreImmutable = object instanceof String;
+                for (HostedField field : clazz.getInstanceFields(true)) {
+                    if (field.isAccessed() && !field.equals(hybridArrayField) && !field.equals(hybridBitsetField)) {
+                        boolean fieldRelocatable = false;
+                        if (field.getJavaKind() == JavaKind.Object) {
+                            assert field.hasLocation();
+                            JavaConstant fieldValueConstant = field.readValue(con);
+                            if (fieldValueConstant.getJavaKind() == JavaKind.Object) {
+                                Object fieldValue = SubstrateObjectConstant.asObject(fieldValueConstant);
+                                if (spawnIsolates()) {
+                                    fieldRelocatable = fieldValue instanceof RelocatedPointer;
+                                }
+                                recursiveAddObject(fieldValue, fieldsAreImmutable, info);
+                                references = true;
                             }
-                            recursiveAddObject(fieldValue, fieldsAreImmutable, info);
-                            references = true;
                         }
+                        /*
+                         * The analysis considers relocatable pointers to be written because their
+                         * eventual value is assigned at runtime by the dynamic linker and it cannot
+                         * be inlined. Relocatable pointers are read-only for our purposes, however.
+                         */
+                        relocatable = relocatable || fieldRelocatable;
+                        written = written || (field.isWritten() && !field.isFinal() && !fieldRelocatable);
                     }
-                    /*
-                     * The analysis considers relocatable pointers to be written because their
-                     * eventual value is assigned at runtime by the dynamic linker and it cannot be
-                     * inlined. Relocatable pointers are read-only for our purposes, however.
-                     */
-                    relocatable = relocatable || fieldRelocatable;
-                    written = written || (field.isWritten() && !field.isFinal() && !fieldRelocatable);
-                }
 
+                }
+                if (hybridArray instanceof Object[]) {
+                    relocatable = addArrayElements((Object[]) hybridArray, relocatable, info);
+                    references = true;
+                }
+            } catch (AnalysisError.TypeNotFoundError ex) {
+                throw reportIllegalType(ex.getType(), info);
             }
-            if (hybridArray instanceof Object[]) {
-                relocatable = addArrayElements((Object[]) hybridArray, relocatable, info);
-                references = true;
-            }
+
         } else if (type.isArray()) {
             HostedArrayClass clazz = (HostedArrayClass) type;
             final long size = objectLayout.getArraySize(type.getComponentType().getStorageKind(), Array.getLength(object));
             info = addToImageHeap(object, clazz, size, identityHashCode, reason);
-            recursiveAddObject(hub, false, info);
-            if (object instanceof Object[]) {
-                relocatable = addArrayElements((Object[]) object, false, info);
-                references = true;
+            try {
+                recursiveAddObject(hub, false, info);
+                if (object instanceof Object[]) {
+                    relocatable = addArrayElements((Object[]) object, false, info);
+                    references = true;
+                }
+                written = true; /* How to know if any of the array elements are written? */
+            } catch (AnalysisError.TypeNotFoundError ex) {
+                throw reportIllegalType(ex.getType(), info);
             }
-            written = true; /* How to know if any of the array elements are written? */
+
         } else {
             throw shouldNotReachHere();
         }
@@ -468,20 +472,247 @@ public final class NativeImageHeap implements ImageHeap {
         heapLayouter.assignObjectToPartition(info, !written || immutable, references, relocatable);
     }
 
-    private static HostedType requireType(final Optional<HostedType> optionalType, final Object object, final Object reason) throws UserException {
+    private HostedType requireType(Optional<HostedType> optionalType, Object object, Object reason) {
         if (!optionalType.isPresent() || !optionalType.get().isInstantiated()) {
-            throw UserError.abort(
-                            String.format("Image heap writing found an object whose class was not seen as instantiated during static analysis. " +
-                                            "Did a static field or an object referenced from a static field change during native image generation? " +
-                                            "For example, a lazily initialized cache could have been initialized during image generation, in which case " +
-                                            "you need to force eager initialization of the cache before static analysis or reset the cache using a field " +
-                                            "value recomputation.%n  object: %s of class: %s%n  reachable through:%n%s",
-                                            object, object.getClass().getTypeName(), fillReasonStack(new StringBuilder(), reason)));
+            throw reportIllegalType(object, reason);
         }
         return optionalType.get();
     }
 
-    static StringBuilder fillReasonStack(StringBuilder msg, Object reason) {
+    RuntimeException reportIllegalType(Object object, Object reason) {
+        try {
+            if (object.getClass().getName().contains("SubstrateFieldLocationIdentity") ||
+                            (reason instanceof ObjectInfo && ((ObjectInfo) reason).object.getClass().getName().contains("ImageHeapInfo"))) {
+                System.out.println("GR-22808: printing out additional diagnostics");
+                printReasonObjects(object, reason);
+                checkObjectsValues();
+                checkObjectsKeys();
+                printImageHeap();
+            }
+        } catch (Throwable t) {
+            System.out.println("GR-22808: exception printing diagnostic information: " + t);
+            t.printStackTrace();
+        }
+
+        StringBuilder msg = new StringBuilder();
+        msg.append("Image heap writing found a class not seen during static analysis. ");
+        msg.append("Did a static field or an object referenced from a static field change during native image generation? ");
+        msg.append("For example, a lazily initialized cache could have been initialized during image generation, in which case ");
+        msg.append("you need to force eager initialization of the cache before static analysis or reset the cache using a field ");
+        msg.append("value recomputation.").append(System.lineSeparator()).append("    ");
+        if (object instanceof DynamicHub) {
+            msg.append("class: ").append(((DynamicHub) object).getName());
+        } else if (object instanceof ResolvedJavaType) {
+            msg.append("class: ").append(((ResolvedJavaType) object).toJavaName(true));
+        } else {
+            msg.append("object: ").append(object).append("  of class: ").append(object.getClass().getTypeName());
+        }
+        msg.append(System.lineSeparator()).append("  reachable through:").append(System.lineSeparator());
+        fillReasonStack(msg, reason);
+        throw UserError.abort(msg.toString());
+    }
+
+    private void printReasonObjects(Object object, Object reason) {
+        try {
+            System.out.println("Reason:");
+            printObject(object, true);
+
+            Object cur = reason;
+            while (cur instanceof ObjectInfo) {
+                ObjectInfo curInfo = (ObjectInfo) cur;
+                printObject(curInfo.object, true);
+                cur = curInfo.reason;
+            }
+        } catch (Throwable t) {
+            System.out.println("GR-22808: exception printing diagnostic information: " + t);
+            t.printStackTrace();
+        }
+    }
+
+    private void printImageHeap() {
+        try {
+            System.out.println();
+            System.out.println("All object in the image heap (this is going to be long!):");
+            List<Map.Entry<Object, ObjectInfo>> entries = new ArrayList<>(objects.entrySet());
+            entries.sort((e1, e2) -> Integer.compare(e1.getValue().id, e2.getValue().id));
+            for (Map.Entry<Object, ObjectInfo> e : entries) {
+                printObject(e.getKey(), false);
+            }
+        } catch (Throwable t) {
+            System.out.println("GR-22808: exception printing diagnostic information: " + t);
+        }
+    }
+
+    private void checkObjectsValues() {
+        try {
+            System.out.println();
+            System.out.println("Checking integrity of objects.values:");
+            for (ObjectInfo info : objects.values()) {
+                ObjectInfo check = objects.get(info.getObject());
+                if (check != info) {
+                    System.out.println("ERROR: inconsistent ObjectInfo");
+                    printObjectData(info.object);
+                    printObjectInfo(info);
+                    printObjectData(check.object);
+                    printObjectInfo(check);
+                }
+                if (System.identityHashCode(info.object) != info.identityHashCode) {
+                    System.out.println("ERROR: inconsistent identityHashCode");
+                    printObjectData(info.object);
+                    printObjectInfo(info);
+                    printObjectData(check.object);
+                    printObjectInfo(check);
+                }
+            }
+        } catch (Throwable t) {
+            System.out.println("GR-22808: exception printing diagnostic information: " + t);
+            t.printStackTrace();
+        }
+    }
+
+    private void checkObjectsKeys() {
+        try {
+            System.out.println();
+            System.out.println("Checking integrity of objects.keys:");
+            for (Object o : objects.keySet()) {
+                ObjectInfo check = objects.get(o);
+                if (check == null || check.object != o) {
+                    System.out.println("ERROR: inconsistent Object");
+                    printObjectData(o);
+                    if (check == null) {
+                        System.out.println("check is null");
+                    } else {
+                        printObjectData(check.object);
+                        printObjectInfo(check);
+                    }
+                }
+
+                if (check != null) {
+                    int h1 = System.identityHashCode(o);
+                    int h2 = System.identityHashCode(check.object);
+                    int h3 = check.identityHashCode;
+                    if (h1 != h2 || h2 != h3) {
+                        System.out.println("ERROR: identityHashCode mismatch");
+                        printObjectData(o);
+                        printObjectData(check.object);
+                        printObjectInfo(check);
+                    }
+                }
+            }
+        } catch (Throwable t) {
+            System.out.println("GR-22808: exception printing diagnostic information: " + t);
+            t.printStackTrace();
+        }
+    }
+
+    private void printObject(Object object, boolean printFields) {
+        try {
+            printObjectData(object);
+            ObjectInfo info = objects.get(object);
+            printObjectInfo(info);
+
+            if (info != null) {
+                if (object != info.object) {
+                    System.out.println("ERROR: object mismatch");
+                }
+                int h1 = System.identityHashCode(object);
+                int h2 = System.identityHashCode(info.object);
+                int h3 = info.identityHashCode;
+                if (h1 != h2 || h2 != h3) {
+                    System.out.println("ERROR: identityHashCode mismatch");
+                }
+            }
+
+            if (printFields) {
+                final Optional<HostedType> optionalType = getMetaAccess().optionalLookupJavaType(object.getClass());
+                if (!optionalType.isPresent()) {
+                    System.out.println("  no HostedType found");
+                } else {
+                    HostedType type = optionalType.get();
+
+                    if (type.isInstanceClass()) {
+                        System.out.println("  fields:");
+                        HostedInstanceClass clazz = (HostedInstanceClass) type;
+                        JavaConstant con = SubstrateObjectConstant.forObject(object);
+
+                        for (HostedField field : clazz.getInstanceFields(true)) {
+                            try {
+                                if (field.isAccessed()) {
+                                    if (field.getJavaKind() == JavaKind.Object) {
+                                        JavaConstant fieldValueConstant = field.readValue(con);
+                                        if (fieldValueConstant.getJavaKind() == JavaKind.Object) {
+                                            Object fieldValue = SubstrateObjectConstant.asObject(fieldValueConstant);
+                                            if (fieldValue == null) {
+                                                System.out.println("    field " + field.getName() + ": null");
+                                            } else {
+                                                System.out.println(
+                                                                "    field " + field.getName() + ": id " + id(fieldValue) + "  class: " + fieldValue.getClass().getTypeName() + "  identityHashCode: " +
+                                                                                Integer.toHexString(System.identityHashCode(fieldValue)));
+                                            }
+                                        }
+                                    }
+                                }
+                            } catch (Throwable t) {
+                                System.out.println("    error printing field " + field.getName() + ": " + t);
+                            }
+                        }
+
+                    } else if (type.isArray()) {
+                        System.out.println("  array elements:");
+                        if (object instanceof Object[]) {
+                            Object[] array = (Object[]) object;
+                            for (int i = 0; i < array.length; i++) {
+                                Object element = array[i];
+                                if (element == null) {
+                                    System.out.println("    element " + i + ": null");
+                                } else {
+                                    try {
+                                        System.out.println("    element " + i + ": id " + id(element) + "  class: " + element.getClass().getTypeName() + "  identityHashCode: " +
+                                                        Integer.toHexString(System.identityHashCode(element)));
+                                    } catch (Throwable t) {
+                                        System.out.println("    error printing array element " + i + ": " + t);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Throwable t) {
+            System.out.println("error printing object: " + t);
+        }
+    }
+
+    private static void printObjectData(Object object) {
+        if (object == null) {
+            System.out.println("= object: null");
+        } else {
+            System.out.println("= object of class: " + object.getClass().getTypeName() + "  identityHashCode: " + Integer.toHexString(System.identityHashCode(object)));
+        }
+    }
+
+    private void printObjectInfo(ObjectInfo info) {
+        if (info == null) {
+            System.out.println("  no ObjectInfo found");
+        } else {
+            System.out.println("  ObjectInfo: id: " + info.id);
+            System.out.println("    object: id " + id(info.object) + "  class: " + info.object.getClass().getTypeName() + "  identityHashCode: " +
+                            Integer.toHexString(System.identityHashCode(info.object)));
+            System.out.println("    size: " + info.size);
+            System.out.println("    identityHashCode: " + Integer.toHexString(info.identityHashCode));
+        }
+    }
+
+    private int id(Object object) {
+        ObjectInfo info = objects.get(object);
+        if (info == null) {
+            return -1;
+        } else {
+            return info.id;
+        }
+    }
+
+    private static StringBuilder fillReasonStack(StringBuilder msg, Object reason) {
         if (reason instanceof ObjectInfo) {
             ObjectInfo info = (ObjectInfo) reason;
             msg.append("    object: ").append(info.getObject()).append("  of class: ").append(info.getObject().getClass().getTypeName()).append(System.lineSeparator());
@@ -503,7 +734,7 @@ public final class NativeImageHeap implements ImageHeap {
 
     /** Add an object to the model of the native image heap. */
     private ObjectInfo addToImageHeap(Object object, HostedClass clazz, long size, int identityHashCode, Object reason) {
-        ObjectInfo info = new ObjectInfo(object, size, clazz, identityHashCode, reason);
+        ObjectInfo info = new ObjectInfo(object, size, clazz, identityHashCode, reason, objects.size());
         assert !objects.containsKey(object);
         objects.put(object, info);
         return info;
@@ -595,7 +826,9 @@ public final class NativeImageHeap implements ImageHeap {
          */
         final Object reason;
 
-        ObjectInfo(Object object, long size, HostedClass clazz, int identityHashCode, Object reason) {
+        final int id;
+
+        ObjectInfo(Object object, long size, HostedClass clazz, int identityHashCode, Object reason, int id) {
             this.object = object;
             this.clazz = clazz;
             this.partition = null;
@@ -603,6 +836,7 @@ public final class NativeImageHeap implements ImageHeap {
             this.size = size;
             this.identityHashCode = identityHashCode;
             this.reason = reason;
+            this.id = id;
         }
 
         @Override
@@ -634,7 +868,7 @@ public final class NativeImageHeap implements ImageHeap {
          * Returns the index into the {@link RelocatableBuffer} to which this object is written.
          */
         public int getIndexInBuffer(long index) {
-            long result = getPartition().getOffsetInSection() + getOffsetInPartition() + index;
+            long result = getPartition().getStartOffset() + getOffsetInPartition() + index;
             return NumUtil.safeToInt(result);
         }
 
@@ -649,7 +883,7 @@ public final class NativeImageHeap implements ImageHeap {
              * the beginning of the heap. So, all heap-base-relative addresses must be adjusted by
              * that offset.
              */
-            return Heap.getHeap().getImageHeapOffsetInAddressSpace() + getPartition().getOffsetInSection() + getOffsetInPartition();
+            return Heap.getHeap().getImageHeapOffsetInAddressSpace() + getPartition().getStartOffset() + getOffsetInPartition();
         }
 
         /**

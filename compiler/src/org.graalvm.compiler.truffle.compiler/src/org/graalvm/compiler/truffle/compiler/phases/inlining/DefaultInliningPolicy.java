@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -80,7 +80,7 @@ final class DefaultInliningPolicy implements InliningPolicy {
         if (node.getState() == CallNode.State.Expanded) {
             data.callDiff = -1 * node.getRootRelativeFrequency();
             for (CallNode child : node.getChildren()) {
-                if (child.getState() != CallNode.State.Indirect && child.getState() != CallNode.State.Removed) {
+                if (child.getState() != CallNode.State.Indirect && child.getState() != CallNode.State.Removed && child.getState() != CallNode.State.BailedOut) {
                     data.callDiff += data(child).callDiff;
                 }
             }
@@ -120,25 +120,19 @@ final class DefaultInliningPolicy implements InliningPolicy {
         expandedCount = tree.getRoot().getIR().getNodeCount();
         final PriorityQueue<CallNode> expandQueue = getQueue(tree, CallNode.State.Cutoff);
         CallNode candidate;
-        while ((candidate = expandQueue.poll()) != null) {
-            if (expandedCount > expansionBudget) {
-                break;
+        while ((candidate = expandQueue.poll()) != null && expandedCount < expansionBudget) {
+            if (candidate.getRecursionDepth() <= maximumRecursiveInliningValue && candidate.getDepth() <= MAX_DEPTH) {
+                expand(candidate, expandQueue);
             }
-            if (candidate.isForced()) {
-                doExpand(candidate, expandQueue);
-                continue;
-            }
-            if (candidate.getRecursionDepth() > maximumRecursiveInliningValue || candidate.getDepth() > MAX_DEPTH) {
-                continue;
-            }
-            doExpand(candidate, expandQueue);
         }
     }
 
-    private void doExpand(CallNode candidate, PriorityQueue<CallNode> expandQueue) {
+    private void expand(CallNode candidate, PriorityQueue<CallNode> expandQueue) {
         candidate.expand();
-        expandedCount += candidate.getIR().getNodeCount();
-        updateQueue(candidate, expandQueue, CallNode.State.Cutoff);
+        if (candidate.getState() == CallNode.State.Expanded) {
+            expandedCount += candidate.getIR().getNodeCount();
+            updateQueue(candidate, expandQueue, CallNode.State.Cutoff);
+        }
     }
 
     @Override

@@ -255,6 +255,10 @@
 			{
 				"os": "darwin",
 				"arch": "amd64"
+			},
+			{
+				"os": "windows",
+				"arch": "amd64"
 			}
 		]
 	},
@@ -268,7 +272,15 @@
 				"arch": "amd64"
 			},
 			{
+				"os": "linux",
+				"arch": "aarch64"
+			},
+			{
 				"os": "darwin",
+				"arch": "amd64"
+			},
+			{
+				"os": "windows",
 				"arch": "amd64"
 			}
 		]

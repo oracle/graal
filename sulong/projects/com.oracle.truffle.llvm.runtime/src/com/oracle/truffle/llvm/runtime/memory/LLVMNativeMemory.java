@@ -41,8 +41,10 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.runtime.LLVMIVarBit;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.except.LLVMMemoryException;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
@@ -120,7 +122,7 @@ public final class LLVMNativeMemory extends LLVMMemory {
     @Override
     @Deprecated
     @SuppressWarnings("deprecation")
-    public void memset(LLVMNativePointer address, long size, byte value) {
+    public void memset(Node location, LLVMNativePointer address, long size, byte value) {
         assert size == 0 || checkPointer(address.asNative());
         try {
             memsetBoundary(address.asNative(), size, value);
@@ -140,7 +142,7 @@ public final class LLVMNativeMemory extends LLVMMemory {
     @Deprecated
     @SuppressWarnings("deprecation")
     @TruffleBoundary
-    public void copyMemory(long sourceAddress, long targetAddress, long length) {
+    public void copyMemory(Node location, long sourceAddress, long targetAddress, long length) {
         assert length == 0 || checkPointer(sourceAddress) && checkPointer(targetAddress);
         copyMemoryBoundary(sourceAddress, targetAddress, length);
     }
@@ -151,7 +153,7 @@ public final class LLVMNativeMemory extends LLVMMemory {
     }
 
     @Override
-    public void free(long address) {
+    public void free(Node location, long address) {
         try {
             freeBoundary(address);
         } catch (Throwable e) {
@@ -167,7 +169,7 @@ public final class LLVMNativeMemory extends LLVMMemory {
     }
 
     @Override
-    public LLVMNativePointer allocateMemory(long size) {
+    public LLVMNativePointer allocateMemory(Node location, long size) {
         try {
             return LLVMNativePointer.create(allocateMemoryBoundary(size));
         } catch (Throwable e) {
@@ -185,7 +187,7 @@ public final class LLVMNativeMemory extends LLVMMemory {
     @Override
     @Deprecated
     @SuppressWarnings("deprecation")
-    public LLVMNativePointer reallocateMemory(LLVMNativePointer addr, long size) {
+    public LLVMNativePointer reallocateMemory(Node location, LLVMNativePointer addr, long size) {
         // a null pointer is a valid argument
         try {
             return LLVMNativePointer.create(reallocateMemoryBoundary(addr.asNative(), size));
@@ -197,31 +199,31 @@ public final class LLVMNativeMemory extends LLVMMemory {
     }
 
     @Override
-    public boolean getI1(long ptr) {
+    public boolean getI1(Node location, long ptr) {
         assert checkPointer(ptr);
         return unsafe.getByte(ptr) != 0;
     }
 
     @Override
-    public byte getI8(long ptr) {
+    public byte getI8(Node location, long ptr) {
         assert checkPointer(ptr);
         return unsafe.getByte(ptr);
     }
 
     @Override
-    public short getI16(long ptr) {
+    public short getI16(Node location, long ptr) {
         assert checkPointer(ptr);
         return unsafe.getShort(ptr);
     }
 
     @Override
-    public int getI32(long ptr) {
+    public int getI32(Node location, long ptr) {
         assert checkPointer(ptr);
         return unsafe.getInt(ptr);
     }
 
     @Override
-    public LLVMIVarBit getIVarBit(LLVMNativePointer addr, int bitWidth) {
+    public LLVMIVarBit getIVarBit(Node location, LLVMNativePointer addr, int bitWidth) {
         if (bitWidth % Byte.SIZE != 0) {
             CompilerDirectives.transferToInterpreter();
             throw new AssertionError();
@@ -230,121 +232,121 @@ public final class LLVMNativeMemory extends LLVMMemory {
         byte[] loadedBytes = new byte[bytes];
         long currentAddressPtr = addr.asNative();
         for (int i = loadedBytes.length - 1; i >= 0; i--) {
-            loadedBytes[i] = getI8(currentAddressPtr);
+            loadedBytes[i] = getI8(location, currentAddressPtr);
             currentAddressPtr += Byte.BYTES;
         }
         return LLVMIVarBit.create(bitWidth, loadedBytes, bitWidth, false);
     }
 
     @Override
-    public long getI64(long ptr) {
+    public long getI64(Node location, long ptr) {
         assert checkPointer(ptr);
         return unsafe.getLong(ptr);
     }
 
     @Override
-    public float getFloat(long ptr) {
+    public float getFloat(Node location, long ptr) {
         assert checkPointer(ptr);
         return unsafe.getFloat(ptr);
     }
 
     @Override
-    public double getDouble(long ptr) {
+    public double getDouble(Node location, long ptr) {
         assert checkPointer(ptr);
         return unsafe.getDouble(ptr);
     }
 
     @Override
-    public LLVM80BitFloat get80BitFloat(LLVMNativePointer addr) {
+    public LLVM80BitFloat get80BitFloat(Node location, LLVMNativePointer addr) {
         byte[] bytes = new byte[LLVM80BitFloat.BYTE_WIDTH];
         long currentPtr = addr.asNative();
         for (int i = 0; i < bytes.length; i++) {
-            bytes[i] = getI8(currentPtr);
+            bytes[i] = getI8(location, currentPtr);
             currentPtr += Byte.BYTES;
         }
         return LLVM80BitFloat.fromBytes(bytes);
     }
 
     @Override
-    public LLVMNativePointer getPointer(long ptr) {
+    public LLVMNativePointer getPointer(Node location, long ptr) {
         assert checkPointer(ptr);
         return LLVMNativePointer.create(unsafe.getAddress(ptr));
     }
 
     @Override
-    public void putI1(long ptr, boolean value) {
+    public void putI1(Node location, long ptr, boolean value) {
         assert checkPointer(ptr);
         unsafe.putByte(ptr, (byte) (value ? 1 : 0));
     }
 
     @Override
-    public void putI8(long ptr, byte value) {
+    public void putI8(Node location, long ptr, byte value) {
         assert checkPointer(ptr);
         unsafe.putByte(ptr, value);
     }
 
     @Override
-    public void putI16(long ptr, short value) {
+    public void putI16(Node location, long ptr, short value) {
         assert checkPointer(ptr);
         unsafe.putShort(ptr, value);
     }
 
     @Override
-    public void putI32(long ptr, int value) {
+    public void putI32(Node location, long ptr, int value) {
         assert checkPointer(ptr);
         unsafe.putInt(ptr, value);
     }
 
     @Override
-    public void putI64(long ptr, long value) {
+    public void putI64(Node location, long ptr, long value) {
         assert checkPointer(ptr);
         unsafe.putLong(ptr, value);
     }
 
     @Override
-    public void putIVarBit(LLVMNativePointer addr, LLVMIVarBit value) {
+    public void putIVarBit(Node location, LLVMNativePointer addr, LLVMIVarBit value) {
         byte[] bytes = value.getBytes();
         long currentptr = addr.asNative();
         for (int i = bytes.length - 1; i >= 0; i--) {
-            putI8(currentptr, bytes[i]);
+            putI8(location, currentptr, bytes[i]);
             currentptr += Byte.BYTES;
         }
     }
 
     @Override
-    public void putByteArray(long ptr, byte[] bytes) {
+    public void putByteArray(Node location, long ptr, byte[] bytes) {
         long currentptr = ptr;
         for (int i = 0; i < bytes.length; i++) {
-            putI8(currentptr, bytes[i]);
+            putI8(location, currentptr, bytes[i]);
             currentptr += Byte.BYTES;
         }
     }
 
     @Override
-    public void putFloat(long ptr, float value) {
+    public void putFloat(Node location, long ptr, float value) {
         assert checkPointer(ptr);
         unsafe.putFloat(ptr, value);
     }
 
     @Override
-    public void putDouble(long ptr, double value) {
+    public void putDouble(Node location, long ptr, double value) {
         assert checkPointer(ptr);
         unsafe.putDouble(ptr, value);
     }
 
     @Override
-    public void put80BitFloat(long ptr, LLVM80BitFloat value) {
-        putByteArray(ptr, value.getBytes());
+    public void put80BitFloat(Node location, long ptr, LLVM80BitFloat value) {
+        putByteArray(location, ptr, value.getBytes());
     }
 
     @Override
-    public void putPointer(long ptr, long ptrValue) {
+    public void putPointer(Node location, long ptr, long ptrValue) {
         assert ptr != 0;
         unsafe.putAddress(ptr, ptrValue);
     }
 
     @Override
-    public CMPXCHGI32 compareAndSwapI32(LLVMNativePointer p, int comparisonValue, int newValue) {
+    public CMPXCHGI32 compareAndSwapI32(Node location, LLVMNativePointer p, int comparisonValue, int newValue) {
         assert checkPointer(p.asNative());
         while (true) {
             boolean b = unsafe.compareAndSwapInt(null, p.asNative(), comparisonValue, newValue);
@@ -362,7 +364,7 @@ public final class LLVMNativeMemory extends LLVMMemory {
     }
 
     @Override
-    public CMPXCHGI64 compareAndSwapI64(LLVMNativePointer p, long comparisonValue, long newValue) {
+    public CMPXCHGI64 compareAndSwapI64(Node location, LLVMNativePointer p, long comparisonValue, long newValue) {
         assert checkPointer(p.asNative());
         while (true) {
             boolean b = unsafe.compareAndSwapLong(null, p.asNative(), comparisonValue, newValue);
@@ -398,7 +400,7 @@ public final class LLVMNativeMemory extends LLVMMemory {
     }
 
     @Override
-    public CMPXCHGI8 compareAndSwapI8(LLVMNativePointer p, byte comparisonValue, byte newValue) {
+    public CMPXCHGI8 compareAndSwapI8(Node location, LLVMNativePointer p, byte comparisonValue, byte newValue) {
         assert checkPointer(p.asNative());
         int byteIndex = getI8Index(p.asNative());
         long address = alignToI32(p.asNative());
@@ -433,7 +435,7 @@ public final class LLVMNativeMemory extends LLVMMemory {
     }
 
     @Override
-    public CMPXCHGI16 compareAndSwapI16(LLVMNativePointer p, short comparisonValue, short newValue) {
+    public CMPXCHGI16 compareAndSwapI16(Node location, LLVMNativePointer p, short comparisonValue, short newValue) {
         assert checkPointer(p.asNative());
         int idx = getI16Index(p.asNative());
         long address = alignToI32(p.asNative());
@@ -455,97 +457,97 @@ public final class LLVMNativeMemory extends LLVMMemory {
     }
 
     @Override
-    public long getAndSetI64(LLVMNativePointer address, long value) {
+    public long getAndSetI64(Node location, LLVMNativePointer address, long value) {
         assert checkPointer(address.asNative());
         return unsafe.getAndSetLong(null, address.asNative(), value);
     }
 
     @Override
-    public long getAndAddI64(LLVMNativePointer address, long value) {
+    public long getAndAddI64(Node location, LLVMNativePointer address, long value) {
         assert checkPointer(address.asNative());
         return unsafe.getAndAddLong(null, address.asNative(), value);
     }
 
     @Override
-    public long getAndSubI64(LLVMNativePointer address, long value) {
+    public long getAndSubI64(Node location, LLVMNativePointer address, long value) {
         assert checkPointer(address.asNative());
         return unsafe.getAndAddLong(null, address.asNative(), -value);
     }
 
     @Override
-    public long getAndOpI64(LLVMNativePointer address, long value, LongBinaryOperator f) {
+    public long getAndOpI64(Node location, LLVMNativePointer address, long value, LongBinaryOperator f) {
         assert checkPointer(address.asNative());
         long addr = address.asNative();
         long old;
         long nevv;
         do {
-            old = getI64(address);
+            old = getI64(location, address);
             nevv = f.applyAsLong(old, value);
         } while (!unsafe.compareAndSwapLong(null, addr, old, nevv));
         return old;
     }
 
     @Override
-    public int getAndSetI32(LLVMNativePointer address, int value) {
+    public int getAndSetI32(Node location, LLVMNativePointer address, int value) {
         assert checkPointer(address.asNative());
         return unsafe.getAndSetInt(null, address.asNative(), value);
     }
 
     @Override
-    public int getAndAddI32(LLVMNativePointer address, int value) {
+    public int getAndAddI32(Node location, LLVMNativePointer address, int value) {
         assert checkPointer(address.asNative());
         return unsafe.getAndAddInt(null, address.asNative(), value);
     }
 
     @Override
-    public int getAndSubI32(LLVMNativePointer address, int value) {
+    public int getAndSubI32(Node location, LLVMNativePointer address, int value) {
         assert checkPointer(address.asNative());
         return unsafe.getAndAddInt(null, address.asNative(), -value);
     }
 
     @Override
-    public int getAndOpI32(LLVMNativePointer address, int value, IntBinaryOperator f) {
+    public int getAndOpI32(Node location, LLVMNativePointer address, int value, IntBinaryOperator f) {
         assert checkPointer(address.asNative());
         long addr = address.asNative();
         int old;
         int nevv;
         do {
-            old = getI32(address);
+            old = getI32(location, address);
             nevv = f.applyAsInt(old, value);
         } while (!unsafe.compareAndSwapInt(null, addr, old, nevv));
         return old;
     }
 
     @Override
-    public short getAndOpI16(LLVMNativePointer address, short value, ShortBinaryOperator f) {
+    public short getAndOpI16(Node location, LLVMNativePointer address, short value, ShortBinaryOperator f) {
         short old;
         short nevv;
         do {
-            old = getI16(address);
+            old = getI16(location, address);
             nevv = f.apply(old, value);
-        } while (!compareAndSwapI16(address, old, nevv).isSwap());
+        } while (!compareAndSwapI16(location, address, old, nevv).isSwap());
         return old;
     }
 
     @Override
-    public byte getAndOpI8(LLVMNativePointer address, byte value, ByteBinaryOperator f) {
+    public byte getAndOpI8(Node location, LLVMNativePointer address, byte value, ByteBinaryOperator f) {
         byte old;
         byte nevv;
         do {
-            old = getI8(address);
+            old = getI8(location, address);
             nevv = f.apply(old, value);
-        } while (!compareAndSwapI8(address, old, nevv).isSwap());
+        } while (!compareAndSwapI8(location, address, old, nevv).isSwap());
         return old;
     }
 
     @Override
-    public boolean getAndOpI1(LLVMNativePointer address, boolean value, BooleanBinaryOperator f) {
+    public boolean getAndOpI1(Node location, LLVMNativePointer address, boolean value, BooleanBinaryOperator f) {
         byte old;
         boolean nevv;
         do {
-            old = getI8(address);
+            old = getI8(location, address);
             nevv = f.apply(old != 0, value);
-        } while (!compareAndSwapI8(address, old, (byte) (nevv ? 1 : 0)).isSwap());
+        } while (!compareAndSwapI8(location, address, old, (byte) (nevv ? 1 : 0)).isSwap());
         return old != 0;
     }
 
@@ -602,7 +604,7 @@ public final class LLVMNativeMemory extends LLVMMemory {
 
         @Override
         @TruffleBoundary
-        public synchronized LLVMNativePointer allocate(Object value) {
+        public synchronized LLVMNativePointer allocate(Node location, Object value) {
             Handle handle = handleFromManaged.get(value);
             if (handle == null) {
                 Long free = freeList.pollFirst();
@@ -612,7 +614,7 @@ public final class LLVMNativeMemory extends LLVMMemory {
                 } else {
                     noHandleAssumption.invalidate();
                     if (top >= getEnd()) {
-                        throw new OutOfMemoryError("handle space exhausted");
+                        throw new LLVMMemoryException(location, new OutOfMemoryError("handle space exhausted"));
                     }
                     address = top;
                     top += HANDLE_OBJECT_SIZE;
@@ -631,20 +633,20 @@ public final class LLVMNativeMemory extends LLVMMemory {
 
         @Override
         @TruffleBoundary
-        public synchronized void free(long address) {
+        public synchronized void free(Node location, long address) {
             if ((address & HANDLE_OFFSET_MASK) != 0) {
-                throw new UnsupportedOperationException("Cannot resolve invalid native handle: " + address);
+                throw new LLVMMemoryException(location, new UnsupportedOperationException("Cannot resolve invalid native handle: " + address));
             }
             if ((address & HANDLE_HEADER_MASK) != getStart()) {
-                throw new UnsupportedOperationException("Cannot resolve invalid native handle: " + address);
+                throw new LLVMMemoryException(location, new UnsupportedOperationException("Cannot resolve invalid native handle: " + address));
             }
             int index = indexFromPointer(address);
             if (index < 0 || index >= handleFromPointer.length) {
-                throw new UnsupportedOperationException("Cannot resolve native handle: " + address);
+                throw new LLVMMemoryException(location, new UnsupportedOperationException("Cannot resolve native handle: " + address));
             }
             Handle handle = handleFromPointer[index];
             if (handle == null) {
-                throw new UnsupportedOperationException("Cannot resolve native handle (double-free?): " + address);
+                throw new LLVMMemoryException(location, new UnsupportedOperationException("Cannot resolve native handle (double-free?): " + address));
             }
             if (--handle.refcnt == 0) {
                 handleFromPointer[index] = null;
@@ -664,7 +666,7 @@ public final class LLVMNativeMemory extends LLVMMemory {
         }
 
         @Override
-        public LLVMManagedPointer getValue(long address) {
+        public LLVMManagedPointer getValue(Node location, long address) {
             return LLVMManagedPointer.create(handleFromPointer[indexFromPointer(address)].managed, address & HANDLE_OFFSET_MASK);
         }
     }

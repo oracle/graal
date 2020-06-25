@@ -63,6 +63,7 @@ import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.FileAttributeView;
 import java.util.Collection;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -371,6 +372,7 @@ public interface FileSystem {
      * @since 19.0
      */
     default String getMimeType(Path path) {
+        Objects.requireNonNull(path);
         return null;
     }
 
@@ -384,6 +386,7 @@ public interface FileSystem {
      * @since 19.0
      */
     default Charset getEncoding(Path path) {
+        Objects.requireNonNull(path);
         return null;
     }
 
@@ -394,5 +397,66 @@ public interface FileSystem {
      */
     default Path getTempDirectory() {
         throw new UnsupportedOperationException("Temporary directories not supported");
+    }
+
+    /**
+     * Creates a {@link FileSystem} implementation based on the host Java NIO. The returned instance
+     * can be used as a delegate by a decorating {@link FileSystem}.
+     * <p>
+     * The following example shows a {@link FileSystem} restricting an IO access only to a given
+     * folder.
+     *
+     * <pre>
+     * class RestrictedFileSystem implements FileSystem {
+     *
+     *     private final FileSystem delegate;
+     *     private final Path allowedFolder;
+     *
+     *     RestrictedFileSystem(String allowedFolder) throws IOException {
+     *         this.delegate = FileSystem.newDefaultFileSystem();
+     *         this.allowedFolder = delegate.toRealPath(
+     *                         delegate.parsePath(allowedFolder));
+     *     }
+     *
+     *     &#64;Override
+     *     public Path parsePath(String path) {
+     *         return delegate.parsePath(path);
+     *     }
+     *
+     *     &#64;Override
+     *     public Path parsePath(URI uri) {
+     *         return delegate.parsePath(uri);
+     *     }
+     *
+     *     &#64;Override
+     *     public SeekableByteChannel newByteChannel(Path path,
+     *                     Set&lt;? extends OpenOption&gt; options,
+     *                     FileAttribute&lt;?&gt;... attrs) throws IOException {
+     *         verifyAccess(path);
+     *         return delegate.newByteChannel(path, options, attrs);
+     *     }
+     *
+     *     private void verifyAccess(Path path) {
+     *         Path realPath = null;
+     *         for (Path c = path; c != null; c = c.getParent()) {
+     *             try {
+     *                 realPath = delegate.toRealPath(c);
+     *                 break;
+     *             } catch (IOException ioe) {
+     *             }
+     *         }
+     *         if (realPath == null || !realPath.startsWith(allowedFolder)) {
+     *             throw new SecurityException("Access to " + path + " is denied.");
+     *         }
+     *     }
+     * }
+     * </pre>
+     *
+     * @see org.graalvm.polyglot.Context.Builder#fileSystem(org.graalvm.polyglot.io.FileSystem)
+     *
+     * @since 20.2.0
+     */
+    static FileSystem newDefaultFileSystem() {
+        return IOHelper.IMPL.newDefaultFileSystem();
     }
 }

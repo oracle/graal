@@ -36,7 +36,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 
-class RuntimeCodeCacheReachabilityAnalyzer implements ObjectReferenceVisitor {
+final class RuntimeCodeCacheReachabilityAnalyzer implements ObjectReferenceVisitor {
     private boolean unreachableObjects;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -74,7 +74,7 @@ class RuntimeCodeCacheReachabilityAnalyzer implements ObjectReferenceVisitor {
         }
 
         Space space = HeapChunk.getEnclosingHeapChunk(ptrToObj, header).getSpace();
-        if (!space.isFrom()) {
+        if (!space.isFromSpace()) {
             return true;
         }
 

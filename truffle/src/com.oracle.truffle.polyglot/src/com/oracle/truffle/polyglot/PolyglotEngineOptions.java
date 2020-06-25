@@ -61,6 +61,9 @@ final class PolyglotEngineOptions {
     @Option(name = INSTRUMENT_EXCEPTIONS_ARE_THROWN_NAME, category = OptionCategory.INTERNAL, help = "Propagates exceptions thrown by instruments.")//
     static final OptionKey<Boolean> InstrumentExceptionsAreThrown = new OptionKey<>(false);
 
+    @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "Show internal frames specific to the language implementation in stack traces.")//
+    static final OptionKey<Boolean> ShowInternalStackFrames = new OptionKey<>(false);
+
     @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "Enables conservative context references. " +
                     "This allows invalid sharing between contexts. " +
                     "For testing purposes only.")//

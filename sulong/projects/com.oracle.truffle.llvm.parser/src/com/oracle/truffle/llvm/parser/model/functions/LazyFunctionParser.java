@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,6 +32,8 @@ package com.oracle.truffle.llvm.parser.model.functions;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.listeners.Function;
+import com.oracle.truffle.llvm.parser.listeners.FunctionMDOnly;
+import com.oracle.truffle.llvm.parser.listeners.MetadataSubprogramOnly.MDSubprogramParsedException;
 import com.oracle.truffle.llvm.parser.listeners.ParameterAttributes;
 import com.oracle.truffle.llvm.parser.listeners.Types;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.DebugInfoFunctionProcessor;
@@ -74,6 +76,27 @@ public final class LazyFunctionParser {
                     llSource.applySourceLocations(parser.getFunction(), runtime);
                 }
                 isParsed = true;
+            }
+        }
+    }
+
+    public void parseLinkageName(LLVMParserRuntime runtime) {
+        synchronized (scope) {
+            FunctionMDOnly parser = new FunctionMDOnly(scope, types, function);
+            try {
+                parser.setupScope();
+                scanner.scanBlock(parser);
+            } catch (MDSubprogramParsedException e) {
+                /*
+                 * If linkageName/displayName is found, an exception is thrown (such that
+                 * parsing/searching does not have to be continued).
+                 */
+                final String displayName = e.displayName;
+                final String linkageName = e.linkageName;
+
+                if (linkageName != null && runtime.getFileScope().getFunction(displayName) == null) {
+                    runtime.getFileScope().registerLinkageName(displayName, linkageName);
+                }
             }
         }
     }

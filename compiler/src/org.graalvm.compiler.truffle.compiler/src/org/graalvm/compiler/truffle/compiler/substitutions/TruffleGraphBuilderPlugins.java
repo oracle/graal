@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -82,8 +82,6 @@ import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.compiler.PerformanceInformationHandler;
-import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionInjectNode;
-import org.graalvm.compiler.truffle.compiler.nodes.InlineDecisionNode;
 import org.graalvm.compiler.truffle.compiler.nodes.IsCompilationConstantNode;
 import org.graalvm.compiler.truffle.compiler.nodes.ObjectLocationIdentity;
 import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
@@ -114,14 +112,29 @@ public class TruffleGraphBuilderPlugins {
 
     public static void registerInvocationPlugins(InvocationPlugins plugins, boolean canDelayIntrinsification, Providers providers, KnownTruffleTypes types) {
         MetaAccessProvider metaAccess = providers.getMetaAccess();
+        registerObjectsPlugins(plugins, metaAccess);
         registerOptimizedAssumptionPlugins(plugins, metaAccess, types);
         registerExactMathPlugins(plugins, metaAccess);
         registerGraalCompilerDirectivesPlugins(plugins, metaAccess);
-        registerInlineDecisionPlugins(plugins, metaAccess);
         registerCompilerDirectivesPlugins(plugins, metaAccess, canDelayIntrinsification);
         registerCompilerAssertsPlugins(plugins, metaAccess, canDelayIntrinsification);
         registerOptimizedCallTargetPlugins(plugins, metaAccess, canDelayIntrinsification, types);
         registerFrameWithoutBoxingPlugins(plugins, metaAccess, canDelayIntrinsification, providers.getConstantReflection(), types);
+    }
+
+    private static void registerObjectsPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess) {
+        ResolvedJavaType objectsType = TruffleCompilerRuntime.getRuntime().resolveType(metaAccess, "java.util.Objects");
+        Registration r = new Registration(plugins, new ResolvedJavaSymbol(objectsType));
+        InvocationPlugin plugin = new InvocationPlugin() {
+
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
+                ValueNode nullChecked = b.nullCheckedValue(arg);
+                b.addPush(JavaKind.Object, nullChecked);
+                return true;
+            }
+        };
+        r.register1("requireNonNull", Object.class, plugin);
     }
 
     public static void registerOptimizedAssumptionPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, KnownTruffleTypes types) {
@@ -191,25 +204,6 @@ public class TruffleGraphBuilderPlugins {
                     return true;
                 }
                 return false;
-            }
-        });
-    }
-
-    public static void registerInlineDecisionPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess) {
-        final ResolvedJavaType inlinedTokenType = getRuntime().resolveType(metaAccess, "org.graalvm.compiler.truffle.runtime.InlineDecision");
-        Registration r = new Registration(plugins, new ResolvedJavaSymbol(inlinedTokenType));
-        r.register0("get", new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.addPush(JavaKind.Boolean, InlineDecisionNode.create());
-                return true;
-            }
-        });
-        r.register2("inject", Object[].class, boolean.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode args, ValueNode decision) {
-                b.addPush(JavaKind.Object, InlineDecisionInjectNode.create(args, (InlineDecisionNode) decision));
-                return true;
             }
         });
     }

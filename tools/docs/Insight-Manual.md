@@ -368,6 +368,41 @@ Two is the result 2
 **Insight** is a perfect tool for polyglot, language agnostic aspect oriented
 programming!
 
+### Modifying Local Variables
+
+Not only that **Insight** can access local variables, but it can also modify them. 
+Imagine summing an array:
+
+```js
+function plus(a, b) {
+  return a + b;
+}
+
+var sum = 0;
+[1, 2, 3, 4, 5, 6, 7, 8, 9].forEach((n) => sum = plus(sum, n));
+print(sum);
+```
+
+which naturally leads to printing out number `45`. Let's apply following 
+**Insight** script to ''erase'' non-even numbers before adding them:
+
+```js
+insight.on('enter', function zeroNonEvenNumbers(ctx, frame) {
+    if (frame.b % 2 === 1) {
+        frame.b = 0;
+    }
+}, {
+    roots: true,
+    rootNameFilter: 'plus'
+});
+```
+
+When launched with `js --experimental-options --insight=erase.js sumarray.js`
+only value `20` gets printed.
+
+**Insight** `enter` and `return` hooks can only modify existing variables.
+They cannot introduce new ones. Attempts to do so yield an exception.
+
 ### API of **Insight**
 
 The **Insight** functionality is offered as a technology preview and 

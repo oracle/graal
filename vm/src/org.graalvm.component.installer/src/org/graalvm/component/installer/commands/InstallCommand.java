@@ -25,7 +25,10 @@
 package org.graalvm.component.installer.commands;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.URL;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -39,6 +42,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 import java.util.zip.ZipException;
 import org.graalvm.component.installer.Archive;
 import org.graalvm.component.installer.CommandInput;
@@ -147,6 +151,9 @@ public class InstallCommand implements InstallerCommand {
     public InstallCommand() {
     }
 
+    /**
+     * Installers attached to individual parameters.
+     */
     Map<ComponentParam, Installer> realInstallers = new LinkedHashMap<>();
 
     private String current;
@@ -227,6 +234,22 @@ public class InstallCommand implements InstallerCommand {
                 inst.setLicenseRelativePath(SystemUtils.fromCommonRelative(ldr.getLicensePath()));
             }
             String licId = ldr.getLicenseID();
+            if (licId == null) {
+                String tp = ldr.getLicenseType();
+                if (Pattern.matches("[-_., 0-9A-Za-z]+", tp)) { // NOI18N
+                    licId = tp;
+                } else {
+                    // better make a digest
+                    try {
+                        MessageDigest dg = MessageDigest.getInstance("SHA-256"); // NOI18N
+                        byte[] result = dg.digest(tp.getBytes("UTF-8"));
+                        licId = SystemUtils.fingerPrint(result, false);
+                    } catch (NoSuchAlgorithmException | UnsupportedEncodingException ex) {
+                        feedback.error("INSTALL_CannotDigestLicense", ex, ex.getLocalizedMessage());
+                        licId = Integer.toHexString(tp.hashCode());
+                    }
+                }
+            }
             addLicenseToAccept(licId, ldr);
         }
     }
@@ -413,12 +436,19 @@ public class InstallCommand implements InstallerCommand {
                 }
                 return true;
             } else {
+                Installer toReplace = inst.isComplete() ? inst : existing;
                 // if dependencies are processed, move the installer to the front
                 // of the work queue, to maintain the depenency-first order.
                 if (installDependencies) {
-                    installers.remove(i);
-                    installers.add(0, inst);
+                    installers.remove(existing);
+                    installers.add(0, toReplace);
+                    installerMap.put(info.getId(), toReplace);
+                } else if (!existing.isComplete() && inst.isComplete()) {
+                    // replace proxy for real installer:
+                    installers.set(i, toReplace);
+                    installerMap.put(info.getId(), toReplace);
                 }
+
                 return false;
             }
         }
@@ -563,6 +593,7 @@ public class InstallCommand implements InstallerCommand {
             in = dependencies;
             // print required components prior to download
             printRequiredComponents();
+            installDependencies = true;
         } while (!in.isEmpty());
         dependencies = allDependencies;
         checkDependencyErrors();
@@ -579,7 +610,7 @@ public class InstallCommand implements InstallerCommand {
                     continue;
                 }
                 addLicenseToAccept(i, floader);
-                installers.add(i);
+                registerComponent(i, p);
 
                 if (validateBeforeInstall) {
                     current = i.getComponentInfo().getName();
@@ -595,7 +626,7 @@ public class InstallCommand implements InstallerCommand {
     }
 
     void doInstallation() throws IOException {
-        for (Installer i : realInstallers.values()) {
+        for (Installer i : installers) {
             current = i.getComponentInfo().getName();
             ensureExistingComponentRemoved(i.getComponentInfo());
             executedInstallers.add(i);
@@ -627,7 +658,14 @@ public class InstallCommand implements InstallerCommand {
         }
     }
 
+    /**
+     * Installers for individual component IDs.
+     */
     private final Map<String, Installer> installerMap = new HashMap<>();
+
+    /**
+     * The installation sequence; dependencies first.
+     */
     private final List<Installer> installers = new ArrayList<>();
     private final List<Installer> executedInstallers = new ArrayList<>();
 
@@ -684,7 +722,8 @@ public class InstallCommand implements InstallerCommand {
      * @throws IOException
      */
     void acceptLicenses() throws IOException {
-        new LicensePresenter(feedback, input.getLocalRegistry(), licensesToAccept).run();
+        // disabled for 20.1 release
+        // new LicensePresenter(feedback, input.getLocalRegistry(), licensesToAccept).run();
     }
 
     public Set<String> getUnresolvedDependencies() {

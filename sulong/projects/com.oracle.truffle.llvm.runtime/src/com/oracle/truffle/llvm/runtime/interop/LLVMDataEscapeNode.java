@@ -35,7 +35,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeFactory.LLVMDoubleDataEscapeNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeFactory.LLVMFloatDataEscapeNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeFactory.LLVMI16DataEscapeNodeGen;
@@ -47,6 +46,7 @@ import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeFactory.LLVMPoi
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeFactory.LLVMVoidDataEscapeNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
@@ -261,42 +261,20 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
             return escapingValue;
         }
 
-        @Specialization
-        static Object escapingForeign(LLVMTypedForeignObject escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
-            return escapingValue.getForeign();
+        static boolean isPrimitiveValue(Object object) {
+            return object instanceof Long || object instanceof Double;
         }
 
-        @Specialization
+        @Specialization(guards = {"!isPrimitiveValue(object)", "foreigns.isForeign(object)"})
+        static Object escapingForeignNonPointer(Object object, @SuppressWarnings("unused") LLVMInteropType.Structured type,
+                        @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns) {
+            return foreigns.asForeign(object);
+        }
+
+        @Specialization(guards = "!foreigns.isForeign(address)")
         static Object escapingManaged(LLVMPointer address, @SuppressWarnings("unused") LLVMInteropType.Structured type,
-                        @Cached("createClassProfile()") ValueProfile objectProfile,
-                        @Cached ConditionProfile isManagedPointer,
-                        @Cached ConditionProfile isTypedForeignObject,
-                        @Cached ConditionProfile typedProfile,
-                        @CachedLibrary(limit = "3") LLVMNativeLibrary library) {
-
-            if (isManagedPointer.profile(LLVMManagedPointer.isInstance(address))) {
-                LLVMManagedPointer managed = LLVMManagedPointer.cast(address);
-                Object object = objectProfile.profile(managed.getObject());
-                if (managed.getOffset() == 0) {
-                    // pointer to the beginning of a managed object
-                    if (isTypedForeignObject.profile(object instanceof LLVMTypedForeignObject)) {
-                        // foreign object -- unpack it
-                        return escapingForeign((LLVMTypedForeignObject) object, type);
-                    } else {
-                        if (library.isInternalObject(object)) {
-                            // internal object -- fallthrough
-                        } else if (object instanceof LLVMInternalTruffleObject) {
-                            // internal object -- fallthrough
-                        } else if (LLVMPointer.isInstance(object)) {
-                            // internal object -- fallthrough
-                        } else {
-                            // foreign object -- unpack it
-                            return object;
-                        }
-                    }
-                }
-            }
-
+                        @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns,
+                        @Cached ConditionProfile typedProfile) {
             // fallthrough: the value escapes as LLVM pointer object
 
             if (typedProfile.profile(address.getExportType() != null)) {

@@ -33,7 +33,6 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 
 @NodeInfo(cycles = CYCLES_1, size = SIZE_1)
 public class CodeSynchronizationNode extends FixedWithNextNode implements Lowerable {
@@ -41,11 +40,6 @@ public class CodeSynchronizationNode extends FixedWithNextNode implements Lowera
 
     public CodeSynchronizationNode() {
         super(TYPE, StampFactory.forVoid());
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
     }
 
     @NodeIntrinsic

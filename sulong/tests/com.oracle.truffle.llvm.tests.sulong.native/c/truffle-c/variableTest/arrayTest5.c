@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,11 +28,11 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int func(int foo[]) {
-  return foo[1];
+    return foo[1];
 }
 
 int main() {
-  int test[] = { 7, 8, 9 };
-  int result = func(test);
-  return result;
+    int test[] = { 7, 8, 9 };
+    int result = func(test);
+    return result;
 }

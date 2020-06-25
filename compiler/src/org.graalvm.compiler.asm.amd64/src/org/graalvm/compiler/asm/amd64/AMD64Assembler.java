@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -2277,6 +2277,12 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         simdPrefix(dst, Register.None, src, PS, P_0F, false);
         emitByte(0x28);
         emitModRM(dst, src);
+    }
+
+    public final void movb(Register dst, AMD64Address src) {
+        prefixb(src, dst);
+        emitByte(0x8A);
+        emitOperandHelper(dst, src, 0);
     }
 
     public final void movb(AMD64Address dst, int imm8) {

@@ -24,10 +24,15 @@
  */
 package com.oracle.svm.core;
 
+import static org.graalvm.compiler.core.common.GraalOptions.TrackNodeSourcePosition;
 import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.None;
 import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.Options.MitigateSpeculativeExecutionAttacks;
+import static org.graalvm.compiler.options.OptionType.Expert;
 import static org.graalvm.compiler.options.OptionType.User;
 
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.function.Predicate;
 
@@ -51,8 +56,7 @@ import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.XOptions;
-
-import static org.graalvm.compiler.core.common.GraalOptions.TrackNodeSourcePosition;
+import com.oracle.svm.core.util.UserError;
 
 public class SubstrateOptions {
 
@@ -90,9 +94,13 @@ public class SubstrateOptions {
     public static final String IMAGE_CLASSPATH_PREFIX = "-imagecp";
     public static final String WATCHPID_PREFIX = "-watchpid";
     private static ValueUpdateHandler optimizeValueUpdateHandler;
+    private static ValueUpdateHandler debugInfoValueUpdateHandler = SubstrateOptions::defaultDebugInfoValueUpdateHandler;
 
     @Option(help = "Show available options based on comma-separated option-types (allowed categories: User, Expert, Debug).")//
     public static final OptionKey<String> PrintFlags = new OptionKey<>(null);
+
+    @Option(help = "Print extra help, if available, based on comma-separated option names. Pass * to show all options that contain extra help.")//
+    public static final OptionKey<String> PrintFlagsWithExtraHelp = new OptionKey<>(null);
 
     @Option(help = "Control native-image code optimizations: 0 - no optimizations, 1 - basic optimizations, 2 - aggressive optimizations.", type = OptionType.User)//
     public static final HostedOptionKey<Integer> Optimize = new HostedOptionKey<Integer>(2) {
@@ -113,6 +121,10 @@ public class SubstrateOptions {
 
     public static void setOptimizeValueUpdateHandler(ValueUpdateHandler updateHandler) {
         SubstrateOptions.optimizeValueUpdateHandler = updateHandler;
+    }
+
+    public static void setDebugInfoValueUpdateHandler(ValueUpdateHandler updateHandler) {
+        SubstrateOptions.debugInfoValueUpdateHandler = updateHandler;
     }
 
     @Option(help = "Track NodeSourcePositions during runtime-compilation")//
@@ -192,6 +204,10 @@ public class SubstrateOptions {
             }
         }
     };
+
+    /* Same option name and specification as the Java HotSpot VM. */
+    @Option(help = "Maximum total size of NIO direct-buffer allocations")//
+    public static final RuntimeOptionKey<Long> MaxDirectMemorySize = new RuntimeOptionKey<>(0L);
 
     @Option(help = "Verify naming conventions during image construction.")//
     public static final HostedOptionKey<Boolean> VerifyNamingConventions = new HostedOptionKey<>(false);
@@ -425,8 +441,12 @@ public class SubstrateOptions {
     @Option(help = "Show native-toolchain information and image-build settings", type = User)//
     public static final HostedOptionKey<Boolean> DumpTargetInfo = new HostedOptionKey<>(false);
 
-    @Option(help = "file:doc-files/UseMuslCHelp.txt", type = OptionType.Expert)//
-    public static final HostedOptionKey<String> UseMuslC = new HostedOptionKey<>(null);
+    @Option(help = "Check if native-toolchain is known to work with native-image", type = Expert)//
+    public static final HostedOptionKey<Boolean> CheckToolchain = new HostedOptionKey<>(true);
+
+    @APIOption(name = "install-exit-handlers")//
+    @Option(help = "Provide java.lang.Terminator exit handlers for executable images", type = User)//
+    public static final HostedOptionKey<Boolean> InstallExitHandlers = new HostedOptionKey<>(false);
 
     @Option(help = "When set to true, the image generator verifies that the image heap does not contain a home directory as a substring", type = User)//
     public static final HostedOptionKey<Boolean> DetectUserDirectoriesInImageHeap = new HostedOptionKey<>(false);
@@ -449,17 +469,38 @@ public class SubstrateOptions {
     @Option(help = "Populate reference queues in a separate thread rather than after a garbage collection.", type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> UseReferenceHandlerThread = new HostedOptionKey<>(false);
 
+    @APIOption(name = "-g", fixedValue = "2", customHelp = "generate debugging information")//
     @Option(help = "Insert debug info into the generated native image or library")//
     public static final HostedOptionKey<Integer> GenerateDebugInfo = new HostedOptionKey<Integer>(0) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Integer oldValue, Integer newValue) {
-            // force update of TrackNodeSourcePosition
-            if (newValue > 0 && !Boolean.TRUE.equals(values.get(TrackNodeSourcePosition))) {
-                TrackNodeSourcePosition.update(values, true);
-            }
+            debugInfoValueUpdateHandler.onValueUpdate(values, oldValue, newValue);
         }
     };
+
+    private static void defaultDebugInfoValueUpdateHandler(EconomicMap<OptionKey<?>, Object> values, @SuppressWarnings("unused") Integer oldValue, Integer newValue) {
+        // force update of TrackNodeSourcePosition
+        if (newValue > 0 && !Boolean.TRUE.equals(values.get(TrackNodeSourcePosition))) {
+            TrackNodeSourcePosition.update(values, true);
+        }
+    }
+
     @Option(help = "Search path for source files for Application or GraalVM classes (list of comma-separated directories or jar files)")//
     public static final HostedOptionKey<String[]> DebugInfoSourceSearchPath = new HostedOptionKey<String[]>(null) {
     };
+    @Option(help = "Directory under which to create source file cache for Application or GraalVM classes")//
+    public static final HostedOptionKey<String> DebugInfoSourceCacheRoot = new HostedOptionKey<>("sources");
+
+    public static Path getDebugInfoSourceCacheRoot() {
+        try {
+            Path sourceRoot = Paths.get(DebugInfoSourceCacheRoot.getValue());
+            return sourceRoot;
+        } catch (InvalidPathException ipe) {
+            throw UserError.abort("Invalid path provided for option DebugInfoSourceCacheRoot " + DebugInfoSourceCacheRoot.getValue());
+        }
+    }
+
+    /** Command line option to disable image build server. */
+    public static final String NO_SERVER = "--no-server";
+
 }

@@ -36,6 +36,7 @@ import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.hotspot.JVMCIVersionCheck.Version;
 import org.graalvm.compiler.hotspot.JVMCIVersionCheck.Version2;
 import org.graalvm.compiler.hotspot.JVMCIVersionCheck.Version3;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import jdk.vm.ci.common.JVMCIError;
@@ -126,6 +127,7 @@ public class GraalHotSpotVMConfigAccess {
     public final String osArch;
 
     protected static final Version JVMCI_0_55 = new Version2(0, 55);
+    protected static final Version JVMCI_20_2_b01 = new Version3(20, 2, 1);
     protected static final Version JVMCI_20_1_b01 = new Version3(20, 1, 1);
     protected static final Version JVMCI_20_0_b03 = new Version3(20, 0, 3);
     protected static final Version JVMCI_19_3_b03 = new Version3(19, 3, 3);
@@ -137,6 +139,7 @@ public class GraalHotSpotVMConfigAccess {
     }
 
     public static final int JDK = JavaVersionUtil.JAVA_SPEC;
+    public static final int JDK_UPDATE = GraalServices.getJavaUpdateVersion();
     public static final boolean IS_OPENJDK = getProperty("java.vm.name", "").startsWith("OpenJDK");
     public static final Version JVMCI_VERSION;
     public static final boolean JVMCI;

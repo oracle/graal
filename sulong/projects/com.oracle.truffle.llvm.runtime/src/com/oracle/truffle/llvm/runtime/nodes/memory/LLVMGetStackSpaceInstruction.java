@@ -113,7 +113,7 @@ public abstract class LLVMGetStackSpaceInstruction extends LLVMExpressionNode {
         protected LLVMNativePointer doOp(VirtualFrame frame,
                         @CachedLanguage LLVMLanguage language) {
             try {
-                return LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, language.getLLVMMemory(), getStackPointerSlot(), size, alignment));
+                return LLVMNativePointer.create(LLVMStack.allocateStackMemory(this, frame, language.getLLVMMemory(), getStackPointerSlot(), size, alignment));
             } catch (LLVMStackOverflowError soe) {
                 CompilerDirectives.transferToInterpreter();
                 throw new LLVMAllocationFailureException(this, soe);
@@ -152,7 +152,7 @@ public abstract class LLVMGetStackSpaceInstruction extends LLVMExpressionNode {
         protected LLVMNativePointer doOp(VirtualFrame frame, int nr,
                         @CachedLanguage LLVMLanguage language) {
             try {
-                return LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, language.getLLVMMemory(), getStackPointerSlot(), size * nr, alignment));
+                return LLVMNativePointer.create(LLVMStack.allocateStackMemory(this, frame, language.getLLVMMemory(), getStackPointerSlot(), size * nr, alignment));
             } catch (LLVMStackOverflowError soe) {
                 CompilerDirectives.transferToInterpreter();
                 throw new LLVMAllocationFailureException(this, soe);
@@ -163,7 +163,7 @@ public abstract class LLVMGetStackSpaceInstruction extends LLVMExpressionNode {
         protected LLVMNativePointer doOp(VirtualFrame frame, long nr,
                         @CachedLanguage LLVMLanguage language) {
             try {
-                return LLVMNativePointer.create(LLVMStack.allocateStackMemory(frame, language.getLLVMMemory(), getStackPointerSlot(), size * nr, alignment));
+                return LLVMNativePointer.create(LLVMStack.allocateStackMemory(this, frame, language.getLLVMMemory(), getStackPointerSlot(), size * nr, alignment));
             } catch (LLVMStackOverflowError soe) {
                 CompilerDirectives.transferToInterpreter();
                 throw new LLVMAllocationFailureException(this, soe);

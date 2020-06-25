@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,8 @@ import static org.graalvm.compiler.hotspot.meta.HotSpotAOTProfilingPlugin.Option
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -39,8 +41,6 @@ import java.util.ListIterator;
 import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.stream.Stream;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.runtime.GraalJVMCICompiler;
@@ -233,7 +233,7 @@ public final class Main {
             // The GC names are spelled the same in both enums, so no clever remapping is needed
             // here.
             String name = "CollectedHeap::" + graalGC.name();
-            int gc = graalHotSpotVMConfig.getConstant(name, Integer.class, def, false);
+            int gc = graalHotSpotVMConfig.getConstant(name, Integer.class, def, true);
 
             BinaryContainer binaryContainer = new BinaryContainer(graalOptions, graalHotSpotVMConfig, graphBuilderConfig, gc, JVM_VERSION);
             DataBuilder dataBuilder = new DataBuilder(this, backend, classes, binaryContainer);

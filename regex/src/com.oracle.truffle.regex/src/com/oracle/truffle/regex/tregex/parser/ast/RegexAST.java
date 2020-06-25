@@ -55,16 +55,17 @@ import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.charset.Constants;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.StateIndex;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
-import com.oracle.truffle.regex.tregex.buffer.CharArrayBuffer;
-import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.Counter;
 import com.oracle.truffle.regex.tregex.parser.RegexProperties;
 import com.oracle.truffle.regex.tregex.parser.Token;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.ASTDebugDumpVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.CopyVisitor;
+import com.oracle.truffle.regex.tregex.string.AbstractStringBuffer;
+import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonArray;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
@@ -123,6 +124,10 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
 
     public RegexOptions getOptions() {
         return options;
+    }
+
+    public Encoding getEncoding() {
+        return source.getEncoding();
     }
 
     public Group getRoot() {
@@ -265,6 +270,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
     }
 
     public CharacterClass createCharacterClass(CodePointSet matcherBuilder) {
+        assert getEncoding().getFullSet().contains(matcherBuilder);
         return register(new CharacterClass(matcherBuilder));
     }
 
@@ -316,13 +322,23 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
 
     public CharacterClass register(CharacterClass characterClass) {
         nodeCount.inc();
+        updatePropsCC(characterClass);
+        return characterClass;
+    }
+
+    public void updatePropsCC(CharacterClass characterClass) {
         if (!characterClass.getCharSet().matchesSingleChar()) {
             if (!characterClass.getCharSet().matches2CharsWith1BitDifference()) {
                 properties.unsetCharClassesCanBeMatchedWithMask();
             }
+            if (!getEncoding().isFixedCodePointWidth(characterClass.getCharSet())) {
+                properties.setFixedCodePointWidth(false);
+            }
             properties.setCharClasses();
         }
-        return characterClass;
+        if (Constants.SURROGATES.intersects(characterClass.getCharSet())) {
+            properties.setLoneSurrogates();
+        }
     }
 
     public Group register(Group group) {
@@ -371,12 +387,6 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
 
     public PositionAssertion register(PositionAssertion positionAssertion) {
         nodeCount.inc();
-        switch (positionAssertion.type) {
-            case CARET:
-                break;
-            case DOLLAR:
-                break;
-        }
         return positionAssertion;
     }
 
@@ -527,7 +537,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
      * set to true.
      */
     private CharacterClass createPrefixAnyMatcher() {
-        final CharacterClass anyMatcher = createCharacterClass(CodePointSet.getFull());
+        final CharacterClass anyMatcher = createCharacterClass(getEncoding().getFullSet());
         anyMatcher.setPrefix();
         return anyMatcher;
     }
@@ -593,22 +603,21 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         return sections;
     }
 
-    public InnerLiteral extractInnerLiteral(CompilationBuffer compilationBuffer) {
+    public InnerLiteral extractInnerLiteral() {
         assert properties.hasInnerLiteral();
         int literalEnd = properties.getInnerLiteralEnd();
         int literalStart = properties.getInnerLiteralStart();
-        CharArrayBuffer literal = compilationBuffer.getCharRangesBuffer1();
-        CharArrayBuffer mask = compilationBuffer.getCharRangesBuffer2();
-        literal.ensureCapacity(literalEnd - literalStart);
-        mask.ensureCapacity(literalEnd - literalStart);
+        AbstractStringBuffer literal = getEncoding().createStringBuffer(literalEnd - literalStart);
+        AbstractStringBuffer mask = getEncoding().createStringBuffer(literalEnd - literalStart);
         boolean hasMask = false;
         for (int i = literalStart; i < literalEnd; i++) {
             CharacterClass cc = root.getFirstAlternative().getTerms().get(i).asCharacterClass();
             assert cc.getCharSet().matchesSingleChar() || cc.getCharSet().matches2CharsWith1BitDifference();
+            assert getEncoding().isFixedCodePointWidth(cc.getCharSet());
             cc.extractSingleChar(literal, mask);
             hasMask |= cc.getCharSet().matches2CharsWith1BitDifference();
         }
-        return new InnerLiteral(new String(literal.toArray()), hasMask ? new String(mask.toArray()) : null, root.getFirstAlternative().get(literalStart).getMaxPath() - 1);
+        return new InnerLiteral(literal.materialize(), hasMask ? mask.materialize() : null, root.getFirstAlternative().get(literalStart).getMaxPath() - 1);
     }
 
     @TruffleBoundary

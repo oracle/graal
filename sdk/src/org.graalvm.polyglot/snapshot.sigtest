@@ -106,6 +106,8 @@ meth public org.graalvm.polyglot.Engine getEngine()
 meth public org.graalvm.polyglot.Value asValue(java.lang.Object)
 meth public org.graalvm.polyglot.Value eval(java.lang.String,java.lang.CharSequence)
 meth public org.graalvm.polyglot.Value eval(org.graalvm.polyglot.Source)
+meth public org.graalvm.polyglot.Value parse(java.lang.String,java.lang.CharSequence)
+meth public org.graalvm.polyglot.Value parse(org.graalvm.polyglot.Source)
 meth public org.graalvm.polyglot.Value getBindings(java.lang.String)
 meth public org.graalvm.polyglot.Value getPolyglotBindings()
 meth public static org.graalvm.polyglot.Context getCurrent()
@@ -287,6 +289,7 @@ meth public boolean isGuestException()
 meth public boolean isHostException()
 meth public boolean isIncompleteSource()
 meth public boolean isInternalError()
+meth public boolean isResourceExhausted()
 meth public boolean isSyntaxError()
 meth public int getExitStatus()
 meth public int hashCode()
@@ -526,6 +529,7 @@ meth public java.lang.String getSeparator()
 meth public java.nio.charset.Charset getEncoding(java.nio.file.Path)
 meth public java.nio.file.Path getTempDirectory()
 meth public java.nio.file.Path readSymbolicLink(java.nio.file.Path) throws java.io.IOException
+meth public static org.graalvm.polyglot.io.FileSystem newDefaultFileSystem()
 meth public void createLink(java.nio.file.Path,java.nio.file.Path) throws java.io.IOException
 meth public void setCurrentWorkingDirectory(java.nio.file.Path)
 
@@ -575,8 +579,6 @@ supr java.lang.Object
 hfds stream,type
 hcls Type
 
-CLSS abstract interface org.graalvm.polyglot.io.package-info
-
 CLSS public final org.graalvm.polyglot.management.ExecutionEvent
 meth public boolean isExpression()
 meth public boolean isRoot()
@@ -613,10 +615,6 @@ meth public org.graalvm.polyglot.management.ExecutionListener$Builder sourceFilt
 meth public org.graalvm.polyglot.management.ExecutionListener$Builder statements(boolean)
 supr java.lang.Object
 hfds collectExceptions,collectInputValues,collectReturnValues,expressions,onEnter,onReturn,rootNameFilter,roots,sourceFilter,statements
-
-CLSS abstract interface org.graalvm.polyglot.management.package-info
-
-CLSS abstract interface org.graalvm.polyglot.package-info
 
 CLSS public abstract interface org.graalvm.polyglot.proxy.Proxy
 
@@ -681,6 +679,4 @@ CLSS public abstract interface org.graalvm.polyglot.proxy.ProxyTimeZone
 intf org.graalvm.polyglot.proxy.Proxy
 meth public abstract java.time.ZoneId asTimeZone()
 meth public static org.graalvm.polyglot.proxy.ProxyTimeZone from(java.time.ZoneId)
-
-CLSS abstract interface org.graalvm.polyglot.proxy.package-info
 

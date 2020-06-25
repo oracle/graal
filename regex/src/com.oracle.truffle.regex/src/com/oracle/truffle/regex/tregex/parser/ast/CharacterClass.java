@@ -48,8 +48,9 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
-import com.oracle.truffle.regex.tregex.buffer.CharArrayBuffer;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.RegexParser;
+import com.oracle.truffle.regex.tregex.string.AbstractStringBuffer;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonObject;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
@@ -82,14 +83,19 @@ public class CharacterClass extends QuantifiableTerm {
         this.charSet = charSet;
     }
 
-    private CharacterClass(CharacterClass copy) {
+    private CharacterClass(CharacterClass copy, CodePointSet charSet) {
         super(copy);
-        charSet = copy.charSet;
+        this.charSet = charSet;
     }
 
     @Override
-    public CharacterClass copy(RegexAST ast, boolean recursive) {
-        return ast.register(new CharacterClass(this));
+    public CharacterClass copy(RegexAST ast) {
+        return ast.register(new CharacterClass(this, charSet));
+    }
+
+    @Override
+    public CharacterClass copyRecursive(RegexAST ast, CompilationBuffer compilationBuffer) {
+        return ast.register(new CharacterClass(this, ast.getEncoding().getFullSet().createIntersection(charSet, compilationBuffer)));
     }
 
     @Override
@@ -149,35 +155,19 @@ public class CharacterClass extends QuantifiableTerm {
         return lookBehindEntries;
     }
 
-    public void extractSingleChar(CharArrayBuffer literal, CharArrayBuffer mask) {
+    public void extractSingleChar(AbstractStringBuffer literal, AbstractStringBuffer mask) {
         if (charSet.matchesSingleChar()) {
-            int first = charSet.getMin();
-            assert first <= Character.MAX_VALUE;
-            literal.add((char) first);
-            mask.add((char) 0);
+            literal.append(charSet.getMin());
+            assert mask.getEncoding().getEncodedSize(0) == 1;
+            for (int i = 0; i < mask.getEncoding().getEncodedSize(charSet.getMin()); i++) {
+                mask.append(0);
+            }
         } else {
             assert charSet.matches2CharsWith1BitDifference();
             int c1 = charSet.getMin();
             int c2 = charSet.getMax();
-            assert c2 <= Character.MAX_VALUE;
-            literal.add((char) (c1 | c2));
-            mask.add((char) (c1 ^ c2));
-        }
-    }
-
-    public void extractSingleChar(char[] literal, char[] mask, int i) {
-        if (charSet.matchesSingleChar()) {
-            int first = charSet.getMin();
-            assert first <= Character.MAX_VALUE;
-            literal[i] = (char) first;
-            mask[i] = (char) 0;
-        } else {
-            assert charSet.matches2CharsWith1BitDifference();
-            int c1 = charSet.getMin();
-            int c2 = charSet.getMax();
-            assert c2 <= Character.MAX_VALUE;
-            literal[i] = (char) (c1 | c2);
-            mask[i] = (char) (c1 ^ c2);
+            literal.appendOR(c1, c2);
+            mask.appendXOR(c1, c2);
         }
     }
 

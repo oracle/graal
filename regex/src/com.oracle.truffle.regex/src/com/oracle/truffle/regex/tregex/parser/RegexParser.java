@@ -78,6 +78,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.visitors.InitIDVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.MarkLookBehindEntriesVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.NodeCountVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.SetSourceSectionVisitor;
+import com.oracle.truffle.regex.tregex.string.Encodings;
 
 public final class RegexParser {
 
@@ -135,9 +136,9 @@ public final class RegexParser {
     private final CompilationBuffer compilationBuffer;
 
     @TruffleBoundary
-    public RegexParser(RegexSource source, RegexOptions options, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
+    public RegexParser(RegexSource source, RegexFlags flags, RegexOptions options, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
         this.source = source;
-        this.flags = RegexFlags.parseFlags(source.getFlags());
+        this.flags = flags;
         this.options = options;
         this.lexer = new RegexLexer(source, flags, options);
         this.ast = new RegexAST(source, flags, options);
@@ -150,7 +151,7 @@ public final class RegexParser {
     }
 
     private static Group parseRootLess(String pattern) throws RegexSyntaxException {
-        return new RegexParser(new RegexSource(pattern), RegexOptions.DEFAULT, new CompilationBuffer()).parse(false);
+        return new RegexParser(new RegexSource(pattern, "", Encodings.UTF_16_RAW), RegexFlags.DEFAULT, RegexOptions.DEFAULT, new CompilationBuffer(Encodings.UTF_16_RAW)).parse(false);
     }
 
     @TruffleBoundary
@@ -188,7 +189,10 @@ public final class RegexParser {
         int maxPath = 0;
         for (int i = 0; i < terms.size(); i++) {
             Term t = terms.get(i);
-            if (t.isCharacterClass() && (t.asCharacterClass().getCharSet().matchesSingleChar() || t.asCharacterClass().getCharSet().matches2CharsWith1BitDifference())) {
+            if (t.isCharacterClass() &&
+                            (t.asCharacterClass().getCharSet().matchesSingleChar() || t.asCharacterClass().getCharSet().matches2CharsWith1BitDifference()) &&
+                            ast.getEncoding().isFixedCodePointWidth(t.asCharacterClass().getCharSet()) &&
+                            (ast.getEncoding() == Encodings.UTF_16_RAW || !t.asCharacterClass().getCharSet().intersects(Constants.SURROGATES))) {
                 if (literalStart < 0) {
                     literalStart = i;
                 }
@@ -343,7 +347,8 @@ public final class RegexParser {
             // surrogates
             assert !flags.isUnicode() || !options.isUTF16ExplodeAstralSymbols() || cc.getCharSet().matchesNothing() || cc.getCharSet().getMax() <= 0xffff;
             assert !group.hasEnclosedCaptureGroups();
-            cc.setCharSet(cc.getCharSet().createInverse());
+            cc.setCharSet(cc.getCharSet().createInverse(ast.getEncoding()));
+            ast.updatePropsCC(cc);
             curSequence.removeLastTerm();
             Group wrapGroup = ast.createGroup();
             Sequence positionAssertionSeq = wrapGroup.addSequence(ast);
@@ -397,15 +402,13 @@ public final class RegexParser {
         if (loneLeadSurrogateRanges.matchesSomething()) {
             Sequence loneLeadSurrogateAlternative = group.addSequence(ast);
             loneLeadSurrogateAlternative.add(createCharClass(loneLeadSurrogateRanges, token));
-            loneLeadSurrogateAlternative.add(NO_TRAIL_SURROGATE_AHEAD.copy(ast, true));
-            properties.setLoneSurrogates();
+            loneLeadSurrogateAlternative.add(NO_TRAIL_SURROGATE_AHEAD.copyRecursive(ast, compilationBuffer));
         }
 
         if (loneTrailSurrogateRanges.matchesSomething()) {
             Sequence loneTrailSurrogateAlternative = group.addSequence(ast);
-            loneTrailSurrogateAlternative.add(NO_LEAD_SURROGATE_BEHIND.copy(ast, true));
+            loneTrailSurrogateAlternative.add(NO_LEAD_SURROGATE_BEHIND.copyRecursive(ast, compilationBuffer));
             loneTrailSurrogateAlternative.add(createCharClass(loneTrailSurrogateRanges, token));
-            properties.setLoneSurrogates();
         }
 
         if (astralRanges.matchesSomething()) {
@@ -435,8 +438,8 @@ public final class RegexParser {
                 if (startLead == endLead) {
                     curTrails.addRange(startTrail, endTrail);
                 } else {
-                    if (startTrail != Constants.TRAIL_SURROGATE_RANGE.getLo(0)) {
-                        curTrails.addRange(startTrail, Constants.TRAIL_SURROGATE_RANGE.getHi(0));
+                    if (startTrail != Constants.TRAIL_SURROGATES.getLo(0)) {
+                        curTrails.addRange(startTrail, Constants.TRAIL_SURROGATES.getHi(0));
                         assert startLead < Character.MAX_VALUE;
                         startLead = (char) (startLead + 1);
                     }
@@ -449,8 +452,8 @@ public final class RegexParser {
                     curLead = endLead;
                     curTrails.clear();
 
-                    if (endTrail != Constants.TRAIL_SURROGATE_RANGE.getHi(0)) {
-                        curTrails.addRange(Constants.TRAIL_SURROGATE_RANGE.getLo(0), endTrail);
+                    if (endTrail != Constants.TRAIL_SURROGATES.getHi(0)) {
+                        curTrails.addRange(Constants.TRAIL_SURROGATES.getLo(0), endTrail);
                         assert endLead > Character.MIN_VALUE;
                         endLead = (char) (endLead - 1);
                     }
@@ -472,7 +475,7 @@ public final class RegexParser {
                 Sequence completeRangesAlt = ast.createSequence();
                 group.insertFirst(completeRangesAlt);
                 completeRangesAlt.add(createCharClass(completeRanges.toCodePointSet(), token));
-                completeRangesAlt.add(createCharClass(Constants.TRAIL_SURROGATE_RANGE, token));
+                completeRangesAlt.add(createCharClass(Constants.TRAIL_SURROGATES, token));
             }
         }
 
@@ -506,18 +509,6 @@ public final class RegexParser {
         ast.addSourceSection(characterClass, token);
         if (wasSingleChar) {
             characterClass.setWasSingleChar();
-        }
-        if (charSet.matchesSomething()) {
-            int max = charSet.getMax();
-            if (max >= 0x80) {
-                int min = charSet.getMin();
-                if (min < 0x10000 && max > 0x10000) {
-                    properties.setFixedCodePointWidthUTF16(false);
-                    properties.setFixedCodePointWidthUTF8(false);
-                } else if (min < 0x80 || min < 0x800 && max >= 0x800) {
-                    properties.setFixedCodePointWidthUTF8(false);
-                }
-            }
         }
         return characterClass;
     }
@@ -663,7 +654,7 @@ public final class RegexParser {
     }
 
     private void substitute(Token token, Group substitution) {
-        Group copy = substitution.copy(ast, true);
+        Group copy = substitution.copyRecursive(ast, compilationBuffer);
         if (options.isDumpAutomata()) {
             setSourceSectionVisitor.run(copy, token);
         }
@@ -938,6 +929,7 @@ public final class RegexParser {
     private void mergeCharClasses(CharacterClass dst, CharacterClass src) {
         dst.setCharSet(dst.getCharSet().union(src.getCharSet()));
         dst.setWasSingleChar(false);
+        ast.updatePropsCC(dst);
         ast.addSourceSections(dst, ast.getSourceSections(src));
     }
 

@@ -40,7 +40,8 @@
  */
 package com.oracle.truffle.sl.nodes.util;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
+
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
@@ -108,8 +109,7 @@ public abstract class SLUnboxNode extends SLExpressionNode {
                 return value;
             }
         } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new AssertionError();
+            throw shouldNotReachHere(e);
         }
     }
 

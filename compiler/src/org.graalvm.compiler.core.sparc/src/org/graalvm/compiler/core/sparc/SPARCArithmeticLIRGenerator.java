@@ -663,6 +663,16 @@ public class SPARCArithmeticLIRGenerator extends ArithmeticLIRGenerator {
     }
 
     @Override
+    public Variable emitVolatileLoad(LIRKind kind, Value address, LIRFrameState state) {
+        throw GraalError.shouldNotReachHere();
+    }
+
+    @Override
+    public void emitVolatileStore(ValueKind<?> kind, Value address, Value input, LIRFrameState state) {
+        throw GraalError.shouldNotReachHere();
+    }
+
+    @Override
     public void emitStore(ValueKind<?> kind, Value address, Value inputVal, LIRFrameState state) {
         SPARCAddressValue storeAddress = getLIRGen().asAddressValue(address);
         if (isJavaConstant(inputVal)) {

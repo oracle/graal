@@ -41,9 +41,9 @@
 
 package com.oracle.truffle.regex.tregex.nodes.nfa;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.regex.charset.CP16BitMatchers;
+import com.oracle.truffle.regex.charset.CharMatchers;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
@@ -54,7 +54,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.LookAroundAssertion;
  * Specialized {@link TRegexExecutorNode} for matching {@link LookAroundAssertion#isLiteral()
  * literal} {@link LookAroundAssertion}s.
  */
-public class TRegexLiteralLookAroundExecutorNode extends TRegexExecutorNode {
+public final class TRegexLiteralLookAroundExecutorNode extends TRegexExecutorNode {
 
     private final boolean forward;
     private final boolean negated;
@@ -66,9 +66,14 @@ public class TRegexLiteralLookAroundExecutorNode extends TRegexExecutorNode {
         negated = lookAround.isNegated();
         matchers = new CharMatcher[lookAround.getLiteralLength()];
         for (int i = 0; i < matchers.length; i++) {
-            CharMatcher matcher = CP16BitMatchers.createMatcher(lookAround.getGroup().getFirstAlternative().get(i).asCharacterClass().getCharSet(), compilationBuffer);
+            CharMatcher matcher = CharMatchers.createMatcher(lookAround.getGroup().getFirstAlternative().get(i).asCharacterClass().getCharSet(), compilationBuffer);
             matchers[forward ? i : matchers.length - (i + 1)] = insert(matcher);
         }
+    }
+
+    @Override
+    public boolean isForward() {
+        return forward;
     }
 
     @Override
@@ -76,9 +81,9 @@ public class TRegexLiteralLookAroundExecutorNode extends TRegexExecutorNode {
         return false;
     }
 
+    @TruffleBoundary
     @Override
     public TRegexExecutorLocals createLocals(Object input, int fromIndex, int index, int maxIndex) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
         throw new UnsupportedOperationException();
     }
 
@@ -86,21 +91,12 @@ public class TRegexLiteralLookAroundExecutorNode extends TRegexExecutorNode {
     @Override
     public Object execute(TRegexExecutorLocals abstractLocals, boolean compactString) {
         TRegexBacktrackingNFAExecutorLocals locals = (TRegexBacktrackingNFAExecutorLocals) abstractLocals;
-        int index = locals.getIndex();
         for (int i = 0; i < matchers.length; i++) {
-            int iChar = forward ? index + i : index - i;
-            if (!inputBoundsCheck(iChar, 0, locals.getMaxIndex()) || !matchers[i].execute(inputGetChar(locals, iChar), compactString)) {
+            if (!inputHasNext(locals) || !matchers[i].execute(inputReadAndDecode(locals))) {
                 return negated;
             }
+            inputAdvance(locals);
         }
         return !negated;
-    }
-
-    private char inputGetChar(TRegexBacktrackingNFAExecutorLocals locals, int index) {
-        return forward ? getCharAt(locals, index) : getCharAt(locals, index - 1);
-    }
-
-    private boolean inputBoundsCheck(int i, int min, int max) {
-        return forward ? i < max : i > min;
     }
 }

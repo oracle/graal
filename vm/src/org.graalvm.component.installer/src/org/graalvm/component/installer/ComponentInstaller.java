@@ -151,12 +151,16 @@ public class ComponentInstaller extends Launcher {
         globalOptions.put(Commands.LONG_OPTION_AUTO_YES, Commands.OPTION_AUTO_YES);
 
         globalOptions.put(Commands.OPTION_NON_INTERACTIVE, "");
+        globalOptions.put(Commands.LONG_OPTION_NON_INTERACTIVE, Commands.OPTION_NON_INTERACTIVE);
 
         globalOptions.put(Commands.OPTION_PRINT_VERSION, "");
         globalOptions.put(Commands.OPTION_SHOW_VERSION, "");
 
         globalOptions.put(Commands.LONG_OPTION_PRINT_VERSION, Commands.OPTION_PRINT_VERSION);
         globalOptions.put(Commands.LONG_OPTION_SHOW_VERSION, Commands.OPTION_SHOW_VERSION);
+
+        globalOptions.put(Commands.OPTION_IGNORE_CATALOG_ERRORS, "");
+        globalOptions.put(Commands.LONG_OPTION_IGNORE_CATALOG_ERRORS, Commands.OPTION_IGNORE_CATALOG_ERRORS);
 
         // for simplicity, these options are global, but still commands that use them should
         // declare them explicitly.

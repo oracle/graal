@@ -46,7 +46,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.dsl.Cached;
@@ -231,7 +230,6 @@ final class PolyglotLanguageBindings implements TruffleObject {
                 interop.removeMember(scope, member);
                 return;
             } else if (interop.isMemberExisting(scope, member)) {
-                CompilerDirectives.transferToInterpreter();
                 throw UnsupportedMessageException.create();
             }
         }

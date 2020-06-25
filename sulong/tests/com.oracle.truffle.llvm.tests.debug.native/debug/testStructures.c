@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,15 +29,13 @@
  */
 #include <stdio.h>
 
-struct simpleStruct
-{
+struct simpleStruct {
     int a;
     float b;
     unsigned int c[3];
 };
 
-struct bitFieldsStruct
-{
+struct bitFieldsStruct {
     unsigned int a : 8;
     unsigned int b : 8;
     unsigned int c : 8;
@@ -48,14 +46,12 @@ struct bitFieldsStruct
     int h : 8;
 };
 
-struct combinableStruct
-{
+struct combinableStruct {
     int a;
     int b;
 };
 
-struct splittableStruct
-{
+struct splittableStruct {
     long int a;
     long int b;
 };
@@ -83,41 +79,37 @@ typedef struct {
 } DoubleStruct;
 
 typedef struct {
-    void * a;
-    void * b;
-    void * c;
-    void * d;
-    void * e;
-    void * f;
-    void * g;
-    void * h;
+    void *a;
+    void *b;
+    void *c;
+    void *d;
+    void *e;
+    void *f;
+    void *g;
+    void *h;
 } PointerStruct;
 
-struct globalStruct
-{
+struct globalStruct {
     int a;
     float b;
 } myGlobalStruct;
 
 // opt -mem2reg will reduce the struct arg to a single i64 value
-__attribute__((noinline)) int testCombinedStructArg(struct combinableStruct str)
-{
+__attribute__((noinline)) int testCombinedStructArg(struct combinableStruct str) {
     printf("str.a = %d\nstr.b = %d\n", str.a, str.b);
     return 0;
 }
 
 // opt -mem2reg will reduce the struct arg to two separate i64 values
-__attribute__((noinline)) int testSplittedStructArg(struct splittableStruct str)
-{
+__attribute__((noinline)) int testSplittedStructArg(struct splittableStruct str) {
     printf("str.a = %d\nstr.b = %d\n", str.a, str.b);
     return 0;
 }
 
-int start() __attribute__((constructor))
-{
+int start() __attribute__((constructor)) {
     myGlobalStruct.a = 123;
     myGlobalStruct.b = 124.5f;
-    
+
     struct simpleStruct mySimpleStruct;
     mySimpleStruct.a = 15;
     mySimpleStruct.b = 17.3f;
@@ -166,14 +158,14 @@ int start() __attribute__((constructor))
     ds.h = 0.2;
 
     PointerStruct ps;
-    ps.a = (void*) 0x1001;
-    ps.b = (void*) 0x0110;
-    ps.c = (void*) 0x10010000;
-    ps.d = (void*) 0xabcddcba;
-    ps.e = (void*) 0x10000001;
-    ps.f = (void*) 0xfedcba9876543210;
-    ps.g = (void*) 0x12345678;
-    ps.h = (void*) 0xffffffff000000ff;
+    ps.a = (void *) 0x1001;
+    ps.b = (void *) 0x0110;
+    ps.c = (void *) 0x10010000;
+    ps.d = (void *) 0xabcddcba;
+    ps.e = (void *) 0x10000001;
+    ps.f = (void *) 0xfedcba9876543210;
+    ps.g = (void *) 0x12345678;
+    ps.h = (void *) 0xffffffff000000ff;
 
     return 0;
 }

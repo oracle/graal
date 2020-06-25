@@ -270,7 +270,7 @@ public abstract class BlockNode<T extends Node> extends Node {
         if (elements.length == 0) {
             throw new IllegalArgumentException("Empty blocks are not allowed.");
         }
-        return NodeAccessor.ACCESSOR.createBlockNode(elements, executor);
+        return NodeAccessor.RUNTIME.createBlockNode(elements, executor);
     }
 
     /**
@@ -530,7 +530,7 @@ class BlockNodeSnippets {
                     return e.result;
                 }
             } else {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw new AssertionError("Invalid start index");
             }
         }

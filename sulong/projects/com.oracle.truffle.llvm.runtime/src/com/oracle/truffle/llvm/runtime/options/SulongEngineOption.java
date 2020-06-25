@@ -73,6 +73,12 @@ public final class SulongEngineOption {
                    "dependency on both of them. Thus, the option is off by default.")
     public static final OptionKey<Boolean> LOAD_CXX_LIBRARIES = new OptionKey<>(false);
 
+    public static final String CXX_INTEROP_NAME = "llvm.C++Interop";
+    @Option(name = CXX_INTEROP_NAME,
+            category = OptionCategory.EXPERT,
+            help = "Enables using C++ code and features via interop.")
+    public static final OptionKey<Boolean> CXX_INTEROP = new OptionKey<>(false);
+
     @Option(name = "llvm.enableExternalNativeAccess",
             category = OptionCategory.USER,
             help = "Enable Sulongs native interface.")
@@ -156,11 +162,6 @@ public final class SulongEngineOption {
             category = OptionCategory.INTERNAL,
             help = "Prints a C stack trace when abort() is called.")
     public static final OptionKey<Boolean> STACKTRACE_ON_ABORT = new OptionKey<>(false);
-
-    @Option(name = "llvm.printToolchainPath",
-            category = OptionCategory.INTERNAL,
-            help = "Enables the intrinisc for printing the toolchain path.")
-    public static final OptionKey<Boolean> PRINT_TOOLCHAIN_PATH = new OptionKey<>(false);
 
     @Option(name = "llvm.traceIR",
             category = OptionCategory.EXPERT,

@@ -47,15 +47,20 @@ import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.graph.Edges;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeList;
+import org.graalvm.compiler.java.BytecodeParser;
+import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.DynamicPiNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FullInfopointNode;
+import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
+import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.extended.GetClassNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -64,6 +69,8 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
+import org.graalvm.compiler.nodes.java.DynamicNewInstanceNode;
+import org.graalvm.compiler.nodes.java.InstanceOfDynamicNode;
 import org.graalvm.compiler.nodes.java.NewArrayNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
 import org.graalvm.compiler.nodes.spi.ArrayLengthProvider;
@@ -97,6 +104,7 @@ import com.oracle.graal.pointsto.nodes.ConvertUnknownValueNode;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.jdk.ObjectCloneWithExceptionNode;
 import com.oracle.svm.core.graal.jdk.SubstrateArraysCopyOfWithExceptionNode;
@@ -108,8 +116,6 @@ import com.oracle.svm.core.graal.nodes.ReadHeapBaseFixedNode;
 import com.oracle.svm.core.graal.nodes.ReadReturnAddressNode;
 import com.oracle.svm.core.graal.nodes.ReadStackPointerNode;
 import com.oracle.svm.core.graal.nodes.SubstrateCompressionNode;
-import com.oracle.svm.core.graal.nodes.SubstrateDynamicNewArrayNode;
-import com.oracle.svm.core.graal.nodes.SubstrateDynamicNewInstanceNode;
 import com.oracle.svm.core.graal.nodes.SubstrateNarrowOopStamp;
 import com.oracle.svm.core.graal.nodes.SubstrateReflectionGetCallerClassNode;
 import com.oracle.svm.core.graal.nodes.TestDeoptimizeNode;
@@ -491,9 +497,9 @@ public class SubstrateGraphBuilderPlugins {
     }
 
     private static void registerUnsafePlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins, SnippetReflectionProvider snippetReflection, boolean analysis) {
-        registerUnsafePlugins(metaAccess, new Registration(plugins, sun.misc.Unsafe.class).setAllowOverwrite(true), snippetReflection, analysis);
+        registerUnsafePlugins(metaAccess, new Registration(plugins, sun.misc.Unsafe.class), snippetReflection, analysis);
         if (JavaVersionUtil.JAVA_SPEC > 8) {
-            Registration r = new Registration(plugins, "jdk.internal.misc.Unsafe").setAllowOverwrite(true);
+            Registration r = new Registration(plugins, "jdk.internal.misc.Unsafe");
             registerUnsafePlugins(metaAccess, r, snippetReflection, analysis);
             if (JavaVersionUtil.JAVA_SPEC >= 11) {
                 /* JDK 11 and later have Unsafe.objectFieldOffset(Class, String). */
@@ -519,15 +525,6 @@ public class SubstrateGraphBuilderPlugins {
     }
 
     private static void registerUnsafePlugins(MetaAccessProvider metaAccess, Registration r, SnippetReflectionProvider snippetReflection, boolean analysis) {
-        r.register2("allocateInstance", Receiver.class, Class.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode clazz) {
-                ValueNode clazzNonNull = b.nullCheckedValue(clazz, DeoptimizationAction.None);
-                b.addPush(JavaKind.Object, new SubstrateDynamicNewInstanceNode(clazzNonNull));
-                return true;
-            }
-        });
-
         r.register2("objectFieldOffset", Receiver.class, Field.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode fieldNode) {
@@ -538,7 +535,21 @@ public class SubstrateGraphBuilderPlugins {
                 return false;
             }
         });
-
+        r.register2("allocateInstance", Receiver.class, Class.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode clazz) {
+                /* Emits a null-check for the otherwise unused receiver. */
+                unsafe.get();
+                /*
+                 * The allocated class must be null-checked already before the class initialization
+                 * check.
+                 */
+                ValueNode clazzNonNull = b.nullCheckedValue(clazz, DeoptimizationAction.None);
+                b.add(new EnsureClassInitializedNode(clazzNonNull));
+                b.addPush(JavaKind.Object, new DynamicNewInstanceNode(clazzNonNull, true));
+                return true;
+            }
+        });
     }
 
     private static boolean processObjectFieldOffset(GraphBuilderContext b, Field targetField, boolean analysis, MetaAccessProvider metaAccess) {
@@ -575,13 +586,6 @@ public class SubstrateGraphBuilderPlugins {
 
     private static void registerArrayPlugins(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection, boolean analysis) {
         Registration r = new Registration(plugins, Array.class).setAllowOverwrite(true);
-        r.register2("newInstance", Class.class, int.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode clazz, ValueNode length) {
-                b.addPush(JavaKind.Object, new SubstrateDynamicNewArrayNode(clazz, length));
-                return true;
-            }
-        });
         r.register2("newInstance", Class.class, int[].class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode clazzNode, ValueNode dimensionsNode) {
@@ -774,6 +778,26 @@ public class SubstrateGraphBuilderPlugins {
                     b.addPush(JavaKind.Object, new ConvertUnknownValueNode(object, stamp));
                 } else {
                     b.addPush(JavaKind.Object, PiNode.create(object, stamp));
+                }
+                return true;
+            }
+        });
+
+        registerCastExact(r);
+    }
+
+    public static void registerCastExact(Registration r) {
+        r.register2("castExact", Object.class, Class.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object, ValueNode javaClass) {
+                BytecodeParser p = (BytecodeParser) b;
+                ValueNode nullCheckedClass = p.maybeEmitExplicitNullCheck(javaClass);
+                LogicNode condition = b.append(InstanceOfDynamicNode.create(b.getAssumptions(), b.getConstantReflection(), nullCheckedClass, object, true, true));
+                AbstractBeginNode guard = p.emitBytecodeExceptionCheck(condition, true, BytecodeExceptionNode.BytecodeExceptionKind.CLASS_CAST, object, nullCheckedClass);
+                if (guard != null) {
+                    b.addPush(JavaKind.Object, DynamicPiNode.create(b.getAssumptions(), b.getConstantReflection(), object, guard, nullCheckedClass, true));
+                } else {
+                    b.addPush(JavaKind.Object, object);
                 }
                 return true;
             }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -84,13 +84,14 @@ import org.graalvm.compiler.nodes.calc.IntegerConvertNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.ForeignCallPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedPluginFactory;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
-import org.graalvm.compiler.nodes.graphbuilderconf.NodeIntrinsicPluginFactory;
+import org.graalvm.compiler.nodes.java.DynamicNewInstanceNode;
 import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
@@ -151,8 +152,8 @@ public class HotSpotGraphBuilderPlugins {
         InvocationPlugins invocationPlugins = new HotSpotInvocationPlugins(graalRuntime, config, compilerConfiguration);
 
         Plugins plugins = new Plugins(invocationPlugins);
-        NodeIntrinsificationProvider nodeIntrinsificationProvider = new NodeIntrinsificationProvider(metaAccess, snippetReflection, foreignCalls, wordTypes, target);
         if (!IS_IN_NATIVE_IMAGE) {
+            // In libgraal all word related operations have been fully processed so this is unneeded
             HotSpotWordOperationPlugin wordOperationPlugin = new HotSpotWordOperationPlugin(snippetReflection, wordTypes);
             HotSpotNodePlugin nodePlugin = new HotSpotNodePlugin(wordOperationPlugin, config, wordTypes);
 
@@ -160,7 +161,7 @@ public class HotSpotGraphBuilderPlugins {
             plugins.appendNodePlugin(nodePlugin);
         }
         if (!GeneratePIC.getValue(options)) {
-            plugins.appendNodePlugin(new MethodHandlePlugin(constantReflection.getMethodHandleAccess(), true));
+            plugins.appendNodePlugin(new MethodHandlePlugin(constantReflection.getMethodHandleAccess(), !config.supportsMethodHandleDeoptimizationEntry()));
         }
         plugins.appendInlineInvokePlugin(replacements);
         if (InlineDuringParsing.getValue(options)) {
@@ -184,7 +185,7 @@ public class HotSpotGraphBuilderPlugins {
             public void run() {
                 registerObjectPlugins(invocationPlugins, options, config, replacements);
                 registerClassPlugins(plugins, config, replacements);
-                registerSystemPlugins(invocationPlugins, foreignCalls);
+                registerSystemPlugins(invocationPlugins);
                 registerThreadPlugins(invocationPlugins, metaAccess, wordTypes, config, replacements);
                 if (!GeneratePIC.getValue(options)) {
                     registerCallSitePlugins(invocationPlugins);
@@ -196,20 +197,32 @@ public class HotSpotGraphBuilderPlugins {
                 registerCRC32CPlugins(invocationPlugins, config, replacements);
                 registerBigIntegerPlugins(invocationPlugins, config, replacements);
                 registerSHAPlugins(invocationPlugins, config, replacements);
-                registerGHASHPlugins(invocationPlugins, config, metaAccess, foreignCalls);
+                registerGHASHPlugins(invocationPlugins, config, metaAccess);
                 registerCounterModePlugins(invocationPlugins, config, replacements);
-                registerBase64Plugins(invocationPlugins, config, metaAccess, foreignCalls);
+                registerBase64Plugins(invocationPlugins, config, metaAccess);
                 registerUnsafePlugins(invocationPlugins, config, replacements);
                 StandardGraphBuilderPlugins.registerInvocationPlugins(metaAccess, snippetReflection, invocationPlugins, replacements, true, false, true);
                 registerArrayPlugins(invocationPlugins, replacements);
                 registerStringPlugins(invocationPlugins, replacements);
                 registerArraysSupportPlugins(invocationPlugins, config, replacements);
-
-                for (NodeIntrinsicPluginFactory factory : GraalServices.load(NodeIntrinsicPluginFactory.class)) {
-                    factory.registerPlugins(invocationPlugins, nodeIntrinsificationProvider);
-                }
             }
         });
+        if (!IS_IN_NATIVE_IMAGE) {
+            // In libgraal all NodeIntrinsics been converted into special nodes so the plugins
+            // aren't needed.
+            NodeIntrinsificationProvider nodeIntrinsificationProvider = new NodeIntrinsificationProvider(metaAccess, snippetReflection, foreignCalls, wordTypes, target);
+            invocationPlugins.defer(new Runnable() {
+
+                @Override
+                public void run() {
+
+                    for (GeneratedPluginFactory factory : GraalServices.load(GeneratedPluginFactory.class)) {
+                        factory.registerPlugins(invocationPlugins, nodeIntrinsificationProvider);
+                    }
+
+                }
+            });
+        }
         return plugins;
     }
 
@@ -290,6 +303,10 @@ public class HotSpotGraphBuilderPlugins {
         r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "isPrimitive", Receiver.class);
         r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "getSuperclass", Receiver.class);
 
+        if (config.jvmAccIsHiddenClass != 0) {
+            r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "isHidden", Receiver.class);
+        }
+
         if (config.getFieldOffset("ArrayKlass::_component_mirror", Integer.class, "oop", Integer.MAX_VALUE, JDK <= 8) != Integer.MAX_VALUE) {
             r.registerMethodSubstitution(HotSpotClassSubstitutions.class, "getComponentType", Receiver.class);
         }
@@ -346,6 +363,22 @@ public class HotSpotGraphBuilderPlugins {
         String substituteMethodName = config.doingUnsafeAccessOffset != Integer.MAX_VALUE ? "copyMemoryGuarded" : "copyMemory";
         r.registerMethodSubstitution(HotSpotUnsafeSubstitutions.class, HotSpotUnsafeSubstitutions.copyMemoryName, substituteMethodName, Receiver.class, Object.class, long.class, Object.class,
                         long.class, long.class);
+
+        r.register2("allocateInstance", Receiver.class, Class.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode clazz) {
+                /* Emits a null-check for the otherwise unused receiver. */
+                unsafe.get();
+                /*
+                 * Note that the provided clazz might not be initialized. The HotSpot lowering
+                 * snippet for DynamicNewInstanceNode performs the necessary class initialization
+                 * check. Such a DynamicNewInstanceNode is also never constant folded to a
+                 * NewInstanceNode.
+                 */
+                b.addPush(JavaKind.Object, new DynamicNewInstanceNode(b.nullCheckedValue(clazz, DeoptimizationAction.None), true));
+                return true;
+            }
+        });
     }
 
     private static final LocationIdentity INSTANCE_KLASS_CONSTANTS = NamedLocationIdentity.immutable("InstanceKlass::_constants");
@@ -427,10 +460,10 @@ public class HotSpotGraphBuilderPlugins {
         });
     }
 
-    private static void registerSystemPlugins(InvocationPlugins plugins, ForeignCallsProvider foreignCalls) {
+    private static void registerSystemPlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, System.class);
-        r.register0("currentTimeMillis", new ForeignCallPlugin(foreignCalls, HotSpotHostForeignCallsProvider.JAVA_TIME_MILLIS));
-        r.register0("nanoTime", new ForeignCallPlugin(foreignCalls, HotSpotHostForeignCallsProvider.JAVA_TIME_NANOS));
+        r.register0("currentTimeMillis", new ForeignCallPlugin(HotSpotHostForeignCallsProvider.JAVA_TIME_MILLIS));
+        r.register0("nanoTime", new ForeignCallPlugin(HotSpotHostForeignCallsProvider.JAVA_TIME_NANOS));
         r.register1("identityHashCode", Object.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
@@ -637,7 +670,7 @@ public class HotSpotGraphBuilderPlugins {
         }
     }
 
-    private static void registerGHASHPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls) {
+    private static void registerGHASHPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, MetaAccessProvider metaAccess) {
         if (config.useGHASHIntrinsics()) {
             assert config.ghashProcessBlocks != 0L;
             Registration r = new Registration(plugins, "com.sun.crypto.provider.GHASH");
@@ -663,7 +696,7 @@ public class HotSpotGraphBuilderPlugins {
                                     ComputeObjectAddressNode dataAddress = b.add(new ComputeObjectAddressNode(data, dataOffset));
                                     ComputeObjectAddressNode stateAddress = b.add(new ComputeObjectAddressNode(state, ConstantNode.forInt(longArrayBaseOffset)));
                                     ComputeObjectAddressNode hashSubkeyAddress = b.add(new ComputeObjectAddressNode(hashSubkey, ConstantNode.forInt(longArrayBaseOffset)));
-                                    b.add(new ForeignCallNode(foreignCalls, GHASH_PROCESS_BLOCKS, stateAddress, hashSubkeyAddress, dataAddress, blocks));
+                                    b.add(new ForeignCallNode(GHASH_PROCESS_BLOCKS, stateAddress, hashSubkeyAddress, dataAddress, blocks));
                                     return true;
                                 }
                             });
@@ -679,7 +712,7 @@ public class HotSpotGraphBuilderPlugins {
         }
     }
 
-    private static void registerBase64Plugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls) {
+    private static void registerBase64Plugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, MetaAccessProvider metaAccess) {
         if (config.useBase64Intrinsics()) {
             Registration r = new Registration(plugins, "java.util.Base64$Encoder");
             r.register7("encodeBlock",
@@ -704,7 +737,7 @@ public class HotSpotGraphBuilderPlugins {
                                     int byteArrayBaseOffset = metaAccess.getArrayBaseOffset(JavaKind.Byte);
                                     ComputeObjectAddressNode srcAddress = b.add(new ComputeObjectAddressNode(src, ConstantNode.forInt(byteArrayBaseOffset)));
                                     ComputeObjectAddressNode dstAddress = b.add(new ComputeObjectAddressNode(dst, ConstantNode.forInt(byteArrayBaseOffset)));
-                                    b.add(new ForeignCallNode(foreignCalls, BASE64_ENCODE_BLOCK, srcAddress, sp, sl, dstAddress, dp, isURL));
+                                    b.add(new ForeignCallNode(BASE64_ENCODE_BLOCK, srcAddress, sp, sl, dstAddress, dp, isURL));
                                     return true;
                                 }
                             });

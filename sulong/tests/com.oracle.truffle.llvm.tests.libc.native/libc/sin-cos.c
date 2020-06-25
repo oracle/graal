@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -34,10 +34,10 @@
 volatile double a = 0.5;
 
 int main() {
-  if (abs(cos(a) - 0.877583) >= 0.01) {
-    abort();
-  }
-  if (abs(sin(a) - 0.479426) >= 0.01) {
-    abort();
-  }
+    if (abs(cos(a) - 0.877583) >= 0.01) {
+        abort();
+    }
+    if (abs(sin(a) - 0.479426) >= 0.01) {
+        abort();
+    }
 }

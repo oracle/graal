@@ -69,6 +69,12 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         this.wordTypes = wordTypes;
     }
 
+    @Override
+    protected void run(StructuredGraph graph) {
+        super.run(graph);
+        assert wordTypes == null || wordTypes.ensureGraphContainsNoWordTypeReferences(graph);
+    }
+
     public abstract static class SharedBytecodeParser extends BytecodeParser {
 
         private final boolean explicitExceptionEdges;
@@ -126,7 +132,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
             try {
                 super.maybeEagerlyResolve(cpi, bytecode);
             } catch (UnresolvedElementException e) {
-                if (e.getCause() instanceof NoClassDefFoundError) {
+                if (e.getCause() instanceof NoClassDefFoundError || e.getCause() instanceof IllegalAccessError) {
                     /*
                      * Ignore NoClassDefFoundError if thrown from eager resolution attempt. This is
                      * usually followed by a call to ConstantPool.lookupType() which should return

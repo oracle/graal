@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,7 +45,6 @@ import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -56,8 +55,6 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.impl.Accessor.CallInlined;
-import com.oracle.truffle.api.impl.Accessor.CallProfiled;
 import com.oracle.truffle.api.impl.DefaultCompilerOptions;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -82,24 +79,24 @@ import jdk.vm.ci.meta.SpeculationLog;
  * the root node} depending on the type of call.
  *
  * <pre>
- *                    OptimizedCallProfiled#call                   OptimizedCallInlined#call
- *                                |                                            |
- *                                |                                            |
- *  PUBLIC   call -> callIndirect | callOSR  callDirectOrInlined  callInlined  |
- *                           |  +-+    |              |                 |      |
- *                           |  |  +---+              |                 |      |
- *                           V  V  V                  |                 |      |
- *  PROTECTED               doInvoke <------ no - inlined? - yes -------+      |
- *                             |                                        |      |
- *                             | <= Jump to installed code              |      |
- *                             V                                        |      |
- *  PROTECTED              callBoundary                                 |      |
- *                             |                                        |      |
- *                             | <= Tail jump to installed code in Int. |      |
- *                             V                                        V      V
- *  PROTECTED           profiledPERoot                              inlinedPERoot
- *                             |                                        |
- *  PRIVATE                    +----------> executeRootNode <-----------+
+ *              GraalRuntimeSupport#callProfiled                    GraalRuntimeSupport#callInlined
+ *                                |                                               |
+ *                                |                                               V
+ *  PUBLIC   call -> callIndirect | callOSR   callDirect <================> callInlined
+ *                           |  +-+    |           |             ^                |
+ *                           |  |  +---+           |     substituted by the       |
+ *                           V  V  V               |     compiler if inlined      |
+ *  PROTECTED               doInvoke <-------------+                              |
+ *                             |                                                  |
+ *                             | <= Jump to installed code                        |
+ *                             V                                                  |
+ *  PROTECTED              callBoundary                                           |
+ *                             |                                                  |
+ *                             | <= Tail jump to installed code in Int.           |
+ *                             V                                                  |
+ *  PROTECTED           profiledPERoot                                            |
+ *                             |                                                  |
+ *  PRIVATE                    +----------> executeRootNode <---------------------+
  *                                                 |
  *                                                 V
  *                                         rootNode.execute()
@@ -291,9 +288,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         this.engine = GraalTVMCI.getEngineData(rootNode);
         this.resetCompilationProfile();
         // Do not adopt children of OSRRootNodes; we want to preserve the parent of the LoopNode.
-        final GraalTVMCI tvmci = runtime().getTvmci();
-        this.uninitializedNodeCount = !(rootNode instanceof OSRRootNode) ? tvmci.adoptChildrenAndCount(rootNode) : -1;
-        tvmci.setCallTarget(rootNode, this);
+        this.uninitializedNodeCount = !(rootNode instanceof OSRRootNode) ? GraalRuntimeAccessor.NODES.adoptChildrenAndCount(rootNode) : -1;
+        GraalRuntimeAccessor.NODES.setCallTarget(rootNode, this);
     }
 
     final Assumption getNodeRewritingAssumption() {
@@ -370,30 +366,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
-    public final Object callDirectOrInlined(Node location, Object... args) {
+    public final Object callDirect(Node location, Object... args) {
         try {
             try {
                 Object result;
-                final boolean isInlined = InlineDecision.get();
-                if (isInlined) {
-                    /*
-                     * Language agnostic inlining depends on this call to callBoundary to inline.
-                     * This call to callBoundary will be replaced with #inlinedPERoot during
-                     * compilation. We don't simply call #inlinedPERoot at this point as a truffle
-                     * call boundary is a known point to end partial evaluation. This might change
-                     * (GR-22220).
-                     *
-                     * The isInlined value is passed in to create a data dependency needed by the
-                     * compiler and despite being "always true" should not be replaced with true (or
-                     * anything else).
-                     */
-                    result = callBoundary(InlineDecision.inject(args, isInlined));
-                } else {
-                    profileArguments(args);
-                    result = doInvoke(args);
-                    if (CompilerDirectives.inCompiledCode()) {
-                        result = injectReturnValueProfile(result);
-                    }
+                profileArguments(args);
+                result = doInvoke(args);
+                if (CompilerDirectives.inCompiledCode()) {
+                    result = injectReturnValueProfile(result);
                 }
                 return result;
             } catch (Throwable t) {
@@ -414,16 +394,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
-    final Object inlinedPERoot(Object... arguments) {
-        ensureInitialized();
-        return executeRootNode(createFrame(getRootNode().getFrameDescriptor(), arguments));
-    }
-
-    // Note: {@code PartialEvaluator} looks up this method by name and signature.
     public final Object callInlined(Node location, Object... arguments) {
-        ensureInitialized();
         try {
-            return inlinedPERoot(arguments);
+            ensureInitialized();
+            return executeRootNode(createFrame(getRootNode().getFrameDescriptor(), arguments));
         } finally {
             // this assertion is needed to keep the values from being cleared as non-live locals
             assert keepAlive(location);
@@ -512,7 +486,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             throw rethrow(profileExceptionType(t));
         } catch (Throwable t) {
             Throwable profiledT = profileExceptionType(t);
-            runtime().getTvmci().onThrowable(null, this, profiledT, frame);
+            GraalRuntimeAccessor.LANGUAGE.onThrowable(null, this, profiledT, frame);
             throw rethrow(profiledT);
         } finally {
             // this assertion is needed to keep the values from being cleared as non-live locals
@@ -541,12 +515,11 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     private synchronized void initialize() {
         if (!initialized) {
-            GraalTVMCI tvmci = runtime().getTvmci();
-            if (sourceCallTarget == null && rootNode.isCloningAllowed() && !tvmci.isCloneUninitializedSupported(rootNode)) {
+            if (sourceCallTarget == null && rootNode.isCloningAllowed() && !GraalRuntimeAccessor.NODES.isCloneUninitializedSupported(rootNode)) {
                 // We are the source CallTarget, so make a copy.
                 this.uninitializedRootNode = NodeUtil.cloneNode(rootNode);
             }
-            tvmci.onFirstExecution(this);
+            GraalRuntimeAccessor.INSTRUMENT.onFirstExecution(getRootNode());
             if (engine.callTargetStatistics) {
                 this.initializedTimestamp = System.nanoTime();
             } else {
@@ -597,6 +570,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                 }
             }
             if (task != null) {
+                runtime().getListener().onCompilationQueued(this);
                 return maybeWaitForTask(task);
             }
         }
@@ -658,10 +632,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         assert sourceCallTarget == null;
         ensureInitialized();
         RootNode clonedRoot;
-        GraalTVMCI tvmci = runtime().getTvmci();
-        if (tvmci.isCloneUninitializedSupported(rootNode)) {
+        if (GraalRuntimeAccessor.NODES.isCloneUninitializedSupported(rootNode)) {
             assert uninitializedRootNode == null;
-            clonedRoot = tvmci.cloneUninitialized(rootNode);
+            clonedRoot = GraalRuntimeAccessor.NODES.cloneUninitialized(rootNode);
         } else {
             clonedRoot = NodeUtil.cloneNode(uninitializedRootNode);
         }
@@ -696,7 +669,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     @Override
     public final void cancelInstalledTask() {
-        runtime().cancelInstalledTask(this, null, "got inlined. callsite count: " + getKnownCallSiteCount());
+        runtime().cancelInstalledTask(this, null, "Got inlined. Call site count: " + getKnownCallSiteCount());
     }
 
     @Override
@@ -714,7 +687,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     @Override
-    public final void onCompilationFailed(Supplier<String> reasonAndStackTrace, boolean bailout, boolean permanentBailout) {
+    public final void onCompilationFailed(Supplier<String> serializedException, boolean bailout, boolean permanentBailout) {
         ExceptionAction action;
         if (bailout && !permanentBailout) {
             /*
@@ -729,14 +702,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             action = engine.compilationFailureAction;
         }
         if (action == ExceptionAction.Throw) {
-            final InternalError error = new InternalError(reasonAndStackTrace.get());
+            final InternalError error = new InternalError(serializedException.get());
             throw new OptimizationFailedException(error, this);
         }
         if (action.ordinal() >= ExceptionAction.Print.ordinal()) {
             GraalTruffleRuntime rt = runtime();
             Map<String, Object> properties = new LinkedHashMap<>();
             properties.put("ASTSize", getNonTrivialNodeCount());
-            rt.logEvent(this, 0, "opt fail", toString(), properties, reasonAndStackTrace.get());
+            rt.logEvent(this, 0, "opt fail", toString(), properties, serializedException.get());
             if (action == ExceptionAction.ExitVM) {
                 String reason;
                 if (getOptionValue(PolyglotCompilerOptions.CompilationFailureAction) == ExceptionAction.ExitVM) {
@@ -934,7 +907,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         }
     }
 
-    private boolean isValidArgumentProfile(Object[] args) {
+    final boolean isValidArgumentProfile(Object[] args) {
         assert callProfiled;
         ArgumentsProfile argumentsProfile = this.argumentsProfile;
         return argumentsProfile.assumption.isValid() && checkProfiledArgumentTypes(args, argumentsProfile.types);
@@ -1415,35 +1388,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             rootNode = rootNode.getParent();
         }
         toDump.add(rootNode);
-    }
-
-    /**
-     * Call without verifying the argument profile. Needs to be initialized by
-     * {@link GraalTVMCI#initializeProfile(CallTarget, Class[])}. Potentially crashes the VM if the
-     * argument profile is incompatible with the actual arguments. Use with caution.
-     */
-    static class OptimizedCallProfiled extends CallProfiled {
-        @Override
-        public Object call(CallTarget target, Object... args) {
-            OptimizedCallTarget castTarget = (OptimizedCallTarget) target;
-            assert castTarget.isValidArgumentProfile(args) : "Invalid argument profile. UnsafeCalls need to explicity initialize the profile.";
-            return castTarget.doInvoke(args);
-        }
-    }
-
-    static class OptimizedCallInlined extends CallInlined {
-
-        static final String CALL_METHOD_NAME = "call";
-
-        @Override
-        public Object call(Node callNode, CallTarget target, Object... arguments) {
-            try {
-                return ((OptimizedCallTarget) target).inlinedPERoot(arguments);
-            } catch (Throwable t) {
-                OptimizedCallTarget.runtime().getTvmci().onThrowable(callNode, ((OptimizedCallTarget) target), t, null);
-                throw OptimizedCallTarget.rethrow(t);
-            }
-        }
     }
 
     final void setNonTrivialNodeCount(int nonTrivialNodeCount) {

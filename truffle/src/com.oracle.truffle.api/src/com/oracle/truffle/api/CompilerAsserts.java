@@ -166,4 +166,5 @@ public final class CompilerAsserts {
      */
     public static <T> void partialEvaluationConstant(double value) {
     }
+
 }

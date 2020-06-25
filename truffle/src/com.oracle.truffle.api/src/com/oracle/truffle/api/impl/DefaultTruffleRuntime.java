@@ -120,7 +120,7 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
     @Override
     public RootCallTarget createCallTarget(RootNode rootNode) {
         DefaultCallTarget target = new DefaultCallTarget(rootNode);
-        getTvmci().onLoad(target);
+        DefaultRuntimeAccessor.INSTRUMENT.onLoad(target.getRootNode());
         return target;
     }
 

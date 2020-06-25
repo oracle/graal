@@ -39,70 +39,47 @@ import com.oracle.svm.core.log.Log;
  * An OldGeneration has two Spaces, {@link #fromSpace} for existing objects, and {@link #toSpace}
  * for newly-allocated or promoted objects.
  */
-public class OldGeneration extends Generation {
-
-    /*
-     * State.
-     */
-
-    /* This Spaces are final, though their contents change during semi-space flips. */
+final class OldGeneration extends Generation {
+    /* This Spaces are final and are flipped by transferring chunks from one to the other. */
     private final Space fromSpace;
     private final Space toSpace;
 
-    /** Walkers of Spaces where there might be grey objects. */
-    private final GreyObjectsWalker toGreyObjectsWalker;
+    private final GreyObjectsWalker toGreyObjectsWalker = new GreyObjectsWalker();
 
-    /** Constructor. */
     @Platforms(Platform.HOSTED_ONLY.class)
     OldGeneration(String name) {
         super(name);
         int age = HeapPolicy.getMaxSurvivorSpaces() + 1;
         this.fromSpace = new Space("oldFromSpace", true, age);
         this.toSpace = new Space("oldToSpace", false, age);
-        this.toGreyObjectsWalker = GreyObjectsWalker.factory();
     }
 
-    /** Return all allocated virtual memory chunks to HeapChunkProvider. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public final void tearDown() {
+    void tearDown() {
         fromSpace.tearDown();
         toSpace.tearDown();
     }
 
-    /*
-     * Ordinary object methods.
-     */
-
     @Override
     public boolean walkObjects(ObjectVisitor visitor) {
-        /* FromSpace probably has lots of objects. */
-        if (!getFromSpace().walkObjects(visitor)) {
-            return false;
-        }
-        /* ToSpace probably is empty. */
-        if (!getToSpace().walkObjects(visitor)) {
-            return false;
-        }
-        return true;
+        return getFromSpace().walkObjects(visitor) && getToSpace().walkObjects(visitor);
     }
 
-    /**
-     * Promote an Object to ToSpace if it is not already in ToSpace.
-     */
+    /** Promote an Object to ToSpace if it is not already in ToSpace. */
     @AlwaysInline("GC performance")
     @Override
     public Object promoteObject(Object original, UnsignedWord header) {
         if (ObjectHeaderImpl.isAlignedHeader(original, header)) {
-            AlignedHeapChunk.AlignedHeader chunk = AlignedHeapChunk.getEnclosingAlignedHeapChunk(original);
+            AlignedHeapChunk.AlignedHeader chunk = AlignedHeapChunk.getEnclosingChunk(original);
             Space originalSpace = chunk.getSpace();
-            if (originalSpace.isFrom()) {
+            if (originalSpace.isFromSpace()) {
                 return promoteAlignedObject(original, originalSpace);
             }
         } else {
             assert ObjectHeaderImpl.isUnalignedHeader(original, header);
-            UnalignedHeapChunk.UnalignedHeader chunk = UnalignedHeapChunk.getEnclosingUnalignedHeapChunk(original);
+            UnalignedHeapChunk.UnalignedHeader chunk = UnalignedHeapChunk.getEnclosingChunk(original);
             Space originalSpace = chunk.getSpace();
-            if (originalSpace.isFrom()) {
+            if (originalSpace.isFromSpace()) {
                 promoteUnalignedChunk(chunk, originalSpace);
             }
         }
@@ -124,30 +101,25 @@ public class OldGeneration extends Generation {
     }
 
     void releaseSpaces() {
-        /* Release any spaces associated with this generation after a collection. */
-        getFromSpace().release();
-        /* Just clean remember set in complete collection */
+        getFromSpace().releaseChunks();
         if (HeapImpl.getHeapImpl().getGCImpl().isCompleteCollection()) {
-            /* Clean the spaces that have been scanned for grey objects. */
             getToSpace().cleanRememberedSet();
         }
     }
 
-    protected void walkDirtyObjects(ObjectVisitor visitor, boolean clean) {
+    void walkDirtyObjects(ObjectVisitor visitor, boolean clean) {
         getToSpace().walkDirtyObjects(visitor, clean);
     }
 
-    protected void prepareForPromotion() {
-        /* Prepare the Space walkers. */
-        getToGreyObjectsWalker().setScanStart(getToSpace());
+    void prepareForPromotion() {
+        toGreyObjectsWalker.setScanStart(getToSpace());
     }
 
-    protected boolean scanGreyObjects() {
-        if (!getToGreyObjectsWalker().haveGreyObjects()) {
+    boolean scanGreyObjects() {
+        if (!toGreyObjectsWalker.haveGreyObjects()) {
             return false;
         }
-
-        getToGreyObjectsWalker().walkGreyObjects();
+        toGreyObjectsWalker.walkGreyObjects();
         return true;
     }
 
@@ -163,13 +135,10 @@ public class OldGeneration extends Generation {
     @Override
     protected boolean verify(HeapVerifier.Occasion occasion) {
         boolean result = true;
-        final HeapImpl heap = HeapImpl.getHeapImpl();
-        final HeapVerifierImpl heapVerifier = heap.getHeapVerifierImpl();
-        final SpaceVerifierImpl spaceVerifier = heapVerifier.getSpaceVerifierImpl();
-        /*
-         * - The old generation consists of a from space, which should be clean after a collection
-         * ...
-         */
+        HeapImpl heap = HeapImpl.getHeapImpl();
+        HeapVerifier heapVerifier = heap.getHeapVerifier();
+        SpaceVerifier spaceVerifier = heapVerifier.getSpaceVerifier();
+        // The from space should be clean after a collection...
         spaceVerifier.initialize(heap.getOldGeneration().getFromSpace());
         if (!spaceVerifier.verify()) {
             result = false;
@@ -181,9 +150,7 @@ public class OldGeneration extends Generation {
                 heapVerifier.getWitnessLog().string("[OldGeneration.verify:").string("  old from space contains dirty cards").string("]").newline();
             }
         }
-        /*
-         * ... and a to space, which should be empty except during a collection ...
-         */
+        // ... and the to space should be empty, except during a collection.
         spaceVerifier.initialize(heap.getOldGeneration().getToSpace());
         if (!spaceVerifier.verify()) {
             result = false;
@@ -198,8 +165,8 @@ public class OldGeneration extends Generation {
         return result;
     }
 
-    protected void verifyDirtyCards(boolean isTo) {
-        if (isTo) {
+    void verifyDirtyCards(boolean inToSpace) {
+        if (inToSpace) {
             getToSpace().verifyDirtyCards();
         } else {
             getFromSpace().verifyDirtyCards();
@@ -207,9 +174,7 @@ public class OldGeneration extends Generation {
     }
 
     boolean slowlyFindPointer(Pointer p) {
-        /*
-         * FromSpace is "in" the Heap, ToSpace is not "in" the Heap, because it should be empty.
-         */
+        // FromSpace is "in" the Heap, ToSpace is not "in" the Heap, because it should be empty.
         if (slowlyFindPointerInFromSpace(p)) {
             return true;
         }
@@ -228,11 +193,11 @@ public class OldGeneration extends Generation {
     }
 
     boolean slowlyFindPointerInFromSpace(Pointer p) {
-        return HeapVerifierImpl.slowlyFindPointerInSpace(getFromSpace(), p, HeapVerifierImpl.ChunkLimit.top);
+        return HeapVerifier.slowlyFindPointerInSpace(getFromSpace(), p);
     }
 
     boolean slowlyFindPointerInToSpace(Pointer p) {
-        return HeapVerifierImpl.slowlyFindPointerInSpace(getToSpace(), p, HeapVerifierImpl.ChunkLimit.top);
+        return HeapVerifier.slowlyFindPointerInSpace(getToSpace(), p);
     }
 
     /* This could return an enum, but I want to be able to examine it easily from a debugger. */
@@ -249,13 +214,7 @@ public class OldGeneration extends Generation {
         return -1;
     }
 
-    /*
-     * Space access methods.
-     *
-     * TODO: Why are some of the access methods public?
-     */
-
-    public Space getFromSpace() {
+    Space getFromSpace() {
         return fromSpace;
     }
 
@@ -273,12 +232,7 @@ public class OldGeneration extends Generation {
         getToSpace().absorb(getFromSpace());
     }
 
-    private GreyObjectsWalker getToGreyObjectsWalker() {
-        return toGreyObjectsWalker;
-    }
-
     boolean walkHeapChunks(MemoryWalker.Visitor visitor) {
-        /* In no particular order visit all the spaces. */
         return getFromSpace().walkHeapChunks(visitor) && getToSpace().walkHeapChunks(visitor);
     }
 }

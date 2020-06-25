@@ -53,7 +53,7 @@ public abstract class LLVMI32LoadNode extends LLVMLoadNode {
     protected int doI32Native(LLVMNativePointer addr,
                     @Cached("createIdentityProfile()") IntValueProfile profile,
                     @CachedLanguage LLVMLanguage language) {
-        return profile.profile(language.getLLVMMemory().getI32(addr));
+        return profile.profile(language.getLLVMMemory().getI32(this, addr));
     }
 
     @Specialization(guards = "isAutoDerefHandle(language, addr)")

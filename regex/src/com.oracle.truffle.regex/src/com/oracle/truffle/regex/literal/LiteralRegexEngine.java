@@ -53,6 +53,7 @@ import com.oracle.truffle.regex.literal.LiteralRegexExecRootNode.StartsWith;
 import com.oracle.truffle.regex.tregex.parser.RegexProperties;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.PreCalcResultVisitor;
+import com.oracle.truffle.regex.tregex.string.Encodings;
 
 /**
  * This regex engine is designed for very simple cases, where the regular expression can be directly
@@ -77,7 +78,8 @@ public final class LiteralRegexEngine {
          * /a{1000000}/.
          */
         RegexProperties props = ast.getProperties();
-        if (ast.isLiteralString() && props.isFixedCodePointWidthUTF16() && props.isFixedCodePointWidthUTF8() && (!props.hasQuantifiers() || ast.getRoot().getMinPath() <= Short.MAX_VALUE)) {
+        if (ast.isLiteralString() && props.isFixedCodePointWidth() && (ast.getEncoding() == Encodings.UTF_16_RAW || !props.hasLoneSurrogates()) &&
+                        (!props.hasQuantifiers() || ast.getRoot().getMinPath() <= Short.MAX_VALUE)) {
             return createLiteralNode(language, ast);
         } else {
             return null;
@@ -112,7 +114,7 @@ public final class LiteralRegexEngine {
         if (ast.getFlags().isSticky()) {
             return new RegionMatches(language, ast, preCalcResultVisitor);
         }
-        if (preCalcResultVisitor.getLiteral().length() <= 64) {
+        if (preCalcResultVisitor.getLiteral().encodedLength() <= 64) {
             return new IndexOfString(language, ast, preCalcResultVisitor);
         }
         return null;

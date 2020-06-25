@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.graal.code;
 
+import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.core.gen.DebugInfoBuilder;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -44,8 +45,8 @@ public final class SubstrateDebugInfoBuilder extends DebugInfoBuilder {
 
     private final SharedMethod method;
 
-    public SubstrateDebugInfoBuilder(StructuredGraph graph, NodeValueMap nodeValueMap) {
-        super(nodeValueMap, graph.getDebug());
+    public SubstrateDebugInfoBuilder(StructuredGraph graph, MetaAccessExtensionProvider metaAccessExtensionProvider, NodeValueMap nodeValueMap) {
+        super(nodeValueMap, metaAccessExtensionProvider, graph.getDebug());
         this.method = (SharedMethod) graph.method();
     }
 

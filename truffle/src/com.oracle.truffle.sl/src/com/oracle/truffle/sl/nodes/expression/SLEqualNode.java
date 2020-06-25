@@ -40,7 +40,8 @@
  */
 package com.oracle.truffle.sl.nodes.expression;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -147,8 +148,7 @@ public abstract class SLEqualNode extends SLBinaryNode {
             }
         } catch (UnsupportedMessageException e) {
             // this case must not happen as we always check interop types before converting
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new AssertionError();
+            throw shouldNotReachHere(e);
         }
     }
 

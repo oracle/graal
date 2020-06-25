@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.getPo
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
@@ -38,9 +39,9 @@ public final class CallTree extends Graph {
     private final GraphManager graphManager;
     private final CallNode root;
     private final PartialEvaluator.Request request;
-    private int nextId = 0;
     int expanded = 1;
     int inlined = 1;
+    private int nextId = 0;
 
     CallTree(PartialEvaluator partialEvaluator, PartialEvaluator.Request request, InliningPolicy policy) {
         super(request.graph.getOptions(), request.debug);
@@ -96,21 +97,6 @@ public final class CallTree extends Graph {
         }
     }
 
-    void dequeueInlined() {
-        dequeueInlined(root);
-    }
-
-    private void dequeueInlined(CallNode node) {
-        if (node.getState() == CallNode.State.Inlined) {
-            for (CallNode child : node.getChildren()) {
-                dequeueInlined(child);
-            }
-            if (!node.isRoot()) {
-                node.cancelCompilationIfSingleCallsite();
-            }
-        }
-    }
-
     @Override
     public String toString() {
         return "Call Tree";
@@ -122,5 +108,13 @@ public final class CallTree extends Graph {
 
     public void dumpInfo(String format, Object arg) {
         getDebug().dump(DebugContext.INFO_LEVEL, this, format, arg);
+    }
+
+    public void finalizeGraph() {
+        root.finalizeGraph();
+    }
+
+    void collectTargetsToDequeue(TruffleMetaAccessProvider provider) {
+        root.collectTargetsToDequeue(provider);
     }
 }

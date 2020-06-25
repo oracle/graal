@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,9 +36,9 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 // All methods can be used without @TruffleBoundary
 public class LLVMString {
     public static void strcpy(LLVMMemory memory, LLVMNativePointer dst, String src) {
-        memory.putByteArray(dst, getBytes(src));
+        memory.putByteArray(null, dst, getBytes(src));
         LLVMNativePointer zero = dst.increment(src.length());
-        memory.putI8(zero, (byte) 0);
+        memory.putI8(null, zero, (byte) 0);
     }
 
     @TruffleBoundary

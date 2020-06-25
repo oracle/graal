@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -61,7 +61,6 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.MethodHandleAccessProvider.IntrinsicMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.sparc.SPARC;
 
 /**
  * Checks the intrinsics implemented by Graal against the set of intrinsics declared by HotSpot. The
@@ -278,8 +277,6 @@ public class CheckGraalIntrinsics extends GraalTest {
                             "jdk/jfr/internal/JVM.getClassId(Ljava/lang/Class;)J");
 
             add(toBeInvestigated,
-                            // Just check if the argument is a compile time constant
-                            "java/lang/invoke/MethodHandleImpl.isCompileConstant(Ljava/lang/Object;)Z",
                             // Only used as a marker for vectorization?
                             "java/util/stream/Streams$RangeIntSpliterator.forEachRemaining(Ljava/util/function/IntConsumer;)V",
                             // Only implemented on non-AMD64 platforms (some logic and runtime call)
@@ -373,7 +370,7 @@ public class CheckGraalIntrinsics extends GraalTest {
                 add(ignore,
                                 "java/lang/Math.fma(DDD)D",
                                 "java/lang/Math.fma(FFF)F");
-            } else if (arch instanceof SPARC) {
+            } else if (isSPARC(arch)) {
                 add(toBeInvestigated,
                                 "java/lang/Math.fma(DDD)D",
                                 "java/lang/Math.fma(FFF)F");
@@ -381,8 +378,10 @@ public class CheckGraalIntrinsics extends GraalTest {
         }
 
         if (isJDK10OrHigher()) {
-            add(toBeInvestigated,
-                            "java/lang/Math.multiplyHigh(JJ)J");
+            if (!(arch instanceof AArch64)) {
+                add(toBeInvestigated,
+                                "java/lang/Math.multiplyHigh(JJ)J");
+            }
         }
 
         if (isJDK11OrHigher()) {
@@ -400,9 +399,12 @@ public class CheckGraalIntrinsics extends GraalTest {
         }
 
         if (isJDK13OrHigher()) {
+            if (!(arch instanceof AArch64)) {
+                add(toBeInvestigated,
+                                "java/lang/Math.abs(I)I",
+                                "java/lang/Math.abs(J)J");
+            }
             add(toBeInvestigated,
-                            "java/lang/Math.abs(I)I",
-                            "java/lang/Math.abs(J)J",
                             "java/lang/Math.max(DD)D",
                             "java/lang/Math.max(FF)F",
                             "java/lang/Math.min(DD)D",

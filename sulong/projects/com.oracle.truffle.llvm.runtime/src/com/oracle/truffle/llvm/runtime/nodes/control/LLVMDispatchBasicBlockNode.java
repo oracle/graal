@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.runtime.nodes.control;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
@@ -59,7 +58,7 @@ public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
 
     @Children private final LLVMBasicBlockNode[] bodyNodes;
 
-    @CompilationFinal private final FrameSlot loopSuccessorSlot;
+    private final FrameSlot loopSuccessorSlot;
 
     public LLVMDispatchBasicBlockNode(FrameSlot exceptionValueSlot, LLVMBasicBlockNode[] bodyNodes, FrameSlot loopSuccessorSlot, LocalVariableDebugInfo debugInfo) {
         this.exceptionValueSlot = exceptionValueSlot;
@@ -81,7 +80,7 @@ public abstract class LLVMDispatchBasicBlockNode extends LLVMExpressionNode {
     public Object doDispatch(VirtualFrame frame) {
         Object returnValue = null;
 
-        CompilerAsserts.compilationConstant(bodyNodes.length);
+        CompilerAsserts.partialEvaluationConstant(bodyNodes.length);
         int basicBlockIndex = 0;
         int backEdgeCounter = 0;
         outer: while (basicBlockIndex != LLVMBasicBlockNode.RETURN_FROM_FUNCTION) {

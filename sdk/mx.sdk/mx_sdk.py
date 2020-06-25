@@ -134,7 +134,6 @@ GraalVmTruffleComponent = mx_sdk_vm.GraalVmTruffleComponent
 GraalVmLanguage = mx_sdk_vm.GraalVmLanguage
 GraalVmTool = mx_sdk_vm.GraalVmTool
 GraalVMSvmMacro = mx_sdk_vm.GraalVMSvmMacro
-GraalVMSvmStaticLib = mx_sdk_vm.GraalVMSvmStaticLib
 GraalVmJdkComponent = mx_sdk_vm.GraalVmJdkComponent
 GraalVmJreComponent = mx_sdk_vm.GraalVmJreComponent
 GraalVmJvmciComponent = mx_sdk_vm.GraalVmJvmciComponent

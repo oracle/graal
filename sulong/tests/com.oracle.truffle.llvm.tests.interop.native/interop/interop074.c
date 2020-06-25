@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,7 +33,7 @@
 typedef void *VALUE;
 
 VALUE global;
-VALUE** global_array;
+VALUE **global_array;
 
 int main() {
     global = polyglot_import("object");

@@ -48,7 +48,6 @@ import com.oracle.truffle.llvm.runtime.NFIContextExtension.NativeLookupResult;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -120,12 +119,6 @@ public class LLVMFunctionCode {
             return newTarget;
         }
 
-        public LLVMExpressionNode generateNode(FunctionType type, LLVMExpressionNode[] arguments) {
-            CompilerAsserts.neverPartOfCompilation();
-            LLVMExpressionNode node = provider.generateIntrinsicNode(intrinsicName, arguments, type.getArgumentTypes(), nodeFactory);
-            assert node != null;
-            return node;
-        }
     }
 
     public interface LazyToTruffleConverter {
@@ -193,7 +186,7 @@ public class LLVMFunctionCode {
 
             TruffleObject wrapper = null;
             LLVMNativePointer pointer = null;
-            NFIContextExtension nfiContextExtension = descriptor.getContext().getLanguage().getContextExtensionOrNull(NFIContextExtension.class);
+            NFIContextExtension nfiContextExtension = descriptor.getContext().getContextExtensionOrNull(NFIContextExtension.class);
             if (nfiContextExtension != null) {
                 wrapper = nfiContextExtension.createNativeWrapper(descriptor);
                 if (wrapper != null) {
@@ -266,7 +259,7 @@ public class LLVMFunctionCode {
                     return;
                 }
 
-                NFIContextExtension nfiContextExtension = context.getLanguage().getContextExtensionOrNull(NFIContextExtension.class);
+                NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
                 LLVMIntrinsicProvider intrinsicProvider = context.getLanguage().getCapability(LLVMIntrinsicProvider.class);
                 assert !intrinsicProvider.isIntrinsified(descriptor.getLLVMFunction().getName());
                 if (nfiContextExtension != null) {

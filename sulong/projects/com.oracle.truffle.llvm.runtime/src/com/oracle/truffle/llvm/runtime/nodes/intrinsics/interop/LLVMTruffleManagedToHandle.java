@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -48,7 +48,7 @@ public abstract class LLVMTruffleManagedToHandle extends LLVMIntrinsic {
     protected LLVMNativePointer doIntrinsic(LLVMManagedPointer value,
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
         if (value.getOffset() == 0) {
-            LLVMNativePointer handle = context.getHandleContainer().allocate(value.getObject());
+            LLVMNativePointer handle = context.getHandleContainer().allocate(this, value.getObject());
             return handle;
         } else {
             CompilerDirectives.transferToInterpreter();

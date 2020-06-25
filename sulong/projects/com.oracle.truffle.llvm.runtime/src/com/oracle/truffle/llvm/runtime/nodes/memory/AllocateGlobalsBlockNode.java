@@ -49,7 +49,7 @@ public abstract class AllocateGlobalsBlockNode extends LLVMNode implements LLVMA
 
     @Specialization
     LLVMPointer doAllocate(@CachedLanguage LLVMLanguage language) {
-        return language.getLLVMMemory().allocateMemory(size);
+        return language.getLLVMMemory().allocateMemory(this, size);
     }
 
     public static AllocateGlobalsBlockNode create(StructureType type, DataLayout dataLayout) throws TypeOverflowException {

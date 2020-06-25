@@ -463,6 +463,7 @@ suite = {
       "variants" : ["O0"],
       "buildDependencies" : [
         "LLIR_TEST_GEN",
+        "SULONG_HOME",
       ],
       "buildEnv" : {
         "LDFLAGS": "-lm",
@@ -504,6 +505,7 @@ suite = {
       ],
       "headers" : [
         "include/polyglot.h",
+        "include/llvm/api/toolchain.h",
       ],
       "buildDependencies" : [
         "sdk:LLVM_TOOLCHAIN",
@@ -600,6 +602,7 @@ suite = {
         "SULONG_BOOTSTRAP_TOOLCHAIN",
         "sdk:LLVM_TOOLCHAIN",
       ],
+      "clangFormat" : False,
     },
 
     "com.oracle.truffle.llvm.tests.debug.native" : {
@@ -726,8 +729,10 @@ suite = {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
       "variants" : ["O0"],
+      "fileExts" : [".ll"],
       "buildEnv" : {
         "OS" : "<os>",
+        "SUITE_LDFLAGS" : "-lm",
       },
       "dependencies" : [
         "SULONG_TEST",
@@ -746,6 +751,7 @@ suite = {
       # issue in exeuction mistmatches. Until then the Sulong behavior
       # is the more accurate one.
       "variants" : ["O0"],
+      "fileExts" : [".ll"],
       "buildEnv" : {
         "OS" : "<os>",
         "CFLAGS" : "-O0",
@@ -760,6 +766,7 @@ suite = {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
       "variants" : ["O0"],
+      "fileExts" : [".ll"],
       "buildRef" : False,
       "buildEnv" : {
         "OS" : "<os>",
@@ -775,10 +782,12 @@ suite = {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
       "variants" : ["O0"],
+      "fileExts" : [".ll"],
       "buildRef" : True,
       "buildEnv" : {
         "OS" : "<os>",
         "CFLAGS" : "-O0",
+        "SUITE_LDFLAGS" : "-lm",
       },
       "dependencies" : [
         "SULONG_TEST",

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,19 +32,19 @@
 #include <inttypes.h>
 
 uint64_t bitscan(uint64_t val) {
-  uint64_t r;
-  // newline followed by a tab character is a common pattern
-  __asm__("bsfq %1,%0\n\t" : "=r"(r) : "rm"(val));
-  return r;
+    uint64_t r;
+    // newline followed by a tab character is a common pattern
+    __asm__("bsfq %1,%0\n\t" : "=r"(r) : "rm"(val));
+    return r;
 }
 
 void test_bitscan(uint64_t val) {
-  printf("0x%016" PRIx64 ":0x%02x\n", val, bitscan(val));
+    printf("0x%016" PRIx64 ":0x%02x\n", val, bitscan(val));
 }
 
 int main() {
-  test_bitscan(0x00000000);
-  for (uint64_t i = 0, mask = 0x1; i < 64; i++, mask <<= 1) {
-    test_bitscan(mask);
-  }
+    test_bitscan(0x00000000);
+    for (uint64_t i = 0, mask = 0x1; i < 64; i++, mask <<= 1) {
+        test_bitscan(mask);
+    }
 }

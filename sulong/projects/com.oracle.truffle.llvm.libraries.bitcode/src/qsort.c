@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,31 +32,31 @@
 #include <string.h>
 
 static void sulong_swap(char *buffer, void *vp1, void *vp2, const size_t size) {
-  memcpy(buffer, vp1, size);
-  memcpy(vp1, vp2, size);
-  memcpy(vp2, buffer, size);
+    memcpy(buffer, vp1, size);
+    memcpy(vp1, vp2, size);
+    memcpy(vp2, buffer, size);
 }
 
 static void sulong_qsort(char *buffer, char *v, long left, long right, int (*comp)(const void *, const void *), size_t size) {
-  int i, last;
-  if (left >= right) {
-    return;
-  }
-  sulong_swap(buffer, &v[left * size], &v[((left + right) / 2) * size], size);
-  last = left;
-  for (i = left + 1; i <= right; i++) {
-    if (comp(&(v[i * size]), &(v[left * size])) < 0) {
-      last++;
-      sulong_swap(buffer, &(v[last * size]), &(v[i * size]), size);
+    int i, last;
+    if (left >= right) {
+        return;
     }
-  }
-  sulong_swap(buffer, &(v[left * size]), &(v[last * size]), size);
-  sulong_qsort(buffer, v, left, last - 1, comp, size);
-  sulong_qsort(buffer, v, last + 1, right, comp, size);
+    sulong_swap(buffer, &v[left * size], &v[((left + right) / 2) * size], size);
+    last = left;
+    for (i = left + 1; i <= right; i++) {
+        if (comp(&(v[i * size]), &(v[left * size])) < 0) {
+            last++;
+            sulong_swap(buffer, &(v[last * size]), &(v[i * size]), size);
+        }
+    }
+    sulong_swap(buffer, &(v[left * size]), &(v[last * size]), size);
+    sulong_qsort(buffer, v, left, last - 1, comp, size);
+    sulong_qsort(buffer, v, last + 1, right, comp, size);
 }
 
 void qsort(void *v, size_t number, size_t size, int (*comp)(const void *, const void *)) {
-  char *buffer = (char *)malloc(size);
-  sulong_qsort(buffer, v, 0, number - 1, comp, size);
-  free(buffer);
+    char *buffer = (char *) malloc(size);
+    sulong_qsort(buffer, v, 0, number - 1, comp, size);
+    free(buffer);
 }

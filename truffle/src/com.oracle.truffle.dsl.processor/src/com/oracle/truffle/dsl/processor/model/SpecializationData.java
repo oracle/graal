@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.dsl.processor.model;
 
+import java.lang.ref.Reference;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -81,6 +82,7 @@ public final class SpecializationData extends TemplateMethod {
     private final Set<SpecializationData> excludedBy = new LinkedHashSet<>();
     private String insertBeforeName;
     private SpecializationData insertBefore;
+    private boolean replaced;
     private boolean reachable;
     private boolean reachesFallback;
     private int index;
@@ -104,6 +106,7 @@ public final class SpecializationData extends TemplateMethod {
         copy.guards.addAll(guards);
         copy.caches = new ArrayList<>(caches);
         copy.assumptionExpressions = new ArrayList<>(assumptionExpressions);
+        copy.replaced = replaced;
         copy.replaces.addAll(replaces);
         copy.replacesNames.addAll(replacesNames);
         copy.excludedBy.addAll(excludedBy);
@@ -162,68 +165,22 @@ public final class SpecializationData extends TemplateMethod {
         return reachesFallback;
     }
 
-    public boolean isCacheBoundByGuard(CacheExpression cacheExpression) {
-        if (cacheExpression.isAlwaysInitialized()) {
-            return false;
-        }
-        VariableElement cachedVariable = cacheExpression.getParameter().getVariableElement();
-
-        for (GuardExpression expression : getGuards()) {
-            if (expression.getExpression().findBoundVariableElements().contains(cachedVariable)) {
-                return true;
-            }
-        }
-
-        for (AssumptionExpression expression : getAssumptionExpressions()) {
-            if (expression.getExpression().findBoundVariableElements().contains(cachedVariable)) {
-                return true;
-            }
-        }
-
-        // check all next binding caches if they are bound to a guard and use this cache variable
-        boolean found = false;
-        for (CacheExpression expression : getCaches()) {
-            if (cacheExpression == expression) {
-                found = true;
-            } else if (found) {
-                if (expression.getDefaultExpression().findBoundVariableElements().contains(cachedVariable)) {
-                    if (isCacheBoundByGuard(expression)) {
-                        return true;
-                    }
-                }
-            }
-        }
-
-        return false;
-    }
-
     public boolean isGuardBoundWithCache(GuardExpression guardExpression) {
-        List<CacheExpression> resolvedCaches = getCaches();
-        if (resolvedCaches.isEmpty()) {
-            return false;
-        }
-        Set<VariableElement> boundVars = guardExpression.getExpression().findBoundVariableElements();
-        if (boundVars.isEmpty()) {
-            return false;
-        }
-        for (CacheExpression cache : resolvedCaches) {
+        for (CacheExpression cache : getBoundCaches(guardExpression.getExpression(), false)) {
             if (cache.isAlwaysInitialized()) {
                 continue;
             }
-            VariableElement cacheVar = cache.getParameter().getVariableElement();
-            if (boundVars.contains(cacheVar)) {
-                // bound caches for caches are returned before
-                return true;
-            }
+            // bound caches for caches are returned before
+            return true;
         }
         return false;
     }
 
-    public Set<CacheExpression> getBoundCaches(DSLExpression guardExpression) {
-        return getBoundCachesImpl(new HashSet<>(), guardExpression);
+    public Set<CacheExpression> getBoundCaches(DSLExpression guardExpression, boolean transitiveCached) {
+        return getBoundCachesImpl(new HashSet<>(), guardExpression, transitiveCached);
     }
 
-    private Set<CacheExpression> getBoundCachesImpl(Set<DSLExpression> visitedExpressions, DSLExpression guardExpression) {
+    private Set<CacheExpression> getBoundCachesImpl(Set<DSLExpression> visitedExpressions, DSLExpression guardExpression, boolean transitiveCached) {
         List<CacheExpression> resolvedCaches = getCaches();
         if (resolvedCaches.isEmpty()) {
             return Collections.emptySet();
@@ -234,9 +191,10 @@ public final class SpecializationData extends TemplateMethod {
         for (CacheExpression cache : resolvedCaches) {
             VariableElement cacheVar = cache.getParameter().getVariableElement();
             if (boundVars.contains(cacheVar)) {
-                // TODO cycle detection needed here.
                 if (cache.getDefaultExpression() != null && !visitedExpressions.contains(cache.getDefaultExpression())) {
-                    foundCaches.addAll(getBoundCachesImpl(visitedExpressions, cache.getDefaultExpression()));
+                    if (transitiveCached || cache.isAlwaysInitialized()) {
+                        foundCaches.addAll(getBoundCachesImpl(visitedExpressions, cache.getDefaultExpression(), transitiveCached));
+                    }
                 }
                 foundCaches.add(cache);
             }
@@ -255,6 +213,7 @@ public final class SpecializationData extends TemplateMethod {
         final String[] resultValues = new String[]{
                         "get", ((TypeElement) ProcessorContext.getInstance().getTypes().TruffleLanguage_ContextReference.asElement()).getQualifiedName().toString(),
                         "get", ((TypeElement) ProcessorContext.getInstance().getTypes().TruffleLanguage_LanguageReference.asElement()).getQualifiedName().toString(),
+                        "get", ProcessorContext.getInstance().getTypeElement(Reference.class).getQualifiedName().toString(),
         };
 
         @Override
@@ -271,6 +230,7 @@ public final class SpecializationData extends TemplateMethod {
                 String searchClass = resultValues[i + 1];
                 if (searchMethod.equals(methodName) && className.equals(searchClass)) {
                     found = true;
+                    break;
                 }
             }
         }
@@ -290,7 +250,12 @@ public final class SpecializationData extends TemplateMethod {
         }
 
         if (transitive) {
-            for (CacheExpression cache : getBoundCaches(expression)) {
+            for (CacheExpression cache : getBoundCaches(expression, false)) {
+                if (cache.isAlwaysInitialized()) {
+                    if (isDynamicParameterBound(cache.getDefaultExpression(), true)) {
+                        return true;
+                    }
+                }
                 if ((cache.isCachedContext() || cache.isCachedLanguage()) && !cache.isReference()) {
                     return true;
                 }
@@ -353,8 +318,16 @@ public final class SpecializationData extends TemplateMethod {
         this.reachable = reachable;
     }
 
+    public void setReplaced(boolean replaced) {
+        this.replaced = replaced;
+    }
+
     public boolean isReachable() {
         return reachable;
+    }
+
+    public boolean isReplaced() {
+        return replaced;
     }
 
     public boolean isPolymorphic() {
@@ -552,21 +525,26 @@ public final class SpecializationData extends TemplateMethod {
                 if (guard.hasErrors()) {
                     continue;
                 }
-                DSLExpression guardExpression = guard.getExpression();
-                Set<VariableElement> boundVariables = guardExpression.findBoundVariableElements();
-                if (isDynamicParameterBound(guardExpression, true)) {
-                    for (CacheExpression cache : getCaches()) {
-                        if (cache.isAlwaysInitialized()) {
-                            continue;
-                        } else if (!guard.isLibraryAcceptsGuard() && cache.isCachedLibrary()) {
-                            continue;
-                        }
-                        if (boundVariables.contains(cache.getParameter().getVariableElement())) {
-                            return true;
-                        }
+                if (isDynamicParameterBound(guard.getExpression(), true)) {
+                    if (isCacheParameterBound(guard)) {
+                        return true;
                     }
                 }
             }
+        }
+        return false;
+    }
+
+    private boolean isCacheParameterBound(GuardExpression guard) {
+        for (CacheExpression cache : getBoundCaches(guard.getExpression(), false)) {
+            if (cache.isAlwaysInitialized()) {
+                continue;
+            } else if (!guard.isLibraryAcceptsGuard() && cache.isCachedLibrary()) {
+                continue;
+            } else if (guard.isWeakReferenceGuard() && cache.isWeakReference()) {
+                continue;
+            }
+            return true;
         }
         return false;
     }
@@ -618,6 +596,11 @@ public final class SpecializationData extends TemplateMethod {
 
         if (prev.isGuardBindsCache()) {
             // may fallthrough due to limit
+            return true;
+        }
+
+        if (node.isGenerateUncached() && !isReplaced() && prev.isReplaced()) {
+            // becomes reachable in the uncached node
             return true;
         }
 

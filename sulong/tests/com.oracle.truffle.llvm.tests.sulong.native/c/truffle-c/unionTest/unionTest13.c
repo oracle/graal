@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,5 +30,5 @@
 enum { val = 1 + 2 >= 3 ? 3 * 4 : 2 };
 
 int main() {
-  return val;
+    return val;
 }

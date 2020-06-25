@@ -57,8 +57,8 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
     private final SourceSection sourceLocation;
     private final String rootName;
     private final boolean host;
-    private final PolyglotExceptionImpl source;
     private StackTraceElement stackTrace;
+    private final String formattedSource;
 
     private PolyglotExceptionFrame(PolyglotExceptionImpl source, PolyglotLanguage language,
                     SourceSection sourceLocation, String rootName, boolean isHost, StackTraceElement stackTrace) {
@@ -68,7 +68,11 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
         this.rootName = rootName;
         this.host = isHost;
         this.stackTrace = stackTrace;
-        this.source = source;
+        if (!isHostFrame()) {
+            this.formattedSource = formatSource(sourceLocation, source.getFileSystemContext(language));
+        } else {
+            this.formattedSource = null;
+        }
     }
 
     @Override
@@ -118,7 +122,8 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
         } else {
             b.append(rootName);
             b.append("(");
-            b.append(formatSource(sourceLocation, source.getFileSystemContext()));
+            assert formattedSource != null;
+            b.append(formattedSource);
             b.append(")");
         }
         return b.toString();
@@ -129,7 +134,7 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
             return null;
         }
         RootNode targetRoot = frame.getTarget().getRootNode();
-        if (targetRoot.isInternal()) {
+        if (targetRoot.isInternal() && !exception.showInternalStackFrames) {
             return null;
         }
 

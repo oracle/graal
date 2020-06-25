@@ -249,6 +249,26 @@ public abstract class LLVMCMathsIntrinsics {
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMRound extends LLVMBuiltin {
+
+        @Specialization
+        protected float doIntrinsic(float value) {
+            return Math.round(value);
+        }
+
+        @Specialization
+        protected double doIntrinsic(double value) {
+            return Math.round(value);
+        }
+
+        @Specialization
+        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
+            double result = doIntrinsic(value.getDoubleValue());
+            return LLVM80BitFloat.fromDouble(result);
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMAbs extends LLVMIntrinsic {
 
         @Specialization

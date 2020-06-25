@@ -30,6 +30,7 @@ import jdk.vm.ci.meta.JavaConstant;
  * A provider for {@link TruffleCallNode}s.
  */
 public interface TruffleMetaAccessProvider {
+
     /**
      * Gets the runtime representation of the call node constant.
      */
@@ -40,4 +41,16 @@ public interface TruffleMetaAccessProvider {
      * Otherwise simply return null.
      */
     TruffleSourceLanguagePosition getPosition(JavaConstant node);
+
+    /**
+     * Records the given target to be dequed from the compilation queue at the end of the current
+     * compilation.
+     */
+    void addTargetToDequeue(CompilableTruffleAST target);
+
+    /**
+     * Dequeue from the compilation queue the targets
+     * {@link #addTargetToDequeue(CompilableTruffleAST) added}.
+     */
+    void dequeueTargets();
 }

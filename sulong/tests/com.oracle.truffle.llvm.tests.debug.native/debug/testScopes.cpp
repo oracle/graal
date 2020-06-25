@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,29 +32,25 @@
 
 namespace MyNamespace {
 
-    int nextID = 72;
+int nextID = 72;
 
-    int getNextId()
-    {
-        int result = nextID++;
-        return result;
-    }
-};
+int getNextId() {
+    int result = nextID++;
+    return result;
+}
+}; // namespace MyNamespace
 
 using namespace MyNamespace;
 
 int globalX = 512;
 
-class MyClass
-{
+class MyClass {
 
 private:
-
     static int lastId;
     int id;
 
 public:
-
     MyClass() {
         id = getNextId();
         lastId = id;
@@ -64,7 +60,6 @@ public:
     int getID() {
         return this->id;
     }
-
 };
 
 int MyClass::lastId = -1;

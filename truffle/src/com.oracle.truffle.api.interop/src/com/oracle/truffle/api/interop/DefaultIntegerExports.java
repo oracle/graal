@@ -40,9 +40,8 @@
  */
 package com.oracle.truffle.api.interop;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.source.SourceSection;
@@ -73,7 +72,9 @@ final class DefaultIntegerExports {
 
     @ExportMessage
     static boolean fitsInFloat(Integer receiver) {
-        return NumberUtils.inSafeFloatRange(receiver);
+        int i = receiver;
+        float f = i;
+        return (int) f == i;
     }
 
     @ExportMessage
@@ -83,7 +84,6 @@ final class DefaultIntegerExports {
         if (b == i) {
             return b;
         }
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -94,17 +94,16 @@ final class DefaultIntegerExports {
         if (s == i) {
             return s;
         }
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
     @ExportMessage
     static float asFloat(Integer receiver) throws UnsupportedMessageException {
         int i = receiver;
-        if (NumberUtils.inSafeFloatRange(i)) {
-            return i;
+        float f = i;
+        if ((int) f == i) {
+            return f;
         }
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 

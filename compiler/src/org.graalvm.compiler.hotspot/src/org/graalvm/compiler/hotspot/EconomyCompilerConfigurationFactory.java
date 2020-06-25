@@ -25,6 +25,7 @@
 package org.graalvm.compiler.hotspot;
 
 import org.graalvm.compiler.core.phases.EconomyCompilerConfiguration;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
 
@@ -51,5 +52,10 @@ public class EconomyCompilerConfigurationFactory extends CompilerConfigurationFa
     public BackendMap createBackendMap() {
         // the economy configuration only differs in the frontend, it reuses the "community" backend
         return new DefaultBackendMap(CommunityCompilerConfigurationFactory.NAME);
+    }
+
+    @Override
+    public Instrumentation createInstrumentation(OptionValues options) {
+        return new DefaultInstrumentation();
     }
 }

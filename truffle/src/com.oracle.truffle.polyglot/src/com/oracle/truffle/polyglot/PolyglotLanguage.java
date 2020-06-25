@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.polyglot;
 
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 import static com.oracle.truffle.polyglot.EngineAccessor.NODES;
 
@@ -160,22 +161,20 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
 
     @Override
     public OptionDescriptors getOptions() {
-        engine.checkState();
-        if (!initialized) {
+        try {
+            engine.checkState();
+            return getOptionsInternal();
+        } catch (Throwable e) {
+            throw PolyglotImpl.guestToHostException(this.engine, e);
+        }
+    }
+
+    OptionDescriptors getOptionsInternal() {
+        if (!this.initialized) {
             synchronized (engine) {
-                if (!initialized) {
-                    try {
-                        this.initLanguage = ensureInitialized(new PolyglotLanguageInstance(this));
-                    } catch (IllegalAccessError e) {
-                        // Do not swallow module access violations
-                        throw e;
-                    } catch (Throwable e) {
-                        // failing to initialize the language for getting the option descriptors
-                        // should not be a fatal error. this typically happens when an invalid
-                        // language is on the classpath.
-                        return OptionDescriptors.EMPTY;
-                    }
-                    initialized = true;
+                if (!this.initialized) {
+                    this.initLanguage = ensureInitialized(new PolyglotLanguageInstance(this));
+                    this.initialized = true;
                 }
             }
         }
@@ -236,7 +235,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
                     instance = fetchFromPool(newOptions, true);
                     break;
                 default:
-                    throw new AssertionError("Unknown context cardinality.");
+                    throw shouldNotReachHere();
             }
             instance.ensureMultiContextInitialized();
         }
@@ -280,7 +279,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
                     // nothing to do
                     break;
                 default:
-                    throw new AssertionError("Unknown context cardinality.");
+                    throw shouldNotReachHere("Unknown context cardinality.");
             }
         }
     }
@@ -330,7 +329,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
         if (optionValues == null) {
             synchronized (engine) {
                 if (optionValues == null) {
-                    optionValues = new OptionValuesImpl(engine, getOptions(), false);
+                    optionValues = new OptionValuesImpl(engine, getOptionsInternal(), false);
                 }
             }
         }
@@ -443,7 +442,7 @@ final class PolyglotLanguage extends AbstractLanguageImpl implements com.oracle.
         PolyglotContextImpl context = PolyglotContextImpl.requireContext();
         PolyglotLanguageContext languageContext = context.getContext(this);
         if (languageContext.isInitialized() && languageContext.language.engine != this.engine) {
-            throw new AssertionError(String.format("Context reference was used from an Engine that is currently not entered. " +
+            throw shouldNotReachHere(String.format("Context reference was used from an Engine that is currently not entered. " +
                             "ContextReference of engine %s was used but engine %s is currently entered. " +
                             "ContextReference must not be shared between multiple Engine instances.",
                             languageContext.language.engine.creatorApi,

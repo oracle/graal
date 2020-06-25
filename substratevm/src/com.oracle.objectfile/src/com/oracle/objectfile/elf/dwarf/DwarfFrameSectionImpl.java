@@ -32,6 +32,8 @@ import com.oracle.objectfile.debugentry.PrimaryEntry;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import org.graalvm.compiler.debug.DebugContext;
 
+import java.util.List;
+
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_CFA_CIE_id;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_CFA_CIE_version;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_CFA_advance_loc;
@@ -43,6 +45,7 @@ import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_CFA_def_cfa_offs
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_CFA_nop;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_CFA_offset;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_CFA_register;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_CFA_restore;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_FRAME_SECTION_NAME;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_LINE_SECTION_NAME;
 
@@ -117,7 +120,7 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
          *
          * <li><code>ULEB : data_alignment_factor ... == -8</code>
          *
-         * <li><code>byte : ret_addr reg id ......... x86_64 => 16 AArch64 => 32</code>
+         * <li><code>byte : ret_addr reg id ......... x86_64 => 16 AArch64 => 30</code>
          *
          * <li><code>byte[] : initial_instructions .. includes pad to 8-byte boundary</code>
          *
@@ -131,7 +134,7 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
             pos += putAsciiStringBytes("", scratch, 0);
             pos += putULEB(1, scratch, 0);
             pos += putSLEB(-8, scratch, 0);
-            pos += putByte((byte) getPCIdx(), scratch, 0);
+            pos += putByte((byte) getReturnPCIdx(), scratch, 0);
             /*
              * Write insns to set up empty frame.
              */
@@ -152,7 +155,7 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
             pos = putAsciiStringBytes("", buffer, pos);
             pos = putULEB(1, buffer, pos);
             pos = putSLEB(-8, buffer, pos);
-            pos = putByte((byte) getPCIdx(), buffer, pos);
+            pos = putByte((byte) getReturnPCIdx(), buffer, pos);
             /*
              * write insns to set up empty frame
              */
@@ -172,32 +175,17 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
             for (PrimaryEntry primaryEntry : classEntry.getPrimaryEntries()) {
                 long lo = primaryEntry.getPrimary().getLo();
                 long hi = primaryEntry.getPrimary().getHi();
-                int frameSize = primaryEntry.getFrameSize();
-                int currentOffset = 0;
                 int lengthPos = pos;
                 pos = writeFDEHeader((int) lo, (int) hi, buffer, pos);
-                for (DebugInfoProvider.DebugFrameSizeChange debugFrameSizeInfo : primaryEntry.getFrameSizeInfos()) {
-                    int advance = debugFrameSizeInfo.getOffset() - currentOffset;
-                    currentOffset += advance;
-                    pos = writeAdvanceLoc(advance, buffer, pos);
-                    if (debugFrameSizeInfo.getType() == DebugInfoProvider.DebugFrameSizeChange.Type.EXTEND) {
-                        /*
-                         * SP has been extended so rebase CFA using full frame.
-                         */
-                        pos = writeDefCFAOffset(frameSize, buffer, pos);
-                    } else {
-                        /*
-                         * SP has been contracted so rebase CFA using empty frame.
-                         */
-                        pos = writeDefCFAOffset(8, buffer, pos);
-                    }
-                }
+                pos = writeFDEs(primaryEntry.getFrameSize(), primaryEntry.getFrameSizeInfos(), buffer, pos);
                 pos = writePaddingNops(buffer, pos);
                 patchLength(lengthPos, buffer, pos);
             }
         }
         return pos;
     }
+
+    protected abstract int writeFDEs(int frameSize, List<DebugInfoProvider.DebugFrameSizeChange> frameSizeInfos, byte[] buffer, int pos);
 
     private int writeFDEHeader(int lo, int hi, byte[] buffer, int p) {
         /*
@@ -346,6 +334,17 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
         }
     }
 
+    protected int writeRestore(int register, byte[] buffer, int p) {
+        byte op = restoreOp(register);
+        int pos = p;
+        if (buffer == null) {
+            return pos + putByte(op, scratch, 0);
+        } else {
+            return putByte(op, buffer, pos);
+        }
+    }
+
+    @SuppressWarnings("unused")
     protected int writeRegister(int savedReg, int savedToReg, byte[] buffer, int p) {
         int pos = p;
         if (buffer == null) {
@@ -359,7 +358,7 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
         }
     }
 
-    protected abstract int getPCIdx();
+    protected abstract int getReturnPCIdx();
 
     @SuppressWarnings("unused")
     protected abstract int getSPIdx();
@@ -389,6 +388,11 @@ public abstract class DwarfFrameSectionImpl extends DwarfSectionImpl {
     private static byte offsetOp(int register) {
         assert (register >> 6) == 0;
         return (byte) ((DW_CFA_offset << 6) | register);
+    }
+
+    private static byte restoreOp(int register) {
+        assert (register >> 6) == 0;
+        return (byte) ((DW_CFA_restore << 6) | register);
     }
 
     private static byte advanceLoc0Op(int offset) {

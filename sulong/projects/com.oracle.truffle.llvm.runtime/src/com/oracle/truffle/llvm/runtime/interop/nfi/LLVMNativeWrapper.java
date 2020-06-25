@@ -140,9 +140,9 @@ public final class LLVMNativeWrapper implements TruffleObject {
         }
 
         protected static LLVMNativeConvertNode[] createFromNativeNodes(FunctionType type) {
-            LLVMNativeConvertNode[] ret = new LLVMNativeConvertNode[type.getArgumentTypes().length];
-            for (int i = 0; i < type.getArgumentTypes().length; i++) {
-                ret[i] = LLVMNativeConvertNode.createFromNative(type.getArgumentTypes()[i]);
+            LLVMNativeConvertNode[] ret = new LLVMNativeConvertNode[type.getNumberOfArguments()];
+            for (int i = 0; i < type.getNumberOfArguments(); i++) {
+                ret[i] = LLVMNativeConvertNode.createFromNative(type.getArgumentType(i));
             }
             return ret;
         }

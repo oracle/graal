@@ -109,6 +109,11 @@ meth public static com.oracle.truffle.api.utilities.TriState valueOf(java.lang.S
 meth public static com.oracle.truffle.api.utilities.TriState[] values()
 supr java.lang.Enum<com.oracle.truffle.api.utilities.TriState>
 
+CLSS public final com.oracle.truffle.api.utilities.TruffleWeakReference<%0 extends java.lang.Object>
+cons public init({com.oracle.truffle.api.utilities.TruffleWeakReference%0})
+cons public init({com.oracle.truffle.api.utilities.TruffleWeakReference%0},java.lang.ref.ReferenceQueue<? super {com.oracle.truffle.api.utilities.TruffleWeakReference%0}>)
+supr java.lang.ref.WeakReference<{com.oracle.truffle.api.utilities.TruffleWeakReference%0}>
+
 CLSS public com.oracle.truffle.api.utilities.UnionAssumption
 cons public init(com.oracle.truffle.api.Assumption,com.oracle.truffle.api.Assumption)
 cons public init(java.lang.String,com.oracle.truffle.api.Assumption,com.oracle.truffle.api.Assumption)
@@ -158,4 +163,18 @@ meth public final void wait(long) throws java.lang.InterruptedException
 meth public final void wait(long,int) throws java.lang.InterruptedException
 meth public int hashCode()
 meth public java.lang.String toString()
+
+CLSS public abstract java.lang.ref.Reference<%0 extends java.lang.Object>
+meth public boolean enqueue()
+meth public boolean isEnqueued()
+meth public void clear()
+meth public {java.lang.ref.Reference%0} get()
+supr java.lang.Object
+hfds discovered,lock,next,pending,queue,referent
+hcls Lock,ReferenceHandler
+
+CLSS public java.lang.ref.WeakReference<%0 extends java.lang.Object>
+cons public init({java.lang.ref.WeakReference%0})
+cons public init({java.lang.ref.WeakReference%0},java.lang.ref.ReferenceQueue<? super {java.lang.ref.WeakReference%0}>)
+supr java.lang.ref.Reference<{java.lang.ref.WeakReference%0}>
 

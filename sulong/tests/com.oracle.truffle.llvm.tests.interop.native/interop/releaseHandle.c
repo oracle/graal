@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,44 +31,44 @@
 #include <truffle.h>
 
 int main() {
-  void *object = polyglot_import("object");
-  void *handle1 = truffle_handle_for_managed(object);
-  void *handle2 = truffle_handle_for_managed(object);
-  void *handle3 = truffle_deref_handle_for_managed(object);
+    void *object = polyglot_import("object");
+    void *handle1 = truffle_handle_for_managed(object);
+    void *handle2 = truffle_handle_for_managed(object);
+    void *handle3 = truffle_deref_handle_for_managed(object);
 
-  if (!truffle_is_handle_to_managed(handle1)) {
-    return 1;
-  }
-  if (!truffle_is_handle_to_managed(handle2)) {
-    return 2;
-  }
-  if (!truffle_is_handle_to_managed(handle3)) {
-    return 3;
-  }
+    if (!truffle_is_handle_to_managed(handle1)) {
+        return 1;
+    }
+    if (!truffle_is_handle_to_managed(handle2)) {
+        return 2;
+    }
+    if (!truffle_is_handle_to_managed(handle3)) {
+        return 3;
+    }
 
-  truffle_release_handle(handle2);
+    truffle_release_handle(handle2);
 
-  if (!truffle_is_handle_to_managed(handle1)) {
-    return 4;
-  }
-  if (!truffle_is_handle_to_managed(handle3)) {
-    return 5;
-  }
+    if (!truffle_is_handle_to_managed(handle1)) {
+        return 4;
+    }
+    if (!truffle_is_handle_to_managed(handle3)) {
+        return 5;
+    }
 
-  truffle_release_handle(handle1);
+    truffle_release_handle(handle1);
 
-  // normal and deref handles are different spaces, so
-  // releasing the last "normal" handle will invalidate
-  // will invalidate it even if a deref one exists
-  if (truffle_is_handle_to_managed(handle1)) {
-    return 6;
-  }
+    // normal and deref handles are different spaces, so
+    // releasing the last "normal" handle will invalidate
+    // will invalidate it even if a deref one exists
+    if (truffle_is_handle_to_managed(handle1)) {
+        return 6;
+    }
 
-  truffle_release_handle(handle3);
+    truffle_release_handle(handle3);
 
-  if (truffle_is_handle_to_managed(handle3)) {
-    return 7;
-  }
+    if (truffle_is_handle_to_managed(handle3)) {
+        return 7;
+    }
 
-  return 0;
+    return 0;
 }

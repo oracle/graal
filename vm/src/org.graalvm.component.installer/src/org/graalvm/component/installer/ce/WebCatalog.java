@@ -176,12 +176,12 @@ public class WebCatalog implements SoftwareChannel {
                     componentFound = true;
                 }
             }
-            if (!(graalPrefixFound || componentFound)) {
+            if (!componentFound) {
                 // no graal prefix, no components
-                feedback.error("REMOTE_CatalogDoesNotContainComponents", null, catalogURL);
+                feedback.verboseOutput("REMOTE_CatalogDoesNotContainComponents", catalogURL);
                 return newStorage;
-            }
-            if (!(graalPrefixFound && componentFound)) {
+            } else if (!graalPrefixFound) {
+                // strange thing, no graal declaration, but components are there ?
                 throw feedback.failure("REMOTE_CorruptedCatalogFile", null, catalogURL);
             } else {
                 throw new IncompatibleException(

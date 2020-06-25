@@ -16,14 +16,16 @@ argument to the GenerateDebugInfo option.
 
 The GenerateDebugInfo option also enables caching of sources for any
 JDK runtime classes, GraalVM classes and application classes which can
-be located during native image generation. The cache is created under
-local subdirectory sources. It is used to configure source file search
-path roots for the debugger. Files in the cache are located in a
-directory hierarchy that matches the file path information included in
-the native image debug records. The source cache should contain all
-the files needed to debug the generated image and nothing more. This
-local cache provides a convenient way of making just the necessary
-sources available to the debugger/IDE when debugging a native image.
+be located during native image generation. By default the cache is
+created under local subdirectory sources (a command line option can be
+used to specifiy an alternative location). It is used to configure
+source file search path roots for the debugger. Files in the cache are
+located in a directory hierarchy that matches the file path
+information included in the native image debug records. The source
+cache should contain all the files needed to debug the generated image
+and nothing more. This local cache provides a convenient way of making
+just the necessary sources available to the debugger/IDE when
+debugging a native image.
 
 The implementation tries to be smart about locating source files. It
 uses the current JAVA_HOME to locate the JDK src.zip when searching
@@ -57,7 +59,23 @@ separator:
         -cp apps/target/hello.jar:apps/target/greeter.jar \
         org.my.Hello
 
-Note that in both the examples above the DebugInfoSourceSearchPath
+By default the cache of application, GraalVM and JDK sources is
+located under local directory sources. Option DebugInfoSourceCacheRoot
+can be used to specify an alternative location for the top level
+directory. As an example, the following variant of the previous
+command specifies the same target but employs an absolute path:
+
+    $ SOURCE_CACHE_ROOT=$PWD/sources
+    $ mx native-image -H:GenerateDebugInfo=1 \
+        -H:DebugInfoSourceCacheRoot=$SOURCE_CACHE_ROOT \
+        -H:DebugInfoSourceSearchPath=apps/hello/target/hello-sources.jar,apps/greeter/target/greeter-sources.jar \
+        -cp apps/target/hello.jar:apps/target/greeter.jar \
+        org.my.Hello
+
+If you specify a root directory that does not yet exist it will be
+created during population of the cache.
+
+Note that in all the examples above the DebugInfoSourceSearchPath
 options are actually redundant. In the first case the classpath
 entries for apps/hello/classes and apps/greeter/classes will be used
 to derive the default search roots apps/hello/src and
@@ -65,6 +83,7 @@ apps/greeter/src. In the second case classpath entries
 apps/target/hello.jar and apps/target/greeter.jar will be used to
 derive the default search roots apps/target/hello-sources.jar and
 apps/target/greeter-sources.jar.
+
 
 What is currently implemented
 -----------------------------

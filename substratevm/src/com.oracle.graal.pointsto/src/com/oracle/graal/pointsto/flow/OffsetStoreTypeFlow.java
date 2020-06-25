@@ -29,7 +29,6 @@ import java.util.List;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.JavaWriteNode;
 import org.graalvm.compiler.nodes.extended.RawStoreNode;
-import org.graalvm.compiler.nodes.java.AtomicReadAndWriteNode;
 import org.graalvm.compiler.nodes.java.UnsafeCompareAndSwapNode;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -311,7 +310,7 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
      */
     public static class AtomicWriteTypeFlow extends AbstractUnsafeStoreTypeFlow {
 
-        public AtomicWriteTypeFlow(AtomicReadAndWriteNode node, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow) {
+        public AtomicWriteTypeFlow(ValueNode node, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow, TypeFlow<?> valueFlow) {
             super(node, objectType, componentType, objectFlow, valueFlow);
         }
 

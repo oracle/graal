@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,13 +30,13 @@
 long adr = "asdf";
 
 long f1() {
-  return adr;
+    return adr;
 }
 
 long f2() {
-  return "asdf";
+    return "asdf";
 }
 
 int main() {
-  return f1() == f2();
+    return f1() == f2();
 }

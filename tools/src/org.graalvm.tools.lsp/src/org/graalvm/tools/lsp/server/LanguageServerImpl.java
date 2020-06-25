@@ -53,11 +53,11 @@ import org.graalvm.tools.lsp.server.types.CodeActionParams;
 import org.graalvm.tools.lsp.server.types.CodeLens;
 import org.graalvm.tools.lsp.server.types.CodeLensOptions;
 import org.graalvm.tools.lsp.server.types.CodeLensParams;
-import org.graalvm.tools.lsp.server.types.Command;
 import org.graalvm.tools.lsp.server.types.CompletionItem;
 import org.graalvm.tools.lsp.server.types.CompletionList;
 import org.graalvm.tools.lsp.server.types.CompletionOptions;
 import org.graalvm.tools.lsp.server.types.CompletionParams;
+import org.graalvm.tools.lsp.server.types.Coverage;
 import org.graalvm.tools.lsp.server.types.DidChangeTextDocumentParams;
 import org.graalvm.tools.lsp.server.types.DidCloseTextDocumentParams;
 import org.graalvm.tools.lsp.server.types.DidOpenTextDocumentParams;
@@ -78,7 +78,6 @@ import org.graalvm.tools.lsp.server.types.Location;
 import org.graalvm.tools.lsp.server.types.ShowMessageParams;
 import org.graalvm.tools.lsp.server.types.MessageType;
 import org.graalvm.tools.lsp.server.types.PublishDiagnosticsParams;
-import org.graalvm.tools.lsp.server.types.Range;
 import org.graalvm.tools.lsp.server.types.ReferenceParams;
 import org.graalvm.tools.lsp.server.types.RenameParams;
 import org.graalvm.tools.lsp.server.types.ServerCapabilities;
@@ -104,9 +103,7 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 public final class LanguageServerImpl extends LanguageServer {
 
     private static final String DRY_RUN = "dry_run";
-    private static final String SHOW_COVERAGE = "show_coverage";
-    private static final String CLEAR_COVERAGE = "clear_coverage";
-    private static final String CLEAR_ALL_COVERAGE = "clear_all_coverage";
+    private static final String GET_COVERAGE = "get_coverage";
     private static final TextDocumentSyncKind TEXT_DOCUMENT_SYNC_KIND = TextDocumentSyncKind.Incremental;
 
     private final TruffleAdapter truffleAdapter;
@@ -146,7 +143,7 @@ public final class LanguageServerImpl extends LanguageServer {
         capabilities.setSignatureHelpProvider(SignatureHelpOptions.create());
         capabilities.setHoverProvider(true);
         capabilities.setReferencesProvider(false);
-        capabilities.setExecuteCommandProvider(ExecuteCommandOptions.create(Arrays.asList(DRY_RUN, SHOW_COVERAGE, CLEAR_COVERAGE, CLEAR_ALL_COVERAGE)));
+        capabilities.setExecuteCommandProvider(ExecuteCommandOptions.create(Arrays.asList(DRY_RUN, GET_COVERAGE)));
 
         this.serverCapabilities = capabilities;
         CompletableFuture.runAsync(() -> parseWorkspace(params.getWorkspaceFolders()));
@@ -231,25 +228,7 @@ public final class LanguageServerImpl extends LanguageServer {
 
     @Override
     public CompletableFuture<List<? extends CodeLens>> codeLens(CodeLensParams params) {
-        return CompletableFuture.supplyAsync(() -> {
-            String uri = params.getTextDocument().getUri();
-            if (truffleAdapter.hasCoverageData(URI.create(uri))) {
-                CodeLens codeLensShowCoverage = CodeLens.create(Range.create(0, 0, 0, 0), null);
-                Command commandShowCoverage = Command.create("Highlight uncovered code", SHOW_COVERAGE, uri);
-                codeLensShowCoverage.setCommand(commandShowCoverage);
-
-                CodeLens codeLensClear = CodeLens.create(Range.create(0, 0, 0, 0), null);
-                Command commandClear = Command.create("Clear coverage", CLEAR_COVERAGE, uri);
-                codeLensClear.setCommand(commandClear);
-
-                CodeLens codeLensClearAll = CodeLens.create(Range.create(0, 0, 0, 0), null);
-                Command commandClearAll = Command.create("Clear coverage (all files)", CLEAR_ALL_COVERAGE, uri);
-                codeLensClearAll.setCommand(commandClearAll);
-
-                return Arrays.asList(/* codeLens, */ codeLensShowCoverage, codeLensClear, codeLensClearAll);
-            }
-            return Collections.emptyList();
-        });
+        return CompletableFuture.completedFuture(Collections.emptyList());
     }
 
     @Override
@@ -362,22 +341,12 @@ public final class LanguageServerImpl extends LanguageServer {
         switch (params.getCommand()) {
             case DRY_RUN:
                 String uri = (String) params.getArguments().get(0);
-
                 Future<?> future = truffleAdapter.runCoverageAnalysis(URI.create(uri));
                 return CompletableFuture.supplyAsync(() -> waitForResultAndHandleExceptions(future));
-            case SHOW_COVERAGE:
+            case GET_COVERAGE:
                 uri = (String) params.getArguments().get(0);
-
-                Future<?> futureCoverage = truffleAdapter.showCoverage(URI.create(uri));
+                Future<Coverage> futureCoverage = truffleAdapter.getCoverage(URI.create(uri));
                 return CompletableFuture.supplyAsync(() -> waitForResultAndHandleExceptions(futureCoverage));
-            case CLEAR_COVERAGE:
-                uri = (String) params.getArguments().get(0);
-
-                Future<?> futureClear = truffleAdapter.clearCoverage(URI.create(uri));
-                return CompletableFuture.supplyAsync(() -> waitForResultAndHandleExceptions(futureClear));
-            case CLEAR_ALL_COVERAGE:
-                Future<?> futureClearAll = truffleAdapter.clearCoverage();
-                return CompletableFuture.supplyAsync(() -> waitForResultAndHandleExceptions(futureClearAll));
             default:
                 err.println("Unkown command: " + params.getCommand());
                 return CompletableFuture.completedFuture(new Object());

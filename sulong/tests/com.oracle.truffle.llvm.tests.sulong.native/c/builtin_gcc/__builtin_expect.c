@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,11 +28,11 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int main() {
-  int res = 0;
-  for (int i = 0; i < 10; i++) {
-    if (__builtin_expect(i % 2, 0)) {
-      res += i;
+    int res = 0;
+    for (int i = 0; i < 10; i++) {
+        if (__builtin_expect(i % 2, 0)) {
+            res += i;
+        }
     }
-  }
-  return res;
+    return res;
 }

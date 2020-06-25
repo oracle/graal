@@ -49,24 +49,29 @@ import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.PositionAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
+import com.oracle.truffle.regex.tregex.string.AbstractString;
+import com.oracle.truffle.regex.tregex.string.AbstractStringBuffer;
+import com.oracle.truffle.regex.tregex.util.Exceptions;
 
 public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisitor {
 
     private final boolean extractLiteral;
     private final boolean unrollGroups;
 
+    private final RegexAST ast;
     private int index = 0;
-    private final char[] literal;
-    private final char[] mask;
+    private final AbstractStringBuffer literal;
+    private final AbstractStringBuffer mask;
     private final PreCalculatedResultFactory result;
     private PreCalcResultVisitor groupUnroller;
 
     private PreCalcResultVisitor(RegexAST ast, boolean extractLiteral) {
+        this.ast = ast;
         result = new PreCalculatedResultFactory(ast.getNumberOfCaptureGroups());
         this.extractLiteral = extractLiteral;
         if (extractLiteral) {
-            literal = new char[ast.getRoot().getMinPath()];
-            mask = ast.getProperties().hasCharClasses() ? new char[ast.getRoot().getMinPath()] : null;
+            literal = ast.getEncoding().createStringBuffer(ast.getRoot().getMinPath());
+            mask = ast.getProperties().hasCharClasses() ? ast.getEncoding().createStringBuffer(ast.getRoot().getMinPath()) : null;
         } else {
             literal = null;
             mask = null;
@@ -74,7 +79,8 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
         unrollGroups = true;
     }
 
-    private PreCalcResultVisitor(boolean extractLiteral, boolean unrollGroups, int index, char[] literal, char[] mask, PreCalculatedResultFactory result) {
+    private PreCalcResultVisitor(RegexAST ast, boolean extractLiteral, boolean unrollGroups, int index, AbstractStringBuffer literal, AbstractStringBuffer mask, PreCalculatedResultFactory result) {
+        this.ast = ast;
         this.extractLiteral = extractLiteral;
         this.unrollGroups = unrollGroups;
         this.index = index;
@@ -97,16 +103,16 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
         return visitor.result;
     }
 
-    public String getLiteral() {
-        return new String(literal);
+    public AbstractString getLiteral() {
+        return literal.materialize();
     }
 
     public boolean hasMask() {
         return mask != null;
     }
 
-    public String getMask() {
-        return mask == null ? null : new String(mask);
+    public AbstractString getMask() {
+        return mask == null ? null : mask.materialize();
     }
 
     public PreCalculatedResultFactory getResultFactory() {
@@ -115,7 +121,7 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
 
     @Override
     protected void visit(BackReference backReference) {
-        throw new IllegalArgumentException();
+        throw Exceptions.shouldNotReachHere();
     }
 
     @Override
@@ -133,7 +139,7 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
         if (unrollGroups && group.hasNotUnrolledQuantifier()) {
             assert group.getQuantifier().getMin() == group.getQuantifier().getMax();
             if (groupUnroller == null) {
-                groupUnroller = new PreCalcResultVisitor(extractLiteral, false, index, literal, mask, result);
+                groupUnroller = new PreCalcResultVisitor(ast, extractLiteral, false, index, literal, mask, result);
             }
             groupUnroller.index = index;
             for (int i = 0; i < group.getQuantifier().getMin() - 1; i++) {
@@ -153,26 +159,27 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
 
     @Override
     protected void visit(LookBehindAssertion assertion) {
-        throw new IllegalArgumentException();
+        throw Exceptions.shouldNotReachHere();
     }
 
     @Override
     protected void visit(LookAheadAssertion assertion) {
-        throw new IllegalArgumentException();
+        throw Exceptions.shouldNotReachHere();
     }
 
     @Override
     protected void visit(CharacterClass characterClass) {
         assert !characterClass.hasQuantifier() || characterClass.getQuantifier().getMin() == characterClass.getQuantifier().getMax();
         for (int i = 0; i < (characterClass.hasNotUnrolledQuantifier() ? characterClass.getQuantifier().getMin() : 1); i++) {
+            int cp = characterClass.getCharSet().getMin();
             if (extractLiteral) {
                 if (mask == null) {
-                    literal[index] = (char) characterClass.getCharSet().getMin();
+                    literal.append(cp);
                 } else {
-                    characterClass.extractSingleChar(literal, mask, index);
+                    characterClass.extractSingleChar(literal, mask);
                 }
             }
-            index++;
+            index += ast.getEncoding().getEncodedSize(cp);
         }
     }
 }

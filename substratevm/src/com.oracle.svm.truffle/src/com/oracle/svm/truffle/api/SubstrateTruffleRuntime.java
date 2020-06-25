@@ -86,6 +86,9 @@ class SubstateTruffleOptions {
     @Option(help = "Enable support for Truffle background compilation")//
     static final HostedOptionKey<Boolean> TruffleMultiThreaded = new HostedOptionKey<>(true);
 
+    @Option(help = "Propagate Truffle compilation errors")//
+    static final HostedOptionKey<Boolean> TrufflePropagateCompilationErrors = new HostedOptionKey<>(false);
+
     @Fold
     static boolean isMultiThreaded() {
         /*
@@ -291,6 +294,9 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
             if (TruffleRuntimeOptions.getPolyglotOptionValue(optimizedCallTarget.getOptionValues(), PolyglotCompilerOptions.CompilationExceptionsArePrinted)) {
                 Log.log().string(printStackTraceToString(e));
             }
+            if (SubstateTruffleOptions.TrufflePropagateCompilationErrors.getValue()) {
+                throw e;
+            }
         }
 
         return null;
@@ -409,6 +415,13 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     @Override
     public CompilableTruffleAST asCompilableTruffleAST(JavaConstant constant) {
         return TruffleFeature.getSupport().asCompilableTruffleAST(constant);
+    }
+
+    @Override
+    public void log(CompilableTruffleAST compilable, String message) {
+        if (!TruffleFeature.getSupport().tryLog(this, compilable, message)) {
+            super.log(compilable, message);
+        }
     }
 
     @Override

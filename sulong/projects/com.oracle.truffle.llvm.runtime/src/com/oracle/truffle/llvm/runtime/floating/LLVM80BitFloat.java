@@ -482,25 +482,27 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
     }
 
     public byte[] getBytesBigEndian() {
-        ByteBuffer bb = ByteBuffer.allocate(BYTE_WIDTH);
+        byte[] array = new byte[BYTE_WIDTH];
+        ByteBuffer bb = ByteBuffer.wrap(array);
         bb.order(ByteOrder.BIG_ENDIAN);
         short signWithExponent = getExponent();
         short signBit = sign ? (short) bit(Short.SIZE - 1) : 0;
         signWithExponent |= signBit;
         bb.putShort(signWithExponent);
         bb.putLong(getFraction());
-        return bb.array();
+        return array;
     }
 
     public byte[] getBytes() {
-        ByteBuffer bb = ByteBuffer.allocate(BYTE_WIDTH);
+        byte[] array = new byte[BYTE_WIDTH];
+        ByteBuffer bb = ByteBuffer.wrap(array);
         bb.order(ByteOrder.LITTLE_ENDIAN);
         short signWithExponent = getExponent();
         short signBit = sign ? (short) bit(Short.SIZE - 1) : 0;
         signWithExponent |= signBit;
         bb.putLong(getFraction());
         bb.putShort(signWithExponent);
-        return bb.array();
+        return array;
     }
 
     public static LLVM80BitFloat fromBytesBigEndian(byte[] bytes) {
@@ -653,7 +655,7 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
 
         protected TruffleObject createFunction() {
             LLVMContext context = lookupContextReference(LLVMLanguage.class).get();
-            NFIContextExtension nfiContextExtension = context.getLanguage().getContextExtensionOrNull(NFIContextExtension.class);
+            NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
             return nfiContextExtension == null ? null : nfiContextExtension.getNativeFunction(context, "__sulong_fp80_" + name, "(UINT64,UINT64,UINT64):VOID");
         }
 
@@ -665,21 +667,21 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
                         @CachedLibrary("function") InteropLibrary nativeExecute,
                         @CachedLanguage LLVMLanguage language) {
             LLVMMemory memory = language.getLLVMMemory();
-            LLVMNativePointer mem = memory.allocateMemory(3 * 16);
+            LLVMNativePointer mem = memory.allocateMemory(this, 3 * 16);
             LLVMNativePointer ptrX = mem;
             LLVMNativePointer ptrY = ptrX.increment(16);
             LLVMNativePointer ptrZ = ptrY.increment(16);
-            memory.put80BitFloat(ptrX, x);
-            memory.put80BitFloat(ptrY, y);
+            memory.put80BitFloat(this, ptrX, x);
+            memory.put80BitFloat(this, ptrY, y);
             try {
                 nativeExecute.execute(function, ptrZ.asNative(), ptrX.asNative(), ptrY.asNative());
-                LLVM80BitFloat z = memory.get80BitFloat(ptrZ);
+                LLVM80BitFloat z = memory.get80BitFloat(this, ptrZ);
                 return z;
             } catch (InteropException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new AssertionError(e);
             } finally {
-                memory.free(mem);
+                memory.free(this, mem);
             }
         }
 

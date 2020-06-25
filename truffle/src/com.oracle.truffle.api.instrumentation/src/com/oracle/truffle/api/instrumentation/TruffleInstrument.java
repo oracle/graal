@@ -532,7 +532,7 @@ public abstract class TruffleInstrument {
 
             private void assureAdopted() {
                 if (getParent() == null) {
-                    CompilerDirectives.transferToInterpreter();
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw new IllegalStateException("Needs to be inserted into the AST before execution.");
                 }
             }
@@ -794,7 +794,7 @@ public abstract class TruffleInstrument {
                     try {
                         language = getLanguageInfo(INTEROP.getLanguage(value));
                     } catch (UnsupportedMessageException e) {
-                        CompilerDirectives.transferToInterpreter();
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
                         throw new AssertionError(e);
                     }
                 }

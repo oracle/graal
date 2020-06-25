@@ -64,10 +64,6 @@ public final class LLVMParserRuntime {
         return fileScope;
     }
 
-    public LLVMScope getGlobalScope() {
-        return context.getGlobalScope();
-    }
-
     public NodeFactory getNodeFactory() {
         return nodeFactory;
     }
@@ -98,24 +94,5 @@ public final class LLVMParserRuntime {
             return symbol;
         }
         throw new IllegalStateException("Unknown symbol: " + name);
-    }
-
-    public LLVMSymbol lookupSymbolWithExport(String name, boolean preferGlobalScope) {
-        LLVMSymbol symbol = lookupSymbolImpl(name, preferGlobalScope);
-        if (symbol != null) {
-            return symbol;
-        }
-        throw new IllegalStateException("Unknown symbol: " + name);
-    }
-
-    private LLVMSymbol lookupSymbolImpl(String name, boolean preferGlobalScope) {
-        LLVMSymbol symbol = null;
-        if (preferGlobalScope) {
-            symbol = getGlobalScope().get(name);
-        }
-        if (symbol == null) {
-            symbol = fileScope.get(name);
-        }
-        return symbol;
     }
 }

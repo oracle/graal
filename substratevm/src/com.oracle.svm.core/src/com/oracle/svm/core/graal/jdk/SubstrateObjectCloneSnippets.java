@@ -32,7 +32,6 @@ import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
@@ -55,7 +54,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
+import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateTemplates;
 import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
@@ -68,19 +67,13 @@ import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescripto
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.NonmovableByteArrayReader;
 
-//Checkstyle: stop
-import sun.misc.Unsafe;
-//Checkstyle: resume
-
 public final class SubstrateObjectCloneSnippets extends SubstrateTemplates implements Snippets {
     private static final SubstrateForeignCallDescriptor CLONE = SnippetRuntime.findForeignCall(SubstrateObjectCloneSnippets.class, "doClone", true, LocationIdentity.ANY_LOCATION);
     private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{CLONE};
     private static final CloneNotSupportedException CLONE_NOT_SUPPORTED_EXCEPTION = new CloneNotSupportedException("Object is not instance of Cloneable.");
 
-    public static void registerForeignCalls(Providers providers, Map<SubstrateForeignCallDescriptor, SubstrateForeignCallLinkage> foreignCalls) {
-        for (SubstrateForeignCallDescriptor descriptor : FOREIGN_CALLS) {
-            foreignCalls.put(descriptor, new SubstrateForeignCallLinkage(providers, descriptor));
-        }
+    public static void registerForeignCalls(Providers providers, SubstrateForeignCallsProvider foreignCalls) {
+        foreignCalls.register(providers, FOREIGN_CALLS);
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
@@ -97,7 +90,7 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
             int length = KnownIntrinsics.readArrayLength(thisObj);
             return SubstrateArraysCopyOfSnippets.doArraysCopyOf(hub, thisObj, length, length);
         } else {
-            Unsafe unsafe = GraalUnsafeAccess.getUnsafe();
+            sun.misc.Unsafe unsafe = GraalUnsafeAccess.getUnsafe();
             Object result = unsafe.allocateInstance(DynamicHub.toClass(hub));
             int firstFieldOffset = ConfigurationValues.getObjectLayout().getFirstFieldOffset();
             int curOffset = firstFieldOffset;
@@ -185,8 +178,7 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
         public void lower(ObjectCloneWithExceptionNode node, LoweringTool tool) {
             StructuredGraph graph = node.graph();
 
-            ForeignCallsProvider foreignCalls = tool.getProviders().getForeignCalls();
-            ForeignCallWithExceptionNode call = graph.add(new ForeignCallWithExceptionNode(foreignCalls, CLONE, node.getObject()));
+            ForeignCallWithExceptionNode call = graph.add(new ForeignCallWithExceptionNode(CLONE, node.getObject()));
             call.setBci(node.bci());
             call.setStamp(node.stamp(NodeView.DEFAULT));
             graph.replaceWithExceptionSplit(node, call);

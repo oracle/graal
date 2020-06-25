@@ -34,7 +34,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.java.BytecodeParser.BytecodeParserError;
@@ -54,9 +53,6 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
-import jdk.vm.ci.code.BytecodePosition;
-import jdk.vm.ci.meta.JavaConstant;
-
 public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
 
     protected MethodFlowsGraph originalMethodFlows;
@@ -64,7 +60,6 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
     private int localCallingContextDepth;
 
     private final AnalysisMethod method;
-    protected EconomicMap<JavaConstant, BytecodePosition> objectConstants;
 
     private volatile boolean methodParsed;
     private InvokeTypeFlow parsingReason;
@@ -81,10 +76,6 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
 
     public AnalysisMethod getMethod() {
         return method;
-    }
-
-    public EconomicMap<JavaConstant, BytecodePosition> getObjectConstants() {
-        return objectConstants;
     }
 
     public InvokeTypeFlow getParsingReason() {

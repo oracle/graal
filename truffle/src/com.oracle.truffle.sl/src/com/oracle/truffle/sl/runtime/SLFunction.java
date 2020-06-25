@@ -202,6 +202,7 @@ public final class SLFunction implements TruffleObject {
     }
 
     @ExportMessage
+    @TruffleBoundary
     static int identityHashCode(SLFunction receiver) {
         return System.identityHashCode(receiver);
     }

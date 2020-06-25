@@ -62,6 +62,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 final class PolyglotContextConfig {
     private static final String[] EMPTY_STRING_ARRAY = new String[0];
 
+    final PolyglotEngineImpl engine;
     final OutputStream out;
     final OutputStream err;
     final InputStream in;
@@ -91,13 +92,14 @@ final class PolyglotContextConfig {
                     boolean hostLookupAllowed, PolyglotAccess polyglotAccess, boolean nativeAccessAllowed, boolean createThreadAllowed,
                     boolean hostClassLoadingAllowed, boolean allowExperimentalOptions,
                     Predicate<String> classFilter, Map<String, String[]> applicationArguments,
-                    EconomicSet<String> allowedPublicLanguages, Map<String, String> options, FileSystem fileSystem, FileSystem internalFileSystem, Handler logHandler,
+                    EconomicSet<String> allowedPublicLanguages, Map<String, String> options, FileSystem publicFileSystem, FileSystem internalFileSystem, Handler logHandler,
                     boolean createProcessAllowed, ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment,
                     ZoneId timeZone, PolyglotLimits limits, ClassLoader hostClassLoader) {
         assert out != null;
         assert err != null;
         assert in != null;
         assert environmentAccess != null;
+        this.engine = engine;
         this.out = out;
         this.err = err;
         this.in = in;
@@ -110,7 +112,7 @@ final class PolyglotContextConfig {
         this.classFilter = classFilter;
         this.applicationArguments = applicationArguments;
         this.allowedPublicLanguages = allowedPublicLanguages;
-        this.fileSystem = fileSystem;
+        this.fileSystem = publicFileSystem;
         this.internalFileSystem = internalFileSystem;
         this.optionsByLanguage = new HashMap<>();
         this.logHandler = logHandler;
@@ -149,6 +151,9 @@ final class PolyglotContextConfig {
     boolean isAccessPermitted(PolyglotLanguage from, PolyglotLanguage to) {
         if (to.isHost() || to.cache.isInternal()) {
             // everyone has access to host or internal languages
+            return true;
+        }
+        if (from == to) {
             return true;
         }
         if (from == null) {

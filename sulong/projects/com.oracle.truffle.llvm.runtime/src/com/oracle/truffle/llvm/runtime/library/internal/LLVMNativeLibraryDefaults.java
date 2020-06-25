@@ -48,11 +48,6 @@ abstract class LLVMNativeLibraryDefaults {
     static class DefaultLibrary {
 
         @ExportMessage
-        static boolean isInternalObject(@SuppressWarnings("unused") Object receiver) {
-            return false;
-        }
-
-        @ExportMessage
         @SuppressWarnings("unused")
         static class IsPointer {
 
@@ -129,11 +124,6 @@ abstract class LLVMNativeLibraryDefaults {
 
     @ExportLibrary(value = LLVMNativeLibrary.class, receiverType = Long.class)
     static class LongLibrary {
-
-        @ExportMessage
-        static boolean isInternalObject(@SuppressWarnings("unused") Long receiver) {
-            return false;
-        }
 
         @ExportMessage
         @SuppressWarnings("unused")
