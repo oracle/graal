@@ -113,7 +113,7 @@ def gate_body(args, tasks):
                             hs_err = None
                             testdir_entries = listdir(testdir)
                             for name in testdir_entries:
-                                if name.startswith('hs_err_pid'):
+                                if name.startswith('hs_err_pid') and name.endswith('.log'):
                                     hs_err = join(testdir, name)
                             if hs_err is None:
                                 mx.abort('Expected a file starting with "hs_err_pid" in test directory. Entries found=' + str(testdir_entries))
