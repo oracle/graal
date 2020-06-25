@@ -11,7 +11,7 @@ addons:
 
 # Use Trusty to get enough RAM
 sudo: required
-dist: trusty
+dist: xenial
 
 jdk:
     - openjdk11
@@ -76,7 +76,7 @@ install:
         pip install pylint==1.1.0
 
         export ECLIPSE_TAR=${TRAVIS_BUILD_DIR}/../eclipse.tar.gz
-        wget https://archive.eclipse.org/eclipse/downloads/drops4/R-4.5.2-201602121500/eclipse-SDK-4.14-linux-gtk-x86_64.tar.gz -O ${ECLIPSE_TAR}
+        wget https://archive.eclipse.org/eclipse/downloads/drops4/R-4.14-201912100610/eclipse-SDK-4.14-linux-gtk-x86_64.tar.gz  -O ${ECLIPSE_TAR}
         tar -C ${TRAVIS_BUILD_DIR}/.. -xzf ${ECLIPSE_TAR}
         export ECLIPSE_EXE=${TRAVIS_BUILD_DIR}/../eclipse/eclipse
 
@@ -117,3 +117,12 @@ script:
   - mx --primary-suite-path ${TRAVIS_BUILD_DIR}/${PRIMARY} --J @"-Xmx2g" --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE}
 after_failure:
   - cat hs_err*
+notifications:
+  # Send a notification of a build failure on the master branch to
+  # travis-ci channel in public GraalVM workspace
+  slack:
+    secure: RqC8efMebgYxxZeS63zTpNFIrJtgisOEjHNzlQBRDgIZ2JXcIoRL3xL6d3I+BoW8iGdOPJuNGC1WgDr8O4ZJOf5A32xZKpLU+aVR79Lq5LOezsoa8PCNXlZmxcc9oKFaM1a0cJGxLLg3F1wq9RUUHwfOMS8YuW7dmqFCtUOGmcIF1Rsal8vHyOqCYbiu7wxmUNmkqlJtXnztgQhLCGhd6ya0k6Dw8EVYoMWpHOTB6+9irNAp0BP0b1SvPQm9a5KzuASXSahapt/6CeCSrizN5RBKrMzVjcZhTarLm0Lt+3Ah7j1BQw2YBcDVYIEFUqABquXnuKb4+Hu6L8QRfmJzJ2w1cxC49WTEWWZu31gk2/0oSMsH58LovFG21ZHgQ/UZH1N7UYzS/rnHr2dzjZHaBIiWsRADoqSg9eNoz0ld2k8Up6k/T9YxUYN72+/TWKmRUDGF7gpkN097G1klaJb1MiLXDE5bvxbnH3+wVmfpzAVkE5Q0nfkZL53B5ymw1E8EtGvppcbnvHv0L3ccyRiX3iIgJcvINf+6sRXBqdB7HSZOEmRGiH7EsaUOdMxRhfLo1zA5xK+7k0fRBhViPJKEosflRkG7qhUNeqXDH6lrlCee5yqLoBsn0Xb6WDgCBQrVOSj2sHrvp0qO0UWKH8InDkhMPXddVq5RECnMjsusQ5g=
+    if: branch = master AND repo = oracle/graal
+    on_failure: always
+    on_success: never
+    on_pull_requests: false
