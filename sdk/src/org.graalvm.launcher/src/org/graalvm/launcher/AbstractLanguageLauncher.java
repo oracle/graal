@@ -212,7 +212,8 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
 
     /**
      * The return value specifies what languages should be available by default when not using
-     * polyglot. E.g. Ruby needs llvm as well.
+     * --polyglot. Note that TruffleLanguage.Registration#dependentLanguages() should be preferred
+     * in most cases.
      *
      * @return an array of required language ids
      */
