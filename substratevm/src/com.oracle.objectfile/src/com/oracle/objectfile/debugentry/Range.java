@@ -133,6 +133,10 @@ public class Range {
         return fullMethodName;
     }
 
+    public boolean isDeoptTarget() {
+        return methodName.endsWith("**");
+    }
+
     private String getExtendedMethodName(boolean includeParams, boolean includeReturnType) {
         StringBuilder builder = new StringBuilder();
         if (includeReturnType && returnTypeName.length() > 0) {
