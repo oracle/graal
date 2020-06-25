@@ -206,13 +206,13 @@ an example of a script that prints out value of variable `n` when a function
 
 ```python
 def onEnter(ctx, frame):
-    print('minusOne {}'.format(frame.n))
+    print(f"minusOne {frame.n}")
 
 class Roots:
     roots = True
 
     def sourceFilter(self, src):
-        return src.name == 'agent-fib.js'
+        return src.name == "agent-fib.js"
 
     def rootNameFilter(self, n):
         return n == "minusOne"
@@ -220,6 +220,7 @@ class Roots:
 insight.on("enter", onEnter, Roots())
 ```
 Apply such script with `js --polyglot --insight=agent.py --experimental-options agent-fib.js`.
+Of course, make sure Python is installed in your GraalVM via the `gu` tool.
 
 
 ### Minimal Overhead
