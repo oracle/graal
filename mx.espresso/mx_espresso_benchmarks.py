@@ -65,32 +65,39 @@ class EspressoMinHeapVm(EspressoVm):
     def name(self):
         return super(EspressoMinHeapVm, self).name() + '-minheap'
 
-    def cmd_line_args(self, args):
-        _args = self._options + args                                  # prepend the default arguments of this guest VM
-        _args = mx_espresso._espresso_standalone_command(_args)       # add the arguments to run espresso-standalone
-        _args = self.host_vm().post_process_command_line_args(_args)  # add the default arguments of the selected host VM
-        return _args
-
-    def extra_dimensions(self, cwd, args, min_heap, exit_code, stdout):
-        _args = ['-Xmx{}M'.format(min_heap)] + args
-        self.host_vm().extract_vm_info(_args)
-        return self.host_vm().dimensions(cwd, _args, exit_code, stdout)
-
     def run(self, cwd, args):
-        if hasattr(self.host_vm(), 'run_launcher'):
-            mx.abort('The {} guest VM cannot run on a GraalVM host vm'.format(self.name()))
-        _args = self.cmd_line_args(args)
-        bench_name = '# MinHeap'
-        out = mx.TeeOutputCapture(mx.OutputCapture())
-        exit_code = mx.run_java_min_heap(args=_args, benchName=bench_name, overheadFactor=2.0, minHeap=0, maxHeap=2048, out=out, err=None, cwd=cwd, jdk=mx.get_jdk(tag='jvmci'))
-        stdout = out.underlying.data
-        if exit_code == 0:
-            match = re.search(bench_name + ' (?P<min_heap>[0-9]+)', stdout)
-            assert match is not None and match.group('min_heap') is not None, stdout
-            dims = self.extra_dimensions(cwd, args, match.group('min_heap'), exit_code, stdout)
-        else:
-            dims = {}
-        return exit_code, stdout, dims
+        class PTimeout(object):
+            def __init__(self, ptimeout):
+                self.ptimeout = ptimeout
+
+            def __enter__(self):
+                self.prev_ptimeout = mx.get_opts().ptimeout
+                mx.get_opts().ptimeout = self.ptimeout
+                return self
+
+            def __exit__(self, exc_type, exc_value, traceback):
+                mx.get_opts().ptimeout = self.prev_ptimeout
+
+        run_info = {}
+        def run_with_heap(heap, args, timeout, suppressStderr=True, nonZeroIsFatal=False):
+            mx.log('Trying with %sMB of heap...' % heap)
+            with PTimeout(timeout):
+                if hasattr(self.host_vm(), 'run_launcher'):
+                    _args = self._options + ['--jvm.Xmx{}M'.format(heap)] + args
+                    _exit_code, stdout, dims = self.host_vm().run_launcher('espresso', _args, cwd)
+                else:
+                    _args = ['-Xmx{}M'.format(heap)] + mx_espresso._espresso_standalone_command(self._options + args)
+                    _exit_code, stdout, dims = self.host_vm().run(cwd, _args)
+                if _exit_code:
+                    mx.log('failed')
+                else:
+                    mx.log('succeeded')
+                    run_info['stdout'] = stdout
+                    run_info['dims'] = dims
+            return _exit_code
+
+        exit_code = mx.run_java_min_heap(args=args, benchName='# MinHeap', minHeap=0, maxHeap=2048, cwd=cwd, run_with_heap=run_with_heap)
+        return exit_code, run_info['stdout'], run_info['dims']
 
 
 # Benchmark-specific parameter from AWFY rebench.conf
