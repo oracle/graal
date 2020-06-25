@@ -963,7 +963,7 @@ public class ContextPreInitializationTest {
         assertEquals(0, firstLangCtx.disposeContextCount);
         assertEquals(0, firstLangCtx.initializeThreadCount);
         assertEquals(0, firstLangCtx.disposeThreadCount);
-        final TestHandler testHandler = new TestHandler();
+        final TestHandler testHandler = new TestHandler("engine.com.oracle.truffle.polyglot.PolyglotLanguageContext");
         final Context ctx = Context.newBuilder().option("log.engine.level", "FINE").logHandler(testHandler).build();
         Value res = ctx.eval(Source.create(FIRST, "test"));
         assertEquals("test", res.asString());
@@ -1847,11 +1847,20 @@ public class ContextPreInitializationTest {
     }
 
     private static final class TestHandler extends Handler {
+
+        private final Set<String> importantLoggers;
         final List<LogRecord> logs = new ArrayList<>();
+
+        TestHandler(String... importantLoggers) {
+            this.importantLoggers = new HashSet<>();
+            Collections.addAll(this.importantLoggers, importantLoggers);
+        }
 
         @Override
         public void publish(LogRecord record) {
-            logs.add(record);
+            if (importantLoggers.isEmpty() || importantLoggers.contains(record.getLoggerName())) {
+                logs.add(record);
+            }
         }
 
         @Override
