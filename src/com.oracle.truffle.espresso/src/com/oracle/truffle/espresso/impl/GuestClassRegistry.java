@@ -69,6 +69,7 @@ public final class GuestClassRegistry extends ClassRegistry {
         this.classLoader = classLoader;
         this.loadClass = classLoader.getKlass().lookupMethod(Name.loadClass, Signature.Class_String);
         this.addClass = classLoader.getKlass().lookupMethod(Name.addClass, Signature._void_Class);
+        classLoader.getField(getMeta().java_lang_ClassLoader_unnamedModule).setHiddenField(getMeta().HIDDEN_MODULE_ENTRY, unnamed);
     }
 
     @Override

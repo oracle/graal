@@ -56,16 +56,17 @@ public abstract class ClassRegistry implements ContextAccess {
     static final ThreadLocal<TypeStack> stack = ThreadLocal.withInitial(TypeStack.supplier);
 
     static final class TypeStack {
+
         static final Supplier<TypeStack> supplier = new Supplier<TypeStack>() {
             @Override
             public TypeStack get() {
                 return new TypeStack();
             }
         };
-
         Node head = null;
 
         static final class Node {
+
             Symbol<Type> entry;
             Node next;
 
@@ -73,6 +74,7 @@ public abstract class ClassRegistry implements ContextAccess {
                 this.entry = entry;
                 this.next = next;
             }
+
         }
 
         boolean isEmpty() {
@@ -105,13 +107,31 @@ public abstract class ClassRegistry implements ContextAccess {
 
         private TypeStack() {
         }
+
     }
 
     private final EspressoContext context;
+
     private final int loaderID;
+    protected final ModuleTable.ModuleEntry unnamed;
+
+    private final PackageTable packages = new PackageTable();
+    private final ModuleTable modules = new ModuleTable();
+
+    public ModuleTable.ModuleEntry getUnnamedModule() {
+        return unnamed;
+    }
 
     public final int getLoaderID() {
         return loaderID;
+    }
+
+    public ModuleTable modules() {
+        return modules;
+    }
+
+    public PackageTable packages() {
+        return packages;
     }
 
     /**
@@ -130,6 +150,8 @@ public abstract class ClassRegistry implements ContextAccess {
     protected ClassRegistry(EspressoContext context) {
         this.context = context;
         this.loaderID = context.getNewLoaderId();
+        this.unnamed = ModuleTable.ModuleEntry.createUnnamedModuleEntry(null, this);
+
     }
 
     /**

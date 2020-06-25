@@ -95,6 +95,7 @@ import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ModuleTable;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.jni.Callback;
 import com.oracle.truffle.espresso.jni.JNIHandles;
@@ -2312,6 +2313,65 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     // endregion Management
+
+    // startregion Modules
+
+    @VmImpl
+    @JniImpl
+    public void JVM_AddModuleExports(@Host(typeName = "Ljava/lang/Module") StaticObject from_module, @Pointer TruffleObject pkgName, @Host(typeName = "Ljava/lang/Module") StaticObject to_module) {
+        // TODO
+    }
+
+    @VmImpl
+    @JniImpl
+    public void JVM_AddModuleExportsToAllUnnamed(@Host(typeName = "Ljava/lang/Module") StaticObject from_module, @Pointer TruffleObject pkgName) {
+        // TODO
+    }
+
+    @VmImpl
+    @JniImpl
+    public void JVM_AddModuleExportsToAll(@Host(typeName = "Ljava/lang/Module") StaticObject from_module, @Pointer TruffleObject pkgName) {
+        // TODO
+    }
+
+    @VmImpl
+    @JniImpl
+    public void JVM_AddReadsModule(@Host(typeName = "Ljava/lang/Module") StaticObject from_module, @Host(typeName = "Ljava/lang/Module") StaticObject source_module) {
+        // TODO
+    }
+
+    @VmImpl
+    @JniImpl
+    public void JVM_DefineModule(@Host(typeName = "Ljava/lang/Module") StaticObject module,
+                    boolean is_open,
+                    @Host(String.class) String version,
+                    @Host(String.class) String location,
+                    @Pointer TruffleObject pkgs,
+                    int num_package) {
+        // TODO
+    }
+
+    @VmImpl
+    @JniImpl
+    public void JVM_SetBootLoaderUnnamedModule(@Host(typeName = "Ljava/lang/Module") StaticObject module) {
+        if (StaticObject.isNull(module)) {
+            throw getMeta().throwNullPointerException();
+        }
+        if (!getMeta().java_lang_Module.isAssignableFrom(module.getKlass())) {
+            throw Meta.throwExceptionWithMessage(getMeta().java_lang_IllegalArgumentException, "module is not an instance of java.lang.module");
+        }
+        if (!StaticObject.isNull(module.getField(getMeta().java_lang_Module_name))) {
+            throw Meta.throwExceptionWithMessage(getMeta().java_lang_IllegalArgumentException, "boot loader unnamed module has a name");
+        }
+        if (!StaticObject.isNull(module.getField(getMeta().java_lang_Module_loader))) {
+            throw Meta.throwExceptionWithMessage(getMeta().java_lang_IllegalArgumentException, "Class loader must be the boot class loader");
+        }
+        ModuleTable.ModuleEntry bootUnnamed = getRegistries().getBootClassRegistry().getUnnamedModule();
+        bootUnnamed.setModule(module);
+        module.setHiddenField(getMeta().HIDDEN_MODULE_ENTRY, bootUnnamed);
+    }
+
+    // endregion Modules
 
     // Checkstyle: resume method name check
 }

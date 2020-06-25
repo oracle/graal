@@ -206,7 +206,19 @@ public final class Meta implements ContextAccess {
         java_lang_ClassLoader_findNative = java_lang_ClassLoader.lookupDeclaredMethod(Name.findNative, Signature._long_ClassLoader_String);
         java_lang_ClassLoader_getSystemClassLoader = java_lang_ClassLoader.lookupDeclaredMethod(Name.getSystemClassLoader, Signature.ClassLoader);
         java_lang_ClassLoader_parent = java_lang_ClassLoader.lookupDeclaredField(Name.parent, Type.java_lang_ClassLoader);
+        java_lang_ClassLoader_unnamedModule = java_lang_ClassLoader.lookupDeclaredField(Name.unnamedModule, Type.java_lang_Module);
         HIDDEN_CLASS_LOADER_REGISTRY = java_lang_ClassLoader.lookupHiddenField(Name.HIDDEN_CLASS_LOADER_REGISTRY);
+
+        java_lang_Module = knownKlass(Type.java_lang_Module);
+        if (java_lang_Module != null) {
+            java_lang_Module_name = java_lang_Module.lookupField(Name.name, Type.java_lang_String);
+            java_lang_Module_loader = java_lang_Module.lookupField(Name.loader, Type.java_lang_ClassLoader);
+            HIDDEN_MODULE_ENTRY = java_lang_Module.lookupHiddenField(Name.HIDDEN_MODULE_ENTRY);
+        } else {
+            java_lang_Module_name = null;
+            java_lang_Module_loader = null;
+            HIDDEN_MODULE_ENTRY = null;
+        }
 
         // Guest reflection.
         java_lang_reflect_Executable = knownKlass(Type.java_lang_reflect_Executable);
@@ -520,11 +532,17 @@ public final class Meta implements ContextAccess {
 
     public final ObjectKlass java_lang_ClassLoader;
     public final Field java_lang_ClassLoader_parent;
+    public final Field java_lang_ClassLoader_unnamedModule;
     public final ObjectKlass java_lang_ClassLoader$NativeLibrary;
     public final Method java_lang_ClassLoader$NativeLibrary_getFromClass;
     public final Method java_lang_ClassLoader_findNative;
     public final Method java_lang_ClassLoader_getSystemClassLoader;
     public final Field HIDDEN_CLASS_LOADER_REGISTRY;
+
+    public final ObjectKlass java_lang_Module;
+    public final Field java_lang_Module_name;
+    public final Field java_lang_Module_loader;
+    public final Field HIDDEN_MODULE_ENTRY;
 
     public final ObjectKlass java_lang_AssertionStatusDirectives;
     public final Field java_lang_AssertionStatusDirectives_classes;
