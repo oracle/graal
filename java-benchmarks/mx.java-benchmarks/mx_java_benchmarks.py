@@ -120,8 +120,8 @@ mx_benchmark.parsers["temporary_workdir_parser"] = ParserEntry(
 mx_benchmark.add_java_vm(mx_benchmark.DefaultJavaVm('java_home', 'default'), _suite, 1)
 
 
-#: The JAVA_HOME JDK
-java_home = mx.get_jdk(tag='java_home')
+def java_home_jdk():
+    return mx.get_jdk()
 
 
 class TemporaryWorkdirMixin(mx_benchmark.VmBenchmarkSuite):
@@ -278,7 +278,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
 
     def benchmarkList(self, bmSuiteArgs):
         bench_list = [key for key, value in self.daCapoIterations().items() if value != -1]
-        if java_home.javaCompliance >= '9' and "batik" in bench_list:
+        if java_home_jdk().javaCompliance >= '9' and "batik" in bench_list:
             # batik crashes on JDK9+. This is fixed in the upcoming dacapo chopin release
             bench_list.remove("batik")
         return bench_list
@@ -617,7 +617,7 @@ class ScalaDaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-
 
     def daCapoIterations(self):
         result = _daCapoScalaConfig.copy()
-        if not java_home.javaCompliance < '11':
+        if not java_home_jdk().javaCompliance < '11':
             mx.warn('Removing scaladacapo:actors from benchmarks because corba has been removed since JDK11 (http://openjdk.java.net/jeps/320)')
             del result['actors']
         return result
@@ -633,7 +633,7 @@ class ScalaDaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-
     def vmArgs(self, bmSuiteArgs):
         vmArgs = super(ScalaDaCapoBenchmarkSuite, self).vmArgs(bmSuiteArgs)
         # Do not add corba module on JDK>=11 (http://openjdk.java.net/jeps/320)
-        if java_home.javaCompliance >= '9' and java_home.javaCompliance < '11':
+        if java_home_jdk().javaCompliance >= '9' and java_home_jdk().javaCompliance < '11':
             vmArgs += ["--add-modules", "java.corba"]
         return vmArgs
 
@@ -734,14 +734,14 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
 
     def runArgs(self, bmSuiteArgs):
         runArgs = super(SpecJvm2008BenchmarkSuite, self).runArgs(bmSuiteArgs)
-        if java_home.javaCompliance >= '9':
+        if java_home_jdk().javaCompliance >= '9':
             # GR-8452: SpecJVM2008 compiler.compiler does not work on JDK9
             # Skips initial check benchmark which tests for javac.jar on classpath.
             runArgs += ["-pja", "-Dspecjvm.run.initial.check=false"]
         return runArgs
 
     def benchmarkList(self, bmSuiteArgs):
-        if java_home.javaCompliance >= '9':
+        if java_home_jdk().javaCompliance >= '9':
             return _allSpecJVM2008BenchesJDK9
         else:
             return _allSpecJVM2008Benches
@@ -1132,8 +1132,8 @@ class SpecJbb2015BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, HeapSettingsMix
         if benchmarks is not None:
             mx.abort("No benchmark should be specified for the selected suite.")
         vmArgs = self.vmArgs(bmSuiteArgs)
-        if java_home.javaCompliance >= '9':
-            if java_home.javaCompliance < '11':
+        if java_home_jdk().javaCompliance >= '9':
+            if java_home_jdk().javaCompliance < '11':
                 vmArgs += ["--add-modules", "java.xml.bind"]
             else: # >= '11'
                 # JEP-320: Remove the Java EE and CORBA Modules in JDK11 http://openjdk.java.net/jeps/320
