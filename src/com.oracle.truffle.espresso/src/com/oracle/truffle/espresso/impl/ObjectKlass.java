@@ -925,6 +925,9 @@ public final class ObjectKlass extends Klass {
     }
 
     public RedefinitionCache getRedefineCache() {
+        // block execution during class redefinition
+        ClassRedefinition.check();
+
         RedefinitionCache cache = redefineCache;
         if (!cache.assumption.isValid()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -935,7 +938,9 @@ public final class ObjectKlass extends Klass {
         return cache;
     }
 
-    public void redefineClass(ParserKlass parserKlass, DetectedChange change, List<ObjectKlass> refreshSubClasses, Ids<Object> ids) {
+    public void redefineClass(ChangePacket packet, List<ObjectKlass> refreshSubClasses, Ids<Object> ids) {
+        ParserKlass parserKlass = packet.parserKlass;
+        DetectedChange change = packet.detectedChange;
         RedefinitionCache oldVersion = redefineCache;
         StaticObject definingClassLoader = oldVersion.pool.getClassLoader();
         RuntimeConstantPool pool = new RuntimeConstantPool(getContext(), parserKlass.getConstantPool(), definingClassLoader);
@@ -951,6 +956,14 @@ public final class ObjectKlass extends Klass {
         ObjectKlass[] iKlassTable = oldVersion.iKlassTable;
         Method[] mirandaMethods = oldVersion.mirandaMethods;
         Method[] newDeclaredMethods = oldVersion.declaredMethods;
+
+        // changed methods
+        List<ParserMethod> changedMethodBodies = packet.detectedChange.getChangedMethodBodies();
+        for (ParserMethod changedMethod : changedMethodBodies) {
+            // find the old real method
+            Method method = findMethod(changedMethod, oldVersion.declaredMethods);
+            method.redefine(changedMethod, packet.parserKlass, ids);
+        }
 
         if (change.getAddedAndRemovedMethods().size() > 0) {
             LinkedList<Method> declaredMethods = new LinkedList<>(Arrays.asList(oldVersion.declaredMethods));
@@ -975,7 +988,7 @@ public final class ObjectKlass extends Klass {
 
             newDeclaredMethods = declaredMethods.toArray(new Method[declaredMethods.size()]);
 
-            if (this.isInterface()) {
+            if (isInterface()) {
                 InterfaceTables.InterfaceCreationResult icr = InterfaceTables.constructInterfaceItable(this, newDeclaredMethods);
                 vtable = icr.methodtable;
                 iKlassTable = icr.klassTable;
@@ -986,27 +999,36 @@ public final class ObjectKlass extends Klass {
                 vtable = VirtualTable.create(getSuperKlass(), newDeclaredMethods, this, mirandaMethods, definingClassLoader);
                 itable = InterfaceTables.fixTables(vtable, mirandaMethods, newDeclaredMethods, methodCR.tables, iKlassTable);
             }
-        }
-        // in case of an added/removed virtual method, we must also update the tables
-        // which might have ripple implications on all subclasses
-        for (ParserMethod newMethod : change.getAddedAndRemovedMethods()) {
-            if (isVirtual(newMethod)) {
-                // all subclasses must update the vtable
-                refreshSubClasses.addAll(getSubTypes());
-                break;
+            // in case of an added/removed virtual method, we must also update the tables
+            // which might have ripple implications on all subclasses
+            boolean isRefresh = false;
+            for (ParserMethod m : change.getAddedAndRemovedMethods()) {
+                if (isVirtual(m)) {
+                    isRefresh = true;
+                }
+                updateOverrideMethods(ids, m.getFlags(), m.getName(), m.getSignature());
             }
-        }
-        // if an added/removed method is an override of a super method
-        // we need to invalidate the super class method, to allow
-        // for new method dispatch lookup
-        for (ParserMethod m : change.getAddedAndRemovedMethods()) {
-            updateOverrideMethods(ids, m.getFlags(), m.getName(), m.getSignature());
+            if (isRefresh) {
+                refreshSubClasses.addAll(getSubTypes());
+            }
         }
 
         redefineCache = new RedefinitionCache(pool, linkedKlass, newDeclaredMethods, mirandaMethods, vtable, itable, iKlassTable);
         oldVersion.assumption.invalidate();
     }
 
+    private static Method findMethod(ParserMethod changedMethod, Method[] declaredMethods) {
+        for (Method declaredMethod : declaredMethods) {
+            if (changedMethod.getName().equals(declaredMethod.getName()) && changedMethod.getSignature().equals(declaredMethod.getDescriptor())) {
+                return declaredMethod;
+            }
+        }
+        return null;
+    }
+
+    // if an added/removed method is an override of a super method
+    // we need to invalidate the super class method, to allow
+    // for new method dispatch lookup
     private void updateOverrideMethods(Ids<Object> ids, int flags, Symbol<Name> name, Symbol<Signature> signature) {
         if (!Modifier.isStatic(flags) && !Modifier.isPrivate(flags) && !Name._init_.equals(name)) {
             ObjectKlass superKlass = getSuperKlass();

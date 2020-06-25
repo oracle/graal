@@ -944,6 +944,9 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public MethodVersion getMethodVersion() {
+        // block execution during class redefinition
+        ClassRedefinition.check();
+
         MethodVersion version = methodVersion;
         if (!version.getAssumption().isValid()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();

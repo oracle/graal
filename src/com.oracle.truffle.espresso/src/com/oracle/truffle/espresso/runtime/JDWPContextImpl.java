@@ -26,7 +26,6 @@ package com.oracle.truffle.espresso.runtime;
 import java.lang.reflect.Array;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -39,9 +38,9 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
+import com.oracle.truffle.espresso.impl.ChangePacket;
 import com.oracle.truffle.espresso.impl.ClassRedefinition;
 import com.oracle.truffle.espresso.impl.Klass;
-import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.Method.MethodVersion;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.jdwp.api.CallFrame;
@@ -631,34 +630,39 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public int redefineClasses(RedefineInfo[] redefineInfos) {
-        // list of sub classes that needs to refresh things like vtable
-        List<ObjectKlass> refreshSubClasses = new ArrayList<>();
-        // We have to redefine super classes prior to subclasses
-        List<RedefineInfo> sorted = sort(redefineInfos);
-        for (RedefineInfo redefineInfo : sorted) {
-            int result = ClassRedefinition.redefineClass((Klass) redefineInfo.getKlass(), redefineInfo.getClassBytes(), context, getIds(), refreshSubClasses);
-            if (result != 0) {
-                return result;
+        try {
+            // list of sub classes that needs to refresh things like vtable
+            List<ObjectKlass> refreshSubClasses = new ArrayList<>();
+
+            // first, detect all changes to all classes
+            List<ChangePacket> changePackets = ClassRedefinition.detectClassChanges(redefineInfos, context);
+
+            // We have to redefine super classes prior to subclasses
+            Collections.sort(changePackets, new HierarchyComparator());
+
+            // begin redefine transaction
+            ClassRedefinition.begin();
+            for (ChangePacket packet : changePackets) {
+                int result = ClassRedefinition.redefineClass(packet, getIds(), refreshSubClasses);
+                if (result != 0) {
+                    return result;
+                }
             }
-        }
-        // refresh subclasses when needed
-        Collections.sort(refreshSubClasses, new SubClassHierarchyComparator());
-        for (ObjectKlass subKlass : refreshSubClasses) {
-            subKlass.onSuperKlassUpdate();
+            // refresh subclasses when needed
+            Collections.sort(refreshSubClasses, new SubClassHierarchyComparator());
+            for (ObjectKlass subKlass : refreshSubClasses) {
+                subKlass.onSuperKlassUpdate();
+            }
+        } finally {
+            ClassRedefinition.end();
         }
         return 0;
     }
 
-    public List<RedefineInfo> sort(RedefineInfo[] klasses) {
-        List<RedefineInfo> result = new ArrayList<>(Arrays.asList(klasses));
-        Collections.sort(result, new HierarchyComparator());
-        return result;
-    }
-
-    private static class HierarchyComparator implements Comparator<RedefineInfo> {
-        public int compare(RedefineInfo r1, RedefineInfo r2) {
-            Klass k1 = (Klass) r1.getKlass();
-            Klass k2 = (Klass) r1.getKlass();
+    private static class HierarchyComparator implements Comparator<ChangePacket> {
+        public int compare(ChangePacket packet1, ChangePacket packet2) {
+            Klass k1 = (Klass) packet1.info.getKlass();
+            Klass k2 = (Klass) packet2.info.getKlass();
             // we need to do this check because isAssignableFrom is true in this case
             // and we would get an order that doesn't exist
             if (k1.equals(k2)) {
