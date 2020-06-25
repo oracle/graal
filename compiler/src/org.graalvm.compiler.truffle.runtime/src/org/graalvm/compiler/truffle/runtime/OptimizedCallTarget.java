@@ -678,6 +678,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     @Override
     public boolean cancelCompilation(CharSequence reason) {
+        if (!initialized) {
+            /* no cancellation necessary if the call target was initialized */
+            return false;
+        }
         if (cancelAndResetCompilationTask()) {
             runtime().getListener().onCompilationDequeued(this, null, reason);
             return true;
@@ -685,9 +689,15 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return false;
     }
 
-    private synchronized boolean cancelAndResetCompilationTask() {
-        if (compilationTask != null && compilationTask.cancel()) {
-            return true;
+    private boolean cancelAndResetCompilationTask() {
+        CancellableCompileTask task = this.compilationTask;
+        if (task != null) {
+            synchronized (this) {
+                task = this.compilationTask;
+                if (task != null) {
+                    return task.cancel();
+                }
+            }
         }
         return false;
     }
