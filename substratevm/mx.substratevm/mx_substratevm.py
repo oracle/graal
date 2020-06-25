@@ -366,8 +366,11 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
                 return after.split(' ')[0].rstrip()
         return None
 
+    server_use = set()
     def native_image_func(args, **kwargs):
         all_args = base_args + common_args + args
+        if '--experimental-build-server' in all_args:
+            server_use.add(True)
         path = query_native_image(all_args, '-H:Path=')
         name = query_native_image(all_args, '-H:Name=')
         image = join(path, name)
@@ -380,7 +383,7 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
             _native_image(['--server-wipe'])
         yield native_image_func
     finally:
-        if exists(native_image_cmd) and has_server:
+        if exists(native_image_cmd) and has_server and server_use:
             def timestr():
                 return time.strftime('%d %b %Y %H:%M:%S') + ' - '
             mx.log(timestr() + 'Shutting down image build servers for ' + native_image_cmd)
