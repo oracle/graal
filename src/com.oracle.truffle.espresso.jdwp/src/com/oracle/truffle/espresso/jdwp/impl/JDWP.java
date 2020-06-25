@@ -2005,7 +2005,7 @@ final class JDWP {
 
                 CallFrame[] frames = suspendedInfo.getStackFrames();
 
-                if (length == -1) {
+                if (length == -1 || length > frames.length) {
                     length = frames.length;
                 }
                 reply.writeInt(length);
