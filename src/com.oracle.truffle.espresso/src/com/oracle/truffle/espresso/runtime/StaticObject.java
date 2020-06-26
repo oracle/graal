@@ -394,7 +394,7 @@ public final class StaticObject implements TruffleObject {
     abstract static class ReadArrayElement {
         @Specialization(guards = "isBooleanArray(receiver)")
         static Object doBoolean(StaticObject receiver, long index) throws InvalidArrayIndexException {
-            if (index > Integer.MAX_VALUE) {
+            if (index < 0 || index > Integer.MAX_VALUE) {
                 throw InvalidArrayIndexException.create(index);
             }
             try {
@@ -406,7 +406,7 @@ public final class StaticObject implements TruffleObject {
 
         @Specialization(guards = "isByteArray(receiver)")
         static Object doByte(StaticObject receiver, long index) throws InvalidArrayIndexException {
-            if (index > Integer.MAX_VALUE) {
+            if (index < 0 || index > Integer.MAX_VALUE) {
                 throw InvalidArrayIndexException.create(index);
             }
             try {
@@ -418,7 +418,7 @@ public final class StaticObject implements TruffleObject {
 
         @Specialization(guards = "isShortArray(receiver)")
         static Object doShort(StaticObject receiver, long index) throws InvalidArrayIndexException {
-            if (index > Integer.MAX_VALUE) {
+            if (index < 0 || index > Integer.MAX_VALUE) {
                 throw InvalidArrayIndexException.create(index);
             }
             try {
@@ -430,7 +430,7 @@ public final class StaticObject implements TruffleObject {
 
         @Specialization(guards = "isIntArray(receiver)")
         static Object doInt(StaticObject receiver, long index) throws InvalidArrayIndexException {
-            if (index > Integer.MAX_VALUE) {
+            if (index < 0 || index > Integer.MAX_VALUE) {
                 throw InvalidArrayIndexException.create(index);
             }
             try {
@@ -442,7 +442,7 @@ public final class StaticObject implements TruffleObject {
 
         @Specialization(guards = "isLongArray(receiver)")
         static Object doLong(StaticObject receiver, long index) throws InvalidArrayIndexException {
-            if (index > Integer.MAX_VALUE) {
+            if (index < 0 || index > Integer.MAX_VALUE) {
                 throw InvalidArrayIndexException.create(index);
             }
             try {
@@ -454,7 +454,7 @@ public final class StaticObject implements TruffleObject {
 
         @Specialization(guards = "isFloatArray(receiver)")
         static Object doFloat(StaticObject receiver, long index) throws InvalidArrayIndexException {
-            if (index > Integer.MAX_VALUE) {
+            if (index < 0 || index > Integer.MAX_VALUE) {
                 throw InvalidArrayIndexException.create(index);
             }
             try {
@@ -466,7 +466,7 @@ public final class StaticObject implements TruffleObject {
 
         @Specialization(guards = "isDoubleArray(receiver)")
         static Object doDouble(StaticObject receiver, long index) throws InvalidArrayIndexException {
-            if (index > Integer.MAX_VALUE) {
+            if (index < 0 || index > Integer.MAX_VALUE) {
                 throw InvalidArrayIndexException.create(index);
             }
             try {
@@ -478,7 +478,7 @@ public final class StaticObject implements TruffleObject {
 
         @Specialization(guards = {"receiver.isArray()", "!isPrimitiveArray(receiver)"})
         static Object doObject(StaticObject receiver, long index) throws InvalidArrayIndexException {
-            if (index > Integer.MAX_VALUE) {
+            if (index < 0 || index > Integer.MAX_VALUE) {
                 throw InvalidArrayIndexException.create(index);
             }
             try {
@@ -494,7 +494,7 @@ public final class StaticObject implements TruffleObject {
         @Specialization(guards = "isBooleanArray(receiver)", limit = "1")
         static void doBoolean(StaticObject receiver, long index, Object value,
                         @CachedLibrary("value") InteropLibrary interopLibrary) throws InvalidArrayIndexException, UnsupportedTypeException {
-            if (index > Integer.MAX_VALUE) {
+            if (index < 0 || index > Integer.MAX_VALUE) {
                 throw InvalidArrayIndexException.create(index);
             }
             boolean boolValue;
@@ -513,7 +513,7 @@ public final class StaticObject implements TruffleObject {
         @Specialization(guards = "isByteArray(receiver)", limit = "1")
         static void doByte(StaticObject receiver, long index, Object value,
                         @CachedLibrary("value") InteropLibrary interopLibrary) throws InvalidArrayIndexException, UnsupportedTypeException {
-            if (index > Integer.MAX_VALUE) {
+            if (index < 0 || index > Integer.MAX_VALUE) {
                 throw InvalidArrayIndexException.create(index);
             }
             byte byteValue;
@@ -532,7 +532,7 @@ public final class StaticObject implements TruffleObject {
         @Specialization(guards = "isShortArray(receiver)", limit = "1")
         static void doShort(StaticObject receiver, long index, Object value,
                         @CachedLibrary("value") InteropLibrary interopLibrary) throws InvalidArrayIndexException, UnsupportedTypeException {
-            if (index > Integer.MAX_VALUE) {
+            if (index < 0 || index > Integer.MAX_VALUE) {
                 throw InvalidArrayIndexException.create(index);
             }
             short shortValue;
@@ -551,7 +551,7 @@ public final class StaticObject implements TruffleObject {
         @Specialization(guards = "isIntArray(receiver)", limit = "1")
         static void doInt(StaticObject receiver, long index, Object value,
                         @CachedLibrary("value") InteropLibrary interopLibrary) throws InvalidArrayIndexException, UnsupportedTypeException {
-            if (index > Integer.MAX_VALUE) {
+            if (index < 0 || index > Integer.MAX_VALUE) {
                 throw InvalidArrayIndexException.create(index);
             }
             int intValue;
@@ -570,7 +570,7 @@ public final class StaticObject implements TruffleObject {
         @Specialization(guards = "isLongArray(receiver)", limit = "1")
         static void doLong(StaticObject receiver, long index, Object value,
                         @CachedLibrary("value") InteropLibrary interopLibrary) throws InvalidArrayIndexException, UnsupportedTypeException {
-            if (index > Integer.MAX_VALUE) {
+            if (index < 0 || index > Integer.MAX_VALUE) {
                 throw InvalidArrayIndexException.create(index);
             }
             long longValue;
@@ -589,7 +589,7 @@ public final class StaticObject implements TruffleObject {
         @Specialization(guards = "isFloatArray(receiver)", limit = "1")
         static void doFloat(StaticObject receiver, long index, Object value,
                         @CachedLibrary("value") InteropLibrary interopLibrary) throws InvalidArrayIndexException, UnsupportedTypeException {
-            if (index > Integer.MAX_VALUE) {
+            if (index < 0 || index > Integer.MAX_VALUE) {
                 throw InvalidArrayIndexException.create(index);
             }
             float floatValue;
@@ -608,7 +608,7 @@ public final class StaticObject implements TruffleObject {
         @Specialization(guards = "isDoubleArray(receiver)", limit = "1")
         static void doDouble(StaticObject receiver, long index, Object value,
                         @CachedLibrary("value") InteropLibrary interopLibrary) throws InvalidArrayIndexException, UnsupportedTypeException {
-            if (index > Integer.MAX_VALUE) {
+            if (index < 0 || index > Integer.MAX_VALUE) {
                 throw InvalidArrayIndexException.create(index);
             }
             double doubleValue;
