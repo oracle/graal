@@ -27,6 +27,8 @@ package org.graalvm.compiler.truffle.test;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.RootNode;
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -34,6 +36,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.logging.Handler;
@@ -115,6 +118,27 @@ public class CompilationLoggingTest extends TestWithPolyglotOptions {
                                 throw new RuntimeException();
                             }
                         });
+    }
+
+    @Test
+    public void testNoEngineTracingOn() throws Exception {
+        PrintStream origSystemErr = System.err;
+        ByteArrayOutputStream rawStdErr = new ByteArrayOutputStream();
+        System.setErr(new PrintStream(rawStdErr, true, "UTF-8"));
+        System.setProperty("polyglot.engine.BackgroundCompilation", "false");
+        System.setProperty("polyglot.engine.CompileImmediately", "true");
+        System.setProperty("polyglot.engine.TraceCompilation", "true");
+        try {
+            OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(10));
+            target.call();
+            Assert.assertTrue(rawStdErr.toString("UTF-8").contains("[engine] opt done"));
+        } finally {
+            Properties p = System.getProperties();
+            p.remove("polyglot.engine.BackgroundCompilation");
+            p.remove("polyglot.engine.CompileImmediately");
+            p.remove("polyglot.engine.TraceCompilation");
+            System.setErr(origSystemErr);
+        }
     }
 
     private void testHelper(Supplier<RootNode> rootProvider, Map<String, String> additionalOptions, List<String> expected, List<String> unexpected) {
