@@ -138,7 +138,7 @@ public final class StaticObject implements TruffleObject {
 
         Meta meta = klass.getMeta();
         return klass == meta.java_lang_Byte || klass == meta.java_lang_Short || klass == meta.java_lang_Integer || klass == meta.java_lang_Long || klass == meta.java_lang_Float ||
-                klass == meta.java_lang_Double;
+                        klass == meta.java_lang_Double;
     }
 
     @ExportMessage
@@ -404,6 +404,18 @@ public final class StaticObject implements TruffleObject {
             }
         }
 
+        @Specialization(guards = "isCharArray(receiver)")
+        static char doChar(StaticObject receiver, long index) throws InvalidArrayIndexException {
+            if (index < 0 || index > Integer.MAX_VALUE) {
+                throw InvalidArrayIndexException.create(index);
+            }
+            try {
+                return receiver.<char[]> unwrap()[(int) index];
+            } catch (IndexOutOfBoundsException outOfBounds) {
+                throw InvalidArrayIndexException.create(index);
+            }
+        }
+
         @Specialization(guards = "isByteArray(receiver)")
         static byte doByte(StaticObject receiver, long index) throws InvalidArrayIndexException {
             if (index < 0 || index > Integer.MAX_VALUE) {
@@ -505,6 +517,30 @@ public final class StaticObject implements TruffleObject {
             }
             try {
                 receiver.<boolean[]> unwrap()[(int) index] = boolValue;
+            } catch (IndexOutOfBoundsException outOfBounds) {
+                throw InvalidArrayIndexException.create(index);
+            }
+        }
+
+        @Specialization(guards = "isCharArray(receiver)", limit = "1")
+        static void doChar(StaticObject receiver, long index, Object value,
+                        @CachedLibrary("value") InteropLibrary interopLibrary) throws InvalidArrayIndexException, UnsupportedTypeException {
+            if (index < 0 || index > Integer.MAX_VALUE) {
+                throw InvalidArrayIndexException.create(index);
+            }
+            char charValue;
+            try {
+                String s = interopLibrary.asString(value);
+                if (s.length() != 1) {
+                    String message = "Expected a string of length 1 as an element of char array, got " + s;
+                    throw UnsupportedTypeException.create(new Object[]{value}, message);
+                }
+                charValue = s.charAt(0);
+            } catch (UnsupportedMessageException e) {
+                throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
+            }
+            try {
+                receiver.<char[]> unwrap()[(int) index] = charValue;
             } catch (IndexOutOfBoundsException outOfBounds) {
                 throw InvalidArrayIndexException.create(index);
             }
@@ -629,6 +665,10 @@ public final class StaticObject implements TruffleObject {
         return !isNull(object) && object.getKlass().equals(object.getKlass().getMeta()._boolean_array);
     }
 
+    protected static boolean isCharArray(StaticObject object) {
+        return !isNull(object) && object.getKlass().equals(object.getKlass().getMeta()._char_array);
+    }
+
     protected static boolean isByteArray(StaticObject object) {
         return !isNull(object) && object.getKlass().equals(object.getKlass().getMeta()._byte_array);
     }
@@ -654,7 +694,8 @@ public final class StaticObject implements TruffleObject {
     }
 
     protected static boolean isPrimitiveArray(StaticObject object) {
-        return isByteArray(object) || isShortArray(object) || isIntArray(object) || isLongArray(object) || isFloatArray(object) || isDoubleArray(object);
+        return isBooleanArray(object) || isCharArray(object) || isByteArray(object) || isShortArray(object) || isIntArray(object) || isLongArray(object) || isFloatArray(object) ||
+                        isDoubleArray(object);
     }
 
     @ExportMessage
