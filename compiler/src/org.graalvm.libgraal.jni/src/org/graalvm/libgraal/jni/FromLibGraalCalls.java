@@ -176,6 +176,7 @@ public abstract class FromLibGraalCalls<T extends Enum<T> & FromLibGraalId> {
                 public JNIClass apply(String name) {
                     JClass clazz = JNIUtil.findClass(env, getBinaryName(name));
                     if (clazz.isNull()) {
+                        JNIUtil.ExceptionClear(env);
                         throw new InternalError("Cannot load class: " + name);
                     }
                     return new JNIClass(name, NewGlobalRef(env, clazz, "Class<" + name + ">"));

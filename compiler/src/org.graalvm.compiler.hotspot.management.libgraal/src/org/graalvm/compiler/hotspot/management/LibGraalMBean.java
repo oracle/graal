@@ -336,13 +336,31 @@ public class LibGraalMBean implements DynamicMBean {
             synchronized (LibGraalMBean.class) {
                 res = factory;
                 if (res == null) {
-                    res = new Factory();
-                    res.start();
-                    factory = res;
+                    try {
+                        res = new Factory();
+                        res.start();
+                        factory = res;
+                    } catch (LinkageError e) {
+                        Throwable cause = findCause(e);
+                        throw sthrow(RuntimeException.class, cause);
+                    }
                 }
             }
         }
         return res;
+    }
+
+    private static Throwable findCause(Throwable e) {
+        Throwable current = e;
+        while (current.getCause() != null) {
+            current = current.getCause();
+        }
+        return current;
+    }
+
+    @SuppressWarnings({"unchecked", "unused"})
+    private static <T extends Throwable> T sthrow(Class<T> exceptionClass, Throwable exception) throws T {
+        throw (T) exception;
     }
 
     /**

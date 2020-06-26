@@ -73,9 +73,9 @@ import org.graalvm.word.WordFactory;
  * Wraps an exception thrown by a JNI call into HotSpot. If the exception propagates up to an
  * libgraal entry point, the exception is re-thrown in HotSpot.
  */
-@FromLibGraalEntryPointsResolver(value = JNIFromLibGraal.Id.class, entryPointsClassName = "org.graalvm.libgraal.jni.JNIFromLibGraalEntryPoints")
 public final class JNIExceptionWrapper extends RuntimeException {
 
+    private static final String HS_ENTRYPOINTS_CLASS = "org.graalvm.libgraal.jni.JNIFromLibGraalEntryPoints";
     private static final long serialVersionUID = 1L;
 
     private final JThrowable throwableHandle;
@@ -338,4 +338,28 @@ public final class JNIExceptionWrapper extends RuntimeException {
     private static boolean isStackFrame(StackTraceElement stackTraceElement, Class<?> clazz, String methodName) {
         return clazz.getName().equals(stackTraceElement.getClassName()) && methodName.equals(stackTraceElement.getMethodName());
     }
+
+    @FromLibGraalEntryPointsResolver(value = JNIFromLibGraal.Id.class)
+    static JNI.JClass getHotSpotEntryPoints(JNIEnv env) {
+        if (fromLibGraalEntryPoints.isNull()) {
+            String binaryName = JNIUtil.getBinaryName(HS_ENTRYPOINTS_CLASS);
+            JNI.JObject classLoader = JNIUtil.getJVMCIClassLoader(env);
+            JNI.JClass entryPoints;
+            if (classLoader.isNonNull()) {
+                entryPoints = JNIUtil.findClass(env, classLoader, binaryName);
+            } else {
+                entryPoints = JNIUtil.findClass(env, binaryName);
+            }
+            if (entryPoints.isNull()) {
+                // Here we cannot use JNIExceptionWrapper.
+                // We failed to load HostSpot entry points for it.
+                JNIUtil.ExceptionClear(env);
+                throw new InternalError("Failed to load " + HS_ENTRYPOINTS_CLASS);
+            }
+            fromLibGraalEntryPoints = JNIUtil.NewGlobalRef(env, entryPoints, "Class<" + HS_ENTRYPOINTS_CLASS + ">");
+        }
+        return fromLibGraalEntryPoints;
+    }
+
+    private static JNI.JClass fromLibGraalEntryPoints;
 }
