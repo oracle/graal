@@ -45,7 +45,12 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeChild(type = LLVMExpressionNode.class)
 @NodeChild(type = LLVMExpressionNode.class)
+@GenerateUncached
 public abstract class LLVMAddressEqualsNode extends LLVMAbstractCompareNode {
+
+    public static LLVMAddressEqualsNode create() {
+        return LLVMAddressEqualsNodeGen.create(null, null);
+    }
 
     // the first two cases are redundant but much more efficient than the ones below
 
