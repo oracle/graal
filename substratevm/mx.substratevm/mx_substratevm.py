@@ -1415,8 +1415,6 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
             graal_compiler_flags_map[11] = [
                 # Disable the check for JDK-8 graal version.
                 '-Dsubstratevm.IgnoreGraalVersionCheck=true',
-                # GR-11937: Use bytecodes instead of invoke-dynamic for string concatenation.
-                '-Djava.lang.invoke.stringConcat=BC_SB',
             ]
 
             # Packages to add-export
