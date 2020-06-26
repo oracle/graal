@@ -67,27 +67,23 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
                 message.append(" ");
                 message.append(output.toString().toLowerCase());
             }
-            message.append(". For example: --output=" + Output.SIMPLE.toString());
+            message.append(". For example: --warmup.Output=" + Output.SIMPLE.toString());
             throw new IllegalArgumentException(message.toString());
         }
     });
 
     static final OptionType<List<Location>> LOCATION_OPTION_TYPE = new OptionType<>("Location", optionString -> {
-        final List<Location> locations = new ArrayList<>();
         if (optionString.isEmpty()) {
             throw new IllegalArgumentException("Root option must be set. " +
                             "If no root is set nothing can be instrumented. " +
                             "Root must be specified as 'rootName:fileName:lineNumber' e.g. --" + ID + "Root=foo:foo.js:14");
         }
         final String[] split = optionString.split(",");
+        final List<Location> locations = new ArrayList<>();
         for (String locationString : split) {
-            final String[] strings = locationString.split(":");
-            final String rootName = strings[0];
-            final String fileName = strings.length > 1 ? strings[1] : "";
-            final Integer line = strings.length == 3 && !"".equals(strings[2]) ? Integer.parseInt(strings[2]) : null;
-            locations.add(new Location(rootName, fileName, line));
+            locations.add(Location.parseLocation(locationString));
         }
-        return locations;
+        return Collections.unmodifiableList(locations);
     });
 
     @Option(name = "", help = "Enable the Warmup Estimator (default: false).", category = OptionCategory.USER) //
@@ -102,18 +98,25 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
     static final OptionKey<Output> OUTPUT = new OptionKey<>(Output.SIMPLE, CLI_OUTPUT_TYPE);
     @Option(name = "Epsilon", help = "Sets the epsilon value which specifies the tolerance for peak performance detection. It's inferred if the value is 0. (default: 1.05)", category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL) //
     static final OptionKey<Double> EPSILON = new OptionKey<>(1.05);
-
     private final Map<Location, WarmupEstimatorNode> nodes = new HashMap<>();
     private boolean enabled;
+
+    private static int parseInt(String string) {
+        try {
+            return Integer.parseInt(string);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Unable to parse line number from given input: " + string);
+        }
+    }
 
     private static SourceSectionFilter filter(Location location) {
         final SourceSectionFilter.Builder builder = SourceSectionFilter.newBuilder().//
                         includeInternal(false).//
                         tagIs(StandardTags.RootTag.class);
-        if (!"".equals(location.rootName)) {
+        if (!Objects.equals(location.rootName, "")) {
             builder.rootNameIs(location.rootName::equals);
         }
-        if (!"".equals(location.fileName)) {
+        if (!Objects.equals(location.fileName, "")) {
             builder.sourceIs(s -> location.fileName.equals(s.getName()));
         }
         if (location.line != null) {
@@ -122,6 +125,22 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
             builder.lineStartsIn(SourceSectionFilter.IndexRange.byLength(location.line, 1));
         }
         return builder.build();
+    }
+
+    private static PrintStream outputStream(Env env, OptionValues options) {
+        final String outputPath = OUTPUT_FILE.getValue(options);
+        if ("".equals(outputPath)) {
+            return new PrintStream(env.out());
+        }
+        final File file = new File(outputPath);
+        if (file.exists()) {
+            throw new IllegalArgumentException("Cannot redirect output to an existing file!");
+        }
+        try {
+            return new PrintStream(new FileOutputStream(file));
+        } catch (FileNotFoundException e) {
+            throw new IllegalArgumentException("File not found for argument " + outputPath, e);
+        }
     }
 
     @Override
@@ -192,23 +211,6 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
         return results;
     }
 
-    private static PrintStream outputStream(Env env, OptionValues options) {
-        final String outputPath = OUTPUT_FILE.getValue(options);
-        if ("".equals(outputPath)) {
-            return new PrintStream(env.out());
-        } else {
-            final File file = new File(outputPath);
-            if (file.exists()) {
-                throw new IllegalArgumentException("Cannot redirect output to an existing file!");
-            }
-            try {
-                return new PrintStream(new FileOutputStream(file));
-            } catch (FileNotFoundException e) {
-                throw new IllegalArgumentException("File not found for argument " + outputPath, e);
-            }
-        }
-    }
-
     enum Output {
         SIMPLE,
         JSON,
@@ -224,6 +226,14 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
             this.rootName = rootName;
             this.fileName = fileName;
             this.line = line;
+        }
+
+        private static Location parseLocation(String locationString) {
+            final String[] strings = locationString.split(":");
+            final String rootName = strings[0];
+            final String fileName = strings.length > 1 ? strings[1] : "";
+            final Integer line = strings.length == 3 && !Objects.equals(strings[2], "") ? parseInt(strings[2]) : null;
+            return new Location(rootName, fileName, line);
         }
 
         @Override
@@ -248,7 +258,7 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
         @Override
         public String toString() {
             StringBuilder builder = new StringBuilder(rootName);
-            if (!"".equals(fileName)) {
+            if (!Objects.equals(fileName, "")) {
                 builder.append(':');
                 builder.append(fileName);
             } else if (line != null) {
