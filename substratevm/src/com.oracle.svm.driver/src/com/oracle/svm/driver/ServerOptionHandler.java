@@ -52,7 +52,9 @@ class ServerOptionHandler extends NativeImage.OptionHandler<NativeImageServer> {
                 return true;
             case enableServerOption:
                 args.poll();
-                nativeImage.setUseServer(true);
+                if (!nativeImage.isDryRun()) {
+                    nativeImage.setUseServer(true);
+                }
                 return true;
             case DefaultOptionHandler.verboseServerOption:
                 args.poll();

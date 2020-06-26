@@ -810,7 +810,9 @@ final class NativeImageServer extends NativeImage {
     @Override
     protected void setDryRun(boolean val) {
         super.setDryRun(val);
-        useServer = !val;
+        if (val) {
+            useServer = false;
+        }
     }
 
     void setVerboseServer(boolean val) {
