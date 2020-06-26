@@ -45,6 +45,7 @@ import org.graalvm.compiler.loop.CountedLoopInfo;
 import org.graalvm.compiler.loop.DefaultLoopPolicies;
 import org.graalvm.compiler.loop.InductionVariable.Direction;
 import org.graalvm.compiler.loop.LoopEx;
+import org.graalvm.compiler.loop.LoopFragment;
 import org.graalvm.compiler.loop.LoopFragmentInside;
 import org.graalvm.compiler.loop.LoopFragmentWhole;
 import org.graalvm.compiler.nodeinfo.InputType;
@@ -65,10 +66,12 @@ import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.MemoryProxyNode;
+import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.SafepointNode;
+import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
@@ -288,6 +291,7 @@ public abstract class LoopTransformations {
         assert loop.loopBegin().loopExits().count() == 1 : "Can only partial unroll loops with 1 exit";
         StructuredGraph graph = loop.loopBegin().graph();
         graph.getDebug().log("LoopTransformations.insertPrePostLoops %s", loop);
+
         LoopFragmentWhole preLoop = loop.whole();
         CountedLoopInfo preCounted = loop.counted();
         LoopBeginNode preLoopBegin = loop.loopBegin();
@@ -296,66 +300,35 @@ public abstract class LoopTransformations {
         assert preLoop.nodes().contains(preLoopBegin);
         assert preLoop.nodes().contains(preLoopExitNode);
 
-        // Each duplication is inserted after the original, ergo create the post loop first
+        /*
+         * Duplicate the original loop two times, each duplication will create a merge for the loop
+         * exits of the original loop and the duplication one.
+         */
         LoopFragmentWhole mainLoop = preLoop.duplicate();
-        graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After  duplication of main loop %s", mainLoop);
-
         LoopBeginNode mainLoopBegin = mainLoop.getDuplicatedNode(preLoopBegin);
         AbstractBeginNode mainLoopExitNode = mainLoop.getDuplicatedNode(preLoopExitNode);
         EndNode mainEndNode = getBlockEndAfterLoopExit(mainLoopExitNode);
         AbstractMergeNode mainMergeNode = mainEndNode.merge();
+        graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After  duplication of main loop %s", mainLoop);
 
         LoopFragmentWhole postLoop = preLoop.duplicate();
         LoopBeginNode postLoopBegin = postLoop.getDuplicatedNode(preLoopBegin);
+        AbstractBeginNode postLoopExitNode = postLoop.getDuplicatedNode(preLoopExitNode);
+        EndNode postEndNode = getBlockEndAfterLoopExit(postLoopExitNode);
+        AbstractMergeNode postMergeNode = postEndNode.merge();
+        graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After post loop duplication");
 
         preLoopBegin.incrementSplits();
         preLoopBegin.incrementSplits();
         preLoopBegin.setPreLoop();
-        graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After post loop duplication");
         mainLoopBegin.setMainLoop();
         postLoopBegin.setPostLoop();
 
-        AbstractBeginNode postLoopExitNode = postLoop.getDuplicatedNode(preLoopExitNode);
-        EndNode postEndNode = getBlockEndAfterLoopExit(postLoopExitNode);
-        AbstractMergeNode postMergeNode = postEndNode.merge();
-
         if (graph.hasValueProxies()) {
-            FrameState mainMergeFS = mainMergeNode.stateAfter();
-            mainMergeNode.setStateAfter(null);
-            GraphUtil.killWithUnusedFloatingInputs(mainMergeFS);
-            /*
-             * duplicating with loop proxies will create phis for all proxies on the newly
-             * introduced merges, however after introducing the pre-main-post scheme all original
-             * usages outside of the loop will go through the post loop, so we rewrite the new phis
-             * created and replace all phis created on the merges after with the value proxies of
-             * the final(post) loop
-             */
-            for (LoopExitNode exit : mainLoopBegin.loopExits()) {
-                for (ProxyNode proxy : exit.proxies()) {
-                    for (Node usage : proxy.usages().snapshot()) {
-                        if (usage instanceof PhiNode && ((PhiNode) usage).merge() == mainMergeNode) {
-                            assert usage instanceof PhiNode;
-                            // replace with the post loop proxy
-                            PhiNode pUsage = (PhiNode) usage;
-                            // get the other input phi at pre loop end
-                            Node v = pUsage.valueAt(0);
-                            assert v instanceof PhiNode;
-                            PhiNode vP = (PhiNode) v;
-                            usage.replaceAtUsages(vP.valueAt(postEndNode));
-                            usage.safeDelete();
-                        }
-                    }
-                }
-            }
-            graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After fixing post dominating proxy usages");
-            FrameState fs = postMergeNode.stateAfter();
-            postMergeNode.setStateAfter(null);
-            GraphUtil.killWithUnusedFloatingInputs(fs);
-            for (PhiNode phi : postMergeNode.phis().snapshot()) {
-                phi.safeDelete();
-            }
-            graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After deleting unused phis");
-
+            // clear state to avoid problems with usages on the merge
+            cleanupAndDeleteState(mainMergeNode);
+            cleanupPostDominatingValues(mainLoopBegin, mainMergeNode, postEndNode);
+            removeStateAndPhis(postMergeNode);
             /*
              * Fix the framestates for the pre loop exit node and the main loop exit node.
              *
@@ -369,27 +342,9 @@ public abstract class LoopTransformations {
             createExitState(mainLoopBegin);
         }
 
-        LoopExitNode preLoopExit = preLoopBegin.loopExits().first();
-        // Update the main loop phi initialization to carry from the pre loop
-        for (PhiNode prePhiNode : preLoopBegin.phis()) {
-            PhiNode mainPhiNode = mainLoop.getDuplicatedNode(prePhiNode);
-            if (graph.hasValueProxies()) {
-                List<ProxyNode> proxyUsages = prePhiNode.usages().filter(ProxyNode.class).snapshot();
-                ValueNode set = null;
-                if (proxyUsages.isEmpty()) {
-                    set = proxy(graph, prePhiNode, prePhiNode, preLoopExit);
-                } else {
-                    set = proxyUsages.get(0);
-                }
-                mainPhiNode.setValueAt(0, set);
-            } else {
-                mainPhiNode.setValueAt(0, prePhiNode);
-            }
-        }
-        graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After updating value flow from pre loop phi to main loop phi");
+        rewirePreToMainPhis(preLoopBegin, mainLoop);
 
         AbstractEndNode postEntryNode = postLoopBegin.forwardEnd();
-
         // Exits have been merged, find the continuation below the merge
         FixedNode continuationNode = mainMergeNode.next();
 
@@ -426,6 +381,56 @@ public abstract class LoopTransformations {
         return mainLoopBegin;
     }
 
+    private static void cleanupPostDominatingValues(LoopBeginNode mainLoopBegin, AbstractMergeNode mainMergeNode, AbstractEndNode postEndNode) {
+        /*
+         * duplicating with loop proxies will create phis for all proxies on the newly introduced
+         * merges, however after introducing the pre-main-post scheme all original usages outside of
+         * the loop will go through the post loop, so we rewrite the new phis created and replace
+         * all phis created on the merges after with the value proxies of the final(post) loop
+         */
+        for (LoopExitNode exit : mainLoopBegin.loopExits()) {
+            for (ProxyNode proxy : exit.proxies()) {
+                for (Node usage : proxy.usages().snapshot()) {
+                    if (usage instanceof PhiNode && ((PhiNode) usage).merge() == mainMergeNode) {
+                        assert usage instanceof PhiNode;
+                        // replace with the post loop proxy
+                        PhiNode pUsage = (PhiNode) usage;
+                        // get the other input phi at pre loop end
+                        Node v = pUsage.valueAt(0);
+                        assert v instanceof PhiNode;
+                        PhiNode vP = (PhiNode) v;
+                        usage.replaceAtUsages(vP.valueAt(postEndNode));
+                        usage.safeDelete();
+                    }
+                }
+            }
+        }
+        mainLoopBegin.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, mainLoopBegin.graph(), "After fixing post dominating proxy usages");
+    }
+
+    private static void rewirePreToMainPhis(LoopBeginNode preLoopBegin, LoopFragment mainLoop) {
+        // Update the main loop phi initialization to carry from the pre loop
+        for (PhiNode prePhiNode : preLoopBegin.phis()) {
+            PhiNode mainPhiNode = mainLoop.getDuplicatedNode(prePhiNode);
+            rewirePhi(prePhiNode, prePhiNode, mainPhiNode);
+        }
+        preLoopBegin.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, preLoopBegin.graph(), "After updating value flow from pre loop phi to main loop phi");
+    }
+
+    private static void cleanupAndDeleteState(StateSplit statesplit) {
+        FrameState fs = statesplit.stateAfter();
+        statesplit.setStateAfter(null);
+        GraphUtil.killWithUnusedFloatingInputs(fs);
+    }
+
+    private static void removeStateAndPhis(AbstractMergeNode merge) {
+        cleanupAndDeleteState(merge);
+        for (PhiNode phi : merge.phis().snapshot()) {
+            phi.safeDelete();
+        }
+        merge.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, merge.graph(), "After deleting unused phis");
+    }
+
     private static void createExitState(LoopBeginNode begin) {
         FrameState mainLoopExitStateAfter = begin.stateAfter().duplicateWithVirtualState();
         mainLoopExitStateAfter.applyToNonVirtual(new NodePositionClosure<Node>() {
@@ -455,6 +460,22 @@ public abstract class LoopTransformations {
         mergeNode.safeDelete();
     }
 
+    private static void rewirePhi(PhiNode incomingPhi, PhiNode currentPhi, PhiNode outGoingPhi) {
+        if (incomingPhi.graph().hasValueProxies()) {
+            LoopExitNode mainExit = ((LoopBeginNode) currentPhi.merge()).loopExits().first();
+            List<ProxyNode> proxyUsages = currentPhi.usages().filter(ProxyNode.class).snapshot();
+            ValueNode set = null;
+            if (proxyUsages.isEmpty()) {
+                set = proxy(incomingPhi.graph(), incomingPhi, currentPhi, mainExit);
+            } else {
+                set = proxyUsages.get(0);
+            }
+            outGoingPhi.setValueAt(0, set);
+        } else {
+            outGoingPhi.setValueAt(0, currentPhi);
+        }
+    }
+
     private static void processPreLoopPhis(LoopEx preLoop, LoopFragmentWhole mainLoop, LoopFragmentWhole postLoop) {
         /*
          * Re-route values from the main loop to the post loop
@@ -464,19 +485,9 @@ public abstract class LoopTransformations {
         for (PhiNode prePhiNode : preLoopBegin.phis()) {
             PhiNode postPhiNode = postLoop.getDuplicatedNode(prePhiNode);
             PhiNode mainPhiNode = mainLoop.getDuplicatedNode(prePhiNode);
-            if (preLoopBegin.graph().hasValueProxies()) {
-                LoopExitNode mainExit = ((LoopBeginNode) mainPhiNode.merge()).loopExits().first();
-                List<ProxyNode> proxyUsages = mainPhiNode.usages().filter(ProxyNode.class).snapshot();
-                ValueNode set = null;
-                if (proxyUsages.isEmpty()) {
-                    set = proxy(graph, prePhiNode, mainPhiNode, mainExit);
-                } else {
-                    set = proxyUsages.get(0);
-                }
-                postPhiNode.setValueAt(0, set);
-            } else {
-                postPhiNode.setValueAt(0, mainPhiNode);
-            }
+
+            rewirePhi(prePhiNode, mainPhiNode, postPhiNode);
+
             /*
              * Update all usages of the pre phi node below the original loop with the post phi
              * nodes, these are already properly proxied if we have loop proxies
