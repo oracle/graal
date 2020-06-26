@@ -113,6 +113,7 @@ public final class EspressoContext {
         return bootClassLoaderID;
     }
 
+    @CompilationFinal private boolean modulesInitialized = false;
     private boolean initialized = false;
 
     private Classpath bootClasspath;
@@ -123,6 +124,7 @@ public final class EspressoContext {
     @CompilationFinal private Meta meta;
     @CompilationFinal private JniEnv jniEnv;
     @CompilationFinal private VM vm;
+    @CompilationFinal private JImageLibrary jimageLibrary;
     @CompilationFinal private EspressoProperties vmProperties;
 
     @CompilationFinal private EspressoException stackOverflow;
@@ -261,12 +263,14 @@ public final class EspressoContext {
 
         initVmProperties();
 
+        // Spawn JNI first, then the VM.
+        this.vm = VM.create(getJNI()); // Mokapot is loaded
+
+        // TODO: link libjimage
+
         this.meta = new Meta(this);
 
         this.interpreterToVM = new InterpreterToVM(this);
-
-        // Spawn JNI first, then the VM.
-        this.vm = VM.create(getJNI()); // Mokapot is loaded
 
         initializeKnownClass(Type.java_lang_Object);
 
@@ -512,6 +516,10 @@ public final class EspressoContext {
         klass.safeInitialize();
     }
 
+    public boolean modulesInitialized() {
+        return modulesInitialized;
+    }
+
     public boolean isInitialized() {
         return initialized;
     }
@@ -522,6 +530,19 @@ public final class EspressoContext {
 
     public VM getVM() {
         return vm;
+    }
+
+    public JImageLibrary jimageLibrary() {
+        if (jimageLibrary == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            EspressoError.guarantee((getJavaVersion() >= 9), "Jimage availbale for java >= 9");
+            this.jimageLibrary = new JImageLibrary(this);
+        }
+        return jimageLibrary;
+    }
+
+    public int getJavaVersion() {
+        return getVmProperties().bootClassPathType().getJavaVersion();
     }
 
     public Types getTypes() {
