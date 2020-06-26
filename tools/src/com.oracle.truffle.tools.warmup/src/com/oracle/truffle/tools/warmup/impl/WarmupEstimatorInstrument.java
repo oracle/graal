@@ -120,8 +120,6 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
             builder.sourceIs(s -> location.fileName.equals(s.getName()));
         }
         if (location.line != null) {
-            // TODO: does this work? it shouldn't
-            // builder.lineIs(location.line);
             builder.lineStartsIn(SourceSectionFilter.IndexRange.byLength(location.line, 1));
         }
         return builder.build();
