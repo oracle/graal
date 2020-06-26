@@ -212,7 +212,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         }
     }
 
-    private int findLo(LinkedList<PrimaryEntry> classPrimaryEntries, boolean isDeoptTargetCU) {
+    private static int findLo(LinkedList<PrimaryEntry> classPrimaryEntries, boolean isDeoptTargetCU) {
         if (!isDeoptTargetCU) {
             /* First entry is the one we want. */
             return classPrimaryEntries.getFirst().getPrimary().getLo();
@@ -230,7 +230,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         return 0;
     }
 
-    private int findHi(LinkedList<PrimaryEntry> classPrimaryEntries, boolean includesDeoptTarget, boolean isDeoptTargetCU) {
+    private static int findHi(LinkedList<PrimaryEntry> classPrimaryEntries, boolean includesDeoptTarget, boolean isDeoptTargetCU) {
         if (isDeoptTargetCU || !includesDeoptTarget) {
             /* Either way the last entry is the one we want. */
             return classPrimaryEntries.getLast().getPrimary().getHi();
