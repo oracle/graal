@@ -354,7 +354,7 @@ public final class JNIExceptionWrapper extends RuntimeException {
                 // Here we cannot use JNIExceptionWrapper.
                 // We failed to load HostSpot entry points for it.
                 JNIUtil.ExceptionClear(env);
-                throw new InternalError("Failed to load " + HS_ENTRYPOINTS_CLASS + ", classloader? " + classLoader.isNonNull());
+                throw new InternalError("Failed to load " + HS_ENTRYPOINTS_CLASS);
             }
             fromLibGraalEntryPoints = JNIUtil.NewGlobalRef(env, entryPoints, "Class<" + HS_ENTRYPOINTS_CLASS + ">");
         }

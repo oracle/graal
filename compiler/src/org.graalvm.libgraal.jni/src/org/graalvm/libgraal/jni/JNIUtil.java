@@ -319,7 +319,7 @@ public final class JNIUtil {
         }
         JNI.JMethodID findClassId = findMethod(env, JNIUtil.GetObjectClass(env, classLoader), false, false, METHOD_LOAD_CLASS);
         JNI.JValue params = StackValue.get(1, JNI.JValue.class);
-        params.addressOf(0).setJObject(JNIUtil.createHSString(env, binaryName));
+        params.addressOf(0).setJObject(JNIUtil.createHSString(env, binaryName.replace('/', '.')));
         return (JNI.JClass) env.getFunctions().getCallObjectMethodA().call(env, classLoader, findClassId, params);
     }
 
