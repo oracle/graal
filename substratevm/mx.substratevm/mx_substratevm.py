@@ -351,15 +351,18 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
 
     def query_native_image(all_args, option):
 
+        stdoutdata = []
+        def stdout_collector(x):
+            stdoutdata.append(x)
+        _native_image(['--dry-run'] + all_args, out=stdout_collector)
+
         def remove_quotes(val):
             if len(val) >= 2 and val.startswith("'") and val.endswith("'"):
                 return val[1:-1].replace("\\'", "'")
             else:
                 return val
 
-        out = mx.LinesOutputCapture()
-        _native_image(['--dry-run'] + all_args, out=out)
-        for line in out.lines:
+        for line in stdoutdata:
             arg = remove_quotes(line.rstrip('\\').strip())
             _, sep, after = arg.partition(option)
             if sep:
