@@ -95,8 +95,9 @@ import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.impl.ModuleTable;
+import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.impl.PackageTable.PackageEntry;
 import com.oracle.truffle.espresso.jni.Callback;
 import com.oracle.truffle.espresso.jni.JNIHandles;
 import com.oracle.truffle.espresso.jni.JniEnv;
@@ -2318,26 +2319,48 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
-    public void JVM_AddModuleExports(@Host(typeName = "Ljava/lang/Module") StaticObject from_module, @Pointer TruffleObject pkgName, @Host(typeName = "Ljava/lang/Module") StaticObject to_module) {
-        // TODO
+    public void JVM_AddModuleExports(@Host(typeName = "Ljava/lang/Module") StaticObject from_module,
+                    @Pointer TruffleObject pkgName,
+                    @Host(typeName = "Ljava/lang/Module") StaticObject to_module,
+                    @InjectProfile SubstitutionProfiler profiler) {
+        if (StaticObject.isNull(to_module)) {
+            profiler.profile(6);
+            throw getMeta().throwNullPointerException();
+        }
+        ModulesHelperVM.addModuleExports(from_module, pkgName, to_module, getMeta(), getUncached(), profiler);
     }
 
     @VmImpl
     @JniImpl
-    public void JVM_AddModuleExportsToAllUnnamed(@Host(typeName = "Ljava/lang/Module") StaticObject from_module, @Pointer TruffleObject pkgName) {
-        // TODO
+    public void JVM_AddModuleExportsToAllUnnamed(@Host(typeName = "Ljava/lang/Module") StaticObject from_module, @Pointer TruffleObject pkgName,
+                    @InjectProfile SubstitutionProfiler profiler) {
+        if (getUncached().isNull(pkgName)) {
+            profiler.profile(0);
+            throw getMeta().throwNullPointerException();
+        }
+        ModuleEntry fromModuleEntry = ModulesHelperVM.extractFromModuleEntry(from_module, getMeta(), profiler);
+        if (fromModuleEntry.isNamed()) { // No-op for unnamed module.
+            PackageEntry packageEntry = ModulesHelperVM.extractPackageEntry(pkgName, fromModuleEntry, getMeta(), profiler);
+            packageEntry.setExportedAllUnnamed();
+        }
     }
 
     @VmImpl
     @JniImpl
-    public void JVM_AddModuleExportsToAll(@Host(typeName = "Ljava/lang/Module") StaticObject from_module, @Pointer TruffleObject pkgName) {
-        // TODO
+    public void JVM_AddModuleExportsToAll(@Host(typeName = "Ljava/lang/Module") StaticObject from_module, @Pointer TruffleObject pkgName,
+                    @InjectProfile SubstitutionProfiler profiler) {
+        ModulesHelperVM.addModuleExports(from_module, pkgName, null, getMeta(), getUncached(), profiler);
     }
 
     @VmImpl
     @JniImpl
-    public void JVM_AddReadsModule(@Host(typeName = "Ljava/lang/Module") StaticObject from_module, @Host(typeName = "Ljava/lang/Module") StaticObject source_module) {
-        // TODO
+    public void JVM_AddReadsModule(@Host(typeName = "Ljava/lang/Module") StaticObject from_module, @Host(typeName = "Ljava/lang/Module") StaticObject source_module,
+                    @InjectProfile SubstitutionProfiler profiler) {
+        ModuleEntry fromEntry = ModulesHelperVM.extractFromModuleEntry(from_module, getMeta(), profiler);
+        ModuleEntry toEntry = ModulesHelperVM.extractToModuleEntry(source_module, getMeta(), profiler);
+        if (fromEntry != toEntry && fromEntry.isNamed()) {
+            fromEntry.addReads(toEntry);
+        }
     }
 
     @VmImpl
@@ -2366,7 +2389,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         if (!StaticObject.isNull(module.getField(getMeta().java_lang_Module_loader))) {
             throw Meta.throwExceptionWithMessage(getMeta().java_lang_IllegalArgumentException, "Class loader must be the boot class loader");
         }
-        ModuleTable.ModuleEntry bootUnnamed = getRegistries().getBootClassRegistry().getUnnamedModule();
+        ModuleEntry bootUnnamed = getRegistries().getBootClassRegistry().getUnnamedModule();
         bootUnnamed.setModule(module);
         module.setHiddenField(getMeta().HIDDEN_MODULE_ENTRY, bootUnnamed);
     }

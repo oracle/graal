@@ -33,7 +33,7 @@ public abstract class EntryTable<T extends EntryTable.NamedEntry, K> {
 
     public abstract T createEntry(Symbol<Name> name, K appendix);
 
-    private ArrayList<T> entries = new ArrayList<>();
+    private final ArrayList<T> entries = new ArrayList<>();
 
     public interface NamedEntry {
         Symbol<Name> getName();
