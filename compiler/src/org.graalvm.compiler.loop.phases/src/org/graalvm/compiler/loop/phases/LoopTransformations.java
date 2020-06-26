@@ -66,7 +66,6 @@ import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.MemoryProxyNode;
-import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
@@ -412,7 +411,7 @@ public abstract class LoopTransformations {
         // Update the main loop phi initialization to carry from the pre loop
         for (PhiNode prePhiNode : preLoopBegin.phis()) {
             PhiNode mainPhiNode = mainLoop.getDuplicatedNode(prePhiNode);
-            rewirePhi(prePhiNode, prePhiNode, mainPhiNode);
+            rewirePhi(prePhiNode, mainPhiNode);
         }
         preLoopBegin.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, preLoopBegin.graph(), "After updating value flow from pre loop phi to main loop phi");
     }
@@ -438,7 +437,7 @@ public abstract class LoopTransformations {
             public void apply(Node from, Position p) {
                 ValueNode usage = (ValueNode) p.get(from);
                 if (begin.isPhiAtMerge(usage)) {
-                    Node replacement = proxy(begin.graph(), usage, usage, begin.loopExits().first());
+                    Node replacement = proxy(begin.graph(), usage, begin.loopExits().first());
                     p.set(from, replacement);
                 }
             }
@@ -460,13 +459,13 @@ public abstract class LoopTransformations {
         mergeNode.safeDelete();
     }
 
-    private static void rewirePhi(PhiNode incomingPhi, PhiNode currentPhi, PhiNode outGoingPhi) {
-        if (incomingPhi.graph().hasValueProxies()) {
+    private static void rewirePhi(PhiNode currentPhi, PhiNode outGoingPhi) {
+        if (currentPhi.graph().hasValueProxies()) {
             LoopExitNode mainExit = ((LoopBeginNode) currentPhi.merge()).loopExits().first();
             List<ProxyNode> proxyUsages = currentPhi.usages().filter(ProxyNode.class).snapshot();
             ValueNode set = null;
             if (proxyUsages.isEmpty()) {
-                set = proxy(incomingPhi.graph(), incomingPhi, currentPhi, mainExit);
+                set = proxy(currentPhi.graph(), currentPhi, mainExit);
             } else {
                 set = proxyUsages.get(0);
             }
@@ -486,7 +485,7 @@ public abstract class LoopTransformations {
             PhiNode postPhiNode = postLoop.getDuplicatedNode(prePhiNode);
             PhiNode mainPhiNode = mainLoop.getDuplicatedNode(prePhiNode);
 
-            rewirePhi(prePhiNode, mainPhiNode, postPhiNode);
+            rewirePhi(mainPhiNode, postPhiNode);
 
             /*
              * Update all usages of the pre phi node below the original loop with the post phi
@@ -514,15 +513,15 @@ public abstract class LoopTransformations {
         }
     }
 
-    private static ValueNode proxy(StructuredGraph graph, Node toCheck, ValueNode toProxy, LoopExitNode lex) {
-        if (toCheck instanceof ValuePhiNode) {
+    private static ValueNode proxy(StructuredGraph graph, ValueNode toProxy, LoopExitNode lex) {
+        if (toProxy instanceof ValuePhiNode) {
             return graph.addOrUnique(new ValueProxyNode(toProxy, lex));
-        } else if (toCheck instanceof GuardPhiNode) {
+        } else if (toProxy instanceof GuardPhiNode) {
             return graph.addOrUnique(new GuardProxyNode((GuardingNode) toProxy, lex));
-        } else if (toCheck instanceof MemoryPhiNode) {
+        } else if (toProxy instanceof MemoryPhiNode) {
             return graph.addOrUnique(new MemoryProxyNode((MemoryKill) toProxy, lex, ((MemoryPhiNode) toProxy).getKilledLocationIdentity()));
         } else {
-            throw GraalError.shouldNotReachHere("Unkown phi type " + toCheck);
+            throw GraalError.shouldNotReachHere("Unkown phi type " + toProxy);
         }
     }
 
