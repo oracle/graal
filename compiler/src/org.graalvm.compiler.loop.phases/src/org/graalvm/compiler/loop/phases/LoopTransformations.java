@@ -365,33 +365,8 @@ public abstract class LoopTransformations {
              * state on the pre/main loop exit, which is the loop header state with the values fixed
              * (proxies if need be),
              */
-            FrameState preLoopExitStateAfter = preLoopBegin.stateAfter().duplicateWithVirtualState();
-            graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After duplicating pre loop begin state for new exit state");
-            preLoopExitStateAfter.applyToNonVirtual(new NodePositionClosure<Node>() {
-                @Override
-                public void apply(Node from, Position p) {
-                    ValueNode to = (ValueNode) p.get(from);
-                    if (preLoopBegin.isPhiAtMerge(to)) {
-                        Node replacement = proxy(graph, to, to, preLoopBegin.loopExits().first());
-                        p.set(from, replacement);
-                    }
-                }
-            });
-            graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After proxy-ing phis for exit state");
-            preLoopBegin.loopExits().first().setStateAfter(preLoopExitStateAfter);
-            graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After setting exit state");
-            FrameState mainLoopExitStateAfter = mainLoopBegin.stateAfter().duplicateWithVirtualState();
-            mainLoopExitStateAfter.applyToNonVirtual(new NodePositionClosure<Node>() {
-                @Override
-                public void apply(Node from, Position p) {
-                    ValueNode usage = (ValueNode) p.get(from);
-                    if (mainLoopBegin.isPhiAtMerge(usage)) {
-                        Node replacement = proxy(graph, usage, usage, mainLoopBegin.loopExits().first());
-                        p.set(from, replacement);
-                    }
-                }
-            });
-            mainLoopBegin.loopExits().first().setStateAfter(mainLoopExitStateAfter);
+            createExitState(preLoopBegin);
+            createExitState(mainLoopBegin);
         }
 
         LoopExitNode preLoopExit = preLoopBegin.loopExits().first();
@@ -449,6 +424,22 @@ public abstract class LoopTransformations {
         }
         graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "InsertPrePostLoops %s", loop);
         return mainLoopBegin;
+    }
+
+    private static void createExitState(LoopBeginNode begin) {
+        FrameState mainLoopExitStateAfter = begin.stateAfter().duplicateWithVirtualState();
+        mainLoopExitStateAfter.applyToNonVirtual(new NodePositionClosure<Node>() {
+            @Override
+            public void apply(Node from, Position p) {
+                ValueNode usage = (ValueNode) p.get(from);
+                if (begin.isPhiAtMerge(usage)) {
+                    Node replacement = proxy(begin.graph(), usage, usage, begin.loopExits().first());
+                    p.set(from, replacement);
+                }
+            }
+        });
+        begin.loopExits().first().setStateAfter(mainLoopExitStateAfter);
+        begin.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, begin.graph(), "After proxy-ing phis for exit state");
     }
 
     /**
