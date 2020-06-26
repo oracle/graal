@@ -98,7 +98,7 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
     static final OptionKey<Output> OUTPUT = new OptionKey<>(Output.SIMPLE, CLI_OUTPUT_TYPE);
     @Option(name = "Epsilon", help = "Sets the epsilon value which specifies the tolerance for peak performance detection. It's inferred if the value is 0. (default: 1.05)", category = OptionCategory.USER, stability = OptionStability.EXPERIMENTAL) //
     static final OptionKey<Double> EPSILON = new OptionKey<>(1.05);
-    private final Map<Location, WarmupEstimatorNode> nodes = new HashMap<>();
+    private final Map<Location, List<Long>> locationsToTimes = new HashMap<>();
     private boolean enabled;
 
     private static int parseInt(String string) {
@@ -166,12 +166,12 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
 
     private synchronized ExecutionEventNode createNode(Env env, EventContext context, Location location) {
         final TruffleLogger logger = env.getLogger(this.getClass());
-        WarmupEstimatorNode node = nodes.get(location);
-        if (node == null) {
+        List<Long> times = locationsToTimes.get(location);
+        if (times == null) {
             logger.log(Level.INFO, "Instrumenting root like " + location + " on " + context.getInstrumentedSourceSection());
-            node = new WarmupEstimatorNode();
-            nodes.put(location, node);
-            return node;
+            times = new ArrayList<>();
+            locationsToTimes.put(location, times);
+            return new WarmupEstimatorNode(times);
         }
         logger.log(Level.WARNING, "Ignoring multiple roots like " + location + " on " + context.getInstrumentedSourceSection());
         return null;
@@ -179,7 +179,7 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
 
     @Override
     protected void onDispose(Env env) {
-        if (nodes.isEmpty()) {
+        if (locationsToTimes.isEmpty()) {
             env.getLogger(this.getClass()).log(Level.WARNING, "No roots like " + Root.getValue(env.getOptions()) + " found during execution.");
         }
         final OptionValues options = env.getOptions();
@@ -203,9 +203,8 @@ public class WarmupEstimatorInstrument extends TruffleInstrument {
 
     private List<Results> results(Double epsilon) {
         final List<Results> results = new ArrayList<>();
-        for (Location location : nodes.keySet()) {
-            final WarmupEstimatorNode node = nodes.get(location);
-            final List<Long> times = node.getTimes();
+        for (Location location : locationsToTimes.keySet()) {
+            final List<Long> times = locationsToTimes.get(location);
             results.add(new Results(location.toString(), times, epsilon));
         }
         return results;

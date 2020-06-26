@@ -24,7 +24,6 @@
  */
 package com.oracle.truffle.tools.warmup.impl;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.locks.Lock;
@@ -41,8 +40,8 @@ class WarmupEstimatorNode extends ExecutionEventNode {
     private final List<Long> times;
     @CompilerDirectives.CompilationFinal private volatile FrameSlot startSlot;
 
-    WarmupEstimatorNode() {
-        this.times = new ArrayList<>();
+    WarmupEstimatorNode(List<Long> times) {
+        this.times = times;
     }
 
     @Override
