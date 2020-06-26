@@ -276,7 +276,7 @@ making all the code work as one! The `count++` invocation becomes natural part o
 the application at all the places representing `ROOT` of application functions.
 **Insight** system gives you unlimited instrumentation power at no cost!
 
-### Trully Polyglot - T-Tracing with Ruby
+### Trully Polyglot - Insight with Ruby
 
 Not only one can instrument any GraalVM language, but also the **Insight**
 scripts can be written in any GraalVM supported language. Take for example
@@ -284,21 +284,32 @@ Ruby and create `source-tracing.rb` (make sure GraalVM Ruby is installed via
 `gu install ruby`) file:
 
 ```ruby
-puts "Ruby: Initializing GraalVM Insight script"
+puts("Ruby: Insight version " + insight[:version] + " is launching")
 
-insight.on('source', ->(ev) {
-    name = ev[:name]
-    puts "Ruby: observed loading of #{name}" 
+insight.on("source", -> (env) { 
+  puts "Ruby: observed loading of " + env[:name]
+})
+puts("Ruby: Hooks are ready!")
+
+config = Truffle::Interop.hash_keys_as_members({
+  roots: true,
+  rootNameFilter: "minusOne",
+  sourceFilter: -> (src) {
+    return src[:name] == "agent-fib.js"
+  }
 })
 
-puts 'Ruby: Hooks are ready!'
+insight.on("enter", -> (ctx, frame) {
+    puts("minusOne " + frame[:n].to_s)
+}, config)
 ```
 
-and then you can launch your `node` application and instrument it with such
-Ruby written script:
+The above is an example of a script that prints out value of variable `n`
+when a function `minusOne` in a `agent-fib.js` file is called. Launch your
+`node` application and instrument it with such a Ruby written script:
 
 ```bash
-$ graalvm/bin/node --experimental-options --js.print --polyglot --insight=source-tracing.rb -e "print('With Ruby: ' + 6 * 7)" | grep Ruby:
+$ graalvm/bin/node --js.print --polyglot --insight=agent-ruby.rb --experimental-options agent-fib.js
 Ruby: Initializing GraalVM Insight script
 Ruby: Hooks are ready!
 Ruby: observed loading of internal/per_context/primordials.js
@@ -311,13 +322,13 @@ Ruby: observed loading of fs.js
 Ruby: observed loading of internal/fs/utils.js
 Ruby: observed loading of [eval]-wrapper
 Ruby: observed loading of [eval]
-With Ruby: 42
+Three is the result 3
 ```
 
 Write your **Insight** scripts in any language you wish! They'll be
 ultimatelly useful accross the whole GraalVM ecosystem.
 
-### Trully Polyglot - T-Tracing with R
+### Trully Polyglot - Insights with R
 
 The same instrument can be written in the R language opening tracing and
 aspect based programing to our friendly statistical community. Just create
