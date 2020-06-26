@@ -115,14 +115,27 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         byte[] buffer = null;
         int pos = 0;
 
+        /* CUs for normal methods */
         for (ClassEntry classEntry : getPrimaryClasses()) {
             int lengthPos = pos;
             pos = writeCUHeader(buffer, pos);
             assert pos == lengthPos + DW_DIE_HEADER_SIZE;
-            pos = writeCU(null, classEntry, buffer, pos);
+            pos = writeCU(null, classEntry, false, buffer, pos);
             /*
              * No need to backpatch length at lengthPos.
              */
+        }
+        /* CUs for deopt targets */
+        for (ClassEntry classEntry : getPrimaryClasses()) {
+            if (classEntry.includesDeoptTarget()) {
+                int lengthPos = pos;
+                pos = writeCUHeader(buffer, pos);
+                assert pos == lengthPos + DW_DIE_HEADER_SIZE;
+                pos = writeCU(null, classEntry, true, buffer, pos);
+                /*
+                 * No need to backpatch length at lengthPos.
+                 */
+            }
         }
         buffer = new byte[pos];
         super.setContent(buffer);
@@ -138,6 +151,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
         log(context, "  [0x%08x] DEBUG_INFO", pos);
         log(context, "  [0x%08x] size = 0x%08x", pos, size);
+        /* write CUs for normal methods */
         for (ClassEntry classEntry : getPrimaryClasses()) {
             /*
              * Save the offset of this file's CU so it can be used when writing the aranges section.
@@ -147,11 +161,30 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             pos = writeCUHeader(buffer, pos);
             log(context, "  [0x%08x] Compilation Unit", pos, size);
             assert pos == lengthPos + DW_DIE_HEADER_SIZE;
-            pos = writeCU(context, classEntry, buffer, pos);
+            pos = writeCU(context, classEntry, false, buffer, pos);
             /*
              * Backpatch length at lengthPos (excluding length field).
              */
             patchLength(lengthPos, buffer, pos);
+        }
+        /* write CUs for deopt targets */
+        for (ClassEntry classEntry : getPrimaryClasses()) {
+            if (classEntry.includesDeoptTarget()) {
+                /*
+                 * Save the offset of this file's CU so it can be used when writing the aranges
+                 * section.
+                 */
+                classEntry.setDeoptCUIndex(pos);
+                int lengthPos = pos;
+                pos = writeCUHeader(buffer, pos);
+                log(context, "  [0x%08x] Compilation Unit (deopt targets)", pos, size);
+                assert pos == lengthPos + DW_DIE_HEADER_SIZE;
+                pos = writeCU(context, classEntry, true, buffer, pos);
+                /*
+                 * Backpatch length at lengthPos (excluding length field).
+                 */
+                patchLength(lengthPos, buffer, pos);
+            }
         }
         assert pos == size;
     }
@@ -179,7 +212,46 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         }
     }
 
-    private int writeCU(DebugContext context, ClassEntry classEntry, byte[] buffer, int p) {
+    private static int findLo(LinkedList<PrimaryEntry> classPrimaryEntries, boolean isDeoptTargetCU) {
+        if (!isDeoptTargetCU) {
+            /* First entry is the one we want. */
+            return classPrimaryEntries.getFirst().getPrimary().getLo();
+        } else {
+            /* Need the first entry which is a deopt target. */
+            for (PrimaryEntry primaryEntry : classPrimaryEntries) {
+                Range range = primaryEntry.getPrimary();
+                if (range.isDeoptTarget()) {
+                    return range.getLo();
+                }
+            }
+        }
+        // we should never get here
+        assert false;
+        return 0;
+    }
+
+    private static int findHi(LinkedList<PrimaryEntry> classPrimaryEntries, boolean includesDeoptTarget, boolean isDeoptTargetCU) {
+        if (isDeoptTargetCU || !includesDeoptTarget) {
+            /* Either way the last entry is the one we want. */
+            return classPrimaryEntries.getLast().getPrimary().getHi();
+        } else {
+            /* Need the last entry which is not a deopt target. */
+            int hi = 0;
+            for (PrimaryEntry primaryEntry : classPrimaryEntries) {
+                Range range = primaryEntry.getPrimary();
+                if (!range.isDeoptTarget()) {
+                    hi = range.getHi();
+                } else {
+                    return hi;
+                }
+            }
+        }
+        // should never get here
+        assert false;
+        return 0;
+    }
+
+    private int writeCU(DebugContext context, ClassEntry classEntry, boolean isDeoptTargetCU, byte[] buffer, int p) {
         int pos = p;
         LinkedList<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
         log(context, "  [0x%08x] <0> Abbrev Number %d", pos, DW_ABBREV_CODE_compile_unit);
@@ -188,14 +260,19 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeAttrData1(DW_LANG_Java, buffer, pos);
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(classEntry.getFileName()), classEntry.getFileName());
         pos = writeAttrStrp(classEntry.getFileName(), buffer, pos);
-        log(context, "  [0x%08x]     lo_pc  0x%08x", pos, classPrimaryEntries.getFirst().getPrimary().getLo());
-        pos = writeAttrAddress(classPrimaryEntries.getFirst().getPrimary().getLo(), buffer, pos);
-        log(context, "  [0x%08x]     hi_pc  0x%08x", pos, classPrimaryEntries.getLast().getPrimary().getHi());
-        pos = writeAttrAddress(classPrimaryEntries.getLast().getPrimary().getHi(), buffer, pos);
+        int lo = findLo(classPrimaryEntries, isDeoptTargetCU);
+        int hi = findHi(classPrimaryEntries, classEntry.includesDeoptTarget(), isDeoptTargetCU);
+        log(context, "  [0x%08x]     lo_pc  0x%08x", pos, lo);
+        pos = writeAttrAddress(lo, buffer, pos);
+        log(context, "  [0x%08x]     hi_pc  0x%08x", pos, hi);
+        pos = writeAttrAddress(hi, buffer, pos);
         log(context, "  [0x%08x]     stmt_list  0x%08x", pos, classEntry.getLineIndex());
         pos = writeAttrData4(classEntry.getLineIndex(), buffer, pos);
         for (PrimaryEntry primaryEntry : classPrimaryEntries) {
-            pos = writePrimary(context, primaryEntry, buffer, pos);
+            Range range = primaryEntry.getPrimary();
+            if (isDeoptTargetCU == range.isDeoptTarget()) {
+                pos = writePrimary(context, range, buffer, pos);
+            }
         }
         /*
          * Write a terminating null attribute for the the level 2 primaries.
@@ -204,17 +281,16 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
     }
 
-    private int writePrimary(DebugContext context, PrimaryEntry primaryEntry, byte[] buffer, int p) {
+    private int writePrimary(DebugContext context, Range range, byte[] buffer, int p) {
         int pos = p;
-        Range primary = primaryEntry.getPrimary();
         verboseLog(context, "  [0x%08x] <1> Abbrev Number  %d", pos, DW_ABBREV_CODE_subprogram);
         pos = writeAbbrevCode(DW_ABBREV_CODE_subprogram, buffer, pos);
-        verboseLog(context, "  [0x%08x]     name  0x%X (%s)", pos, debugStringIndex(primary.getFullMethodName()), primary.getFullMethodName());
-        pos = writeAttrStrp(primary.getFullMethodName(), buffer, pos);
-        verboseLog(context, "  [0x%08x]     lo_pc  0x%08x", pos, primary.getLo());
-        pos = writeAttrAddress(primary.getLo(), buffer, pos);
-        verboseLog(context, "  [0x%08x]     hi_pc  0x%08x", pos, primary.getHi());
-        pos = writeAttrAddress(primary.getHi(), buffer, pos);
+        verboseLog(context, "  [0x%08x]     name  0x%X (%s)", pos, debugStringIndex(range.getFullMethodName()), range.getFullMethodName());
+        pos = writeAttrStrp(range.getFullMethodName(), buffer, pos);
+        verboseLog(context, "  [0x%08x]     lo_pc  0x%08x", pos, range.getLo());
+        pos = writeAttrAddress(range.getLo(), buffer, pos);
+        verboseLog(context, "  [0x%08x]     hi_pc  0x%08x", pos, range.getHi());
+        pos = writeAttrAddress(range.getHi(), buffer, pos);
         /*
          * Need to pass true only if method is public.
          */

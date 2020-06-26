@@ -203,6 +203,11 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             }
             return frameSizeChanges;
         }
+
+        @Override
+        public boolean isDeoptTarget() {
+            return methodName().endsWith(HostedMethod.METHOD_NAME_DEOPT_SUFFIX);
+        }
     }
 
     /**

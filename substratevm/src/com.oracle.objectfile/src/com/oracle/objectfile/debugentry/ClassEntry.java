@@ -75,6 +75,10 @@ public class ClassEntry {
      */
     private int cuIndex;
     /**
+     * index of debug_info section compilation unit for deopt target methods.
+     */
+    private int deoptCUIndex;
+    /**
      * index into debug_line section for associated compilation unit.
      */
     private int lineIndex;
@@ -86,6 +90,11 @@ public class ClassEntry {
      * total size of line number info region for associated compilation unit.
      */
     private int totalSize;
+
+    /**
+     * true iff the entry includes methods that are deopt targets.
+     */
+    private boolean includesDeoptTarget;
 
     public ClassEntry(String className, FileEntry fileEntry) {
         this.className = className;
@@ -106,9 +115,11 @@ public class ClassEntry {
             }
         }
         this.cuIndex = -1;
+        this.deoptCUIndex = -1;
         this.lineIndex = -1;
         this.linePrologueSize = -1;
         this.totalSize = -1;
+        this.includesDeoptTarget = false;
     }
 
     public void addPrimary(Range primary, List<DebugFrameSizeChange> frameSizeInfos, int frameSize) {
@@ -116,6 +127,12 @@ public class ClassEntry {
             PrimaryEntry primaryEntry = new PrimaryEntry(primary, frameSizeInfos, frameSize, this);
             primaryEntries.add(primaryEntry);
             primaryIndex.put(primary, primaryEntry);
+            if (primary.isDeoptTarget()) {
+                includesDeoptTarget = true;
+            } else {
+                /* deopt targets should all come after normal methods */
+                assert includesDeoptTarget == false;
+            }
         }
     }
 
@@ -196,6 +213,19 @@ public class ClassEntry {
         return cuIndex;
     }
 
+    public void setDeoptCUIndex(int deoptCUIndex) {
+        // Should only get set once to a non-negative value.
+        assert deoptCUIndex >= 0;
+        assert this.deoptCUIndex == -1;
+        this.deoptCUIndex = deoptCUIndex;
+    }
+
+    public int getDeoptCUIndex() {
+        // Should have been set before being read.
+        assert deoptCUIndex >= 0;
+        return deoptCUIndex;
+    }
+
     public int getLineIndex() {
         return lineIndex;
     }
@@ -242,5 +272,9 @@ public class ClassEntry {
 
     public LinkedList<FileEntry> getLocalFiles() {
         return localFiles;
+    }
+
+    public boolean includesDeoptTarget() {
+        return includesDeoptTarget;
     }
 }

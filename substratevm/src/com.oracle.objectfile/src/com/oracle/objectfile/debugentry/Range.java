@@ -46,6 +46,7 @@ public class Range {
     private int lo;
     private int hi;
     private int line;
+    private boolean isDeoptTarget;
     /*
      * This is null for a primary range.
      */
@@ -54,14 +55,23 @@ public class Range {
     /*
      * Create a primary range.
      */
-    public Range(String fileName, Path filePath, String className, String methodName, String paramNames, String returnTypeName, StringTable stringTable, int lo, int hi, int line) {
-        this(fileName, filePath, className, methodName, paramNames, returnTypeName, stringTable, lo, hi, line, null);
+    public Range(String fileName, Path filePath, String className, String methodName, String paramNames, String returnTypeName, StringTable stringTable, int lo, int hi, int line,
+                    boolean isDeoptTarget) {
+        this(fileName, filePath, className, methodName, paramNames, returnTypeName, stringTable, lo, hi, line, isDeoptTarget, null);
+    }
+
+    /*
+     * Create a secondary range.
+     */
+    public Range(String fileName, Path filePath, String className, String methodName, String paramNames, String returnTypeName, StringTable stringTable, int lo, int hi, int line, Range primary) {
+        this(fileName, filePath, className, methodName, paramNames, returnTypeName, stringTable, lo, hi, line, false, primary);
     }
 
     /*
      * Create a primary or secondary range.
      */
-    public Range(String fileName, Path filePath, String className, String methodName, String paramNames, String returnTypeName, StringTable stringTable, int lo, int hi, int line, Range primary) {
+    private Range(String fileName, Path filePath, String className, String methodName, String paramNames, String returnTypeName, StringTable stringTable, int lo, int hi, int line,
+                    boolean isDeoptTarget, Range primary) {
         /*
          * Currently file name and full method name need to go into the debug_str section other
          * strings just need to be deduplicated to save space.
@@ -76,6 +86,7 @@ public class Range {
         this.lo = lo;
         this.hi = hi;
         this.line = line;
+        this.isDeoptTarget = isDeoptTarget;
         this.primary = primary;
     }
 
@@ -131,6 +142,10 @@ public class Range {
 
     public String getFullMethodName() {
         return fullMethodName;
+    }
+
+    public boolean isDeoptTarget() {
+        return isDeoptTarget;
     }
 
     private String getExtendedMethodName(boolean includeParams, boolean includeReturnType) {
