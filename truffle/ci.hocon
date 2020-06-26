@@ -41,12 +41,13 @@ simpleToolMavenProjectGate:  {
     }
     run : [
         ${simpleToolMavenProjectGate.mx_cmd} ["build"],
-        ${simpleToolMavenProjectGate.mx_cmd} ["maven-deploy", "--all-suites", "--suppress-javadoc", "--version-string", ${simpleToolMavenProjectGate.mx_cmd} ["graalvm-version"]],
+        ["mkdir", "tmp_mvn_repo"]
+        ["mx", "maven-install", "--repo", "tmp_mvn_repo", "--version-string", ${simpleToolMavenProjectGate.mx_cmd} ["graalvm-version"]],
         ["set-export", "JAVA_HOME", ${simpleToolMavenProjectGate.mx_cmd} ["graalvm-home"]],
         ["cd", "external_repos/"],
         ["python", "populate.py"],
         ["cd", "simpletool"],
-        ["mvn", "package"],
+        ["mvn", "-Dmaven.repo.local=$PWD/truffle/tmp_mvn_repo", "package"],
         ["./simpletool", "js", "example.js"],
     ],
     targets : [gate],
@@ -64,7 +65,8 @@ simpleLanguageMavenProjectGate:  {
     }
     run : [
         ${simpleLanguageMavenProjectGate.mx_cmd} ["build"],
-        ${simpleLanguageMavenProjectGate.mx_cmd} ["maven-deploy", "--all-suites", "--suppress-javadoc", "--version-string", ${simpleLanguageMavenProjectGate.mx_cmd} ["graalvm-version"]],
+        ["mkdir", "tmp_mvn_repo"]
+        ["mx", "maven-install", "--repo", "tmp_mvn_repo", "--version-string", ${simpleLanguageMavenProjectGate.mx_cmd} ["graalvm-version"]],
         ["set-export", "JAVA_HOME", ${simpleLanguageMavenProjectGate.mx_cmd} ["graalvm-home"]],
         ["cd", "external_repos"],
         ["python", "populate.py"],
