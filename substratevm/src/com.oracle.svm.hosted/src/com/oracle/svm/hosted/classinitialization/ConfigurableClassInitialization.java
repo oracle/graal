@@ -394,7 +394,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
     }
 
     private void setSubclassesAsRunTime(Class<?> clazz) {
-        if (clazz.isInterface() && !ClassInitializationFeature.declaresDefaultMethods(metaAccess.lookupJavaType(clazz))) {
+        if (clazz.isInterface() && !metaAccess.lookupJavaType(clazz).declaresDefaultMethods()) {
             /*
              * An interface that does not declare a default method is independent from a class
              * initialization point of view, i.e., it is not initialized when a class implementing
@@ -404,7 +404,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         }
         loader.findSubclasses(clazz, false).stream()
                         .filter(c -> !c.equals(clazz))
-                        .filter(c -> !(c.isInterface() && !ClassInitializationFeature.declaresDefaultMethods(metaAccess.lookupJavaType(c))))
+                        .filter(c -> !(c.isInterface() && !metaAccess.lookupJavaType(c).declaresDefaultMethods()))
                         .forEach(c -> classInitializationConfiguration.insert(c.getTypeName(), InitKind.RUN_TIME, "subtype of " + clazz.getTypeName(), true));
     }
 
@@ -471,7 +471,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
 
     private void forceInitializeInterfaces(Class<?>[] interfaces, String reason) {
         for (Class<?> iface : interfaces) {
-            if (ClassInitializationFeature.declaresDefaultMethods(metaAccess.lookupJavaType(iface))) {
+            if (metaAccess.lookupJavaType(iface).declaresDefaultMethods()) {
                 classInitializationConfiguration.insert(iface.getTypeName(), InitKind.BUILD_TIME, reason, true);
 
                 ensureClassInitialized(iface, false);
@@ -603,7 +603,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         InitKind result = InitKind.BUILD_TIME;
 
         for (Class<?> iface : clazz.getInterfaces()) {
-            if (ClassInitializationFeature.declaresDefaultMethods(metaAccess.lookupJavaType(iface))) {
+            if (metaAccess.lookupJavaType(iface).declaresDefaultMethods()) {
                 /*
                  * An interface that declares default methods is initialized when a class
                  * implementing it is initialized. So we need to inherit the InitKind from such an

@@ -135,7 +135,7 @@ public class TypeInitializerGraph {
 
     private void addInterfaceDependencies(AnalysisType t, AnalysisType[] interfaces) {
         for (AnalysisType anInterface : interfaces) {
-            if (ClassInitializationFeature.declaresDefaultMethods(anInterface)) {
+            if (anInterface.declaresDefaultMethods()) {
                 addDependency(t, anInterface);
             }
             addInterfaceDependencies(t, anInterface.getInterfaces());

@@ -148,6 +148,23 @@ public abstract class CustomSubstitutionType<F extends CustomSubstitutionField, 
     }
 
     @Override
+    public void link() {
+        assert isLinked();
+    }
+
+    @Override
+    public boolean hasDefaultMethods() {
+        assert !isInterface() : "only interfaces can have default methods";
+        return false;
+    }
+
+    @Override
+    public boolean declaresDefaultMethods() {
+        assert !isInterface() : "only interfaces can have default methods";
+        return false;
+    }
+
+    @Override
     public boolean isAssignableFrom(ResolvedJavaType other) {
         return original.isAssignableFrom(other);
     }

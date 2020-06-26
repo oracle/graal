@@ -284,7 +284,7 @@ class MBeanProxy<T extends DynamicMBean> {
 
     static String nameWithIsolateId(String name) {
         long id = IsolateUtil.getIsolateID();
-        return id == 0L ? name : name + "@" + id;
+        return id == 0L ? name : name + ",isolate=" + id;
     }
 
     /**
