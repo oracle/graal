@@ -197,6 +197,32 @@ It is necessary to start GraalVM's Ruby launcher with `--polyglot` parameter
 as the `source-tracing.js` script remains written in JavaScript. That's all
 fine - mixing languages has never been a problem for GraalVM!
 
+### Python
+
+It is possible to write your GraalVM Insight scripts in Python. Such insights
+can be applied to programs written in Python or any other language. Here is
+an example of a script that prints out value of variable `n` when a function
+`minusOne` in a `agent-fib.js` file is called:
+
+```python
+def onEnter(ctx, frame):
+    print(f"minusOne {frame.n}")
+
+class Roots:
+    roots = True
+
+    def sourceFilter(self, src):
+        return src.name == "agent-fib.js"
+
+    def rootNameFilter(self, n):
+        return n == "minusOne"
+
+insight.on("enter", onEnter, Roots())
+```
+Apply such script with `js --polyglot --insight=agent.py --experimental-options agent-fib.js`.
+Of course, make sure Python is installed in your GraalVM via the `gu` tool.
+
+
 ### Minimal Overhead
 
 With all the power the **Insight** framework brings, it is fair to ask what's
