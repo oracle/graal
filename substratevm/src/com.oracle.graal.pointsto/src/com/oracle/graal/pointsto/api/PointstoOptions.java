@@ -90,13 +90,7 @@ public class PointstoOptions {
     public static final OptionKey<Integer> AnalysisSizeCutoff = new OptionKey<>(8);
 
     @Option(help = "The maximum number of types recorded in a type flow. -1 indicates no limitation.")//
-    public static final OptionKey<Integer> TypeFlowSaturationCutoff = new OptionKey<Integer>(20) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Integer oldValue, Integer newValue) {
-            assert newValue.intValue() >= AnalysisSizeCutoff.getValueOrDefault(values);
-            super.onValueUpdate(values, oldValue, newValue);
-        }
-    };
+    public static final OptionKey<Integer> TypeFlowSaturationCutoff = new OptionKey<>(20);
 
     @Option(help = "Enable the type flow saturation analysis performance optimization.")//
     public static final OptionKey<Boolean> RemoveSaturatedTypeFlows = new OptionKey<Boolean>(false) {
