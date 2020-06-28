@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted;
 
+import static org.graalvm.compiler.hotspot.JVMCIVersionCheck.JVMCI11_RELEASES_URL;
+import static org.graalvm.compiler.hotspot.JVMCIVersionCheck.JVMCI8_RELEASES_URL;
 import static org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.registerInvocationPlugins;
 
 import java.io.IOException;
@@ -447,7 +449,8 @@ public class NativeImageGenerator {
                  */
                 ResolvedJavaType.class.getDeclaredMethod("link");
             } catch (ReflectiveOperationException ex) {
-                throw UserError.abort("JVMCI version provided by the Java HotSpot VM is too old. Please use the latest JDK from the GraalVM download sites.");
+                throw UserError.abort("JVMCI version provided %s is missing the 'ResolvedJavaType.link()' method added in jvmci-20.2-b01. " +
+                                "Please use the latest JVMCI JDK from %s or %s.", System.getProperty("java.home"), JVMCI8_RELEASES_URL, JVMCI11_RELEASES_URL);
             }
 
             setSystemPropertiesForImageLate(k);
