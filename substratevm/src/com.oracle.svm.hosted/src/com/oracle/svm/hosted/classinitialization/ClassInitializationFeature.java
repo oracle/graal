@@ -297,7 +297,7 @@ public class ClassInitializationFeature implements GraalFeature {
         classInitializationSupport.classesWithKind(RUN_TIME).stream()
                         .filter(t -> metaAccess.optionalLookupJavaType(t).isPresent())
                         .filter(t -> metaAccess.lookupJavaType(t).isInTypeCheck())
-                        .filter(t -> classInitializationSupport.specifiedInitKindFor(t) == null)
+                        .filter(t -> classInitializationSupport.canBeProvenSafe(t))
                         .forEach(c -> {
                             AnalysisType type = metaAccess.lookupJavaType(c);
                             if (!initGraph.isUnsafe(type)) {
