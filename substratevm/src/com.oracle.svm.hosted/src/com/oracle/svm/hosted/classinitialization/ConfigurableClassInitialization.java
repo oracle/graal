@@ -134,7 +134,17 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
 
     @Override
     public InitKind specifiedInitKindFor(Class<?> clazz) {
-        return classInitializationConfiguration.lookupKind(clazz.getTypeName());
+        return classInitializationConfiguration.lookupKind(clazz.getTypeName()).getLeft();
+    }
+
+    @Override
+    public boolean canBeProvenSafe(Class<?> clazz) {
+        InitKind initKind = specifiedInitKindFor(clazz);
+        return initKind == null || (initKind.isDelayed() && !isStrictlyDefined(clazz));
+    }
+
+    private Boolean isStrictlyDefined(Class<?> clazz) {
+        return classInitializationConfiguration.lookupKind(clazz.getTypeName()).getRight();
     }
 
     @Override
@@ -564,7 +574,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         }
         superResult = superResult.max(processInterfaces(clazz, memoize));
 
-        if (memoize && superResult == InitKind.BUILD_TIME && clazzResult == InitKind.RUN_TIME && specifiedInitKindFor(clazz) == null) {
+        if (memoize && superResult == InitKind.BUILD_TIME && clazzResult == InitKind.RUN_TIME && canBeProvenSafe(clazz)) {
             /*
              * Check if the class initializer is side-effect free using a simple intraprocedural
              * analysis.
