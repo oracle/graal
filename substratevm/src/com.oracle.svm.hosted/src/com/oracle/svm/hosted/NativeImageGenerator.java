@@ -440,6 +440,16 @@ public class NativeImageGenerator {
                 throw UserError.abort("An image build has already been performed with this generator.");
             }
 
+            try {
+                /*
+                 * JVMCI 20.2-b01 introduced new methods for linking and querying whether an
+                 * interface has default methods. Fail early if these methods are missing.
+                 */
+                ResolvedJavaType.class.getDeclaredMethod("link");
+            } catch (ReflectiveOperationException ex) {
+                throw UserError.abort("JVMCI version provided by the Java HotSpot VM is too old. Please use the latest JDK from the GraalVM download sites.");
+            }
+
             setSystemPropertiesForImageLate(k);
 
             int maxConcurrentThreads = NativeImageOptions.getMaximumNumberOfConcurrentThreads(new OptionValues(optionProvider.getHostedValues()));
