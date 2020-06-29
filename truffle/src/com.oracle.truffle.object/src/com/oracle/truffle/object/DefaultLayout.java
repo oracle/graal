@@ -73,7 +73,7 @@ class DefaultLayout extends LayoutImpl {
     static final ObjectLocation[] NO_OBJECT_FIELDS = new ObjectLocation[0];
     static final LongLocation[] NO_LONG_FIELDS = new LongLocation[0];
 
-    private static final Map<Class<? extends DynamicObject>, LayoutImpl> LAYOUT_MAP = new ConcurrentHashMap<>();
+    private static final Map<Key, DefaultLayout> LAYOUT_MAP = new ConcurrentHashMap<>();
 
     DefaultLayout(Class<? extends DynamicObject> dynamicObjectClass, LayoutStrategy strategy, int implicitCastFlags, ObjectLocation[] objectFields, LongLocation[] primitiveFields) {
         super(dynamicObjectClass, strategy, implicitCastFlags);
@@ -102,20 +102,18 @@ class DefaultLayout extends LayoutImpl {
     public static LayoutImpl createCoreLayout(Layout.Builder builder) {
         Class<? extends DynamicObject> type = getType(builder);
         EnumSet<ImplicitCast> allowedImplicitCasts = getAllowedImplicitCasts(builder);
-        if (allowedImplicitCasts.isEmpty()) {
-            return layoutForType(type);
-        } else {
-            return new DefaultLayout(type, DefaultStrategy.SINGLETON, implicitCastFlags(allowedImplicitCasts));
-        }
+        int implicitCastFlags = implicitCastFlags(allowedImplicitCasts);
+        return getOrCreateLayout(type, implicitCastFlags);
     }
 
-    private static LayoutImpl layoutForType(Class<? extends DynamicObject> type) {
-        LayoutImpl layout = LAYOUT_MAP.get(type);
+    private static DefaultLayout getOrCreateLayout(Class<? extends DynamicObject> type, int implicitCastFlags) {
+        Key key = new Key(type, implicitCastFlags);
+        DefaultLayout layout = LAYOUT_MAP.get(key);
         if (layout != null) {
             return layout;
         }
-        LayoutImpl newLayout = new DefaultLayout(type, DefaultStrategy.SINGLETON, 0);
-        layout = LAYOUT_MAP.putIfAbsent(type, newLayout);
+        DefaultLayout newLayout = new DefaultLayout(type, DefaultStrategy.SINGLETON, implicitCastFlags);
+        layout = LAYOUT_MAP.putIfAbsent(key, newLayout);
         return layout == null ? newLayout : layout;
     }
 
@@ -190,6 +188,37 @@ class DefaultLayout extends LayoutImpl {
     public Allocator createAllocator() {
         LayoutImpl layout = this;
         return getStrategy().createAllocator(layout);
+    }
+
+    private static final class Key {
+        final Class<? extends DynamicObject> type;
+        final int implicitCastFlags;
+
+        Key(Class<? extends DynamicObject> type, int implicitCastFlags) {
+            this.type = type;
+            this.implicitCastFlags = implicitCastFlags;
+        }
+
+        @Override
+        public int hashCode() {
+            final int prime = 31;
+            int result = 1;
+            result = prime * result + implicitCastFlags;
+            result = prime * result + ((type == null) ? 0 : type.hashCode());
+            return result;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (!(obj instanceof Key)) {
+                return false;
+            }
+            Key other = (Key) obj;
+            return this.type == other.type && this.implicitCastFlags == other.implicitCastFlags;
+        }
     }
 
     private static final class LayoutInfo {
