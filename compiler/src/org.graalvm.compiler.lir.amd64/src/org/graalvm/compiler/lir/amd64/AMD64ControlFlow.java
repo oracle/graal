@@ -95,6 +95,7 @@ public class AMD64ControlFlow {
                 masm.vzeroupper();
             }
             masm.ret(0);
+            crb.frameContext.returned(crb);
         }
     }
 

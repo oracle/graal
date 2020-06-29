@@ -76,6 +76,7 @@ public class AArch64ControlFlow {
         protected void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
             crb.frameContext.leave(crb);
             masm.ret(lr);
+            crb.frameContext.returned(crb);
         }
     }
 
