@@ -52,6 +52,7 @@ public final class Target_sun_misc_Signal {
                         TARGET_JDK_INTERNAL_MISC_SIGNAL
         };
 
+        @Override
         public String[] substitutionClassNames() {
             return NAMES;
         }

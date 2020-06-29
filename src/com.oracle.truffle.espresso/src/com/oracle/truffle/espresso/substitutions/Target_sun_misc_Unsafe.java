@@ -1307,6 +1307,7 @@ public final class Target_sun_misc_Unsafe {
                         TARGET_JDK_INTERNAL_MISC_UNSAFE
         };
 
+        @Override
         public String[] substitutionClassNames() {
             return NAMES;
         }
@@ -1327,6 +1328,7 @@ public final class Target_sun_misc_Unsafe {
                         TARGET_SUN_MISC_UNSAFE
         };
 
+        @Override
         public String[] substitutionClassNames() {
             return NAMES;
         }
@@ -1338,6 +1340,7 @@ public final class Target_sun_misc_Unsafe {
                         TARGET_JDK_INTERNAL_MISC_UNSAFE
         };
 
+        @Override
         public String[] substitutionClassNames() {
             return NAMES;
         }
