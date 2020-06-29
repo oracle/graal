@@ -627,6 +627,10 @@ public abstract class LoopTransformations {
                         loop.loopBegin().loopExits().count() != 1) {
             return false;
         }
+        if (!(loop.counted().getCountedExit() instanceof LoopExitNode)) {
+            // deopt exited counted loop
+            return false;
+        }
         assert loop.counted().getDirection() != null;
         LoopBeginNode loopBegin = loop.loopBegin();
         LogicNode condition = loop.counted().getLimitTest().condition();
