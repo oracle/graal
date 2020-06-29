@@ -79,7 +79,7 @@ public abstract class CCallStubMethod extends CustomSubstitutionMethod {
         FrameStateBuilder state = kit.getFrameState();
         List<ValueNode> arguments = kit.loadArguments(getParameterTypesForLoad(method));
         ValueNode callAddress = createTargetAddressNode(kit, providers, arguments);
-        Signature signature = adaptSignatureAndConvertArguments(providers, nativeLibraries, kit,
+        Signature signature = adaptSignatureAndConvertArguments(providers, nativeLibraries, kit, method,
                         method.getSignature().getReturnType(null), method.toParameterTypes(), arguments);
         state.clearLocals();
         ValueNode returnValue = kit.createCFunctionCall(callAddress, arguments, signature, newThreadStatus, deoptimizationTarget);
@@ -100,7 +100,7 @@ public abstract class CCallStubMethod extends CustomSubstitutionMethod {
     }
 
     protected Signature adaptSignatureAndConvertArguments(HostedProviders providers, NativeLibraries nativeLibraries,
-                    HostedGraphKit kit, JavaType returnType, JavaType[] parameterTypes, List<ValueNode> arguments) {
+                    HostedGraphKit kit, @SuppressWarnings("unused") ResolvedJavaMethod method, JavaType returnType, JavaType[] parameterTypes, List<ValueNode> arguments) {
 
         MetaAccessProvider metaAccess = providers.getMetaAccess();
         for (int i = 0; i < parameterTypes.length; i++) {
