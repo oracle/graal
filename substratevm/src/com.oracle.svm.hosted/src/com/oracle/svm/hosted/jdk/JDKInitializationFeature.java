@@ -45,6 +45,7 @@ public class JDKInitializationFeature implements Feature {
         rci.initializeAtBuildTime("com.sun.jmx.remote.internal", "Core JDK classes are initialized at build time");
         rci.initializeAtBuildTime("com.sun.jmx.remote.security", "Core JDK classes are initialized at build time");
         rci.initializeAtBuildTime("com.sun.jmx.remote.util", "Core JDK classes are initialized at build time");
+        rci.initializeAtBuildTime("java.beans.Introspector", "Core JDK classes are initialized at build time");
         rci.initializeAtBuildTime("com.sun.jndi.ldap", "Core JDK classes are initialized at build time");
         rci.initializeAtBuildTime("com.sun.jndi.ldap.ext", "Core JDK classes are initialized at build time");
         rci.initializeAtBuildTime("com.sun.jndi.ldap.pool", "Core JDK classes are initialized at build time");
