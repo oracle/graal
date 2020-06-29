@@ -353,7 +353,7 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
 
         stdoutdata = []
         def stdout_collector(x):
-            stdoutdata.append(x)
+            stdoutdata.append(x.rstrip())
         _native_image(['--dry-run'] + all_args, out=stdout_collector)
 
         def remove_quotes(val):
