@@ -32,7 +32,7 @@ and language implementers who want to use the GraalVM LLVM runtime.
 
 To be compatible with existing build systems, by default, the toolchain will
 produce native executables with embedded bitcode (ELF files on Linux, Mach-O
-files on MacOS).
+files on MacOS). See [COMPILING.md](../user/COMPILING.md) for more information.
 
 ## Toolchain Identifier
 
