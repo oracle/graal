@@ -11,7 +11,7 @@ front end such as `clang`.
 $GRAALVM_HOME/bin/lli [options] <bitcode file> [program args]
 ```
 
-Where `<bitcode file>` is a compiled program with embedded LLVM bitcode.
+Where `<bitcode file>` is a [compiled program with embedded LLVM bitcode](COMPILING.md).
 Note: LLVM bitcode is platform dependent. The program must be compiled for
 the appropriate platform.
 
@@ -19,49 +19,25 @@ the appropriate platform.
 
 GraalVM can execute C/C++, Fortran, and other programs that can be compiled to
 LLVM bitcode. For that, GraalVM needs the binaries to be compiled with embedded
-bitcode.
+bitcode. The [COMPILING](COMPILING.md) document provides information on the expected
+file format and on compiling to bitcode.
 
-GraalVM comes with a pre-built LLVM toolchain for producing binaries with embedded
-bitcode from C/C++ code. This can be installed with:
+### Quick Start
+GraalVM comes with a pre-built LLVM toolchain for compiling C/C++ to LLVM bitcode.
+It is used as follows:
 
-```
+```shell
+# install the toolchain (only needed once)
 $GRAALVM_HOME/bin/gu install llvm-toolchain
+# get the path to the toolchain
+export LLVM_TOOLCHAIN=$($GRAALVM_HOME/bin/lli --print-toolchain-path)
+# compile a C file using the bundled `clang`
+$TOOLCHAIN_PATH/clang example.c -o example
+# run the result on GraalVM
+$GRAALVM_HOME/bin/lli example
 ```
 
-The path to the LLVM toolchain can be found with:
-
-```
-$GRAALVM_HOME/bin/lli --print-toolchain-path
-```
-
-In the following we assume that the `TOOLCHAIN_PATH` environment variable is set
-to this path.
-
-As a first step, you have to compile the program to LLVM bitcode
-using an LLVM frontend such as `clang`.
-
-Let's compile `test.c`
-
-```c
-#include <stdio.h>
-
-int main() {
-  printf("Hello from Sulong!");
-  return 0;
-}
-```
-
-to a binary with embedded bitcode:
-
-```
-$TOOLCHAIN_PATH/clang test.c -o test
-```
-
-You can then run `test` on GraalVM as follows:
-
-```
-$GRAALVM_HOME/bin/lli test
-```
+See [COMPILING](COMPILING.md) for more details.
 
 ## Debugging
 
