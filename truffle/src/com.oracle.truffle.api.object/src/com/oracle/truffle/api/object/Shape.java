@@ -51,6 +51,8 @@ import org.graalvm.collections.Equivalence;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.object.Layout.Builder;
+import com.oracle.truffle.api.object.Layout.ImplicitCast;
 import com.oracle.truffle.api.utilities.NeverValidAssumption;
 
 /**
@@ -166,9 +168,8 @@ public abstract class Shape {
      */
     @SuppressWarnings("hiding")
     public static final class Builder extends AbstractBuilder<Builder> {
-        private static final Layout DEFAULT_LAYOUT = Layout.newLayout().type(DynamicObject.class).build();
 
-        private Layout layout = DEFAULT_LAYOUT;
+        private Class<? extends DynamicObject> layoutClass = DynamicObject.class;
         private Object dynamicType = ObjectType.DEFAULT;
         private int shapeFlags;
         private boolean shared;
@@ -176,6 +177,7 @@ public abstract class Shape {
         private Object sharedData;
         private Assumption singleContextAssumption;
         private EconomicMap<Object, Property> properties;
+        private EnumSet<ImplicitCast> allowedImplicitCasts = EnumSet.noneOf(ImplicitCast.class);
 
         Builder() {
         }
@@ -201,7 +203,7 @@ public abstract class Shape {
                 throw new IllegalArgumentException(String.format("Expected a subclass of %s but got: %s",
                                 DynamicObject.class.getName(), layoutClass.getTypeName()));
             }
-            this.layout = Layout.newLayout().type(layoutClass).build();
+            this.layoutClass = layoutClass;
             return this;
         }
 
@@ -253,7 +255,7 @@ public abstract class Shape {
                 throw new IllegalArgumentException(String.format("Expected a subclass of %s but got: %s",
                                 DynamicObject.class.getName(), layout.getType().getTypeName()));
             }
-            this.layout = layout;
+            this.layoutClass = layout.getType();
             return this;
         }
 
@@ -369,8 +371,41 @@ public abstract class Shape {
             if (properties.containsKey(key)) {
                 throw new IllegalArgumentException(String.format("Property already exists: %s.", key));
             }
+
+            Layout layout = Layout.newLayout().type(layoutClass).setAllowedImplicitCasts(allowedImplicitCasts).build();
+
             Location location = layout.createAllocator().constantLocation(value);
             properties.put(key, Property.create(key, location, flags));
+            return this;
+        }
+
+        /**
+         * Allows values to be implicitly cast from int to long in this shape.
+         *
+         * @see #layout(Class)
+         * @since 20.2.0
+         */
+        public Builder allowImplicitCastIntToLong(boolean allow) {
+            if (allow) {
+                this.allowedImplicitCasts.add(Layout.ImplicitCast.IntToLong);
+            } else {
+                this.allowedImplicitCasts.remove(Layout.ImplicitCast.IntToLong);
+            }
+            return this;
+        }
+
+        /**
+         * Allows values to be implicitly cast from int to double in this shape.
+         *
+         * @see #layout(Class)
+         * @since 20.2.0
+         */
+        public Builder allowImplicitCastIntToDouble(boolean allow) {
+            if (allow) {
+                this.allowedImplicitCasts.add(Layout.ImplicitCast.IntToDouble);
+            } else {
+                this.allowedImplicitCasts.remove(Layout.ImplicitCast.IntToDouble);
+            }
             return this;
         }
 
@@ -388,6 +423,8 @@ public abstract class Shape {
             if (propertyAssumptions) {
                 flags = shapeFlags | OBJECT_PROPERTY_ASSUMPTIONS;
             }
+
+            Layout layout = Layout.newLayout().type(layoutClass).setAllowedImplicitCasts(allowedImplicitCasts).build();
 
             Shape shape = layout.buildShape(dynamicType, sharedData, flags, singleContextAssumption);
 
