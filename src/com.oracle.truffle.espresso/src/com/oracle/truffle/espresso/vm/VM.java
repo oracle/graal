@@ -33,6 +33,7 @@ import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_2;
 import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_4;
 import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_6;
 import static com.oracle.truffle.espresso.jni.JniVersion.JNI_VERSION_1_8;
+import static com.oracle.truffle.espresso.runtime.Classpath.JAVA_BASE;
 import static com.oracle.truffle.espresso.runtime.EspressoContext.DEFAULT_STACK_SIZE;
 
 import java.lang.management.ThreadInfo;
@@ -97,6 +98,7 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.impl.PackageTable;
 import com.oracle.truffle.espresso.impl.PackageTable.PackageEntry;
 import com.oracle.truffle.espresso.jni.Callback;
 import com.oracle.truffle.espresso.jni.JNIHandles;
@@ -151,6 +153,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     private final @Pointer TruffleObject initializeManagementContext;
     private final @Pointer TruffleObject disposeManagementContext;
     private final @Pointer TruffleObject getJavaVM;
+    private final @Pointer TruffleObject getPackageAt;
 
     private final JniEnv jniEnv;
 
@@ -268,6 +271,10 @@ public final class VM extends NativeEnv implements ContextAccess {
             getJavaVM = NativeLibrary.lookupAndBind(mokapotLibrary,
                             "getJavaVM",
                             "(env): pointer");
+
+            getPackageAt = NativeLibrary.lookupAndBind(mokapotLibrary,
+                            "getPackageAt",
+                            "(env, pointer, sint32): pointer");
 
             this.vmPtr = (TruffleObject) getUncached().execute(initializeMokapotContext, jniEnv.getNativePointer(), lookupVmImplCallback);
             assert getUncached().isPointer(this.vmPtr);
@@ -2367,11 +2374,66 @@ public final class VM extends NativeEnv implements ContextAccess {
     @JniImpl
     public void JVM_DefineModule(@Host(typeName = "Ljava/lang/Module") StaticObject module,
                     boolean is_open,
-                    @Host(String.class) String version,
-                    @Host(String.class) String location,
+                    @SuppressWarnings("unused") @Host(String.class) StaticObject version,
+                    @SuppressWarnings("unused") @Host(String.class) StaticObject location,
                     @Pointer TruffleObject pkgs,
-                    int num_package) {
-        // TODO
+                    int num_package,
+                    @InjectProfile SubstitutionProfiler profiler) {
+        if (StaticObject.isNull(module)) {
+            throw getMeta().throwNullPointerException();
+        }
+        if (num_package < 0) {
+            throw Meta.throwException(getMeta().java_lang_IllegalArgumentException);
+        }
+        if (getUncached().isNull(pkgs) && num_package > 0) {
+            throw Meta.throwException(getMeta().java_lang_IllegalArgumentException);
+        }
+        if (!getMeta().java_lang_Module.isAssignableFrom(module.getKlass())) {
+            throw Meta.throwException(getMeta().java_lang_IllegalArgumentException);
+        }
+        StaticObject guestName = module.getField(getMeta().java_lang_Module_name);
+        if (StaticObject.isNull(guestName)) {
+            throw Meta.throwException(getMeta().java_lang_IllegalArgumentException);
+        }
+        String hostName = Meta.toHostString(guestName);
+        if (hostName.equals(JAVA_BASE)) {
+            defineJavaBaseModule(module, pkgs, num_package);
+        }
+    }
+
+    private void defineJavaBaseModule(StaticObject module, TruffleObject pkgs, int numPackages) {
+        String[] packages = new String[numPackages];
+        try {
+            for (int i = 0; i < numPackages; i++) {
+                String pkg = interopPointerToString((TruffleObject) getUncached().execute(getPackageAt, pkgs, i));
+                if (!Validation.validBinaryName(pkg)) {
+                    throw Meta.throwException(getMeta().java_lang_IllegalArgumentException);
+                }
+                packages[i] = pkg;
+            }
+        } catch (UnsupportedMessageException | ArityException | UnsupportedTypeException e) {
+            throw EspressoError.shouldNotReachHere();
+        }
+        StaticObject loader = module.getField(getMeta().java_lang_Module_loader);
+        if (!StaticObject.isNull(loader)) {
+            throw Meta.throwException(getMeta().java_lang_IllegalArgumentException);
+        }
+        PackageTable pkgTable = getRegistries().getBootClassRegistry().packages();
+        ModuleEntry javaBaseEntry = getRegistries().getJavaBaseModule();
+        synchronized (pkgTable.getLock()) {
+            if (getRegistries().javaBaseDefined()) {
+                throw Meta.throwException(getMeta().java_lang_InternalError);
+            }
+            for (String pkg : packages) {
+                Symbol<Name> pkgName = getNames().getOrCreate(pkg);
+                if (pkgTable.lookup(pkgName) == null) {
+                    pkgTable.createAndAddEntry(pkgName, javaBaseEntry);
+                }
+            }
+            javaBaseEntry.setModule(module);
+            module.setHiddenField(getMeta().HIDDEN_MODULE_ENTRY, javaBaseEntry);
+        }
+
     }
 
     @VmImpl

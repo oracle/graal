@@ -114,7 +114,7 @@ public abstract class ClassRegistry implements ContextAccess {
     private final EspressoContext context;
 
     private final int loaderID;
-    protected final ModuleEntry unnamed;
+    protected ModuleEntry unnamed;
 
     private final PackageTable packages = new PackageTable();
     private final ModuleTable modules = new ModuleTable();
@@ -151,8 +151,10 @@ public abstract class ClassRegistry implements ContextAccess {
     protected ClassRegistry(EspressoContext context) {
         this.context = context;
         this.loaderID = context.getNewLoaderId();
-        this.unnamed = ModuleEntry.createUnnamedModuleEntry(StaticObject.NULL, this);
+    }
 
+    protected void initUnnamedModule(StaticObject unnamedModule) {
+        this.unnamed = ModuleEntry.createUnnamedModuleEntry(unnamedModule, this);
     }
 
     /**

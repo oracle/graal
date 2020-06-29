@@ -149,6 +149,9 @@ public final class Symbol<T> extends ByteSequence {
             /* nop */
         }
 
+        // java.base
+        public static final Symbol<Name> java_base = StaticSymbols.putName("java.base");
+
         // general
         public static final Symbol<Name> _init_ = StaticSymbols.putName("<init>");
         public static final Symbol<Name> _clinit_ = StaticSymbols.putName("<clinit>");

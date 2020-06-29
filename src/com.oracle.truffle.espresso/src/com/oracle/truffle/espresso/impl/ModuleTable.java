@@ -38,7 +38,7 @@ public class ModuleTable extends EntryTable<ModuleTable.ModuleEntry, ClassRegist
     }
 
     @Override
-    public ModuleEntry createEntry(Symbol<Name> name, ClassRegistry registry) {
+    protected ModuleEntry createEntry(Symbol<Name> name, ClassRegistry registry) {
         return new ModuleEntry(name, registry);
     }
 
@@ -109,6 +109,10 @@ public class ModuleTable extends EntryTable<ModuleTable.ModuleEntry, ClassRegist
 
         public void setModule(StaticObject module) {
             this.module = module;
+        }
+
+        public StaticObject module() {
+            return module;
         }
 
         public void setCanReadAllUnnamed() {

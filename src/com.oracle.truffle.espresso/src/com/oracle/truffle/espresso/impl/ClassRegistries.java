@@ -30,6 +30,7 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.WeakHashMap;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
@@ -40,6 +41,9 @@ import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 public final class ClassRegistries {
+
+    @CompilerDirectives.CompilationFinal //
+    private ModuleTable.ModuleEntry javaBaseModule;
 
     private final ClassRegistry bootClassRegistry;
     private final LoadingConstraints constraints;
@@ -55,6 +59,7 @@ public final class ClassRegistries {
         this.context = context;
         this.bootClassRegistry = new BootClassRegistry(context);
         this.constraints = new LoadingConstraints(context);
+        this.javaBaseModule = bootClassRegistry.modules().createAndAddEntry(Symbol.Name.java_base, bootClassRegistry);
     }
 
     private ClassRegistry getClassRegistry(@Host(ClassLoader.class) StaticObject classLoader) {
@@ -91,6 +96,14 @@ public final class ClassRegistries {
 
         assert classRegistry != null;
         return classRegistry;
+    }
+
+    public ModuleTable.ModuleEntry getJavaBaseModule() {
+        return javaBaseModule;
+    }
+
+    public boolean javaBaseDefined() {
+        return javaBaseModule != null && !StaticObject.isNull(javaBaseModule.module());
     }
 
     @TruffleBoundary

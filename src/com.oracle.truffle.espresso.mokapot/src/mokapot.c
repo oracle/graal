@@ -103,6 +103,10 @@ JNIEXPORT void JNICALL disposeMokapotContext(TruffleEnv *truffle_env, MokapotEnv
   free(moka_env);
 }
 
+JNIEXPORT const char* JNICALL getPackageAt(const char* const* packages, int at) {
+	return packages[at];
+}
+
 JNIEXPORT jint JNICALL JVM_GetInterfaceVersion(void) {
   IMPLEMENTED(JVM_GetInterfaceVersion);
   return (*getEnv())->JVM_GetInterfaceVersion();

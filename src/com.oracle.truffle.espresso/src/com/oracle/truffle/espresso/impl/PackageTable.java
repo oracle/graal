@@ -40,7 +40,7 @@ public class PackageTable extends EntryTable<PackageTable.PackageEntry, ModuleEn
     }
 
     @Override
-    public PackageEntry createEntry(Symbol<Name> name, ModuleEntry appendix) {
+    protected PackageEntry createEntry(Symbol<Name> name, ModuleEntry appendix) {
         return new PackageEntry(name, appendix);
     }
 

@@ -313,6 +313,8 @@ JNIEXPORT void JNICALL disposeMokapotContext(TruffleEnv *truffle_env, MokapotEnv
 
 JNIEXPORT JavaVM* JNICALL getJavaVM();
 
+JNIEXPORT const char* JNICALL getPackageAt(const char* const* packages, int at);
+
 #ifdef __cplusplus
 } // extern "C"
 #endif
