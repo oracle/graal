@@ -295,17 +295,36 @@ public class LoopFragmentInside extends LoopFragment {
                     for (PhiNode phi : merge.phis()) {
                         if (phi instanceof ValuePhiNode) {
                             ValueNode input = phi.valueAt((EndNode) next);
-                            ValueNode replacement = null;
-                            if (input instanceof ConstantNode || input instanceof ParameterNode) {
+                            ValueNode replacement;
+                            if (input instanceof ConstantNode || input instanceof ParameterNode || !loop.whole().contains(input)) {
                                 replacement = input;
                             } else {
+                                // if the node is inside this loop the input must be a proxy
                                 replacement = graph.addOrUnique(new ValueProxyNode(getNodeOfExitPathInUnrolledSegment((ValueProxyNode) input, new2OldPhis), lex));
                             }
                             phi.addInput(replacement);
                         } else if (phi instanceof MemoryPhiNode) {
                             ValueNode input = phi.valueAt((EndNode) next);
-                            ValueNode replacement = getNodeOfExitPathInUnrolledSegment((ProxyNode) input, new2OldPhis);
+                            ValueNode replacement;
+                            if (!loop.whole().contains(input)) {
+                                replacement = input;
+                            } else {
+                                // if the node is inside this loop the input must be a proxy
+                                replacement = getNodeOfExitPathInUnrolledSegment((ProxyNode) input, new2OldPhis);
+                            }
                             phi.addInput(graph.addOrUnique(new MemoryProxyNode((MemoryKill) replacement, lex, ((MemoryPhiNode) phi).getLocationIdentity())));
+                        } else if (phi instanceof GuardPhiNode) {
+                            ValueNode input = phi.valueAt((EndNode) next);
+                            ValueNode replacement;
+                            if (!loop.whole().contains(input)) {
+                                replacement = input;
+                            } else {
+                                // if the node is inside this loop the input must be a proxy
+                                replacement = getNodeOfExitPathInUnrolledSegment((ProxyNode) input, new2OldPhis);
+                            }
+                            phi.addInput(graph.addOrUnique(new GuardProxyNode((GuardingNode) replacement, lex)));
+                        } else {
+                            throw GraalError.shouldNotReachHere("Unknown phi type " + phi);
                         }
                     }
                 } else if (next instanceof ControlSinkNode) {
