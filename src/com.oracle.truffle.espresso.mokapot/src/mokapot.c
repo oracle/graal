@@ -1265,22 +1265,26 @@ JNIEXPORT jbyteArray JNICALL JVM_GetMethodParameterAnnotations(JNIEnv *env, jobj
 // region JDK 11 new VM methods
 
 JNIEXPORT void JNICALL JVM_AddModuleExports(JNIEnv *env, jobject from_module, const char* package, jobject to_module) {
-  UNIMPLEMENTED(JVM_AddModuleExports);
+  IMPLEMENTED(JVM_AddModuleExports);
+  (*getEnv())->JVM_AddModuleExports(env, from_module, package, to_module);
   return;
 }
 
 JNIEXPORT void JNICALL JVM_AddModuleExportsToAllUnnamed(JNIEnv *env, jobject from_module, const char* package) {
-  UNIMPLEMENTED(JVM_AddModuleExportsToAllUnnamed);
+  IMPLEMENTED(JVM_AddModuleExportsToAllUnnamed);
+  (*getEnv())->JVM_AddModuleExportsToAllUnnamed(env, from_module, package);
   return;
 }
 
 JNIEXPORT void JNICALL JVM_AddModuleExportsToAll(JNIEnv *env, jobject from_module, const char* package) {
   UNIMPLEMENTED(JVM_AddModuleExportsToAll);
+  (*getEnv())->JVM_AddModuleExportsToAll(env, from_module, package);
   return;
 }
 
 JNIEXPORT void JNICALL JVM_AddReadsModule(JNIEnv *env, jobject from_module, jobject source_module) {
-  UNIMPLEMENTED(JVM_AddReadsModule);
+  IMPLEMENTED(JVM_AddReadsModule);
+  (*getEnv())->JVM_AddReadsModule(env, from_module, source_module);
   return;
 }
 
@@ -1323,7 +1327,8 @@ JNIEXPORT jbyte JNICALL JVM_ConstantPoolGetTagAt(JNIEnv *env, jobject unused, jo
 
 JNIEXPORT void JNICALL JVM_DefineModule(JNIEnv *env, jobject module, jboolean is_open, jstring version,
                  jstring location, const char* const* packages, jsize num_packages) {
-  UNIMPLEMENTED(JVM_DefineModule);
+  IMPLEMENTED(JVM_DefineModule);
+  (*getEnv())->JVM_DefineModule(env, module, is_open, version, location, packages, num_packages);
   return;
 }
 
@@ -1390,7 +1395,8 @@ JNIEXPORT jint JNICALL JVM_MoreStackWalk(JNIEnv *env, jobject stackStream, jlong
 }
 
 JNIEXPORT void JNICALL JVM_SetBootLoaderUnnamedModule(JNIEnv *env, jobject module) {
-  UNIMPLEMENTED(JVM_SetBootLoaderUnnamedModule);
+  IMPLEMENTED(JVM_SetBootLoaderUnnamedModule);
+  (*getEnv())->JVM_SetBootLoaderUnnamedModule(env, module);
   return;
 }
 

@@ -62,19 +62,19 @@ public class PackageTable extends EntryTable<PackageTable.PackageEntry, ModuleEn
         private boolean isUnqualifiedExports = false;
         private boolean isExportedAllUnnamed = false;
 
-        public void addExports(ModuleEntry module) {
+        public void addExports(ModuleEntry m) {
             if (isUnqualifiedExports()) {
                 return;
             }
             synchronized (packageLock) {
-                if (module == null) {
+                if (m == null) {
                     setUnqualifiedExports();
                 }
                 if (exports == null) {
                     exports = new ArrayList<>();
                 }
-                if (!exports.contains(module)) {
-                    exports.add(module);
+                if (!exports.contains(m)) {
+                    exports.add(m);
                 }
             }
         }
@@ -117,15 +117,6 @@ public class PackageTable extends EntryTable<PackageTable.PackageEntry, ModuleEn
 
         public ModuleEntry module() {
             return module;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (!(obj instanceof PackageEntry)) {
-                return false;
-            }
-            PackageEntry pkg = (PackageEntry) obj;
-            return this.name == pkg.name;
         }
     }
 }

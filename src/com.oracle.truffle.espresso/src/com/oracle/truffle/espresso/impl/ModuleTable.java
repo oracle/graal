@@ -76,33 +76,33 @@ public class ModuleTable extends EntryTable<ModuleTable.ModuleEntry, ClassRegist
             return registry;
         }
 
-        public void addReads(ModuleEntry module) {
+        public void addReads(ModuleEntry from) {
             if (!isNamed()) {
                 return;
             }
             synchronized (moduleLock) {
-                if (module == null) {
+                if (from == null) {
                     setCanReadAllUnnamed();
                     return;
                 }
                 if (reads == null) {
                     reads = new ArrayList<>();
                 }
-                if (!reads.contains(module)) {
-                    reads.add(module);
+                if (!reads.contains(from)) {
+                    reads.add(from);
                 }
             }
         }
 
-        public boolean canRead(ModuleEntry module) {
-            if (!module.isNamed() || module.isJavaBase()) {
+        public boolean canRead(ModuleEntry from) {
+            if (!from.isNamed() || from.isJavaBase()) {
                 return true;
             }
             synchronized (moduleLock) {
                 if (!hasReads()) {
                     return false;
                 } else {
-                    return reads.contains(module);
+                    return reads.contains(from);
                 }
             }
         }
@@ -135,13 +135,5 @@ public class ModuleTable extends EntryTable<ModuleTable.ModuleEntry, ClassRegist
             return reads != null && !reads.isEmpty();
         }
 
-        @Override
-        public boolean equals(Object obj) {
-            if (!(obj instanceof ModuleEntry)) {
-                return false;
-            }
-            ModuleEntry module = (ModuleEntry) obj;
-            return this.name == module.name;
-        }
     }
 }

@@ -43,7 +43,7 @@ public class ModulesHelperVM {
         return (ModuleTable.ModuleEntry) module.getHiddenField(meta.HIDDEN_MODULE_ENTRY);
     }
 
-    private static final PackageTable.PackageEntry getPackageEntry(ModuleTable.ModuleEntry fromModuleEntry, Symbol<Symbol.Name> nameSymbol, Meta meta) {
+    private static final PackageTable.PackageEntry getPackageEntry(ModuleTable.ModuleEntry fromModuleEntry, Symbol<Symbol.Name> nameSymbol) {
         return fromModuleEntry.registry().packages().lookup(nameSymbol);
     }
 
@@ -82,7 +82,7 @@ public class ModulesHelperVM {
             profiler.profile(11);
             throw Meta.throwException(meta.java_lang_IllegalArgumentException);
         }
-        PackageTable.PackageEntry packageEntry = getPackageEntry(fromModuleEntry, nameSymbol, meta);
+        PackageTable.PackageEntry packageEntry = getPackageEntry(fromModuleEntry, nameSymbol);
         if (packageEntry == null || packageEntry.module() != fromModuleEntry) {
             profiler.profile(12);
             throw Meta.throwException(meta.java_lang_IllegalArgumentException);
