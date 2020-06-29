@@ -321,7 +321,7 @@ public class LoopFragmentInside extends LoopFragment {
                     begin.setNext(lex);
                     lex.setNext(sinkCopy);
                 } else {
-                    GraalError.shouldNotReachHere("Can only unroll loops where the early exits either merge on the same node or sink immediately");
+                    GraalError.shouldNotReachHere("Can only unroll loops where the early exits either merge on the same node or sink immediately " + next);
                 }
             }
         }
