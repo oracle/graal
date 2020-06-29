@@ -68,7 +68,7 @@ simpleLanguageMavenProjectGate:  {
         [set-export, ROOT_DIR, [pwd]]
         ${simpleLanguageMavenProjectGate.mx_cmd} ["build"],
         ["mkdir", "tmp_mvn_repo"]
-        ["mx", "maven-install", "--repo", "tmp_mvn_repo", "--version-string", ${simpleLanguageMavenProjectGate.mx_cmd} ["graalvm-version"]],
+        ["mx", "maven-install", "--all-suites", "--repo", "tmp_mvn_repo", "--version-string", ${simpleLanguageMavenProjectGate.mx_cmd} ["graalvm-version"]],
         ["set-export", "JAVA_HOME", ${simpleLanguageMavenProjectGate.mx_cmd} ["graalvm-home"]],
         ["cd", "external_repos"],
         ["python", "populate.py"],
