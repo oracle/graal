@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -111,11 +111,10 @@ public class HostedConfiguration {
         int arrayLengthOffset = hubOffset + referenceSize;
         int arrayIdentityHashCodeOffset = arrayLengthOffset + target.arch.getPlatformKind(JavaKind.Int).getSizeInBytes();
         int arrayBaseOffset = arrayIdentityHashCodeOffset + target.arch.getPlatformKind(JavaKind.Int).getSizeInBytes();
-        int arrayZeroingStartOffset = arrayIdentityHashCodeOffset;
         boolean useExplicitIdentityHashCodeField = true;
         int instanceIdentityHashCodeOffset = -1; // depends on the hub
 
-        ObjectLayout objectLayout = new ObjectLayout(target, referenceSize, objectAlignment, hubOffset, firstFieldOffset, arrayLengthOffset, arrayBaseOffset, arrayZeroingStartOffset,
+        ObjectLayout objectLayout = new ObjectLayout(target, referenceSize, objectAlignment, hubOffset, firstFieldOffset, arrayLengthOffset, arrayBaseOffset,
                         useExplicitIdentityHashCodeField, instanceIdentityHashCodeOffset, arrayIdentityHashCodeOffset);
         return objectLayout;
     }

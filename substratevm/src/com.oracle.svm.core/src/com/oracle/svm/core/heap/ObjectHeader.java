@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -69,7 +69,7 @@ public abstract class ObjectHeader {
     public abstract DynamicHub readDynamicHubFromPointer(Pointer ptr);
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public abstract void initializeHeaderOfNewObject(Pointer objectPointer, DynamicHub hub, HeapKind heapKind);
+    public abstract void initializeHeaderOfNewObject(Pointer objectPointer, DynamicHub hub, HeapKind heapKind, boolean isArray);
 
     public enum HeapKind {
         Unmanaged,
