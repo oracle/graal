@@ -52,6 +52,7 @@ import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.KeysArray;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.LinkedKlass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -475,8 +476,9 @@ public final class StaticObject implements TruffleObject {
     private StaticObject(ObjectKlass klass) {
         assert klass != klass.getMeta().java_lang_Class;
         this.klass = klass;
-        this.fields = klass.getObjectFieldsCount() > 0 ? new Object[klass.getObjectFieldsCount()] : null;
-        this.primitiveFields = klass.getPrimitiveFieldTotalByteCount() > 0 ? new byte[klass.getPrimitiveFieldTotalByteCount()] : null;
+        LinkedKlass lk = klass.getLinkedKlass();
+        this.fields = lk.getObjectFieldsCount() > 0 ? new Object[lk.getObjectFieldsCount()] : null;
+        this.primitiveFields = lk.getPrimitiveFieldTotalByteCount() > 0 ? new byte[lk.getPrimitiveFieldTotalByteCount()] : null;
         initInstanceFields(klass);
     }
 
@@ -484,8 +486,9 @@ public final class StaticObject implements TruffleObject {
     private StaticObject(Klass klass) {
         ObjectKlass guestClass = klass.getMeta().java_lang_Class;
         this.klass = guestClass;
-        int primitiveFieldCount = guestClass.getPrimitiveFieldTotalByteCount();
-        this.fields = guestClass.getObjectFieldsCount() > 0 ? new Object[guestClass.getObjectFieldsCount()] : null;
+        LinkedKlass lgk = guestClass.getLinkedKlass();
+        int primitiveFieldCount = lgk.getPrimitiveFieldTotalByteCount();
+        this.fields = lgk.getObjectFieldsCount() > 0 ? new Object[lgk.getObjectFieldsCount()] : null;
         this.primitiveFields = primitiveFieldCount > 0 ? new byte[primitiveFieldCount] : null;
         initInstanceFields(guestClass);
         setHiddenField(klass.getMeta().HIDDEN_MIRROR_KLASS, klass);
@@ -494,8 +497,9 @@ public final class StaticObject implements TruffleObject {
     // Constructor for static fields storage.
     private StaticObject(ObjectKlass klass, @SuppressWarnings("unused") Void unused) {
         this.klass = klass;
-        this.fields = klass.getStaticObjectFieldsCount() > 0 ? new Object[klass.getStaticObjectFieldsCount()] : null;
-        this.primitiveFields = klass.getPrimitiveStaticFieldTotalByteCount() > 0 ? new byte[klass.getPrimitiveStaticFieldTotalByteCount()] : null;
+        LinkedKlass lk = klass.getLinkedKlass();
+        this.fields = lk.getStaticObjectFieldsCount() > 0 ? new Object[lk.getStaticObjectFieldsCount()] : null;
+        this.primitiveFields = lk.getPrimitiveStaticFieldTotalByteCount() > 0 ? new byte[lk.getPrimitiveStaticFieldTotalByteCount()] : null;
         initStaticFields(klass);
     }
 

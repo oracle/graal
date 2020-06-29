@@ -75,19 +75,17 @@ public final class ObjectKlass extends Klass {
     @CompilationFinal //
     private StaticObject statics;
 
+    // static and instance fields declared in this class (no hidden fields)
     @CompilationFinal(dimensions = 1) //
-    private Field[] declaredFields;
+    private final Field[] declaredFields;
 
-    @CompilationFinal(dimensions = 2) private final int[][] leftoverHoles;
-    @CompilationFinal(dimensions = 1) private final Field[] fieldTable;
+    // instance and hidden fields declared in this class and in its super classes
+    @CompilationFinal(dimensions = 1) //
+    private final Field[] fieldTable;
 
-    private final int primitiveFieldTotalByteCount;
-    private final int primitiveStaticFieldTotalByteCount;
-
-    private final int objectFields;
-    private final int staticObjectFields;
-
-    @CompilationFinal(dimensions = 1) private final Field[] staticFieldTable;
+    // static fields declared in this class (no hidden fields)
+    @CompilationFinal(dimensions = 1) //
+    private final Field[] staticFieldTable;
 
     @CompilationFinal(dimensions = 1) //
     private Method[] declaredMethods;
@@ -143,11 +141,35 @@ public final class ObjectKlass extends Klass {
         // TODO(peterssen): Make writable copy.
         RuntimeConstantPool pool = new RuntimeConstantPool(getContext(), linkedKlass.getConstantPool(), classLoader);
 
+        Field[] skFieldTable = superKlass != null ? superKlass.getFieldTable() : new Field[0];
+        LinkedField[] lkInstanceFields = linkedKlass.getInstanceFields();
+        LinkedField[] lkStaticFields = linkedKlass.getStaticFields();
+        LinkedField[] lkHiddenFields = linkedKlass.getHiddenFields();
+
+        fieldTable = new Field[skFieldTable.length + lkInstanceFields.length + lkHiddenFields.length];
+        declaredFields = new Field[lkInstanceFields.length + lkStaticFields.length];
+        staticFieldTable = new Field[lkStaticFields.length];
+
+        assert fieldTable.length == linkedKlass.getFieldTableLength();
+        System.arraycopy(skFieldTable, 0, fieldTable, 0, skFieldTable.length);
+        for (int i = 0; i < lkInstanceFields.length; i++) {
+            Field instanceField = new Field(this, lkInstanceFields[i], false);
+            fieldTable[i + skFieldTable.length] = instanceField;
+            declaredFields[i] = instanceField;
+        }
+        for (int i = 0; i < lkHiddenFields.length; i++) {
+            fieldTable[i + skFieldTable.length + lkInstanceFields.length] = new Field(this, lkHiddenFields[i], true);
+        }
+        for (int i = 0; i < lkStaticFields.length; i++) {
+            Field staticField = new Field(this, lkStaticFields[i], false);
+            declaredFields[i + lkInstanceFields.length] = staticField;
+            staticFieldTable[i] = staticField;
+        }
+
         LinkedMethod[] linkedMethods = linkedKlass.getLinkedMethods();
         Method[] methods = new Method[linkedMethods.length];
-        for (int i = 0; i < methods.length; ++i) {
-            LinkedMethod linkedMethod = linkedMethods[i];
-            methods[i] = new Method(this, linkedMethod, pool);
+        for (int i = 0; i < methods.length; i++) {
+            methods[i] = new Method(this, linkedMethods[i], pool);
         }
 
         this.declaredMethods = methods;
@@ -158,19 +180,6 @@ public final class ObjectKlass extends Klass {
 
         // Move attribute name to better location.
         this.runtimeVisibleAnnotations = getAttribute(Name.RuntimeVisibleAnnotations);
-
-        FieldTable.CreationResult fieldCR = FieldTable.create(superKlass, this, linkedKlass);
-
-        this.fieldTable = fieldCR.fieldTable;
-        this.staticFieldTable = fieldCR.staticFieldTable;
-        this.declaredFields = fieldCR.declaredFields;
-
-        this.primitiveFieldTotalByteCount = fieldCR.primitiveFieldTotalByteCount;
-        this.primitiveStaticFieldTotalByteCount = fieldCR.primitiveStaticFieldTotalByteCount;
-        this.objectFields = fieldCR.objectFields;
-        this.staticObjectFields = fieldCR.staticObjectFields;
-
-        this.leftoverHoles = fieldCR.leftoverHoles;
 
         if (this.isInterface()) {
             this.itable = null;
@@ -469,30 +478,6 @@ public final class ObjectKlass extends Klass {
         return runtimeVisibleAnnotations;
     }
 
-    public int getStaticFieldSlots() {
-        return getLinkedKlass().staticFieldCount;
-    }
-
-    public int getInstanceFieldSlots() {
-        return getLinkedKlass().instanceFieldCount;
-    }
-
-    public int getObjectFieldsCount() {
-        return objectFields;
-    }
-
-    public int getPrimitiveFieldTotalByteCount() {
-        return primitiveFieldTotalByteCount;
-    }
-
-    public int getStaticObjectFieldsCount() {
-        return staticObjectFields;
-    }
-
-    public int getPrimitiveStaticFieldTotalByteCount() {
-        return primitiveStaticFieldTotalByteCount;
-    }
-
     Klass getHostClassImpl() {
         return hostKlass;
     }
@@ -535,12 +520,12 @@ public final class ObjectKlass extends Klass {
     }
 
     Field lookupFieldTableImpl(int slot) {
-        assert (slot >= 0 && slot < getInstanceFieldSlots());
+        assert slot >= 0 && slot < fieldTable.length && !fieldTable[slot].isHidden();
         return fieldTable[slot];
     }
 
     Field lookupStaticFieldTableImpl(int slot) {
-        assert (slot >= 0 && slot < getStaticFieldSlots());
+        assert slot >= 0 && slot < getStaticFieldTable().length;
         return staticFieldTable[slot];
     }
 
@@ -837,10 +822,6 @@ public final class ObjectKlass extends Klass {
 
     private void setErroneous() {
         initState = ERRONEOUS;
-    }
-
-    public int[][] getLeftoverHoles() {
-        return leftoverHoles;
     }
 
     private void checkLoadingConstraints() {
