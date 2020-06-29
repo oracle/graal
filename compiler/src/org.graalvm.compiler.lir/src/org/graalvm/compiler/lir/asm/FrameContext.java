@@ -52,9 +52,9 @@ public interface FrameContext {
     void leave(CompilationResultBuilder crb);
 
     /**
-     * Allows the frame context to track the point at which a return has been generated.
-     * This callback si not intended to actually generate the retrun instruction itself.
-     * A legitimate action in response to this call may include:
+     * Allows the frame context to track the point at which a return has been generated. This
+     * callback is not intended to actually generate the return instruction itself. A legitimate
+     * action in response to this call may include:
      * <ul>
      * <li>adding a mark to identify the end of an epilogue</li>
      * </ul>
