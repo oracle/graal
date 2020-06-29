@@ -37,18 +37,19 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue;
 import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue.Priority;
 import org.graalvm.compiler.truffle.runtime.CancellableCompileTask;
+import org.graalvm.compiler.truffle.runtime.EngineData;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedOSRLoopNode;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.TruffleCallBoundary;
+import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -72,8 +73,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.runtime.JVMCI;
-import org.graalvm.compiler.truffle.runtime.EngineData;
-import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import sun.misc.Unsafe;
 
 /**
@@ -203,7 +202,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
                     rethrowTruffleCompilerInitializationException();
                     initializationTask = localTask = getCompileQueue().submitTask(Priority.INITIALIZATION, firstCallTarget, new BackgroundCompileQueue.Request() {
                         @Override
-                        protected void execute(TruffleCompilationTask task, WeakReference<OptimizedCallTarget> targetRef) {
+                        protected void execute(CancellableCompileTask task, WeakReference<OptimizedCallTarget> targetRef) {
                             synchronized (lock) {
                                 initializeTruffleCompiler(firstCallTarget);
                                 assert truffleCompilerInitialized || truffleCompilerInitializationException != null;
@@ -385,16 +384,6 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
      * Gets the compiler configuration name without requiring a compiler to be created.
      */
     protected abstract String initLazyCompilerConfigurationName();
-
-    @Override
-    public boolean cancelInstalledTask(OptimizedCallTarget optimizedCallTarget, Object source, CharSequence reason) {
-        if (lazy == null) {
-            // if Truffle wasn't initialized yet, this is a noop
-            return false;
-        }
-
-        return super.cancelInstalledTask(optimizedCallTarget, source, reason);
-    }
 
     @SuppressWarnings("try")
     @Override

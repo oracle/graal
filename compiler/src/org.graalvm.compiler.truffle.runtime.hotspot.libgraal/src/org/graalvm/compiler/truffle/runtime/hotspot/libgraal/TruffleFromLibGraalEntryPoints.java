@@ -32,7 +32,7 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLi
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.AsCompilableTruffleAST;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.AsJavaConstant;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CallNodeHashCode;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CancelInstalledTask;
+import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CancelCompilation;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CompilableToString;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.ConsumeOptimizedAssumptionDependency;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id.CreateInliningPlan;
@@ -411,9 +411,9 @@ final class TruffleFromLibGraalEntryPoints {
         return ((Decision) decision).shouldInline();
     }
 
-    @TruffleFromLibGraal(CancelInstalledTask)
-    static void cancelInstalledTask(Object compilableTruffleAST) {
-        ((CompilableTruffleAST) compilableTruffleAST).cancelInstalledTask();
+    @TruffleFromLibGraal(CancelCompilation)
+    static boolean cancelCompilation(Object compilableTruffleAST, String reason) {
+        return ((CompilableTruffleAST) compilableTruffleAST).cancelCompilation(reason);
     }
 
     @TruffleFromLibGraal(FindCallNode)

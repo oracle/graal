@@ -719,7 +719,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 if (decision.shouldInline()) {
                     OptimizedCallTarget target = decision.getTarget();
                     if (target != optimizedCallTarget) {
-                        target.cancelInstalledTask(decision.getProfile().getCallNode(), "Inlining caller compiled.");
+                        target.cancelCompilation("Inlining caller compiled.");
                     }
                     dequeueInlinedCallSites(decision, optimizedCallTarget);
                 }
@@ -734,15 +734,13 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         Priority priority = lastTierCompilation ? Priority.LAST_TIER : Priority.FIRST_TIER;
         return getCompileQueue().submitTask(priority, optimizedCallTarget, new BackgroundCompileQueue.Request() {
             @Override
-            protected void execute(TruffleCompilationTask task, WeakReference<OptimizedCallTarget> targetRef) {
+            protected void execute(CancellableCompileTask task, WeakReference<OptimizedCallTarget> targetRef) {
                 OptimizedCallTarget callTarget = targetRef.get();
-                if (callTarget != null) {
+                if (callTarget != null && task.start()) {
                     try {
-                        if (!task.isCancelled()) {
-                            doCompile(callTarget, task);
-                        }
+                        doCompile(callTarget, task);
                     } finally {
-                        callTarget.resetCompilationTask();
+                        task.finished();
                     }
                 }
             }
@@ -798,17 +796,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         }
     }
 
-    public boolean cancelInstalledTask(OptimizedCallTarget optimizedCallTarget, Object source, CharSequence reason) {
-        CancellableCompileTask task = optimizedCallTarget.getCompilationTask();
-        if (task != null) {
-            if (task.cancel()) {
-                getListener().onCompilationDequeued(optimizedCallTarget, source, reason);
-                return true;
-            }
-        }
-        return false;
-    }
-
     public void waitForCompilation(OptimizedCallTarget optimizedCallTarget, long timeout) throws ExecutionException, TimeoutException {
         CancellableCompileTask task = optimizedCallTarget.getCompilationTask();
         if (task != null && !task.isCancelled()) {
@@ -824,10 +811,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     public int getCompilationQueueSize() {
         return getCompileQueue().getQueueSize();
-    }
-
-    public boolean isCompiling(OptimizedCallTarget optimizedCallTarget) {
-        return optimizedCallTarget.isCompiling();
     }
 
     /**

@@ -222,18 +222,16 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     private volatile long initializedTimestamp;
 
     /**
-     * When this field is not null, this {@link OptimizedCallTarget} is {@linkplain #isCompiling()
-     * being compiled}.<br/>
+     * When this field is not null, this {@link OptimizedCallTarget} is
+     * {@linkplain #isSubmittedForCompilation() submited for compilation}.<br/>
      *
-     * It is only set to non-null in {@link #compile(boolean)} in a synchronized block. It is only
-     * {@linkplain #resetCompilationTask() set to null} by the compilation thread once the
-     * compilation is over.<br/>
+     * It is only set to non-null in {@link #compile(boolean)} in a synchronized block.
      *
-     * Note that {@link #resetCompilationTask()} waits for the field to have been set to a non-null
-     * value before resetting it.<br/>
-     *
-     * Once it has been set to a non-null value, the compilation <em>must</em> complete and call
-     * {@link #resetCompilationTask()} even if that compilation fails or is cancelled.
+     * It is only {@linkplain #resetCompilationTask() set to null} by the
+     * {@linkplain CancellableCompileTask task} itself when: 1) The task is canceled before the
+     * compilation has started, or 2) The compilation has finished (successfully or not). Canceling
+     * the task after the compilation has started does not reset the task until the compilation
+     * finishes.
      */
     private volatile CancellableCompileTask compilationTask;
 
@@ -443,7 +441,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         if (intCallCount >= engine.firstTierCallThreshold //
                         && intAndLoopCallCount >= engine.firstTierCallAndLoopThreshold //
                         && !compilationFailed //
-                        && !isCompiling()) {
+                        && !isSubmittedForCompilation()) {
             return compile(!engine.multiTier);
         }
         return false;
@@ -467,7 +465,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     public final boolean firstTierCall() {
         // this is partially evaluated so the second part should fold to a constant.
         int firstTierCallThreshold = ++callCount;
-        if (firstTierCallThreshold >= engine.lastTierCallThreshold && !isCompiling() && !compilationFailed) {
+        if (firstTierCallThreshold >= engine.lastTierCallThreshold && !isSubmittedForCompilation() && !compilationFailed) {
             return lastTierCompile(this);
         }
         return false;
@@ -540,13 +538,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     /**
      * Returns <code>true</code> if the call target was already compiled or was compiled
      * synchronously. Returns <code>false</code> if compilation was not scheduled or is happening in
-     * the background. Use {@link #isCompiling()} to find out whether it is actually compiling.
+     * the background. Use {@link #isSubmittedForCompilation()} to find out whether it is submitted
+     * for compilation.
      */
     public final boolean compile(boolean lastTierCompilation) {
         if (!needsCompile(lastTierCompilation)) {
             return true;
         }
-        if (!isCompiling()) {
+        if (!isSubmittedForCompilation()) {
             if (!engine.acceptForCompilation(getRootNode())) {
                 // do not try to compile again
                 compilationFailed = true;
@@ -561,8 +560,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                     return true;
                 }
                 ensureInitialized();
-                if (!isCompiling()) {
+                if (!isSubmittedForCompilation()) {
                     try {
+                        assert compilationTask == null;
                         this.compilationTask = task = runtime().submitForCompilation(this, lastTierCompilation);
                     } catch (RejectedExecutionException e) {
                         return false;
@@ -588,8 +588,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return !isValid() || (engine.multiTier && isLastTierCompilation && !isValidLastTier());
     }
 
-    public final boolean isCompiling() {
-        return getCompilationTask() != null;
+    public final boolean isSubmittedForCompilation() {
+        return compilationTask != null;
     }
 
     /**
@@ -625,7 +625,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             invalidateCode();
             runtime().getListener().onCompilationInvalidated(this, source, reason);
         }
-        runtime().cancelInstalledTask(this, source, reason);
+        cancelCompilation(reason);
     }
 
     final OptimizedCallTarget cloneUninitialized() {
@@ -668,11 +668,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     @Override
-    public final void cancelInstalledTask() {
-        runtime().cancelInstalledTask(this, null, "Got inlined. Call site count: " + getKnownCallSiteCount());
-    }
-
-    @Override
     public final boolean isSameOrSplit(CompilableTruffleAST ast) {
         if (!(ast instanceof OptimizedCallTarget)) {
             return false;
@@ -682,8 +677,30 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                         (this.sourceCallTarget != null && other.sourceCallTarget != null && this.sourceCallTarget == other.sourceCallTarget);
     }
 
-    final boolean cancelInstalledTask(Node source, CharSequence reason) {
-        return runtime().cancelInstalledTask(this, source, reason);
+    @Override
+    public boolean cancelCompilation(CharSequence reason) {
+        if (!initialized) {
+            /* no cancellation necessary if the call target was initialized */
+            return false;
+        }
+        if (cancelAndResetCompilationTask()) {
+            runtime().getListener().onCompilationDequeued(this, null, reason);
+            return true;
+        }
+        return false;
+    }
+
+    private boolean cancelAndResetCompilationTask() {
+        CancellableCompileTask task = this.compilationTask;
+        if (task != null) {
+            synchronized (this) {
+                task = this.compilationTask;
+                if (task != null) {
+                    return task.cancel();
+                }
+            }
+        }
+        return false;
     }
 
     @Override
@@ -801,8 +818,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         invalidate(newNode, reason);
         /* Notify compiled method that have inlined this call target that the tree changed. */
         invalidateNodeRewritingAssumption();
-
-        cancelInstalledTask(newNode, reason);
         return false;
     }
 
@@ -1238,22 +1253,21 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     /**
-     * This marks the end of the compilation.
+     * This marks the end or cancellation of the compilation.
      *
-     * It may only ever be called by the thread that performed the compilation, and after the
-     * compilation is completely done (either successfully or not successfully).
+     * Once the compilation has started it may only ever be called by the thread performing the
+     * compilation, and after the compilation is completely done (either successfully or not
+     * successfully).
      */
-    public final void resetCompilationTask() {
+    final synchronized void resetCompilationTask() {
         /*
          * We synchronize because this is called from the compilation threads so we want to make
          * sure we have finished setting the compilationTask in #compile. Otherwise
          * `this.compilationTask = null` might run before then the field is set in #compile and this
          * will get stuck in a "compiling" state.
          */
-        synchronized (this) {
-            assert this.compilationTask != null;
-            this.compilationTask = null;
-        }
+        assert this.compilationTask != null;
+        this.compilationTask = null;
     }
 
     @SuppressFBWarnings(value = "VO_VOLATILE_INCREMENT", justification = "All increments and decrements are synchronized.")
