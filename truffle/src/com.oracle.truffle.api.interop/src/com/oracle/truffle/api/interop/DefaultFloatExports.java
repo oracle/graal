@@ -97,16 +97,6 @@ final class DefaultFloatExports {
     }
 
     @ExportMessage
-    static boolean fitsInDouble(Float receiver) {
-        float f = receiver;
-        double d = f;
-        if (!Float.isFinite(f) || d == f) {
-            return true;
-        }
-        return false;
-    }
-
-    @ExportMessage
     static byte asByte(Float receiver) throws UnsupportedMessageException {
         float f = receiver;
         byte b = (byte) f;
@@ -151,16 +141,6 @@ final class DefaultFloatExports {
         throw UnsupportedMessageException.create();
     }
 
-    @ExportMessage
-    static double asDouble(Float receiver) throws UnsupportedMessageException {
-        float f = receiver;
-        double d = f;
-        if (!Float.isFinite(f) || d == f) {
-            return d;
-        }
-        throw UnsupportedMessageException.create();
-    }
-
     // fast methods
     @ExportMessage
     static boolean isNumber(Float receiver) {
@@ -174,6 +154,16 @@ final class DefaultFloatExports {
 
     @ExportMessage
     static float asFloat(Float receiver) {
+        return receiver;
+    }
+
+    @ExportMessage
+    static boolean fitsInDouble(Float receiver) {
+        return true;
+    }
+
+    @ExportMessage
+    static double asDouble(Float receiver) {
         return receiver;
     }
 
