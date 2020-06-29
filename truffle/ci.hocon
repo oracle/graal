@@ -40,6 +40,7 @@ simpleToolMavenProjectGate:  {
       maven : "==3.3.9"
     }
     run : [
+        [set-export, ROOT_DIR, [pwd]]
         ${simpleToolMavenProjectGate.mx_cmd} ["build"],
         ["mkdir", "tmp_mvn_repo"]
         ["mx", "maven-install", "--repo", "tmp_mvn_repo", "--version-string", ${simpleToolMavenProjectGate.mx_cmd} ["graalvm-version"]],
@@ -47,7 +48,7 @@ simpleToolMavenProjectGate:  {
         ["cd", "external_repos/"],
         ["python", "populate.py"],
         ["cd", "simpletool"],
-        ["mvn", "-Dmaven.repo.local=$PWD/truffle/tmp_mvn_repo", "package"],
+        ["mvn", "-Dmaven.repo.local=$ROOT_DIR/tmp_mvn_repo", "package"],
         ["./simpletool", "js", "example.js"],
     ],
     targets : [gate],
@@ -64,6 +65,7 @@ simpleLanguageMavenProjectGate:  {
         valgrind: ">=3.9.0"
     }
     run : [
+        [set-export, ROOT_DIR, [pwd]]
         ${simpleLanguageMavenProjectGate.mx_cmd} ["build"],
         ["mkdir", "tmp_mvn_repo"]
         ["mx", "maven-install", "--repo", "tmp_mvn_repo", "--version-string", ${simpleLanguageMavenProjectGate.mx_cmd} ["graalvm-version"]],
@@ -71,7 +73,7 @@ simpleLanguageMavenProjectGate:  {
         ["cd", "external_repos"],
         ["python", "populate.py"],
         ["cd", "simplelanguage"],
-        ["mvn", "package"],
+        ["mvn", "-Dmaven.repo.local=$ROOT_DIR/tmp_mvn_repo", "package"],
         ["./sl", "language/tests/Add.sl"],
         ["./native/slnative", "language/tests/Add.sl"],
         ["$JAVA_HOME/bin/gu", "install", "-L", "component/sl-component.jar"],
