@@ -99,7 +99,7 @@ public abstract class DynamicObject implements TruffleObject {
      * object layout. Annotated field must be of type {@code Object} or {@code long}, must not be
      * final, and must not have any direct usages.
      *
-     * @see Shape.Builder#layout(Layout)
+     * @see Shape.Builder#layout(Class)
      * @since 20.2.0
      */
     @Retention(RetentionPolicy.RUNTIME)

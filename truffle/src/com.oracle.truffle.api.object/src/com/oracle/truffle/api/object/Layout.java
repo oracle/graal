@@ -277,7 +277,7 @@ public abstract class Layout {
          *
          * Must be {@link DynamicObject} or a subclass thereof.
          *
-         * @see Shape.Builder#layout(Layout)
+         * @see Shape.Builder#layout(Class)
          * @since 20.2.0
          */
         public Builder type(Class<? extends DynamicObject> layoutClass) {

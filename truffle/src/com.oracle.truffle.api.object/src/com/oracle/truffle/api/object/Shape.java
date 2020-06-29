@@ -51,7 +51,6 @@ import org.graalvm.collections.Equivalence;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.object.Layout.Builder;
 import com.oracle.truffle.api.object.Layout.ImplicitCast;
 import com.oracle.truffle.api.utilities.NeverValidAssumption;
 
@@ -183,32 +182,7 @@ public abstract class Shape {
         }
 
         /**
-         * Sets custom object {@link Layout} (default: {@link DynamicObject} base class).
-         *
-         * Shortcut for {@code layout(Layout.newLayout().type(layoutClass).build())}.
-         *
-         * Enables the use of dynamic object fields declared in subclasses using the
-         * {@code DynamicField} annotation.
-         *
-         * To enable implicit casts, use {@link #layout(Layout)} with
-         * {@link Layout.Builder#addAllowedImplicitCast} instead.
-         *
-         * @param layoutClass custom object layout class
-         * @see #layout(Layout)
-         * @since 20.2.0
-         */
-        public Builder layout(Class<? extends DynamicObject> layoutClass) {
-            CompilerAsserts.neverPartOfCompilation();
-            if (!DynamicObject.class.isAssignableFrom(layoutClass)) {
-                throw new IllegalArgumentException(String.format("Expected a subclass of %s but got: %s",
-                                DynamicObject.class.getName(), layoutClass.getTypeName()));
-            }
-            this.layoutClass = layoutClass;
-            return this;
-        }
-
-        /**
-         * Sets custom object {@link Layout}.
+         * Sets custom object layout class (default: {@link DynamicObject} base class).
          *
          * Enables the use of dynamic object fields declared in subclasses using the
          * {@code DynamicField} annotation.
@@ -219,12 +193,11 @@ public abstract class Shape {
          * <pre>
          * <code>
          * public class MyObject extends DynamicObject implements TruffleObject {
-         *     static final Layout LAYOUT = Layout.newLayout().type(MyObject.class).build();
          *
-         *     &#64;DynamicField private Object _o1;
-         *     &#64;DynamicField private Object _o2;
-         *     &#64;DynamicField private long _i1;
-         *     &#64;DynamicField private long _i2;
+         *     &#64;DynamicField private Object _obj1;
+         *     &#64;DynamicField private Object _obj2;
+         *     &#64;DynamicField private long _long1;
+         *     &#64;DynamicField private long _long2;
          *
          *     public MyObject(Shape shape) {
          *         super(shape);
@@ -232,30 +205,21 @@ public abstract class Shape {
          * }
          *
          *
-         * Shape myObjShape = Shape.newBuilder().layout(MyObject.LAYOUT).build();
+         * Shape myObjShape = Shape.newBuilder().layout(MyObject.class).build();
          * MyObject obj = new MyObject(myObjShape);
          * </code>
          * </pre>
          *
-         * <pre>
-         * <code>
-         * static final Layout LAYOUT_INT_LONG = Layout.newLayout().type(DynamicObject.class).addImplicitCast(ImplicitCast.IntToLong).build();
-         *
-         * Shape rootShape = Shape.newBuilder().layout(LAYOUT_INT_LONG).build();
-         * </code>
-         * </pre>
-         *
-         * @param layout custom object layout
-         * @see Layout#newLayout()
+         * @param layoutClass custom object layout class
          * @since 20.2.0
          */
-        public Builder layout(Layout layout) {
+        public Builder layout(Class<? extends DynamicObject> layoutClass) {
             CompilerAsserts.neverPartOfCompilation();
-            if (!DynamicObject.class.isAssignableFrom(layout.getType())) {
+            if (!DynamicObject.class.isAssignableFrom(layoutClass)) {
                 throw new IllegalArgumentException(String.format("Expected a subclass of %s but got: %s",
-                                DynamicObject.class.getName(), layout.getType().getTypeName()));
+                                DynamicObject.class.getName(), layoutClass.getTypeName()));
             }
-            this.layoutClass = layout.getType();
+            this.layoutClass = layoutClass;
             return this;
         }
 
@@ -372,7 +336,7 @@ public abstract class Shape {
                 throw new IllegalArgumentException(String.format("Property already exists: %s.", key));
             }
 
-            Layout layout = Layout.newLayout().type(layoutClass).setAllowedImplicitCasts(allowedImplicitCasts).build();
+            Layout layout = Layout.newLayout().type(DynamicObject.class).build();
 
             Location location = layout.createAllocator().constantLocation(value);
             properties.put(key, Property.create(key, location, flags));
@@ -380,7 +344,8 @@ public abstract class Shape {
         }
 
         /**
-         * Allows values to be implicitly cast from int to long in this shape.
+         * Allows values to be implicitly cast from int to long in this shape and any derived
+         * shapes.
          *
          * @see #layout(Class)
          * @since 20.2.0
@@ -395,7 +360,8 @@ public abstract class Shape {
         }
 
         /**
-         * Allows values to be implicitly cast from int to double in this shape.
+         * Allows values to be implicitly cast from int to double in this shape and any derived
+         * shapes.
          *
          * @see #layout(Class)
          * @since 20.2.0
@@ -856,7 +822,7 @@ public abstract class Shape {
     /**
      * Get the shape's layout.
      *
-     * @see Shape.Builder#layout(Layout)
+     * @see Shape.Builder#layout(Class)
      * @since 0.8 or earlier
      */
     public abstract Layout getLayout();
