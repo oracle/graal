@@ -368,7 +368,18 @@ public abstract class LoopTransformations {
         cleanupMerge(mainMergeNode, mainLandingNode);
 
         // Change the preLoop to execute one iteration for now
-        updatePreLoopLimit(preCounted);
+        if (graph.hasValueProxies()) {
+            /*
+             * The pre-loop exit's condition's induction variable start node might be already
+             * re-written to be a phi of merged loop exits from a previous pre-main-post creation,
+             * thus use an updated loop info.
+             */
+            loop.resetCounted();
+            loop.detectCounted();
+            updatePreLoopLimit(loop.counted());
+        } else {
+            updatePreLoopLimit(preCounted);
+        }
         preLoopBegin.setLoopFrequency(1.0);
         mainLoopBegin.setLoopFrequency(Math.max(1.0, mainLoopBegin.loopFrequency() - 2));
         postLoopBegin.setLoopFrequency(Math.max(1.0, postLoopBegin.loopFrequency() - 1));
