@@ -505,6 +505,10 @@ public class CompileQueue {
         return phaseSuite;
     }
 
+    public HostedUniverse getUniverse() {
+        return universe;
+    }
+
     public Map<HostedMethod, CompileTask> getCompilations() {
         return compilations;
     }
