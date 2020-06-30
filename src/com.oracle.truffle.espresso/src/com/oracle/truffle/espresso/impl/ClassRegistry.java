@@ -153,7 +153,7 @@ public abstract class ClassRegistry implements ContextAccess {
         this.loaderID = context.getNewLoaderId();
     }
 
-    protected void initUnnamedModule(StaticObject unnamedModule) {
+    public void initUnnamedModule(StaticObject unnamedModule) {
         this.unnamed = ModuleEntry.createUnnamedModuleEntry(unnamedModule, this);
     }
 

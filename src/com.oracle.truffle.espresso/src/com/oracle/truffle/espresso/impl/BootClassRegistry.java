@@ -59,7 +59,6 @@ public final class BootClassRegistry extends ClassRegistry {
 
     public BootClassRegistry(EspressoContext context) {
         super(context);
-        initUnnamedModule(StaticObject.NULL);
     }
 
     @Override

@@ -59,6 +59,9 @@ public final class ClassRegistries {
         this.context = context;
         this.bootClassRegistry = new BootClassRegistry(context);
         this.constraints = new LoadingConstraints(context);
+    }
+
+    public void initJavaBaseModule() {
         this.javaBaseModule = bootClassRegistry.modules().createAndAddEntry(Symbol.Name.java_base, bootClassRegistry);
     }
 
