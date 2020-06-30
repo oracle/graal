@@ -728,7 +728,7 @@ public final class StaticObject implements TruffleObject {
     }
 
     @SuppressWarnings({"unused", "static-method"})
-    @ExportMessage(name = "isArrayElementInsertable")
+    @ExportMessage
     boolean isArrayElementInsertable(long index) {
         return false;
     }
