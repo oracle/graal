@@ -268,7 +268,7 @@ public final class EspressoContext {
 
         initVmProperties();
 
-        if (getJavaVersion() >= 9) {
+        if (modulesEnabled()) {
             registries.initJavaBaseModule();
             registries.getBootClassRegistry().initUnnamedModule(StaticObject.NULL);
         }
@@ -555,7 +555,7 @@ public final class EspressoContext {
     public JImageLibrary jimageLibrary() {
         if (jimageLibrary == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            EspressoError.guarantee((getJavaVersion() >= 9), "Jimage availbale for java >= 9");
+            EspressoError.guarantee(modulesEnabled(), "Jimage availbale for java >= 9");
             this.jimageLibrary = new JImageLibrary(this);
         }
         return jimageLibrary;
@@ -563,6 +563,10 @@ public final class EspressoContext {
 
     public int getJavaVersion() {
         return getVmProperties().bootClassPathType().getJavaVersion();
+    }
+
+    public boolean modulesEnabled() {
+        return getJavaVersion() >= 9;
     }
 
     public Types getTypes() {

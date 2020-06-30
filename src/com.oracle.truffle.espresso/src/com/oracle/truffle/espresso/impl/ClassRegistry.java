@@ -114,7 +114,7 @@ public abstract class ClassRegistry implements ContextAccess {
     private final EspressoContext context;
 
     private final int loaderID;
-    protected ModuleEntry unnamed;
+    private ModuleEntry unnamed;
 
     private final PackageTable packages = new PackageTable();
     private final ModuleTable modules = new ModuleTable();

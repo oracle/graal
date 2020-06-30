@@ -397,6 +397,9 @@ public final class Meta implements ContextAccess {
         // Classes and Members that differ from Java 8 to 11
         // TODO(garcia) Decide on a naming convention for these classes
 
+        java_lang_class_module = java_lang_Class.lookupField(Name.module, Type.java_lang_Module);
+        java_lang_class_classLoader = java_lang_Class.lookupField(Name.classLoader, Type.java_lang_ClassLoader);
+
         java_lang_String_value = lookupFieldDiffVersion(java_lang_String, Name.value, Type._char_array, Name.value, Type._byte_array);
 
         java_lang_System_initializeSystemClass = java_lang_System.lookupDeclaredMethod(Name.initializeSystemClass, Signature._void);
@@ -470,6 +473,8 @@ public final class Meta implements ContextAccess {
     public final Field HIDDEN_MIRROR_KLASS;
     public final Field HIDDEN_PROTECTION_DOMAIN;
     public final Field HIDDEN_SIGNERS;
+    public final Field java_lang_class_module;
+    public final Field java_lang_class_classLoader;
     public final Field sun_reflect_ConstantPool_constantPoolOop;
     public final ArrayKlass java_lang_Class_array;
     public final Method java_lang_Class_forName_String;

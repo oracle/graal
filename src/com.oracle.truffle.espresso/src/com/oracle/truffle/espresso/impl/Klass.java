@@ -252,6 +252,9 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         this.superInterfaces = superInterfaces;
         this.id = context.getNewKlassId();
         this.modifiers = modifiers;
+        if (!isArray() && !isPrimitive()) {
+            initRuntimePackage();
+        }
     }
 
     public abstract @Host(ClassLoader.class) StaticObject getDefiningClassLoader();
@@ -904,19 +907,20 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return InterpreterToVM.newObject(this, false);
     }
 
-    // TODO(garcia) Symbolify package ?
-    @CompilationFinal private String runtimePackage;
+    @CompilationFinal private Symbol<Name> runtimePackage;
 
-    public final String getRuntimePackage() {
-        String pkg = runtimePackage;
-        if (runtimePackage == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            assert !isArray();
-            pkg = Types.getRuntimePackage(getType());
-            assert !pkg.endsWith(";");
-            runtimePackage = pkg;
+    public Symbol<Name> getRuntimePackage() {
+        return runtimePackage;
+    }
+
+    private Symbol<Name> initRuntimePackage() {
+        assert !isArray();
+        String hostPkgName = Types.getRuntimePackage(getType());
+        assert !hostPkgName.endsWith(";");
+        if (hostPkgName.length() == 0) {
+            return null;
         }
-        return pkg;
+        return getNames().getOrCreate(hostPkgName);
     }
 
     public Symbol<Name> getName() {
