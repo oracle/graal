@@ -498,10 +498,10 @@ public abstract class EspressoProcessor extends AbstractProcessor {
     static boolean appendInvocationMetaInformation(StringBuilder str, boolean first, SubstitutionHelper helper) {
         boolean f = getGuestCallsForInvoke(str, helper.guestCalls, first);
         if (helper.hasMetaInjection) {
-            f = injectMeta(str, first);
+            f = injectMeta(str, f);
         }
         if (helper.hasProfileInjection) {
-            f = injectProfile(str, first);
+            f = injectProfile(str, f);
         }
         return f;
     }

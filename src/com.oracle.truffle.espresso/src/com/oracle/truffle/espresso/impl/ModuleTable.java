@@ -42,12 +42,13 @@ public class ModuleTable extends EntryTable<ModuleTable.ModuleEntry, ClassRegist
         return new ModuleEntry(name, registry);
     }
 
-    public ModuleEntry createAndAddEntry(Symbol<Name> name, ClassRegistry registry, StaticObject module) {
+    public ModuleEntry createAndAddEntry(Symbol<Name> name, ClassRegistry registry, boolean isOpen, StaticObject module) {
         ModuleEntry moduleEntry = createAndAddEntry(name, registry);
         if (moduleEntry == null) {
             return null;
         }
         moduleEntry.setModule(module);
+        moduleEntry.isOpen = isOpen;
         return moduleEntry;
     }
 

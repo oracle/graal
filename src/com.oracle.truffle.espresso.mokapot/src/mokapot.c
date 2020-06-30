@@ -1277,7 +1277,7 @@ JNIEXPORT void JNICALL JVM_AddModuleExportsToAllUnnamed(JNIEnv *env, jobject fro
 }
 
 JNIEXPORT void JNICALL JVM_AddModuleExportsToAll(JNIEnv *env, jobject from_module, const char* package) {
-  UNIMPLEMENTED(JVM_AddModuleExportsToAll);
+  IMPLEMENTED(JVM_AddModuleExportsToAll);
   (*getEnv())->JVM_AddModuleExportsToAll(env, from_module, package);
   return;
 }
@@ -1333,8 +1333,8 @@ JNIEXPORT void JNICALL JVM_DefineModule(JNIEnv *env, jobject module, jboolean is
 }
 
 JNIEXPORT jobject JNICALL JVM_GetAndClearReferencePendingList(JNIEnv *env) {
-  UNIMPLEMENTED(JVM_GetAndClearReferencePendingList);
-  return NULL;
+  IMPLEMENTED(JVM_GetAndClearReferencePendingList);
+  return (*getEnv())->JVM_GetAndClearReferencePendingList(env);
 }
 
 JNIEXPORT jlong JNICALL JVM_GetNanoTimeAdjustment(JNIEnv *env, jclass ignored, jlong offset_secs) {
@@ -1401,8 +1401,8 @@ JNIEXPORT void JNICALL JVM_SetBootLoaderUnnamedModule(JNIEnv *env, jobject modul
 }
 
 JNIEXPORT void JNICALL JVM_WaitForReferencePendingList(JNIEnv *env) {
-  UNIMPLEMENTED(JVM_WaitForReferencePendingList);
-  return;
+  IMPLEMENTED(JVM_WaitForReferencePendingList);
+  (*getEnv())->JVM_WaitForReferencePendingList(env);
 }
 
 // region Invocation API

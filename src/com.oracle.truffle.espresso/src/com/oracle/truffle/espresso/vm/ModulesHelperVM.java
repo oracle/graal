@@ -23,6 +23,8 @@
 
 package com.oracle.truffle.espresso.vm;
 
+import static com.oracle.truffle.espresso.meta.EspressoError.cat;
+
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -54,7 +56,7 @@ public class ModulesHelperVM {
             toModuleEntry = getModuleEntry(to_module, meta);
             if (toModuleEntry == null) {
                 profiler.profile(8);
-                throw Meta.throwException(meta.java_lang_IllegalArgumentException);
+                throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "to_module is invalid");
             }
         }
         return toModuleEntry;
@@ -69,23 +71,27 @@ public class ModulesHelperVM {
         ModuleTable.ModuleEntry fromModuleEntry = getModuleEntry(from_module, meta);
         if (fromModuleEntry == null) {
             profiler.profile(10);
-            throw Meta.throwException(meta.java_lang_IllegalArgumentException);
+            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "from_module cannot be found");
         }
         return fromModuleEntry;
     }
 
     static final PackageTable.PackageEntry extractPackageEntry(@Pointer TruffleObject pkgName, ModuleTable.ModuleEntry fromModuleEntry, Meta meta, SubstitutionProfiler profiler) {
         String pkg = NativeEnv.interopPointerToString(pkgName);
+        PackageTable.PackageEntry packageEntry = null;
         Symbol<Symbol.Name> nameSymbol = meta.getContext().getNames().lookup(pkg);
-        if (nameSymbol == null) {
-            // If symbol is not found, there is absolutely no chance that we will find a match.
-            profiler.profile(11);
-            throw Meta.throwException(meta.java_lang_IllegalArgumentException);
+        if (nameSymbol != null) {
+            packageEntry = getPackageEntry(fromModuleEntry, nameSymbol);
         }
-        PackageTable.PackageEntry packageEntry = getPackageEntry(fromModuleEntry, nameSymbol);
-        if (packageEntry == null || packageEntry.module() != fromModuleEntry) {
+        if (packageEntry == null) {
+            profiler.profile(11);
+            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException,
+                            cat("package ", pkg, " cannot be found in ", fromModuleEntry.getName()));
+        }
+        if (packageEntry.module() != fromModuleEntry) {
             profiler.profile(12);
-            throw Meta.throwException(meta.java_lang_IllegalArgumentException);
+            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException,
+                            cat("package ", pkg, " found in ", packageEntry.module().getName(), ", not in ", fromModuleEntry.getName()));
         }
         return packageEntry;
     }
@@ -111,4 +117,5 @@ public class ModulesHelperVM {
             packageEntry.addExports(toModuleEntry);
         }
     }
+
 }

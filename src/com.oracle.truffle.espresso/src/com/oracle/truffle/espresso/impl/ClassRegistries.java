@@ -103,7 +103,7 @@ public final class ClassRegistries {
     }
 
     public boolean javaBaseDefined() {
-        return javaBaseModule != null && !StaticObject.isNull(javaBaseModule.module());
+        return javaBaseModule != null && javaBaseModule.module() != null;
     }
 
     @TruffleBoundary

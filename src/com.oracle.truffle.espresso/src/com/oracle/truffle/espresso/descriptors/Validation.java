@@ -137,7 +137,7 @@ public final class Validation {
             while (i < chars.length() && chars.charAt(i) != '/') {
                 ++i;
             }
-            if (!validUnqualifiedName(chars.subSequence(prev, i - prev))) {
+            if (!validUnqualifiedName(chars.subSequence(prev, i))) {
                 return false;
             }
             prev = i + 1;

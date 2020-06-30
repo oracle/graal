@@ -64,7 +64,8 @@ public final class EspressoError extends Error {
         throw new EspressoError(msg, cause);
     }
 
-    private static String cat(Object[] strs) {
+    @CompilerDirectives.TruffleBoundary
+    public static String cat(Object... strs) {
         StringBuilder res = new StringBuilder();
         for (Object str : strs) {
             res.append(str);
