@@ -80,6 +80,7 @@ export function activate(context: vscode.ExtensionContext) {
 		config();
 		startLanguageServer(graalVMHome);
 	}
+	vscode.window.setStatusBarMessage('GraalVM extension activated', 3000);
 }
 
 export function deactivate(): Thenable<void> {
@@ -99,6 +100,14 @@ function config() {
 		}
 		let env: any = termConfig.get(section);
 		env.GRAALVM_HOME = graalVMHome;
+		let envPath = process.env.PATH;
+		if (envPath) {
+			if (!envPath.includes(`${graalVMHome}/bin`)) {
+				env.PATH = `${graalVMHome}/bin:${envPath}`;
+			}
+		} else {
+			env.PATH = `${graalVMHome}/bin`;
+		}
 		termConfig.update(section, env, true);
 		const javaConfig = vscode.workspace.getConfiguration('java');
 		if (javaConfig) {
