@@ -56,4 +56,6 @@ typedef struct {
   char fAVX512ER;
   char fAVX512CD;
   char fAVX512BW;
+  char fSHA;
+  char fFMA;
 } CPUFeatures;
