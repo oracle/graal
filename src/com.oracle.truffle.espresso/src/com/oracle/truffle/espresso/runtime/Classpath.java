@@ -470,6 +470,19 @@ public final class Classpath {
     }
 
     /**
+     * Gets a new classpath obtained by prepending a given entry to this class classpath.
+     *
+     * @param entry the entry to prepend to this classpath
+     * @return the result of prepending {@code classpath} to this classpath
+     */
+    public Classpath prepend(Entry entry) {
+        ArrayList<Entry> newEntries = new ArrayList<>(this.entries.size());
+        newEntries.add(entry);
+        newEntries.addAll(this.entries);
+        return new Classpath(newEntries);
+    }
+
+    /**
      * Searches for a class file denoted by a given class name on this classpath and returns its
      * contents in a byte array if found. Any IO exception that occurs when reading is silently
      * ignored.

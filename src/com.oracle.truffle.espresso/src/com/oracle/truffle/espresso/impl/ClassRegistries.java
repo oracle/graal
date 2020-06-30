@@ -62,7 +62,7 @@ public final class ClassRegistries {
         this.javaBaseModule = bootClassRegistry.modules().createAndAddEntry(Symbol.Name.java_base, bootClassRegistry);
     }
 
-    private ClassRegistry getClassRegistry(@Host(ClassLoader.class) StaticObject classLoader) {
+    public ClassRegistry getClassRegistry(@Host(ClassLoader.class) StaticObject classLoader) {
         if (StaticObject.isNull(classLoader)) {
             return bootClassRegistry;
         }

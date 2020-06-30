@@ -42,6 +42,15 @@ public class ModuleTable extends EntryTable<ModuleTable.ModuleEntry, ClassRegist
         return new ModuleEntry(name, registry);
     }
 
+    public ModuleEntry createAndAddEntry(Symbol<Name> name, ClassRegistry registry, StaticObject module) {
+        ModuleEntry moduleEntry = createAndAddEntry(name, registry);
+        if (moduleEntry == null) {
+            return null;
+        }
+        moduleEntry.setModule(module);
+        return moduleEntry;
+    }
+
     public static class ModuleEntry implements EntryTable.NamedEntry {
         private Symbol<Name> name;
 

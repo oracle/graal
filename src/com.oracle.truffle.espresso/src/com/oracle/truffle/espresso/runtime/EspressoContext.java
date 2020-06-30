@@ -36,6 +36,7 @@ import java.util.stream.Collectors;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
@@ -195,7 +196,7 @@ public final class EspressoContext {
 
     public Classpath getBootClasspath() {
         if (bootClasspath == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
+            CompilerAsserts.neverPartOfCompilation();
             bootClasspath = new Classpath(
                             getVmProperties().bootClasspath().stream().map(new Function<Path, String>() {
                                 @Override
@@ -205,6 +206,10 @@ public final class EspressoContext {
                             }).collect(Collectors.joining(File.pathSeparator)));
         }
         return bootClasspath;
+    }
+
+    public void setBootClassPath(Classpath classPath) {
+        this.bootClasspath = classPath;
     }
 
     public EspressoProperties getVmProperties() {

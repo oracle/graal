@@ -92,10 +92,12 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.descriptors.Validation;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
+import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ModuleTable;
 import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.impl.PackageTable;
@@ -112,6 +114,7 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
+import com.oracle.truffle.espresso.runtime.Classpath;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
@@ -2379,6 +2382,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                     @Pointer TruffleObject pkgs,
                     int num_package,
                     @InjectProfile SubstitutionProfiler profiler) {
+        // Arguments check
         if (StaticObject.isNull(module)) {
             throw getMeta().throwNullPointerException();
         }
@@ -2391,6 +2395,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         if (!getMeta().java_lang_Module.isAssignableFrom(module.getKlass())) {
             throw Meta.throwException(getMeta().java_lang_IllegalArgumentException);
         }
+
         StaticObject guestName = module.getField(getMeta().java_lang_Module_name);
         if (StaticObject.isNull(guestName)) {
             throw Meta.throwException(getMeta().java_lang_IllegalArgumentException);
@@ -2398,10 +2403,68 @@ public final class VM extends NativeEnv implements ContextAccess {
         String hostName = Meta.toHostString(guestName);
         if (hostName.equals(JAVA_BASE)) {
             defineJavaBaseModule(module, pkgs, num_package);
+            return;
+        }
+        defineModule(module, hostName, is_open, pkgs, num_package);
+    }
+
+    private static final String MODULES = "modules";
+
+    private void defineModule(StaticObject module, String moduleName, boolean is_open, TruffleObject pkgs, int num_package) {
+        StaticObject loader = module.getField(getMeta().java_lang_Module_loader);
+        if (loader != nonReflectionClassLoader(loader)) {
+            throw Meta.throwException(getMeta().java_lang_IllegalArgumentException);
+        }
+        ClassRegistry registry = getRegistries().getClassRegistry(loader);
+        assert registry != null;
+        PackageTable packageTable = registry.packages();
+        ModuleTable moduleTable = registry.modules();
+        assert moduleTable != null && packageTable != null;
+        boolean loaderIsBootOrPlatform = StaticObject.isNull(loader) && !getMeta().jdk_internal_ClassLoaders_PlatformClassLoader.isAssignableFrom(loader.getKlass());
+
+        ArrayList<Symbol<Name>> pkgSymbols = new ArrayList<>();
+        String[] packages = extractNativePackages(pkgs, num_package);
+        synchronized (packageTable.getLock()) {
+            for (String str : packages) {
+                // Extract the package symbols. Also checks for duplicates.
+                if (!loaderIsBootOrPlatform && str.startsWith("java/")) {
+                    // Only modules defined to either the boot or platform class loader, can define
+                    // a "java/" package.
+                    throw Meta.throwException(getMeta().java_lang_IllegalArgumentException);
+                }
+                Symbol<Name> symbol = getNames().getOrCreate(str);
+                if (packageTable.lookup(symbol) != null) {
+                    throw Meta.throwException(getMeta().java_lang_IllegalArgumentException);
+                }
+                pkgSymbols.add(symbol);
+            }
+            Symbol<Name> moduleSymbol = getNames().getOrCreate(moduleName);
+            // Try define module
+            ModuleEntry moduleEntry = moduleTable.createAndAddEntry(moduleSymbol, registry, module);
+            if (moduleEntry == null) {
+                // Module already defined
+                throw Meta.throwException(getMeta().java_lang_IllegalArgumentException);
+            }
+            // Register packages
+            for (Symbol<Name> p : pkgSymbols) {
+                PackageEntry pkgEntry = packageTable.createAndAddEntry(p, moduleEntry);
+            }
+            // Link guest module to its host representation
+            module.setField(getMeta().HIDDEN_MODULE_ENTRY, moduleEntry);
+        }
+        if (StaticObject.isNull(loader) && getContext().getVmProperties().bootClassPathType().isExplodedModule()) {
+            // If we have an exploded build, and the module is defined to the bootloader, prepend a
+            // class path entry for this module.
+            Path path = getContext().getVmProperties().javaHome().resolve(MODULES).resolve(moduleName);
+            Classpath.Entry newEntry = Classpath.createEntry(path.toString());
+            if (newEntry.isDirectory()) {
+                getContext().getBootClasspath().prepend(newEntry);
+                // TODO: prepend path to VM properties' bootClasspath
+            }
         }
     }
 
-    private void defineJavaBaseModule(StaticObject module, TruffleObject pkgs, int numPackages) {
+    private String[] extractNativePackages(TruffleObject pkgs, int numPackages) {
         String[] packages = new String[numPackages];
         try {
             for (int i = 0; i < numPackages; i++) {
@@ -2414,6 +2477,11 @@ public final class VM extends NativeEnv implements ContextAccess {
         } catch (UnsupportedMessageException | ArityException | UnsupportedTypeException e) {
             throw EspressoError.shouldNotReachHere();
         }
+        return packages;
+    }
+
+    private void defineJavaBaseModule(StaticObject module, TruffleObject pkgs, int numPackages) {
+        String[] packages = extractNativePackages(pkgs, numPackages);
         StaticObject loader = module.getField(getMeta().java_lang_Module_loader);
         if (!StaticObject.isNull(loader)) {
             throw Meta.throwException(getMeta().java_lang_IllegalArgumentException);
@@ -2433,7 +2501,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             javaBaseEntry.setModule(module);
             module.setHiddenField(getMeta().HIDDEN_MODULE_ENTRY, javaBaseEntry);
         }
-
+        // TODO: patch java.base classes
     }
 
     @VmImpl

@@ -209,6 +209,8 @@ public final class Meta implements ContextAccess {
         java_lang_ClassLoader_unnamedModule = java_lang_ClassLoader.lookupDeclaredField(Name.unnamedModule, Type.java_lang_Module);
         HIDDEN_CLASS_LOADER_REGISTRY = java_lang_ClassLoader.lookupHiddenField(Name.HIDDEN_CLASS_LOADER_REGISTRY);
 
+        jdk_internal_ClassLoaders_PlatformClassLoader = knownKlass(Type.jdk_internal_ClassLoaders$PlatformClassLoader);
+
         java_lang_Module = knownKlass(Type.java_lang_Module);
         if (java_lang_Module != null) {
             java_lang_Module_name = java_lang_Module.lookupField(Name.name, Type.java_lang_String);
@@ -538,6 +540,8 @@ public final class Meta implements ContextAccess {
     public final Method java_lang_ClassLoader_findNative;
     public final Method java_lang_ClassLoader_getSystemClassLoader;
     public final Field HIDDEN_CLASS_LOADER_REGISTRY;
+
+    public final ObjectKlass jdk_internal_ClassLoaders_PlatformClassLoader;
 
     public final ObjectKlass java_lang_Module;
     public final Field java_lang_Module_name;

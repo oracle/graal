@@ -49,14 +49,14 @@ public abstract class EntryTable<T extends EntryTable.NamedEntry, K> {
     }
 
     public T lookupOrCreate(Symbol<Name> name, K data) {
-        T pkg = lookup(name);
-        if (pkg != null) {
-            return pkg;
+        T entry = lookup(name);
+        if (entry != null) {
+            return entry;
         }
         synchronized (getLock()) {
-            pkg = lookup(name);
-            if (pkg != null) {
-                return pkg;
+            entry = lookup(name);
+            if (entry != null) {
+                return entry;
             }
             return addEntry(name, data);
         }
@@ -71,7 +71,7 @@ public abstract class EntryTable<T extends EntryTable.NamedEntry, K> {
         }
     }
 
-    public T addEntry(Symbol<Name> pkg, K data) {
+    private T addEntry(Symbol<Name> pkg, K data) {
         T entry = createEntry(pkg, data);
         entries.add(entry);
         return entry;
