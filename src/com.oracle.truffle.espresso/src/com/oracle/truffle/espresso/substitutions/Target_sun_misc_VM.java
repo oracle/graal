@@ -31,11 +31,11 @@ public final class Target_sun_misc_VM {
     }
 
     public static class SharedVM extends SubstitutionNamesProvider {
-        public static SubstitutionNamesProvider INSTANCE = new SharedVM();
         private static String[] NAMES = new String[]{
                         "Target_sun_misc_VM",
                         "Target_jdk_internal_misc_VM"
         };
+        public static SubstitutionNamesProvider INSTANCE = new SharedVM();
 
         @Override
         public String[] substitutionClassNames() {

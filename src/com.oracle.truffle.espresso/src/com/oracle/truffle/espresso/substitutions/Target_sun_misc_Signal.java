@@ -46,11 +46,11 @@ public final class Target_sun_misc_Signal {
     }
 
     public static class SharedSignal extends SubstitutionNamesProvider {
-        public static SubstitutionNamesProvider INSTANCE = new SharedSignal();
         private static String[] NAMES = new String[]{
                         TARGET_SUN_MISC_SIGNAL,
                         TARGET_JDK_INTERNAL_MISC_SIGNAL
         };
+        public static SubstitutionNamesProvider INSTANCE = new SharedSignal();
 
         @Override
         public String[] substitutionClassNames() {

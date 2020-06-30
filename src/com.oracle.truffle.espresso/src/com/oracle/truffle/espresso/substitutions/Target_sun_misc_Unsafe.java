@@ -1301,11 +1301,11 @@ public final class Target_sun_misc_Unsafe {
     }
 
     public static class SharedUnsafe extends SubstitutionNamesProvider {
-        public static SubstitutionNamesProvider INSTANCE = new SharedUnsafe();
         private static String[] NAMES = new String[]{
                         TARGET_SUN_MISC_UNSAFE,
                         TARGET_JDK_INTERNAL_MISC_UNSAFE
         };
+        public static SubstitutionNamesProvider INSTANCE = new SharedUnsafe();
 
         @Override
         public String[] substitutionClassNames() {
@@ -1323,10 +1323,10 @@ public final class Target_sun_misc_Unsafe {
     }
 
     public static class Unsafe8 extends SubstitutionNamesProvider {
-        public static SubstitutionNamesProvider INSTANCE = new Unsafe8();
         private static String[] NAMES = new String[]{
                         TARGET_SUN_MISC_UNSAFE
         };
+        public static SubstitutionNamesProvider INSTANCE = new Unsafe8();
 
         @Override
         public String[] substitutionClassNames() {
@@ -1335,10 +1335,10 @@ public final class Target_sun_misc_Unsafe {
     }
 
     public static class Unsafe11 extends SubstitutionNamesProvider {
-        public static SubstitutionNamesProvider INSTANCE = new Unsafe11();
         private static String[] NAMES = new String[]{
                         TARGET_JDK_INTERNAL_MISC_UNSAFE
         };
+        public static SubstitutionNamesProvider INSTANCE = new Unsafe11();
 
         @Override
         public String[] substitutionClassNames() {
