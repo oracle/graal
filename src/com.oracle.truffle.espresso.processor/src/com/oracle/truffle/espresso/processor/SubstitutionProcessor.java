@@ -216,14 +216,6 @@ public class SubstitutionProcessor extends EspressoProcessor {
         return null;
     }
 
-    private String getAnnotatedStringElement(TypeElement typeElement, ExecutableElement element, TypeElement annotation) {
-        AnnotationMirror substitutionsAnnotation = getAnnotation(typeElement, annotation);
-        Map<? extends ExecutableElement, ? extends AnnotationValue> members = processingEnv.getElementUtils().getElementValuesWithDefaults(substitutionsAnnotation);
-        AnnotationValue value = members.get(element);
-        String j11Name = (String) value.getValue();
-        return j11Name;
-    }
-
     String getReturnTypeFromHost(ExecutableElement method) {
         TypeMirror returnType = method.getReturnType();
         AnnotationMirror a = getAnnotation(returnType, host);
@@ -428,7 +420,7 @@ public class SubstitutionProcessor extends EspressoProcessor {
         return str.toString();
     }
 
-    private String generateNameProviders(String targetMethodName, SubstitutorHelper h) {
+    private static String generateNameProviders(String targetMethodName, SubstitutorHelper h) {
         StringBuilder str = new StringBuilder();
         String nameProvider = h.nameProvider.toString().substring((SUBSTITUTION_PACKAGE + ".").length());
 
