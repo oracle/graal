@@ -767,6 +767,8 @@ def _get_fuzz_tool(tool):
 def fuzz(args=None, out=None):
     parser = ArgumentParser(prog='mx fuzz', description='')
     parser.add_argument('--seed', help='Seed used for randomness.', metavar='<seed>', type=int, default=int(time.time()))
+    parser.add_argument('--size', help='Approximate size for the generated testcases in lines of code.', metavar='<size>', type=int, default=30)
+    parser.add_argument('--generator', help='Tool used for generating the testcases. Valid options: llvm-stress|csmith', metavar='<generator>', choices=["llvm-stress", "csmith"], default="llvm-stress")
     parser.add_argument('--nrtestcases', help='Number of testcases to be generated.', metavar='<nrtestcases>', type=int, default=10)
     parser.add_argument('outdir', help='The output directory.', metavar='<outdir>')
     parsed_args = parser.parse_args(args)
@@ -775,6 +777,8 @@ def fuzz(args=None, out=None):
     try:        
         tmp_dir = tempfile.mkdtemp()
         tmp_ll = os.path.join(tmp_dir, 'tmp.ll')
+        tmp_main_ll = os.path.join(tmp_dir, 'tmp.main.ll')
+        tmp_c = os.path.join(tmp_dir, 'tmp.c')
         tmp_out = os.path.join(tmp_dir, 'tmp.out')
         tmp_sulong_out = os.path.join(tmp_dir, 'tmp_sulong_out.txt')
         tmp_bin_out = os.path.join(tmp_dir, 'tmp_bin_out.txt')
@@ -784,16 +788,23 @@ def fuzz(args=None, out=None):
 
         passed = 0
         invalid = 0
+        gen = []
         for _ in range(parsed_args.nrtestcases):
-            #TODO add llvm-stress to toolchain
-            tool = _get_fuzz_tool("llvm-stress")
-            mx.run([tool, "-o", tmp_ll, "-seed", str(rand.randint(0, 10000000)), "-size", str(300)])
-            #TODO add recipe for fuzzmain in Makefile
-            #TODO don't use sulong bootstrap clang
             toolchain_clang = _get_toolchain_tool("native,CC")
-            fuzz_main = os.path.join(mx.dependency('com.oracle.truffle.llvm.tools.fuzzing.native', fatalIfMissing=True).dir, "src", "fuzzmain.c")
-            mx.run([toolchain_clang, "-O0", "-lm", "-o", tmp_out, tmp_ll, fuzz_main])
-            timeout = 10000
+            if parsed_args.generator == "llvm-stress":
+                mx.run([_get_fuzz_tool("llvm-stress"), "-o", tmp_ll, "--size", str(parsed_args.size), "--seed", str(rand.randint(0, 10000000))])
+                fuzz_main = os.path.join(mx.dependency('com.oracle.truffle.llvm.tools.fuzzing.native', fatalIfMissing=True).dir, "src", "fuzzmain.c")
+                mx.run([toolchain_clang, "-O0", "-Wno-everything", "-o", tmp_out, tmp_ll, fuzz_main])
+                llvm_tool(["clang", "-O0", "-Wno-everything", "-S", "-emit-llvm", "-o", tmp_main_ll, fuzz_main])
+                llvm_tool(["llvm-link", "-o", tmp_ll, tmp_ll, tmp_main_ll])
+                llvm_tool(["llvm-dis", "-o", tmp_ll, tmp_ll])
+            else:
+                mx.run([which("csmith"), "-o", tmp_c, "--seed", str(rand.randint(0, 10000000))])
+                csmith_runtime = os.path.join(os.environ['CSMITH_HOME'], 'runtime')
+                mx.run([toolchain_clang, "-O0", "-Wno-everything", "-I"+csmith_runtime, "-o", tmp_out, tmp_c])
+                llvm_tool(["clang", "-O0", "-Wno-everything", "-S", "-emit-llvm", "-I"+csmith_runtime, "-o", tmp_ll, tmp_c])
+                gen.append((tmp_c, 'autogen.c'))
+            timeout = 10
             with open(tmp_sulong_out, 'w') as o, open(tmp_sulong_err, 'w') as e:
                 runLLVM(['--llvm.llDebug', '--llvm.traceIR', '--experimental-options', tmp_out], timeout=timeout, nonZeroIsFatal=False, out=o, err=e)
             with open(tmp_bin_out, 'w') as o, open(tmp_bin_err, 'w') as e:
@@ -808,9 +819,9 @@ def fuzz(args=None, out=None):
             else:
                 now = str(datetime.datetime.now())
                 now = now.replace(":","_")
-                current_out_dir = os.path.join(parsed_args.outdir, now)
+                current_out_dir = os.path.join(parsed_args.outdir, now + "_" + parsed_args.generator)
                 os.makedirs(current_out_dir)
-                gen = [
+                gen += [
                     (tmp_ll, 'autogen.ll'),
                     (tmp_out, 'autogen'),
                     (tmp_sulong_out, 'sulong_out.txt'),
@@ -823,8 +834,9 @@ def fuzz(args=None, out=None):
     finally:
         if tmp_dir:
             shutil.rmtree(tmp_dir)
-    print("Test report:")
-    print("tests passed: %i/%i invalid tests: %i seed: %i" % (passed, parsed_args.nrtestcases-invalid, invalid, parsed_args.seed))
+    print("Test report")
+    print("total testcases: %i seed: %i" % (parsed_args.nrtestcases, parsed_args.seed))
+    print("interesting testcases: %i invalid testcases: %i" % (parsed_args.nrtestcases-invalid-passed, invalid))
 
 
 def ll_reduce(args=None, out=None):
@@ -852,7 +864,7 @@ def ll_reduce(args=None, out=None):
         tmp_sulong_out = os.path.join(tmp_dir, 'tmp_sulong_out.txt')
         tmp_sulong_err = os.path.join(tmp_dir, 'tmp_sulong_err.txt')
         rand = Random(parsed_args.seed)
-        lli_timeout = 10000
+        lli_timeout = 10
         devnull = open(os.devnull, 'w')
 
         def run_lli(input_f, out_f, err_f):
@@ -882,6 +894,53 @@ def ll_reduce(args=None, out=None):
     finally:
         if tmp_ll and os.path.isfile(tmp_ll):
             shutil.copy(tmp_ll, parsed_args.output or (os.path.splitext(parsed_args.input)[0] + ".reduced.ll"))
+        if tmp_dir:
+            shutil.rmtree(tmp_dir)
+
+def check_interesting(args=None, out=None):
+    parser = ArgumentParser(prog='mx check-interesting', description='')
+    parser.add_argument('input', help='The input file.', metavar='<input>')
+    parser.add_argument('--startswith', help='Prefix the output of interesting testprograms has to start with.', metavar='<startswith>', default=None)
+    parsed_args = parser.parse_args(args)
+
+    tmp_dir = None
+    try:
+        tmp_dir = tempfile.mkdtemp()
+        tmp_out = os.path.join(tmp_dir, 'tmp.out')
+        tmp_out_o3 = os.path.join(tmp_dir, 'tmp.o3.out')
+        tmp_sulong_out = os.path.join(tmp_dir, 'tmp_sulong_out.txt')
+        tmp_bin_out = os.path.join(tmp_dir, 'tmp_bin_out.txt')
+        tmp_sulong_err = os.path.join(tmp_dir, 'tmp_sulong_err.txt')
+        tmp_bin_err = os.path.join(tmp_dir, 'tmp_bin_err.txt')
+        tmp_bin_out_o3 = os.path.join(tmp_dir, 'tmp_bin_out_o3.txt')
+        tmp_bin_err_o3 = os.path.join(tmp_dir, 'tmp_bin_err_o3.txt')
+        try:
+            toolchain_clang = _get_toolchain_tool("native,CC")
+            mx.run([toolchain_clang, "-O0", "-Wno-everything", "-o", tmp_out, parsed_args.input])
+            mx.run([toolchain_clang, "-O3", "-Wno-everything", "-o", tmp_out_o3, parsed_args.input])
+        except SystemExit:
+            exit(0)
+        with open(tmp_sulong_out, 'w') as o, open(tmp_sulong_err, 'w') as e:
+            runLLVM([tmp_out], timeout=10, nonZeroIsFatal=False, out=o, err=e)
+        with open(tmp_bin_out, 'w') as o, open(tmp_bin_err, 'w') as e:
+            try:
+               mx.run([tmp_out], timeout=10, out=o, err=e)
+            except SystemExit:
+               exit(0)
+        with open(tmp_bin_out_o3, 'w') as o, open(tmp_bin_err_o3, 'w') as e:
+            try:
+               mx.run([tmp_out_o3], timeout=10, out=o, err=e)
+            except SystemExit:
+               exit(0)
+        if not all(filecmp.cmp(bin_f, bin_f_o3, shallow=False) for bin_f, bin_f_o3 in ((tmp_bin_out, tmp_bin_out_o3), (tmp_bin_err, tmp_bin_err_o3))):
+            exit(0)
+        if not all(filecmp.cmp(sulong_f, bin_f, shallow=False) for sulong_f, bin_f in ((tmp_sulong_out, tmp_bin_out), (tmp_sulong_err, tmp_bin_err))):
+            if parsed_args.startswith:
+                with open(tmp_sulong_out, 'r') as so, open(tmp_bin_out, 'r') as bo:
+                    if not all(fl.startswith(parsed_args.startswith) for fl in (next(so, ""), next(bo, ""))):
+                        exit(0)
+            exit(1)
+    finally:
         if tmp_dir:
             shutil.rmtree(tmp_dir)
 
@@ -1177,5 +1236,6 @@ mx.update_commands(_suite, {
     'llvm-tool' : [llvm_tool, 'Run a tool from the LLVM.ORG distribution'],
     'llvm-dis' : [llvm_dis, 'Disassemble (embedded) LLVM bitcode to LLVM assembly'],
     'fuzz' : [fuzz, ''],
-    'll-reduce' : [ll_reduce, '']
+    'll-reduce' : [ll_reduce, ''],
+    'check-interesting' : [check_interesting, '']
 })
