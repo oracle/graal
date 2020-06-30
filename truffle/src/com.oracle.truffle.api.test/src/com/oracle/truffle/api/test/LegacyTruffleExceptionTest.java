@@ -52,7 +52,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.test.TruffleExceptionTest;
 import com.oracle.truffle.api.test.TruffleExceptionTest.BlockNode;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
@@ -60,9 +59,6 @@ import org.graalvm.polyglot.PolyglotException;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-
-
-
 
 public class LegacyTruffleExceptionTest extends AbstractPolyglotTest {
 

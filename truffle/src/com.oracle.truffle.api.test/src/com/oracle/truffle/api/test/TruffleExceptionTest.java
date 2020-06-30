@@ -166,17 +166,17 @@ public class TruffleExceptionTest extends AbstractPolyglotTest {
 
     private static class LogNode extends StatementNode {
 
-        private final TruffleLogger LOG;
+        private final TruffleLogger log;
         private final String message;
 
         LogNode(Class<?> testClass, String message) {
-            LOG = TruffleLogger.getLogger(ProxyLanguage.ID, testClass.getName());
+            log = TruffleLogger.getLogger(ProxyLanguage.ID, testClass.getName());
             this.message = message;
         }
 
         @Override
         Object execute(VirtualFrame frame) {
-            LOG.fine(message);
+            log.fine(message);
             return true;
         }
     }
@@ -243,7 +243,6 @@ public class TruffleExceptionTest extends AbstractPolyglotTest {
         }
     }
 
-
     @SuppressWarnings("serial")
     @ExportLibrary(InteropLibrary.class)
     static final class TruffleExceptionImpl extends TruffleException {
@@ -297,7 +296,7 @@ public class TruffleExceptionTest extends AbstractPolyglotTest {
         @ExportMessage(name = "getSourceLocation")
         public SourceSection sourceLocation() throws UnsupportedMessageException {
             if (location == null) {
-                 throw UnsupportedMessageException.create();
+                throw UnsupportedMessageException.create();
             }
             return location.getEncapsulatingSourceSection();
         }

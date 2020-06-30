@@ -42,41 +42,48 @@ package com.oracle.truffle.api.interop;
 
 /**
  * Represents a {@link TruffleException} type.
+ *
  * @since 20.2
  */
 public enum ExceptionType implements TruffleObject {
     /**
      * Indicates that guest language application was cancelled during its execution.
+     *
      * @since 20.2
      */
     CANCEL,
 
     /**
      * Indicates that the application was exited within the guest language program.
+     *
      * @since 20.2
      */
     EXIT,
 
     /**
      * Indicates a guest language error.
+     *
      * @since 20.2
      */
     GUEST_LANGUAGE_ERROR,
 
     /**
      * Indicates a syntax error that is indicating that the syntax is incomplete.
+     *
      * @since 20.2
      */
     INCOMPLETE_SOURCE,
 
     /**
      * Indicates an internal error.
+     *
      * @since 20.2
      */
     INTERNAL_ERROR,
 
     /**
      * Indicates a parser or syntax error.
+     *
      * @since 20.2
      */
     SYNTAX_ERROR

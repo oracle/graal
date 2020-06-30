@@ -59,7 +59,8 @@ final class HostException extends TruffleException {
 
     HostException(Throwable original) {
         this.original = original;
-        this.delegate = HostObject.forException(original, PolyglotContextImpl.currentNotEntered().getHostContext(), this);
+        PolyglotContextImpl context = PolyglotContextImpl.currentNotEntered();
+        this.delegate = HostObject.forException(original, context != null ? context.getHostContext() : null, this);
     }
 
     Throwable getOriginal() {

@@ -97,7 +97,6 @@ import com.oracle.truffle.api.source.SourceSection;
 @SuppressWarnings({"serial", "deprecation"})
 public abstract class TruffleException extends RuntimeException implements TruffleObject, com.oracle.truffle.api.TruffleException {
 
-
     private final int stackTraceElementLimit;
     private volatile Throwable lazyStackTrace;
 

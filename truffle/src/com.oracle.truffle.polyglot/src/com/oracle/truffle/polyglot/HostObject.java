@@ -120,11 +120,11 @@ final class HostObject implements TruffleObject {
     }
 
     static boolean isInstance(Object obj) {
-        return obj instanceof HostObject;
+        return obj instanceof HostObject || obj instanceof HostException;
     }
 
     static boolean isInstance(TruffleObject obj) {
-        return obj instanceof HostObject;
+        return obj instanceof HostObject || obj instanceof HostException;
     }
 
     HostObject withContext(PolyglotLanguageContext context) {
@@ -132,7 +132,7 @@ final class HostObject implements TruffleObject {
     }
 
     static boolean isJavaInstance(Class<?> targetType, Object javaObject) {
-        if (javaObject instanceof HostObject) {
+        if (isInstance(javaObject)) {
             final Object value = valueOf(javaObject);
             return targetType.isInstance(value);
         } else {
@@ -141,8 +141,12 @@ final class HostObject implements TruffleObject {
     }
 
     static Object valueOf(Object value) {
-        final HostObject obj = (HostObject) value;
-        return obj.obj;
+        if (value instanceof HostException) {
+            return ((HostException) value).getOriginal();
+        } else {
+            final HostObject obj = (HostObject) value;
+            return obj.obj;
+        }
     }
 
     @Override
