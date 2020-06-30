@@ -47,12 +47,14 @@ public class ImplicitExceptions {
     public static final ArrayIndexOutOfBoundsException CACHED_OUT_OF_BOUNDS_EXCEPTION = new ArrayIndexOutOfBoundsException(NO_STACK_MSG);
     public static final ClassCastException CACHED_CLASS_CAST_EXCEPTION = new ClassCastException(NO_STACK_MSG);
     public static final ArrayStoreException CACHED_ARRAY_STORE_EXCEPTION = new ArrayStoreException(NO_STACK_MSG);
+    public static final IllegalArgumentException CACHED_ILLEGAL_ARGUMENT_EXCEPTION = new IllegalArgumentException(NO_STACK_MSG);
     public static final ArithmeticException CACHED_ARITHMETIC_EXCEPTION = new ArithmeticException(NO_STACK_MSG);
 
     public static final SubstrateForeignCallDescriptor CREATE_NULL_POINTER_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createNullPointerException", false);
     public static final SubstrateForeignCallDescriptor CREATE_OUT_OF_BOUNDS_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createOutOfBoundsException", false);
     public static final SubstrateForeignCallDescriptor CREATE_CLASS_CAST_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createClassCastException", false);
     public static final SubstrateForeignCallDescriptor CREATE_ARRAY_STORE_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createArrayStoreException", false);
+    public static final SubstrateForeignCallDescriptor CREATE_ILLEGAL_ARGUMENT_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createIllegalArgumentException", false);
     public static final SubstrateForeignCallDescriptor CREATE_DIVISION_BY_ZERO_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "createDivisionByZeroException", false);
 
     public static final SubstrateForeignCallDescriptor THROW_NEW_NULL_POINTER_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewNullPointerException", true);
@@ -64,6 +66,8 @@ public class ImplicitExceptions {
     public static final SubstrateForeignCallDescriptor THROW_NEW_ARRAY_STORE_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewArrayStoreException", true);
     public static final SubstrateForeignCallDescriptor THROW_NEW_ARRAY_STORE_EXCEPTION_WITH_ARGS = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewArrayStoreExceptionWithArgs",
                     true);
+    public static final SubstrateForeignCallDescriptor THROW_NEW_ILLEGAL_ARGUMENT_EXCEPTION_WITH_ARGS = SnippetRuntime.findForeignCall(ImplicitExceptions.class,
+                    "throwNewIllegalArgumentExceptionWithArgs", true);
     public static final SubstrateForeignCallDescriptor THROW_NEW_ARITHMETIC_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewArithmeticException", true);
     public static final SubstrateForeignCallDescriptor THROW_NEW_DIVISION_BY_ZERO_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwNewDivisionByZeroException", true);
 
@@ -71,20 +75,26 @@ public class ImplicitExceptions {
     public static final SubstrateForeignCallDescriptor GET_CACHED_OUT_OF_BOUNDS_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "getCachedOutOfBoundsException", false);
     public static final SubstrateForeignCallDescriptor GET_CACHED_CLASS_CAST_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "getCachedClassCastException", false);
     public static final SubstrateForeignCallDescriptor GET_CACHED_ARRAY_STORE_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "getCachedArrayStoreException", false);
+    public static final SubstrateForeignCallDescriptor GET_CACHED_ILLEGAL_ARGUMENT_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "getCachedIllegalArgumentException", false);
     public static final SubstrateForeignCallDescriptor GET_CACHED_ARITHMETIC_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "getCachedArithmeticException", false);
 
     public static final SubstrateForeignCallDescriptor THROW_CACHED_NULL_POINTER_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwCachedNullPointerException", true);
     public static final SubstrateForeignCallDescriptor THROW_CACHED_OUT_OF_BOUNDS_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwCachedOutOfBoundsException", true);
     public static final SubstrateForeignCallDescriptor THROW_CACHED_CLASS_CAST_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwCachedClassCastException", true);
     public static final SubstrateForeignCallDescriptor THROW_CACHED_ARRAY_STORE_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwCachedArrayStoreException", true);
+    public static final SubstrateForeignCallDescriptor THROW_CACHED_ILLEGAL_ARGUMENT_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwCachedIllegalArgumentException", true);
     public static final SubstrateForeignCallDescriptor THROW_CACHED_ARITHMETIC_EXCEPTION = SnippetRuntime.findForeignCall(ImplicitExceptions.class, "throwCachedArithmeticException", true);
 
     public static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{
-                    CREATE_NULL_POINTER_EXCEPTION, CREATE_OUT_OF_BOUNDS_EXCEPTION, CREATE_CLASS_CAST_EXCEPTION, CREATE_ARRAY_STORE_EXCEPTION, CREATE_DIVISION_BY_ZERO_EXCEPTION,
+                    CREATE_NULL_POINTER_EXCEPTION, CREATE_OUT_OF_BOUNDS_EXCEPTION, CREATE_CLASS_CAST_EXCEPTION, CREATE_ARRAY_STORE_EXCEPTION, CREATE_ILLEGAL_ARGUMENT_EXCEPTION,
+                    CREATE_DIVISION_BY_ZERO_EXCEPTION,
                     THROW_NEW_NULL_POINTER_EXCEPTION, THROW_NEW_OUT_OF_BOUNDS_EXCEPTION, THROW_NEW_CLASS_CAST_EXCEPTION, THROW_NEW_ARRAY_STORE_EXCEPTION, THROW_NEW_ARITHMETIC_EXCEPTION,
-                    THROW_NEW_OUT_OF_BOUNDS_EXCEPTION_WITH_ARGS, THROW_NEW_CLASS_CAST_EXCEPTION_WITH_ARGS, THROW_NEW_ARRAY_STORE_EXCEPTION_WITH_ARGS, THROW_NEW_DIVISION_BY_ZERO_EXCEPTION,
-                    GET_CACHED_NULL_POINTER_EXCEPTION, GET_CACHED_OUT_OF_BOUNDS_EXCEPTION, GET_CACHED_CLASS_CAST_EXCEPTION, GET_CACHED_ARRAY_STORE_EXCEPTION, GET_CACHED_ARITHMETIC_EXCEPTION,
-                    THROW_CACHED_NULL_POINTER_EXCEPTION, THROW_CACHED_OUT_OF_BOUNDS_EXCEPTION, THROW_CACHED_CLASS_CAST_EXCEPTION, THROW_CACHED_ARRAY_STORE_EXCEPTION, THROW_CACHED_ARITHMETIC_EXCEPTION,
+                    THROW_NEW_OUT_OF_BOUNDS_EXCEPTION_WITH_ARGS, THROW_NEW_CLASS_CAST_EXCEPTION_WITH_ARGS, THROW_NEW_ARRAY_STORE_EXCEPTION_WITH_ARGS, THROW_NEW_ILLEGAL_ARGUMENT_EXCEPTION_WITH_ARGS,
+                    THROW_NEW_DIVISION_BY_ZERO_EXCEPTION,
+                    GET_CACHED_NULL_POINTER_EXCEPTION, GET_CACHED_OUT_OF_BOUNDS_EXCEPTION, GET_CACHED_CLASS_CAST_EXCEPTION, GET_CACHED_ARRAY_STORE_EXCEPTION, GET_CACHED_ILLEGAL_ARGUMENT_EXCEPTION,
+                    GET_CACHED_ARITHMETIC_EXCEPTION,
+                    THROW_CACHED_NULL_POINTER_EXCEPTION, THROW_CACHED_OUT_OF_BOUNDS_EXCEPTION, THROW_CACHED_CLASS_CAST_EXCEPTION, THROW_CACHED_ARRAY_STORE_EXCEPTION,
+                    THROW_CACHED_ILLEGAL_ARGUMENT_EXCEPTION, THROW_CACHED_ARITHMETIC_EXCEPTION,
     };
 
     private static final FastThreadLocalInt implicitExceptionsAreFatal = FastThreadLocalFactory.createInt();
@@ -144,6 +154,13 @@ public class ImplicitExceptions {
         assert value != null : "null can be stored into any array, so it cannot show up as a source of an ArrayStoreException";
         vmErrorIfImplicitExceptionsAreFatal();
         return new ArrayStoreException(value.getClass().getTypeName());
+    }
+
+    /** Foreign call: {@link #CREATE_ILLEGAL_ARGUMENT_EXCEPTION}. */
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
+    private static IllegalArgumentException createIllegalArgumentException(String message) {
+        vmErrorIfImplicitExceptionsAreFatal();
+        return new IllegalArgumentException(message);
     }
 
     /** Foreign call: {@link #CREATE_DIVISION_BY_ZERO_EXCEPTION}. */
@@ -208,6 +225,13 @@ public class ImplicitExceptions {
         throw new ArrayStoreException(value.getClass().getTypeName());
     }
 
+    /** Foreign call: {@link #THROW_NEW_ILLEGAL_ARGUMENT_EXCEPTION_WITH_ARGS}. */
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
+    private static void throwNewIllegalArgumentExceptionWithArgs(String message) {
+        vmErrorIfImplicitExceptionsAreFatal();
+        throw new IllegalArgumentException(message);
+    }
+
     /** Foreign call: {@link #THROW_NEW_ARITHMETIC_EXCEPTION}. */
     @SubstrateForeignCallTarget(stubCallingConvention = true)
     private static void throwNewArithmeticException() {
@@ -254,6 +278,14 @@ public class ImplicitExceptions {
         return CACHED_ARRAY_STORE_EXCEPTION;
     }
 
+    /** Foreign call: {@link #GET_CACHED_ILLEGAL_ARGUMENT_EXCEPTION}. */
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implict exception in code that must not allocate.")
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
+    private static IllegalArgumentException getCachedIllegalArgumentException() {
+        vmErrorIfImplicitExceptionsAreFatal();
+        return CACHED_ILLEGAL_ARGUMENT_EXCEPTION;
+    }
+
     /** Foreign call: {@link #GET_CACHED_ARITHMETIC_EXCEPTION}. */
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implict exception in code that must not allocate.")
     @SubstrateForeignCallTarget(stubCallingConvention = true)
@@ -292,6 +324,14 @@ public class ImplicitExceptions {
     private static void throwCachedArrayStoreException() {
         vmErrorIfImplicitExceptionsAreFatal();
         throw CACHED_ARRAY_STORE_EXCEPTION;
+    }
+
+    /** Foreign call: {@link #THROW_CACHED_ILLEGAL_ARGUMENT_EXCEPTION}. */
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Called to report an implict exception in code that must not allocate.")
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
+    private static void throwCachedIllegalArgumentException() {
+        vmErrorIfImplicitExceptionsAreFatal();
+        throw CACHED_ILLEGAL_ARGUMENT_EXCEPTION;
     }
 
     /** Foreign call: {@link #THROW_CACHED_ARITHMETIC_EXCEPTION}. */
