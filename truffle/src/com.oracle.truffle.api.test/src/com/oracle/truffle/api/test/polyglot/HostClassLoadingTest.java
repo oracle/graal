@@ -73,6 +73,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -191,7 +192,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
         InteropLibrary interop = InteropLibrary.getUncached();
         assertTrue(interop.isException(t));
         try {
-            assertFalse(TruffleException.Kind.INTERNAL_ERROR.equals(interop.getExceptionKind(t)));
+            assertFalse(ExceptionType.INTERNAL_ERROR.equals(interop.getExceptionType(t)));
         } catch (UnsupportedMessageException um) {
             CompilerDirectives.shouldNotReachHere(um);
         }

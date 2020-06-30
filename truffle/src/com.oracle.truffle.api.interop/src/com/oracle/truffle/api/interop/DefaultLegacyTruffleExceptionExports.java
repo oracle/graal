@@ -40,12 +40,12 @@
  */
 package com.oracle.truffle.api.interop;
 
-import static com.oracle.truffle.api.interop.TruffleException.Kind.CANCEL;
-import static com.oracle.truffle.api.interop.TruffleException.Kind.EXIT;
-import static com.oracle.truffle.api.interop.TruffleException.Kind.GUEST_LANGUAGE_ERROR;
-import static com.oracle.truffle.api.interop.TruffleException.Kind.INCOMPLETE_SOURCE;
-import static com.oracle.truffle.api.interop.TruffleException.Kind.INTERNAL_ERROR;
-import static com.oracle.truffle.api.interop.TruffleException.Kind.SYNTAX_ERROR;
+import static com.oracle.truffle.api.interop.ExceptionType.CANCEL;
+import static com.oracle.truffle.api.interop.ExceptionType.EXIT;
+import static com.oracle.truffle.api.interop.ExceptionType.GUEST_LANGUAGE_ERROR;
+import static com.oracle.truffle.api.interop.ExceptionType.INCOMPLETE_SOURCE;
+import static com.oracle.truffle.api.interop.ExceptionType.INTERNAL_ERROR;
+import static com.oracle.truffle.api.interop.ExceptionType.SYNTAX_ERROR;
 
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -71,7 +71,7 @@ final class DefaultLegacyTruffleExceptionExports {
     }
 
     @ExportMessage
-    static TruffleException.Kind getExceptionKind(com.oracle.truffle.api.TruffleException receiver) {
+    static ExceptionType getExceptionType(com.oracle.truffle.api.TruffleException receiver) {
         if (receiver.isCancelled()) {
             return CANCEL;
         } else if (receiver.isExit()) {

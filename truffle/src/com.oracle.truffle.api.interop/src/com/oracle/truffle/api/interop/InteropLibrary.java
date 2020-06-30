@@ -1234,7 +1234,7 @@ public abstract class InteropLibrary extends Library {
         throw UnsupportedMessageException.create();
     }
 
-    public TruffleException.Kind getExceptionKind(Object receiver) throws UnsupportedMessageException {
+    public ExceptionType getExceptionType(Object receiver) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
     }
 
@@ -2863,9 +2863,9 @@ public abstract class InteropLibrary extends Library {
         }
 
         @Override
-        public TruffleException.Kind getExceptionKind(Object receiver) throws UnsupportedMessageException {
+        public ExceptionType getExceptionType(Object receiver) throws UnsupportedMessageException {
             assert preCondition(receiver);
-            TruffleException.Kind result = delegate.getExceptionKind(receiver);
+            ExceptionType result = delegate.getExceptionType(receiver);
             return result;
         }
 

@@ -92,6 +92,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -165,8 +166,8 @@ public class ContextAPITest extends AbstractPolyglotTest {
         }
 
         @ExportMessage
-        public TruffleException.Kind getExceptionKind() {
-            return TruffleException.Kind.SYNTAX_ERROR;
+        public ExceptionType getExceptionType() {
+            return ExceptionType.SYNTAX_ERROR;
         }
 
         public Node getLocation() {

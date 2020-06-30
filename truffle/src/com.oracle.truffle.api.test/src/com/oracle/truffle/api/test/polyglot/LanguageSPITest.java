@@ -103,6 +103,7 @@ import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleException;
@@ -287,8 +288,8 @@ public class LanguageSPITest {
     static class Interrupted extends TruffleException {
 
         @ExportMessage
-        public TruffleException.Kind getExceptionKind() {
-            return TruffleException.Kind.CANCEL;
+        public ExceptionType getExceptionType() {
+            return ExceptionType.CANCEL;
         }
 
         @Override
@@ -312,8 +313,8 @@ public class LanguageSPITest {
         }
 
         @ExportMessage
-        public TruffleException.Kind getExceptionKind() {
-            return TruffleException.Kind.SYNTAX_ERROR;
+        public ExceptionType getExceptionType() {
+            return ExceptionType.SYNTAX_ERROR;
         }
 
         @Override

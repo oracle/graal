@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,50 +40,44 @@
  */
 package com.oracle.truffle.api.interop;
 
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.source.SourceSection;
+/**
+ * Represents a {@link TruffleException} type.
+ * @since 20.2
+ */
+public enum ExceptionType implements TruffleObject {
+    /**
+     * Indicates that guest language application was cancelled during its execution.
+     * @since 20.2
+     */
+    CANCEL,
 
-@SuppressWarnings("unused")
-@ExportLibrary(value = InteropLibrary.class, receiverType = TruffleException.class)
-final class DefaultTruffleExceptionExports {
+    /**
+     * Indicates that the application was exited within the guest language program.
+     * @since 20.2
+     */
+    EXIT,
 
-    @ExportMessage
-    static boolean isException(TruffleException receiver) {
-        return true;
-    }
+    /**
+     * Indicates a guest language error.
+     * @since 20.2
+     */
+    GUEST_LANGUAGE_ERROR,
 
-    @ExportMessage
-    static RuntimeException throwException(TruffleException receiver) {
-        throw receiver;
-    }
+    /**
+     * Indicates a syntax error that is indicating that the syntax is incomplete.
+     * @since 20.2
+     */
+    INCOMPLETE_SOURCE,
 
-    @ExportMessage
-    static boolean isExceptionCatchable(TruffleException receiver) {
-        return true;
-    }
+    /**
+     * Indicates an internal error.
+     * @since 20.2
+     */
+    INTERNAL_ERROR,
 
-    @ExportMessage
-    static ExceptionType getExceptionType(TruffleException receiver) {
-        return ExceptionType.GUEST_LANGUAGE_ERROR;
-    }
-
-    @ExportMessage
-    static int getExceptionExitStatus(TruffleException receiver) {
-        return 0;
-    }
-
-    @ExportMessage
-    static boolean hasSourceLocation(TruffleException receiver) {
-        return receiver.getSourceLocation() != null;
-    }
-
-    @ExportMessage
-    static SourceSection getSourceLocation(TruffleException receiver) throws UnsupportedMessageException {
-        SourceSection sourceLocation = receiver.getSourceLocation();
-        if (sourceLocation == null) {
-            throw UnsupportedMessageException.create();
-        }
-        return sourceLocation;
-    }
+    /**
+     * Indicates a parser or syntax error.
+     * @since 20.2
+     */
+    SYNTAX_ERROR
 }

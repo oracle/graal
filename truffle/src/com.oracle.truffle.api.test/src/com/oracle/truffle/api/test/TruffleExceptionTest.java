@@ -40,15 +40,15 @@
  */
 package com.oracle.truffle.api.test;
 
-import com.oracle.truffle.api.interop.TruffleException;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.TruffleException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -70,52 +70,22 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-public class AbstractTruffleExceptionTest extends AbstractPolyglotTest {
+public class TruffleExceptionTest extends AbstractPolyglotTest {
 
     private VerifyingHandler verifyingHandler;
 
     @Before
     public void setUp() {
-        verifyingHandler = new VerifyingHandler();
-    }
-
-    @Test
-    public void testLegacyCatchableException() {
-        setupEnv(createContext(), new ProxyLanguage() {
-            @Override
-            protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
-                LegacyCatchableException exception = new LegacyCatchableException();
-                LangObject exceptionObject = new LangObject(exception);
-                exception.setExceptionObject(exceptionObject);
-                return createAST(languageInstance, exceptionObject, (node) -> exception.setLocation(node));
-            }
-        });
-        verifyingHandler.expect(BlockNode.Kind.TRY, BlockNode.Kind.CATCH, BlockNode.Kind.FINALLY);
-        context.eval(ProxyLanguage.ID, "Test");
-    }
-
-    @Test
-    public void testLegacyUnCatchableException() {
-        setupEnv(createContext(), new ProxyLanguage() {
-            @Override
-            protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
-                LegacyUnCatchableException exception = new LegacyUnCatchableException();
-                LangObject exceptionObject = new LangObject(exception);
-                exception.setExceptionObject(exceptionObject);
-                return createAST(languageInstance, exceptionObject, (node) -> exception.setLocation(node));
-            }
-        });
-        verifyingHandler.expect(BlockNode.Kind.TRY);
-        assertFails(() -> context.eval(ProxyLanguage.ID, "Test"), PolyglotException.class, (e) -> Assert.assertTrue(e.isCancelled()));
+        verifyingHandler = new VerifyingHandler(TruffleException.class);
     }
 
     @Test
     public void testCatchableTruffleException() {
-        setupEnv(createContext(), new ProxyLanguage() {
+        setupEnv(createContext(verifyingHandler), new ProxyLanguage() {
             @Override
             protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
-                AbstractTruffleExceptionImpl exception = new AbstractTruffleExceptionImpl(true);
-                return createAST(languageInstance, exception, (node) -> exception.setLocation(node));
+                TruffleExceptionImpl exception = new TruffleExceptionImpl(true);
+                return createAST(TruffleException.class, languageInstance, exception, (node) -> exception.setLocation(node));
             }
         });
         verifyingHandler.expect(BlockNode.Kind.TRY, BlockNode.Kind.CATCH, BlockNode.Kind.FINALLY);
@@ -124,28 +94,27 @@ public class AbstractTruffleExceptionTest extends AbstractPolyglotTest {
 
     @Test
     public void testUnCatchableTruffleException() {
-        setupEnv(createContext(), new ProxyLanguage() {
+        setupEnv(createContext(verifyingHandler), new ProxyLanguage() {
             @Override
             protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
-                AbstractTruffleExceptionImpl exception = new AbstractTruffleExceptionImpl(false);
-                return createAST(languageInstance, exception, (node) -> exception.setLocation(node));
+                TruffleExceptionImpl exception = new TruffleExceptionImpl(false);
+                return createAST(TruffleException.class, languageInstance, exception, (node) -> exception.setLocation(node));
             }
         });
         verifyingHandler.expect(BlockNode.Kind.TRY);
         assertFails(() -> context.eval(ProxyLanguage.ID, "Test"), PolyglotException.class, (e) -> Assert.assertTrue(e.isCancelled()));
     }
 
-    private Context createContext() {
-        return Context.newBuilder().option(String.format("log.%s.level", verifyingHandler.loggerName), "FINE").logHandler(verifyingHandler).build();
+    static Context createContext(VerifyingHandler handler) {
+        return Context.newBuilder().option(String.format("log.%s.level", handler.loggerName), "FINE").logHandler(handler).build();
     }
 
-    private CallTarget createAST(TruffleLanguage<ProxyLanguage.LanguageContext> lang, Object exceptionObject,
-                    Consumer<Node> throwNodeConsumer) {
+    static CallTarget createAST(Class<?> testClass, TruffleLanguage<ProxyLanguage.LanguageContext> lang, Object exceptionObject, Consumer<Node> throwNodeConsumer) {
         ThrowNode throwNode = new ThrowNode(exceptionObject);
         throwNodeConsumer.accept(throwNode);
-        TryCatchNode tryCatch = new TryCatchNode(new BlockNode(BlockNode.Kind.TRY, throwNode),
-                        new BlockNode(BlockNode.Kind.CATCH),
-                        new BlockNode(BlockNode.Kind.FINALLY));
+        TryCatchNode tryCatch = new TryCatchNode(new BlockNode(testClass, BlockNode.Kind.TRY, throwNode),
+                        new BlockNode(testClass, BlockNode.Kind.CATCH),
+                        new BlockNode(testClass, BlockNode.Kind.FINALLY));
         return Truffle.getRuntime().createCallTarget(new TestRootNode(lang, tryCatch));
     }
 
@@ -168,7 +137,7 @@ public class AbstractTruffleExceptionTest extends AbstractPolyglotTest {
         abstract Object execute(VirtualFrame frame);
     }
 
-    private static class BlockNode extends StatementNode {
+    static class BlockNode extends StatementNode {
 
         enum Kind {
             TRY,
@@ -178,9 +147,9 @@ public class AbstractTruffleExceptionTest extends AbstractPolyglotTest {
 
         @Children private StatementNode[] children;
 
-        BlockNode(Kind kind, StatementNode... children) {
+        BlockNode(Class<?> testClass, Kind kind, StatementNode... children) {
             this.children = new StatementNode[children.length + 1];
-            this.children[0] = new LogNode(kind.name());
+            this.children[0] = new LogNode(testClass, kind.name());
             System.arraycopy(children, 0, this.children, 1, children.length);
         }
 
@@ -197,10 +166,11 @@ public class AbstractTruffleExceptionTest extends AbstractPolyglotTest {
 
     private static class LogNode extends StatementNode {
 
-        private static final TruffleLogger LOG = TruffleLogger.getLogger(ProxyLanguage.ID, AbstractTruffleExceptionTest.class);
+        private final TruffleLogger LOG;
         private final String message;
 
-        LogNode(String message) {
+        LogNode(Class<?> testClass, String message) {
+            LOG = TruffleLogger.getLogger(ProxyLanguage.ID, testClass.getName());
             this.message = message;
         }
 
@@ -233,7 +203,7 @@ public class AbstractTruffleExceptionTest extends AbstractPolyglotTest {
                 if (interop.isException(ex)) {
                     try {
                         runFinalization = interop.isExceptionCatchable(ex);
-                        Assert.assertEquals(runFinalization ? TruffleException.Kind.GUEST_LANGUAGE_ERROR : TruffleException.Kind.CANCEL, interop.getExceptionKind(ex));
+                        Assert.assertEquals(runFinalization ? ExceptionType.GUEST_LANGUAGE_ERROR : ExceptionType.CANCEL, interop.getExceptionType(ex));
                         Assert.assertEquals(0, interop.getExceptionExitStatus(ex));
                         if (runFinalization && catchBlock != null) {
                             return catchBlock.execute(frame);
@@ -273,111 +243,15 @@ public class AbstractTruffleExceptionTest extends AbstractPolyglotTest {
         }
     }
 
-    @SuppressWarnings({"serial", "deprecation"})
-    static final class LegacyCatchableException extends RuntimeException implements com.oracle.truffle.api.TruffleException, TruffleObject {
-
-        private Node location;
-        private Object exeptionObject;
-
-        LegacyCatchableException() {
-        }
-
-        void setExceptionObject(Object exeptionObject) {
-            this.exeptionObject = exeptionObject;
-        }
-
-        void setLocation(Node node) {
-            this.location = node;
-        }
-
-        @Override
-        public Node getLocation() {
-            return location;
-        }
-
-        @Override
-        public Object getExceptionObject() {
-            return exeptionObject;
-        }
-    }
-
-    @SuppressWarnings({"serial", "deprecation"})
-    static final class LegacyUnCatchableException extends ThreadDeath implements com.oracle.truffle.api.TruffleException, TruffleObject {
-
-        private Node location;
-        private Object exeptionObject;
-
-        LegacyUnCatchableException() {
-        }
-
-        void setExceptionObject(Object exeptionObject) {
-            this.exeptionObject = exeptionObject;
-        }
-
-        void setLocation(Node node) {
-            this.location = node;
-        }
-
-        @Override
-        public boolean isCancelled() {
-            return true;
-        }
-
-        @Override
-        public Node getLocation() {
-            return location;
-        }
-
-        @Override
-        public Object getExceptionObject() {
-            return exeptionObject;
-        }
-    }
-
-    @ExportLibrary(InteropLibrary.class)
-    static final class LangObject implements TruffleObject {
-
-        private Throwable exception;
-
-        LangObject(Throwable exception) {
-            this.exception = exception;
-        }
-
-        @ExportMessage
-        public boolean isException() {
-            return exception != null;
-        }
-
-        @ExportMessage
-        public boolean isExceptionCatchable() throws UnsupportedMessageException {
-            if (exception == null) {
-                throw UnsupportedMessageException.create();
-            }
-            return false;
-        }
-
-        @ExportMessage
-        public RuntimeException throwException() throws UnsupportedMessageException {
-            if (exception == null) {
-                throw UnsupportedMessageException.create();
-            }
-            throw sthrow(RuntimeException.class, exception);
-        }
-
-        @SuppressWarnings({"unchecked", "unused"})
-        private static <T extends Throwable> T sthrow(Class<T> type, Throwable t) throws T {
-            throw (T) t;
-        }
-    }
 
     @SuppressWarnings("serial")
     @ExportLibrary(InteropLibrary.class)
-    static final class AbstractTruffleExceptionImpl extends TruffleException {
+    static final class TruffleExceptionImpl extends TruffleException {
 
         private final boolean catchable;
         private Node location;
 
-        AbstractTruffleExceptionImpl(boolean catchable) {
+        TruffleExceptionImpl(boolean catchable) {
             this.catchable = catchable;
         }
 
@@ -401,8 +275,8 @@ public class AbstractTruffleExceptionTest extends AbstractPolyglotTest {
         }
 
         @ExportMessage
-        public Kind getExceptionKind() {
-            return catchable ? Kind.GUEST_LANGUAGE_ERROR : Kind.CANCEL;
+        public ExceptionType getExceptionType() {
+            return catchable ? ExceptionType.GUEST_LANGUAGE_ERROR : ExceptionType.CANCEL;
         }
 
         @ExportMessage
@@ -420,16 +294,23 @@ public class AbstractTruffleExceptionTest extends AbstractPolyglotTest {
             return location != null;
         }
 
-        @ExportMessage
-        public SourceSection getSourceLocation() {
+        @ExportMessage(name = "getSourceLocation")
+        public SourceSection sourceLocation() throws UnsupportedMessageException {
+            if (location == null) {
+                 throw UnsupportedMessageException.create();
+            }
             return location.getEncapsulatingSourceSection();
         }
     }
 
-    private static final class VerifyingHandler extends Handler {
+    static final class VerifyingHandler extends Handler {
 
-        final String loggerName = String.format("%s.%s", ProxyLanguage.ID, AbstractTruffleExceptionTest.class.getName());
+        final String loggerName;
         private Queue<String> expected = new ArrayDeque<>();
+
+        VerifyingHandler(Class<?> testClass) {
+            loggerName = String.format("%s.%s", ProxyLanguage.ID, testClass.getName());
+        }
 
         void expect(BlockNode.Kind... kinds) {
             Arrays.stream(kinds).map(BlockNode.Kind::name).forEach(expected::add);

@@ -72,11 +72,10 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-//import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.TruffleException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -859,7 +858,7 @@ public class ProxySPITest extends AbstractPolyglotTest {
                 Assert.fail();
             }
             try {
-                Assert.assertFalse(TruffleException.Kind.INTERNAL_ERROR.equals(interop.getExceptionKind(e)));
+                Assert.assertFalse(ExceptionType.INTERNAL_ERROR.equals(interop.getExceptionType(e)));
             } catch (UnsupportedMessageException um) {
                 CompilerDirectives.shouldNotReachHere(um);
             }

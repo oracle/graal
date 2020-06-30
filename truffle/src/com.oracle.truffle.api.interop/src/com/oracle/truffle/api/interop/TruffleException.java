@@ -97,14 +97,6 @@ import com.oracle.truffle.api.source.SourceSection;
 @SuppressWarnings({"serial", "deprecation"})
 public abstract class TruffleException extends RuntimeException implements TruffleObject, com.oracle.truffle.api.TruffleException {
 
-    public enum Kind implements TruffleObject {
-        GUEST_LANGUAGE_ERROR,
-        SYNTAX_ERROR,
-        INCOMPLETE_SOURCE,
-        INTERNAL_ERROR,
-        CANCEL,
-        EXIT
-    }
 
     private final int stackTraceElementLimit;
     private volatile Throwable lazyStackTrace;
@@ -203,7 +195,7 @@ public abstract class TruffleException extends RuntimeException implements Truff
     @Deprecated
     @Override
     public final boolean isSyntaxError() {
-        return getKind() == Kind.SYNTAX_ERROR;
+        return getExceptionType() == ExceptionType.SYNTAX_ERROR;
     }
 
     /**
@@ -223,7 +215,7 @@ public abstract class TruffleException extends RuntimeException implements Truff
     @Deprecated
     @Override
     public final boolean isIncompleteSource() {
-        return getKind() == Kind.INCOMPLETE_SOURCE;
+        return getExceptionType() == ExceptionType.INCOMPLETE_SOURCE;
     }
 
     /**
@@ -236,7 +228,7 @@ public abstract class TruffleException extends RuntimeException implements Truff
     @Deprecated
     @Override
     public final boolean isInternalError() {
-        return getKind() == Kind.INTERNAL_ERROR;
+        return getExceptionType() == ExceptionType.INTERNAL_ERROR;
     }
 
     /**
@@ -248,7 +240,7 @@ public abstract class TruffleException extends RuntimeException implements Truff
     @Deprecated
     @Override
     public final boolean isCancelled() {
-        return getKind() == Kind.CANCEL;
+        return getExceptionType() == ExceptionType.CANCEL;
     }
 
     /**
@@ -261,7 +253,7 @@ public abstract class TruffleException extends RuntimeException implements Truff
     @Deprecated
     @Override
     public final boolean isExit() {
-        return getKind() == Kind.EXIT;
+        return getExceptionType() == ExceptionType.EXIT;
     }
 
     /**
@@ -294,9 +286,9 @@ public abstract class TruffleException extends RuntimeException implements Truff
         return res;
     }
 
-    private Kind getKind() {
+    private ExceptionType getExceptionType() {
         try {
-            return InteropLibrary.getUncached().getExceptionKind(this);
+            return InteropLibrary.getUncached().getExceptionType(this);
         } catch (UnsupportedMessageException um) {
             throw CompilerDirectives.shouldNotReachHere(um);
         }

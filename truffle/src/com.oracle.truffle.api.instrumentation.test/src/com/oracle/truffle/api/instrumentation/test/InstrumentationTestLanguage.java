@@ -94,6 +94,7 @@ import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.C
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.DefineTag;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.FunctionsObject;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage.LoopTag;
+import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.NodeLibrary;
@@ -1331,8 +1332,8 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             }
 
             @ExportMessage
-            public TruffleException.Kind getExceptionKind() {
-                return type.equals("internal") ? TruffleException.Kind.INTERNAL_ERROR : TruffleException.Kind.GUEST_LANGUAGE_ERROR;
+            public ExceptionType getExceptionType() {
+                return type.equals("internal") ? ExceptionType.INTERNAL_ERROR : ExceptionType.GUEST_LANGUAGE_ERROR;
             }
 
             @ExportMessage

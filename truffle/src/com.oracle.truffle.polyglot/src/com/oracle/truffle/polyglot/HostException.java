@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.polyglot;
 
+import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleException;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -50,13 +51,15 @@ import com.oracle.truffle.api.nodes.Node;
  * Exception wrapper for an error occurred in the host language.
  */
 @SuppressWarnings("serial")
-@ExportLibrary(InteropLibrary.class)
+@ExportLibrary(value = InteropLibrary.class, delegateTo = "delegate")
 final class HostException extends TruffleException {
 
     private final Throwable original;
+    final HostObject delegate;
 
     HostException(Throwable original) {
         this.original = original;
+        this.delegate = HostObject.forException(original, PolyglotContextImpl.currentNotEntered().getHostContext(), this);
     }
 
     Throwable getOriginal() {
@@ -69,17 +72,9 @@ final class HostException extends TruffleException {
     }
 
     @ExportMessage
-    public Kind getExceptionKind() {
-        return getOriginal() instanceof InterruptedException ? Kind.CANCEL : Kind.GUEST_LANGUAGE_ERROR;
+    public ExceptionType getExceptionType() {
+        return getOriginal() instanceof InterruptedException ? ExceptionType.CANCEL : ExceptionType.GUEST_LANGUAGE_ERROR;
     }
-
-// TODO:
-// @Override
-// public Object getExceptionObject() {
-// Throwable exception = getOriginal();
-// return HostObject.forException(exception,
-// PolyglotContextImpl.currentNotEntered().getHostContext(), this);
-// }
 
     @Override
     public Node getLocation() {
