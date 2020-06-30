@@ -59,7 +59,6 @@ import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.MemoryProxyNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.SafepointNode;
@@ -271,32 +270,30 @@ public class LoopFragmentInside extends LoopFragment {
 
         if (graph.hasValueProxies()) {
 
-            // rewire non-counted exits with their merges (which are required to be there)
+            // rewire non-counted exits with the follow nodes: merges or sinks
             for (LoopExitNode exit : mainLoopBegin.loopExits().snapshot()) {
                 if (exit == mainCounted.getCountedExit()) {
                     continue;
                 }
                 FixedNode next = exit.next();
-
                 AbstractBeginNode begin = getDuplicatedNode(exit);
                 if (next instanceof EndNode) {
                     AbstractMergeNode merge = ((EndNode) next).merge();
                     assert merge instanceof MergeNode : "Can only merge loop exits on regular merges";
-
                     assert begin.next() == null;
                     LoopExitNode lex = graph.add(new LoopExitNode(mainLoopBegin));
-
                     createExitStateForNewSegmentNonEarlyExit(graph, exit, lex, new2OldPhis);
-
                     EndNode end = graph.add(new EndNode());
                     begin.setNext(lex);
                     lex.setNext(end);
                     merge.addForwardEnd(end);
+
                     for (PhiNode phi : merge.phis()) {
                         if (phi instanceof ValuePhiNode) {
                             ValueNode input = phi.valueAt((EndNode) next);
                             ValueNode replacement;
-                            if (input instanceof ConstantNode || input instanceof ParameterNode || !loop.whole().contains(input)) {
+                            if (!loop.whole().contains(input)) {
+                                // node is produced above the loop
                                 replacement = input;
                             } else {
                                 // if the node is inside this loop the input must be a proxy
@@ -307,6 +304,7 @@ public class LoopFragmentInside extends LoopFragment {
                             ValueNode input = phi.valueAt((EndNode) next);
                             ValueNode replacement;
                             if (!loop.whole().contains(input)) {
+                                // node is produced above the loop
                                 replacement = input;
                             } else {
                                 // if the node is inside this loop the input must be a proxy
@@ -317,6 +315,7 @@ public class LoopFragmentInside extends LoopFragment {
                             ValueNode input = phi.valueAt((EndNode) next);
                             ValueNode replacement;
                             if (!loop.whole().contains(input)) {
+                                // node is produced above the loop
                                 replacement = input;
                             } else {
                                 // if the node is inside this loop the input must be a proxy
@@ -379,13 +378,14 @@ public class LoopFragmentInside extends LoopFragment {
             @Override
             public void apply(Node from, Position p) {
                 ValueNode to = (ValueNode) p.get(from);
-                // all inputs that are proxies need replacing the other ones are implictily not
+                // all inputs that are proxied need replacing the other ones are implicitly not
                 // produced inside this loop
                 if (to instanceof ProxyNode) {
                     ProxyNode originalProxy = (ProxyNode) to;
                     if (originalProxy.proxyPoint() == exit) {
                         // create a new proxy for this value
                         ValueNode replacement = getNodeOfExitPathInUnrolledSegment(originalProxy, new2OldPhis);
+                        assert replacement != null : originalProxy;
                         if (originalProxy instanceof ValueProxyNode) {
                             p.set(from, graph.addOrUnique(new ValueProxyNode(replacement, lex)));
                         } else if (originalProxy instanceof GuardProxyNode) {
@@ -396,9 +396,12 @@ public class LoopFragmentInside extends LoopFragment {
                             GraalError.shouldNotReachHere("Unknown proxy type " + originalProxy);
                         }
                     }
-                }
-                if (original().contains(to)) {
-                    p.set(from, getDuplicatedNode(to));
+                } else {
+                    if (original().contains(to)) {
+                        ValueNode replacement = getDuplicatedNode(to);
+                        assert replacement != null;
+                        p.set(from, replacement);
+                    }
                 }
             }
         });
@@ -410,6 +413,11 @@ public class LoopFragmentInside extends LoopFragment {
     private ValueNode getNodeOfExitPathInUnrolledSegment(ProxyNode proxy, EconomicMap<Node, Node> new2OldPhis) {
         ValueNode originalNode = proxy.getOriginalNode();
         ValueNode replacement = null;
+        /*
+         * Either the node is part of the regular duplicated nodes and is thus in the original node
+         * set or its a phi for which we do not have the values of the duplicated iteration at the
+         * loop ends
+         */
         if (original().contains(originalNode) || proxy.proxyPoint().loopBegin().isPhiAtMerge(originalNode)) {
             ValueNode nextIterationVal = getDuplicatedNode(originalNode);
             if (nextIterationVal == null) {
@@ -418,15 +426,30 @@ public class LoopFragmentInside extends LoopFragment {
                 LoopEndNode endBeforeSegment = mainLoopBegin.getSingleLoopEnd();
                 PhiNode loopPhi = (PhiNode) originalNode;
                 ValueNode phiInputAtOriginalSegment = loopPhi.valueAt(endBeforeSegment);
+
                 // this is already the duplicated node since the segment is already added to the
                 // graph
                 replacement = (ValueNode) new2OldPhis.get(phiInputAtOriginalSegment);
+
+                if (replacement == null) {
+                    /*
+                     * Special case the input of the phi is not part of the loop
+                     */
+                    replacement = phiInputAtOriginalSegment;
+                }
                 assert replacement != null;
             } else {
                 replacement = nextIterationVal;
             }
         } else {
-            // dominating node, re-use
+            /*
+             * Imprecise: We should never enter this branch, as this means there is a proxy for a
+             * node that is not actually part of a loop, however, this may happen sometimes for
+             * floating nodes and their, wrong, inclusion inside a loop, this question can only be
+             * really solved with a schedule which we do not have.
+             *
+             * Thus, this node must be dominating our loop entirely.
+             */
             replacement = originalNode;
         }
         return replacement;
