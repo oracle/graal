@@ -381,13 +381,17 @@ public final class StaticObject implements TruffleObject {
     }
 
     @ExportMessage
-    long getArraySize() {
+    long getArraySize() throws UnsupportedMessageException {
+        if (!isArray()) {
+            CompilerDirectives.transferToInterpreter();
+            throw UnsupportedMessageException.create();
+        }
         return length();
     }
 
     @ExportMessage
     boolean hasArrayElements() {
-        return !isNull(this) && getKlass().isArray();
+        return isArray();
     }
 
     @ExportMessage
@@ -498,6 +502,12 @@ public final class StaticObject implements TruffleObject {
             } catch (IndexOutOfBoundsException outOfBounds) {
                 throw InvalidArrayIndexException.create(index);
             }
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"!receiver.isArray()"})
+        static Object doOther(StaticObject receiver, long index) throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
         }
     }
 
@@ -658,6 +668,12 @@ public final class StaticObject implements TruffleObject {
             } catch (IndexOutOfBoundsException outOfBounds) {
                 throw InvalidArrayIndexException.create(index);
             }
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"!isPrimitiveArray(receiver)"})
+        static void doOther(StaticObject receiver, long index, Object value) throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
         }
     }
 
