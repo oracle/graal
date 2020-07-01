@@ -47,6 +47,17 @@ Typed pointer arguments and return values are implicitly converted using
 The native `NULL` pointer responds with `true`, all other native pointers respond
 with `false`.
 
+### `hasIdentity`, `isIdentical`
+
+All pointers have an identity, so `hasIdentity` always returns `true`. Pointers are
+considered identical if they point exactly to the same thing. This is exposing
+the comparison operation from bitcode (e.g. `==` in C) to foreign languages.
+
+Pointers that point to foreign objects are considered identical if the foreign
+objects are `isIdentical`, and they point to the same offset inside the foreign
+object. If the foreign object doesn't support identity, they are considered
+identical if they are exactly the same object.
+
 ## What messages are sent for LLVM operations on foreign objects
 
 Foreign objects are represented as pointers. The foreign objects can be accessed
