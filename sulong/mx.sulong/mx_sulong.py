@@ -903,7 +903,8 @@ def ll_reduce(args=None, out=None):
 def check_interesting(args=None, out=None):
     parser = ArgumentParser(prog='mx check-interesting', description='')
     parser.add_argument('input', help='The input file.', metavar='<input>')
-    parser.add_argument('--startswith', help='Prefix the output of interesting testprograms has to start with.', metavar='<startswith>', default=None)
+    parser.add_argument('--bin-startswith', help='Prefix the reference output of interesting testprograms has to start with.', metavar='<refstartswith>', default=None)
+    parser.add_argument('--sulong-startswith', help='Prefix the output of interesting testprograms has to start with when executed on Sulong.', metavar='<teststartswith>', default=None)
     parsed_args = parser.parse_args(args)
 
     tmp_dir = None
@@ -938,10 +939,11 @@ def check_interesting(args=None, out=None):
         if not all(filecmp.cmp(bin_f, bin_f_o3, shallow=False) for bin_f, bin_f_o3 in ((tmp_bin_out, tmp_bin_out_o3), (tmp_bin_err, tmp_bin_err_o3))):
             exit(0)
         if not all(filecmp.cmp(sulong_f, bin_f, shallow=False) for sulong_f, bin_f in ((tmp_sulong_out, tmp_bin_out), (tmp_sulong_err, tmp_bin_err))):
-            if parsed_args.startswith:
-                with open(tmp_sulong_out, 'r') as so, open(tmp_bin_out, 'r') as bo:
-                    if not all(fl.startswith(parsed_args.startswith) for fl in (next(so, ""), next(bo, ""))):
-                        exit(0)
+            for prefix, out, err in ((parsed_args.bin_startswith, tmp_bin_out, tmp_bin_err), (parsed_args.sulong_startswith, tmp_sulong_out, tmp_sulong_err)):
+                if prefix:
+                    with open(out, 'r') as o, open(err, 'r') as e:
+                        if not any(fl.startswith(prefix) for fl in (next(o, ""), next(e, ""))):
+                            exit(0)
             exit(1)
     finally:
         if tmp_dir:
