@@ -38,6 +38,7 @@ import datetime
 import time
 import subprocess
 import filecmp
+import shlex
 from random import Random
 from argparse import ArgumentParser
 
@@ -841,6 +842,7 @@ def fuzz(args=None, out=None):
 
 def ll_reduce(args=None, out=None):
     parser = ArgumentParser(prog='mx ll-reduce', description='')
+    parser.add_argument('--interestingness-test', help='Command which exits with code 1 if a given .ll file is interesting and exits with code 0 otherwise.', metavar='<interestingnesstest>', default='mx check-interesting')
     parser.add_argument('--seed', help='Seed used for randomness.', metavar='<seed>', type=int, default=int(time.time()))
     parser.add_argument('--timeout', help='Time in seconds until no new reduction operations are permitted to start.', metavar='<timeout>', type=int, default=None)
     parser.add_argument('--timeout-stabilized', help='Time in seconds that should pass since no successful minimal reduction operation has been performed until no new reduction operations are permitted to start.', metavar='<timeout-stabilized>', type=int, default=10)
@@ -881,14 +883,15 @@ def ll_reduce(args=None, out=None):
             print("nrmutations: %d filesize: %d bytes" % (nrmutations, os.path.getsize(tmp_ll)))
             llvm_tool(["llvm-as", "-o", tmp_bc, tmp_ll])
             mx.run([_get_fuzz_tool("llvm-reduce"), tmp_bc, "-ignore_remaining_args=1", "-mtriple", "x86_64-unknown-linux-gnu", "-nrmutations", str(nrmutations), "-seed", str(rand.randint(0, 10000000)), "-o", tmp_ll_reduced], out=devnull, err=devnull)
-            run_lli(tmp_ll_reduced, tmp_sulong_out, tmp_sulong_err)
-            if all(filecmp.cmp(sulong_f, original_f, shallow=False) for sulong_f, original_f in ((tmp_sulong_out, tmp_sulong_out_original), (tmp_sulong_err, tmp_sulong_err_original))):
+            reduced_interesting = subprocess.call(shlex.split(parsed_args.interestingness_test) + [tmp_ll_reduced])
+            if reduced_interesting:
                 tmp_ll, tmp_ll_reduced = tmp_ll_reduced, tmp_ll
                 nrmutations *= 2
                 starttime_stabilized = None
             else:
                 if nrmutations > 1:
                     nrmutations //= 2
+                else:
                     if not starttime_stabilized:
                         starttime_stabilized = time.time()
     finally:
