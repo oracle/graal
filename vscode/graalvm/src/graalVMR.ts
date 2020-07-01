@@ -88,7 +88,7 @@ export function installRPackage(name: string) {
 				terminal = vscode.window.createTerminal();
 			}
 			terminal.show();
-			terminal.sendText(`${executable.replace(/(\s+)/g, '\\$1')} --quiet --slave -e 'install.packages("${name}")'`);
+			terminal.sendText(`R_DEFAULT_PACKAGES=base ${executable.replace(/(\s+)/g, '\\$1')} --vanilla --quiet --slave -e 'utils::install.packages("${name}", Ncpus=1, INSTALL_opts="--no-docs --no-byte-compile --no-staged-install --no-test-load --use-vanilla")'`);
 		}
 	}
 	return false;
