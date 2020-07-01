@@ -45,11 +45,14 @@ LDFLAGS+=$(shell ${LLVM_CONFIG} --ldflags) -rpath $(shell ${LLVM_CONFIG} --libdi
 CXXFLAGS+=$(shell ${LLVM_CONFIG} --cxxflags) -std=c++14
 CPPFLAGS+=$(shell ${LLVM_CONFIG} --cppflags)
 
-src/%.cpp: %.diff ${LLVM_ORG_SRC}/llvm/tools/llvm-stress/%.cpp
+src/llvm-stress.cpp: ${LLVM_ORG_SRC}/llvm/tools/llvm-stress/llvm-stress.cpp
+src/llvm-reduce.cpp: ${LLVM_ORG_SRC}/llvm/tools/llvm-isel-fuzzer/llvm-isel-fuzzer.cpp
+
+src/%.cpp: %.diff
 	$(eval tmp_dir=$(dir $@)/tmp)
 	@mkdir -p ${tmp_dir}
 	@# copy source file to temporary location
-	$(QUIETLY) cp $(word 2,$^) ${tmp_dir}
+	$(QUIETLY) cp $(word 2,$^) ${tmp_dir}/$(notdir $@)
 	@# patch source file
 	$(QUIETLY) patch -p1 -i $< -d ${tmp_dir} ${QUIET_REDIRECT}
 	@# copy patched file to destination
