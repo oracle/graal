@@ -85,12 +85,13 @@ public class HostedGraphKit extends SubstrateGraphKit {
     public void emitEnsureInitializedCall(ResolvedJavaType type) {
         if (SubstrateClassInitializationPlugin.needsRuntimeInitialization(graph.method().getDeclaringClass(), type)) {
             ValueNode hub = createConstant(getConstantReflection().asJavaClass(type), JavaKind.Object);
+            int bci = bci();
             EnsureClassInitializedNode ensureInitializedNode = append(new EnsureClassInitializedNode(hub));
-            ensureInitializedNode.setStateAfter(getFrameState().create(bci(), ensureInitializedNode));
+            ensureInitializedNode.setStateAfter(getFrameState().create(bci, ensureInitializedNode));
 
             AbstractBeginNode noExceptionEdge = add(ensureInitializedNode.createNextBegin());
             ensureInitializedNode.setNext(noExceptionEdge);
-            ExceptionObjectNode exceptionEdge = createExceptionObjectNode(getFrameState(), bci());
+            ExceptionObjectNode exceptionEdge = createExceptionObjectNode(getFrameState(), bci);
             ensureInitializedNode.setExceptionEdge(exceptionEdge);
 
             lastFixedNode = exceptionEdge;

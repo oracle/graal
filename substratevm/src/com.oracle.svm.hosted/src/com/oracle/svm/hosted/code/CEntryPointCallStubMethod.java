@@ -213,7 +213,6 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
         ResolvedJavaMethod universeTargetMethod = unwrapMethodAndLookupInUniverse(metaAccess);
 
         int invokeBci = kit.bci();
-        int exceptionEdgeBci = kit.bci();
         // Also support non-static test methods (they are not allowed to use the receiver)
         InvokeKind invokeKind = universeTargetMethod.isStatic() ? InvokeKind.Static : InvokeKind.Special;
         ValueNode[] invokeArgs = args;
@@ -222,7 +221,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
             invokeArgs[0] = kit.createObject(null);
             System.arraycopy(args, 0, invokeArgs, 1, args.length);
         }
-        InvokeWithExceptionNode invoke = kit.startInvokeWithException(universeTargetMethod, invokeKind, kit.getFrameState(), invokeBci, exceptionEdgeBci, invokeArgs);
+        InvokeWithExceptionNode invoke = kit.startInvokeWithException(universeTargetMethod, invokeKind, kit.getFrameState(), invokeBci, invokeArgs);
         kit.exceptionPart();
         ExceptionObjectNode exception = kit.exceptionObject();
         generateExceptionHandler(providers, kit, exception, invoke.getStackKind());
@@ -305,8 +304,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
         }
 
         int invokeBci = kit.bci();
-        int exceptionEdgeBci = kit.bci();
-        InvokeWithExceptionNode invoke = kit.startInvokeWithException(builtinCallee, InvokeKind.Static, kit.getFrameState(), invokeBci, exceptionEdgeBci, builtinArgs);
+        InvokeWithExceptionNode invoke = kit.startInvokeWithException(builtinCallee, InvokeKind.Static, kit.getFrameState(), invokeBci, builtinArgs);
         kit.exceptionPart();
         ExceptionObjectNode exception = kit.exceptionObject();
 
@@ -517,8 +515,7 @@ public final class CEntryPointCallStubMethod implements ResolvedJavaMethod, Grap
             UserError.guarantee(handlerParameterTypes.length == 1 &&
                             ((ResolvedJavaType) handlerParameterTypes[0]).isAssignableFrom(throwable),
                             "Exception handler method must have exactly one parameter of type Throwable: %s -> %s", targetMethod, handlerMethods[0]);
-            int handlerExceptionBci = kit.bci();
-            InvokeWithExceptionNode handlerInvoke = kit.startInvokeWithException(handlerMethods[0], InvokeKind.Static, kit.getFrameState(), kit.bci(), handlerExceptionBci, exception);
+            InvokeWithExceptionNode handlerInvoke = kit.startInvokeWithException(handlerMethods[0], InvokeKind.Static, kit.getFrameState(), kit.bci(), exception);
             kit.noExceptionPart();
             ValueNode returnValue = handlerInvoke;
             if (handlerInvoke.getStackKind() != returnKind) {

@@ -384,7 +384,7 @@ public final class ReflectionSubstitutionType extends CustomSubstitutionType<Cus
         String msg = AnnotationSubstitutionProcessor.deleteErrorMessage(field, deleteAnnotation.value(), false);
         ValueNode msgNode = ConstantNode.forConstant(SubstrateObjectConstant.forObject(msg), providers.getMetaAccess(), graphKit.getGraph());
         ResolvedJavaMethod reportErrorMethod = providers.getMetaAccess().lookupJavaMethod(DeletedMethod.reportErrorMethod);
-        graphKit.createInvokeWithExceptionAndUnwind(reportErrorMethod, InvokeKind.Static, graphKit.getFrameState(), graphKit.bci(), graphKit.bci(), msgNode);
+        graphKit.createInvokeWithExceptionAndUnwind(reportErrorMethod, InvokeKind.Static, graphKit.getFrameState(), graphKit.bci(), msgNode);
         ConstantNode returnValue = null;
         if (returnKind != JavaKind.Void) {
             returnValue = graphKit.unique(ConstantNode.defaultForKind(returnKind));
