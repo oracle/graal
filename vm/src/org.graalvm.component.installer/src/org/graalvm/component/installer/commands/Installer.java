@@ -453,4 +453,9 @@ public class Installer extends AbstractInstaller {
         return rebuildPolyglot;
     }
 
+    @Override
+    public String toString() {
+        return "Installer[" + componentInfo.getId() + ":" + componentInfo.getName() + "=" + componentInfo.getVersion().displayString() + "]"; // NOI18N
+    }
+
 }
