@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -164,19 +164,29 @@ public final class ObjectHeaderImpl extends ObjectHeader {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
-    public void initializeHeaderOfNewObject(Pointer objectPointer, DynamicHub hub, HeapKind heapKind) {
+    public void initializeHeaderOfNewObject(Pointer objectPointer, DynamicHub hub, HeapKind heapKind, boolean isArray) {
         assert heapKind == HeapKind.Unmanaged || heapKind == HeapKind.ImageHeap;
         // Headers in unmanaged memory or image heap don't need any GC-specific bits set
         Word objectHeader = encodeAsObjectHeader(hub, false, false);
-        initializeHeaderOfNewObject(objectPointer, objectHeader);
+        initializeHeaderOfNewObject(objectPointer, objectHeader, isArray);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void initializeHeaderOfNewObject(Pointer objectPointer, Word encodedHub) {
+    public static void initializeHeaderOfNewObject(Pointer objectPointer, Word encodedHub, boolean isArray) {
         if (getReferenceSize() == Integer.BYTES) {
             objectPointer.writeInt(getHubOffset(), (int) encodedHub.rawValue(), LocationIdentity.INIT_LOCATION);
         } else {
             objectPointer.writeWord(getHubOffset(), encodedHub, LocationIdentity.INIT_LOCATION);
+        }
+        /**
+         * In arrays the identity hashcode is considered part of the object header. This is done to
+         * allow for optimized array element initialization. Previously, an additional
+         * ArrayZeroingOffset parameter was part of the {@link ObjectLayout} and allowed the
+         * hashcode to be separate from the header. Unfortunately, this was not compatible with
+         * other optimization passes, which expected the zeroing to start at the array elements.
+         */
+        if (isArray) {
+            objectPointer.writeInt(ConfigurationValues.getObjectLayout().getArrayIdentityHashcodeOffset(), 0, LocationIdentity.INIT_LOCATION);
         }
     }
 
