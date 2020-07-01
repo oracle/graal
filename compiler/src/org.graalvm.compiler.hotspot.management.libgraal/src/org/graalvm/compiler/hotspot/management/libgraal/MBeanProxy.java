@@ -65,6 +65,7 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.WordFactory;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import org.graalvm.compiler.hotspot.management.AggregatedMemoryPoolBean;
 import org.graalvm.libgraal.jni.annotation.FromLibGraalEntryPointsResolver;
 
 class MBeanProxy<T extends DynamicMBean> {
@@ -86,6 +87,7 @@ class MBeanProxy<T extends DynamicMBean> {
     private static final ClassData HS_CALLS_CLASS = ClassData.create(JMXToLibGraalCalls.class);
     private static final ClassData HS_PUSHBACK_ITER_CLASS = ClassData.create(LibGraalMBean.PushBackIterator.class);
     private static final ClassData HS_ENTRYPOINTS_CLASS = ClassData.create(JMXFromLibGraalEntryPoints.class);
+    private static final ClassData HS_AGGREGATED_MEMORY_POOL_BEAN_CLASS = ClassData.create(AggregatedMemoryPoolBean.class);
 
     /**
      * Pending MBeans registrations on HotSpot side.
@@ -326,6 +328,7 @@ class MBeanProxy<T extends DynamicMBean> {
         findOrDefineClassInHotSpot(env, classLoader, HS_BEAN_CLASS);
         findOrDefineClassInHotSpot(env, classLoader, HS_BEAN_FACTORY_CLASS);
         findOrDefineClassInHotSpot(env, classLoader, HS_PUSHBACK_ITER_CLASS);
+        findOrDefineClassInHotSpot(env, classLoader, HS_AGGREGATED_MEMORY_POOL_BEAN_CLASS);
         fromLibGraalEntryPoints = JNIUtil.NewGlobalRef(env, entryPoints, "Class<" + HS_ENTRYPOINTS_CLASS.binaryName + ">");
     }
 
