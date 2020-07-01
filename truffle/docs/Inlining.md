@@ -1,6 +1,6 @@
 # The Truffle approach to function inlining
 
-Truffle provides automated inlining for all languages built upon the framework.
+Truffle provides automated inlining for all languages built with the framework.
 Since the 20.2.0 release we introduced a new approach to inlining. This
 document describes how the new approach works, compares it to the legacy
 inlining approach and motivates the design choices made for the new approach.
@@ -41,19 +41,19 @@ begins. This means that we only ever partially evaluate call targets that we
 decided to inline. The advantage of this approach is that no time is spend on
 partial evaluation of call targets that don't end up being inlined. On the
 other hand this resulted in frequent compilation problems stemming from the
-poor decisions made by the inliner i.e. the resulting compilation unit would be
+poor decisions made by the inliner e.g. the resulting compilation unit would be
 too big to compile. 
 
 ## Language-agnostic inlining
 
 The main design goal of the new inlining approach is to use the number of graal
 nodes after partial evaluation as a proxy for call target size. This is a much
-better size proxy since partial evaluation is removes all the abstractions of
-the AST and results in a graph that is much closer to the low-level
-instructions that the call target actually performs. This results in a more
-precise cost model when deciding weather or not to inline a call target and
-removes much of the language specific information that the AST carries (hence
-the name: Language-agnostic inlining). 
+better size proxy since partial evaluation removes all the abstractions of the
+AST and results in a graph that is much closer to the low-level instructions
+that the call target actually performs. This results in a more precise cost
+model when deciding weather or not to inline a call target and removes much of
+the language specific information that the AST carries (hence the name:
+Language-agnostic inlining). 
 
 This is achieved by performing partial evaluation on every candidate call
 target and then making the inlining decision after that (as opposed to the
@@ -71,9 +71,9 @@ measurable increase in average compilation time compared to legacy inlining
 ## Observing and impacting the inlining.
 
 The inliner keeps an internal call tree to keep track of the states of
-individual targets, as well as the inlining decisions that were made. The
-following sections explain the states in which targets in the call tree can be,
-as well as how to find out which decisions were made during compilations.
+individual calls to targets, as well as the inlining decisions that were made.
+The following sections explain the states in which calls in the call tree can
+be, as well as how to find out which decisions were made during compilations.
 
 ### Call tree states
 
@@ -91,8 +91,8 @@ inliner hitting it's exploration budget limitations
 * Expanded - This state means that the call target was partially evaluated
   (thus, considered for inlining) but a decision was made not to inline. This
 could be due to inlining budget limitations or the target being deemed too
-expensive to inline (e.g. inlining a target with multiple outgoing "Cutoff"
-calls would introduce more calls to the compilation unit).
+expensive to inline (e.g. inlining a small target with multiple outgoing
+"Cutoff" calls would just introduce more calls to the compilation unit).
 * Removed - This state means that this call is present in the AST but partial
   evaluation removed the call. This is an advantage over the legacy inlining
 which made the decisions ahead of time and had no way of noticing such
@@ -101,9 +101,9 @@ situations.
   call.
 * BailedOut - This state should be very rare and is considered a performance
   problem. It means that partial evaluation of the target resulted in a
-BailoutException. This means there is some problem with that particular target,
-but rather than quit the entire compilation we treat that call as not possible
-to inline.
+BailoutException i.e. could not be completed successfully. This means there is
+some problem with that particular target, but rather than quit the entire
+compilation we treat that call as not possible to inline.
 
 ### Tracing inlining decisions
 
@@ -165,8 +165,9 @@ mind. Changing these parameters can impact all of these.
 Language-agnostic inlining provides two options to control the amount of
 exploration and the amount of inlining the compiler can do. There are
 `InliningExpansionBudget` and `InliningInliningBudget` respectively. Both are
-expressed in terms of Graal Node count. They can be set the same way as
-described in the "Tracing inlining decisions" section.
+expressed in terms of Graal Node count. They can be controlled as any other
+engine options (i.e. the same way as described in the "Tracing inlining
+decisions" section).
 
 `InliningExpansionBudget` controls at which point the inliner will stop
 partially evaluating candidates. Increasing this budget can thus have a very
