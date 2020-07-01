@@ -162,7 +162,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     @CompilationFinal private volatile ReturnProfile returnProfile;
     @CompilationFinal private Class<? extends Throwable> profiledExceptionType;
 
-    private static final class ArgumentsProfile {
+    public static final class ArgumentsProfile {
         private static final String ARGUMENT_TYPES_ASSUMPTION_NAME = "Profiled Argument Types";
         private static final Class<?>[] EMPTY_ARGUMENT_TYPES = new Class<?>[0];
         private static final ArgumentsProfile INVALID = new ArgumentsProfile();
@@ -181,9 +181,20 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             this.assumption = createValidAssumption(assumptionName);
             this.types = types;
         }
+
+        public OptimizedAssumption getAssumption() {
+            return assumption;
+        }
+
+        /**
+         * The returned array is read-only.
+         */
+        public Class<?>[] getTypes() {
+            return types;
+        }
     }
 
-    private static final class ReturnProfile {
+    public static final class ReturnProfile {
         private static final String RETURN_TYPE_ASSUMPTION_NAME = "Profiled Return Type";
         private static final ReturnProfile INVALID = new ReturnProfile();
 
@@ -200,6 +211,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             assert type != null;
             this.assumption = createValidAssumption(RETURN_TYPE_ASSUMPTION_NAME);
             this.type = type;
+        }
+
+        public Class<?> getType() {
+            return type;
+        }
+
+        public OptimizedAssumption getAssumption() {
+            return assumption;
         }
     }
 
@@ -1055,7 +1074,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return castArguments;
     }
 
-    private ArgumentsProfile getInitializedArgumentsProfile() {
+    protected final ArgumentsProfile getInitializedArgumentsProfile() {
         if (argumentsProfile == null) {
             /*
              * We always need an assumption. If this method is called before the profile was
@@ -1067,15 +1086,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         }
 
         return argumentsProfile;
-    }
-
-    protected final Class<?>[] getProfiledArgumentTypes() {
-        ArgumentsProfile argumentsProfile = getInitializedArgumentsProfile();
-        if (argumentsProfile.assumption.isValid()) {
-            return argumentsProfile.types;
-        } else {
-            return null;
-        }
     }
 
     // endregion
@@ -1113,7 +1123,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return result;
     }
 
-    private ReturnProfile getInitializedReturnProfile() {
+    protected final ReturnProfile getInitializedReturnProfile() {
         if (returnProfile == null) {
             /*
              * We always need an assumption. If this method is called before the profile was
@@ -1125,15 +1135,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         }
 
         return returnProfile;
-    }
-
-    protected final Class<?> getProfiledReturnType() {
-        ReturnProfile returnProfile = getInitializedReturnProfile();
-        if (returnProfile.assumption.isValid()) {
-            return returnProfile.type;
-        } else {
-            return null;
-        }
     }
 
     // endregion
@@ -1162,19 +1163,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     // endregion
-
-    protected List<OptimizedAssumption> getProfiledTypesAssumptions() {
-        List<OptimizedAssumption> result = new ArrayList<>();
-        ArgumentsProfile argumentsProfile = getInitializedArgumentsProfile();
-        if (argumentsProfile.assumption.isValid()) {
-            result.add(argumentsProfile.assumption);
-        }
-        ReturnProfile returnProfile = getInitializedReturnProfile();
-        if (returnProfile.assumption.isValid()) {
-            result.add(returnProfile.assumption);
-        }
-        return result;
-    }
 
     private static Class<?> classOf(Object arg) {
         return arg != null ? arg.getClass() : null;
