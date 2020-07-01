@@ -144,6 +144,19 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
         ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(clazz(access, "sun.security.ssl.SSLContextImpl$DefaultManagersHolder"),
                         "for reading properties at run time");
 
+        /*
+         * SSL debug logging enabled by javax.net.debug system property is setup during the class
+         * initialization of sun.security.ssl.Debug (in Java 8) or sun.security.ssl.SSLLogger (in
+         * Java 11). We cannot avoid these classes from being dragged in during image build time, so
+         * we have to reinitialize these classes at runtime to allow honouring runtime passed
+         * configuration for the javax.net.debug system property.
+         */
+        if (JavaVersionUtil.JAVA_SPEC == 8) {
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(clazz(access, "sun.security.ssl.Debug"), "for substitutions");
+        } else if (JavaVersionUtil.JAVA_SPEC >= 11) {
+            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(clazz(access, "sun.security.ssl.SSLLogger"), "for substitutions");
+        }
+
         if (SubstrateOptions.EnableAllSecurityServices.getValue()) {
             /* Prepare SunEC native library access. */
             prepareSunEC();
