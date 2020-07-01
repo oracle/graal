@@ -61,9 +61,17 @@ class EspressoVm(GuestVm, JavaVm):
 class EspressoMinHeapVm(EspressoVm):
     # Runs benchmarks multiple times until it finds the minimum size of max heap (`-Xmx`) required to complete the execution within a given overhead factor.
     # The minimum heap size is stored in an extra dimension.
+    def __init__(self, ovh_factor, min_heap, max_heap, config_name, options, host_vm=None):
+        super(EspressoMinHeapVm, self).__init__(config_name=config_name, options=options, host_vm=host_vm)
+        self.ovh_factor = ovh_factor
+        self.min_heap = min_heap
+        self.max_heap = max_heap
 
     def name(self):
         return super(EspressoMinHeapVm, self).name() + '-minheap'
+
+    def with_host_vm(self, host_vm):
+        return self.__class__(self.ovh_factor, self.min_heap, self.max_heap, self.config_name(), self._options, host_vm)
 
     def run(self, cwd, args):
         class PTimeout(object):
@@ -96,7 +104,7 @@ class EspressoMinHeapVm(EspressoVm):
                     run_info['dims'] = dims
             return _exit_code
 
-        exit_code = mx.run_java_min_heap(args=args, benchName='# MinHeap', minHeap=0, maxHeap=2048, cwd=cwd, run_with_heap=run_with_heap)
+        exit_code = mx.run_java_min_heap(args=args, benchName='# MinHeap', overheadFactor=self.ovh_factor, minHeap=self.min_heap, maxHeap=self.max_heap, cwd=cwd, run_with_heap=run_with_heap)
         return exit_code, run_info['stdout'], run_info['dims']
 
 
@@ -208,7 +216,8 @@ class AWFYBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Averaging
 # Register soon-to-become-default configurations.
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('default', []), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('inline-accessors', ['--experimental-options', '--java.InlineFieldAccessors']), _suite)
-mx_benchmark.java_vm_registry.add_vm(EspressoMinHeapVm('default', []), _suite)
+mx_benchmark.java_vm_registry.add_vm(EspressoMinHeapVm(0, 0, 64, 'infinite-overhead', []), _suite)
+mx_benchmark.java_vm_registry.add_vm(EspressoMinHeapVm(1.5, 0, 2048, '1.5-overhead', []), _suite)
 
 mx_benchmark.add_bm_suite(AWFYBenchmarkSuite())
 
