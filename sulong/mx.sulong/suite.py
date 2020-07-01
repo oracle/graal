@@ -435,6 +435,7 @@ suite = {
       ],
       "buildDependencies" : [
         # "sdk:LLVM_TOOLCHAIN",
+        "sdk:LLVM_ORG_SRC",
       ],
       "buildEnv" : {
         # LLVM_TOOLCHAIN currently does not ship the llvm header files [GR-23492] - relying on system LLVM for now
@@ -444,6 +445,7 @@ suite = {
         "CXX" : "clang++",
         "LLVM_REDUCE" :"bin/<exe:llvm-reduce>",
         "LLVM_STRESS" :"bin/<exe:llvm-stress>",
+        "LLVM_ORG_SRC" : "<path:LLVM_ORG_SRC>",
         "OS" : "<os>",
       },
       "checkstyle" : "com.oracle.truffle.llvm.runtime",

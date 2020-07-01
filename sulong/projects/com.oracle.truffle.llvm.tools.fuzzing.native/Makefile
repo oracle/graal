@@ -29,6 +29,7 @@
 #
 
 QUIETLY$(MX_VERBOSE)  = @
+QUIET_REDIRECT$(MX_VERBOSE)  = > /dev/null
 .PHONY: default
 
 default: ${LLVM_STRESS} ${LLVM_REDUCE}
@@ -43,6 +44,16 @@ LIBS+=$(shell ${LLVM_CONFIG} --libs)
 LDFLAGS+=$(shell ${LLVM_CONFIG} --ldflags) -rpath $(shell ${LLVM_CONFIG} --libdir)
 CXXFLAGS+=$(shell ${LLVM_CONFIG} --cxxflags) -std=c++14
 CPPFLAGS+=$(shell ${LLVM_CONFIG} --cppflags)
+
+src/%.cpp: %.diff ${LLVM_ORG_SRC}/llvm/tools/llvm-stress/%.cpp
+	$(eval tmp_dir=$(dir $@)/tmp)
+	@mkdir -p ${tmp_dir}
+	@# copy source file to temporary location
+	$(QUIETLY) cp $(word 2,$^) ${tmp_dir}
+	@# patch source file
+	$(QUIETLY) patch -p1 -i $< -d ${tmp_dir} ${QUIET_REDIRECT}
+	@# copy patched file to destination
+	$(QUIETLY) cp ${tmp_dir}/$(notdir $@) $@
 
 bin/%.o: src/%.cpp
 	@mkdir -p $(dir $@)
