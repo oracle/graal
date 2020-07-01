@@ -76,7 +76,7 @@ public class ModuleTable extends EntryTable<ModuleTable.ModuleEntry, ClassRegist
         }
 
         private final ClassRegistry registry;
-        private StaticObject module;
+        private StaticObject module = StaticObject.NULL;
         private boolean canReadAllUnnamed = false;
         private boolean isOpen = false;
 

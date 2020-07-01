@@ -316,15 +316,13 @@ public final class Classpath {
 
         @Override
         public boolean contains(String path) {
-            String moduleName = helper.packageToModule(path);
-            byte[] classBytes = helper.getClassBytes(moduleName, path);
+            byte[] classBytes = helper.getClassBytes(path);
             return classBytes != null;
         }
 
         @Override
         ClasspathFile readFile(String archiveName, String fsPath) {
-            String moduleName = helper.packageToModule(archiveName);
-            byte[] classBytes = helper.getClassBytes(moduleName, archiveName);
+            byte[] classBytes = helper.getClassBytes(archiveName);
             if (classBytes == null) {
                 return null;
             }

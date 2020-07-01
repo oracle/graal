@@ -87,6 +87,18 @@ public final class Meta implements ContextAccess {
         _long = new PrimitiveKlass(context, JavaKind.Long);
         _void = new PrimitiveKlass(context, JavaKind.Void);
 
+        PRIMITIVE_KLASSES = new PrimitiveKlass[]{
+                        _boolean,
+                        _byte,
+                        _char,
+                        _short,
+                        _float,
+                        _int,
+                        _double,
+                        _long,
+                        _void
+        };
+
         _boolean_array = _boolean.array();
         _byte_array = _byte.array();
         _char_array = _char.array();
@@ -801,6 +813,9 @@ public final class Meta implements ContextAccess {
 
     @CompilationFinal(dimensions = 1) //
     public final ObjectKlass[] BOXED_PRIMITIVE_KLASSES;
+
+    @CompilationFinal(dimensions = 1) //
+    public final PrimitiveKlass[] PRIMITIVE_KLASSES;
 
     // Checkstyle: resume field name check
 

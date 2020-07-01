@@ -67,6 +67,7 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.meta.StringUtil;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.NativeMethodNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -1578,7 +1579,13 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public void GetStringRegion(@Host(String.class) StaticObject str, int start, int len, @Pointer TruffleObject bufPtr) {
-        char[] chars = ((StaticObject) getMeta().java_lang_String_value.get(str)).unwrap();
+        char[] chars;
+        if (getContext().getJavaVersion() >= 9) {
+            byte[] bytes = ((StaticObject) getMeta().java_lang_String_value.get(str)).unwrap();
+            chars = StringUtil.toChars(bytes);
+        } else {
+            chars = ((StaticObject) getMeta().java_lang_String_value.get(str)).unwrap();
+        }
         if (start < 0 || start + (long) len > chars.length) {
             throw Meta.throwException(getMeta().java_lang_StringIndexOutOfBoundsException);
         }

@@ -43,14 +43,7 @@ public class JImageHelper {
         library.close(jimage);
     }
 
-    public byte[] getClassBytes(String moduleName, String name) {
-        return library.getClassBytes(jimage, moduleName, name);
-    }
-
-    public String packageToModule(String packageName) {
-        if (!library.getContext().modulesInitialized()) {
-            return Classpath.JAVA_BASE;
-        }
-        return library.packageToModule(jimage, packageName);
+    public byte[] getClassBytes(String name) {
+        return library.getClassBytes(jimage, name);
     }
 }

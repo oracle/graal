@@ -38,22 +38,25 @@ import com.oracle.truffle.espresso.substitutions.Host;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 
 /**
- * Helper to reduce cluttering of the {@link VM} class
+ * Helper to reduce cluttering of the {@link VM} class.
  */
 public class ModulesHelperVM {
-    static ModuleTable.ModuleEntry getModuleEntry(@Host(typeName = "Ljava/lang/Module") StaticObject module, Meta meta) {
+    private ModulesHelperVM() {
+    }
+
+    private static ModuleTable.ModuleEntry getModuleEntry(@Host(typeName = "Ljava/lang/Module") StaticObject module, Meta meta) {
         return (ModuleTable.ModuleEntry) module.getHiddenField(meta.HIDDEN_MODULE_ENTRY);
     }
 
-    private static final PackageTable.PackageEntry getPackageEntry(ModuleTable.ModuleEntry fromModuleEntry, Symbol<Symbol.Name> nameSymbol) {
+    private static PackageTable.PackageEntry getPackageEntry(ModuleTable.ModuleEntry fromModuleEntry, Symbol<Symbol.Name> nameSymbol) {
         return fromModuleEntry.registry().packages().lookup(nameSymbol);
     }
 
-    static final ModuleTable.ModuleEntry extractToModuleEntry(@Host(typeName = "Ljava/lang/Module") StaticObject to_module, Meta meta,
+    static ModuleTable.ModuleEntry extractToModuleEntry(@Host(typeName = "Ljava/lang/Module") StaticObject toModule, Meta meta,
                     SubstitutionProfiler profiler) {
         ModuleTable.ModuleEntry toModuleEntry = null;
-        if (!StaticObject.isNull(to_module)) {
-            toModuleEntry = getModuleEntry(to_module, meta);
+        if (!StaticObject.isNull(toModule)) {
+            toModuleEntry = getModuleEntry(toModule, meta);
             if (toModuleEntry == null) {
                 profiler.profile(8);
                 throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "to_module is invalid");
@@ -62,13 +65,13 @@ public class ModulesHelperVM {
         return toModuleEntry;
     }
 
-    static final ModuleTable.ModuleEntry extractFromModuleEntry(@Host(typeName = "Ljava/lang/Module") StaticObject from_module, Meta meta,
+    static ModuleTable.ModuleEntry extractFromModuleEntry(@Host(typeName = "Ljava/lang/Module") StaticObject fromModule, Meta meta,
                     SubstitutionProfiler profiler) {
-        if (StaticObject.isNull(from_module)) {
+        if (StaticObject.isNull(fromModule)) {
             profiler.profile(9);
             throw meta.throwNullPointerException();
         }
-        ModuleTable.ModuleEntry fromModuleEntry = getModuleEntry(from_module, meta);
+        ModuleTable.ModuleEntry fromModuleEntry = getModuleEntry(fromModule, meta);
         if (fromModuleEntry == null) {
             profiler.profile(10);
             throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "from_module cannot be found");
@@ -76,7 +79,7 @@ public class ModulesHelperVM {
         return fromModuleEntry;
     }
 
-    static final PackageTable.PackageEntry extractPackageEntry(@Pointer TruffleObject pkgName, ModuleTable.ModuleEntry fromModuleEntry, Meta meta, SubstitutionProfiler profiler) {
+    static PackageTable.PackageEntry extractPackageEntry(@Pointer TruffleObject pkgName, ModuleTable.ModuleEntry fromModuleEntry, Meta meta, SubstitutionProfiler profiler) {
         String pkg = NativeEnv.interopPointerToString(pkgName);
         PackageTable.PackageEntry packageEntry = null;
         Symbol<Symbol.Name> nameSymbol = meta.getContext().getNames().lookup(pkg);
@@ -96,9 +99,9 @@ public class ModulesHelperVM {
         return packageEntry;
     }
 
-    static final void addModuleExports(@Host(typeName = "Ljava/lang/Module") StaticObject from_module,
+    static void addModuleExports(@Host(typeName = "Ljava/lang/Module") StaticObject fromModule,
                     @Pointer TruffleObject pkgName,
-                    @Host(typeName = "Ljava/lang/Module") StaticObject to_module,
+                    @Host(typeName = "Ljava/lang/Module") StaticObject toModule,
                     Meta meta,
                     InteropLibrary unchached,
                     SubstitutionProfiler profiler) {
@@ -106,12 +109,12 @@ public class ModulesHelperVM {
             profiler.profile(0);
             throw meta.throwNullPointerException();
         }
-        ModuleTable.ModuleEntry fromModuleEntry = extractFromModuleEntry(from_module, meta, profiler);
+        ModuleTable.ModuleEntry fromModuleEntry = extractFromModuleEntry(fromModule, meta, profiler);
         if (!fromModuleEntry.isNamed() || fromModuleEntry.isOpen()) {
             // All packages in unnamed and open modules are exported by default.
             return;
         }
-        ModuleTable.ModuleEntry toModuleEntry = extractToModuleEntry(to_module, meta, profiler);
+        ModuleTable.ModuleEntry toModuleEntry = extractToModuleEntry(toModule, meta, profiler);
         PackageTable.PackageEntry packageEntry = extractPackageEntry(pkgName, fromModuleEntry, meta, profiler);
         if (fromModuleEntry != toModuleEntry) {
             packageEntry.addExports(toModuleEntry);

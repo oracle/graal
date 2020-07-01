@@ -338,11 +338,17 @@ public final class Types {
 
     public static String getRuntimePackage(Symbol<Type> symbol) {
         String typeString = symbol.toString();
+        if (typeString.startsWith("[")) {
+            return getRuntimePackage(typeString.substring(getArrayDimensions(symbol)));
+        }
+        return getRuntimePackage(typeString);
+    }
+
+    public static String getRuntimePackage(String typeString) {
         int lastSlash = typeString.lastIndexOf('/');
         if (lastSlash < 0) {
             return "";
         }
-        assert typeString.startsWith("L");
         return typeString.substring(1, lastSlash);
     }
 }

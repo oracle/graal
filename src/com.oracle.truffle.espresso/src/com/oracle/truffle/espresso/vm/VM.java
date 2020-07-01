@@ -2533,8 +2533,8 @@ public final class VM extends NativeEnv implements ContextAccess {
             }
             javaBaseEntry.setModule(module);
             module.setHiddenField(getMeta().HIDDEN_MODULE_ENTRY, javaBaseEntry);
+            getRegistries().processFixupList(module);
         }
-        // TODO: patch java.base classes
     }
 
     @VmImpl
@@ -2563,13 +2563,15 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
-    public StaticObject JVM_GetAndClearReferencePendingList() {
+    public static StaticObject JVM_GetAndClearReferencePendingList() {
+        // TODO this
         return StaticObject.NULL;
     }
 
     @VmImpl
     @JniImpl
-    public void JVM_WaitForReferencePendingList() {
+    public static void JVM_WaitForReferencePendingList() {
+        // TODO this
         return;
     }
 
