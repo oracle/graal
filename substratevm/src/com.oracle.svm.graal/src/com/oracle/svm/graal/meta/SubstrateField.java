@@ -37,7 +37,6 @@ import com.oracle.svm.core.hub.AnnotationsEncoding;
 import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.util.HostedStringDeduplication;
-import com.oracle.svm.core.util.Replaced;
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.Node.Children;
 import com.oracle.truffle.api.nodes.NodeCloneable;
@@ -49,7 +48,7 @@ import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-public class SubstrateField implements SharedField, Replaced {
+public class SubstrateField implements SharedField {
 
     protected static final SubstrateField[] EMPTY_ARRAY = new SubstrateField[0];
 
