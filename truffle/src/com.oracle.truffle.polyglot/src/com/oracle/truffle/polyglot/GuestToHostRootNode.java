@@ -90,7 +90,7 @@ abstract class GuestToHostRootNode extends RootNode {
     }
 
     @SuppressWarnings({"unchecked", "unused"})
-    static <E extends Exception> RuntimeException silenceException(Class<E> type, Exception ex) throws E {
+    static <E extends Throwable> RuntimeException silenceException(Class<E> type, Throwable ex) throws E {
         throw (E) ex;
     }
 

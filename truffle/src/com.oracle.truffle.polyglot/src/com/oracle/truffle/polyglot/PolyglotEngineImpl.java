@@ -390,21 +390,21 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
 
         assert this.logLevels.isEmpty();
         parseOptions(newOptions, newUseSystemProperties, originalEngineOptions, languagesOptions, instrumentsOptions, logLevels);
-
-        this.engineOptionValues.putAll(originalEngineOptions, newAllowExperimentalOptions);
+        boolean useAllowExperimentalOptions = newAllowExperimentalOptions || Boolean.parseBoolean(EngineAccessor.RUNTIME.getSavedProperty(PROP_ALLOW_EXPERIMENTAL_OPTIONS));
+        this.engineOptionValues.putAll(originalEngineOptions, useAllowExperimentalOptions);
 
         if (this.runtimeData != null) {
             EngineAccessor.RUNTIME.reloadEngineOptions(this.runtimeData, this.engineOptionValues);
         }
 
         for (PolyglotLanguage language : languagesOptions.keySet()) {
-            language.getOptionValues().putAll(languagesOptions.get(language), newAllowExperimentalOptions);
+            language.getOptionValues().putAll(languagesOptions.get(language), useAllowExperimentalOptions);
         }
 
         // Set instruments options but do not call onCreate. OnCreate is called only in case of
         // successful context patch.
         for (PolyglotInstrument instrument : instrumentsOptions.keySet()) {
-            instrument.getOptionValues().putAll(instrumentsOptions.get(instrument), newAllowExperimentalOptions);
+            instrument.getOptionValues().putAll(instrumentsOptions.get(instrument), useAllowExperimentalOptions);
         }
         registerShutDownHook();
         return true;

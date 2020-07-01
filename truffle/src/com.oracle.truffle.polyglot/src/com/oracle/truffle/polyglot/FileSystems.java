@@ -149,9 +149,6 @@ final class FileSystems {
         Object engineObject = EngineAccessor.LANGUAGE.getFileSystemEngineObject(EngineAccessor.LANGUAGE.getFileSystemContext(file));
         if (engineObject instanceof PolyglotLanguageContext) {
             PolyglotLanguageContext context = (PolyglotLanguageContext) engineObject;
-            if (!context.context.inContextPreInitialization) {
-                return null;
-            }
             FileSystem fs = EngineAccessor.LANGUAGE.getFileSystem(file);
             Path path = EngineAccessor.LANGUAGE.getPath(file);
             String result = relativizeToLanguageHome(fs, path, context.language);

@@ -84,7 +84,6 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.junit.After;
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -121,7 +120,6 @@ public class ContextPreInitializationTest {
     public void setUp() throws Exception {
         // Initialize IMPL
         Class.forName("org.graalvm.polyglot.Engine$ImplHolder", true, ContextPreInitializationTest.class.getClassLoader());
-        Assume.assumeTrue(false);
     }
 
     @After
@@ -965,7 +963,7 @@ public class ContextPreInitializationTest {
         assertEquals(0, firstLangCtx.disposeContextCount);
         assertEquals(0, firstLangCtx.initializeThreadCount);
         assertEquals(0, firstLangCtx.disposeThreadCount);
-        final TestHandler testHandler = new TestHandler();
+        final TestHandler testHandler = new TestHandler("engine.com.oracle.truffle.polyglot.PolyglotLanguageContext");
         final Context ctx = Context.newBuilder().option("log.engine.level", "FINE").logHandler(testHandler).build();
         Value res = ctx.eval(Source.create(FIRST, "test"));
         assertEquals("test", res.asString());
@@ -1340,7 +1338,7 @@ public class ContextPreInitializationTest {
         Path testFolder = Files.createTempDirectory("testSources").toRealPath();
         try {
             Path buildtimeHome = Files.createDirectories(testFolder.resolve("build").resolve(FIRST));
-            Path buildtimeResource = Files.write(buildtimeHome.resolve("lib.test"), Collections.singleton("test"));
+            Path buildtimeResource = Files.write(buildtimeHome.resolve("testSourceInLanguageHome.test"), Collections.singleton("test"));
             Path runtimeHome = Files.createDirectories(testFolder.resolve("exec").resolve(FIRST));
             Path runtimeResource = Files.copy(buildtimeResource, runtimeHome.resolve(buildtimeResource.getFileName()));
             System.setProperty(String.format("org.graalvm.language.%s.home", FIRST), buildtimeHome.toString());
@@ -1389,7 +1387,7 @@ public class ContextPreInitializationTest {
         try {
             Path buildtimeHome = Files.createDirectories(testFolder.resolve("build").resolve(FIRST));
             Path runtimeHome = Files.createDirectories(testFolder.resolve("exec").resolve(FIRST));
-            Path resource = Files.write(testFolder.resolve("lib.test"), Collections.singleton("test"));
+            Path resource = Files.write(testFolder.resolve("testSourceOutsideLanguageHome.test"), Collections.singleton("test"));
             System.setProperty(String.format("org.graalvm.language.%s.home", FIRST), buildtimeHome.toString());
             AtomicReference<com.oracle.truffle.api.source.Source> buildtimeCachedSource = new AtomicReference<>();
             AtomicReference<com.oracle.truffle.api.source.Source> buildtimeUnCachedSource = new AtomicReference<>();
@@ -1434,7 +1432,7 @@ public class ContextPreInitializationTest {
         Path testFolder = Files.createTempDirectory("testSources").toRealPath();
         try {
             Path buildtimeHome = Files.createDirectories(testFolder.resolve("build").resolve(FIRST));
-            Path buildtimeResource = Files.write(buildtimeHome.resolve("lib.test"), Collections.singleton("test"));
+            Path buildtimeResource = Files.write(buildtimeHome.resolve("testSourceNotPatchedContext.test"), Collections.singleton("test"));
             Path runtimeHome = Files.createDirectories(testFolder.resolve("exec").resolve(FIRST));
             Path runtimeResource = Files.copy(buildtimeResource, runtimeHome.resolve(buildtimeResource.getFileName()));
             System.setProperty(String.format("org.graalvm.language.%s.home", FIRST), buildtimeHome.toString());
@@ -1849,11 +1847,20 @@ public class ContextPreInitializationTest {
     }
 
     private static final class TestHandler extends Handler {
+
+        private final Set<String> importantLoggers;
         final List<LogRecord> logs = new ArrayList<>();
+
+        TestHandler(String... importantLoggers) {
+            this.importantLoggers = new HashSet<>();
+            Collections.addAll(this.importantLoggers, importantLoggers);
+        }
 
         @Override
         public void publish(LogRecord record) {
-            logs.add(record);
+            if (importantLoggers.isEmpty() || importantLoggers.contains(record.getLoggerName())) {
+                logs.add(record);
+            }
         }
 
         @Override
