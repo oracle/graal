@@ -27,7 +27,10 @@ package com.oracle.svm.core.monitor;
 //Checkstyle: stop
 
 import java.lang.ref.ReferenceQueue;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.AbstractOwnableSynchronizer;
 import java.util.concurrent.locks.AbstractQueuedSynchronizer;
@@ -40,6 +43,8 @@ import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.WeakIdentityHashMap;
@@ -88,6 +93,34 @@ import sun.misc.Unsafe;
 public class MultiThreadedMonitorSupport extends MonitorSupport {
 
     private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+
+    /**
+     * Types that are used to implement the secondary storage for monitor slots cannot themselves
+     * use the additionalMonitors map. That could result in recursive manipulation of the
+     * additionalMonitors map which could lead to table corruptions and double insertion of a
+     * monitor for the same object. Therefore these types will alawys get a monitor slot.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)//
+    public static final Set<Class<?>> FORCE_MONITOR_SLOT_TYPES;
+
+    static {
+        try {
+            /*
+             * The com.oracle.svm.core.WeakIdentityHashMap used to model the
+             * com.oracle.svm.core.monitor.MultiThreadedMonitorSupport#additionalMonitors map uses
+             * java.lang.ref.ReferenceQueue internally. The ReferenceQueue uses the inner static
+             * class Lock for all its locking needs.
+             */
+            HashSet<Class<?>> monitorTypes = new HashSet<>();
+            Class<?> referenceQueueLock = Class.forName("java.lang.ref.ReferenceQueue$Lock");
+            monitorTypes.add(referenceQueueLock);
+            /* The WeakIdentityHashMap also synchronizes on its internal ReferenceQueue field. */
+            monitorTypes.add(java.lang.ref.ReferenceQueue.class);
+            FORCE_MONITOR_SLOT_TYPES = Collections.unmodifiableSet(monitorTypes);
+        } catch (ClassNotFoundException e) {
+            throw VMError.shouldNotReachHere("Error building the list of types that always need a monitor slot.", e);
+        }
+    }
 
     /**
      * {@link Target_java_util_concurrent_locks_ReentrantLock_NonfairSync#objectMonitorCondition}
