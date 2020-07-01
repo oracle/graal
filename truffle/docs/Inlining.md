@@ -105,8 +105,79 @@ BailoutException. This means there is some problem with that particular target,
 but rather than quit the entire compilation we treat that call as not possible
 to inline.
 
-### Tracing Inlining decisions
+### Tracing inlining decisions
 
-### Dumping Inlining decisions
+Truffle provides an engine option to trace the final state of the call tree,
+including a lot of accompanying data, during compilation. This option is
+`TraceInlining` and can be set in all the usual ways: by adding
+`--engine.TraceInlining=true` to the command line of Truffle language
+launchers, adding `-Dpolyglot.engine.TraceInlining=true` to the command line if
+running a regular java program that executes Truffle languages, or [setting the
+option explicitly for an
+engine](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/Engine.Builder.html#option-java.lang.String-java.lang.String-)
 
-### Controlling Inlining budget
+Here is an example output of TraceInlining for a JavaScript function:
+
+```
+[engine] inline start     M.CollidePolygons                                           |call diff        0.00 |Recursion Depth      0 |Explore/inline ratio     1.07 |IR Nodes        27149 |Frequency        1.00 |Truffle Callees     14 |Forced          false |Depth               0
+[engine] Inlined            M.FindMaxSeparation <opt>                                 |call diff       -8.99 |Recursion Depth      0 |Explore/inline ratio      NaN |IR Nodes         4617 |Frequency        1.00 |Truffle Callees      7 |Forced          false |Depth               1
+[engine] Inlined              parseInt <opt>                                          |call diff       -1.00 |Recursion Depth      0 |Explore/inline ratio      NaN |IR Nodes          111 |Frequency        1.00 |Truffle Callees      0 |Forced           true |Depth               2
+[engine] Inlined              M.EdgeSeparation                                        |call diff       -3.00 |Recursion Depth      0 |Explore/inline ratio      NaN |IR Nodes         4097 |Frequency        1.00 |Truffle Callees      2 |Forced          false |Depth               2
+[engine] Inlined                parseInt <opt>                                        |call diff       -1.00 |Recursion Depth      0 |Explore/inline ratio      NaN |IR Nodes          111 |Frequency        1.00 |Truffle Callees      0 |Forced           true |Depth               3
+[engine] Inlined                parseInt <opt>                                        |call diff       -1.00 |Recursion Depth      0 |Explore/inline ratio      NaN |IR Nodes          111 |Frequency        1.00 |Truffle Callees      0 |Forced           true |Depth               3
+[engine] Inlined              parseInt <opt>                                          |call diff       -1.00 |Recursion Depth      0 |Explore/inline ratio      NaN |IR Nodes          111 |Frequency        1.00 |Truffle Callees      0 |Forced           true |Depth               2
+[engine] Expanded             M.EdgeSeparation                                        |call diff        1.00 |Recursion Depth      0 |Explore/inline ratio      NaN |IR Nodes         4097 |Frequency        1.00 |Truffle Callees      2 |Forced          false |Depth               2
+[engine] Inlined              parseInt <opt>                                          |call diff       -1.00 |Recursion Depth      0 |Explore/inline ratio      NaN |IR Nodes          111 |Frequency        1.00 |Truffle Callees      0 |Forced           true |Depth               2
+[engine] Inlined              M.EdgeSeparation                                        |call diff       -3.00 |Recursion Depth      0 |Explore/inline ratio      NaN |IR Nodes         4097 |Frequency        1.00 |Truffle Callees      2 |Forced          false |Depth               2
+[engine] Inlined                parseInt <opt>                                        |call diff       -1.00 |Recursion Depth      0 |Explore/inline ratio      NaN |IR Nodes          111 |Frequency        1.00 |Truffle Callees      0 |Forced           true |Depth               3
+[engine] Inlined                parseInt <opt>                                        |call diff       -1.00 |Recursion Depth      0 |Explore/inline ratio      NaN |IR Nodes          111 |Frequency        1.00 |Truffle Callees      0 |Forced           true |Depth               3
+[engine] Cutoff               M.EdgeSeparation                                        |call diff        0.01 |Recursion Depth      0 |Explore/inline ratio      NaN |IR Nodes            0 |Frequency        0.01 |Truffle Callees      2 |Forced          false |Depth               2
+[engine] Cutoff             M.FindMaxSeparation <opt>                                 |call diff        1.00 |Recursion Depth      0 |Explore/inline ratio      NaN |IR Nodes            0 |Frequency        1.00 |Truffle Callees      7 |Forced          false |Depth               1
+[engine] Cutoff             M.FindIncidentEdge <opt>                                  |call diff        1.00 |Recursion Depth      0 |Explore/inline ratio      NaN |IR Nodes            0 |Frequency        1.00 |Truffle Callees     19 |Forced          false |Depth               1
+[engine] Cutoff             parseInt <opt>                                            |call diff        1.00 |Recursion Depth      0 |Explore/inline ratio      NaN |IR Nodes            0 |Frequency        1.00 |Truffle Callees      0 |Forced           true |Depth               1
+[engine] Cutoff             parseInt <opt>                                            |call diff        0.98 |Recursion Depth      0 |Explore/inline ratio      NaN |IR Nodes            0 |Frequency        0.98 |Truffle Callees      0 |Forced           true |Depth               1
+[engine] Cutoff             A.Set <split-16abdeb5>                                    |call diff        1.00 |Recursion Depth      0 |Explore/inline ratio      NaN |IR Nodes            0 |Frequency        1.00 |Truffle Callees      0 |Forced          false |Depth               1
+[engine] Cutoff             A.Normalize <split-866f516>                               |call diff        1.00 |Recursion Depth      0 |Explore/inline ratio      NaN |IR Nodes            0 |Frequency        1.00 |Truffle Callees      1 |Forced          false |Depth               1
+[engine] Cutoff             A.Set <split-1f7fe4ae>                                    |call diff        1.00 |Recursion Depth      0 |Explore/inline ratio      NaN |IR Nodes            0 |Frequency        1.00 |Truffle Callees      0 |Forced          false |Depth               1
+[engine] Cutoff             M.ClipSegmentToLine                                       |call diff        1.00 |Recursion Depth      0 |Explore/inline ratio      NaN |IR Nodes            0 |Frequency        1.00 |Truffle Callees      2 |Forced          false |Depth               1
+[engine] Cutoff             M.ClipSegmentToLine                                       |call diff        1.00 |Recursion Depth      0 |Explore/inline ratio      NaN |IR Nodes            0 |Frequency        1.00 |Truffle Callees      2 |Forced          false |Depth               1
+[engine] Cutoff             A.SetV <split-7c14e725>                                   |call diff        1.00 |Recursion Depth      0 |Explore/inline ratio      NaN |IR Nodes            0 |Frequency        1.00 |Truffle Callees      0 |Forced          false |Depth               1
+[engine] Cutoff             A.SetV <split-6029dec7>                                   |call diff        1.00 |Recursion Depth      0 |Explore/inline ratio      NaN |IR Nodes            0 |Frequency        1.00 |Truffle Callees      0 |Forced          false |Depth               1
+[engine] Inlined            L.Set <split-2ef5921d>                                    |call diff       -3.97 |Recursion Depth      0 |Explore/inline ratio      NaN |IR Nodes          205 |Frequency        1.98 |Truffle Callees      1 |Forced          false |Depth               1
+[engine] Inlined              set <split-969378b>                                     |call diff       -1.98 |Recursion Depth      0 |Explore/inline ratio      NaN |IR Nodes          716 |Frequency        1.98 |Truffle Callees      0 |Forced          false |Depth               2
+[engine] Inlined            set                                                       |call diff       -1.98 |Recursion Depth      0 |Explore/inline ratio      NaN |IR Nodes          381 |Frequency        1.98 |Truffle Callees      0 |Forced          false |Depth               1
+[engine] inline done      M.CollidePolygons                                           |call diff        0.00 |Recursion Depth      0 |Explore/inline ratio     1.07 |IR Nodes        27149 |Frequency        1.00 |Truffle Callees     14 |Forced          false |Depth               0
+```
+
+### Dumping inlining decisions
+
+The same information that is provided in textual form through tracing is also
+available in the [IGV](Optimizing.md) dumps. The graphs are part of the `Graal
+Graphs` group in a `Call Tree` subgroup. The graphs show the state of the call
+tree before inlining and after.
+
+### Controlling inlining budget
+
+NOTE: The default values for inlining related budgets were carefully chosen
+with consideration for compilation time, performance and compiler stability in
+mind. Changing these parameters can impact all of these.
+
+Language-agnostic inlining provides two options to control the amount of
+exploration and the amount of inlining the compiler can do. There are
+`InliningExpansionBudget` and `InliningInliningBudget` respectively. Both are
+expressed in terms of Graal Node count. They can be set the same way as
+described in the "Tracing inlining decisions" section.
+
+`InliningExpansionBudget` controls at which point the inliner will stop
+partially evaluating candidates. Increasing this budget can thus have a very
+negative impact on average compilation time (notably on the time spent doing
+partial evaluation), but may provide more candidates for inlining.
+
+`InliningInliningBudget` controls how many graal nodes the compilation unit is
+allowed to have as a result of inlining. Increasing this budget will likely
+result in more candidates being inlined, which will result in a larger
+compilation unit. This, in turn might slow down compilation, notably in the
+post partial evaluation phases since larger graphs take more time to optimize.
+It may also improve performance (removed calls, optimization phases have a
+bigger picture) or hurt performance (e.g. graph too big to optimize correctly
+or to compile at all).
