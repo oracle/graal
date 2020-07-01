@@ -800,10 +800,15 @@ def fuzz(args=None, out=None):
                 llvm_tool(["llvm-link", "-o", tmp_ll, tmp_ll, tmp_main_ll])
                 llvm_tool(["llvm-dis", "-o", tmp_ll, tmp_ll])
             else:
-                mx.run([which("csmith"), "-o", tmp_c, "--seed", str(rand.randint(0, 10000000))])
-                csmith_runtime = os.path.join(os.environ['CSMITH_HOME'], 'runtime')
-                mx.run([toolchain_clang, "-O0", "-Wno-everything", "-I"+csmith_runtime, "-o", tmp_out, tmp_c])
-                llvm_tool(["clang", "-O0", "-Wno-everything", "-S", "-emit-llvm", "-I"+csmith_runtime, "-o", tmp_ll, tmp_c])
+                csmith_exe = which("csmith")
+                if not csmith_exe:
+                    mx.abort("`csmith` executable not found")
+                csmith_headers = mx.get_env('CSMITH_HEADERS', None)
+                if not csmith_headers:
+                    mx.abort("Environment variable `CSMITH_HEADERS` not set")
+                mx.run([csmith_exe, "-o", tmp_c, "--seed", str(rand.randint(0, 10000000))])
+                mx.run([toolchain_clang, "-O0", "-Wno-everything", "-I" + csmith_headers, "-o", tmp_out, tmp_c])
+                llvm_tool( ["clang", "-O0", "-Wno-everything", "-S", "-emit-llvm", "-I" + csmith_headers, "-o", tmp_ll, tmp_c])
                 gen.append((tmp_c, 'autogen.c'))
             timeout = 10
             with open(tmp_sulong_out, 'w') as o, open(tmp_sulong_err, 'w') as e:
