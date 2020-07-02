@@ -46,7 +46,7 @@ too big to compile.
 
 ## Language-agnostic inlining
 
-The main design goal of the new inlining approach is to use the number of graal
+The main design goal of the new inlining approach is to use the number of Graal
 nodes after partial evaluation as a proxy for call target size. This is a much
 better size proxy since partial evaluation removes all the abstractions of the
 AST and results in a graph that is much closer to the low-level instructions
@@ -60,7 +60,7 @@ target and then making the inlining decision after that (as opposed to the
 legacy inlining which made decisions before doing any partial evaluation). Both
 the amount of partial evaluation that will be done as well the amount that will
 be inlined are controlled by a notion of a budget. These are the "exploration
-budget" and "inlining budget" respectively, both expressed in terms of graal
+budget" and "inlining budget" respectively, both expressed in terms of Graal
 node counts.
 
 The downside of this approach is that we need to do partial evaluation even on
@@ -177,7 +177,7 @@ partially evaluating candidates. Increasing this budget can thus have a very
 negative impact on average compilation time (notably on the time spent doing
 partial evaluation), but may provide more candidates for inlining.
 
-`InliningInliningBudget` controls how many graal nodes the compilation unit is
+`InliningInliningBudget` controls how many Graal nodes the compilation unit is
 allowed to have as a result of inlining. Increasing this budget will likely
 result in more candidates being inlined, which will result in a larger
 compilation unit. This, in turn might slow down compilation, notably in the
