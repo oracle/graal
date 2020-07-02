@@ -1076,7 +1076,7 @@ class CMakeProject(mx.NativeProject):  # pylint: disable=too-many-ancestors
             d = join(suite.dir, subDir, name)
         srcDir = args.pop('sourceDir', d)
         if not srcDir:
-            mx.abort("Exactly on 'sourceDir' is required")
+            mx.abort("Exactly one 'sourceDir' is required")
         srcDir = mx_subst.path_substitutions.substitute(srcDir)
         cmake_config = args.pop('cmakeConfig', {})
         self.cmake_config = lambda: ['-D{}={}'.format(k, mx_subst.path_substitutions.substitute(v).replace('{{}}', '$')) for k, v in sorted(cmake_config.items())]
@@ -1113,7 +1113,7 @@ class DocumentationProject(mx.NativeProject):  # pylint: disable=too-many-ancest
             d = join(suite.dir, subDir, name)
         srcDir = args.pop('sourceDir', d)
         if not srcDir:
-            mx.abort("Exactly on 'sourceDir' is required")
+            mx.abort("Exactly one 'sourceDir' is required")
         srcDir = mx_subst.path_substitutions.substitute(srcDir)
         super(DocumentationProject, self).__init__(suite, name, subDir, [srcDir], deps, workingSets, results, output, d, **args)
         self.dir = d
