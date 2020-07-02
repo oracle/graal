@@ -142,7 +142,7 @@ final class EventContextObject implements TruffleObject {
 
 
     @ExportMessage
-    boolean isMemberInvocable(String member) {
+    static boolean isMemberInvocable(EventContextObject obj, String member) {
         return "returnNow".equals(member);
     }
 }
