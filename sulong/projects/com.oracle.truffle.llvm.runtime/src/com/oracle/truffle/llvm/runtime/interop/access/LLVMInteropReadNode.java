@@ -56,29 +56,33 @@ public abstract class LLVMInteropReadNode extends LLVMNode {
     @Specialization(guards = "type != null")
     Object doKnownType(LLVMInteropType.Structured type, Object foreign, long offset, ForeignToLLVMType accessType,
                     @Cached LLVMInteropAccessNode access,
-                    @CachedLibrary(limit = "3") InteropLibrary interop,
-                    @Cached ToLLVM toLLVM,
-                    @Cached BranchProfile exception) {
+                    @Cached ReadLocationNode read) {
         AccessLocation location = access.execute(type, foreign, offset);
-        return read(interop, location, accessType, toLLVM, exception);
+        return read.execute(location.identifier, location, accessType);
     }
 
-    @Specialization(guards = "type == null", limit = "3")
+    @Specialization(guards = "type == null")
     Object doUnknownType(@SuppressWarnings("unused") LLVMInteropType.Structured type, Object foreign, long offset, ForeignToLLVMType accessType,
-                    @CachedLibrary("foreign") InteropLibrary interop,
-                    @Cached ToLLVM toLLVM,
-                    @Cached BranchProfile exception) {
+                    @Cached ReadLocationNode read) {
         // type unknown: fall back to "array of unknown value type"
         AccessLocation location = new AccessLocation(foreign, Long.divideUnsigned(offset, accessType.getSizeInBytes()), null);
-        return read(interop, location, accessType, toLLVM, exception);
+        return read.execute(location.identifier, location, accessType);
     }
 
-    private Object read(InteropLibrary interop, AccessLocation location, ForeignToLLVMType accessType, ToLLVM toLLVM, BranchProfile exception) {
-        Object ret;
-        if (location.identifier instanceof String) {
-            String name = (String) location.identifier;
+    @GenerateUncached
+    abstract static class ReadLocationNode extends LLVMNode {
+
+        abstract Object execute(Object identifier, AccessLocation location, ForeignToLLVMType accessType);
+
+        @Specialization(limit = "3")
+        Object readMember(String name, AccessLocation location, ForeignToLLVMType accessType,
+                        @CachedLibrary("location.base") InteropLibrary interop,
+                        @Cached ToLLVM toLLVM,
+                        @Cached BranchProfile exception) {
+            assert name == location.identifier;
             try {
-                ret = interop.readMember(location.base, name);
+                Object ret = interop.readMember(location.base, name);
+                return toLLVM.executeWithType(ret, location.type, accessType);
             } catch (UnsupportedMessageException ex) {
                 exception.enter();
                 throw new LLVMPolyglotException(this, "Member '%s' not found", name);
@@ -86,10 +90,18 @@ public abstract class LLVMInteropReadNode extends LLVMNode {
                 exception.enter();
                 throw new LLVMPolyglotException(this, "Can not read member '%s'", name);
             }
-        } else {
+        }
+
+        @Specialization(limit = "3")
+        Object readArrayElementTypeMatch(Object identifier, AccessLocation location, ForeignToLLVMType accessType,
+                        @CachedLibrary("location.base") InteropLibrary interop,
+                        @Cached ToLLVM toLLVM,
+                        @Cached BranchProfile exception) {
+            assert identifier == location.identifier;
             long idx = (Long) location.identifier;
             try {
-                ret = interop.readArrayElement(location.base, idx);
+                Object ret = interop.readArrayElement(location.base, idx);
+                return toLLVM.executeWithType(ret, location.type, accessType);
             } catch (InvalidArrayIndexException ex) {
                 exception.enter();
                 throw new LLVMPolyglotException(this, "Invalid array index %d", idx);
@@ -98,6 +110,5 @@ public abstract class LLVMInteropReadNode extends LLVMNode {
                 throw new LLVMPolyglotException(this, "Cannot read array element %d", idx);
             }
         }
-        return toLLVM.executeWithType(ret, location.type, accessType);
     }
 }
