@@ -144,6 +144,7 @@ suite = {
       "dir" : "docs",
       "sourceDirs" : ["src"],
       "license" : "BSD-new",
+      "defaultBuild" : False,
     },
     "com.oracle.truffle.llvm.tests" : {
       "subDir" : "tests",
