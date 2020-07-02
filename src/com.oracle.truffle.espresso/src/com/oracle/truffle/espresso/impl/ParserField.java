@@ -28,9 +28,13 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.runtime.Attribute;
 
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINALIZER;
+
 public final class ParserField {
 
     public static final ParserField[] EMPTY_ARRAY = new ParserField[0];
+    // re-use the Constants.ACC_FINALIZER flag to mark hidden fields
+    public static final int HIDDEN = ACC_FINALIZER;
 
     /**
      * This value contains all flags as stored in the VM including internal ones.
@@ -62,5 +66,9 @@ public final class ParserField {
         this.name = name;
         this.type = type;
         this.attributes = attributes;
+    }
+
+    public boolean isHidden() {
+        return (getFlags() & HIDDEN) != 0;
     }
 }

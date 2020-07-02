@@ -54,14 +54,14 @@ public final class LinkedField {
         this.kind = Types.getJavaKind(getType());
     }
 
-    private LinkedField(Symbol<Name> name, LinkedKlass holderLinkedKlass, int hiddenSlot, int hiddenIndex) {
-        this(new ParserField(0, name, Type.java_lang_Object, null), holderLinkedKlass);
-        this.slot = hiddenSlot;
-        this.fieldIndex = hiddenIndex;
+    private LinkedField(ParserField parserField, LinkedKlass holderLinkedKlass, int slot, int index) {
+        this(parserField, holderLinkedKlass);
+        setSlot(slot);
+        setFieldIndex(index);
     }
 
-    public static LinkedField createHidden(LinkedKlass holder, int hiddenSlot, int hiddenIndex, Symbol<Name> name) {
-        return new LinkedField(name, holder, hiddenSlot, hiddenIndex);
+    static LinkedField createHidden(LinkedKlass holder, int slot, int index, Symbol<Name> name) {
+        return new LinkedField(new ParserField(ParserField.HIDDEN, name, Type.java_lang_Object, null), holder, slot, index);
     }
 
     ParserField getParserField() {
@@ -86,7 +86,7 @@ public final class LinkedField {
     }
 
     /**
-     * The slot is the position in the `fieldTable` of the ObjectKlass
+     * The slot is the position in the `fieldTable` of the ObjectKlass.
      */
     public int getSlot() {
         return slot;
@@ -123,5 +123,9 @@ public final class LinkedField {
 
     boolean isStatic() {
         return Modifier.isStatic(getParserField().getFlags());
+    }
+
+    boolean isHidden() {
+        return parserField.isHidden();
     }
 }

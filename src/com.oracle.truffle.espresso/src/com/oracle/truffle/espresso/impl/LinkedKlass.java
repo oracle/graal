@@ -55,17 +55,13 @@ public final class LinkedKlass {
     @CompilationFinal(dimensions = 2) //
     private final int[][] leftoverHoles;
 
-    // instance fields declared in this class (no hidden fields)
+    // instance fields declared in this class (includes hidden fields)
     @CompilationFinal(dimensions = 1) //
     private final LinkedField[] instanceFields;
 
     // static fields declared in this class (no hidden fields)
     @CompilationFinal(dimensions = 1) //
     private final LinkedField[] staticFields;
-
-    // hidden fields declared in this class
-    @CompilationFinal(dimensions = 1) //
-    private final LinkedField[] hiddenFields;
 
     private final int primitiveFieldTotalByteCount;
     private final int primitiveStaticFieldTotalByteCount;
@@ -105,7 +101,6 @@ public final class LinkedKlass {
 
         this.instanceFields = fieldCR.instanceFields;
         this.staticFields = fieldCR.staticFields;
-        this.hiddenFields = fieldCR.hiddenFields;
 
         this.primitiveFieldTotalByteCount = fieldCR.primitiveFieldTotalByteCount;
         this.primitiveStaticFieldTotalByteCount = fieldCR.primitiveStaticFieldTotalByteCount;
@@ -170,10 +165,6 @@ public final class LinkedKlass {
 
     protected LinkedField[] getStaticFields() {
         return staticFields;
-    }
-
-    protected LinkedField[] getHiddenFields() {
-        return hiddenFields;
     }
 
     public int getFieldTableLength() {
