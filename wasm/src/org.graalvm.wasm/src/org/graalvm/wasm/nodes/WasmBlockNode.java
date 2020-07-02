@@ -2439,18 +2439,17 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     @ExplodeLoop
-    private void unwindStack(VirtualFrame frame, int initStackPointer, int initialContinuationStackPointer, int targetBlockReturnLength) {
-        // TODO: If the targetBlockReturnLength could ever be > 1, this would invert the stack
-        // values.
-        // The spec seems to imply that the operand stack should not be inverted.
-        CompilerAsserts.partialEvaluationConstant(targetBlockReturnLength);
-        int stackPointer = initStackPointer;
-        int continuationStackPointer = initialContinuationStackPointer;
-        for (int i = 0; i != targetBlockReturnLength; i++) {
-            stackPointer--;
-            long value = pop(frame, stackPointer);
-            push(frame, continuationStackPointer, value);
-            continuationStackPointer++;
+    private void unwindStack(VirtualFrame frame, int stackPointer, int continuationStackPointer, int returnLength) {
+        CompilerAsserts.partialEvaluationConstant(stackPointer);
+        CompilerAsserts.partialEvaluationConstant(returnLength);
+        for (int i = 0; i < returnLength; ++i) {
+            long value = pop(frame, stackPointer + i - 1);
+            push(frame, continuationStackPointer + i, value);
+        }
+        if (CompilerDirectives.isPartialEvaluationConstant(continuationStackPointer)) {
+            for (int i = continuationStackPointer + returnLength; i < stackPointer; ++i) {
+                pop(frame, i);
+            }
         }
     }
 
