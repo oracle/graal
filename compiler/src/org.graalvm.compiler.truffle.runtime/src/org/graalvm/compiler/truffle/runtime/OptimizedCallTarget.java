@@ -213,12 +213,12 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             this.type = type;
         }
 
-        public Class<?> getType() {
-            return type;
-        }
-
         public OptimizedAssumption getAssumption() {
             return assumption;
+        }
+
+        public Class<?> getType() {
+            return type;
         }
     }
 
