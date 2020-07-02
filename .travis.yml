@@ -55,7 +55,10 @@ matrix:
   - env: JDK="jdk11" GATE="build,bootstraplite" PRIMARY="compiler"
   - os: linux
     arch: arm64
-    env: JDK="jdk11" GATE="fullbuild,test" PRIMARY="compiler"
+    env: JDK="jdk11" GATE="fullbuild,test:1:100" PRIMARY="compiler"
+  - os: linux
+    arch: arm64
+    env: JDK="jdk11" GATE="build,test:0:1" PRIMARY="compiler"
   - os: linux
     arch: arm64
     env: JDK="jdk11" GATE="build,bootstraplite" PRIMARY="compiler"
