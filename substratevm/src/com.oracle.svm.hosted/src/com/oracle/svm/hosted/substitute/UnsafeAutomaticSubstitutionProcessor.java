@@ -1054,7 +1054,8 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
                 invoke.replaceWithInvoke();
             }
         }
-        CanonicalizerPhase.create().apply(graph, context);
+        /* Disable canonicalization of LoadFieldNodes to avoid constant folding of unsafe values. */
+        CanonicalizerPhase.createWithoutReadCanonicalization().apply(graph, context);
 
         return graph;
     }
