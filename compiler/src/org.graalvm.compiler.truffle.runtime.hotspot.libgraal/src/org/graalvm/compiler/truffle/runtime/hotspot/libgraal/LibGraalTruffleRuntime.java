@@ -87,7 +87,7 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
     @SuppressWarnings("try")
     @Override
     protected String initLazyCompilerConfigurationName() {
-        try (LibGraalScope scope = new LibGraalScope()) {
+        try (LibGraalScope scope = new LibGraalScope(DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
             return TruffleToLibGraalCalls.getCompilerConfigurationFactoryName(getIsolateThread(), handle());
         }
     }
@@ -105,7 +105,7 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
     @SuppressWarnings("try")
     @Override
     protected Map<String, Object> createInitialOptions() {
-        try (LibGraalScope scope = new LibGraalScope()) {
+        try (LibGraalScope scope = new LibGraalScope(DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
             byte[] serializedOptions = TruffleToLibGraalCalls.getInitialOptions(getIsolateThread(), handle());
             return OptionsEncoder.decode(serializedOptions);
         }
@@ -113,9 +113,7 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
 
     @Override
     protected OutputStream getDefaultLogStream() {
-        try (LibGraalScope scope = new LibGraalScope()) {
-            return scope.getIsolate().getSingleton(TTYStream.class, () -> new TTYStream());
-        }
+        return TTYStream.INSTANCE;
     }
 
     /**
@@ -123,12 +121,17 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
      */
     static final class TTYStream extends OutputStream {
 
+        static final TTYStream INSTANCE = new TTYStream();
+
         private final ThreadLocal<LibGraalScope> localScope = new ThreadLocal<LibGraalScope>() {
             @Override
             protected LibGraalScope initialValue() {
-                return new LibGraalScope();
+                return new LibGraalScope(DetachAction.DETACH_RUNTIME_AND_RELEASE);
             }
         };
+
+        private TTYStream() {
+        }
 
         private long isolateThread() {
             return localScope.get().getIsolateThreadAddress();
