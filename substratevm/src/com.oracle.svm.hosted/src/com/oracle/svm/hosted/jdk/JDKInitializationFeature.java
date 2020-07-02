@@ -299,8 +299,6 @@ public class JDKInitializationFeature implements Feature {
         rci.initializeAtBuildTime("javax.xml.crypto", "Core JDK classes are initialized at build time for better performance");
         rci.initializeAtBuildTime("com.sun.org.apache.xml.internal.security", "Core JDK classes are initialized at build time for better performance");
 
-        rci.initializeAtBuildTime("java.sql", "Core JDK classes are initialized at build time for better performance");
-
         rci.initializeAtBuildTime("java.beans.PropertyChangeListener", "Core JDK classes are initialized at build time for better performance");
         rci.initializeAtBuildTime("java.beans.PropertyChangeEvent", "Core JDK classes are initialized at build time for better performance");
         rci.initializeAtBuildTime("sun.security.smartcardio.SunPCSC", "Core JDK classes are initialized at build time for better performance");
