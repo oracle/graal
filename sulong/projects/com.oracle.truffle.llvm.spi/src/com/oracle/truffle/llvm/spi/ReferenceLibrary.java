@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,17 +29,27 @@
  */
 package com.oracle.truffle.llvm.spi;
 
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary.Abstract;
+import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryFactory;
-import com.oracle.truffle.llvm.spi.ReferenceLibrary.Asserts;
+import com.oracle.truffle.llvm.spi.ReferenceLibrary.InteropFallback;
 
 /**
  * Library for objects that have reference semantics. Pointer equality comparisons will use that
  * library to determine if two objects are reference-equals.
+ *
+ * @deprecated Implement {@link InteropLibrary#isIdenticalOrUndefined} instead.
  */
-@GenerateLibrary(assertions = Asserts.class)
+@GenerateLibrary
+@Deprecated
+@DefaultExport(InteropFallback.class)
+@SuppressWarnings("deprecation")
 public abstract class ReferenceLibrary extends Library {
 
     /**
@@ -48,9 +58,7 @@ public abstract class ReferenceLibrary extends Library {
      * All implementations of this method must be reflexive, symmetric and transitive.
      */
     @Abstract
-    public boolean isSame(Object receiver, Object other) {
-        return receiver == other;
-    }
+    public abstract boolean isSame(Object receiver, Object other);
 
     private static final LibraryFactory<ReferenceLibrary> FACTORY = LibraryFactory.resolve(ReferenceLibrary.class);
 
@@ -58,25 +66,15 @@ public abstract class ReferenceLibrary extends Library {
         return FACTORY;
     }
 
-    static class Asserts extends ReferenceLibrary {
+    @ExportLibrary(value = ReferenceLibrary.class, receiverType = Object.class)
+    @SuppressWarnings("deprecation")
+    static class InteropFallback {
 
-        @Child private ReferenceLibrary delegate;
-
-        Asserts(ReferenceLibrary delegate) {
-            this.delegate = delegate;
-        }
-
-        @Override
-        public boolean accepts(Object receiver) {
-            return delegate.accepts(receiver);
-        }
-
-        @Override
-        public boolean isSame(Object receiver, Object other) {
-            assert delegate.isSame(receiver, receiver) : "isSame should be reflexive";
-            boolean ret = delegate.isSame(receiver, other);
-            assert !delegate.accepts(other) || ret == delegate.isSame(other, receiver) : "isSame should be symmetric";
-            return ret;
+        @ExportMessage
+        static boolean isSame(Object receiver, Object other,
+                        @CachedLibrary("receiver") InteropLibrary receiverInterop,
+                        @CachedLibrary(limit = "3") InteropLibrary otherInterop) {
+            return receiverInterop.isIdentical(receiver, other, otherInterop);
         }
     }
 }

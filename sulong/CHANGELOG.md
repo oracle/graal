@@ -4,6 +4,8 @@ Changes:
 
 New features:
 
+* Support `InteropLibrary.isIdentical` and related messages.
+
 * Added the `--print-toolchain-api-identifier`,  `--print-toolchain-api-tool <tool-name>`
   and `--print-toolchain-api-paths <path-name>` arguments to the `lli` launcher.
   These can be used to query the [Toolchain API](docs/contributor/TOOLCHAIN.md)
