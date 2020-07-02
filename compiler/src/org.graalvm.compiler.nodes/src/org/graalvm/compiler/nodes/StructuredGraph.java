@@ -346,6 +346,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     private boolean isAfterFixedReadPhase = false;
     private boolean hasValueProxies = true;
     private boolean isAfterExpandLogic = false;
+    private boolean isAfterReassociation = false;
     private FrameStateVerification frameStateVerification;
 
     /**
@@ -663,6 +664,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         copy.isAfterFloatingReadPhase = isAfterFloatingReadPhase;
         copy.hasValueProxies = hasValueProxies;
         copy.isAfterExpandLogic = isAfterExpandLogic;
+        copy.isAfterReassociation = isAfterReassociation;
         copy.trackNodeSourcePosition = trackNodeSourcePosition;
         if (fields != null) {
             copy.fields = createFieldSet(fields);
@@ -976,6 +978,14 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     public void setAfterExpandLogic() {
         isAfterExpandLogic = true;
+    }
+
+    public boolean isAfterReassociation() {
+        return isAfterReassociation;
+    }
+
+    public void setAfterReassociation() {
+        isAfterReassociation = true;
     }
 
     /**

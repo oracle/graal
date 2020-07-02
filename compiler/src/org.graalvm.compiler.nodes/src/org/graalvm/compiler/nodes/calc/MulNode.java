@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package org.graalvm.compiler.nodes.calc;
 
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp.Mul;
@@ -66,7 +67,7 @@ public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArit
         if (tryConstantFold != null) {
             return tryConstantFold;
         }
-        return canonical(null, op, stamp, x, y, view);
+        return canonical(null, null, op, stamp, x, y, view);
     }
 
     @Override
@@ -92,27 +93,38 @@ public class MulNode extends BinaryArithmeticNode<Mul> implements NarrowableArit
         }
         BinaryOp<Mul> op = getOp(forX, forY);
         NodeView view = NodeView.from(tool);
-        return canonical(this, op, stamp(view), forX, forY, view);
+        return canonical(tool, this, op, stamp(view), forX, forY, view);
     }
 
-    private static ValueNode canonical(MulNode self, BinaryOp<Mul> op, Stamp stamp, ValueNode forX, ValueNode forY, NodeView view) {
+    private static ValueNode canonical(CanonicalizerTool tool, MulNode self, BinaryOp<Mul> op, Stamp stamp, ValueNode forX, ValueNode forY, NodeView view) {
         if (forY.isConstant()) {
             Constant c = forY.asConstant();
             if (op.isNeutral(c)) {
                 return forX;
             }
 
-            if (c instanceof PrimitiveConstant && ((PrimitiveConstant) c).getJavaKind().isNumericInteger()) {
-                long i = ((PrimitiveConstant) c).asLong();
-                ValueNode result = canonical(stamp, forX, i, view);
-                if (result != null) {
-                    return result;
+            if (op.isAssociative()) {
+                // Canonicalize expressions like "(a * 2) * 4" => "(a * 8)"
+                MulNode mul = self != null ? self : (MulNode) new MulNode(forX, forY).maybeCommuteInputs();
+                ValueNode reassociated = reassociateMatchedValues(mul, ValueNode.isConstantPredicate(), forX, forY, view);
+                if (reassociated != mul) {
+                    return reassociated;
                 }
             }
 
-            if (op.isAssociative()) {
-                // canonicalize expressions like "(a * 1) * 2"
-                return reassociate(self != null ? self : (MulNode) new MulNode(forX, forY).maybeCommuteInputs(), ValueNode.isConstantPredicate(), forX, forY, view);
+            // Defer the lowering to make sure the constant values have been re-associated
+            // completely. So that expressions like "(m * 4) * (n * 2)" could be optimized to
+            // "(m * n) * 8", and then to "(m * n) << 3" finally.
+            boolean disableReassociation = tool != null && !GraalOptions.ReassociateExpressions.getValue(tool.getOptions());
+            boolean isAfterReassociation = self != null && self.graph() != null && self.graph().isAfterReassociation();
+            if (disableReassociation || isAfterReassociation) {
+                if (c instanceof PrimitiveConstant && ((PrimitiveConstant) c).getJavaKind().isNumericInteger()) {
+                    long i = ((PrimitiveConstant) c).asLong();
+                    ValueNode result = canonical(stamp, forX, i, view);
+                    if (result != null) {
+                        return result;
+                    }
+                }
             }
         }
         return self != null ? self : new MulNode(forX, forY).maybeCommuteInputs();

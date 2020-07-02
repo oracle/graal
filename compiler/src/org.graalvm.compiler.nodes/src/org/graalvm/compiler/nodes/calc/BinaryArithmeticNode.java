@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -235,6 +235,138 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
         return null;
     }
 
+    private static ReassociateMatch findReassociate(BinaryArithmeticNode<?> parent, ValueNode child, NodePredicate criterion) {
+        if (!isReassociative(parent, child)) {
+            return null;
+        }
+        // "child" should be single used to "parent", or it might be not worth for the
+        // re-association.
+        if (child.hasExactlyOneUsage() && child.usages().first().equals(parent)) {
+            return findReassociate((BinaryNode) child, criterion);
+        }
+        return null;
+    }
+
+    private static boolean isReassociative(BinaryArithmeticNode<?> parent, ValueNode child) {
+        if (!parent.isAssociative()) {
+            return false;
+        }
+        if (parent instanceof AddNode || parent instanceof SubNode) {
+            return child instanceof AddNode || child instanceof SubNode;
+        }
+        return child.getClass() == parent.getClass();
+    }
+
+    /**
+     * Tries to push down values which satisfy the criterion. This is an assistant function for
+     * {@linkplain BinaryArithmeticNode#reassociateMatchedValues} reassociateMatchedValues}. For
+     * example with a constantness criterion: {@code (a * 2) * b => (a * b) * 2}
+     *
+     * This method accepts only {@linkplain BinaryOp#isAssociative() associative} operations such as
+     * +, -, *, &, | and ^
+     */
+    public static ValueNode reassociateUnmatchedValues(BinaryArithmeticNode<?> node, NodePredicate criterion, NodeView view) {
+        ValueNode forX = node.getX();
+        ValueNode forY = node.getY();
+        assert node.getOp(forX, forY).isAssociative();
+
+        // No need to re-associate if one of the operands has matched the criterion.
+        if (criterion.apply(forX) || criterion.apply(forY)) {
+            return node;
+        }
+
+        // Find the operand that could be re-associated with its parent node.
+        ReassociateMatch match = findReassociate(node, forX, criterion);
+        BinaryNode matchBinary = null;
+        ValueNode otherValue1 = null;
+        if (match != null) {
+            matchBinary = (BinaryNode) forX;
+            otherValue1 = forY;
+        } else {
+            match = findReassociate(node, forY, criterion);
+            if (match != null) {
+                matchBinary = (BinaryNode) forY;
+                otherValue1 = forX;
+            }
+        }
+        if (match == null) {
+            return node;
+        }
+
+        assert matchBinary != null && otherValue1 != null;
+        ValueNode matchValue = match.getValue(matchBinary);
+        ValueNode otherValue2 = match.getOtherValue(matchBinary);
+
+        if (node instanceof AddNode || node instanceof SubNode) {
+            //@formatter:off
+            /**
+             * Re-association for the following patterns:
+             *
+             * x + (y + C)  ->  (x + y) + C
+             * x + (y - C)  ->  (x + y) - C
+             * x + (C - y)  ->  (x - y) + C
+             *
+             * x - (C - y)  ->  (x + y) - C
+             * x - (y - C)  ->  (x - y) + C
+             * x - (C + y)  ->  (x - y) - C
+             *
+             * (C - x) - y  ->  C - (x + y)
+             * (x - C) - y  ->  (x - y) - C
+             * (C + x) - y  ->  (x - y) + C
+             */
+            //@formatter:on
+            boolean addSub = node instanceof AddNode && matchBinary instanceof SubNode;
+            boolean subAdd = node instanceof SubNode && matchBinary instanceof AddNode;
+            boolean subSub = node instanceof SubNode && matchBinary instanceof SubNode;
+            boolean sub = false;
+            boolean invertSub = false;
+            if (addSub) {
+                sub = match == ReassociateMatch.y;
+            } else if (subAdd) {
+                sub = matchBinary == forY;
+            } else if (subSub) {
+                sub = (matchBinary == forX && match == ReassociateMatch.y) || (matchBinary == forY && match == ReassociateMatch.x);
+                invertSub = matchBinary == forX && match == ReassociateMatch.x;
+            }
+
+            // For patterns like "(x - C) - y" and "(C + x) - y", swap the operands of association.
+            if (node instanceof SubNode && matchBinary == forX) {
+                ValueNode temp = otherValue1;
+                otherValue1 = otherValue2;
+                otherValue2 = temp;
+            }
+
+            ValueNode associated;
+            if (subAdd || (addSub && match == ReassociateMatch.x) || (subSub && match == ReassociateMatch.y)) {
+                associated = BinaryArithmeticNode.sub(otherValue1, otherValue2, view);
+            } else {
+                associated = BinaryArithmeticNode.add(otherValue1, otherValue2, view);
+            }
+
+            if (invertSub) {
+                return BinaryArithmeticNode.sub(matchValue, associated, view);
+            } else if (sub) {
+                return BinaryArithmeticNode.sub(associated, matchValue, view);
+            } else {
+                return BinaryArithmeticNode.add(associated, matchValue, view);
+            }
+        } else if (node instanceof MulNode) {
+            // Re-association from "x * (y * C)" to "(x * y) * C"
+            return BinaryArithmeticNode.mul(matchValue, BinaryArithmeticNode.mul(otherValue1, otherValue2, view), view);
+        } else if (node instanceof AndNode) {
+            // Re-association from "x & (y & C)" to "(x & y) & C"
+            return AndNode.create(matchValue, AndNode.create(otherValue1, otherValue2, view), view);
+        } else if (node instanceof OrNode) {
+            // Re-association from "x | (y | C)" to "(x | y) | C"
+            return OrNode.create(matchValue, OrNode.create(otherValue1, otherValue2, view), view);
+        } else if (node instanceof XorNode) {
+            // Re-association from "x ^ (y ^ C)" to "(x ^ y) ^ C"
+            return XorNode.create(matchValue, XorNode.create(otherValue1, otherValue2, view), view);
+        } else {
+            throw GraalError.shouldNotReachHere();
+        }
+    }
+
     //@formatter:off
     /*
      * In reassociate, complexity comes from the handling of IntegerSub (non commutative) which can
@@ -261,7 +393,7 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
      * @param forY
      * @param forX
      */
-    public static ValueNode reassociate(BinaryArithmeticNode<?> node, NodePredicate criterion, ValueNode forX, ValueNode forY, NodeView view) {
+    public static ValueNode reassociateMatchedValues(BinaryArithmeticNode<?> node, NodePredicate criterion, ValueNode forX, ValueNode forY, NodeView view) {
         assert node.getOp(forX, forY).isAssociative();
         ReassociateMatch match1 = findReassociate(node, criterion);
         if (match1 == null) {
@@ -323,11 +455,11 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
         } else if (node instanceof MulNode) {
             return BinaryArithmeticNode.mul(a, AddNode.mul(m1, m2, view), view);
         } else if (node instanceof AndNode) {
-            return new AndNode(a, new AndNode(m1, m2));
+            return AndNode.create(a, AndNode.create(m1, m2, view), view);
         } else if (node instanceof OrNode) {
-            return new OrNode(a, new OrNode(m1, m2));
+            return OrNode.create(a, OrNode.create(m1, m2, view), view);
         } else if (node instanceof XorNode) {
-            return new XorNode(a, new XorNode(m1, m2));
+            return XorNode.create(a, XorNode.create(m1, m2, view), view);
         } else {
             throw GraalError.shouldNotReachHere();
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -244,6 +244,8 @@ public class NodePropertiesTest extends GraalCompilerTest {
         StructuredGraph g1 = parseForCompile(getResolvedJavaMethod("test1Snippet"));
         StructuredGraph g2 = parseForCompile(getResolvedJavaMethod("test2Snippet"));
         HighTierContext htc = getDefaultHighTierContext();
+        g1.setAfterReassociation();
+        g2.setAfterReassociation();
         createCanonicalizerPhase().apply(g1, htc);
         createCanonicalizerPhase().apply(g2, htc);
         GraphCostPhase gc1 = new GraphCostPhase();
