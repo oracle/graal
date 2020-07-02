@@ -95,4 +95,21 @@ public final class Target_sun_misc_Perf {
     public static void registerNatives() {
         /* nop */
     }
+
+    public static class SharedPerf extends SubstitutionNamesProvider {
+        public static SubstitutionNamesProvider INSTANCE = new SharedPerf();
+        private static String[] NAMES = new String[]{
+                        TARGET_SUN_MISC_PERF,
+                        TARGET_JDK_INTERNAL_PERF_PERF
+        };
+
+        @Override
+        public String[] substitutionClassNames() {
+            return NAMES;
+        }
+
+    }
+
+    private static final String TARGET_SUN_MISC_PERF = "Target_sun_misc_Perf";
+    private static final String TARGET_JDK_INTERNAL_PERF_PERF = "Target_sun_misc_Perf";
 }

@@ -31,25 +31,25 @@ public abstract class Substitutor extends SubstitutionProfiler {
     public abstract static class Factory {
         public abstract Substitutor create(Meta meta);
 
-        private final String methodName;
-        private final String substitutionClassName;
+        private final String[] methodName;
+        private final String[] substitutionClassName;
         private final String returnType;
         private final String[] parameterTypes;
         private final boolean hasReceiver;
 
         public Factory(String methodName, String substitutionClassName, String returnType, String[] parameterTypes, boolean hasReceiver) {
-            this.methodName = methodName;
-            this.substitutionClassName = substitutionClassName;
+            this.methodName = new String[]{methodName};
+            this.substitutionClassName = new String[]{substitutionClassName};
             this.returnType = returnType;
             this.parameterTypes = parameterTypes;
             this.hasReceiver = hasReceiver;
         }
 
-        public String getMethodName() {
+        public String[] getMethodNames() {
             return methodName;
         }
 
-        public String substitutionClassName() {
+        public String[] substitutionClassNames() {
             return substitutionClassName;
         }
 

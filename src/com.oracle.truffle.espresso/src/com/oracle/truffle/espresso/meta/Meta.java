@@ -137,10 +137,8 @@ public final class Meta implements ContextAccess {
         java_lang_Double_value = java_lang_Double.lookupDeclaredField(Name.value, Type._double);
         java_lang_Long_value = java_lang_Long.lookupDeclaredField(Name.value, Type._long);
 
-        java_lang_String_value = java_lang_String.lookupDeclaredField(Name.value, Type._char_array);
-        EspressoError.guarantee(java_lang_String_value != null && Type._char_array.equals(java_lang_String_value.getType()), "String.value must be a char[]");
-
         java_lang_String_hash = java_lang_String.lookupDeclaredField(Name.hash, Type._int);
+        java_lang_String_coder = java_lang_String.lookupDeclaredField(Name.coder, Type._byte);
         java_lang_String_hashCode = java_lang_String.lookupDeclaredMethod(Name.hashCode, Signature._int);
         java_lang_String_length = java_lang_String.lookupDeclaredMethod(Name.length, Signature._int);
 
@@ -219,19 +217,13 @@ public final class Meta implements ContextAccess {
         java_lang_reflect_Constructor_root = java_lang_reflect_Constructor.lookupDeclaredField(Name.root, Type.java_lang_reflect_Constructor);
         java_lang_reflect_Constructor_parameterTypes = java_lang_reflect_Constructor.lookupDeclaredField(Name.parameterTypes, Type.java_lang_Class_array);
         java_lang_reflect_Constructor_signature = java_lang_reflect_Constructor.lookupDeclaredField(Name.signature, Type.java_lang_String);
-        sun_reflect_MagicAccessorImpl = knownKlass(Type.sun_reflect_MagicAccessorImpl);
-        sun_reflect_DelegatingClassLoader = knownKlass(Type.sun_reflect_DelegatingClassLoader);
 
         java_lang_reflect_Method = knownKlass(Type.java_lang_reflect_Method);
         HIDDEN_METHOD_KEY = java_lang_reflect_Method.lookupHiddenField(Name.HIDDEN_METHOD_KEY);
         HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS = java_lang_reflect_Method.lookupHiddenField(Name.HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS);
         java_lang_reflect_Method_root = java_lang_reflect_Method.lookupDeclaredField(Name.root, Type.java_lang_reflect_Method);
         java_lang_reflect_Method_clazz = java_lang_reflect_Method.lookupDeclaredField(Name.clazz, Type.java_lang_Class);
-        java_lang_reflect_Method_override = java_lang_reflect_Method.lookupDeclaredField(Name.override, Type._boolean);
         java_lang_reflect_Method_parameterTypes = java_lang_reflect_Method.lookupDeclaredField(Name.parameterTypes, Type.java_lang_Class_array);
-
-        sun_reflect_MethodAccessorImpl = knownKlass(Type.sun_reflect_MethodAccessorImpl);
-        sun_reflect_ConstructorAccessorImpl = knownKlass(Type.sun_reflect_ConstructorAccessorImpl);
 
         java_lang_reflect_Parameter = knownKlass(Type.java_lang_reflect_Parameter);
 
@@ -295,14 +287,7 @@ public final class Meta implements ContextAccess {
         java_lang_ref_Finalizer$FinalizerThread = knownKlass(Type.java_lang_ref_Finalizer$FinalizerThread);
         java_lang_ref_Reference$ReferenceHandler = knownKlass(Type.java_lang_ref_Reference$ReferenceHandler);
 
-        sun_misc_VM = knownKlass(Type.sun_misc_VM);
-        sun_misc_VM_toThreadState = sun_misc_VM.lookupDeclaredMethod(Name.toThreadState, Signature.Thread$State_int);
-
-        sun_reflect_ConstantPool = knownKlass(Type.sun_reflect_ConstantPool);
-        sun_reflect_ConstantPool_constantPoolOop = sun_reflect_ConstantPool.lookupDeclaredField(Name.constantPoolOop, Type.java_lang_Object);
-
         java_lang_System = knownKlass(Type.java_lang_System);
-        java_lang_System_initializeSystemClass = java_lang_System.lookupDeclaredMethod(Name.initializeSystemClass, Signature._void);
         java_lang_System_exit = java_lang_System.lookupDeclaredMethod(Name.exit, Signature._void_int);
         java_lang_System_securityManager = java_lang_System.lookupDeclaredField(Name.security, Type.java_lang_SecurityManager);
 
@@ -372,10 +357,8 @@ public final class Meta implements ContextAccess {
         java_lang_ref_Reference_referent = java_lang_ref_Reference.lookupDeclaredField(Name.referent, Type.java_lang_Object);
 
         java_lang_ref_Reference_discovered = java_lang_ref_Reference.lookupDeclaredField(Name.discovered, Type.java_lang_ref_Reference);
-        java_lang_ref_Reference_pending = java_lang_ref_Reference.lookupDeclaredField(Name.pending, Type.java_lang_ref_Reference);
         java_lang_ref_Reference_next = java_lang_ref_Reference.lookupDeclaredField(Name.next, Type.java_lang_ref_Reference);
         java_lang_ref_Reference_queue = java_lang_ref_Reference.lookupDeclaredField(Name.queue, Type.java_lang_ref_ReferenceQueue);
-        java_lang_ref_Reference_lock = java_lang_ref_Reference.lookupDeclaredField(Name.lock, Type.java_lang_ref_Reference$Lock);
         java_lang_ref_ReferenceQueue = knownKlass(Type.java_lang_ref_ReferenceQueue);
         java_lang_ref_ReferenceQueue_NULL = java_lang_ref_ReferenceQueue.lookupDeclaredField(Name.NULL, Type.java_lang_ref_ReferenceQueue);
 
@@ -383,7 +366,6 @@ public final class Meta implements ContextAccess {
         java_lang_ref_SoftReference = knownKlass(Type.java_lang_ref_SoftReference);
         java_lang_ref_PhantomReference = knownKlass(Type.java_lang_ref_PhantomReference);
         java_lang_ref_FinalReference = knownKlass(Type.java_lang_ref_FinalReference);
-        sun_misc_Cleaner = knownKlass(Type.sun_misc_Cleaner);
         HIDDEN_HOST_REFERENCE = java_lang_ref_Reference.lookupHiddenField(Name.HIDDEN_HOST_REFERENCE);
 
         java_lang_AssertionStatusDirectives = knownKlass(Type.java_lang_AssertionStatusDirectives);
@@ -393,21 +375,75 @@ public final class Meta implements ContextAccess {
         java_lang_AssertionStatusDirectives_packageEnabled = java_lang_AssertionStatusDirectives.lookupField(Name.packageEnabled, Type._boolean_array);
         java_lang_AssertionStatusDirectives_deflt = java_lang_AssertionStatusDirectives.lookupField(Name.deflt, Type._boolean);
 
-        sun_reflect_Reflection_getCallerClass = knownKlass(Type.sun_reflect_Reflection).lookupDeclaredMethod(Name.getCallerClass, Signature.Class);
-
         // java.management
         java_lang_management_MemoryUsage = knownKlass(Type.java_lang_management_MemoryUsage);
-        sun_management_ManagementFactory = knownKlass(Type.sun_management_ManagementFactory);
-        // MemoryPoolMXBean createMemoryPool(String var0, boolean var1, long var2, long var4)
-        sun_management_ManagementFactory_createMemoryPool = sun_management_ManagementFactory.lookupDeclaredMethod(Name.createMemoryPool, Signature.MemoryPoolMXBean_String_boolean_long_long);
-        // MemoryManagerMXBean createMemoryManager(String var0)
-        sun_management_ManagementFactory_createMemoryManager = sun_management_ManagementFactory.lookupDeclaredMethod(Name.createMemoryManager, Signature.MemoryManagerMXBean_String);
-        // GarbageCollectorMXBean createGarbageCollector(String var0, String var1)
-        sun_management_ManagementFactory_createGarbageCollector = sun_management_ManagementFactory.lookupDeclaredMethod(Name.createGarbageCollector, Signature.GarbageCollectorMXBean_String_String);
 
         java_lang_management_ThreadInfo = knownKlass(Type.java_lang_management_ThreadInfo);
 
+        // Classes and Members that differ from Java 8 to 11
+        // TODO(garcia) Decide on a naming convention for these classes
+
+        java_lang_String_value = lookupFieldDiffVersion(java_lang_String, Name.value, Type._char_array, Name.value, Type._byte_array);
+
+        java_lang_System_initializeSystemClass = java_lang_System.lookupDeclaredMethod(Name.initializeSystemClass, Signature._void);
+        java_lang_System_initPhase1 = java_lang_System.lookupDeclaredMethod(Name.initPhase1, Signature._void);
+        java_lang_System_initPhase2 = java_lang_System.lookupDeclaredMethod(Name.initPhase2, Signature._int_boolean_boolean);
+        java_lang_System_initPhase3 = java_lang_System.lookupDeclaredMethod(Name.initPhase3, Signature._void);
+
+        sun_reflect_MagicAccessorImpl = knownKlassDiffVersion(Type.sun_reflect_MagicAccessorImpl, Type.jdk_internal_reflect_MagicAccessorImpl);
+        sun_reflect_DelegatingClassLoader = knownKlassDiffVersion(Type.sun_reflect_DelegatingClassLoader, Type.jdk_internal_reflect_DelegatingClassLoader);
+
+        java_lang_reflect_Method_override = java_lang_reflect_Method.lookupDeclaredField(Name.override, Type._boolean);
+        sun_reflect_MethodAccessorImpl = knownKlassDiffVersion(Type.sun_reflect_MethodAccessorImpl, Type.jdk_internal_reflect_MethodAccessorImpl);
+        sun_reflect_ConstructorAccessorImpl = knownKlassDiffVersion(Type.sun_reflect_ConstructorAccessorImpl, Type.jdk_internal_reflect_ConstructorAccessorImpl);
+
+        sun_misc_VM = knownKlassDiffVersion(Type.sun_misc_VM, Type.jdk_internal_misc_VM);
+        sun_misc_VM_toThreadState = sun_misc_VM.lookupDeclaredMethod(Name.toThreadState, Signature.Thread$State_int);
+
+        sun_reflect_ConstantPool = knownKlassDiffVersion(Type.sun_reflect_ConstantPool, Type.jdk_internal_reflect_ConstantPool);
+        sun_reflect_ConstantPool_constantPoolOop = sun_reflect_ConstantPool.lookupDeclaredField(Name.constantPoolOop, Type.java_lang_Object);
+
+        sun_misc_Cleaner = knownKlassDiffVersion(Type.sun_misc_Cleaner, Type.jdk_internal_Cleaner);
+
+        java_lang_ref_Reference_pending = java_lang_ref_Reference.lookupDeclaredField(Name.pending, Type.java_lang_ref_Reference);
+        java_lang_ref_Reference_lock = java_lang_ref_Reference.lookupDeclaredField(Name.lock, Type.java_lang_ref_Reference$Lock);
+
+        sun_reflect_Reflection_getCallerClass = knownKlassDiffVersion(Type.sun_reflect_Reflection, Type.jdk_internal_reflect_Reflection).lookupDeclaredMethod(Name.getCallerClass, Signature.Class);
+
+        sun_management_ManagementFactory = knownKlass(Type.sun_management_ManagementFactory);
+        if (sun_management_ManagementFactory != null) {
+            // MemoryPoolMXBean createMemoryPool(String var0, boolean var1, long var2, long var4)
+            sun_management_ManagementFactory_createMemoryPool = sun_management_ManagementFactory.lookupDeclaredMethod(Name.createMemoryPool, Signature.MemoryPoolMXBean_String_boolean_long_long);
+            // MemoryManagerMXBean createMemoryManager(String var0)
+            sun_management_ManagementFactory_createMemoryManager = sun_management_ManagementFactory.lookupDeclaredMethod(Name.createMemoryManager, Signature.MemoryManagerMXBean_String);
+            // GarbageCollectorMXBean createGarbageCollector(String var0, String var1)
+            sun_management_ManagementFactory_createGarbageCollector = sun_management_ManagementFactory.lookupDeclaredMethod(Name.createGarbageCollector,
+                            Signature.GarbageCollectorMXBean_String_String);
+        } else {
+            // MemoryPoolMXBean createMemoryPool(String var0, boolean var1, long var2, long var4)
+            sun_management_ManagementFactory_createMemoryPool = null;
+            // MemoryManagerMXBean createMemoryManager(String var0)
+            sun_management_ManagementFactory_createMemoryManager = null;
+            // GarbageCollectorMXBean createGarbageCollector(String var0, String var1)
+            sun_management_ManagementFactory_createGarbageCollector = null;
+        }
         this.dispatch = new ExceptionDispatch(this);
+    }
+
+    private static Field lookupFieldDiffVersion(ObjectKlass klass, Symbol<Name> n1, Symbol<Type> t1, Symbol<Name> n2, Symbol<Type> t2) {
+        Field result = klass.lookupDeclaredField(n1, t1);
+        if (result != null) {
+            return result;
+        }
+        return klass.lookupDeclaredField(n2, t2);
+    }
+
+    private ObjectKlass knownKlassDiffVersion(Symbol<Type> t1, Symbol<Type> t2) {
+        ObjectKlass result = knownKlass(t1);
+        if (result != null) {
+            return result;
+        }
+        return knownKlass(t2);
     }
 
     // Checkstyle: stop field name check
@@ -478,6 +514,7 @@ public final class Meta implements ContextAccess {
     // Guest String.
     public final Field java_lang_String_value;
     public final Field java_lang_String_hash;
+    public final Field java_lang_String_coder;
     public final Method java_lang_String_hashCode;
     public final Method java_lang_String_length;
 
@@ -640,6 +677,9 @@ public final class Meta implements ContextAccess {
 
     public final ObjectKlass java_lang_System;
     public final Method java_lang_System_initializeSystemClass;
+    public final Method java_lang_System_initPhase1;
+    public final Method java_lang_System_initPhase2;
+    public final Method java_lang_System_initPhase3;
     public final Method java_lang_System_exit;
     public final Field java_lang_System_securityManager;
 
@@ -987,6 +1027,11 @@ public final class Meta implements ContextAccess {
             return null;
         }
         Meta meta = str.getKlass().getMeta();
+        if (meta.getContext().getJavaVersion() >= 9) {
+            // TODO(garcia): make it work for other than UTF16
+            byte[] value = ((StaticObject) meta.java_lang_String_value.get(str)).unwrap();
+            return HostJava.createString(StringUtil.toChars(value));
+        }
         char[] value = ((StaticObject) meta.java_lang_String_value.get(str)).unwrap();
         return HostJava.createString(value);
     }
@@ -999,8 +1044,15 @@ public final class Meta implements ContextAccess {
         final char[] value = HostJava.getStringValue(hostString);
         final int hash = HostJava.getStringHash(hostString);
         StaticObject guestString = java_lang_String.allocateInstance();
-        java_lang_String_value.set(guestString, StaticObject.wrap(value, this));
-        java_lang_String_hash.set(guestString, hash);
+        if (getContext().getJavaVersion() >= 9) {
+            // TODO(garcia): avoid expensive array copies
+            java_lang_String_value.set(guestString, StaticObject.wrap(StringUtil.toBytes(value), this));
+            java_lang_String_coder.set(guestString, StringUtil.UTF16);
+            java_lang_String_hash.set(guestString, hash);
+        } else {
+            java_lang_String_value.set(guestString, StaticObject.wrap(value, this));
+            java_lang_String_hash.set(guestString, hash);
+        }
         // String.hashCode must be equivalent for host and guest.
         assert hostString.hashCode() == (int) java_lang_String_hashCode.invokeDirect(guestString);
         return guestString;

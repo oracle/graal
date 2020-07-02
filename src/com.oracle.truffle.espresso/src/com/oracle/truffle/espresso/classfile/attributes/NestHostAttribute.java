@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,25 +21,19 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.substitutions;
+package com.oracle.truffle.espresso.classfile.attributes;
 
-@EspressoSubstitutions(nameProvider = Target_sun_misc_VM.SharedVM.class)
-public final class Target_sun_misc_VM {
-    @Substitution
-    public static void initialize() {
-        /* nop */
-    }
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.runtime.Attribute;
 
-    public static class SharedVM extends SubstitutionNamesProvider {
-        private static String[] NAMES = new String[]{
-                        "Target_sun_misc_VM",
-                        "Target_jdk_internal_misc_VM"
-        };
-        public static SubstitutionNamesProvider INSTANCE = new SharedVM();
+public class NestHostAttribute extends Attribute {
+    public static final Symbol<Name> NAME = Name.NestHost;
 
-        @Override
-        public String[] substitutionClassNames() {
-            return NAMES;
-        }
+    public final int hostClassIndex;
+
+    public NestHostAttribute(Symbol<Name> name, int hostClassIndex) {
+        super(name, null);
+        this.hostClassIndex = hostClassIndex;
     }
 }

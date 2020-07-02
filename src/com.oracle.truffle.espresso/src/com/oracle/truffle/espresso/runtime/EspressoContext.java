@@ -339,7 +339,17 @@ public final class EspressoContext {
             }
         });
 
-        meta.java_lang_System_initializeSystemClass.invokeDirect(null);
+        if (getJavaVersion() <= 8) {
+            meta.java_lang_System_initializeSystemClass.invokeDirect(null);
+        }
+        if (getJavaVersion() >= 9) {
+            meta.java_lang_System_initPhase1.invokeDirect(null);
+            int e = (int) meta.java_lang_System_initPhase2.invokeDirect(null, false, false);
+            if (e != 0) {
+                throw EspressoError.shouldNotReachHere();
+            }
+            meta.java_lang_System_initPhase3.invokeDirect(null);
+        }
 
         // System exceptions.
         for (Symbol<Type> type : Arrays.asList(

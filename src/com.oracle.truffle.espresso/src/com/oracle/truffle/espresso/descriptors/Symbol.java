@@ -212,6 +212,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> hash = StaticSymbols.putName("hash");
         public static final Symbol<Name> hashCode = StaticSymbols.putName("hashCode");
         public static final Symbol<Name> length = StaticSymbols.putName("length");
+        public static final Symbol<Name> coder = StaticSymbols.putName("coder");
 
         // j.l.Throwable
         public static final Symbol<Name> backtrace = StaticSymbols.putName("backtrace");
@@ -242,6 +243,9 @@ public final class Symbol<T> extends ByteSequence {
         // j.l.System
         public static final Symbol<Name> getProperty = StaticSymbols.putName("getProperty");
         public static final Symbol<Name> initializeSystemClass = StaticSymbols.putName("initializeSystemClass");
+        public static final Symbol<Name> initPhase1 = StaticSymbols.putName("initPhase1");
+        public static final Symbol<Name> initPhase2 = StaticSymbols.putName("initPhase2");
+        public static final Symbol<Name> initPhase3 = StaticSymbols.putName("initPhase3");
         public static final Symbol<Name> security = StaticSymbols.putName("security");
         public static final Symbol<Name> setProperty = StaticSymbols.putName("setProperty");
 
@@ -339,6 +343,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> LocalVariableTable = StaticSymbols.putName("LocalVariableTable");
         public static final Symbol<Name> LocalVariableTypeTable = StaticSymbols.putName("LocalVariableTypeTable");
         public static final Symbol<Name> MethodParameters = StaticSymbols.putName("MethodParameters");
+        public static final Symbol<Name> NestHost = StaticSymbols.putName("NestHost");
+        public static final Symbol<Name> NestMembers = StaticSymbols.putName("NestMembers");
         public static final Symbol<Name> RuntimeVisibleAnnotations = StaticSymbols.putName("RuntimeVisibleAnnotations");
         public static final Symbol<Name> RuntimeVisibleTypeAnnotations = StaticSymbols.putName("RuntimeVisibleTypeAnnotations");
         public static final Symbol<Name> RuntimeInvisibleTypeAnnotations = StaticSymbols.putName("RuntimeInvisibleTypeAnnotations");
@@ -504,6 +510,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_lang_Runnable = StaticSymbols.putType(Runnable.class);
 
         public static final Symbol<Type> sun_misc_VM = StaticSymbols.putType("Lsun/misc/VM;");
+        public static final Symbol<Type> jdk_internal_misc_VM = StaticSymbols.putType("Ljdk/internal/misc/VM;");
         public static final Symbol<Type> java_lang_Thread$State = StaticSymbols.putType(Thread.State.class);
 
         public static final Symbol<Type> sun_nio_ch_DirectBuffer = StaticSymbols.putType(sun.nio.ch.DirectBuffer.class);
@@ -516,17 +523,23 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_lang_reflect_Parameter = StaticSymbols.putType(java.lang.reflect.Parameter.class);
         public static final Symbol<Type> java_lang_reflect_Executable = StaticSymbols.putType(java.lang.reflect.Executable.class);
         public static final Symbol<Type> sun_reflect_Reflection = StaticSymbols.putType("Lsun/reflect/Reflection;");
+        public static final Symbol<Type> jdk_internal_reflect_Reflection = StaticSymbols.putType("Ljdk/internal/reflect/Reflection;");
 
         // MagicAccessorImpl is not public.
         public static final Symbol<Type> sun_reflect_MagicAccessorImpl = StaticSymbols.putType("Lsun/reflect/MagicAccessorImpl;");
+        public static final Symbol<Type> jdk_internal_reflect_MagicAccessorImpl = StaticSymbols.putType("Ljdk/internal/reflect/MagicAccessorImpl;");
         // DelegatingClassLoader is not public.
         public static final Symbol<Type> sun_reflect_DelegatingClassLoader = StaticSymbols.putType("Lsun/reflect/DelegatingClassLoader;");
+        public static final Symbol<Type> jdk_internal_reflect_DelegatingClassLoader = StaticSymbols.putType("Ljdk/internal/reflect/DelegatingClassLoader;");
 
         // MethodAccessorImpl is not public.
         public static final Symbol<Type> sun_reflect_MethodAccessorImpl = StaticSymbols.putType("Lsun/reflect/MethodAccessorImpl;");
+        public static final Symbol<Type> jdk_internal_reflect_MethodAccessorImpl = StaticSymbols.putType("Ljdk/internal/reflect/MethodAccessorImpl;");
         public static final Symbol<Type> sun_reflect_ConstructorAccessorImpl = StaticSymbols.putType("Lsun/reflect/ConstructorAccessorImpl;");
+        public static final Symbol<Type> jdk_internal_reflect_ConstructorAccessorImpl = StaticSymbols.putType("Ljdk/internal/reflect/ConstructorAccessorImpl;");
 
         public static final Symbol<Type> sun_reflect_ConstantPool = StaticSymbols.putType("Lsun/reflect/ConstantPool;");
+        public static final Symbol<Type> jdk_internal_reflect_ConstantPool = StaticSymbols.putType("Ljdk/internal/reflect/ConstantPool;");
 
         public static final Symbol<Type> java_io_Serializable = StaticSymbols.putType(java.io.Serializable.class);
         public static final Symbol<Type> java_nio_ByteBuffer = StaticSymbols.putType(java.nio.ByteBuffer.class);
@@ -550,6 +563,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_lang_ref_Reference$Lock = StaticSymbols.putType("Ljava/lang/ref/Reference$Lock;");
 
         public static final Symbol<Type> sun_misc_Cleaner = StaticSymbols.putType("Lsun/misc/Cleaner;");
+        public static final Symbol<Type> jdk_internal_Cleaner = StaticSymbols.putType("Ljdk/internal/misc/Cleaner;");
 
         public static final Symbol<Type> java_lang_StackTraceElement = StaticSymbols.putType(StackTraceElement.class);
         public static final Symbol<Type> java_lang_StackTraceElement_array = StaticSymbols.putType(StackTraceElement[].class);
@@ -650,6 +664,9 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> _void_int = StaticSymbols.putSignature(Type._void, Type._int);
         public static final Symbol<Signature> _void_long = StaticSymbols.putSignature(Type._void, Type._long);
         public static final Symbol<Signature> _void_long_int = StaticSymbols.putSignature(Type._void, Type._long, Type._int);
+        public static final Symbol<Signature> _void_char_array = StaticSymbols.putSignature(Type._void, Type._char_array);
+        public static final Symbol<Signature> _char_array = StaticSymbols.putSignature(Type._char_array);
+        public static final Symbol<Signature> _int_boolean_boolean = StaticSymbols.putSignature(Type._int, Type._boolean, Type._boolean);
 
         public static final Symbol<Signature> Boolean_boolean = StaticSymbols.putSignature(Type.java_lang_Boolean, Type._boolean);
         public static final Symbol<Signature> Byte_byte = StaticSymbols.putSignature(Type.java_lang_Byte, Type._byte);

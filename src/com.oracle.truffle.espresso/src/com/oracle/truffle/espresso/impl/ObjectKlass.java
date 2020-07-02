@@ -44,6 +44,8 @@ import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.ConstantValueAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.EnclosingMethodAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.InnerClassesAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.NestHostAttribute;
+import com.oracle.truffle.espresso.classfile.attributes.NestMembersAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SignatureAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.SourceDebugExtensionAttribute;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -97,6 +99,9 @@ public final class ObjectKlass extends Klass {
     private final Attribute runtimeVisibleAnnotations;
 
     private final Klass hostKlass;
+
+    @CompilationFinal //
+    private Klass nest;
 
     private String genericSignature;
 
@@ -256,6 +261,7 @@ public final class ObjectKlass extends Klass {
                     //
                     // Next, execute the class or interface initialization method of C.
                     prepare();
+
                     initState = PREPARED;
                     if (getContext().isMainThreadCreated()) {
                         if (getContext().getJDWPListener() != null) {
@@ -489,6 +495,43 @@ public final class ObjectKlass extends Klass {
 
     Klass getHostClassImpl() {
         return hostKlass;
+    }
+
+    @Override
+    public Klass nest() {
+        if (nest == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            NestHostAttribute nestHost = (NestHostAttribute) getAttribute(NestHostAttribute.NAME);
+            if (nestHost == null) {
+                nest = this;
+            } else {
+                RuntimeConstantPool thisPool = getConstantPool();
+                Klass host = thisPool.resolvedKlassAt(this, nestHost.hostClassIndex);
+
+                if (!host.nestMembersCheck(this)) {
+                    throw Meta.throwException(getMeta().java_lang_IncompatibleClassChangeError);
+                }
+                nest = host;
+            }
+        }
+        return nest;
+    }
+
+    @Override
+    public boolean nestMembersCheck(Klass k) {
+        NestMembersAttribute nestMembers = (NestMembersAttribute) getAttribute(NestMembersAttribute.NAME);
+        if (nestMembers == null) {
+            return false;
+        }
+        RuntimeConstantPool pool = getConstantPool();
+        for (int index : nestMembers.getClasses()) {
+            if (k.getName().equals(pool.classAt(index).getName(pool))) {
+                if (k == pool.resolvedKlassAt(this, index)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     Field lookupFieldTableImpl(int slot) {

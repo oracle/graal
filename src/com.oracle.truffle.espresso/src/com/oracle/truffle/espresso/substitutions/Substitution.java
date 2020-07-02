@@ -34,4 +34,6 @@ public @interface Substitution {
     String methodName() default "";
 
     boolean hasReceiver() default false;
+
+    Class<? extends SubstitutionNamesProvider> nameProvider() default SubstitutionNamesProvider.NoProvider.class;
 }

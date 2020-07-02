@@ -127,6 +127,17 @@ import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread.State;
 
 /**
  * Espresso implementation of the VM interface (libjvm).
+ * <p>
+ * Adding a new VM method requires doing a few things in package
+ * com.oracle.truffle.espresso.mokapot:
+ * <p>
+ * - adding it in include/mokapot.h
+ * <p>
+ * - implementing it in src/mokapot.c
+ * <p>
+ * - registering it in mapfile-vers
+ * <p>
+ * - for new VM methods (/ex: upgrading from java 8 to 11), updating include/jvm.h
  */
 public final class VM extends NativeEnv implements ContextAccess {
 

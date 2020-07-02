@@ -192,15 +192,12 @@ public final class Substitutions implements ContextAccess {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private static void registerStaticSubstitution(Substitutor.Factory substitutorFactory) {
-        assert substitutorFactory.substitutionClassName().startsWith("Target_");
         List<Symbol<Type>> parameterTypes = new ArrayList<>();
         for (int i = substitutorFactory.hasReceiver() ? 1 : 0; i < substitutorFactory.parameterTypes().length; i++) {
             String type = substitutorFactory.parameterTypes()[i];
             parameterTypes.add(StaticSymbols.putType(type));
         }
         Symbol<Type> returnType = StaticSymbols.putType(substitutorFactory.returnType());
-        Symbol<Type> classType = StaticSymbols.putType("L" + substitutorFactory.substitutionClassName().substring("Target_".length()).replace('_', '/') + ";");
-        Symbol<Name> methodName = StaticSymbols.putName(substitutorFactory.getMethodName());
         Symbol<Signature> signature = StaticSymbols.putSignature(returnType, parameterTypes.toArray(Symbol.EMPTY_ARRAY));
         EspressoRootNodeFactory factory = new EspressoRootNodeFactory() {
             @Override
@@ -208,7 +205,14 @@ public final class Substitutions implements ContextAccess {
                 return EspressoRootNode.create(null, new IntrinsicSubstitutorNode(substitutorFactory, espressoMethod));
             }
         };
-        registerStaticSubstitution(classType, methodName, signature, factory, true);
+        String[] classNames = substitutorFactory.substitutionClassNames();
+        String[] methodNames = substitutorFactory.getMethodNames();
+        for (int i = 0; i < classNames.length; i++) {
+            assert classNames[i].startsWith("Target_");
+            Symbol<Type> classType = StaticSymbols.putType("L" + classNames[i].substring("Target_".length()).replace('_', '/') + ";");
+            Symbol<Name> methodName = StaticSymbols.putName(methodNames[i]);
+            registerStaticSubstitution(classType, methodName, signature, factory, true);
+        }
     }
 
     private static void registerStaticSubstitution(Symbol<Type> type, Symbol<Name> methodName, Symbol<Signature> signature, EspressoRootNodeFactory factory, boolean throwIfPresent) {

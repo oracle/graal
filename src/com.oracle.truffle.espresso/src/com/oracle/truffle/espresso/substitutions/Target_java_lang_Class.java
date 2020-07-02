@@ -175,6 +175,12 @@ public final class Target_java_lang_Class {
         return internString(meta, guestString);
     }
 
+    @Substitution(hasReceiver = true)
+    public static @Host(String.class) StaticObject initClassName(@Host(Class.class) StaticObject self,
+                    @InjectMeta Meta meta) {
+        return getName0(self, meta);
+    }
+
     @TruffleBoundary
     private static String appendID(Klass klass, String externalName) {
         // A small improvement over HotSpot here, which uses the class identity hash code.

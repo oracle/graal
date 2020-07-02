@@ -101,8 +101,7 @@ public class JniImplProcessor extends IntrinsicsProcessor {
                 String classFile = spawnSubstitutor(
                                 className,
                                 targetMethodName,
-                                espressoTypes,
-                                helper);
+                                espressoTypes, helper);
                 commitSubstitution(jniMethod, substitutorName, classFile);
             }
         }
@@ -144,7 +143,7 @@ public class JniImplProcessor extends IntrinsicsProcessor {
     }
 
     @Override
-    String generateFactoryConstructorBody(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
+    String generateFactoryConstructorAndBody(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
         StringBuilder str = new StringBuilder();
         JniHelper h = (JniHelper) helper;
         str.append(TAB_3).append("super(\n");
