@@ -33,7 +33,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  * These (incomplete) substitutions are just a band-aid to run critical internal code (e.g.
  * ClassLoader). The Perf API is currently unsupported.
  */
-@EspressoSubstitutions
+@EspressoSubstitutions(nameProvider = Target_sun_misc_Perf.SharedPerf.class)
 public final class Target_sun_misc_Perf {
 
     // the Variability enum must be kept in synchronization with the
@@ -97,19 +97,18 @@ public final class Target_sun_misc_Perf {
     }
 
     public static class SharedPerf extends SubstitutionNamesProvider {
-        public static SubstitutionNamesProvider INSTANCE = new SharedPerf();
         private static String[] NAMES = new String[]{
                         TARGET_SUN_MISC_PERF,
                         TARGET_JDK_INTERNAL_PERF_PERF
         };
+        public static SubstitutionNamesProvider INSTANCE = new SharedPerf();
 
         @Override
         public String[] substitutionClassNames() {
             return NAMES;
         }
-
     }
 
     private static final String TARGET_SUN_MISC_PERF = "Target_sun_misc_Perf";
-    private static final String TARGET_JDK_INTERNAL_PERF_PERF = "Target_sun_misc_Perf";
+    private static final String TARGET_JDK_INTERNAL_PERF_PERF = "Target_jdk_internal_perf_Perf";
 }

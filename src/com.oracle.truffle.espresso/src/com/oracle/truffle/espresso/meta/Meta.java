@@ -153,6 +153,7 @@ public final class Meta implements ContextAccess {
         java_lang_String_coder = java_lang_String.lookupDeclaredField(Name.coder, Type._byte);
         java_lang_String_hashCode = java_lang_String.lookupDeclaredMethod(Name.hashCode, Signature._int);
         java_lang_String_length = java_lang_String.lookupDeclaredMethod(Name.length, Signature._int);
+        java_lang_String_toCharArray = java_lang_String.lookupDeclaredMethod(Name.toCharArray, Signature._char_array);
 
         java_lang_Throwable = knownKlass(Type.java_lang_Throwable);
         java_lang_Throwable_getStackTrace = java_lang_Throwable.lookupDeclaredMethod(Name.getStackTrace, Signature.StackTraceElement_array);
@@ -366,7 +367,7 @@ public final class Meta implements ContextAccess {
 
         java_lang_invoke_MethodHandleNatives = knownKlass(Type.java_lang_invoke_MethodHandleNatives);
         java_lang_invoke_MethodHandleNatives_linkMethod = java_lang_invoke_MethodHandleNatives.lookupDeclaredMethod(Name.linkMethod, Signature.MemberName_Class_int_Class_String_Object_Object_array);
-        java_lang_invoke_MethodHandleNatives_linkCallSite = java_lang_invoke_MethodHandleNatives.lookupDeclaredMethod(Name.linkCallSite,
+        java_lang_invoke_MethodHandleNatives_linkCallSite8 = java_lang_invoke_MethodHandleNatives.lookupDeclaredMethod(Name.linkCallSite,
                         Signature.MemberName_Object_Object_Object_Object_Object_Object_array);
         java_lang_invoke_MethodHandleNatives_linkMethodHandleConstant = java_lang_invoke_MethodHandleNatives.lookupDeclaredMethod(Name.linkMethodHandleConstant,
                         Signature.MethodHandle_Class_int_Class_String_Object);
@@ -438,6 +439,9 @@ public final class Meta implements ContextAccess {
         java_lang_ref_Reference_lock = java_lang_ref_Reference.lookupDeclaredField(Name.lock, Type.java_lang_ref_Reference$Lock);
 
         sun_reflect_Reflection_getCallerClass = knownKlassDiffVersion(Type.sun_reflect_Reflection, Type.jdk_internal_reflect_Reflection).lookupDeclaredMethod(Name.getCallerClass, Signature.Class);
+
+        java_lang_invoke_MethodHandleNatives_linkCallSite11 = java_lang_invoke_MethodHandleNatives.lookupDeclaredMethod(Name.linkCallSite,
+                        Signature.MemberName_Object_int_Object_Object_Object_Object_Object_array);
 
         sun_management_ManagementFactory = knownKlass(Type.sun_management_ManagementFactory);
         if (sun_management_ManagementFactory != null) {
@@ -548,6 +552,7 @@ public final class Meta implements ContextAccess {
     public final Field java_lang_String_coder;
     public final Method java_lang_String_hashCode;
     public final Method java_lang_String_length;
+    public final Method java_lang_String_toCharArray;
 
     public final ObjectKlass java_lang_ClassLoader;
     public final Field java_lang_ClassLoader_parent;
@@ -774,7 +779,8 @@ public final class Meta implements ContextAccess {
     public final Method java_lang_invoke_MethodHandleNatives_linkMethod;
     public final Method java_lang_invoke_MethodHandleNatives_linkMethodHandleConstant;
     public final Method java_lang_invoke_MethodHandleNatives_findMethodHandleType;
-    public final Method java_lang_invoke_MethodHandleNatives_linkCallSite;
+    public final Method java_lang_invoke_MethodHandleNatives_linkCallSite8;
+    public final Method java_lang_invoke_MethodHandleNatives_linkCallSite11;
 
     public final Method java_lang_Object_wait;
     public final Method java_lang_Object_toString;
@@ -1070,9 +1076,8 @@ public final class Meta implements ContextAccess {
         }
         Meta meta = str.getKlass().getMeta();
         if (meta.getContext().getJavaVersion() >= 9) {
-            // TODO(garcia): make it work for other than UTF16
-            byte[] value = ((StaticObject) meta.java_lang_String_value.get(str)).unwrap();
-            return HostJava.createString(StringUtil.toChars(value));
+            StaticObject wrappedChars = (StaticObject) meta.java_lang_String_toCharArray.invokeDirect(str);
+            return HostJava.createString(wrappedChars.unwrap());
         }
         char[] value = ((StaticObject) meta.java_lang_String_value.get(str)).unwrap();
         return HostJava.createString(value);

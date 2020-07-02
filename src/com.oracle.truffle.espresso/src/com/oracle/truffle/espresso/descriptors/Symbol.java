@@ -222,6 +222,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> hash = StaticSymbols.putName("hash");
         public static final Symbol<Name> hashCode = StaticSymbols.putName("hashCode");
         public static final Symbol<Name> length = StaticSymbols.putName("length");
+        public static final Symbol<Name> toCharArray = StaticSymbols.putName("toCharArray");
         public static final Symbol<Name> coder = StaticSymbols.putName("coder");
 
         // j.l.Throwable
@@ -707,8 +708,23 @@ public final class Symbol<T> extends ByteSequence {
                         Type.java_lang_Class, Type.java_lang_String, Type.java_lang_Object, Type.java_lang_Object_array);
         public static final Symbol<Signature> MethodHandle_Class_int_Class_String_Object = StaticSymbols.putSignature(Type.java_lang_invoke_MethodHandle, Type.java_lang_Class, Type._int,
                         Type.java_lang_Class, Type.java_lang_String, Type.java_lang_Object);
-        public static final Symbol<Signature> MemberName_Object_Object_Object_Object_Object_Object_array = StaticSymbols.putSignature(Type.java_lang_invoke_MemberName, Type.java_lang_Object,
-                        Type.java_lang_Object, Type.java_lang_Object, Type.java_lang_Object, Type.java_lang_Object, Type.java_lang_Object_array);
+        public static final Symbol<Signature> MemberName_Object_Object_Object_Object_Object_Object_array = StaticSymbols.putSignature(
+                        Type.java_lang_invoke_MemberName,
+                        Type.java_lang_Object,
+                        Type.java_lang_Object,
+                        Type.java_lang_Object,
+                        Type.java_lang_Object,
+                        Type.java_lang_Object,
+                        Type.java_lang_Object_array);
+        public static final Symbol<Signature> MemberName_Object_int_Object_Object_Object_Object_Object_array = StaticSymbols.putSignature(
+                        Type.java_lang_invoke_MemberName,
+                        Type.java_lang_Object,
+                        Type._int,
+                        Type.java_lang_Object,
+                        Type.java_lang_Object,
+                        Type.java_lang_Object,
+                        Type.java_lang_Object,
+                        Type.java_lang_Object_array);
         public static final Symbol<Signature> MethodHandles$Lookup = StaticSymbols.putSignature(Type.java_lang_invoke_MethodHandles$Lookup);
 
         public static final Symbol<Signature> Thread$State_int = StaticSymbols.putSignature(Type.java_lang_Thread$State, Type._int);
