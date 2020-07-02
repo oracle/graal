@@ -29,7 +29,10 @@
  */
 package com.oracle.truffle.llvm.runtime.interop.access;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -43,6 +46,7 @@ import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropAccessNode.Acce
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToLLVM;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @GenerateUncached
 public abstract class LLVMInteropReadNode extends LLVMNode {
@@ -92,7 +96,7 @@ public abstract class LLVMInteropReadNode extends LLVMNode {
             }
         }
 
-        @Specialization(limit = "3")
+        @Specialization(guards = "isLocationTypeNullOrSameSize(location, accessType)", limit = "3")
         Object readArrayElementTypeMatch(Object identifier, AccessLocation location, ForeignToLLVMType accessType,
                         @CachedLibrary("location.base") InteropLibrary interop,
                         @Cached ToLLVM toLLVM,
@@ -109,6 +113,87 @@ public abstract class LLVMInteropReadNode extends LLVMNode {
                 exception.enter();
                 throw new LLVMPolyglotException(this, "Cannot read array element %d", idx);
             }
+        }
+
+        @Specialization(guards = {"!isLocationTypeNullOrSameSize(location, accessType)", "locationType.isI8()", "accessTypeSizeInBytes > 1"}, limit = "3")
+        Object readArrayElement(long identifier, AccessLocation location, ForeignToLLVMType accessType,
+                        @CachedLibrary("location.base") InteropLibrary interop,
+                        @Cached ToLLVM toLLVM,
+                        @Cached ReinterpretLongNode toLLVMNoConv,
+                        @Cached BranchProfile exception,
+                        @Bind("location.type.getKind().foreignToLLVMType") ForeignToLLVMType locationType,
+                        @Bind("accessType.getSizeInBytes()") int accessTypeSizeInBytes) {
+            long idx = identifier;
+            try {
+                assert locationType == ForeignToLLVMType.I8;
+                long res = 0;
+                for (int i = 0; i < accessTypeSizeInBytes; i++, idx++) {
+                    res <<= 8;
+                    Object ret = interop.readArrayElement(location.base, idx);
+                    Object toLLVMValue = toLLVM.executeWithType(ret, LLVMInteropType.ValueKind.I8.type, LLVMInteropType.ValueKind.I8.foreignToLLVMType);
+                    res |= Byte.toUnsignedLong((byte) toLLVMValue);
+                }
+                return toLLVMNoConv.executeWithAccessType(res, accessType);
+            } catch (InvalidArrayIndexException ex) {
+                exception.enter();
+                throw new LLVMPolyglotException(this, "Invalid array index %d", idx);
+            } catch (UnsupportedMessageException ex) {
+                exception.enter();
+                throw new LLVMPolyglotException(this, "Cannot read array element %d", idx);
+            }
+        }
+
+        @GenerateUncached
+        abstract static class ReinterpretLongNode extends LLVMNode {
+            abstract Object executeWithAccessType(long value, ForeignToLLVMType accessType);
+
+            @Specialization(guards = "accessType.isI16()")
+            short toI16(long value, @SuppressWarnings("unused") ForeignToLLVMType accessType) {
+                return (short) value;
+            }
+
+            @Specialization(guards = "accessType.isI32()")
+            int toI32(long value, @SuppressWarnings("unused") ForeignToLLVMType accessType) {
+                return (int) value;
+            }
+
+            @Specialization(guards = "accessType.isI64()")
+            long toI64(long value, @SuppressWarnings("unused") ForeignToLLVMType accessType) {
+                return value;
+            }
+
+            @Specialization(guards = "accessType.isFloat()")
+            float toFloat(long value, @SuppressWarnings("unused") ForeignToLLVMType accessType) {
+                return Float.intBitsToFloat((int) value);
+            }
+
+            @Specialization(guards = "accessType.isDouble()")
+            double toDouble(long value, @SuppressWarnings("unused") ForeignToLLVMType accessType) {
+                return Double.longBitsToDouble(value);
+            }
+
+            @Specialization(guards = "accessType.isPointer()")
+            Object toPointer(long value, @SuppressWarnings("unused") ForeignToLLVMType accessType) {
+                return LLVMNativePointer.create(value);
+            }
+
+            @Fallback
+            Object fallback(@SuppressWarnings("unused") long value, ForeignToLLVMType accessType) {
+                CompilerDirectives.transferToInterpreter();
+                throw new LLVMPolyglotException(this, "Unexpected access type %s", accessType);
+            }
+
+        }
+
+        static boolean isLocationTypeNullOrSameSize(AccessLocation location, ForeignToLLVMType accessType) {
+            return location.type == null || location.type.getKind().foreignToLLVMType.getSizeInBytes() == accessType.getSizeInBytes();
+        }
+
+        @Fallback
+        Object fallback(@SuppressWarnings("unused") Object identifier, @SuppressWarnings("unused") AccessLocation location, @SuppressWarnings("unused") ForeignToLLVMType accessType) {
+            CompilerDirectives.transferToInterpreter();
+            assert location.type != null;
+            throw new LLVMPolyglotException(this, "Cannot read " + accessType.getSizeInBytes() + " byte(s) from foreign object of size " + location.type.getKind().foreignToLLVMType.getSizeInBytes());
         }
     }
 }
