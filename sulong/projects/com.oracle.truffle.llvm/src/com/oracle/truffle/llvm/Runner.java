@@ -63,7 +63,6 @@ import com.oracle.truffle.llvm.parser.StackManager;
 import com.oracle.truffle.llvm.parser.binary.BinaryParser;
 import com.oracle.truffle.llvm.parser.binary.BinaryParserResult;
 import com.oracle.truffle.llvm.parser.factories.BasicPlatformCapability;
-import com.oracle.truffle.llvm.parser.factories.PlatformCapabilityBase;
 import com.oracle.truffle.llvm.parser.model.GlobalSymbol;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
@@ -582,7 +581,7 @@ final class Runner {
 
         // To stop libraries with circular dependencies to be stuck in a loop, i.e. libsulong
         // depends on libuslong.
-        removeCyclicDependency(source, dependenciesSource);
+        //removeCyclicDependency(source, dependenciesSource);
 
         LLVMParserResult result = parseLibraryWithSource(source, library, bytes, dependenciesSource);
 
@@ -601,7 +600,7 @@ final class Runner {
         assert !library.isNative();
 
         // Need to clear libsulong++ if we are already in libsulong++.
-        removeCyclicDependency(source, dependenciesSource);
+        //removeCyclicDependency(source, dependenciesSource);
 
          if (isInternalLibrary) {
             // renaming is attempted only for internal libraries.
@@ -622,7 +621,7 @@ final class Runner {
         return createLibraryCallTarget(source.getName(), result, dependenciesSource, source);
     }
 
-    private void removeCyclicDependency(Source source, ArrayList<Source> dependenciesSource) {
+    private static void removeCyclicDependency(Source source, ArrayList<Source> dependenciesSource) {
         dependenciesSource.remove(source);
 
         if (source.getName().equals(BasicPlatformCapability.LIBSULONG_FILENAME)) {
@@ -633,6 +632,7 @@ final class Runner {
             removeDependency(dependenciesSource, BasicPlatformCapability.LIBSULONG_FILENAME);
         }
 
+        /*
         if (env.getOptions().get(SulongEngineOption.LOAD_CXX_LIBRARIES)) {
             // If the option --llvm.loadC++Libraries is used then libsulong++ will be loaded for
             // both
@@ -644,7 +644,7 @@ final class Runner {
             } else if (source.getName().contains(PlatformCapabilityBase.LIBCXXABI_PREFIX)) {
                 removeDependency(dependenciesSource, BasicPlatformCapability.LIBSULONGXX_FILENAME);
             }
-        }
+        }*/
     }
 
     private static void removeDependency(ArrayList<Source> sources, String remove) {
