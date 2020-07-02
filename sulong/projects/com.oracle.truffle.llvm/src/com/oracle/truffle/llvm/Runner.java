@@ -47,6 +47,7 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
@@ -138,6 +139,7 @@ import org.graalvm.polyglot.io.ByteSequence;
 import java.io.IOException;
 import java.nio.ByteOrder;
 import java.nio.file.Path;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Comparator;
@@ -231,7 +233,7 @@ final class Runner {
      */
     private static final class LoadModulesNode extends RootNode {
 
-        final RootCallTarget mainFunctionCallTarget;
+        @CompilationFinal RootCallTarget mainFunctionCallTarget;
         final FrameSlot stackPointerSlot;
         final String sourceName;
         final int bitcodeID;
@@ -246,10 +248,16 @@ final class Runner {
         @Child InitializeGlobalNode initGlobals;
         @Child InitializeOverwriteNode initOverwrite;
         @Child InitializeModuleNode initModules;
+        @Child IndirectCallNode indirectCall;
 
         @Children DirectCallNode[] dependencies; // pointing to the CallTargets of our dependencies
+        final CallTarget[] callTargets;
+        final List<Source> sources;
+        final LLVMParserResult parserResult;
+        final LLVMLanguage language;
+        private boolean hasInitialised;
 
-        private enum LLVMLoadingPhase {
+        protected enum LLVMLoadingPhase {
             ALL,
             BUILD_SCOPES,
             INIT_SYMBOLS,
@@ -258,7 +266,8 @@ final class Runner {
             INIT_MODULE,
             INIT_CONTEXT,
             INIT_OVERWRITE,
-            INIT_DONE;
+            INIT_DONE,
+            PARSE_DEPENDENCIES;
 
             boolean isActive(LLVMLoadingPhase phase) {
                 return phase == this || phase == ALL;
@@ -266,21 +275,22 @@ final class Runner {
         }
 
         private LoadModulesNode(Runner runner, String name, LLVMParserResult parserResult, LLVMContext context,
-                        FrameDescriptor rootFrame, boolean lazyParsing, RootCallTarget mainFunctionCallTarget, List<CallTarget> callTargets, Source source) throws TypeOverflowException {
+                        FrameDescriptor rootFrame, boolean lazyParsing, List<Source> sources, Source source, LLVMLanguage language) throws TypeOverflowException {
 
             super(runner.language, rootFrame);
-            this.mainFunctionCallTarget = mainFunctionCallTarget;
+            this.mainFunctionCallTarget = null;
             this.sourceName = name;
             this.source = source;
             this.bitcodeID = parserResult.getRuntime().getBitcodeID();
             this.stackPointerSlot = rootFrame.findFrameSlot(LLVMStack.FRAME_ID);
-            this.dependencies = new DirectCallNode[callTargets.size()];
+            this.parserResult = parserResult;
+            this.sources = sources;
+            this.language = language;
+            this.callTargets = new CallTarget[sources.size()];
+            this.dependencies = new DirectCallNode[sources.size()];
+            this.hasInitialised = false;
 
-            for (int i = 0; i < dependencies.length; i++) {
-                dependencies[i] = DirectCallNode.create(callTargets.get(i));
-            }
-
-            this.initContext = runner.context.createInitializeContextNode(rootFrame);
+            this.initContext = null;
             String moduleName = parserResult.getRuntime().getLibrary().toString();
             this.initSymbols = new InitializeSymbolsNode(parserResult, parserResult.getRuntime().getNodeFactory(), lazyParsing,
                             isInternalSulongLibrary(context, parserResult.getRuntime().getLibrary()), moduleName);
@@ -289,6 +299,7 @@ final class Runner {
             this.initGlobals = new InitializeGlobalNode(rootFrame, parserResult, moduleName);
             this.initOverwrite = new InitializeOverwriteNode(parserResult);
             this.initModules = new InitializeModuleNode(runner, parserResult, moduleName);
+            this.indirectCall = IndirectCallNode.create();
         }
 
         @Override
@@ -301,11 +312,11 @@ final class Runner {
             return source.createUnavailableSection();
         }
 
-        protected static LoadModulesNode create(String name, RootCallTarget mainFunctionCallTarget, Runner runner, LLVMParserResult parserResult, FrameDescriptor rootFrame,
-                        boolean lazyParsing, LLVMContext context, List<CallTarget> callTargets, Source source) {
+        protected static LoadModulesNode create(String name, Runner runner, LLVMParserResult parserResult, FrameDescriptor rootFrame,
+                        boolean lazyParsing, LLVMContext context, List<Source> sources, Source source, LLVMLanguage language) {
             LoadModulesNode node = null;
             try {
-                node = new LoadModulesNode(runner, name, parserResult, context, rootFrame, lazyParsing, mainFunctionCallTarget, callTargets, source);
+                node = new LoadModulesNode(runner, name, parserResult, context, rootFrame, lazyParsing, sources, source, language);
                 return node;
             } catch (TypeOverflowException e) {
                 throw new LLVMUnsupportedException(node, UnsupportedReason.UNSUPPORTED_VALUE_RANGE, e);
@@ -313,12 +324,9 @@ final class Runner {
         }
 
         @ExplodeLoop
+        @SuppressWarnings("unchecked")
         LLVMLocalScope loadModule(VirtualFrame frame,
                         @CachedContext(LLVMLanguage.class) LLVMContext context) {
-
-            if (context.isLibraryAlreadyLoaded(bitcodeID)) {
-                return null;
-            }
 
             try (StackPointer stackPointer = ctxRef.get().getThreadingStack().getStack().newFrame()) {
                 frame.setObject(stackPointerSlot, stackPointer);
@@ -326,33 +334,48 @@ final class Runner {
                 LLVMLoadingPhase phase;
                 LLVMLocalScope localScope;
                 BitSet visited;
+                ArrayDeque<CallTarget> que = null;
                 // if no argument or first argument is not an enum of ours then it is a root, and we
                 // will need to create a fresh global scope, what do we do for local scope?
-                if (frame.getArguments().length == 3 && (frame.getArguments()[0] instanceof LLVMLoadingPhase)) {
+                if (frame.getArguments().length > 0 && (frame.getArguments()[0] instanceof LLVMLoadingPhase)) {
                     phase = (LLVMLoadingPhase) frame.getArguments()[0];
                     localScope = (LLVMLocalScope) frame.getArguments()[1];
                     visited = (BitSet) frame.getArguments()[2];
+                    if (phase == LLVMLoadingPhase.BUILD_SCOPES) {
+                        que = (ArrayDeque<CallTarget>) frame.getArguments()[3];
+                    }
                 } else if (frame.getArguments().length == 0) {
                     phase = LLVMLoadingPhase.ALL;
                     localScope = createLocalScope();
                     context.addLocalScope(localScope);
                     visited = createBitset();
+                    que = new ArrayDeque<>();
                 } else {
                     throw new IllegalStateException("LoadModulesNode is called with unexpected arguments");
                 }
 
-                // (PLi:) The scopes needs to be built even for already loaded libraries.
+                // The scope is built breadth-first with a que
                 if (LLVMLoadingPhase.BUILD_SCOPES.isActive(phase)) {
                     if (!visited.get(bitcodeID)) {
                         visited.set(bitcodeID);
-                        // put our symbols in the scope
                         addIDToLocalScope(localScope, bitcodeID);
                         initScopes.execute(context, localScope);
-                        // use the internalFileScopes from the language in order to build the scopes
-                        for (DirectCallNode d : dependencies) {
-                            d.call(LLVMLoadingPhase.BUILD_SCOPES, localScope, visited);
+                        for (CallTarget callTarget : callTargets) {
+                            if (callTarget != null) {
+                                que.add(callTarget);
+                            }
+                        }
+
+                        if(LLVMLoadingPhase.ALL.isActive(phase)) {
+                            while (!que.isEmpty()) {
+                                indirectCall.call(que.poll(), LLVMLoadingPhase.BUILD_SCOPES, localScope, visited, que);
+                            }
                         }
                     }
+                }
+
+                if (context.isLibraryAlreadyLoaded(bitcodeID)) {
+                    return null;
                 }
 
                 /*
@@ -368,7 +391,9 @@ final class Runner {
                     if (!visited.get(bitcodeID)) {
                         visited.set(bitcodeID);
                         for (DirectCallNode d : dependencies) {
-                            d.call(LLVMLoadingPhase.INIT_SYMBOLS, localScope, visited);
+                            if (d != null) {
+                                d.call(LLVMLoadingPhase.INIT_SYMBOLS, localScope, visited);
+                            }
                         }
                         initSymbols.initializeSymbolTable(context);
                         initSymbols.execute(context);
@@ -383,7 +408,9 @@ final class Runner {
                     if (!visited.get(bitcodeID)) {
                         visited.set(bitcodeID);
                         for (DirectCallNode d : dependencies) {
-                            d.call(LLVMLoadingPhase.INIT_EXTERNALS, localScope, visited);
+                            if (d != null) {
+                                d.call(LLVMLoadingPhase.INIT_EXTERNALS, localScope, visited);
+                            }
                         }
                         initExternals.execute(context, bitcodeID);
                     }
@@ -396,7 +423,9 @@ final class Runner {
                     if (!visited.get(bitcodeID)) {
                         visited.set(bitcodeID);
                         for (DirectCallNode d : dependencies) {
-                            d.call(LLVMLoadingPhase.INIT_GLOBALS, localScope, visited);
+                            if (d != null) {
+                                d.call(LLVMLoadingPhase.INIT_GLOBALS, localScope, visited);
+                            }
                         }
                         initGlobals.execute(frame, context.getReadOnlyGlobals(bitcodeID));
                     }
@@ -409,7 +438,9 @@ final class Runner {
                     if (!visited.get(bitcodeID)) {
                         visited.set(bitcodeID);
                         for (DirectCallNode d : dependencies) {
-                            d.call(LLVMLoadingPhase.INIT_OVERWRITE, localScope, visited);
+                            if (d != null) {
+                                d.call(LLVMLoadingPhase.INIT_OVERWRITE, localScope, visited);
+                            }
                         }
                     }
                     initOverwrite.execute(context, bitcodeID);
@@ -422,7 +453,9 @@ final class Runner {
                     if (!visited.get(bitcodeID)) {
                         visited.set(bitcodeID);
                         for (DirectCallNode d : dependencies) {
-                            d.call(LLVMLoadingPhase.INIT_CONTEXT, localScope, visited);
+                            if (d != null) {
+                                d.call(LLVMLoadingPhase.INIT_CONTEXT, localScope, visited);
+                            }
                         }
                         initContext.execute(frame);
                     }
@@ -435,7 +468,9 @@ final class Runner {
                     if (!visited.get(bitcodeID)) {
                         visited.set(bitcodeID);
                         for (DirectCallNode d : dependencies) {
-                            d.call(LLVMLoadingPhase.INIT_MODULE, localScope, visited);
+                            if (d != null) {
+                                d.call(LLVMLoadingPhase.INIT_MODULE, localScope, visited);
+                            }
                         }
                         initModules.execute(frame, context);
                     }
@@ -448,7 +483,9 @@ final class Runner {
                     if (!visited.get(bitcodeID)) {
                         visited.set(bitcodeID);
                         for (DirectCallNode d : dependencies) {
-                            d.call(LLVMLoadingPhase.INIT_DONE, localScope, visited);
+                            if (d != null) {
+                                d.call(LLVMLoadingPhase.INIT_DONE, localScope, visited);
+                            }
                         }
                         context.markLibraryLoaded(bitcodeID);
                     }
@@ -471,6 +508,34 @@ final class Runner {
             }
 
             LLVMContext context = ctxRef.get();
+
+            if (!hasInitialised) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                for (int i = 0; i < sources.size(); i++) {
+                    // null are native libraries
+                    if (sources.get(i) != null) {
+                        CallTarget callTarget = context.getEnv().parseInternal(sources.get(i));
+                        dependencies[i] = DirectCallNode.create(callTarget);
+                        callTargets[i] = callTarget;
+                    }
+                }
+
+                if (frame.getArguments().length == 0) {
+                    //This is only performed for the root node of the top level call target.
+                    LLVMFunctionDescriptor startFunctionDescriptor = findAndSetSulongSpecificFunctions(language, context);
+                    LLVMFunction mainFunction = findMainFunction(parserResult);
+                    if (mainFunction != null) {
+                        RootCallTarget startCallTarget = startFunctionDescriptor.getFunctionCode().getLLVMIRFunctionSlowPath();
+                        Path applicationPath = mainFunction.getLibrary().getPath();
+                        RootNode rootNode = new LLVMGlobalRootNode(language, StackManager.createRootFrame(), mainFunction, startCallTarget, Objects.toString(applicationPath, ""));
+                        mainFunctionCallTarget = Truffle.getRuntime().createCallTarget(rootNode);
+                    }
+                }
+
+                initContext = this.insert(context.createInitializeContextNode(getFrameDescriptor()));
+                hasInitialised = true;
+            }
+
             LLVMScope scope = loadModule(frame, context);
 
             if (scope != null) {
@@ -511,8 +576,9 @@ final class Runner {
      */
     private CallTarget parseWithDependencies(Source source, ByteSequence bytes, ExternalLibrary library) {
         // process the bitcode file and its dependencies in the dynamic linking order
-        // (breadth-first)
-        ArrayList<Source> dependenciesSource = getDefaultLibraries();
+
+        ArrayList<Source> dependenciesSource = new ArrayList<>();
+        getDefaultLibrariesForRootNode(dependenciesSource);
 
         // To stop libraries with circular dependencies to be stuck in a loop, i.e. libsulong
         // depends on libuslong.
@@ -524,6 +590,10 @@ final class Runner {
         if (result == null) {
             // if result is null, then it does not contain bitcode. (NFI can handle it later if it's
             // a native file.)
+            NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
+            if (nfiContextExtension != null) {
+                nfiContextExtension.addNativeLibrary(library);
+            }
             return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
         } else {
             isInternalLibrary = context.isInternalLibrary(result.getRuntime().getLibrary());
@@ -533,15 +603,7 @@ final class Runner {
         // Need to clear libsulong++ if we are already in libsulong++.
         removeCyclicDependency(source, dependenciesSource);
 
-        ArrayList<CallTarget> dependenciesCalltarget = new ArrayList<>();
-        for (Source dependencySource : dependenciesSource) {
-            // null sources are possible nfi libraries
-            if (dependencySource != null) {
-                dependenciesCalltarget.add(env.parseInternal(dependencySource));
-            }
-        }
-
-        if (isInternalLibrary) {
+         if (isInternalLibrary) {
             // renaming is attempted only for internal libraries.
             resolveRenamedSymbols(result);
         }
@@ -557,7 +619,7 @@ final class Runner {
             }
         }
 
-        return createLibraryCallTarget(source.getName(), result, dependenciesCalltarget, source);
+        return createLibraryCallTarget(source.getName(), result, dependenciesSource, source);
     }
 
     private void removeCyclicDependency(Source source, ArrayList<Source> dependenciesSource) {
@@ -1198,11 +1260,10 @@ final class Runner {
         return type instanceof PointerType;
     }
 
-    private ArrayList<Source> getDefaultLibraries() {
+    private ArrayList<Source> getDefaultLibrariesForRootNode(ArrayList<Source> sourceDependencies) {
         // There could be conflicts between Sulong's default libraries and the ones that are
         // passed on the command-line. To resolve that, we add ours first but parse them later on.
         String[] sulongLibraryNames = language.getCapability(PlatformCapability.class).getSulongDefaultLibraries();
-        ArrayList<Source> sourceDependencies = new ArrayList<>();
         for (int i = 0; i < sulongLibraryNames.length; i++) {
             sourceDependencies.add(createDependencySource(context.addInternalLibrary(sulongLibraryNames[i], "<default bitcode library>")));
         }
@@ -1384,6 +1445,10 @@ final class Runner {
                 throw new LLVMParserException("'" + lib.getPath() + "' is not a file or does not exist.");
             } else {
                 // lets assume that this is not a bitcode file and the NFI is going to handle it
+                NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
+                if (nfiContextExtension != null) {
+                    nfiContextExtension.addNativeLibrary(lib);
+                }
                 return null;
             }
         }
@@ -1647,7 +1712,7 @@ final class Runner {
         @Child StaticInitsNode globalVarInit;
         @Child LLVMMemoryOpNode protectRoData;
 
-        InitializeGlobalNode(FrameDescriptor rootFrame, LLVMParserResult parserResult, Object moduleName) {
+        InitializeGlobalNode(FrameDescriptor rootFrame, LLVMParserResult parserResult, String moduleName) {
             this.dataLayout = parserResult.getDataLayout();
 
             this.globalVarInit = Runner.createGlobalVariableInitializer(rootFrame, parserResult, moduleName);
@@ -1684,7 +1749,7 @@ final class Runner {
 
         @Child StaticInitsNode constructor;
 
-        InitializeModuleNode(Runner runner, LLVMParserResult parserResult, Object moduleName) {
+        InitializeModuleNode(Runner runner, LLVMParserResult parserResult, String moduleName) {
             this.destructor = runner.createDestructor(parserResult, moduleName);
             this.dataLayout = parserResult.getDataLayout();
 
@@ -1704,7 +1769,7 @@ final class Runner {
         }
     }
 
-    private static StaticInitsNode createGlobalVariableInitializer(FrameDescriptor rootFrame, LLVMParserResult parserResult, Object moduleName) {
+    private static StaticInitsNode createGlobalVariableInitializer(FrameDescriptor rootFrame, LLVMParserResult parserResult, String moduleName) {
         LLVMParserRuntime runtime = parserResult.getRuntime();
         LLVMSymbolReadResolver symbolResolver = new LLVMSymbolReadResolver(runtime, rootFrame, GetStackSpaceFactory.createAllocaFactory(), parserResult.getDataLayout(), false);
         final List<LLVMStatementNode> globalNodes = new ArrayList<>();
@@ -1752,11 +1817,11 @@ final class Runner {
         return null;
     }
 
-    private static StaticInitsNode createConstructor(LLVMParserResult parserResult, Object moduleName) {
+    private static StaticInitsNode createConstructor(LLVMParserResult parserResult, String moduleName) {
         return StaticInitsNodeGen.create(createStructor(CONSTRUCTORS_VARNAME, parserResult, ASCENDING_PRIORITY), "init", moduleName);
     }
 
-    private RootCallTarget createDestructor(LLVMParserResult parserResult, Object moduleName) {
+    private RootCallTarget createDestructor(LLVMParserResult parserResult, String moduleName) {
         LLVMStatementNode[] destructor = createStructor(DESTRUCTORS_VARNAME, parserResult, DESCENDING_PRIORITY);
         if (destructor.length > 0) {
             LLVMStatementRootNode root = new LLVMStatementRootNode(language, StaticInitsNodeGen.create(destructor, "fini", moduleName), StackManager.createRootFrame());
@@ -1830,25 +1895,15 @@ final class Runner {
         return Base64.getDecoder().decode(result);
     }*/
 
-    // name, single parserResult, list of dependencies (list of calltargets)
-    private CallTarget createLibraryCallTarget(String name, LLVMParserResult parserResult, List<CallTarget> callTargets, Source source) {
-        RootCallTarget mainFunctionCallTarget = null;
-        LLVMFunctionDescriptor startFunctionDescriptor = findAndSetSulongSpecificFunctions();
-        LLVMFunction mainFunction = findMainFunction(parserResult);
-        if (startFunctionDescriptor != null && mainFunction != null) {
-            RootCallTarget startCallTarget = startFunctionDescriptor.getFunctionCode().getLLVMIRFunctionSlowPath();
-            Path applicationPath = mainFunction.getLibrary().getPath();
-            RootNode rootNode = new LLVMGlobalRootNode(language, StackManager.createRootFrame(), mainFunction, startCallTarget, Objects.toString(applicationPath, ""));
-            mainFunctionCallTarget = Truffle.getRuntime().createCallTarget(rootNode);
-        }
-
+    // name, single parserResult, list of dependencies (list of sources)
+    private CallTarget createLibraryCallTarget(String name, LLVMParserResult parserResult, List<Source> sources, Source source) {
         if (context.getEnv().getOptions().get(SulongEngineOption.PARSE_ONLY)) {
             return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
         } else {
             FrameDescriptor rootFrame = StackManager.createRootFrame();
             // check if the functions should be resolved eagerly or lazyly.
             boolean lazyParsing = context.getEnv().getOptions().get(SulongEngineOption.LAZY_PARSING);
-            LoadModulesNode loadModules = LoadModulesNode.create(name, mainFunctionCallTarget, this, parserResult, rootFrame, lazyParsing, context, callTargets, source);
+            LoadModulesNode loadModules = LoadModulesNode.create(name, this, parserResult, rootFrame, lazyParsing, context, sources, source, language);
             return Truffle.getRuntime().createCallTarget(loadModules);
         }
     }
@@ -1882,7 +1937,7 @@ final class Runner {
      *
      * @return The function descriptor for the start function.
      */
-    private LLVMFunctionDescriptor findAndSetSulongSpecificFunctions() {
+    protected static LLVMFunctionDescriptor findAndSetSulongSpecificFunctions(LLVMLanguage language, LLVMContext context) {
 
         LLVMFunctionDescriptor startFunction;
         LLVMSymbol initContext;

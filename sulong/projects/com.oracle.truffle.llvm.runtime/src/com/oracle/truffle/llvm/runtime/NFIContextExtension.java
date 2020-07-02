@@ -29,12 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import java.nio.file.Path;
-import java.util.List;
-
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.MapCursor;
-
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -53,6 +47,11 @@ import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.MapCursor;
+
+import java.nio.file.Path;
+import java.util.ArrayList;
 
 public final class NFIContextExtension implements ContextExtension {
 
@@ -63,6 +62,8 @@ public final class NFIContextExtension implements ContextExtension {
     private final ExternalLibrary defaultLibrary;
     // we use an EconomicMap because iteration order must match the insertion order
     private final EconomicMap<ExternalLibrary, Object> libraryHandles = EconomicMap.create();
+    private final ArrayList<ExternalLibrary> nativeLibraries = new ArrayList<>();
+
     private final TruffleLanguage.Env env;
 
     public NFIContextExtension(Env env) {
@@ -110,6 +111,12 @@ public final class NFIContextExtension implements ContextExtension {
         }
     }
 
+    public void addNativeLibrary(ExternalLibrary library){
+        if (!nativeLibraries.contains(library)) {
+            nativeLibraries.add(library);
+        }
+    }
+
     @TruffleBoundary
     public Object createNativeWrapper(LLVMFunctionDescriptor descriptor) {
         Object wrapper = null;
@@ -131,11 +138,11 @@ public final class NFIContextExtension implements ContextExtension {
     private void addLibraries(LLVMContext context) {
         CompilerAsserts.neverPartOfCompilation();
         if (!internalLibrariesAdded) {
-            context.addInternalLibrary("libsulong-native." + getNativeLibrarySuffix(), "<default nfi library>");
+            ExternalLibrary externalLibrary = context.addInternalLibrary("libsulong-native." + getNativeLibrarySuffix(), "<default nfi library>");
+            addNativeLibrary(externalLibrary);
             internalLibrariesAdded = true;
         }
-        List<ExternalLibrary> libraries = context.getExternalLibraries(lib -> lib.isNative());
-        for (ExternalLibrary l : libraries) {
+        for (ExternalLibrary l : nativeLibraries) {
             addLibrary(l, context);
         }
     }

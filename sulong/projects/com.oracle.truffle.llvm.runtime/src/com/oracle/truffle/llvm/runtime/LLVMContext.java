@@ -753,7 +753,7 @@ public final class LLVMContext {
     }
 
     public boolean isLibraryAlreadyLoaded(int id) {
-        return libraryLoaded[id];
+        return id < libraryLoaded.length && libraryLoaded[id];
     }
 
     public void markLibraryLoaded(int id) {
