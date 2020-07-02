@@ -553,6 +553,40 @@ exceptions. The `seq.js` program could use regular `try { ... } catch (e) { ... 
 block to catch them and deal with them as if they were emitted by the regular
 user code.
 
+### Intercepting & Altering Execution
+
+GraalVM Insight is capable to alter the execution of a program. It can
+skip certain computations and replace them with own alternatives. Imagine
+simple `plus` function:
+
+```js
+function plus(a, b) {
+    return a + b;
+}
+```
+
+it is quite easy to change the behavior of the `plus` method. Following
+Insight script replaces the `+` operation with multiplication by using
+the `ctx.returnNow` functionality.
+
+```js
+insight.on('enter', function(ctx, frame) {
+    ctx.returnNow(frame.a * frame.b);
+}, {
+    roots: true,
+    rootNameFilter: 'plus'
+});
+```
+
+The `returnNow` method immediatelly stops execution and returns to the
+caller of the `plus` function. The body of the `plus` method isn't executed
+at all because we applied the insight `on('enter', ...)` - e.g. before the
+actual body of the function was executed.
+
+Multiplying instead of adding two numbers may not sound very tempting, but
+the same approach is useful in providing add-on caching of repeating
+function invocations.
+
 ### Hack into the C Code!
 
 The polyglot capabilities of GraalVM know no limits. Not only it is possible
@@ -752,14 +786,9 @@ we can even access local variables with almost no performance penalty!
 GraalVM comes with a unified set of prepackaged high performance **Insight** 
 insights at your convenience. 
 
-**Insight** insights scripts are primarily targeted
-towards ease of use in microservices area - e.g. logging
-
-
 **Insight** is an ideal tool for practicing *aspects oriented programming*
 in a completely language agnostic way.
-- inspect values, types at invocation or allocation sites, gathering useful information
-- modify computed values, interrupt execution 
+- types at invocation or allocation sites, gathering useful information
 
 - powerful tools to help you write, debug, manage, and organize
 your **Insight** insights scripts. It is a matter of pressing a single button

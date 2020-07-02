@@ -628,6 +628,38 @@ public class AgentObjectTest {
         }
     }
 
+    @Test
+    public void changeReturnValue() throws Exception {
+        try (Context c = AgentObjectFactory.newContext()) {
+            Value agent = AgentObjectFactory.createAgentObject(c);
+            InsightAPI agentAPI = agent.as(InsightAPI.class);
+            Assert.assertNotNull("Agent API obtained", agentAPI);
+
+            // @formatter:off
+            Source sampleScript = Source.newBuilder(InstrumentationTestLanguage.ID,
+                "ROOT(\n" +
+                "  DEFINE(mul,\n" +
+                "    ARGUMENT(a),\n" +
+                "    ARGUMENT(b),\n" +
+                "    EXPRESSION\n" +
+                "  ),\n" +
+                "  CALL(mul, CONSTANT(6), CONSTANT(7))\n" +
+                ")",
+                "sample.px"
+            ).build();
+            // @formatter:on
+
+            final InsightAPI.OnEventHandler return42 = (ctx, frame) -> {
+                ctx.returnNow(42);
+            };
+            agentAPI.on("enter", return42, createConfig(true, false, false, "mul.*", null));
+            Value fourtyTwo = c.eval(sampleScript);
+            agentAPI.off("enter", return42);
+
+            assertEquals(42, fourtyTwo.asInt());
+        }
+    }
+
     @SuppressWarnings("rawtypes")
     public static class SourceNameCheck implements Predicate {
         private final String name;

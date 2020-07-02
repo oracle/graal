@@ -29,6 +29,7 @@ import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.Node;
@@ -91,6 +92,26 @@ final class AgentExecutionNode extends ExecutionEventNode {
                 throw ctx.rethrow(ex);
             }
         }
+    }
+
+    @Override
+    protected Object onUnwind(VirtualFrame frame, Object info) {
+        return info;
+    }
+
+    static ThreadDeath returnNow(EventContext context, Object[] args) throws ArityException, ThreadDeath {
+        Object returnValue;
+        switch (args.length) {
+            case 0:
+                returnValue = null;
+                break;
+            case 1:
+                returnValue = args[0];
+                break;
+            default:
+                throw ArityException.create(1, args.length);
+        }
+        return context.createUnwind(NullObject.nullCheck(returnValue));
     }
 
     static ExecutionEventNodeFactory factory(TruffleInstrument.Env env, final Object enter, final Object exit) {

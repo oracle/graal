@@ -163,6 +163,15 @@ public interface InsightAPI {
              * @since 0.4
              */
             int endColumn();
+
+            /** Immediatelly exits the current handler and returns to the
+             * caller, passing it the provided value as a return value
+             * from the current function.
+             *
+             * @param value the value to return to the caller
+             * @since 0.7
+             */
+            void returnNow(Object value);
         }
         void event(Context ctx, Map<String, Object> frame);
     }
