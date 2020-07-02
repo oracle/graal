@@ -78,6 +78,8 @@ public final class InspectorInstrument extends TruffleInstrument {
 
     private static final int DEFAULT_PORT = 9229;
     private static final HostAndPort DEFAULT_ADDRESS = new HostAndPort(null, DEFAULT_PORT);
+    private static final String HELP_URL = "https://www.graalvm.org/docs/tools/chrome-debugger";
+
     private Server server;
     private ConnectionWatcher connectionWatcher;
 
@@ -420,13 +422,13 @@ public final class InspectorInstrument extends TruffleInstrument {
                 }
                 if (serverEndpoint == null) {
                     interceptor.close(token);
-                    wss = InspectorServer.get(socketAddress, token, pathContainingToken, executionContext, debugBreak, secure, keyStoreOptions, connectionWatcher, iss);
-                    String wsStr = buildAddress(socketAddress.getAddress().getHostAddress(), wss.getPort(), pathContainingToken, secure);
-                    String address = DEV_TOOLS_PREFIX + wsStr;
-                    urlContainingToken = wsStr.replace("=", "://");
-                    info.println("Debugger listening on port " + wss.getPort() + ".");
-                    info.println("To start debugging, open the following URL in Chrome:");
-                    info.println("    " + address);
+                    InspectorServer server = InspectorServer.get(socketAddress, token, pathContainingToken, executionContext, debugBreak, secure, keyStoreOptions, connectionWatcher, iss);
+                    String wsAddress = server.getWSAddress(token);
+                    wss = server;
+                    urlContainingToken = wsAddress;
+                    info.println("Debugger listening on " + wsAddress);
+                    info.println("For help, see: " + HELP_URL);
+                    info.println("E.g. in Chrome open: " + server.getDevtoolsAddress(token));
                     info.flush();
                 } else {
                     restartServerEndpointOnClose(hostAndPort, env, wsuri, executionContext, connectionWatcher, iss, interceptor);
@@ -501,15 +503,6 @@ public final class InspectorInstrument extends TruffleInstrument {
             final byte[] tokenRaw = new byte[32];
             new SecureRandom().nextBytes(tokenRaw);
             return tokenRaw;
-        }
-
-        private static final String DEV_TOOLS_PREFIX = "chrome-devtools://devtools/bundled/js_app.html?";
-        private static final String WS_PREFIX = "ws=";
-        private static final String WS_PREFIX_SECURE = "wss=";
-
-        private static String buildAddress(String hostAddress, int port, String path, boolean secure) {
-            String prefix = secure ? WS_PREFIX_SECURE : WS_PREFIX;
-            return prefix + hostAddress + ":" + port + path;
         }
 
         private static void restartServerEndpointOnClose(HostAndPort hostAndPort, Env env, URI wsuri, InspectorExecutionContext executionContext, ConnectionWatcher connectionWatcher,
