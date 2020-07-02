@@ -1199,20 +1199,21 @@ public class GraphUtil {
                 merge.addForwardEnd(newTrueEnd);
                 merge.addForwardEnd(newFalseEnd);
 
-                ArrayList<PhiNode> replacementPhis = new ArrayList<>(loopBegin.phis().count());
+                EconomicMap<PhiNode, PhiNode> replacementPhis = EconomicMap.create(Equivalence.IDENTITY);
                 for (PhiNode phi : loopBegin.phis()) {
                     if (phi instanceof ValuePhiNode) {
                         ValuePhiNode valuePhi = (ValuePhiNode) phi;
                         ValuePhiNode newPhi = phi.graph().unique(new ValuePhiNode(valuePhi.stamp(NodeView.DEFAULT), merge, new ValueNode[]{valuePhi.valueAt(trueEnd), valuePhi.valueAt(falseEnd)}));
-                        replacementPhis.add(newPhi);
+                        replacementPhis.put(phi, newPhi);
                     } else if (phi instanceof MemoryPhiNode) {
                         MemoryPhiNode memoryPhi = (MemoryPhiNode) phi;
                         MemoryPhiNode newPhi = phi.graph().unique(new MemoryPhiNode(merge, memoryPhi.getLocationIdentity(), new ValueNode[]{memoryPhi.valueAt(trueEnd), memoryPhi.valueAt(falseEnd)}));
-                        replacementPhis.add(newPhi);
+                        replacementPhis.put(phi, newPhi);
                     } else {
                         GraalError.shouldNotReachHere();
                     }
                 }
+                assert loopBegin.phis().count() == replacementPhis.size();
 
                 loopBegin.removeEnd(trueEnd);
                 loopBegin.removeEnd(falseEnd);
@@ -1225,7 +1226,7 @@ public class GraphUtil {
                 merge.setNext(newEnd);
                 int i = 0;
                 for (PhiNode phi : loopBegin.phis()) {
-                    ValueNode replacementPhi = replacementPhis.get(i);
+                    ValueNode replacementPhi = replacementPhis.get(phi);
                     assert (phi instanceof ValuePhiNode && replacementPhi instanceof ValuePhiNode) || (phi instanceof MemoryPhiNode && replacementPhi instanceof MemoryPhiNode);
                     phi.addInput(replacementPhi);
                     i++;
