@@ -40,7 +40,7 @@ import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 /**
  * Helper to reduce cluttering of the {@link VM} class.
  */
-public class ModulesHelperVM {
+public final class ModulesHelperVM {
     private ModulesHelperVM() {
     }
 

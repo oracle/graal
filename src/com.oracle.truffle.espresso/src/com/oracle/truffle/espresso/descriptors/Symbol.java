@@ -224,6 +224,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> length = StaticSymbols.putName("length");
         public static final Symbol<Name> toCharArray = StaticSymbols.putName("toCharArray");
         public static final Symbol<Name> coder = StaticSymbols.putName("coder");
+        public static final Symbol<Name> COMPACT_STRINGS = StaticSymbols.putName("COMPACT_STRINGS");
 
         // j.l.Throwable
         public static final Symbol<Name> backtrace = StaticSymbols.putName("backtrace");

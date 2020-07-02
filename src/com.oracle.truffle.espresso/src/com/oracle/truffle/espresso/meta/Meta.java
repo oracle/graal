@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.meta;
 
+import static com.oracle.truffle.espresso.meta.StringUtil.LATIN1;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -151,6 +153,7 @@ public final class Meta implements ContextAccess {
 
         java_lang_String_hash = java_lang_String.lookupDeclaredField(Name.hash, Type._int);
         java_lang_String_coder = java_lang_String.lookupDeclaredField(Name.coder, Type._byte);
+        java_lang_String_COMPACT_STRINGS = java_lang_String.lookupDeclaredField(Name.COMPACT_STRINGS, Type._boolean);
         java_lang_String_hashCode = java_lang_String.lookupDeclaredMethod(Name.hashCode, Signature._int);
         java_lang_String_length = java_lang_String.lookupDeclaredMethod(Name.length, Signature._int);
         java_lang_String_toCharArray = java_lang_String.lookupDeclaredMethod(Name.toCharArray, Signature._char_array);
@@ -443,6 +446,8 @@ public final class Meta implements ContextAccess {
         java_lang_invoke_MethodHandleNatives_linkCallSite11 = java_lang_invoke_MethodHandleNatives.lookupDeclaredMethod(Name.linkCallSite,
                         Signature.MemberName_Object_int_Object_Object_Object_Object_Object_array);
 
+        // TODO: these classes are in module java.management. These become known after modules
+        // initialization.
         sun_management_ManagementFactory = knownKlass(Type.sun_management_ManagementFactory);
         if (sun_management_ManagementFactory != null) {
             // MemoryPoolMXBean createMemoryPool(String var0, boolean var1, long var2, long var4)
@@ -550,6 +555,7 @@ public final class Meta implements ContextAccess {
     public final Field java_lang_String_value;
     public final Field java_lang_String_hash;
     public final Field java_lang_String_coder;
+    public final Field java_lang_String_COMPACT_STRINGS;
     public final Method java_lang_String_hashCode;
     public final Method java_lang_String_length;
     public final Method java_lang_String_toCharArray;
@@ -1093,8 +1099,17 @@ public final class Meta implements ContextAccess {
         StaticObject guestString = java_lang_String.allocateInstance();
         if (getContext().getJavaVersion() >= 9) {
             // TODO(garcia): avoid expensive array copies
-            java_lang_String_value.set(guestString, StaticObject.wrap(StringUtil.toBytes(value), this));
-            java_lang_String_coder.set(guestString, StringUtil.UTF16);
+            byte[] bytes;
+            byte coder;
+            if (java_lang_String.getStatics().getBooleanField(java_lang_String_COMPACT_STRINGS)) {
+                bytes = StringUtil.compress(value);
+                coder = LATIN1;
+            } else {
+                bytes = StringUtil.toBytes(value);
+                coder = StringUtil.UTF16;
+            }
+            java_lang_String_value.set(guestString, StaticObject.wrap(bytes, this));
+            java_lang_String_coder.set(guestString, coder);
             java_lang_String_hash.set(guestString, hash);
         } else {
             java_lang_String_value.set(guestString, StaticObject.wrap(value, this));
