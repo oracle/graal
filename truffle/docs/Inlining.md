@@ -23,7 +23,7 @@ increase of the size of the compilation unit.
 ## The issue with Truffle legacy inlining
 
 Truffle has had an approach to inlining for quite a while. Unfortunately, this
-early approach suffered from multiple issues, chief one being that it relied on
+early approach suffered from multiple issues, main one being that it relied on
 the number of Truffle AST Nodes in a call target to approximate the size of the
 call target. 
 
@@ -77,9 +77,12 @@ be, as well as how to find out which decisions were made during compilations.
 
 ### Call tree states
 
-Nodes in the inline call tree represent *calls* to particular targets. This
-means that if one target calls another twice, we will see this as two nodes
-despite it being the same call target.
+[Nodes](../../compiler/src/org.graalvm.compiler.truffle.compiler/src/org/graalvm/compiler/truffle/compiler/phases/inlining/CallNode.java)
+in the inline [call
+tree](../../compiler/src/org.graalvm.compiler.truffle.compiler/src/org/graalvm/compiler/truffle/compiler/phases/inlining/CallTree.java)
+represent *calls* to particular targets. This means that if one target calls
+another twice, we will see this as two nodes despite it being the same call
+target.
 
 Each node can be in one of 6 states explained here:
 * Inlined - This state means that the call was inlined. Initially, only the
