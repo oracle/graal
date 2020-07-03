@@ -23,8 +23,6 @@
 
 package com.oracle.truffle.espresso.impl;
 
-import static com.oracle.truffle.espresso.impl.ModuleTable.moduleLock;
-
 import java.util.ArrayList;
 
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -32,11 +30,9 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
 
 public class PackageTable extends EntryTable<PackageTable.PackageEntry, ModuleEntry> {
-    private static final Object packageLock = moduleLock;
-
     @Override
     public Object getLock() {
-        return packageLock;
+        return this;
     }
 
     @Override
@@ -44,7 +40,7 @@ public class PackageTable extends EntryTable<PackageTable.PackageEntry, ModuleEn
         return new PackageEntry(name, appendix);
     }
 
-    public static class PackageEntry implements EntryTable.NamedEntry {
+    public static class PackageEntry extends EntryTable.NamedEntry {
 
         @Override
         public Symbol<Name> getName() {
@@ -52,11 +48,10 @@ public class PackageTable extends EntryTable<PackageTable.PackageEntry, ModuleEn
         }
 
         public PackageEntry(Symbol<Name> name, ModuleEntry module) {
-            this.name = name;
+            super(name);
             this.module = module;
         }
 
-        private final Symbol<Name> name;
         private final ModuleEntry module;
         private ArrayList<ModuleEntry> exports = null;
         private boolean isUnqualifiedExports = false;
@@ -66,7 +61,7 @@ public class PackageTable extends EntryTable<PackageTable.PackageEntry, ModuleEn
             if (isUnqualifiedExports()) {
                 return;
             }
-            synchronized (packageLock) {
+            synchronized (this) {
                 if (m == null) {
                     setUnqualifiedExports();
                 }
@@ -110,7 +105,7 @@ public class PackageTable extends EntryTable<PackageTable.PackageEntry, ModuleEn
             if (isExportedAllUnnamed()) {
                 return;
             }
-            synchronized (packageLock) {
+            synchronized (this) {
                 isExportedAllUnnamed = true;
             }
         }

@@ -30,11 +30,10 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public class ModuleTable extends EntryTable<ModuleTable.ModuleEntry, ClassRegistry> {
-    static final Object moduleLock = new Object();
 
     @Override
     public Object getLock() {
-        return moduleLock;
+        return this;
     }
 
     @Override
@@ -52,11 +51,10 @@ public class ModuleTable extends EntryTable<ModuleTable.ModuleEntry, ClassRegist
         return moduleEntry;
     }
 
-    public static class ModuleEntry implements EntryTable.NamedEntry {
-        private Symbol<Name> name;
+    public static class ModuleEntry extends EntryTable.NamedEntry {
 
         ModuleEntry(Symbol<Name> name, ClassRegistry data) {
-            this.name = name;
+            super(name);
             this.registry = data;
         }
 
@@ -90,7 +88,7 @@ public class ModuleTable extends EntryTable<ModuleTable.ModuleEntry, ClassRegist
             if (!isNamed()) {
                 return;
             }
-            synchronized (moduleLock) {
+            synchronized (this) {
                 if (from == null) {
                     setCanReadAllUnnamed();
                     return;
@@ -108,7 +106,7 @@ public class ModuleTable extends EntryTable<ModuleTable.ModuleEntry, ClassRegist
             if (!from.isNamed() || from.isJavaBase()) {
                 return true;
             }
-            synchronized (moduleLock) {
+            synchronized (this) {
                 if (!hasReads()) {
                     return false;
                 } else {

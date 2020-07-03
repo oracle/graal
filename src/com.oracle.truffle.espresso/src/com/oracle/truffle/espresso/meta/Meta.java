@@ -1099,12 +1099,12 @@ public final class Meta implements ContextAccess {
         StaticObject guestString = java_lang_String.allocateInstance();
         if (getContext().getJavaVersion() >= 9) {
             // TODO(garcia): avoid expensive array copies
-            byte[] bytes;
-            byte coder;
+            byte[] bytes = null;
+            byte coder = LATIN1;
             if (java_lang_String.getStatics().getBooleanField(java_lang_String_COMPACT_STRINGS)) {
                 bytes = StringUtil.compress(value);
-                coder = LATIN1;
-            } else {
+            }
+            if (bytes == null) {
                 bytes = StringUtil.toBytes(value);
                 coder = StringUtil.UTF16;
             }
