@@ -62,7 +62,55 @@ public abstract class PlatformCapabilityBase<S extends Enum<S> & LLVMSyscallEntr
 
     public abstract String getLibsulongFilename();
 
+
     @Override
+    public List<String> preprocessDependencies(LLVMContext ctx, ExternalLibrary library, List<String> dependencies) {
+        List<String> newDeps = null;
+        boolean libSulongXXAdded = false;
+        // inject libsulong++ dependency
+        if (ctx.isInternalLibrary(library) && library.hasFile()) {
+            Path path = Paths.get(library.getFile().getPath());
+            String remainder = ctx.getInternalLibraryPath().relativize(path).toString();
+            if (remainder.startsWith(LIBCXXABI_PREFIX) || remainder.startsWith(LIBCXX_PREFIX)) {
+                newDeps = new ArrayList<>(dependencies);
+                newDeps.add(getLibsulongxxFilename());
+                libSulongXXAdded = true;
+            }
+        }
+
+        // replace absolute dependencies to libc++* to relative ones (in the llvm home)
+        for (int i = 0; i < dependencies.size(); i++) {
+            String dep = dependencies.get(i);
+            if (dep.startsWith("/usr/lib/libc++")) {
+                Path namePath = Paths.get(dep).getFileName();
+                if (namePath != null) {
+                    String filename = namePath.toString();
+                    if (filename.startsWith("libc++.") || filename.startsWith("libc++abi.")) {
+                        if (newDeps == null) {
+                            newDeps = new ArrayList<>(dependencies);
+                        }
+                        // replace with file name
+                        newDeps.set(i, filename);
+                        dep = filename;
+                    }
+                }
+            }
+            if (!libSulongXXAdded && (dep.startsWith(LIBCXXABI_PREFIX) || dep.startsWith(LIBCXX_PREFIX))) {
+                // inject libsulong++ dependency
+                if (newDeps == null) {
+                    newDeps = new ArrayList<>(dependencies);
+                }
+                newDeps.add(getLibsulongxxFilename());
+                libSulongXXAdded = true;
+            }
+        }
+        if (newDeps != null) {
+            return newDeps;
+        }
+        return dependencies;
+    }
+
+    /*@Override
     public List<String> preprocessDependencies(LLVMContext ctx, ExternalLibrary library, List<String> dependencies) {
         List<String> newDeps = null;
         boolean libSulongXXAdded = false;
@@ -97,5 +145,5 @@ public abstract class PlatformCapabilityBase<S extends Enum<S> & LLVMSyscallEntr
             return newDeps;
         }
         return dependencies;
-    }
+    }*/
 }

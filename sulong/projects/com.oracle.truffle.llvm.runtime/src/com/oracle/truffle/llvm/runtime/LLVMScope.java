@@ -182,7 +182,8 @@ public class LLVMScope implements TruffleObject {
         }
     }
 
-    private void remove(String name) {
+    @TruffleBoundary
+    public void remove(String name) {
         assert symbols.containsKey(name);
         LLVMSymbol removedSymbol = symbols.remove(name);
 
