@@ -52,9 +52,6 @@ public final class LinkedKlass {
 
     private final boolean hasFinalizer;
 
-    @CompilationFinal(dimensions = 2) //
-    private final int[][] leftoverHoles;
-
     // instance fields declared in this class (includes hidden fields)
     @CompilationFinal(dimensions = 1) //
     private final LinkedField[] instanceFields;
@@ -62,6 +59,9 @@ public final class LinkedKlass {
     // static fields declared in this class (no hidden fields)
     @CompilationFinal(dimensions = 1) //
     private final LinkedField[] staticFields;
+
+    @CompilationFinal(dimensions = 2) //
+    private final int[][] leftoverHoles;
 
     private final int primitiveFieldTotalByteCount;
     private final int primitiveStaticFieldTotalByteCount;
@@ -97,18 +97,18 @@ public final class LinkedKlass {
 
         this.methods = linkedMethods;
 
-        LinkedFieldTable.CreationResult fieldCR = LinkedFieldTable.create(this);
+        LinkedKlassFieldLayout fieldLayout = LinkedKlassFieldLayout.create(this);
 
-        this.instanceFields = fieldCR.instanceFields;
-        this.staticFields = fieldCR.staticFields;
+        this.instanceFields = fieldLayout.instanceFields;
+        this.staticFields = fieldLayout.staticFields;
 
-        this.primitiveFieldTotalByteCount = fieldCR.primitiveFieldTotalByteCount;
-        this.primitiveStaticFieldTotalByteCount = fieldCR.primitiveStaticFieldTotalByteCount;
-        this.fieldTableLength = fieldCR.fieldTableLength;
-        this.objectFields = fieldCR.objectFields;
-        this.staticObjectFields = fieldCR.staticObjectFields;
+        this.primitiveFieldTotalByteCount = fieldLayout.primitiveFieldTotalByteCount;
+        this.primitiveStaticFieldTotalByteCount = fieldLayout.primitiveStaticFieldTotalByteCount;
+        this.fieldTableLength = fieldLayout.fieldTableLength;
+        this.objectFields = fieldLayout.objectFields;
+        this.staticObjectFields = fieldLayout.staticObjectFields;
 
-        this.leftoverHoles = fieldCR.leftoverHoles;
+        this.leftoverHoles = fieldLayout.leftoverHoles;
     }
 
     int getFlags() {

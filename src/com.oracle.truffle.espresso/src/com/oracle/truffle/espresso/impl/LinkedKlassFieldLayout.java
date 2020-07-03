@@ -31,54 +31,34 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import java.util.ArrayList;
 import java.util.List;
 
-class LinkedFieldTable {
-    static class CreationResult {
-        final LinkedField[] instanceFields;
-        final LinkedField[] staticFields;
-
-        final int[][] leftoverHoles;
-
-        final int primitiveFieldTotalByteCount;
-        final int primitiveStaticFieldTotalByteCount;
-        final int fieldTableLength;
-        final int objectFields;
-        final int staticObjectFields;
-
-        CreationResult(LinkedField[] instanceFields, LinkedField[] staticFields, int[][] leftoverHoles, int primitiveFieldTotalByteCount, int primitiveStaticFieldTotalByteCount, int fieldTableLength,
-                        int objectFields, int staticObjectFields) {
-            this.instanceFields = instanceFields;
-            this.staticFields = staticFields;
-            this.leftoverHoles = leftoverHoles;
-            this.primitiveFieldTotalByteCount = primitiveFieldTotalByteCount;
-            this.primitiveStaticFieldTotalByteCount = primitiveStaticFieldTotalByteCount;
-            this.fieldTableLength = fieldTableLength;
-            this.objectFields = objectFields;
-            this.staticObjectFields = staticObjectFields;
-        }
-    }
-
+class LinkedKlassFieldLayout {
     private static final int N_PRIMITIVES = 8;
-
     private static final JavaKind[] order = {JavaKind.Long, JavaKind.Double, JavaKind.Int, JavaKind.Float, JavaKind.Short, JavaKind.Char, JavaKind.Byte, JavaKind.Boolean};
 
-    private static int indexFromKind(JavaKind kind) {
-        // @formatter:off
-        switch (kind) {
-            case Boolean: return 7;
-            case Byte   : return 6;
-            case Short  : return 4;
-            case Char   : return 5;
-            case Int    : return 2;
-            case Float  : return 3;
-            case Long   : return 0;
-            case Double : return 1;
-            default:
-                throw EspressoError.shouldNotReachHere();
-        }
-        // @formatter:on
+    final LinkedField[] instanceFields;
+    final LinkedField[] staticFields;
+
+    final int[][] leftoverHoles;
+
+    final int primitiveFieldTotalByteCount;
+    final int primitiveStaticFieldTotalByteCount;
+    final int fieldTableLength;
+    final int objectFields;
+    final int staticObjectFields;
+
+    private LinkedKlassFieldLayout(LinkedField[] instanceFields, LinkedField[] staticFields, int[][] leftoverHoles, int primitiveFieldTotalByteCount, int primitiveStaticFieldTotalByteCount, int fieldTableLength,
+                                   int objectFields, int staticObjectFields) {
+        this.instanceFields = instanceFields;
+        this.staticFields = staticFields;
+        this.leftoverHoles = leftoverHoles;
+        this.primitiveFieldTotalByteCount = primitiveFieldTotalByteCount;
+        this.primitiveStaticFieldTotalByteCount = primitiveStaticFieldTotalByteCount;
+        this.fieldTableLength = fieldTableLength;
+        this.objectFields = objectFields;
+        this.staticObjectFields = staticObjectFields;
     }
 
-    public static CreationResult create(LinkedKlass linkedKlass) {
+    static LinkedKlassFieldLayout create(LinkedKlass linkedKlass) {
         ArrayList<LinkedField> instanceFields = new ArrayList<>();
         ArrayList<LinkedField> staticFields = new ArrayList<>();
 
@@ -182,7 +162,7 @@ class LinkedFieldTable {
         nextFieldTableSlot += hiddenFields;
         nextObjectFieldIndex += hiddenFields;
 
-        return new CreationResult(
+        return new LinkedKlassFieldLayout(
                         instanceFields.toArray(LinkedField.EMPTY_ARRAY),
                         staticFields.toArray(LinkedField.EMPTY_ARRAY),
                         schedule.nextLeftoverHoles,
@@ -191,6 +171,23 @@ class LinkedFieldTable {
                         nextFieldTableSlot,
                         nextObjectFieldIndex,
                         nextStaticObjectFieldIndex);
+    }
+
+    private static int indexFromKind(JavaKind kind) {
+        // @formatter:off
+        switch (kind) {
+            case Boolean: return 7;
+            case Byte   : return 6;
+            case Short  : return 4;
+            case Char   : return 5;
+            case Int    : return 2;
+            case Float  : return 3;
+            case Long   : return 0;
+            case Double : return 1;
+            default:
+                throw EspressoError.shouldNotReachHere();
+        }
+        // @formatter:on
     }
 
     // Find first primitive to set, and align on it.
@@ -256,7 +253,7 @@ class LinkedFieldTable {
     /**
      * Greedily tries to fill the space between a parent's fields and its child.
      */
-    static final class FillingSchedule {
+    private static final class FillingSchedule {
         static final int[][] EMPTY_INT_ARRAY_ARRAY = new int[0][];
 
         List<ScheduleEntry> schedule;
@@ -362,7 +359,7 @@ class LinkedFieldTable {
         }
     }
 
-    static class ScheduleEntry {
+    private static class ScheduleEntry {
         final JavaKind kind;
         final int offset;
 
