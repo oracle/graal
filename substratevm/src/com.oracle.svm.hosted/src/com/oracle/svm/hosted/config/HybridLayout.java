@@ -36,6 +36,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.core.common.NumUtil;
+import org.graalvm.nativeimage.ImageSingletons;
 
 /**
  * Defines the layout for a hybrid class.
@@ -48,11 +49,11 @@ import org.graalvm.compiler.core.common.NumUtil;
 public class HybridLayout<T> {
 
     public static boolean isHybrid(ResolvedJavaType clazz) {
-        return clazz.getAnnotation(Hybrid.class) != null;
+        return ImageSingletons.lookup(HybridLayoutUtils.class).isHybrid(clazz);
     }
 
     public static boolean isHybridField(ResolvedJavaField field) {
-        return field.getAnnotation(Hybrid.Array.class) != null || field.getAnnotation(Hybrid.Bitset.class) != null;
+        return ImageSingletons.lookup(HybridLayoutUtils.class).isHybridField(field);
     }
 
     private final ObjectLayout layout;
