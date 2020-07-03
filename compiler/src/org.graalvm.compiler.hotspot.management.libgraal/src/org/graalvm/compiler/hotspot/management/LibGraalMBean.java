@@ -27,6 +27,7 @@ package org.graalvm.compiler.hotspot.management;
 import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -553,9 +554,13 @@ public class LibGraalMBean implements DynamicMBean {
     @Platforms(Platform.HOSTED_ONLY.class)
     public static final class Factory extends Thread {
 
+        private static final String DOMAIN_JAVA_LANG = Object.class.getPackage().getName();
+        private static final String TYPE_MEMORY_POOL = "MemoryPool";
+        private static final String ATTR_TYPE = "type";
         private static final int POLL_INTERVAL_MS = 2000;
 
         private MBeanServer platformMBeanServer;
+        private volatile AggregatedMemoryPoolBean aggregatedMemoryPoolBean;
 
         /**
          * Set of isolates yet to be processed for MBean registrations.
@@ -626,6 +631,9 @@ public class LibGraalMBean implements DynamicMBean {
             for (String objectId : objectIds) {
                 try {
                     ObjectName objectName = new ObjectName(objectId);
+                    if (parseMemoryPoolObjectName(objectName) != null) {
+                        aggregatedMemoryPoolBean.removeDelegate(objectName);
+                    }
                     if (mBeanServer.isRegistered(objectName)) {
                         mBeanServer.unregisterMBean(objectName);
                     }
@@ -692,7 +700,19 @@ public class LibGraalMBean implements DynamicMBean {
                             LibGraalMBean bean = new LibGraalMBean(isolate, handle);
                             String name = JMXToLibGraalCalls.getObjectName(isolateThread, handle);
                             try {
-                                platformMBeanServer.registerMBean(bean, new ObjectName(name));
+                                ObjectName objectName = new ObjectName(name);
+                                Hashtable<String, String> props = parseMemoryPoolObjectName(objectName);
+                                if (props != null) {
+                                    if (aggregatedMemoryPoolBean == null) {
+                                        props.remove("isolate");
+                                        ObjectName aggregatedMemoryPoolObjectName = new ObjectName(DOMAIN_JAVA_LANG, props);
+                                        aggregatedMemoryPoolBean = new AggregatedMemoryPoolBean(aggregatedMemoryPoolObjectName, bean, objectName);
+                                        platformMBeanServer.registerMBean(aggregatedMemoryPoolBean, aggregatedMemoryPoolObjectName);
+                                    } else {
+                                        aggregatedMemoryPoolBean.addDelegate(bean, objectName);
+                                    }
+                                }
+                                platformMBeanServer.registerMBean(bean, objectName);
                             } catch (MalformedObjectNameException | InstanceAlreadyExistsException | MBeanRegistrationException | NotCompliantMBeanException e) {
                                 e.printStackTrace(TTY.out);
                             }
@@ -701,6 +721,19 @@ public class LibGraalMBean implements DynamicMBean {
                 }
             }
             return true;
+        }
+
+        /**
+         * Parses MemoryPool {@link ObjectName} to a properties map. If the given {@link ObjectName}
+         * does not represent a MemoryPool Bean it returns {@code null}.
+         */
+        private static Hashtable<String, String> parseMemoryPoolObjectName(ObjectName objectName) {
+            Hashtable<String, String> props = objectName.getKeyPropertyList();
+            if (DOMAIN_JAVA_LANG.equals(objectName.getDomain()) && TYPE_MEMORY_POOL.equals(props.get(ATTR_TYPE))) {
+                return props;
+            } else {
+                return null;
+            }
         }
     }
 }
