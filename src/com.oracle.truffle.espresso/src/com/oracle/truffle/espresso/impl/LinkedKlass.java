@@ -50,45 +50,43 @@ public final class LinkedKlass {
     @CompilationFinal(dimensions = 1) //
     private final LinkedMethod[] methods;
 
-    @CompilationFinal(dimensions = 1) //
-    private final LinkedField[] fields; // Field slots already computed.
     private final boolean hasFinalizer;
 
-    protected LinkedMethod[] getLinkedMethods() {
-        return methods;
-    }
+    @CompilationFinal(dimensions = 2) //
+    private final int[][] leftoverHoles;
 
-    protected LinkedField[] getLinkedFields() {
-        return fields;
-    }
+    // instance fields declared in this class (includes hidden fields)
+    @CompilationFinal(dimensions = 1) //
+    private final LinkedField[] instanceFields;
 
-    protected final int instanceFieldCount;
-    protected final int staticFieldCount;
+    // static fields declared in this class (no hidden fields)
+    @CompilationFinal(dimensions = 1) //
+    private final LinkedField[] staticFields;
+
+    private final int primitiveFieldTotalByteCount;
+    private final int primitiveStaticFieldTotalByteCount;
+
+    private final int fieldTableLength;
+    private final int objectFields;
+    private final int staticObjectFields;
 
     public LinkedKlass(ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces) {
+
+        this.parserKlass = parserKlass;
+        this.superKlass = superKlass;
+        this.interfaces = interfaces;
 
         // Streams are forbidden in Espresso.
         // assert Arrays.stream(interfaces).allMatch(i -> Modifier.isInterface(i.getFlags()));
         assert superKlass == null || !Modifier.isInterface(superKlass.getFlags());
 
-        int instanceFieldSlot = superKlass != null ? superKlass.instanceFieldCount : 0;
-        int staticFieldSlot = 0;
+        // Super interfaces are not checked for finalizers; a default .finalize method will be
+        // resolved to Object.finalize, making the finalizer not observable.
+        this.hasFinalizer = ((parserKlass.getFlags() & ACC_FINALIZER) != 0) || (superKlass != null && (superKlass.getFlags() & ACC_FINALIZER) != 0);
+        assert !this.hasFinalizer || !Type.java_lang_Object.equals(parserKlass.getType()) : "java.lang.Object cannot be marked as finalizable";
 
         final int methodCount = parserKlass.getMethods().length;
-        final int fieldCount = parserKlass.getFields().length;
-
-        LinkedField[] linkedFields = new LinkedField[fieldCount];
         LinkedMethod[] linkedMethods = new LinkedMethod[methodCount];
-
-        for (int i = 0; i < fieldCount; ++i) {
-            ParserField parserField = parserKlass.getFields()[i];
-
-            int slot = Modifier.isStatic(parserField.getFlags())
-                            ? staticFieldSlot++
-                            : instanceFieldSlot++;
-
-            linkedFields[i] = new LinkedField(parserField, this, slot);
-        }
 
         for (int i = 0; i < methodCount; ++i) {
             ParserMethod parserMethod = parserKlass.getMethods()[i];
@@ -97,18 +95,20 @@ public final class LinkedKlass {
             linkedMethods[i] = new LinkedMethod(parserMethod);
         }
 
-        // Super interfaces are not checked for finalizers; a default .finalize method will be
-        // resolved to Object.finalize, making the finalizer not observable.
-        this.hasFinalizer = ((parserKlass.getFlags() & ACC_FINALIZER) != 0) || (superKlass != null && (superKlass.getFlags() & ACC_FINALIZER) != 0);
-        assert !this.hasFinalizer || !Type.java_lang_Object.equals(parserKlass.getType()) : "java.lang.Object cannot be marked as finalizable";
-
-        this.parserKlass = parserKlass;
-        this.superKlass = superKlass;
-        this.interfaces = interfaces;
-        this.staticFieldCount = staticFieldSlot;
-        this.instanceFieldCount = instanceFieldSlot;
-        this.fields = linkedFields;
         this.methods = linkedMethods;
+
+        LinkedFieldTable.CreationResult fieldCR = LinkedFieldTable.create(this);
+
+        this.instanceFields = fieldCR.instanceFields;
+        this.staticFields = fieldCR.staticFields;
+
+        this.primitiveFieldTotalByteCount = fieldCR.primitiveFieldTotalByteCount;
+        this.primitiveStaticFieldTotalByteCount = fieldCR.primitiveStaticFieldTotalByteCount;
+        this.fieldTableLength = fieldCR.fieldTableLength;
+        this.objectFields = fieldCR.objectFields;
+        this.staticObjectFields = fieldCR.staticObjectFields;
+
+        this.leftoverHoles = fieldCR.leftoverHoles;
     }
 
     int getFlags() {
@@ -153,5 +153,41 @@ public final class LinkedKlass {
 
     public int getMinorVersion() {
         return getConstantPool().getMinorVersion();
+    }
+
+    protected LinkedMethod[] getLinkedMethods() {
+        return methods;
+    }
+
+    public LinkedField[] getInstanceFields() {
+        return instanceFields;
+    }
+
+    protected LinkedField[] getStaticFields() {
+        return staticFields;
+    }
+
+    public int getFieldTableLength() {
+        return fieldTableLength;
+    }
+
+    public int getObjectFieldsCount() {
+        return objectFields;
+    }
+
+    public int getPrimitiveFieldTotalByteCount() {
+        return primitiveFieldTotalByteCount;
+    }
+
+    public int getStaticObjectFieldsCount() {
+        return staticObjectFields;
+    }
+
+    public int getPrimitiveStaticFieldTotalByteCount() {
+        return primitiveStaticFieldTotalByteCount;
+    }
+
+    public int[][] getLeftoverHoles() {
+        return leftoverHoles;
     }
 }

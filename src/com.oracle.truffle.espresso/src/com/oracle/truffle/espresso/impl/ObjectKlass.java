@@ -30,6 +30,7 @@ import static com.oracle.truffle.espresso.classfile.Constants.JVM_ACC_WRITTEN_FL
 
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Level;
 
@@ -75,19 +76,17 @@ public final class ObjectKlass extends Klass {
     @CompilationFinal //
     private StaticObject statics;
 
+    // instance and hidden fields declared in this class and in its super classes
     @CompilationFinal(dimensions = 1) //
-    private Field[] declaredFields;
+    private final Field[] fieldTable;
 
-    @CompilationFinal(dimensions = 2) private final int[][] leftoverHoles;
-    @CompilationFinal(dimensions = 1) private final Field[] fieldTable;
+    // points to the first element in the FieldTable that refers to a field declared in this class,
+    // or is equal to fieldTable.length if this class does not declare fields
+    private final int localFieldTableIndex;
 
-    private final int primitiveFieldTotalByteCount;
-    private final int primitiveStaticFieldTotalByteCount;
-
-    private final int objectFields;
-    private final int staticObjectFields;
-
-    @CompilationFinal(dimensions = 1) private final Field[] staticFieldTable;
+    // static fields declared in this class (no hidden fields)
+    @CompilationFinal(dimensions = 1) //
+    private final Field[] staticFieldTable;
 
     @CompilationFinal(dimensions = 1) //
     private Method[] declaredMethods;
@@ -143,11 +142,29 @@ public final class ObjectKlass extends Klass {
         // TODO(peterssen): Make writable copy.
         RuntimeConstantPool pool = new RuntimeConstantPool(getContext(), linkedKlass.getConstantPool(), classLoader);
 
+        Field[] skFieldTable = superKlass != null ? superKlass.getFieldTable() : new Field[0];
+        LinkedField[] lkInstanceFields = linkedKlass.getInstanceFields();
+        LinkedField[] lkStaticFields = linkedKlass.getStaticFields();
+
+        fieldTable = new Field[skFieldTable.length + lkInstanceFields.length];
+        staticFieldTable = new Field[lkStaticFields.length];
+
+        assert fieldTable.length == linkedKlass.getFieldTableLength();
+        System.arraycopy(skFieldTable, 0, fieldTable, 0, skFieldTable.length);
+        localFieldTableIndex = skFieldTable.length;
+        for (int i = 0; i < lkInstanceFields.length; i++) {
+            Field instanceField = new Field(this, lkInstanceFields[i], lkInstanceFields[i].isHidden());
+            fieldTable[localFieldTableIndex + i] = instanceField;
+        }
+        for (int i = 0; i < lkStaticFields.length; i++) {
+            Field staticField = new Field(this, lkStaticFields[i], false);
+            staticFieldTable[i] = staticField;
+        }
+
         LinkedMethod[] linkedMethods = linkedKlass.getLinkedMethods();
         Method[] methods = new Method[linkedMethods.length];
-        for (int i = 0; i < methods.length; ++i) {
-            LinkedMethod linkedMethod = linkedMethods[i];
-            methods[i] = new Method(this, linkedMethod, pool);
+        for (int i = 0; i < methods.length; i++) {
+            methods[i] = new Method(this, linkedMethods[i], pool);
         }
 
         this.declaredMethods = methods;
@@ -158,19 +175,6 @@ public final class ObjectKlass extends Klass {
 
         // Move attribute name to better location.
         this.runtimeVisibleAnnotations = getAttribute(Name.RuntimeVisibleAnnotations);
-
-        FieldTable.CreationResult fieldCR = FieldTable.create(superKlass, this, linkedKlass);
-
-        this.fieldTable = fieldCR.fieldTable;
-        this.staticFieldTable = fieldCR.staticFieldTable;
-        this.declaredFields = fieldCR.declaredFields;
-
-        this.primitiveFieldTotalByteCount = fieldCR.primitiveFieldTotalByteCount;
-        this.primitiveStaticFieldTotalByteCount = fieldCR.primitiveStaticFieldTotalByteCount;
-        this.objectFields = fieldCR.objectFields;
-        this.staticObjectFields = fieldCR.staticObjectFields;
-
-        this.leftoverHoles = fieldCR.leftoverHoles;
 
         if (this.isInterface()) {
             this.itable = null;
@@ -306,61 +310,59 @@ public final class ObjectKlass extends Klass {
 
     private void prepare() {
         checkLoadingConstraints();
-        for (Field f : declaredFields) {
-            if (f.isStatic()) {
-                ConstantValueAttribute a = (ConstantValueAttribute) f.getAttribute(Name.ConstantValue);
-                if (a == null) {
-                    continue;
+        for (Field f : staticFieldTable) {
+            ConstantValueAttribute a = (ConstantValueAttribute) f.getAttribute(Name.ConstantValue);
+            if (a == null) {
+                continue;
+            }
+            switch (f.getKind()) {
+                case Boolean: {
+                    boolean c = getConstantPool().intAt(a.getConstantValueIndex()) != 0;
+                    f.set(getStatics(), c);
+                    break;
                 }
-                switch (f.getKind()) {
-                    case Boolean: {
-                        boolean c = getConstantPool().intAt(a.getConstantValueIndex()) != 0;
-                        f.set(getStatics(), c);
-                        break;
-                    }
-                    case Byte: {
-                        byte c = (byte) getConstantPool().intAt(a.getConstantValueIndex());
-                        f.set(getStatics(), c);
-                        break;
-                    }
-                    case Short: {
-                        short c = (short) getConstantPool().intAt(a.getConstantValueIndex());
-                        f.set(getStatics(), c);
-                        break;
-                    }
-                    case Char: {
-                        char c = (char) getConstantPool().intAt(a.getConstantValueIndex());
-                        f.set(getStatics(), c);
-                        break;
-                    }
-                    case Int: {
-                        int c = getConstantPool().intAt(a.getConstantValueIndex());
-                        f.set(getStatics(), c);
-                        break;
-                    }
-                    case Float: {
-                        float c = getConstantPool().floatAt(a.getConstantValueIndex());
-                        f.set(getStatics(), c);
-                        break;
-                    }
-                    case Long: {
-                        long c = getConstantPool().longAt(a.getConstantValueIndex());
-                        f.set(getStatics(), c);
-                        break;
-                    }
-                    case Double: {
-                        double c = getConstantPool().doubleAt(a.getConstantValueIndex());
-                        f.set(getStatics(), c);
-                        break;
-                    }
-                    case Object: {
-                        StaticObject c = getConstantPool().resolvedStringAt(a.getConstantValueIndex());
-                        f.set(getStatics(), c);
-                        break;
-                    }
-                    default:
-                        throw EspressoError.shouldNotReachHere("invalid constant field kind");
+                case Byte: {
+                    byte c = (byte) getConstantPool().intAt(a.getConstantValueIndex());
+                    f.set(getStatics(), c);
+                    break;
                 }
+                case Short: {
+                    short c = (short) getConstantPool().intAt(a.getConstantValueIndex());
+                    f.set(getStatics(), c);
+                    break;
+                }
+                case Char: {
+                    char c = (char) getConstantPool().intAt(a.getConstantValueIndex());
+                    f.set(getStatics(), c);
+                    break;
+                }
+                case Int: {
+                    int c = getConstantPool().intAt(a.getConstantValueIndex());
+                    f.set(getStatics(), c);
+                    break;
+                }
+                case Float: {
+                    float c = getConstantPool().floatAt(a.getConstantValueIndex());
+                    f.set(getStatics(), c);
+                    break;
+                }
+                case Long: {
+                    long c = getConstantPool().longAt(a.getConstantValueIndex());
+                    f.set(getStatics(), c);
+                    break;
+                }
+                case Double: {
+                    double c = getConstantPool().doubleAt(a.getConstantValueIndex());
+                    f.set(getStatics(), c);
+                    break;
+                }
+                case Object: {
+                    StaticObject c = getConstantPool().resolvedStringAt(a.getConstantValueIndex());
+                    f.set(getStatics(), c);
+                    break;
+                }
+                default:
+                    throw EspressoError.shouldNotReachHere("invalid constant field kind");
             }
         }
     }
@@ -450,7 +452,16 @@ public final class ObjectKlass extends Klass {
 
     @Override
     public Field[] getDeclaredFields() {
-        return declaredFields;
+        // Speculate that there are no hidden fields
+        Field[] declaredFields = Arrays.copyOf(staticFieldTable, staticFieldTable.length + fieldTable.length - localFieldTableIndex);
+        int insertionIndex = staticFieldTable.length;
+        for (int i = localFieldTableIndex; i < fieldTable.length; i++) {
+            Field f = fieldTable[i];
+            if (!f.isHidden()) {
+                declaredFields[insertionIndex++] = f;
+            }
+        }
+        return insertionIndex == declaredFields.length ? declaredFields : Arrays.copyOf(declaredFields, insertionIndex);
     }
 
     public EnclosingMethodAttribute getEnclosingMethod() {
@@ -467,30 +478,6 @@ public final class ObjectKlass extends Klass {
 
     public Attribute getRuntimeVisibleAnnotations() {
         return runtimeVisibleAnnotations;
-    }
-
-    public int getStaticFieldSlots() {
-        return getLinkedKlass().staticFieldCount;
-    }
-
-    public int getInstanceFieldSlots() {
-        return getLinkedKlass().instanceFieldCount;
-    }
-
-    public int getObjectFieldsCount() {
-        return objectFields;
-    }
-
-    public int getPrimitiveFieldTotalByteCount() {
-        return primitiveFieldTotalByteCount;
-    }
-
-    public int getStaticObjectFieldsCount() {
-        return staticObjectFields;
-    }
-
-    public int getPrimitiveStaticFieldTotalByteCount() {
-        return primitiveStaticFieldTotalByteCount;
     }
 
     Klass getHostClassImpl() {
@@ -535,12 +522,12 @@ public final class ObjectKlass extends Klass {
     }
 
     Field lookupFieldTableImpl(int slot) {
-        assert (slot >= 0 && slot < getInstanceFieldSlots());
+        assert slot >= 0 && slot < fieldTable.length && !fieldTable[slot].isHidden();
         return fieldTable[slot];
     }
 
     Field lookupStaticFieldTableImpl(int slot) {
-        assert (slot >= 0 && slot < getStaticFieldSlots());
+        assert slot >= 0 && slot < getStaticFieldTable().length;
         return staticFieldTable[slot];
     }
 
@@ -837,10 +824,6 @@ public final class ObjectKlass extends Klass {
 
     private void setErroneous() {
         initState = ERRONEOUS;
-    }
-
-    public int[][] getLeftoverHoles() {
-        return leftoverHoles;
     }
 
     private void checkLoadingConstraints() {

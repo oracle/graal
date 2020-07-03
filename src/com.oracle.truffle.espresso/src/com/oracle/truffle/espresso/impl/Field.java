@@ -23,7 +23,6 @@
 package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
@@ -53,9 +52,13 @@ public final class Field extends Member<Type> implements FieldRef {
     private final ObjectKlass holder;
     private volatile Klass typeKlassCache;
 
-    @CompilationFinal private int fieldIndex = -1;
     @CompilationFinal private Symbol<ModifiedUTF8> genericSignature = null;
-    @CompilationFinal private int slot = -1;
+
+    public Field(ObjectKlass holder, LinkedField linkedField, boolean hidden) {
+        super(hidden ? null : linkedField.getType(), linkedField.getName());
+        this.linkedField = linkedField;
+        this.holder = holder;
+    }
 
     public Symbol<Type> getType() {
         return descriptor;
@@ -71,24 +74,6 @@ public final class Field extends Member<Type> implements FieldRef {
             }
         }
         return genericSignature;
-    }
-
-    public Field(LinkedField linkedField, ObjectKlass holder) {
-        super(linkedField.getType(), linkedField.getName());
-        this.linkedField = linkedField;
-        this.holder = holder;
-    }
-
-    public static Field createHidden(ObjectKlass holder, int hiddenSlot, int hiddenIndex, Symbol<Name> name) {
-        return new Field(holder, hiddenSlot, hiddenIndex, name);
-    }
-
-    private Field(ObjectKlass holder, int hiddenSlot, int hiddenIndex, Symbol<Name> name) {
-        super(null, name);
-        this.holder = holder;
-        this.linkedField = new LinkedField(new ParserField(0, name, Type.java_lang_Object, null), holder.getLinkedKlass(), -1);
-        this.slot = hiddenSlot;
-        this.fieldIndex = hiddenIndex;
     }
 
     public boolean isHidden() {
@@ -112,24 +97,14 @@ public final class Field extends Member<Type> implements FieldRef {
      * The slot serves as the position in the `field table` of the ObjectKlass.
      */
     public int getSlot() {
-        return slot;
-    }
-
-    void setSlot(int value) {
-        CompilerAsserts.neverPartOfCompilation();
-        this.slot = value;
+        return linkedField.getSlot();
     }
 
     /**
      * The fieldIndex is the actual position in the field array of an actual instance.
      */
     public int getFieldIndex() {
-        return fieldIndex;
-    }
-
-    void setFieldIndex(int index) {
-        CompilerAsserts.neverPartOfCompilation();
-        this.fieldIndex = index;
+        return linkedField.getFieldIndex();
     }
 
     @Override
