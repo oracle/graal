@@ -87,7 +87,7 @@ final class TruffleToLibGraalCalls {
     static native long newCompiler(long isolateThreadId, long truffleRuntimeHandle);
 
     @TruffleToLibGraal(InitializeCompiler)
-    static native void initializeCompiler(long isolateThreadId, long compilerHandle, byte[] options);
+    static native String[] initializeCompiler(long isolateThreadId, long compilerHandle, byte[] options);
 
     @TruffleToLibGraal(GetInitialOptions)
     static native byte[] getInitialOptions(long isolateThreadId, long truffleRuntimeHandle);

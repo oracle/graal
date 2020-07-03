@@ -38,9 +38,12 @@ public interface TruffleCompiler {
     /**
      * Initializes the compiler before the first compilation.
      *
+     * @param options the options for initialization
+     * @return the error messages from the validation which should be logged into the engine logger.
+     *
      * @since 20.0.0
      */
-    void initialize(Map<String, Object> options);
+    String[] initialize(Map<String, Object> options);
 
     /**
      * Opens a new compilation for {@code compilable}. Each call results in a new compilation

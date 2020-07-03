@@ -116,7 +116,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     protected final Backend backend;
     protected final SnippetReflectionProvider snippetReflection;
     protected final TrufflePostCodeInstallationTaskFactory codeInstallationTaskFactory;
-    private volatile boolean initialized;
+    private volatile String[] initializeWarnings;
 
     public static final OptimisticOptimizations Optimizations = ALL.remove(
                     UseExceptionProbability,
@@ -266,18 +266,19 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     }
 
     @Override
-    public void initialize(Map<String, Object> optionsMap) {
-        if (!initialized) {
+    public String[] initialize(Map<String, Object> optionsMap) {
+        String[] result = initializeWarnings;
+        if (result == null) {
             synchronized (this) {
-                if (!initialized) {
+                result = initializeWarnings;
+                if (result == null) {
                     partialEvaluator.initialize(TruffleCompilerOptions.getOptionsForCompiler(optionsMap));
-                    if (Boolean.parseBoolean(System.getenv("TRUFFLE_STRICT_OPTION_DEPRECATION"))) {
-                        TruffleCompilerOptions.checkDeprecation();
-                    }
-                    initialized = true;
+                    result = TruffleCompilerOptions.checkDeprecation(Boolean.parseBoolean(System.getenv("TRUFFLE_STRICT_OPTION_DEPRECATION")));
+                    initializeWarnings = result;
                 }
             }
         }
+        return result;
     }
 
     private void actuallyCompile(org.graalvm.options.OptionValues options, TruffleInliningPlan inliningPlan, TruffleCompilationTask task, TruffleCompilerListener listener,

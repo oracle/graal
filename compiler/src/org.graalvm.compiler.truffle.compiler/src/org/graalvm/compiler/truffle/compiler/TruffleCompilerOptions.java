@@ -311,7 +311,7 @@ public final class TruffleCompilerOptions {
         return new OptionValuesImpl(descriptors, parsedOptions);
     }
 
-    static void checkDeprecation() {
+    static String[] checkDeprecation(boolean fatal) {
         EconomicMap<OptionKey<?>, org.graalvm.options.OptionKey<?>> deprecatedToReplacement = EconomicMap.create(Equivalence.IDENTITY);
         OptionValues options = getOptions();
         MapCursor<org.graalvm.options.OptionKey<?>, Pair<? extends OptionKey<?>, Function<Object, ?>>> cursor = Lazy.POLYGLOT_TO_COMPILER.getEntries();
@@ -348,8 +348,13 @@ public final class TruffleCompilerOptions {
                 String quot = value instanceof String ? "\"" : "";
                 formatter.format("* Using polyglot API: 'org.graalvm.polyglot.Context.newBuilder().option(\"%s\", " + quot + "%s" + quot + ")'", polyglotOptionName, strValue);
             }
-            throw new Error(warning.toString());
+            if (fatal) {
+                throw new Error(warning.toString());
+            } else {
+                return new String[]{warning.toString()};
+            }
         }
+        return new String[0];
     }
 
     private static final class Lazy {

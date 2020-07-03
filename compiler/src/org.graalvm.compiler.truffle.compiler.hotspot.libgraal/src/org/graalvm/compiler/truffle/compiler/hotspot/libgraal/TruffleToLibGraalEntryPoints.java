@@ -173,14 +173,23 @@ final class TruffleToLibGraalEntryPoints {
     @TruffleToLibGraal(InitializeCompiler)
     @SuppressWarnings({"unused", "try"})
     @CEntryPoint(name = "Java_org_graalvm_compiler_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls_initializeCompiler")
-    public static void initializeCompiler(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long compilerHandle, JByteArray hsOptions) {
-        try (JNILibGraalScope<TruffleToLibGraal.Id> s = new JNILibGraalScope<>(InitializeCompiler, env)) {
+    public static JObjectArray initializeCompiler(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long compilerHandle, JByteArray hsOptions) {
+        JNILibGraalScope<TruffleToLibGraal.Id> scope = new JNILibGraalScope<>(InitializeCompiler, env);
+        try (JNILibGraalScope<TruffleToLibGraal.Id> s = scope) {
             HotSpotTruffleCompilerImpl compiler = LibGraalObjectHandles.resolve(compilerHandle, HotSpotTruffleCompilerImpl.class);
             Map<String, Object> options = decodeOptions(env, hsOptions);
-            compiler.initialize(options);
+            String[] warningMessages = compiler.initialize(options);
+            JClass componentType = FromLibGraalCalls.getJNIClass(env, String.class);
+            JObjectArray res = NewObjectArray(env, warningMessages.length, componentType, WordFactory.nullPointer());
+            for (int i = 0; i < warningMessages.length; i++) {
+                SetObjectArrayElement(env, res, i, JNIUtil.createHSString(env, warningMessages[i]));
+            }
+            s.setObjectResult(res);
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
+            scope.setObjectResult(WordFactory.nullPointer());
         }
+        return scope.getObjectResult();
     }
 
     @TruffleToLibGraal(GetCompilerConfigurationFactoryName)

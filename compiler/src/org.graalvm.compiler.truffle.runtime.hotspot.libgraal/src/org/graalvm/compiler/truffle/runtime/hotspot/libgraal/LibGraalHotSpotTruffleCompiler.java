@@ -45,8 +45,12 @@ import org.graalvm.util.OptionsEncoder;
 final class LibGraalHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
 
     static final class Handle extends LibGraalObject {
-        Handle(long handle) {
+
+        private final String[] initializationWarnings;
+
+        Handle(long handle, String[] initializationWarnings) {
             super(handle);
+            this.initializationWarnings = initializationWarnings;
         }
     }
 
@@ -57,6 +61,10 @@ final class LibGraalHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
     private byte[] initialOptions;
 
     long handle() {
+        return handleImpl().getHandle();
+    }
+
+    Handle handleImpl() {
         if (initialOptions == null) {
             throw new IllegalStateException("Initial options are not yet initialized, missing call of the TruffleCompiler::initialized method.");
         }
@@ -64,10 +72,9 @@ final class LibGraalHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
             return scope.getIsolate().getSingleton(Handle.class, () -> {
                 long isolateThread = getIsolateThread();
                 long compilerHandle = TruffleToLibGraalCalls.newCompiler(isolateThread, runtime.handle());
-                Handle compiler = new Handle(compilerHandle);
-                TruffleToLibGraalCalls.initializeCompiler(isolateThread, compilerHandle, initialOptions);
-                return compiler;
-            }).getHandle();
+                String[] initializationWarnings = TruffleToLibGraalCalls.initializeCompiler(isolateThread, compilerHandle, initialOptions);
+                return new Handle(compilerHandle, initializationWarnings);
+            });
         }
     }
 
@@ -77,12 +84,12 @@ final class LibGraalHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
 
     @SuppressWarnings("try")
     @Override
-    public void initialize(Map<String, Object> options) {
+    public String[] initialize(Map<String, Object> options) {
         this.initialOptions = OptionsEncoder.encode(options);
         // Force installation of the Truffle call boundary methods.
         // See AbstractHotSpotTruffleRuntime.setDontInlineCallBoundaryMethod
         // for further details.
-        handle();
+        return handleImpl().initializationWarnings;
     }
 
     @Override
