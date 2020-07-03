@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -70,8 +70,8 @@ public final class ManagedMemmoveTest extends ManagedMemAccessTestBase {
 
     @Test
     public void memmove(@Inject(DoMemmoveNode.class) CallTarget doMemmove) {
-        Object srcType = types[srcTestType.ordinal()];
-        Object dstType = types[dstTestType.ordinal()];
+        Object srcType = getTypeID(srcTestType);
+        Object dstType = getTypeID(dstTestType);
 
         final int arrayLength = 8;
         int size = arrayLength * srcTestType.elementSize;
