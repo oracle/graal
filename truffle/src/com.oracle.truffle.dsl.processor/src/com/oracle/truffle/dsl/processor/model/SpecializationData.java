@@ -87,7 +87,7 @@ public final class SpecializationData extends TemplateMethod {
     private boolean reachesFallback;
     private int index;
     private DSLExpression limitExpression;
-    private SpecializationData excludeCompanion;
+    private SpecializationData uncachedSpecialization;
     private final boolean reportPolymorphism;
 
     public SpecializationData(NodeData node, TemplateMethod template, SpecializationKind kind, List<SpecializationThrowsData> exceptions, boolean hasUnexpectedResultRewrite,
@@ -118,12 +118,12 @@ public final class SpecializationData extends TemplateMethod {
         return copy;
     }
 
-    public void setExcludeCompanion(SpecializationData removeCompanion) {
-        this.excludeCompanion = removeCompanion;
+    public void setUncachedSpecialization(SpecializationData removeCompanion) {
+        this.uncachedSpecialization = removeCompanion;
     }
 
-    public SpecializationData getExcludeCompanion() {
-        return excludeCompanion;
+    public SpecializationData getUncachedSpecialization() {
+        return uncachedSpecialization;
     }
 
     public boolean isTrivialExpression(DSLExpression expression) {
@@ -602,6 +602,18 @@ public final class SpecializationData extends TemplateMethod {
         if (node.isGenerateUncached() && !isReplaced() && prev.isReplaced()) {
             // becomes reachable in the uncached node
             return true;
+        }
+
+        /*
+         * Cached libraries have an implicit accepts guard and generate an uncached specialization
+         * which avoids any fallthrough except if there is a specialization that replaces it.
+         */
+        for (CacheExpression cache : prev.getCaches()) {
+            if (cache.isCachedLibrary()) {
+                if (getReplaces().contains(prev)) {
+                    return true;
+                }
+            }
         }
 
         Iterator<Parameter> currentSignature = getSignatureParameters().iterator();

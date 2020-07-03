@@ -3720,8 +3720,8 @@ public class FlatNodeGenFactory {
         }
 
         SpecializationData[] specializations;
-        if (specialization.getExcludeCompanion() != null) {
-            specializations = new SpecializationData[]{specialization, specialization.getExcludeCompanion()};
+        if (specialization.getUncachedSpecialization() != null) {
+            specializations = new SpecializationData[]{specialization, specialization.getUncachedSpecialization()};
         } else {
             specializations = new SpecializationData[]{specialization};
         }
