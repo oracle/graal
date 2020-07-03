@@ -42,22 +42,33 @@ package com.oracle.truffle.dsl.processor.java.compiler;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import javax.annotation.processing.ProcessingEnvironment;
+import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.QualifiedNameable;
+import javax.tools.Diagnostic;
 
 public abstract class AbstractCompiler implements Compiler {
 
-    protected static Object method(Object o, String methodName) throws Exception {
+    protected static Object method(Object o, String methodName) throws ReflectiveOperationException {
         Method method = o.getClass().getMethod(methodName);
         method.setAccessible(true);
         return method.invoke(o);
     }
 
-    protected static Object method(Object o, String methodName, Class<?>[] paramTypes, Object... values) throws Exception {
+    protected static Object method(Object o, String methodName, Class<?>[] paramTypes, Object... values) throws ReflectiveOperationException {
         Method method = o.getClass().getMethod(methodName, paramTypes);
         method.setAccessible(true);
         return method.invoke(o, values);
     }
 
-    protected static Object field(Object o, String fieldName) throws Exception {
+    protected static Object staticMethod(Class<?> clz, String methodName, Class<?>[] paramTypes, Object... values) throws ReflectiveOperationException {
+        Method method = clz.getMethod(methodName, paramTypes);
+        method.setAccessible(true);
+        return method.invoke(null, values);
+    }
+
+    protected static Object field(Object o, String fieldName) throws ReflectiveOperationException {
         if (o == null) {
             return null;
         }
@@ -82,4 +93,23 @@ public abstract class AbstractCompiler implements Compiler {
         return field.get(o);
     }
 
+    @Override
+    public final void emitDeprecationWarning(ProcessingEnvironment environment, Element element) {
+        if (!emitDeprecationWarningImpl(environment, element)) {
+            CharSequence ownerQualifiedName = "";
+            Element enclosingElement = element.getEnclosingElement();
+            if (enclosingElement != null) {
+                ElementKind kind = enclosingElement.getKind();
+                if (kind.isClass() || kind.isInterface() || kind == ElementKind.PACKAGE) {
+                    ownerQualifiedName = ((QualifiedNameable) enclosingElement).getQualifiedName();
+                }
+            }
+            environment.getMessager().printMessage(
+                            Diagnostic.Kind.WARNING,
+                            String.format("%s in %s has been deprecated", element.getSimpleName(), ownerQualifiedName),
+                            element);
+        }
+    }
+
+    protected abstract boolean emitDeprecationWarningImpl(ProcessingEnvironment environment, Element element);
 }

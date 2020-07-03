@@ -45,6 +45,7 @@ import java.util.List;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
+import javax.tools.JavaFileObject;
 
 public class JavaCCompiler extends AbstractCompiler {
 
@@ -67,4 +68,58 @@ public class JavaCCompiler extends AbstractCompiler {
         return type.getEnclosedElements();
     }
 
+    @Override
+    protected boolean emitDeprecationWarningImpl(ProcessingEnvironment environment, Element element) {
+        try {
+            Object javacContext = method(environment, "getContext");
+            Object elementTreePath = getTreePathForElement(environment, element);
+            if (elementTreePath == null) {
+                return false;
+            }
+            Object log = getLog(javacContext);
+            Object check = getCheck(javacContext);
+            Object file = field(method(elementTreePath, "getCompilationUnit"), "sourcefile");
+            Object prev = useSource(log, file);
+            try {
+                reportProblem(check, elementTreePath, element);
+            } finally {
+                useSource(log, prev);
+            }
+            return true;
+        } catch (ReflectiveOperationException reflectiveException) {
+            return false;
+        }
+    }
+
+    private static Object getTreePathForElement(ProcessingEnvironment environment, Element element) throws ReflectiveOperationException {
+        Class<?> treesClass = Class.forName("com.sun.source.util.Trees", false, element.getClass().getClassLoader());
+        Object trees = staticMethod(treesClass, "instance", new Class<?>[]{ProcessingEnvironment.class}, environment);
+        return method(trees, "getPath", new Class<?>[]{Element.class}, element);
+    }
+
+    private static Object getLog(Object javacContext) throws ReflectiveOperationException {
+        ClassLoader cl = javacContext.getClass().getClassLoader();
+        Class<?> logClass = Class.forName("com.sun.tools.javac.util.Log", false, cl);
+        Class<?> contextClass = Class.forName("com.sun.tools.javac.util.Context", false, cl);
+        return staticMethod(logClass, "instance", new Class<?>[]{contextClass}, javacContext);
+    }
+
+    private static Object getCheck(Object javacContext) throws ReflectiveOperationException {
+        ClassLoader cl = javacContext.getClass().getClassLoader();
+        Class<?> checkClass = Class.forName("com.sun.tools.javac.comp.Check");
+        Class<?> contextClass = Class.forName("com.sun.tools.javac.util.Context", false, cl);
+        return staticMethod(checkClass, "instance", new Class<?>[]{contextClass}, javacContext);
+    }
+
+    private static Object useSource(Object log, Object currentFile) throws ReflectiveOperationException {
+        return method(log, "useSource", new Class<?>[]{JavaFileObject.class}, currentFile);
+    }
+
+    private static void reportProblem(Object check, Object treePath, Element element) throws ReflectiveOperationException {
+        ClassLoader cl = check.getClass().getClassLoader();
+        Class<?> diagnosticPositionClass = Class.forName("com.sun.tools.javac.util.JCDiagnostic$DiagnosticPosition", false, cl);
+        Class<?> symbolClass = Class.forName("com.sun.tools.javac.code.Symbol", false, cl);
+        Object elementTree = method(treePath, "getLeaf");
+        method(check, "warnDeprecated", new Class<?>[]{diagnosticPositionClass, symbolClass}, elementTree, element);
+    }
 }
