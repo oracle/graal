@@ -88,7 +88,7 @@ public final class ManagedMemsetTest extends ManagedMemAccessTestBase {
             // integer
             long[] dst = new long[arrayLength];
             dstArray = dst;
-            dstObject = new LongArrayObject(dst, dstType);
+            dstObject = new LongArrayObject(dstType, dst);
         }
 
         doMemmove.call(dstObject, value, size);

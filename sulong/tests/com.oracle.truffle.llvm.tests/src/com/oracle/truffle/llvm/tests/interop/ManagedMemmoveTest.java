@@ -93,7 +93,7 @@ public final class ManagedMemmoveTest extends ManagedMemAccessTestBase {
                 src[i] = i;
             }
             srcArray = src;
-            srcObject = new LongArrayObject(src, srcType);
+            srcObject = new LongArrayObject(srcType, src);
         }
 
         byte[] srcBytes = serialize(srcTestType, srcArray);
@@ -109,7 +109,7 @@ public final class ManagedMemmoveTest extends ManagedMemAccessTestBase {
             // integer
             long[] dst = new long[size / dstTestType.elementSize];
             dstArray = dst;
-            dstObject = new LongArrayObject(dst, dstType);
+            dstObject = new LongArrayObject(dstType, dst);
         }
 
         doMemmove.call(dstObject, srcObject, size);
