@@ -28,7 +28,7 @@
 
 from __future__ import print_function
 import os
-from os.path import join, exists, getmtime, basename, dirname, isdir
+from os.path import join, exists, getmtime, basename, isdir
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 import re
 import stat
@@ -47,6 +47,7 @@ import mx_sdk_vm
 import mx
 import mx_gate
 from mx_gate import Task
+from mx import SafeDirectoryUpdater
 
 import mx_unittest
 from mx_unittest import unittest
@@ -106,67 +107,6 @@ if jdk.javaCompliance < '1.8':
 #: JDK9 or later is being used (checked above).
 isJDK8 = jdk.javaCompliance < '1.9'
 
-class SafeDirectoryUpdater(object):
-    """
-    Multi-thread safe context manager for creating/updating a directory.
-
-    :Example:
-    # Compiles `sources` into `dst` with javac. If multiple threads/processes are
-    # performing this compilation concurrently, the contents of `dst`
-    # will reflect the complete results of one of the compilations
-    # from the perspective of other threads/processes.
-    with SafeDirectoryUpdater(dst) as sdu:
-        mx.run([jdk.javac, '-d', sdu.directory, sources])
-
-    """
-    def __init__(self, directory, create=False):
-        """
-
-        :param directory: the target directory that will be created/updated within the context.
-                          The working copy of the directory is accessed via `self.directory`
-                          within the context.
-        """
-
-        self.target = directory
-        self.workspace = None
-        self.directory = None
-        self.create = create
-
-    def __enter__(self):
-        parent = dirname(self.target)
-        self.workspace = tempfile.mkdtemp(dir=parent)
-        self.directory = join(self.workspace, basename(self.target))
-        if self.create:
-            mx.ensure_dir_exists(self.directory)
-        self.target_timestamp = mx.TimeStampFile(self.target)
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        if exc_type is not None:
-            mx.rmtree(self.workspace)
-            raise
-
-        # Try delete the target directory if it existed prior to creating
-        # self.workspace and has not been modified in between.
-        if self.target_timestamp.timestamp is not None and self.target_timestamp.timestamp == mx.TimeStampFile(self.target).timestamp:
-            old_target = join(self.workspace, 'to_delete_' + basename(self.target))
-            try:
-                os.rename(self.target, old_target)
-            except:
-                # Silently assume another process won the race to rename dst_jdk_dir
-                pass
-
-        # Try atomically move self.directory to self.target
-        try:
-            os.rename(self.directory, self.target)
-        except:
-            if not exists(self.target):
-                raise
-            else:
-                # Silently assume another process won the race to create self.target
-                pass
-
-        mx.rmtree(self.workspace)
 
 def _check_jvmci_version(jdk):
     """

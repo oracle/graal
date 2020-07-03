@@ -43,7 +43,6 @@ import mx
 import mx_benchmark
 import mx_substratevm
 import mx_java_benchmarks
-import mx_compiler
 
 _suite = mx.suite("substratevm")
 
@@ -315,7 +314,7 @@ def extract_archive(path, extracted_name):
     extracted_archive = mx.join(mx.dirname(path), extracted_name)
     if not mx.exists(extracted_archive):
         # There can be multiple processes doing this so be atomic about it
-        with mx_compiler.SafeDirectoryUpdater(extracted_archive, create=True) as sdu:
+        with mx.SafeDirectoryUpdater(extracted_archive, create=True) as sdu:
             with zipfile.ZipFile(path, 'r') as zf:
                 zf.extractall(sdu.directory)
     return extracted_archive
