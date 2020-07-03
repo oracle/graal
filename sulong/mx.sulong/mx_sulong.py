@@ -761,7 +761,18 @@ def llvm_dis(args=None, out=None):
 
         # write output file and patch paths
         ll_path = parsed_args.output or get_ll_filename(in_file)
-        with open(ll_tmp_path, 'r') as ll_tmp_f, open(ll_path, 'w') as ll_f:
+
+        def _open_for_writing(path):
+            if path == "-":
+                return sys.stdout
+            return open(path, 'w')
+
+        def _open_for_reading(path):
+            if path == "-":
+                return sys.stdin
+            return open(path, 'r')
+
+        with _open_for_reading(ll_tmp_path) as ll_tmp_f, _open_for_writing(ll_path) as ll_f:
             ll_f.writelines((l.replace(tmp_path, in_file) for l in ll_tmp_f))
 
     finally:
@@ -1065,7 +1076,7 @@ class CMakeProject(mx.NativeProject):  # pylint: disable=too-many-ancestors
             d = join(suite.dir, subDir, name)
         srcDir = args.pop('sourceDir', d)
         if not srcDir:
-            mx.abort("Exactly on 'sourceDir' is required")
+            mx.abort("Exactly one 'sourceDir' is required")
         srcDir = mx_subst.path_substitutions.substitute(srcDir)
         cmake_config = args.pop('cmakeConfig', {})
         self.cmake_config = lambda: ['-D{}={}'.format(k, mx_subst.path_substitutions.substitute(v).replace('{{}}', '$')) for k, v in sorted(cmake_config.items())]
@@ -1075,6 +1086,40 @@ class CMakeProject(mx.NativeProject):  # pylint: disable=too-many-ancestors
 
     def getBuildTask(self, args):
         return CMakeBuildTask(args, self)
+
+
+class DocumentationBuildTask(mx.AbstractNativeBuildTask):
+    def __str__(self):
+        return 'Building {} with Documentation Build Task'.format(self.subject.name)
+
+    def build(self):
+        pass
+
+    def needsBuild(self, newestInput):
+        return False, None
+
+    def clean(self, forBuild=False):
+        pass
+
+
+class DocumentationProject(mx.NativeProject):  # pylint: disable=too-many-ancestors
+    def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, **args):
+        projectDir = args.pop('dir', None)
+        if projectDir:
+            d = join(suite.dir, projectDir)
+        elif subDir is None:
+            d = join(suite.dir, name)
+        else:
+            d = join(suite.dir, subDir, name)
+        srcDir = args.pop('sourceDir', d)
+        if not srcDir:
+            mx.abort("Exactly one 'sourceDir' is required")
+        srcDir = mx_subst.path_substitutions.substitute(srcDir)
+        super(DocumentationProject, self).__init__(suite, name, subDir, [srcDir], deps, workingSets, results, output, d, **args)
+        self.dir = d
+
+    def getBuildTask(self, args):
+        return DocumentationBuildTask(args, self)
 
 
 _suite.toolchain = ToolchainConfig('native', 'SULONG_TOOLCHAIN_LAUNCHERS', 'SULONG_BOOTSTRAP_TOOLCHAIN',
