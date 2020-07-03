@@ -70,7 +70,7 @@ public class VMInspection implements Feature {
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         RuntimeSupport.getRuntimeSupport().addStartupHook(() -> {
             DumpAllStacks.install();
-            if (!Platform.includedIn(WINDOWS.class)) {
+            if (VMInspectionOptions.AllowVMInspection.getValue() && !Platform.includedIn(WINDOWS.class)) {
                 /* We have enough signals to enable the rest. */
                 DumpHeapReport.install();
                 if (DeoptimizationSupport.enabled()) {
@@ -82,13 +82,16 @@ public class VMInspection implements Feature {
 
     @Fold
     public static boolean isEnabled() {
-        return VMInspectionOptions.AllowVMInspection.getValue();
+        return VMInspectionOptions.AllowVMInspection.getValue() || VMInspectionOptions.DumpThreadStacksOnSignal.getValue();
     }
 }
 
 class VMInspectionOptions {
     @Option(help = "Enables features that allow the VM to be inspected during runtime.", type = OptionType.User) //
     public static final HostedOptionKey<Boolean> AllowVMInspection = new HostedOptionKey<>(false);
+
+    @Option(help = "Dumps all thread stacktraces on SIGQUIT/SIGBREAK.", type = OptionType.User) //
+    public static final HostedOptionKey<Boolean> DumpThreadStacksOnSignal = new HostedOptionKey<>(false);
 }
 
 class DumpAllStacks implements SignalHandler {
