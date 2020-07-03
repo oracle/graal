@@ -24,7 +24,6 @@ package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
@@ -38,8 +37,6 @@ public final class LinkedField {
     public static final LinkedField[] EMPTY_ARRAY = new LinkedField[0];
 
     private final ParserField parserField;
-    // TODO(da): do we need to store a reference to the holder linked class?
-    private final LinkedKlass holderLinkedKlass;
     private final JavaKind kind;
 
     @CompilerDirectives.CompilationFinal //
@@ -48,28 +45,23 @@ public final class LinkedField {
     @CompilerDirectives.CompilationFinal //
     private int slot = -1;
 
-    public LinkedField(ParserField parserField, LinkedKlass holderLinkedKlass) {
+    public LinkedField(ParserField parserField) {
         this.parserField = parserField;
-        this.holderLinkedKlass = holderLinkedKlass;
         this.kind = Types.getJavaKind(getType());
     }
 
-    private LinkedField(ParserField parserField, LinkedKlass holderLinkedKlass, int slot, int index) {
-        this(parserField, holderLinkedKlass);
+    private LinkedField(ParserField parserField, int slot, int index) {
+        this(parserField);
         setSlot(slot);
         setFieldIndex(index);
     }
 
-    static LinkedField createHidden(LinkedKlass holder, int slot, int index, Symbol<Name> name) {
-        return new LinkedField(new ParserField(ParserField.HIDDEN, name, Type.java_lang_Object, null), holder, slot, index);
+    static LinkedField createHidden(Symbol<Name> name, int slot, int index) {
+        return new LinkedField(new ParserField(ParserField.HIDDEN, name, Type.java_lang_Object, null), slot, index);
     }
 
     ParserField getParserField() {
         return parserField;
-    }
-
-    protected ConstantPool getConstantPool() {
-        return holderLinkedKlass.getConstantPool();
     }
 
     public Symbol<Type> getType() {
