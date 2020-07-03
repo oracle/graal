@@ -144,12 +144,14 @@ public class DisallowedImageHeapObjectFeature implements Feature {
     private void checkDisallowedMBeanObjects(Object original) {
         if (original instanceof MBeanServerConnection) {
             throw error("Detected a MBean server in the image heap. This is currently not supported, but could be changed in the future. " +
-                            "Management beans are registered in many global caches that would need to be cleared and properly re-built at image build time.",
+                            "Management beans are registered in many global caches that would need to be cleared and properly re-built at image build time. " +
+                            "Class of disallowed object: " + original.getClass().getTypeName(),
                             original, "Try to avoid initializing the class that stores a MBean server or a MBean in a static field");
 
         } else if (original instanceof PlatformManagedObject && !ManagementSupport.getSingleton().isRegisteredPlatformManagedObject((PlatformManagedObject) original)) {
             throw error("Detected a PlatformManagedObject (a MXBean defined by the virtual machine) in the image heap. " +
-                            "This bean is introspecting the VM that runs the image builder, i.e., a VM instance that is no longer available at image run time.",
+                            "This bean is introspecting the VM that runs the image builder, i.e., a VM instance that is no longer available at image run time. " +
+                            "Class of disallowed object: " + original.getClass().getTypeName(),
                             original, "Try to avoid initializing the class that stores the object in a static field");
         }
     }
