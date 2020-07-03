@@ -14,12 +14,14 @@ local base = {
     },
   },
 
-  gate:        {targets+: ['gate']},
-  postMerge:   {targets+: ['post-merge']},
-  bench:       {targets+: ['bench', 'post-merge']},
-  dailyBench:  {targets+: ['bench', 'daily']},
-  weeklyBench: {targets+: ['bench', 'weekly']},
-  weekly:      {targets+: ['weekly']},
+  gate:          {targets+: ['gate']},
+  postMerge:     {targets+: ['post-merge']},
+  bench:         {targets+: ['bench', 'post-merge']},
+  dailyBench:    {targets+: ['bench', 'daily']},
+  weekly:        {targets+: ['weekly']},
+  weeklyBench:   {targets+: ['bench', 'weekly']},
+  onDemand:      {targets+: ['on-demand']},
+  onDemandBench: {targets+: ['bench', 'on-demand']},
 
   common: {
     packages+: {
@@ -27,6 +29,7 @@ local base = {
       '01:pip:astroid': '==1.1.0',
       'pip:pylint': '==1.1.0',
       'pip:ninja_syntax': '==1.7.2',
+      'mx': 'HEAD',
     },
     environment+: {
       GRAALVM_CHECK_EXPERIMENTAL_OPTIONS: "true",
@@ -148,12 +151,10 @@ local clone_build_run(env, args) =
   build_espresso(env) +
   run_espresso(env, args);
 
+local _host_jvm(env) = 'graalvm-espresso-' + env;
+local _host_jvm_config(env) = if std.startsWith(env, 'jvm') then 'jvm' else 'native';
 
-local host_jvm(env) = 'graalvm-espresso-' + env;
-local host_jvm_config(env) = if std.startsWith(env, 'jvm') then 'jvm' else 'native';
-
-
-local espresso_benchmark(env, suite, guest_jvm_config='default') =
+local espresso_benchmark(env, suite, host_jvm=_host_jvm(env), host_jvm_config=_host_jvm_config(env), guest_jvm='espresso', guest_jvm_config='default', extra_args=[]) =
   clone_graal(env) +
   build_espresso(env) +
   {
@@ -162,22 +163,28 @@ local espresso_benchmark(env, suite, guest_jvm_config='default') =
             '--results-file', 'bench-results.json',
             suite,
             '--',
-            '--jvm=' + host_jvm(env), '--jvm-config=' + host_jvm_config(env),
+            '--jvm=' + host_jvm, '--jvm-config=' + host_jvm_config,
             '--guest',
-            '--jvm=espresso', '--jvm-config=' + guest_jvm_config,
-            '--vm.Xss32m']
+            '--jvm=' + guest_jvm, '--jvm-config=' + guest_jvm_config,
+            '--vm.Xss32m'] + extra_args
         ),
         ['bench-uploader.py', 'bench-results.json'],
     ],
     timelimit: '3:00:00',
   };
 
-local jdk8_gate_windows           = base.jdk8 + base.gate   + base.windows;
-local jdk8_gate_darwin            = base.jdk8 + base.gate       + base.darwin;
-local jdk8_gate_linux             = base.jdk8 + base.gate       + base.linux;
-local jdk8_gate_linux_eclipse_jdt = base.jdk8 + base.gate       + base.linux + base.eclipse + base.jdt;
-local jdk8_weekly_linux           = base.jdk8 + base.weekly     + base.linux;
-local jdk8_bench_linux            = base.jdk8 + base.bench      + base.linux + base.x52;
+local espresso_minheap_benchmark(env, suite, guest_jvm_config) =
+  espresso_benchmark(env, suite, host_jvm='server', host_jvm_config='default', guest_jvm='espresso-minheap', guest_jvm_config=guest_jvm_config, extra_args=['--', '--iterations', '1']);
+
+local jdk8_gate_windows           = base.jdk8 + base.gate          + base.windows;
+local jdk8_gate_darwin            = base.jdk8 + base.gate          + base.darwin;
+local jdk8_gate_linux             = base.jdk8 + base.gate          + base.linux;
+local jdk8_gate_linux_eclipse_jdt = base.jdk8 + base.gate          + base.linux + base.eclipse + base.jdt;
+local jdk8_bench_linux            = base.jdk8 + base.bench         + base.x52;
+local jdk8_weekly_linux           = base.jdk8 + base.weekly        + base.linux;
+local jdk8_weekly_bench_linux     = base.jdk8 + base.weeklyBench   + base.x52;
+local jdk8_on_demand_linux        = base.jdk8 + base.onDemand      + base.linux;
+local jdk8_on_demand_bench_linux  = base.jdk8 + base.onDemandBench + base.x52;
 
 local espresso_configs = ['jvm-ce', 'jvm-ee', 'native-ce', 'native-ee'];
 local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
@@ -221,10 +228,14 @@ local awfy = 'awfy:*';
     jdk8_gate_windows             + clone_build_run('native-ee', hello_world_args)                        + {name: 'espresso-gate-native-ee-hello-world-jdk8-windows-amd64'},
 
     // Benchmarks (post-merge)
-    jdk8_bench_linux   + espresso_benchmark('jvm-ce', awfy)                                    + {name: 'espresso-bench-jvm-ce-awfy-jdk8-linux-amd64'},
-    jdk8_bench_linux   + espresso_benchmark('jvm-ee', awfy)                                    + {name: 'espresso-bench-jvm-ee-awfy-jdk8-linux-amd64'},
-    jdk8_bench_linux   + espresso_benchmark('native-ce', awfy)                                 + {name: 'espresso-bench-native-ce-awfy-jdk8-linux-amd64'},
-    jdk8_bench_linux   + espresso_benchmark('native-ee', awfy)                                 + {name: 'espresso-bench-native-ee-awfy-jdk8-linux-amd64'},
+    jdk8_bench_linux              + espresso_benchmark('jvm-ce', awfy)                                    + {name: 'espresso-bench-jvm-ce-awfy-jdk8-linux-amd64'},
+    jdk8_bench_linux              + espresso_benchmark('jvm-ee', awfy)                                    + {name: 'espresso-bench-jvm-ee-awfy-jdk8-linux-amd64'},
+    jdk8_bench_linux              + espresso_benchmark('native-ce', awfy)                                 + {name: 'espresso-bench-native-ce-awfy-jdk8-linux-amd64'},
+    jdk8_bench_linux              + espresso_benchmark('native-ee', awfy)                                 + {name: 'espresso-bench-native-ee-awfy-jdk8-linux-amd64'},
+
+    // On-demand
+    jdk8_on_demand_linux          + espresso_minheap_benchmark('jvm-ce', awfy, 'infinite-overhead')       + {name: 'espresso-jvm-ce-awfy-minheap-infinite-ovh-jdk8-linux-amd64'},
+    jdk8_on_demand_bench_linux    + espresso_minheap_benchmark('jvm-ce', awfy, '1.5-overhead')            + {name: 'espresso-bench-jvm-ce-awfy-minheap-1.5-ovh-jdk8-linux-amd64'},
 
     // TODO: Adjust number of iterations for Espresso.
     // jdk8_bench_linux   + espresso_benchmark('jvm-ce', scala_dacapo)                            + {name: 'espresso-bench-jvm-ce-scala-dacapo-jdk8-linux-amd64'},
