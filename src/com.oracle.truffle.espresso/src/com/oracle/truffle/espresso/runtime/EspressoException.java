@@ -52,9 +52,6 @@ public final class EspressoException extends RuntimeException implements Truffle
 
     @Override
     public String getMessage() {
-        if (StaticObject.isNull(exception)) {
-            return null;
-        }
         return getMessage(exception);
     }
 
