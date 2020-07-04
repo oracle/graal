@@ -25,10 +25,14 @@
 
 package com.oracle.svm.hosted.analysis.flow;
 
+import org.graalvm.compiler.core.common.type.ObjectStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
@@ -36,9 +40,16 @@ import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
+import com.oracle.graal.pointsto.flow.ProxyTypeFlow;
+import com.oracle.graal.pointsto.flow.SourceTypeFlow;
+import com.oracle.graal.pointsto.flow.builder.TypeFlowBuilder;
 import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.svm.core.graal.thread.LoadVMThreadLocalNode;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.UserError.UserException;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.substitute.ComputedValueField;
@@ -155,5 +166,36 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
             }
         }
 
+    }
+
+    @Override
+    protected void delegateNodeProcessing(FixedNode n, MethodTypeFlowBuilder.TypeFlowsOfNodes state) {
+        if (n instanceof LoadVMThreadLocalNode) {
+            LoadVMThreadLocalNode node = (LoadVMThreadLocalNode) n;
+            Stamp stamp = node.stamp(NodeView.DEFAULT);
+            if (stamp instanceof ObjectStamp) {
+                ObjectStamp objStamp = (ObjectStamp) stamp;
+                VMError.guarantee(!objStamp.isEmpty());
+
+                TypeFlowBuilder<?> result;
+                if (objStamp.isExactType()) {
+                    /* The node has an exact type. Create a source type flow. */
+                    result = TypeFlowBuilder.create(bb, node, SourceTypeFlow.class, () -> {
+                        SourceTypeFlow src = new SourceTypeFlow(node, TypeState.forExactType(bb, (AnalysisType) objStamp.type(), !objStamp.nonNull()));
+                        methodFlow.addSource(src);
+                        return src;
+                    });
+                } else {
+                    /* Use a type state which consists of the entire node's type hierarchy. */
+                    AnalysisType type = (AnalysisType) (objStamp.type() == null ? bb.getObjectType() : objStamp.type());
+                    result = TypeFlowBuilder.create(bb, node, ProxyTypeFlow.class, () -> {
+                        ProxyTypeFlow proxy = new ProxyTypeFlow(node, type.getTypeFlow(bb, false));
+                        methodFlow.addMiscEntry(proxy);
+                        return proxy;
+                    });
+                }
+                state.add(node, result);
+            }
+        }
     }
 }
