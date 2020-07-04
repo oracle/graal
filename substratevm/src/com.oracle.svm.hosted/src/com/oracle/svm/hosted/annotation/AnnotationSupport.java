@@ -397,7 +397,7 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
                  * Access other value. The other object can be any implementation of the annotation
                  * interface, so we need to invoke the accessor method.
                  */
-                ValueNode otherAttribute = kit.createInvokeWithExceptionAndUnwind(otherMethod, InvokeKind.Interface, state, bci++, bci++, other);
+                ValueNode otherAttribute = kit.createInvokeWithExceptionAndUnwind(otherMethod, InvokeKind.Interface, state, bci++, other);
 
                 /* Access our value. We know that it is in a field. */
                 ValueNode ourAttribute = kit.append(LoadFieldNode.create(null, receiver, ourField));
@@ -418,11 +418,11 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
                 if (attributeType.isArray()) {
                     /* Call the appropriate Arrays.equals() method for our attribute type. */
                     ResolvedJavaMethod m = findMethod(providers.getMetaAccess().lookupJavaType(Arrays.class), "equals", attributeType, attributeType);
-                    attributeEqual = kit.createInvokeWithExceptionAndUnwind(m, InvokeKind.Static, state, bci++, bci++, ourAttribute, otherAttribute);
+                    attributeEqual = kit.createInvokeWithExceptionAndUnwind(m, InvokeKind.Static, state, bci++, ourAttribute, otherAttribute);
                 } else {
                     /* Just call Object.equals(). Primitive values are already boxed. */
                     ResolvedJavaMethod m = kit.findMethod(Object.class, "equals", false);
-                    attributeEqual = kit.createInvokeWithExceptionAndUnwind(m, InvokeKind.Virtual, state, bci++, bci++, ourAttribute, otherAttribute);
+                    attributeEqual = kit.createInvokeWithExceptionAndUnwind(m, InvokeKind.Virtual, state, bci++, ourAttribute, otherAttribute);
                 }
 
                 kit.startIf(graph.unique(new IntegerEqualsNode(attributeEqual, trueValue)), BranchProbabilityNode.LIKELY_PROBABILITY);
@@ -479,11 +479,11 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
                 if (attributeType.isArray()) {
                     /* Call the appropriate Arrays.hashCode() method for our attribute type. */
                     ResolvedJavaMethod m = findMethod(providers.getMetaAccess().lookupJavaType(Arrays.class), "hashCode", attributeType);
-                    attributeHashCode = kit.createInvokeWithExceptionAndUnwind(m, InvokeKind.Static, state, bci++, bci++, ourAttribute);
+                    attributeHashCode = kit.createInvokeWithExceptionAndUnwind(m, InvokeKind.Static, state, bci++, ourAttribute);
                 } else {
                     /* Just call Object.hashCode(). Primitive values are already boxed. */
                     ResolvedJavaMethod m = kit.findMethod(Object.class, "hashCode", false);
-                    attributeHashCode = kit.createInvokeWithExceptionAndUnwind(m, InvokeKind.Virtual, state, bci++, bci++, ourAttribute);
+                    attributeHashCode = kit.createInvokeWithExceptionAndUnwind(m, InvokeKind.Virtual, state, bci++, ourAttribute);
                 }
 
                 /* From the specification: sum up "name.hashCode() * 127 ^ value.hashCode()" */
