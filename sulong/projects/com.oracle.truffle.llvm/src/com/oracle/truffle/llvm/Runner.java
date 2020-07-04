@@ -348,7 +348,7 @@ final class Runner {
                     visited = createBitset();
                     que = new ArrayDeque<>();
                 } else {
-                    throw new IllegalStateException("LoadModulesNode is called with unexpected arguments");
+                    throw new LLVMParserException("LoadModulesNode is called with unexpected arguments");
                 }
 
                 // The scope is built breadth-first with a que
@@ -359,7 +359,7 @@ final class Runner {
                         initScopes.execute(context, localScope);
                         for (CallTarget callTarget : callTargets) {
                             if (callTarget != null) {
-                                que.add(callTarget);
+                               queAdd(que, callTarget);
                             }
                         }
 
@@ -545,6 +545,11 @@ final class Runner {
             }
 
             return null;
+        }
+
+        @TruffleBoundary
+        private void queAdd(ArrayDeque<CallTarget> que, CallTarget callTarget) {
+            que.add(callTarget);
         }
 
         @TruffleBoundary
