@@ -27,8 +27,6 @@
 package com.oracle.svm.core.jdk8.containers;
 
 import java.io.IOException;
-import java.lang.System.Logger;
-import java.lang.System.Logger.Level;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
@@ -55,7 +53,7 @@ public class CgroupSubsystemFactory {
             return null;
         }
 
-        if (optResult.isEmpty()) {
+        if (!optResult.isPresent()) {
             return null;
         }
         CgroupTypeResult result = optResult.get();
@@ -69,8 +67,8 @@ public class CgroupSubsystemFactory {
         // not ready to deal with that on a per-controller basis. Return no metrics
         // in that case
         if (result.isAnyCgroupV1Controllers() && result.isAnyCgroupV2Controllers()) {
-            Logger logger = System.getLogger("jdk.internal.platform");
-            logger.log(Level.DEBUG, "Mixed cgroupv1 and cgroupv2 not supported. Metrics disabled.");
+            // java.lang.System.Logger logger = System.getLogger("jdk.internal.platform");
+            // logger.log(java.lang.System.Logger.Level.DEBUG, "Mixed cgroupv1 and cgroupv2 not supported. Metrics disabled.");
             return null;
         }
 
