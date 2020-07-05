@@ -568,6 +568,7 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
         'scalariform':1,
         'scalatest':  1,
         'scalaxb':    1,
+        'specs':      1,
         'tmt':        1,
         'actors':     1,
     }
