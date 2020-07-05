@@ -141,6 +141,7 @@ public class JDKInitializationFeature implements Feature {
         rci.initializeAtBuildTime("sun.security.internal.interfaces", "Core JDK classes are initialized at build time");
         rci.initializeAtBuildTime("sun.security.internal.spec", "Core JDK classes are initialized at build time");
         rci.initializeAtBuildTime("sun.security.jca", "Core JDK classes are initialized at build time");
+        rci.initializeAtBuildTime("org.jcp.xml.dsig.internal.dom.XMLDSigRI", "Required for sun.security.jca");
         rci.initializeAtBuildTime("sun.security.jgss", "Core JDK classes are initialized at build time");
         rci.initializeAtBuildTime("sun.security.krb5", "Core JDK classes are initialized at build time");
         rci.initializeAtBuildTime("sun.security.pkcs", "Core JDK classes are initialized at build time");
@@ -163,10 +164,6 @@ public class JDKInitializationFeature implements Feature {
 
         rci.initializeAtBuildTime("org.ietf.jgss", "Core JDK classes are initialized at build time for better performance");
         rci.initializeAtBuildTime("com.sun.security.jgss", "Core JDK classes are initialized at build time for better performance");
-
-        rci.initializeAtBuildTime("org.jcp.xml", "Core JDK classes are initialized at build time for better performance");
-        rci.initializeAtBuildTime("javax.xml.crypto", "Core JDK classes are initialized at build time for better performance");
-        rci.initializeAtBuildTime("com.sun.org.apache.xml.internal.security", "Core JDK classes are initialized at build time for better performance");
 
         /* Needed by our substitutions */
         rci.initializeAtBuildTime("jdk.jfr", "Core JDK classes are initialized at build time for better performance");
