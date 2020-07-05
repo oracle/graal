@@ -43,7 +43,6 @@ public class JDKInitializationFeature implements Feature {
         rci.initializeAtBuildTime("com.sun.java.util.jar.pack", "Core JDK classes are initialized at build time");
 
         rci.initializeAtBuildTime("com.sun.jndi.ldap", "Core JDK classes are initialized at build time");
-
         rci.initializeAtBuildTime("com.sun.jndi.toolkit.ctx", "Core JDK classes are initialized at build time");
         rci.initializeAtBuildTime("com.sun.jndi.toolkit.dir", "Core JDK classes are initialized at build time");
         rci.initializeAtBuildTime("com.sun.jndi.toolkit.url", "Core JDK classes are initialized at build time");
@@ -53,7 +52,6 @@ public class JDKInitializationFeature implements Feature {
         rci.initializeAtBuildTime("com.sun.management", "Core JDK classes are initialized at build time");
 
         rci.initializeAtBuildTime("com.sun.naming.internal", "Core JDK classes are initialized at build time");
-        rci.initializeAtRunTime("com.sun.naming.internal.ResourceManager$AppletParameter", "Initializes AWT");
 
         rci.initializeAtBuildTime("com.sun.net.ssl", "Core JDK classes are initialized at build time");
 
@@ -62,7 +60,7 @@ public class JDKInitializationFeature implements Feature {
         rci.initializeAtBuildTime("com.sun.nio.zipfs", "Native Image classes are always initialized at build time");
 
         rci.initializeAtBuildTime("com.sun.security.auth", "Core JDK classes are initialized at build time");
-
+        rci.initializeAtBuildTime("com.sun.security.jgss", "Core JDK classes are initialized at build time for better performance");
         rci.initializeAtBuildTime("com.sun.security.cert.internal.x509", "Core JDK classes are initialized at build time");
         rci.initializeAtBuildTime("com.sun.security.ntlm", "Core JDK classes are initialized at build time");
         rci.initializeAtBuildTime("com.sun.security.sasl", "Core JDK classes are initialized at build time");
@@ -86,6 +84,7 @@ public class JDKInitializationFeature implements Feature {
         rci.initializeAtBuildTime("java.util", "Core JDK classes are initialized at build time");
 
         rci.initializeAtBuildTime("javax.annotation.processing", "Core JDK classes are initialized at build time");
+
         rci.initializeAtBuildTime("javax.crypto", "Core JDK classes are initialized at build time");
 
         rci.initializeAtBuildTime("javax.lang.model", "Core JDK classes are initialized at build time");
@@ -93,19 +92,19 @@ public class JDKInitializationFeature implements Feature {
         rci.initializeAtBuildTime("javax.management", "Core JDK classes are initialized at build time");
 
         rci.initializeAtBuildTime("javax.naming", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("javax.naming.directory", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("javax.naming.event", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("javax.naming.ldap", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("javax.naming.spi", "Core JDK classes are initialized at build time");
 
         rci.initializeAtBuildTime("javax.net", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("javax.net.ssl", "Core JDK classes are initialized at build time");
+
         rci.initializeAtBuildTime("javax.security.auth", "Core JDK classes are initialized at build time");
         rci.initializeAtBuildTime("javax.security.cert", "Core JDK classes are initialized at build time");
         rci.initializeAtBuildTime("javax.security.sasl", "Core JDK classes are initialized at build time");
+
         rci.initializeAtBuildTime("javax.tools", "Core JDK classes are initialized at build time");
 
         rci.initializeAtBuildTime("jdk.internal", "Core JDK classes are initialized at build time");
+
+        /* Needed by our substitutions */
+        rci.initializeAtBuildTime("jdk.jfr", "Core JDK classes are initialized at build time for better performance");
 
         rci.initializeAtBuildTime("jdk.net", "Core JDK classes are initialized at build time");
 
@@ -120,6 +119,7 @@ public class JDKInitializationFeature implements Feature {
         rci.initializeAtBuildTime("sun.management", "Core JDK classes are initialized at build time");
 
         rci.initializeAtBuildTime("sun.misc", "Core JDK classes are initialized at build time");
+
         rci.initializeAtBuildTime("sun.net", "Core JDK classes are initialized at build time");
 
         rci.initializeAtBuildTime("sun.nio", "Core JDK classes are initialized at build time");
@@ -131,7 +131,6 @@ public class JDKInitializationFeature implements Feature {
         rci.initializeAtBuildTime("sun.security.internal.interfaces", "Core JDK classes are initialized at build time");
         rci.initializeAtBuildTime("sun.security.internal.spec", "Core JDK classes are initialized at build time");
         rci.initializeAtBuildTime("sun.security.jca", "Core JDK classes are initialized at build time");
-        rci.initializeAtBuildTime("org.jcp.xml.dsig.internal.dom.XMLDSigRI", "Required for sun.security.jca");
         rci.initializeAtBuildTime("sun.security.jgss", "Core JDK classes are initialized at build time");
         rci.initializeAtBuildTime("sun.security.krb5", "Core JDK classes are initialized at build time");
         rci.initializeAtBuildTime("sun.security.pkcs", "Core JDK classes are initialized at build time");
@@ -153,9 +152,9 @@ public class JDKInitializationFeature implements Feature {
         rci.initializeAtBuildTime("sun.util", "Core JDK classes are initialized at build time");
 
         rci.initializeAtBuildTime("org.ietf.jgss", "Core JDK classes are initialized at build time for better performance");
-        rci.initializeAtBuildTime("com.sun.security.jgss", "Core JDK classes are initialized at build time for better performance");
 
-        /* Needed by our substitutions */
-        rci.initializeAtBuildTime("jdk.jfr", "Core JDK classes are initialized at build time for better performance");
+        /* Minor fixes to make the list work */
+        rci.initializeAtRunTime("com.sun.naming.internal.ResourceManager$AppletParameter", "Initializes AWT");
+        rci.initializeAtBuildTime("org.jcp.xml.dsig.internal.dom.XMLDSigRI", "Required for sun.security.jca");
     }
 }
