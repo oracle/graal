@@ -68,6 +68,7 @@ public final class JUnitFeature implements Feature {
         RuntimeClassInitialization.initializeAtBuildTime(org.junit.runner.Description.class);
         RuntimeClassInitialization.initializeAtBuildTime(org.junit.runners.ParentRunner.class);
         RuntimeClassInitialization.initializeAtBuildTime(org.junit.runners.Parameterized.class);
+        RuntimeClassInitialization.initializeAtBuildTime("jcp.xml.dsig.internal.dom.XMLDSigRI");
         RuntimeClassInitialization.initializeAtBuildTime("org.junit.runners.ParentRunner$1");
         RuntimeClassInitialization.initializeAtBuildTime(org.junit.runner.Request.class);
         RuntimeClassInitialization.initializeAtBuildTime("org.junit.runner.Request$1");
