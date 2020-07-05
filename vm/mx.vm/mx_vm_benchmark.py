@@ -112,9 +112,10 @@ class NativeImageVM(GraalVm):
             self.log_dir = None
             self.pgo_iteration_num = None
             self.params = ['extra-image-build-argument', 'extra-run-arg', 'extra-agent-run-arg', 'extra-profile-run-arg',
-                           'extra-agent-profile-run-arg', 'benchmark-output-dir', 'stages']
+                           'extra-agent-profile-run-arg', 'benchmark-output-dir', 'stages', 'skip-agent-assertions']
             self.stages = {'agent', 'instrument-image', 'instrument-run', 'image', 'run'}
             self.last_stage = 'run'
+            self.skip_agent_assertions = False
 
         def parse(self, args):
             def add_to_list(arg, name, arg_list):
@@ -143,6 +144,10 @@ class NativeImageVM(GraalVm):
                         stages_list = trimmed_arg[len(self.params[6] + '='):].split(',')
                         self.stages = set(stages_list)
                         self.last_stage = stages_list.pop()
+                        found = True
+
+                    if trimmed_arg.startswith(self.params[7] + '='):
+                        self.skip_agent_assertions = trimmed_arg[len(self.params[7] + '='):] == 'true'
                         found = True
 
                     # not for end-users
@@ -392,7 +397,7 @@ class NativeImageVM(GraalVm):
 
             if stages.change_stage('agent'):
                 profile_path = profile_path_no_extension + '-agent' + profile_file_extension
-                hotspot_vm_args = ['-ea', '-esa'] if self.is_gate else []
+                hotspot_vm_args = ['-ea', '-esa'] if self.is_gate and not config.skip_agent_assertions else []
                 hotspot_run_args = []
                 hotspot_vm_args += ['-agentlib:native-image-agent=config-output-dir=' + str(config.config_dir), '-XX:-UseJVMCINativeLibrary']
 
