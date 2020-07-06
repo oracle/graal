@@ -1586,7 +1586,7 @@ class AWFYBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Averaging
         return "Graal"
 
     def subgroup(self):
-        return "compiler"
+        return "graal-compiler"
 
     def benchSuiteName(self):
         return self.name()
