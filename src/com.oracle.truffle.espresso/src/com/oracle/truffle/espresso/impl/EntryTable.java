@@ -24,16 +24,54 @@
 package com.oracle.truffle.espresso.impl;
 
 import java.util.HashMap;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
 
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 
 public abstract class EntryTable<T extends EntryTable.NamedEntry, K> {
-    public abstract Object getLock();
+    private final ReadWriteLock lock;
+    private final HashMap<Symbol<Name>, T> entries = new HashMap<>();
+
+    private final BlockLock readBlock;
+    private final BlockLock writeBlock;
+
+    protected EntryTable(ReadWriteLock lock) {
+        this.lock = lock;
+        this.readBlock = new BlockLock(lock.readLock());
+        this.writeBlock = new BlockLock(lock.writeLock());
+    }
+
+    public static final class BlockLock implements AutoCloseable {
+
+        private final Lock lock;
+
+        private BlockLock(Lock lock) {
+            this.lock = lock;
+        }
+
+        private BlockLock enter() {
+            lock.lock();
+            return this;
+        }
+
+        @Override
+        public void close() {
+            lock.unlock();
+        }
+
+    }
+
+    public BlockLock read() {
+        return readBlock.enter();
+    }
+
+    public BlockLock write() {
+        return writeBlock.enter();
+    }
 
     protected abstract T createEntry(Symbol<Name> name, K data);
-
-    private final HashMap<Symbol<Name>, T> entries = new HashMap<>();
 
     public abstract static class NamedEntry {
         protected NamedEntry(Symbol<Name> name) {
@@ -64,20 +102,24 @@ public abstract class EntryTable<T extends EntryTable.NamedEntry, K> {
      * Lookups the EntryTable for the given name. Returns the corresponding entry if it exists, null
      * otherwise.
      */
+    @SuppressWarnings("try")
     public T lookup(Symbol<Name> name) {
-        return entries.get(name);
+        try (BlockLock block = read()) {
+            return entries.get(name);
+        }
     }
 
     /**
      * Lookups the EntryTable for the given name. If an entry is found, returns it. Else, an entry
      * is created and added into the table. This entry is then returned.
      */
+    @SuppressWarnings("try")
     public T lookupOrCreate(Symbol<Name> name, K data) {
         T entry = lookup(name);
         if (entry != null) {
             return entry;
         }
-        synchronized (getLock()) {
+        try (BlockLock block = write()) {
             entry = lookup(name);
             if (entry != null) {
                 return entry;
@@ -87,11 +129,12 @@ public abstract class EntryTable<T extends EntryTable.NamedEntry, K> {
     }
 
     /**
-     * Created and adds an entry in the table. If an entry already exists, this is a nop, and
+     * Creates and adds an entry in the table. If an entry already exists, this is a nop, and
      * returns null
      */
+    @SuppressWarnings("try")
     public T createAndAddEntry(Symbol<Name> name, K data) {
-        synchronized (getLock()) {
+        try (BlockLock block = write()) {
             if (lookup(name) != null) {
                 return null;
             }

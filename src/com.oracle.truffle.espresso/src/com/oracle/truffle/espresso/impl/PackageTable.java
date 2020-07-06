@@ -24,15 +24,15 @@
 package com.oracle.truffle.espresso.impl;
 
 import java.util.ArrayList;
+import java.util.concurrent.locks.ReadWriteLock;
 
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
 
 public class PackageTable extends EntryTable<PackageTable.PackageEntry, ModuleEntry> {
-    @Override
-    public Object getLock() {
-        return this;
+    public PackageTable(ReadWriteLock lock) {
+        super(lock);
     }
 
     @Override

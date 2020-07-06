@@ -95,6 +95,7 @@ import com.oracle.truffle.espresso.descriptors.Validation;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.ContextAccess;
+import com.oracle.truffle.espresso.impl.EntryTable;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
@@ -2422,6 +2423,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         defineModule(module, hostName, is_open, pkgs, num_package, profiler);
     }
 
+    @SuppressWarnings("try")
     private void defineModule(StaticObject module,
                     String moduleName,
                     boolean is_open,
@@ -2444,7 +2446,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
         ArrayList<Symbol<Name>> pkgSymbols = new ArrayList<>();
         String[] packages = extractNativePackages(pkgs, num_package, profiler);
-        synchronized (packageTable.getLock()) {
+        try (EntryTable.BlockLock block = packageTable.write()) {
             for (String str : packages) {
                 // Extract the package symbols. Also checks for duplicates.
                 if (!loaderIsBootOrPlatform && str.startsWith("java/")) {
@@ -2510,6 +2512,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         return packages;
     }
 
+    @SuppressWarnings("try")
     private void defineJavaBaseModule(StaticObject module, TruffleObject pkgs, int numPackages, SubstitutionProfiler profiler) {
         String[] packages = extractNativePackages(pkgs, numPackages, profiler);
         StaticObject loader = module.getField(getMeta().java_lang_Module_loader);
@@ -2520,7 +2523,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         }
         PackageTable pkgTable = getRegistries().getBootClassRegistry().packages();
         ModuleEntry javaBaseEntry = getRegistries().getJavaBaseModule();
-        synchronized (pkgTable.getLock()) {
+        try (EntryTable.BlockLock block = pkgTable.write()) {
             if (getRegistries().javaBaseDefined()) {
                 profiler.profile(9);
                 throw Meta.throwException(getMeta().java_lang_InternalError);
