@@ -35,7 +35,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 import java.lang.reflect.Modifier;
 
-public class HybridLayoutUtils {
+public class HybridLayoutSupport {
     public boolean isHybrid(ResolvedJavaType clazz) {
         return clazz.isAnnotationPresent(Hybrid.class);
     }

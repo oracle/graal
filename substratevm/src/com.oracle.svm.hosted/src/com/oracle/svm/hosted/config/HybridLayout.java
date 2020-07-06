@@ -49,11 +49,11 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class HybridLayout<T> {
 
     public static boolean isHybrid(ResolvedJavaType clazz) {
-        return ImageSingletons.lookup(HybridLayoutUtils.class).isHybrid(clazz);
+        return ImageSingletons.lookup(HybridLayoutSupport.class).isHybrid(clazz);
     }
 
     public static boolean isHybridField(ResolvedJavaField field) {
-        return ImageSingletons.lookup(HybridLayoutUtils.class).isHybridField(field);
+        return ImageSingletons.lookup(HybridLayoutSupport.class).isHybridField(field);
     }
 
     private final ObjectLayout layout;
@@ -67,7 +67,7 @@ public class HybridLayout<T> {
 
     public HybridLayout(HostedInstanceClass hybridClass, ObjectLayout layout) {
         this.layout = layout;
-        HybridLayoutUtils utils = ImageSingletons.lookup(HybridLayoutUtils.class);
+        HybridLayoutSupport utils = ImageSingletons.lookup(HybridLayoutSupport.class);
         Pair<HostedField, HostedField> arrayAndBitsetFields = utils.findHybridFields(hybridClass);
         arrayField = arrayAndBitsetFields.getLeft();
         bitsetField = arrayAndBitsetFields.getRight();
