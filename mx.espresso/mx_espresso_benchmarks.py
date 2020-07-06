@@ -21,9 +21,6 @@
 # questions.
 #
 
-import argparse
-import re
-
 import mx
 import mx_benchmark
 import mx_espresso
@@ -108,118 +105,11 @@ class EspressoMinHeapVm(EspressoVm):
         return exit_code, run_info['stdout'], run_info['dims']
 
 
-# Benchmark-specific parameter from AWFY rebench.conf
-_awfyConfig = {
-    "DeltaBlue"  : 12000,
-    "Richards"   : 100,
-    "Json"       : 100,
-    "CD"         : 250,
-    "Havlak"     : 1500,
-    "Bounce"     : 1500,
-    "List"       : 1500,
-    "Mandelbrot" : 500,
-    "NBody"      : 250000,
-    "Permute"    : 1000,
-    "Queens"     : 1000,
-    "Sieve"      : 3000,
-    "Storage"    : 1000,
-    "Towers"     : 600
-}
-
-
-class AWFYBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin):
-    """Are we fast yet? benchmark suite implementation.
-    """
-    def name(self):
-        return "awfy"
-
-    def group(self):
-        return "Graal"
-
-    def subgroup(self):
-        return "espresso"
-
-    def benchSuiteName(self):
-        return self.name()
-
-    def awfyLibraryName(self):
-        return "AWFY"
-
-    def awfyBenchmarkParam(self):
-        return _awfyConfig.copy()
-
-    def awfyIterations(self):
-        return 100 # Iterations for a "Slow VM" from AWFY rebench.conf
-
-    def awfyPath(self):
-        lib = mx.library(self.awfyLibraryName())
-        if lib:
-            return lib.get_path(True)
-        return None
-
-    def postprocessRunArgs(self, benchname, runArgs):
-        parser = argparse.ArgumentParser(add_help=False)
-        parser.add_argument('-i', '--iterations', default=self.awfyIterations())
-        parser.add_argument('-p', '--param', default=self.awfyBenchmarkParam()[benchname])
-        args, remaining = parser.parse_known_args(runArgs)
-        return [str(args.iterations), str(args.param)] + remaining
-
-    def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
-        benchArg = ""
-        if benchmarks is None:
-            mx.abort("Suite can only run a single benchmark per VM instance.")
-        elif len(benchmarks) != 1:
-            mx.abort("Must specify exactly one benchmark to run.")
-        else:
-            benchArg = benchmarks[0]
-        runArgs = self.postprocessRunArgs(benchmarks[0], self.runArgs(bmSuiteArgs))
-        return (self.vmArgs(bmSuiteArgs) + ["-cp", self.awfyPath()] + ["Harness"] + [benchArg] + runArgs)
-
-    def benchmarkList(self, bmSuiteArgs):
-        return sorted(_awfyConfig.keys())
-
-    def successPatterns(self):
-        return [r"(?P<benchmark>[a-zA-Z0-9_\-]+): iterations=(?P<iterations>[0-9]+) average: (?P<average>[0-9]+)us total: (?P<total>[0-9]+)us"]
-
-    def failurePatterns(self):
-        return [
-            re.compile(
-                r"^\[\[\[Graal compilation failure\]\]\]", # pylint: disable=line-too-long
-                re.MULTILINE)
-        ]
-
-    def rules(self, out, benchmarks, bmSuiteArgs):
-        return [
-            mx_benchmark.StdOutRule(
-                r"(?P<benchmark>[a-zA-Z0-9_\-]+): iterations=(?P<iterations>[0-9]+) runtime: (?P<runtime>[0-9]+)us",
-                {
-                    "benchmark": ("<benchmark>", str),
-                    "bench-suite": self.benchSuiteName(),
-                    "config.vm-flags": ' '.join(self.vmArgs(bmSuiteArgs)),
-                    "metric.name": "warmup",
-                    "metric.value": ("<runtime>", float),
-                    "metric.unit": "us",
-                    "metric.type": "numeric",
-                    "metric.score-function": "id",
-                    "metric.better": "lower",
-                    "metric.iteration": ("$iteration", int)
-                }
-            )
-        ]
-
-    def run(self, benchmarks, bmSuiteArgs):
-        results = super(AWFYBenchmarkSuite, self).run(benchmarks, bmSuiteArgs)
-        self.addAverageAcrossLatestResults(results)
-        return results
-
-
 # Register soon-to-become-default configurations.
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('default', []), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoVm('inline-accessors', ['--experimental-options', '--java.InlineFieldAccessors']), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoMinHeapVm(0, 0, 64, 'infinite-overhead', []), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoMinHeapVm(1.5, 0, 2048, '1.5-overhead', []), _suite)
-
-mx_benchmark.add_bm_suite(AWFYBenchmarkSuite())
 
 
 def createBenchmarkShortcut(benchSuite, args):
