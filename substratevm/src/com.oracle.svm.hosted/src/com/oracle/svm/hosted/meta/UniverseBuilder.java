@@ -716,12 +716,12 @@ public class UniverseBuilder {
         }
 
         if (HybridLayout.isHybrid(clazz)) {
-            // Set start after array length field
+            /* Set start after array length field */
             assert startSize == ConfigurationValues.getObjectLayout().getArrayLengthOffset();
             int fieldSize = ConfigurationValues.getObjectLayout().sizeInBytes(JavaKind.Int);
             startSize += fieldSize;
 
-            // Set start after bitset field, if the hybrid class has one. For now, only DynamicHubs can have bitsets.
+            /* Set start after bitset field, if the hybrid class has one. For now, only DynamicHubs can have bitsets. */
             if (clazz.equals(hMetaAccess.lookupJavaType(DynamicHub.class))) {
                 startSize += (hUniverse.numInterfaceBits + Byte.SIZE - 1) / Byte.SIZE;
             }
