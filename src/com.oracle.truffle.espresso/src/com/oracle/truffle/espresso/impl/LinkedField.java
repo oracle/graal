@@ -33,7 +33,7 @@ final class LinkedField {
     private final int index;
     private final int slot;
 
-    public LinkedField(ParserField parserField, int slot, int index) {
+    LinkedField(ParserField parserField, int slot, int index) {
         this.parserField = parserField;
         this.slot = slot;
         this.index = index;

@@ -36,7 +36,7 @@ import com.oracle.truffle.espresso.runtime.Attribute;
 // Structural shareable klass (superklass in superinterfaces resolved and linked)
 // contains shape, field locations.
 // Klass shape, vtable and field locations can be computed at the structural level.
-final class LinkedKlass {
+public final class LinkedKlass {
 
     public static final LinkedKlass[] EMPTY_ARRAY = new LinkedKlass[0];
     private final ParserKlass parserKlass;
@@ -83,66 +83,6 @@ final class LinkedKlass {
         fieldLayout = LinkedKlassFieldLayout.create(parserKlass, superKlass);
     }
 
-    public int getFlags() {
-        int flags = parserKlass.getFlags();
-        if (hasFinalizer) {
-            flags |= ACC_FINALIZER;
-        }
-        return flags;
-    }
-
-    public ConstantPool getConstantPool() {
-        return parserKlass.getConstantPool();
-    }
-
-    public Attribute getAttribute(Symbol<Name> name) {
-        return parserKlass.getAttribute(name);
-    }
-
-    public Symbol<Type> getType() {
-        return parserKlass.getType();
-    }
-
-    public Symbol<Name> getName() {
-        return parserKlass.getName();
-    }
-
-    public ParserKlass getParserKlass() {
-        return parserKlass;
-    }
-
-    public LinkedKlass getSuperKlass() {
-        return superKlass;
-    }
-
-    public LinkedKlass[] getInterfaces() {
-        return interfaces;
-    }
-
-    public int getMajorVersion() {
-        return getConstantPool().getMajorVersion();
-    }
-
-    public int getMinorVersion() {
-        return getConstantPool().getMinorVersion();
-    }
-
-    public LinkedMethod[] getLinkedMethods() {
-        return methods;
-    }
-
-    public LinkedField[] getInstanceFields() {
-        return fieldLayout.instanceFields;
-    }
-
-    public LinkedField[] getStaticFields() {
-        return fieldLayout.staticFields;
-    }
-
-    public int getFieldTableLength() {
-        return fieldLayout.fieldTableLength;
-    }
-
     public int getObjectFieldsCount() {
         return fieldLayout.objectFields;
     }
@@ -159,7 +99,67 @@ final class LinkedKlass {
         return fieldLayout.primitiveStaticFieldTotalByteCount;
     }
 
-    public int[][] getLeftoverHoles() {
+    int getFlags() {
+        int flags = parserKlass.getFlags();
+        if (hasFinalizer) {
+            flags |= ACC_FINALIZER;
+        }
+        return flags;
+    }
+
+    ConstantPool getConstantPool() {
+        return parserKlass.getConstantPool();
+    }
+
+    Attribute getAttribute(Symbol<Name> name) {
+        return parserKlass.getAttribute(name);
+    }
+
+    Symbol<Type> getType() {
+        return parserKlass.getType();
+    }
+
+    Symbol<Name> getName() {
+        return parserKlass.getName();
+    }
+
+    ParserKlass getParserKlass() {
+        return parserKlass;
+    }
+
+    LinkedKlass getSuperKlass() {
+        return superKlass;
+    }
+
+    LinkedKlass[] getInterfaces() {
+        return interfaces;
+    }
+
+    int getMajorVersion() {
+        return getConstantPool().getMajorVersion();
+    }
+
+    int getMinorVersion() {
+        return getConstantPool().getMinorVersion();
+    }
+
+    LinkedMethod[] getLinkedMethods() {
+        return methods;
+    }
+
+    LinkedField[] getInstanceFields() {
+        return fieldLayout.instanceFields;
+    }
+
+    LinkedField[] getStaticFields() {
+        return fieldLayout.staticFields;
+    }
+
+    int getFieldTableLength() {
+        return fieldLayout.fieldTableLength;
+    }
+
+    int[][] getLeftoverHoles() {
         return fieldLayout.leftoverHoles;
     }
 }
