@@ -113,11 +113,7 @@ public final class LinkedField {
         return null;
     }
 
-    boolean isStatic() {
-        return Modifier.isStatic(getParserField().getFlags());
-    }
-
-    boolean isHidden() {
+   boolean isHidden() {
         return parserField.isHidden();
     }
 }

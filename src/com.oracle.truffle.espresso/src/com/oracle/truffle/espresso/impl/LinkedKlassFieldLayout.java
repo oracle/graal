@@ -29,7 +29,6 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 class LinkedKlassFieldLayout {
@@ -60,30 +59,36 @@ class LinkedKlassFieldLayout {
     }
 
     static LinkedKlassFieldLayout create(LinkedKlass linkedKlass) {
-        ParserField[] parserFields = linkedKlass.getParserKlass().getFields();
-        Symbol<Name>[] hiddenFieldNames = getHiddenFieldNames(linkedKlass);
-
-        // Conservatively allocate the largest array that we might need, and shrink it later
-        LinkedField[] instanceFields = new LinkedField[parserFields.length + hiddenFieldNames.length];
-        LinkedField[] staticFields = new LinkedField[parserFields.length];
-
         int[] primitiveCounts = new int[N_PRIMITIVES];
         int[] staticPrimitiveCounts = new int[N_PRIMITIVES];
 
-        // primitive fields
+        int numberOfNonHiddenInstanceFields = 0;
+        int numberOfStaticFields = 0;
+
+        for (ParserField f: linkedKlass.getParserKlass().getFields()) {
+            JavaKind kind = f.getKind();
+            if (f.isStatic()) {
+                numberOfStaticFields++;
+                if (kind.isPrimitive()) {
+                    staticPrimitiveCounts[indexFromKind(kind)]++;
+                }
+            } else {
+                numberOfNonHiddenInstanceFields++;
+                if (kind.isPrimitive()) {
+                    primitiveCounts[indexFromKind(kind)]++;
+                }
+            }
+        }
+
+        // stats about primitive fields
         int superTotalByteCount;
         int superTotalStaticByteCount;
         int[][] leftoverHoles;
 
-        // object fields
+        // stats about object fields
         int nextFieldTableSlot;
         int nextObjectFieldIndex;
         int nextStaticObjectFieldIndex;
-
-        int instanceFieldIndex = 0;
-        // The staticFieldTable does not include fields of parent classes.
-        // Therefore, staticFieldIndex is also used as staticFieldTable slot.
-        int staticFieldIndex = 0;
 
         LinkedKlass superKlass = linkedKlass.getSuperKlass();
         if (superKlass != null) {
@@ -102,21 +107,59 @@ class LinkedKlassFieldLayout {
             nextStaticObjectFieldIndex = 0;
         }
 
-        for (int i = 0; i < parserFields.length; i++) {
-            LinkedField f = new LinkedField(parserFields[i]);
-            if (f.isStatic()) {
+        Symbol<Name>[] hiddenFieldNames = getHiddenFieldNames(linkedKlass);
+
+        LinkedField[] instanceFields = new LinkedField[numberOfNonHiddenInstanceFields + hiddenFieldNames.length];
+        LinkedField[] staticFields = new LinkedField[numberOfStaticFields];
+
+        int instanceFieldIndex = 0;
+        // The staticFieldTable does not include fields of parent classes.
+        // Therefore, staticFieldIndex is also used as staticFieldTable slot.
+        int staticFieldIndex = 0;
+
+        int[] primitiveOffsets = new int[N_PRIMITIVES];
+        int startOffset = startOffset(superTotalByteCount, primitiveCounts);
+        primitiveOffsets[0] = startOffset;
+        FillingSchedule schedule = FillingSchedule.create(superTotalByteCount, startOffset, primitiveCounts, leftoverHoles);
+
+        int[] staticPrimitiveOffsets = new int[N_PRIMITIVES];
+        int staticStartOffset = startOffset(superTotalStaticByteCount, staticPrimitiveCounts);
+        staticPrimitiveOffsets[0] = staticStartOffset;
+        FillingSchedule staticSchedule = FillingSchedule.create(superTotalStaticByteCount, staticStartOffset, staticPrimitiveCounts);
+
+        for (int i = 1; i < N_PRIMITIVES; i++) {
+            primitiveOffsets[i] = primitiveOffsets[i - 1] + primitiveCounts[i - 1] * order[i - 1].getByteCount();
+            staticPrimitiveOffsets[i] = staticPrimitiveOffsets[i - 1] + staticPrimitiveCounts[i - 1] * order[i - 1].getByteCount();
+        }
+
+        for (ParserField parserField : linkedKlass.getParserKlass().getFields()) {
+            LinkedField f = new LinkedField(parserField);
+            JavaKind kind = f.getKind();
+            if (parserField.isStatic()) {
                 staticFields[staticFieldIndex] = f;
                 f.setSlot(staticFieldIndex++);
-                if (f.getKind().isPrimitive()) {
-                    staticPrimitiveCounts[indexFromKind(f.getKind())]++;
+                if (kind.isPrimitive()) {
+                    ScheduleEntry entry = staticSchedule.query(kind);
+                    if (entry != null) {
+                        f.setFieldIndex(entry.offset);
+                    } else {
+                        f.setFieldIndex(staticPrimitiveOffsets[indexFromKind(kind)]);
+                        staticPrimitiveOffsets[indexFromKind(kind)] += kind.getByteCount();
+                    }
                 } else {
                     f.setFieldIndex(nextStaticObjectFieldIndex++);
                 }
             } else {
                 instanceFields[instanceFieldIndex++] = f;
                 f.setSlot(nextFieldTableSlot++);
-                if (f.getKind().isPrimitive()) {
-                    primitiveCounts[indexFromKind(f.getKind())]++;
+                if (kind.isPrimitive()) {
+                    ScheduleEntry entry = schedule.query(kind);
+                    if (entry != null) {
+                        f.setFieldIndex(entry.offset);
+                    } else {
+                        f.setFieldIndex(primitiveOffsets[indexFromKind(kind)]);
+                        primitiveOffsets[indexFromKind(kind)] += kind.getByteCount();
+                    }
                 } else {
                     f.setFieldIndex(nextObjectFieldIndex++);
                 }
@@ -129,51 +172,6 @@ class LinkedKlassFieldLayout {
             instanceFields[instanceFieldIndex++] = hiddenField;
         }
 
-        // Now that we know the actual size of the arrays, shrink them
-        instanceFields = Arrays.copyOf(instanceFields, instanceFieldIndex);
-        staticFields = Arrays.copyOf(staticFields, staticFieldIndex);
-
-        int[] primitiveOffsets = new int[N_PRIMITIVES];
-        int[] staticPrimitiveOffsets = new int[N_PRIMITIVES];
-
-        int startOffset = startOffset(superTotalByteCount, primitiveCounts);
-        primitiveOffsets[0] = startOffset;
-
-        int staticStartOffset = startOffset(superTotalStaticByteCount, staticPrimitiveCounts);
-        staticPrimitiveOffsets[0] = staticStartOffset;
-
-        FillingSchedule schedule = FillingSchedule.create(superTotalByteCount, startOffset, primitiveCounts, leftoverHoles);
-        FillingSchedule staticSchedule = FillingSchedule.create(superTotalStaticByteCount, staticStartOffset, staticPrimitiveCounts);
-
-        for (int i = 1; i < N_PRIMITIVES; i++) {
-            primitiveOffsets[i] = primitiveOffsets[i - 1] + primitiveCounts[i - 1] * order[i - 1].getByteCount();
-            staticPrimitiveOffsets[i] = staticPrimitiveOffsets[i - 1] + staticPrimitiveCounts[i - 1] * order[i - 1].getByteCount();
-        }
-
-        for (LinkedField instanceField : instanceFields) {
-            if (instanceField.getKind().isPrimitive()) {
-                ScheduleEntry entry = schedule.query(instanceField.getKind());
-                if (entry != null) {
-                    instanceField.setFieldIndex(entry.offset);
-                } else {
-                    instanceField.setFieldIndex(primitiveOffsets[indexFromKind(instanceField.getKind())]);
-                    primitiveOffsets[indexFromKind(instanceField.getKind())] += instanceField.getKind().getByteCount();
-                }
-            }
-        }
-
-        for (LinkedField staticField : staticFields) {
-            if (staticField.getKind().isPrimitive()) {
-                ScheduleEntry entry = staticSchedule.query(staticField.getKind());
-                if (entry != null) {
-                    staticField.setFieldIndex(entry.offset);
-                } else {
-                    staticField.setFieldIndex(staticPrimitiveOffsets[indexFromKind(staticField.getKind())]);
-                    staticPrimitiveOffsets[indexFromKind(staticField.getKind())] += staticField.getKind().getByteCount();
-                }
-            }
-        }
-
         return new LinkedKlassFieldLayout(
                         instanceFields,
                         staticFields,
@@ -182,7 +180,8 @@ class LinkedKlassFieldLayout {
                         staticPrimitiveOffsets[N_PRIMITIVES - 1],
                         nextFieldTableSlot,
                         nextObjectFieldIndex,
-                        nextStaticObjectFieldIndex);
+                        nextStaticObjectFieldIndex
+        );
     }
 
     private static int indexFromKind(JavaKind kind) {

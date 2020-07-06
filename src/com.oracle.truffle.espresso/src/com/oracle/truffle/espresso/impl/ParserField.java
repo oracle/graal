@@ -26,7 +26,11 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.Attribute;
+
+import java.lang.reflect.Modifier;
 
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINALIZER;
 
@@ -69,6 +73,14 @@ public final class ParserField {
     }
 
     public boolean isHidden() {
-        return (getFlags() & HIDDEN) != 0;
+        return (flags & HIDDEN) != 0;
+    }
+
+    public boolean isStatic() {
+        return Modifier.isStatic(flags);
+    }
+
+    public JavaKind getKind() {
+        return Types.getJavaKind(type);
     }
 }
