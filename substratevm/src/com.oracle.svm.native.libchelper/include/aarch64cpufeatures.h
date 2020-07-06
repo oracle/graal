@@ -36,4 +36,5 @@ typedef struct {
   char fLSE;
   char fSTXRPREFETCH;
   char fA53MAC;
+  char fDMBATOMICS;
 } CPUFeatures;
