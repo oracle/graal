@@ -59,26 +59,7 @@ class LinkedKlassFieldLayout {
     }
 
     static LinkedKlassFieldLayout create(LinkedKlass linkedKlass) {
-        int[] primitiveCounts = new int[N_PRIMITIVES];
-        int[] staticPrimitiveCounts = new int[N_PRIMITIVES];
-
-        int numberOfNonHiddenInstanceFields = 0;
-        int numberOfStaticFields = 0;
-
-        for (ParserField f: linkedKlass.getParserKlass().getFields()) {
-            JavaKind kind = f.getKind();
-            if (f.isStatic()) {
-                numberOfStaticFields++;
-                if (kind.isPrimitive()) {
-                    staticPrimitiveCounts[indexFromKind(kind)]++;
-                }
-            } else {
-                numberOfNonHiddenInstanceFields++;
-                if (kind.isPrimitive()) {
-                    primitiveCounts[indexFromKind(kind)]++;
-                }
-            }
-        }
+        FieldCounter fieldCounter = new FieldCounter(linkedKlass);
 
         // Stats about primitive fields
         int superTotalByteCount;
@@ -111,25 +92,24 @@ class LinkedKlassFieldLayout {
             nextStaticObjectFieldIndex = 0;
         }
 
-        Symbol<Name>[] hiddenFieldNames = getHiddenFieldNames(linkedKlass);
-
-        LinkedField[] instanceFields = new LinkedField[numberOfNonHiddenInstanceFields + hiddenFieldNames.length];
-        LinkedField[] staticFields = new LinkedField[numberOfStaticFields];
-
         int[] primitiveOffsets = new int[N_PRIMITIVES];
-        int startOffset = startOffset(superTotalByteCount, primitiveCounts);
-        primitiveOffsets[0] = startOffset;
-        FillingSchedule schedule = FillingSchedule.create(superTotalByteCount, startOffset, primitiveCounts, leftoverHoles);
-
         int[] staticPrimitiveOffsets = new int[N_PRIMITIVES];
-        int staticStartOffset = startOffset(superTotalStaticByteCount, staticPrimitiveCounts);
-        staticPrimitiveOffsets[0] = staticStartOffset;
-        FillingSchedule staticSchedule = FillingSchedule.create(superTotalStaticByteCount, staticStartOffset, staticPrimitiveCounts);
 
+        int startOffset = startOffset(superTotalByteCount, fieldCounter.instancePrimitiveFields);
+        int staticStartOffset = startOffset(superTotalStaticByteCount, fieldCounter.staticPrimitiveFields);
+
+        primitiveOffsets[0] = startOffset;
+        staticPrimitiveOffsets[0] = staticStartOffset;
         for (int i = 1; i < N_PRIMITIVES; i++) {
-            primitiveOffsets[i] = primitiveOffsets[i - 1] + primitiveCounts[i - 1] * order[i - 1].getByteCount();
-            staticPrimitiveOffsets[i] = staticPrimitiveOffsets[i - 1] + staticPrimitiveCounts[i - 1] * order[i - 1].getByteCount();
+            primitiveOffsets[i] = primitiveOffsets[i - 1] + fieldCounter.instancePrimitiveFields[i - 1] * order[i - 1].getByteCount();
+            staticPrimitiveOffsets[i] = staticPrimitiveOffsets[i - 1] + fieldCounter.staticPrimitiveFields[i - 1] * order[i - 1].getByteCount();
         }
+
+        FillingSchedule schedule = FillingSchedule.create(superTotalByteCount, startOffset, fieldCounter.instancePrimitiveFields, leftoverHoles);
+        FillingSchedule staticSchedule = FillingSchedule.create(superTotalStaticByteCount, staticStartOffset, fieldCounter.staticPrimitiveFields);
+
+        LinkedField[] instanceFields = new LinkedField[fieldCounter.instanceFields];
+        LinkedField[] staticFields = new LinkedField[fieldCounter.staticFields];
 
         for (ParserField parserField : linkedKlass.getParserKlass().getFields()) {
             JavaKind kind = parserField.getKind();
@@ -166,7 +146,7 @@ class LinkedKlassFieldLayout {
         }
 
         // Add hidden fields after all instance fields
-        for (Symbol<Name> hiddenFieldName : hiddenFieldNames) {
+        for (Symbol<Name> hiddenFieldName : fieldCounter.hiddenFieldNames) {
             LinkedField hiddenField = LinkedField.createHidden(hiddenFieldName, nextFieldTableSlot++, nextObjectFieldIndex++);
             instanceFields[instanceFieldInsertionIndex++] = hiddenField;
         }
@@ -216,66 +196,100 @@ class LinkedKlassFieldLayout {
         return superTotalByteCount + order[i].getByteCount() - r;
     }
 
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    private static Symbol<Name>[] getHiddenFieldNames(LinkedKlass klass) {
-        Symbol<Type> type = klass.getType();
-        if (type == Type.java_lang_invoke_MemberName) {
-            return new Symbol[]{
-                            Name.HIDDEN_VMTARGET,
-                            Name.HIDDEN_VMINDEX
-            };
-        } else if (type == Type.java_lang_reflect_Method) {
-            return new Symbol[]{
-                            Name.HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS,
-                            Name.HIDDEN_METHOD_KEY
-            };
-        } else if (type == Type.java_lang_reflect_Constructor) {
-            return new Symbol[]{
-                            Name.HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS,
-                            Name.HIDDEN_CONSTRUCTOR_KEY
-            };
-        } else if (type == Type.java_lang_reflect_Field) {
-            return new Symbol[]{
-                            Name.HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS,
-                            Name.HIDDEN_FIELD_KEY
-            };
-        } else if (type == Type.java_lang_ref_Reference) {
-            return new Symbol[]{
-                            // All references (including strong) get an extra hidden field, this
-                            // simplifies the code
-                            // for weak/soft/phantom/final references.
-                            Name.HIDDEN_HOST_REFERENCE
-            };
-        } else if (type == Type.java_lang_Throwable) {
-            return new Symbol[]{
-                            Name.HIDDEN_FRAMES
-            };
-        } else if (type == Type.java_lang_Thread) {
-            return new Symbol[]{
-                            Name.HIDDEN_HOST_THREAD,
-                            Name.HIDDEN_IS_ALIVE,
-                            Name.HIDDEN_INTERRUPTED,
-                            Name.HIDDEN_DEATH,
-                            Name.HIDDEN_DEATH_THROWABLE,
-                            Name.HIDDEN_SUSPEND_LOCK,
+    private static final class FieldCounter {
+        final int[] instancePrimitiveFields = new int[N_PRIMITIVES];
+        final int[] staticPrimitiveFields = new int[N_PRIMITIVES];
 
-                            // Only used for j.l.management bookkeeping.
-                            Name.HIDDEN_THREAD_BLOCKED_OBJECT,
-                            Name.HIDDEN_THREAD_BLOCKED_COUNT,
-                            Name.HIDDEN_THREAD_WAITED_COUNT
-            };
-        } else if (type == Type.java_lang_Class) {
-            return new Symbol[]{
-                            Name.HIDDEN_SIGNERS,
-                            Name.HIDDEN_MIRROR_KLASS,
-                            Name.HIDDEN_PROTECTION_DOMAIN
-            };
-        } else if (type == Type.java_lang_ClassLoader) {
-            return new Symbol[]{
-                            Name.HIDDEN_CLASS_LOADER_REGISTRY
-            };
+        final Symbol<Name>[] hiddenFieldNames;
+
+        // Includes hidden fields
+        final int instanceFields;
+        final int staticFields;
+
+        FieldCounter(LinkedKlass linkedKlass) {
+            int iFields = 0;
+            int sFields = 0;
+            for (ParserField f : linkedKlass.getParserKlass().getFields()) {
+                JavaKind kind = f.getKind();
+                if (f.isStatic()) {
+                    sFields++;
+                    if (kind.isPrimitive()) {
+                        staticPrimitiveFields[indexFromKind(kind)]++;
+                    }
+                } else {
+                    iFields++;
+                    if (kind.isPrimitive()) {
+                        instancePrimitiveFields[indexFromKind(kind)]++;
+                    }
+                }
+            }
+            // All hidden fields are of Object kind
+            hiddenFieldNames = getHiddenFieldNames(linkedKlass);
+            instanceFields = iFields + hiddenFieldNames.length;
+            staticFields = sFields;
         }
-        return Symbol.EMPTY_ARRAY;
+
+        @SuppressWarnings({"rawtypes", "unchecked"})
+        private static Symbol<Name>[] getHiddenFieldNames(LinkedKlass klass) {
+            Symbol<Type> type = klass.getType();
+            if (type == Type.java_lang_invoke_MemberName) {
+                return new Symbol[]{
+                        Name.HIDDEN_VMTARGET,
+                        Name.HIDDEN_VMINDEX
+                };
+            } else if (type == Type.java_lang_reflect_Method) {
+                return new Symbol[]{
+                        Name.HIDDEN_METHOD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS,
+                        Name.HIDDEN_METHOD_KEY
+                };
+            } else if (type == Type.java_lang_reflect_Constructor) {
+                return new Symbol[]{
+                        Name.HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS,
+                        Name.HIDDEN_CONSTRUCTOR_KEY
+                };
+            } else if (type == Type.java_lang_reflect_Field) {
+                return new Symbol[]{
+                        Name.HIDDEN_FIELD_RUNTIME_VISIBLE_TYPE_ANNOTATIONS,
+                        Name.HIDDEN_FIELD_KEY
+                };
+            } else if (type == Type.java_lang_ref_Reference) {
+                return new Symbol[]{
+                        // All references (including strong) get an extra hidden field, this
+                        // simplifies the code
+                        // for weak/soft/phantom/final references.
+                        Name.HIDDEN_HOST_REFERENCE
+                };
+            } else if (type == Type.java_lang_Throwable) {
+                return new Symbol[]{
+                        Name.HIDDEN_FRAMES
+                };
+            } else if (type == Type.java_lang_Thread) {
+                return new Symbol[]{
+                        Name.HIDDEN_HOST_THREAD,
+                        Name.HIDDEN_IS_ALIVE,
+                        Name.HIDDEN_INTERRUPTED,
+                        Name.HIDDEN_DEATH,
+                        Name.HIDDEN_DEATH_THROWABLE,
+                        Name.HIDDEN_SUSPEND_LOCK,
+
+                        // Only used for j.l.management bookkeeping.
+                        Name.HIDDEN_THREAD_BLOCKED_OBJECT,
+                        Name.HIDDEN_THREAD_BLOCKED_COUNT,
+                        Name.HIDDEN_THREAD_WAITED_COUNT
+                };
+            } else if (type == Type.java_lang_Class) {
+                return new Symbol[]{
+                        Name.HIDDEN_SIGNERS,
+                        Name.HIDDEN_MIRROR_KLASS,
+                        Name.HIDDEN_PROTECTION_DOMAIN
+                };
+            } else if (type == Type.java_lang_ClassLoader) {
+                return new Symbol[]{
+                        Name.HIDDEN_CLASS_LOADER_REGISTRY
+                };
+            }
+            return Symbol.EMPTY_ARRAY;
+        }
     }
 
     /**
