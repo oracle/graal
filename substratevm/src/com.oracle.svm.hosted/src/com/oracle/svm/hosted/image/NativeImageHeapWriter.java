@@ -241,7 +241,7 @@ public final class NativeImageHeapWriter {
     }
 
     private static void writePrimitive(RelocatableBuffer buffer, int index, JavaConstant con) {
-        ByteBuffer bb = buffer.getBuffer();
+        ByteBuffer bb = buffer.getByteBuffer();
         switch (con.getJavaKind()) {
             case Boolean:
                 bb.put(index, (byte) con.asInt());
@@ -274,9 +274,9 @@ public final class NativeImageHeapWriter {
 
     private void writeReferenceValue(RelocatableBuffer buffer, int index, long value) {
         if (referenceSize() == Long.BYTES) {
-            buffer.getBuffer().putLong(index, value);
+            buffer.getByteBuffer().putLong(index, value);
         } else if (referenceSize() == Integer.BYTES) {
-            buffer.getBuffer().putInt(index, NumUtil.safeToInt(value));
+            buffer.getByteBuffer().putInt(index, NumUtil.safeToInt(value));
         } else {
             throw shouldNotReachHere("Unsupported reference size: " + referenceSize());
         }
@@ -296,6 +296,7 @@ public final class NativeImageHeapWriter {
 
         writeDynamicHub(buffer, indexInBuffer, hub);
 
+        ByteBuffer bufferBytes = buffer.getByteBuffer();
         if (clazz.isInstanceClass()) {
             JavaConstant con = SubstrateObjectConstant.forObject(info.getObject());
 
@@ -324,7 +325,7 @@ public final class NativeImageHeapWriter {
                             }
                             int mask = 1 << (bit % bitsPerByte);
                             assert mask < (1 << bitsPerByte);
-                            buffer.putByte(index, (byte) (buffer.getByte(index) | mask));
+                            bufferBytes.put(index, (byte) (bufferBytes.get(index) | mask));
                         }
                     }
                 }
@@ -341,14 +342,14 @@ public final class NativeImageHeapWriter {
                 }
             }
             if (hub.getHashCodeOffset() != 0) {
-                buffer.putInt(info.getIndexInBuffer(hub.getHashCodeOffset()), info.getIdentityHashCode());
+                bufferBytes.putInt(info.getIndexInBuffer(hub.getHashCodeOffset()), info.getIdentityHashCode());
             }
             if (hybridArray != null) {
                 /*
                  * Write the hybrid array length and the array elements.
                  */
                 int length = Array.getLength(hybridArray);
-                buffer.putInt(info.getIndexInBuffer(objectLayout.getArrayLengthOffset()), length);
+                bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getArrayLengthOffset()), length);
                 for (int i = 0; i < length; i++) {
                     final int elementIndex = info.getIndexInBuffer(hybridLayout.getArrayElementOffset(i));
                     final JavaKind elementStorageKind = hybridLayout.getArrayElementStorageKind();
@@ -361,8 +362,8 @@ public final class NativeImageHeapWriter {
             JavaKind kind = clazz.getComponentType().getStorageKind();
             Object array = info.getObject();
             int length = Array.getLength(array);
-            buffer.putInt(info.getIndexInBuffer(objectLayout.getArrayLengthOffset()), length);
-            buffer.putInt(info.getIndexInBuffer(objectLayout.getArrayIdentityHashcodeOffset()), info.getIdentityHashCode());
+            bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getArrayLengthOffset()), length);
+            bufferBytes.putInt(info.getIndexInBuffer(objectLayout.getArrayIdentityHashcodeOffset()), info.getIdentityHashCode());
             if (array instanceof Object[]) {
                 Object[] oarray = (Object[]) array;
                 assert oarray.length == length;

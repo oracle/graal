@@ -56,7 +56,6 @@ import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
-import org.graalvm.compiler.serviceprovider.BufferUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
@@ -421,18 +420,18 @@ public abstract class NativeBootImage extends AbstractBootImage {
 
             // Text section (code)
             final int textSectionSize = codeCache.getCodeCacheSize();
-            final RelocatableBuffer textBuffer = RelocatableBuffer.factory("text", textSectionSize, objectFile.getByteOrder());
+            final RelocatableBuffer textBuffer = new RelocatableBuffer(textSectionSize, objectFile.getByteOrder());
             final NativeTextSectionImpl textImpl = NativeTextSectionImpl.factory(textBuffer, objectFile, codeCache);
             textSection = objectFile.newProgbitsSection(SectionName.TEXT.getFormatDependentName(objectFile.getFormat()), objectFile.getPageSize(), false, true, textImpl);
 
             // Read-only data section
-            final RelocatableBuffer roDataBuffer = RelocatableBuffer.factory("roData", roSectionSize, objectFile.getByteOrder());
-            final ProgbitsSectionImpl roDataImpl = new BasicProgbitsSectionImpl(roDataBuffer.getBytes());
+            final RelocatableBuffer roDataBuffer = new RelocatableBuffer(roSectionSize, objectFile.getByteOrder());
+            final ProgbitsSectionImpl roDataImpl = new BasicProgbitsSectionImpl(roDataBuffer.getBackingArray());
             roDataSection = objectFile.newProgbitsSection(SectionName.RODATA.getFormatDependentName(objectFile.getFormat()), objectFile.getPageSize(), false, false, roDataImpl);
 
             // Read-write data section
-            final RelocatableBuffer rwDataBuffer = RelocatableBuffer.factory("rwData", rwSectionSize, objectFile.getByteOrder());
-            final ProgbitsSectionImpl rwDataImpl = new BasicProgbitsSectionImpl(rwDataBuffer.getBytes());
+            final RelocatableBuffer rwDataBuffer = new RelocatableBuffer(rwSectionSize, objectFile.getByteOrder());
+            final ProgbitsSectionImpl rwDataImpl = new BasicProgbitsSectionImpl(rwDataBuffer.getBackingArray());
             rwDataSection = objectFile.newProgbitsSection(SectionName.DATA.getFormatDependentName(objectFile.getFormat()), objectFile.getPageSize(), true, false, rwDataImpl);
 
             // Define symbols for the sections.
@@ -466,13 +465,13 @@ public abstract class NativeBootImage extends AbstractBootImage {
             // boundaries, so we take care of this ourselves in CommittedMemoryProvider, if we can.
             int alignment = objectFile.getPageSize();
             boolean writable = SubstrateOptions.UseOnlyWritableBootImageHeap.getValue();
-            RelocatableBuffer heapSectionBuffer = RelocatableBuffer.factory("heap", heapLayout.getImageHeapSize(), objectFile.getByteOrder());
-            ProgbitsSectionImpl heapSectionImpl = new BasicProgbitsSectionImpl(heapSectionBuffer.getBytes());
+            RelocatableBuffer heapSectionBuffer = new RelocatableBuffer(heapLayout.getImageHeapSize(), objectFile.getByteOrder());
+            ProgbitsSectionImpl heapSectionImpl = new BasicProgbitsSectionImpl(heapSectionBuffer.getBackingArray());
             heapSection = objectFile.newProgbitsSection(SectionName.SVM_HEAP.getFormatDependentName(objectFile.getFormat()), alignment, writable, false, heapSectionImpl);
             objectFile.createDefinedSymbol(heapSection.getName(), heapSection, 0, 0, false, false);
 
             long offsetOfARelocatablePointer = writer.writeHeap(debug, heapSectionBuffer);
-            assert !SubstrateOptions.SpawnIsolates.getValue() || castToByteBuffer(heapSectionBuffer).getLong((int) offsetOfARelocatablePointer) == 0L;
+            assert !SubstrateOptions.SpawnIsolates.getValue() || heapSectionBuffer.getByteBuffer().getLong((int) offsetOfARelocatablePointer) == 0L;
 
             defineDataSymbol(Isolates.IMAGE_HEAP_BEGIN_SYMBOL_NAME, heapSection, 0);
             defineDataSymbol(Isolates.IMAGE_HEAP_END_SYMBOL_NAME, heapSection, heapLayout.getImageHeapSize());
@@ -483,10 +482,10 @@ public abstract class NativeBootImage extends AbstractBootImage {
             defineDataSymbol(Isolates.IMAGE_HEAP_WRITABLE_END_SYMBOL_NAME, heapSection, heapLayout.getWritableOffset() + heapLayout.getWritableSize());
 
             // Mark the sections with the relocations from the maps.
-            markRelocationSitesFromMaps(textBuffer, textImpl);
-            markRelocationSitesFromMaps(roDataBuffer, roDataImpl);
-            markRelocationSitesFromMaps(rwDataBuffer, rwDataImpl);
-            markRelocationSitesFromMaps(heapSectionBuffer, heapSectionImpl);
+            markRelocationSitesFromBuffer(textBuffer, textImpl);
+            markRelocationSitesFromBuffer(roDataBuffer, roDataImpl);
+            markRelocationSitesFromBuffer(rwDataBuffer, rwDataImpl);
+            markRelocationSitesFromBuffer(heapSectionBuffer, heapSectionImpl);
 
             // We print the heap statistics after the heap was successfully written because this
             // could modify objects that will be part of the image heap.
@@ -528,20 +527,8 @@ public abstract class NativeBootImage extends AbstractBootImage {
         return deduplicated.size() != heap.getObjectCount();
     }
 
-    /**
-     * Covariant return type overrides added by https://bugs.openjdk.java.net/browse/JDK-4774077
-     * make the cast below unnecessary as of JDK 11.
-     */
-    @SuppressWarnings("cast")
-    private static ByteBuffer castToByteBuffer(final RelocatableBuffer heapSectionBuffer) {
-        return (ByteBuffer) BufferUtil.asBaseBuffer(heapSectionBuffer.getBuffer().asReadOnlyBuffer()).position(0);
-    }
-
-    private void markRelocationSitesFromMaps(RelocatableBuffer relocationMap, ProgbitsSectionImpl sectionImpl) {
-        // Create relocation records from a map.
-        // TODO: Should this be a visitor to the map entries,
-        // TODO: so I don't have to expose the entrySet() method?
-        for (Map.Entry<Integer, RelocatableBuffer.Info> entry : relocationMap.entrySet()) {
+    private void markRelocationSitesFromBuffer(RelocatableBuffer buffer, ProgbitsSectionImpl sectionImpl) {
+        for (Map.Entry<Integer, RelocatableBuffer.Info> entry : buffer.getSortedRelocations()) {
             final int offset = entry.getKey();
             final RelocatableBuffer.Info info = entry.getValue();
 
@@ -556,7 +543,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
                 if (sectionImpl.getElement() == textSection) {
                     // A wrinkle on relocations *from* the text section: they are *always* to
                     // constants (in the "constant partition" of the roDataSection).
-                    markDataRelocationSiteFromText(relocationMap, sectionImpl, offset, info);
+                    markDataRelocationSiteFromText(buffer, sectionImpl, offset, info);
                 } else {
                     // Relocations from other sections go to the section containing the target.
                     // Pass along the information about the target.
@@ -638,11 +625,12 @@ public abstract class NativeBootImage extends AbstractBootImage {
             long targetValue = address >>> encShift;
             assert (targetValue << encShift) == address : "Reference compression shift discards non-zero bits: " + Long.toHexString(address);
             Architecture arch = GraalAccess.getOriginalTarget().arch;
+            ByteBuffer bufferBytes = buffer.getByteBuffer();
             if (arch instanceof AMD64) {
                 if (info.getRelocationSize() == Long.BYTES) {
-                    buffer.getBuffer().putLong(offset, targetValue);
+                    bufferBytes.putLong(offset, targetValue);
                 } else if (info.getRelocationSize() == Integer.BYTES) {
-                    buffer.getBuffer().putInt(offset, NumUtil.safeToInt(targetValue));
+                    bufferBytes.putInt(offset, NumUtil.safeToInt(targetValue));
                 } else {
                     new Exception().printStackTrace();
                     shouldNotReachHere("Unsupported object reference size: " + info.getRelocationSize());
@@ -654,9 +642,9 @@ public abstract class NativeBootImage extends AbstractBootImage {
                 for (int i = 0; i < numInstrs; ++i) {
                     int instrValue = (int) (curValue & 0xFFFF);
                     instrValue = instrValue << 5;
-                    int prevValue = buffer.getBuffer().getInt(offset + (4 * i));
+                    int prevValue = bufferBytes.getInt(offset + (4 * i));
                     int newValue = (prevValue & (~(0xFFFF << 5))) | instrValue;
-                    buffer.getBuffer().putInt(offset + (4 * i), 0xFFFFFFFF & newValue);
+                    bufferBytes.putInt(offset + (4 * i), 0xFFFFFFFF & newValue);
                     curValue = curValue >> 16;
                 }
             }
@@ -918,7 +906,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
                 // -- to what symbol are we referring? always .rodata + something
 
                 // the map starts out empty...
-                assert textBuffer.mapSize() == 0;
+                assert !textBuffer.hasRelocations();
                 codeCache.patchMethods(debug, textBuffer, objectFile);
                 // but now may be populated
 
@@ -932,7 +920,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
 
         protected NativeTextSectionImpl(RelocatableBuffer relocatableBuffer, ObjectFile objectFile, NativeImageCodeCache codeCache) {
             // TODO: Do not separate the byte[] from the RelocatableBuffer.
-            super(relocatableBuffer.getBytes());
+            super(relocatableBuffer.getBackingArray());
             this.textBuffer = relocatableBuffer;
             this.objectFile = objectFile;
             this.codeCache = codeCache;
