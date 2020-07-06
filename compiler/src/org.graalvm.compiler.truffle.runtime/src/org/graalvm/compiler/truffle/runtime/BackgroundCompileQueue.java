@@ -90,8 +90,8 @@ public class BackgroundCompileQueue {
 
             ThreadFactory factory = newThreadFactory("TruffleCompilerThread", callTarget);
 
-            long compilerIdleDelay = runtime.getCompilerIdleDelay();
-            long keepAliveTime = compilerIdleDelay >= 0 ? compilerIdleDelay : delayMillis;
+            long compilerIdleDelay = runtime.getCompilerIdleDelay(callTarget);
+            long keepAliveTime = compilerIdleDelay >= 0 ? compilerIdleDelay : 0;
 
             ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(threads, threads,
                             keepAliveTime, TimeUnit.MILLISECONDS,
@@ -102,7 +102,7 @@ public class BackgroundCompileQueue {
                 }
             };
 
-            if (compilerIdleDelay >= 0) {
+            if (compilerIdleDelay > 0) {
                 // There are two mechanisms to signal idleness: if core threads can timeout, then
                 // the notification is triggered by TruffleCompilerThreadFactory,
                 // otherwise, via IdlingBlockingQueue.take.
