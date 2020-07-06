@@ -605,7 +605,7 @@ public final class StaticObject implements TruffleObject {
             assert !f.isStatic();
             if (!f.isHidden()) {
                 if (f.getKind() == JavaKind.Object) {
-                    setUnsafeField(f.getFieldIndex(), StaticObject.NULL);
+                    setUnsafeField(f.getIndex(), StaticObject.NULL);
                 }
             }
         }
@@ -617,7 +617,7 @@ public final class StaticObject implements TruffleObject {
         for (Field f : thisKlass.getStaticFieldTable()) {
             assert f.isStatic();
             if (f.getKind() == JavaKind.Object) {
-                setUnsafeField(f.getFieldIndex(), StaticObject.NULL);
+                setUnsafeField(f.getIndex(), StaticObject.NULL);
             }
         }
     }
@@ -631,7 +631,7 @@ public final class StaticObject implements TruffleObject {
     @TruffleBoundary(allowInlining = true)
     public StaticObject getFieldVolatile(Field field) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        return (StaticObject) UNSAFE.getObjectVolatile(CompilerDirectives.castExact(fields, Object[].class), getObjectFieldIndex(field.getFieldIndex()));
+        return (StaticObject) UNSAFE.getObjectVolatile(CompilerDirectives.castExact(fields, Object[].class), getObjectFieldIndex(field.getIndex()));
     }
 
     // Not to be used to access hidden fields !
@@ -642,7 +642,7 @@ public final class StaticObject implements TruffleObject {
         if (field.isVolatile()) {
             result = getFieldVolatile(field);
         } else {
-            result = castExact(fields, Object[].class)[field.getFieldIndex()];
+            result = castExact(fields, Object[].class)[field.getIndex()];
         }
         assert result != null;
         return (StaticObject) result;
@@ -668,7 +668,7 @@ public final class StaticObject implements TruffleObject {
     @TruffleBoundary(allowInlining = true)
     public void setFieldVolatile(Field field, Object value) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        UNSAFE.putObjectVolatile(castExact(fields, Object[].class), getObjectFieldIndex(field.getFieldIndex()), value);
+        UNSAFE.putObjectVolatile(castExact(fields, Object[].class), getObjectFieldIndex(field.getIndex()), value);
     }
 
     public void setField(Field field, Object value) {
@@ -683,13 +683,13 @@ public final class StaticObject implements TruffleObject {
             setFieldVolatile(field, value);
         } else {
             Object[] fieldArray = castExact(fields, Object[].class);
-            fieldArray[field.getFieldIndex()] = value;
+            fieldArray[field.getIndex()] = value;
         }
     }
 
     public boolean compareAndSwapField(Field field, Object before, Object after) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        return UNSAFE.compareAndSwapObject(fields, getObjectFieldIndex(field.getFieldIndex()), before, after);
+        return UNSAFE.compareAndSwapObject(fields, getObjectFieldIndex(field.getIndex()), before, after);
     }
 
     // End non-primitive field handling
@@ -708,14 +708,14 @@ public final class StaticObject implements TruffleObject {
         if (field.isVolatile()) {
             return getByteFieldVolatile(field) != 0;
         } else {
-            return UNSAFE.getByte(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex())) != 0;
+            return UNSAFE.getByte(primitiveFields, getPrimitiveFieldIndex(field.getIndex())) != 0;
         }
     }
 
     @TruffleBoundary(allowInlining = true)
     public byte getByteFieldVolatile(Field field) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        return UNSAFE.getByteVolatile(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()));
+        return UNSAFE.getByteVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
     }
 
     public byte getByteField(Field field) {
@@ -724,7 +724,7 @@ public final class StaticObject implements TruffleObject {
         if (field.isVolatile()) {
             return getByteFieldVolatile(field);
         } else {
-            return UNSAFE.getByte(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()));
+            return UNSAFE.getByte(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
         }
     }
 
@@ -734,14 +734,14 @@ public final class StaticObject implements TruffleObject {
         if (field.isVolatile()) {
             return getCharFieldVolatile(field);
         } else {
-            return UNSAFE.getChar(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()));
+            return UNSAFE.getChar(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
         }
     }
 
     @TruffleBoundary(allowInlining = true)
     public char getCharFieldVolatile(Field field) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        return UNSAFE.getCharVolatile(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()));
+        return UNSAFE.getCharVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
     }
 
     public short getShortField(Field field) {
@@ -750,14 +750,14 @@ public final class StaticObject implements TruffleObject {
         if (field.isVolatile()) {
             return getShortFieldVolatile(field);
         } else {
-            return UNSAFE.getShort(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()));
+            return UNSAFE.getShort(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
         }
     }
 
     @TruffleBoundary(allowInlining = true)
     public short getShortFieldVolatile(Field field) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        return UNSAFE.getShortVolatile(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()));
+        return UNSAFE.getShortVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
     }
 
     public int getIntField(Field field) {
@@ -766,14 +766,14 @@ public final class StaticObject implements TruffleObject {
         if (field.isVolatile()) {
             return getIntFieldVolatile(field);
         } else {
-            return UNSAFE.getInt(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()));
+            return UNSAFE.getInt(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
         }
     }
 
     @TruffleBoundary(allowInlining = true)
     public int getIntFieldVolatile(Field field) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        return UNSAFE.getIntVolatile(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()));
+        return UNSAFE.getIntVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
     }
 
     public float getFloatField(Field field) {
@@ -782,14 +782,14 @@ public final class StaticObject implements TruffleObject {
         if (field.isVolatile()) {
             return getFloatFieldVolatile(field);
         } else {
-            return UNSAFE.getFloat(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()));
+            return UNSAFE.getFloat(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
         }
     }
 
     @TruffleBoundary(allowInlining = true)
     public float getFloatFieldVolatile(Field field) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        return UNSAFE.getFloatVolatile(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()));
+        return UNSAFE.getFloatVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
     }
 
     public double getDoubleField(Field field) {
@@ -798,14 +798,14 @@ public final class StaticObject implements TruffleObject {
         if (field.isVolatile()) {
             return getDoubleFieldVolatile(field);
         } else {
-            return UNSAFE.getDouble(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()));
+            return UNSAFE.getDouble(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
         }
     }
 
     @TruffleBoundary(allowInlining = true)
     public double getDoubleFieldVolatile(Field field) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        return UNSAFE.getDoubleVolatile(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()));
+        return UNSAFE.getDoubleVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
     }
 
     // Field setters
@@ -816,7 +816,7 @@ public final class StaticObject implements TruffleObject {
         if (field.isVolatile()) {
             setBooleanFieldVolatile(field, value);
         } else {
-            UNSAFE.putByte(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()), (byte) (value ? 1 : 0));
+            UNSAFE.putByte(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), (byte) (value ? 1 : 0));
         }
     }
 
@@ -831,13 +831,13 @@ public final class StaticObject implements TruffleObject {
         if (field.isVolatile()) {
             setByteFieldVolatile(field, value);
         } else {
-            UNSAFE.putByte(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()), value);
+            UNSAFE.putByte(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
         }
     }
 
     @TruffleBoundary(allowInlining = true)
     public void setByteFieldVolatile(Field field, byte value) {
-        UNSAFE.putByteVolatile(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()), value);
+        UNSAFE.putByteVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
     }
 
     public void setCharField(Field field, char value) {
@@ -846,13 +846,13 @@ public final class StaticObject implements TruffleObject {
         if (field.isVolatile()) {
             setCharFieldVolatile(field, value);
         } else {
-            UNSAFE.putChar(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()), value);
+            UNSAFE.putChar(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
         }
     }
 
     @TruffleBoundary(allowInlining = true)
     public void setCharFieldVolatile(Field field, char value) {
-        UNSAFE.putCharVolatile(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()), value);
+        UNSAFE.putCharVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
     }
 
     public void setShortField(Field field, short value) {
@@ -861,13 +861,13 @@ public final class StaticObject implements TruffleObject {
         if (field.isVolatile()) {
             setShortFieldVolatile(field, value);
         } else {
-            UNSAFE.putShort(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()), value);
+            UNSAFE.putShort(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
         }
     }
 
     @TruffleBoundary(allowInlining = true)
     public void setShortFieldVolatile(Field field, short value) {
-        UNSAFE.putShortVolatile(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()), value);
+        UNSAFE.putShortVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
     }
 
     public void setIntField(Field field, int value) {
@@ -876,13 +876,13 @@ public final class StaticObject implements TruffleObject {
         if (field.isVolatile()) {
             setIntFieldVolatile(field, value);
         } else {
-            UNSAFE.putInt(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()), value);
+            UNSAFE.putInt(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
         }
     }
 
     @TruffleBoundary(allowInlining = true)
     public void setIntFieldVolatile(Field field, int value) {
-        UNSAFE.putIntVolatile(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()), value);
+        UNSAFE.putIntVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
     }
 
     public void setFloatField(Field field, float value) {
@@ -891,14 +891,14 @@ public final class StaticObject implements TruffleObject {
         if (field.isVolatile()) {
             setFloatFieldVolatile(field, value);
         } else {
-            UNSAFE.putFloat(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()), value);
+            UNSAFE.putFloat(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
         }
     }
 
     @TruffleBoundary(allowInlining = true)
     public void setDoubleFieldVolatile(Field field, double value) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        UNSAFE.putDoubleVolatile(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()), value);
+        UNSAFE.putDoubleVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
     }
 
     public void setDoubleField(Field field, double value) {
@@ -907,19 +907,19 @@ public final class StaticObject implements TruffleObject {
         if (field.isVolatile()) {
             setDoubleFieldVolatile(field, value);
         } else {
-            UNSAFE.putDouble(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()), value);
+            UNSAFE.putDouble(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
         }
     }
 
     @TruffleBoundary(allowInlining = true)
     public void setFloatFieldVolatile(Field field, float value) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        UNSAFE.putFloatVolatile(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()), value);
+        UNSAFE.putFloatVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
     }
 
     public boolean compareAndSwapIntField(Field field, int before, int after) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        return UNSAFE.compareAndSwapInt(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()), before, after);
+        return UNSAFE.compareAndSwapInt(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), before, after);
     }
 
     // End subword field handling
@@ -928,7 +928,7 @@ public final class StaticObject implements TruffleObject {
     @TruffleBoundary(allowInlining = true)
     public long getLongFieldVolatile(Field field) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        return UNSAFE.getLongVolatile(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()));
+        return UNSAFE.getLongVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
     }
 
     public long getLongField(Field field) {
@@ -937,14 +937,14 @@ public final class StaticObject implements TruffleObject {
         if (field.isVolatile()) {
             return getLongFieldVolatile(field);
         } else {
-            return UNSAFE.getLong(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()));
+            return UNSAFE.getLong(primitiveFields, getPrimitiveFieldIndex(field.getIndex()));
         }
     }
 
     @TruffleBoundary(allowInlining = true)
     public void setLongFieldVolatile(Field field, long value) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        UNSAFE.putLongVolatile(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()), value);
+        UNSAFE.putLongVolatile(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
     }
 
     public void setLongField(Field field, long value) {
@@ -953,13 +953,13 @@ public final class StaticObject implements TruffleObject {
         if (field.isVolatile()) {
             setLongFieldVolatile(field, value);
         } else {
-            UNSAFE.putLong(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()), value);
+            UNSAFE.putLong(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), value);
         }
     }
 
     public boolean compareAndSwapLongField(Field field, long before, long after) {
         assert field.getDeclaringKlass().isAssignableFrom(getKlass());
-        return UNSAFE.compareAndSwapLong(primitiveFields, getPrimitiveFieldIndex(field.getFieldIndex()), before, after);
+        return UNSAFE.compareAndSwapLong(primitiveFields, getPrimitiveFieldIndex(field.getIndex()), before, after);
     }
 
     // End big words field handling.
@@ -1017,22 +1017,22 @@ public final class StaticObject implements TruffleObject {
 
     public void setHiddenField(Field hiddenField, Object value) {
         assert hiddenField.isHidden();
-        setUnsafeField(hiddenField.getFieldIndex(), value);
+        setUnsafeField(hiddenField.getIndex(), value);
     }
 
     public Object getHiddenField(Field hiddenField) {
         assert hiddenField.isHidden();
-        return getUnsafeField(hiddenField.getFieldIndex());
+        return getUnsafeField(hiddenField.getIndex());
     }
 
     public void setHiddenFieldVolatile(Field hiddenField, Object value) {
         assert hiddenField.isHidden();
-        setUnsafeFieldVolatile(hiddenField.getFieldIndex(), value);
+        setUnsafeFieldVolatile(hiddenField.getIndex(), value);
     }
 
     public Object getHiddenFieldVolatile(Field hiddenField) {
         assert hiddenField.isHidden();
-        return getUnsafeFieldVolatile(hiddenField.getFieldIndex());
+        return getUnsafeFieldVolatile(hiddenField.getIndex());
     }
 
     /**
@@ -1204,6 +1204,6 @@ public final class StaticObject implements TruffleObject {
     }
 
     public StaticObject getAndSetObject(Field field, StaticObject value) {
-        return (StaticObject) UNSAFE.getAndSetObject(fields, getObjectFieldIndex(field.getFieldIndex()), value);
+        return (StaticObject) UNSAFE.getAndSetObject(fields, getObjectFieldIndex(field.getIndex()), value);
     }
 }

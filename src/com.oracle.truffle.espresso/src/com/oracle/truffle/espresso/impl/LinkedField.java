@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.espresso.impl;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
@@ -31,21 +29,19 @@ import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.Attribute;
 
-import java.lang.reflect.Modifier;
-
 public final class LinkedField {
     public static final LinkedField[] EMPTY_ARRAY = new LinkedField[0];
 
     private final ParserField parserField;
     private final JavaKind kind;
-    private final int fieldIndex;
+    private final int index;
     private final int slot;
 
     public LinkedField(ParserField parserField, int slot, int index) {
         this.parserField = parserField;
         this.kind = Types.getJavaKind(getType());
         this.slot = slot;
-        this.fieldIndex = index;
+        this.index = index;
     }
 
     static LinkedField createHidden(Symbol<Name> name, int slot, int index) {
@@ -72,10 +68,10 @@ public final class LinkedField {
     }
 
     /**
-     * The fieldIndex is the actual position in the field array of an actual instance.
+     * The index is the actual position in the field array of an actual instance.
      */
-    public int getFieldIndex() {
-        return fieldIndex;
+    public int getIndex() {
+        return index;
     }
 
     public int getFlags() {
