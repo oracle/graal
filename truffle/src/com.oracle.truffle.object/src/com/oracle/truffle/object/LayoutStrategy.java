@@ -195,11 +195,17 @@ public abstract class LayoutStrategy {
     protected void objectRemoveProperty(DynamicObjectImpl object, Property property, ShapeImpl currentShape) {
         ShapeImpl oldShape = currentShape;
         ShapeImpl newShape = oldShape.removeProperty(property);
+
         reshapeAfterDelete(object, oldShape, newShape, ShapeImpl.findCommonAncestor(oldShape, newShape));
     }
 
     /** @since 0.17 or earlier */
     protected void reshapeAfterDelete(DynamicObjectImpl object, ShapeImpl oldShape, ShapeImpl newShape, ShapeImpl deletedParentShape) {
+        if (oldShape.isShared()) {
+            object.setShapeAndGrow(oldShape, newShape);
+            return;
+        }
+
         DynamicObject original = object.cloneWithShape(oldShape);
         object.setShapeAndResize(newShape);
         object.copyProperties(original, deletedParentShape);
@@ -212,35 +218,60 @@ public abstract class LayoutStrategy {
 
     /** @since 0.17 or earlier */
     protected ShapeImpl removeProperty(ShapeImpl shape, Property property) {
-        assert !shape.isShared();
-        RemovePropertyTransition transition = new RemovePropertyTransition(property);
+        boolean direct = shape.isShared();
+        RemovePropertyTransition transition = new RemovePropertyTransition(property, direct);
         ShapeImpl cachedShape = shape.queryTransition(transition);
         if (cachedShape != null) {
             return ensureValid(cachedShape);
         }
 
-        ShapeImpl owningShape = getShapeFromProperty(shape, property.getKey());
-        if (owningShape != null) {
-            List<Transition> transitionList = new ArrayList<>();
-            ShapeImpl current = shape;
-            while (current != owningShape) {
-                if (!(current.getTransitionFromParent() instanceof Transition.DirectReplacePropertyTransition) ||
-                                !((Transition.DirectReplacePropertyTransition) current.getTransitionFromParent()).getPropertyBefore().getKey().equals(property.getKey())) {
-                    transitionList.add(current.getTransitionFromParent());
-                }
-                current = current.parent;
-            }
-            ShapeImpl newShape = owningShape.parent;
-            for (ListIterator<Transition> iterator = transitionList.listIterator(transitionList.size()); iterator.hasPrevious();) {
-                Transition previous = iterator.previous();
-                newShape = applyTransition(newShape, previous, true);
-            }
+        if (direct) {
+            return directRemoveProperty(shape, property, transition);
+        }
 
-            shape.addIndirectTransition(transition, newShape);
-            return newShape;
-        } else {
+        return indirectRemoveProperty(shape, property, transition);
+    }
+
+    /**
+     * Removes a property by rewinding and replaying property transitions; moves any subsequent
+     * property locations to fill in the gap.
+     */
+    private ShapeImpl indirectRemoveProperty(ShapeImpl shape, Property property, RemovePropertyTransition transition) {
+        ShapeImpl owningShape = getShapeFromProperty(shape, property.getKey());
+        if (owningShape == null) {
             return null;
         }
+
+        List<Transition> transitionList = new ArrayList<>();
+        for (ShapeImpl current = shape; current != owningShape; current = current.parent) {
+            Transition transitionFromParent = current.getTransitionFromParent();
+            if (transitionFromParent instanceof Transition.DirectReplacePropertyTransition &&
+                            ((Transition.DirectReplacePropertyTransition) transitionFromParent).getPropertyBefore().getKey().equals(property.getKey())) {
+                continue;
+            } else {
+                transitionList.add(transitionFromParent);
+            }
+        }
+
+        ShapeImpl newShape = owningShape.parent;
+        for (ListIterator<Transition> iterator = transitionList.listIterator(transitionList.size()); iterator.hasPrevious();) {
+            Transition previous = iterator.previous();
+            newShape = applyTransition(newShape, previous, true);
+        }
+
+        shape.addIndirectTransition(transition, newShape);
+        return newShape;
+    }
+
+    /**
+     * Removes a property without moving property locations, leaving a gap that is lost forever.
+     */
+    private static ShapeImpl directRemoveProperty(ShapeImpl shape, Property property, RemovePropertyTransition transition) {
+        PropertyMap newPropertyMap = shape.getPropertyMap().removeCopy(property);
+        ShapeImpl newShape = shape.createShape(shape.getLayout(), shape.sharedData, shape, shape.objectType, newPropertyMap, transition, shape.allocator(), shape.flags);
+
+        shape.addDirectTransition(transition, newShape);
+        return newShape;
     }
 
     protected ShapeImpl directReplaceProperty(ShapeImpl shape, Property oldProperty, Property newProperty) {

@@ -79,6 +79,7 @@ import com.oracle.truffle.object.Transition.AddPropertyTransition;
 import com.oracle.truffle.object.Transition.ObjectFlagsTransition;
 import com.oracle.truffle.object.Transition.ObjectTypeTransition;
 import com.oracle.truffle.object.Transition.PropertyTransition;
+import com.oracle.truffle.object.Transition.RemovePropertyTransition;
 import com.oracle.truffle.object.Transition.ShareShapeTransition;
 
 /**
@@ -183,7 +184,7 @@ public abstract class ShapeImpl extends Shape {
         this.hasPrimitiveArray = hasPrimitiveArray;
 
         if (parent != null) {
-            this.propertyCount = makePropertyCount(parent, propertyMap);
+            this.propertyCount = makePropertyCount(parent, propertyMap, transitionFromParent);
             this.depth = parent.depth + 1;
         } else {
             this.propertyCount = 0;
@@ -222,11 +223,17 @@ public abstract class ShapeImpl extends Shape {
         this(layout, null, dynamicType, sharedData, PropertyMap.empty(), null, 0, 0, 0, 0, true, flags, constantObjectAssumption);
     }
 
-    private static int makePropertyCount(ShapeImpl parent, PropertyMap propertyMap) {
-        if (propertyMap.size() > parent.propertyMap.size()) {
+    private static int makePropertyCount(ShapeImpl parent, PropertyMap propertyMap, Transition transitionFromParent) {
+        int thisSize = propertyMap.size();
+        int parentSize = parent.propertyMap.size();
+        if (thisSize > parentSize) {
             Property lastProperty = propertyMap.getLastProperty();
             if (!lastProperty.isHidden()) {
                 return parent.propertyCount + 1;
+            }
+        } else if (thisSize < parentSize && transitionFromParent instanceof RemovePropertyTransition) {
+            if (!((RemovePropertyTransition) transitionFromParent).getProperty().isHidden()) {
+                return parent.propertyCount - 1;
             }
         }
         return parent.propertyCount;
@@ -839,10 +846,6 @@ public abstract class ShapeImpl extends Shape {
     @TruffleBoundary
     @Override
     public final ShapeImpl removeProperty(Property prop) {
-        assert isValid();
-        if (isShared()) {
-            throw new UnsupportedOperationException("Do not use delete() with a shared shape as it moves locations");
-        }
         onPropertyTransition(prop);
 
         return layout.getStrategy().removeProperty(this, prop);

@@ -206,17 +206,37 @@ public class SharedShapeTest extends AbstractParametrizedLibraryTest {
     }
 
     @Test
-    public void testCannotDeleteFromSharedShape() {
+    public void testDeleteFromSharedShape() {
         DynamicObject object = sharedShape.newInstance();
 
         DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
+        Shape emptyShape = object.getShape();
 
         library.put(object, "a", 1);
-        try {
-            library.removeKey(object, "a");
-            Assert.fail();
-        } catch (UnsupportedOperationException e) {
-            Assert.assertEquals(1, library.getOrDefault(object, "a", null));
-        }
+        Shape aShape = object.getShape();
+        library.removeKey(object, "a");
+        Assert.assertNotSame(emptyShape, object.getShape());
+
+        library.put(object, "a", 2);
+        Assert.assertNotSame(aShape, object.getShape());
+        DOTestAsserts.assertNotSameLocation(aShape.getProperty("a").getLocation(), object.getShape().getProperty("a").getLocation());
+        library.put(object, "b", 3);
+        DOTestAsserts.assertNotSameLocation(aShape.getProperty("a").getLocation(), object.getShape().getProperty("b").getLocation());
+    }
+
+    @Test
+    public void testDeleteFromSharedShape2() {
+        DynamicObject object = sharedShape.newInstance();
+
+        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, object);
+        Shape emptyShape = object.getShape();
+
+        library.put(object, "a", 1);
+        Shape aShape = object.getShape();
+        library.removeKey(object, "a");
+        Assert.assertNotSame(emptyShape, object.getShape());
+
+        library.put(object, "b", 3);
+        DOTestAsserts.assertNotSameLocation(aShape.getProperty("a").getLocation(), object.getShape().getProperty("b").getLocation());
     }
 }

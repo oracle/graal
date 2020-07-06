@@ -175,14 +175,33 @@ public class LegacySharedShapeTest {
     }
 
     @Test
-    public void testCannotDeleteFromSharedShape() {
+    public void testDeleteFromSharedShape() {
         DynamicObject object = sharedShape.newInstance();
+        Shape emptyShape = object.getShape();
+
         object.define("a", 1);
-        try {
-            object.delete("a");
-            Assert.fail();
-        } catch (UnsupportedOperationException e) {
-            Assert.assertEquals(1, object.get("a"));
-        }
+        Shape aShape = object.getShape();
+        object.delete("a");
+        Assert.assertNotSame(emptyShape, object.getShape());
+
+        object.define("a", 2);
+        Assert.assertNotSame(aShape, object.getShape());
+        DOTestAsserts.assertNotSameLocation(aShape.getProperty("a").getLocation(), object.getShape().getProperty("a").getLocation());
+        object.define("b", 3);
+        DOTestAsserts.assertNotSameLocation(aShape.getProperty("a").getLocation(), object.getShape().getProperty("b").getLocation());
+    }
+
+    @Test
+    public void testDeleteFromSharedShape2() {
+        DynamicObject object = sharedShape.newInstance();
+        Shape emptyShape = object.getShape();
+
+        object.define("a", 1);
+        Shape aShape = object.getShape();
+        object.delete("a");
+        Assert.assertNotSame(emptyShape, object.getShape());
+
+        object.define("b", 3);
+        DOTestAsserts.assertNotSameLocation(aShape.getProperty("a").getLocation(), object.getShape().getProperty("b").getLocation());
     }
 }

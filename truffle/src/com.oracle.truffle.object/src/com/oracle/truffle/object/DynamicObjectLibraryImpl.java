@@ -227,12 +227,17 @@ abstract class DynamicObjectLibraryImpl {
 
         Map<Object, Object> archive = null;
         assert (archive = ACCESS.archive(obj)) != null;
+
         ShapeImpl newShape = oldShape.removeProperty(property);
         assert oldShape != newShape;
         assert ACCESS.getShape(obj) == oldShape;
         ACCESS.setShape(obj, newShape);
-        shiftPropertyValuesAfterRemove(obj, oldShape, newShape);
-        ACCESS.trimToSize(obj, newShape);
+
+        if (!oldShape.isShared()) {
+            shiftPropertyValuesAfterRemove(obj, oldShape, newShape);
+            ACCESS.trimToSize(obj, newShape);
+        }
+
         assert ACCESS.verifyValues(obj, archive);
         return true;
     }
