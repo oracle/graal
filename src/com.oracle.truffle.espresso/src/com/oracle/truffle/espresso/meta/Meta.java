@@ -24,6 +24,8 @@ package com.oracle.truffle.espresso.meta;
 
 import static com.oracle.truffle.espresso.meta.StringUtil.LATIN1;
 
+import java.util.logging.Level;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -213,6 +215,9 @@ public final class Meta implements ContextAccess {
         java_lang_IncompatibleClassChangeError = knownKlass(Type.java_lang_IncompatibleClassChangeError);
         java_lang_BootstrapMethodError = knownKlass(Type.java_lang_BootstrapMethodError);
 
+        // Initialize dispatch once common exceptions are discovered.
+        this.dispatch = new ExceptionDispatch(this);
+
         java_security_PrivilegedActionException = knownKlass(Type.java_security_PrivilegedActionException);
         java_security_PrivilegedActionException_init_Exception = java_security_PrivilegedActionException.lookupDeclaredMethod(Name._init_, Signature._void_Exception);
 
@@ -224,19 +229,6 @@ public final class Meta implements ContextAccess {
         java_lang_ClassLoader_parent = java_lang_ClassLoader.lookupDeclaredField(Name.parent, Type.java_lang_ClassLoader);
         java_lang_ClassLoader_unnamedModule = java_lang_ClassLoader.lookupDeclaredField(Name.unnamedModule, Type.java_lang_Module);
         HIDDEN_CLASS_LOADER_REGISTRY = java_lang_ClassLoader.lookupHiddenField(Name.HIDDEN_CLASS_LOADER_REGISTRY);
-
-        jdk_internal_ClassLoaders_PlatformClassLoader = knownKlass(Type.jdk_internal_ClassLoaders$PlatformClassLoader);
-
-        java_lang_Module = knownKlass(Type.java_lang_Module);
-        if (java_lang_Module != null) {
-            java_lang_Module_name = java_lang_Module.lookupField(Name.name, Type.java_lang_String);
-            java_lang_Module_loader = java_lang_Module.lookupField(Name.loader, Type.java_lang_ClassLoader);
-            HIDDEN_MODULE_ENTRY = java_lang_Module.lookupHiddenField(Name.HIDDEN_MODULE_ENTRY);
-        } else {
-            java_lang_Module_name = null;
-            java_lang_Module_loader = null;
-            HIDDEN_MODULE_ENTRY = null;
-        }
 
         // Guest reflection.
         java_lang_reflect_Executable = knownKlass(Type.java_lang_reflect_Executable);
@@ -405,18 +397,26 @@ public final class Meta implements ContextAccess {
         java_lang_AssertionStatusDirectives_packageEnabled = java_lang_AssertionStatusDirectives.lookupField(Name.packageEnabled, Type._boolean_array);
         java_lang_AssertionStatusDirectives_deflt = java_lang_AssertionStatusDirectives.lookupField(Name.deflt, Type._boolean);
 
-        // java.management
-        java_lang_management_MemoryUsage = knownKlass(Type.java_lang_management_MemoryUsage);
-
-        java_lang_management_ThreadInfo = knownKlass(Type.java_lang_management_ThreadInfo);
-
         // Classes and Members that differ from Java 8 to 11
-        // TODO(garcia) Decide on a naming convention for these classes
-
-        java_lang_class_module = java_lang_Class.lookupField(Name.module, Type.java_lang_Module);
-        java_lang_class_classLoader = java_lang_Class.lookupField(Name.classLoader, Type.java_lang_ClassLoader);
 
         java_lang_String_value = lookupFieldDiffVersion(java_lang_String, Name.value, Type._char_array, Name.value, Type._byte_array);
+
+        java_lang_class_classLoader = java_lang_Class.lookupField(Name.classLoader, Type.java_lang_ClassLoader);
+
+        jdk_internal_ClassLoaders_PlatformClassLoader = knownKlass(Type.jdk_internal_ClassLoaders$PlatformClassLoader);
+
+        java_lang_Module = knownKlass(Type.java_lang_Module);
+        if (java_lang_Module != null) {
+            java_lang_Module_name = java_lang_Module.lookupField(Name.name, Type.java_lang_String);
+            java_lang_Module_loader = java_lang_Module.lookupField(Name.loader, Type.java_lang_ClassLoader);
+            HIDDEN_MODULE_ENTRY = java_lang_Module.lookupHiddenField(Name.HIDDEN_MODULE_ENTRY);
+        } else {
+            java_lang_Module_name = null;
+            java_lang_Module_loader = null;
+            HIDDEN_MODULE_ENTRY = null;
+        }
+
+        java_lang_class_module = java_lang_Class.lookupField(Name.module, Type.java_lang_Module);
 
         java_lang_System_initializeSystemClass = java_lang_System.lookupDeclaredMethod(Name.initializeSystemClass, Signature._void);
         java_lang_System_initPhase1 = java_lang_System.lookupDeclaredMethod(Name.initPhase1, Signature._void);
@@ -448,6 +448,12 @@ public final class Meta implements ContextAccess {
 
         // TODO: these classes are in module java.management. These become known after modules
         // initialization.
+
+        // java.management
+        java_lang_management_MemoryUsage = knownKlass(Type.java_lang_management_MemoryUsage);
+
+        java_lang_management_ThreadInfo = knownKlass(Type.java_lang_management_ThreadInfo);
+
         sun_management_ManagementFactory = knownKlass(Type.sun_management_ManagementFactory);
         if (sun_management_ManagementFactory != null) {
             // MemoryPoolMXBean createMemoryPool(String var0, boolean var1, long var2, long var4)
@@ -465,7 +471,6 @@ public final class Meta implements ContextAccess {
             // GarbageCollectorMXBean createGarbageCollector(String var0, String var1)
             sun_management_ManagementFactory_createGarbageCollector = null;
         }
-        this.dispatch = new ExceptionDispatch(this);
     }
 
     private static Field lookupFieldDiffVersion(ObjectKlass klass, Symbol<Name> n1, Symbol<Type> t1, Symbol<Name> n2, Symbol<Type> t2) {
@@ -1006,7 +1011,17 @@ public final class Meta implements ContextAccess {
         CompilerAsserts.neverPartOfCompilation();
         assert !Types.isArray(type);
         assert !Types.isPrimitive(type);
-        return (ObjectKlass) getRegistries().loadKlassWithBootClassLoader(type);
+        try {
+            return (ObjectKlass) getRegistries().loadKlassWithBootClassLoader(type);
+        } catch (EspressoException e) {
+            assert dispatch != null;
+            if (java_lang_ClassNotFoundException.isAssignableFrom(e.getExceptionObject().getKlass())) {
+                // TODO: rework loading of classes with differences according to version.
+                getContext().getLogger().log(Level.FINE, "Failed loading known class: " + type + ", discovered java version: " + getContext().getJavaVersion());
+                return null;
+            }
+            throw e;
+        }
     }
 
     /**

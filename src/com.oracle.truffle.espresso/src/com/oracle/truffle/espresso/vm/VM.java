@@ -1476,8 +1476,15 @@ public final class VM extends NativeEnv implements ContextAccess {
         if (Types.isPrimitive(type)) {
             return StaticObject.NULL;
         }
-
-        Klass klass = getRegistries().loadKlassWithBootClassLoader(type);
+        Klass klass = null;
+        try {
+            klass = getRegistries().loadKlassWithBootClassLoader(type);
+        } catch (EspressoException e) {
+            if (!getMeta().java_lang_ClassNotFoundException.isAssignableFrom(e.getExceptionObject().getKlass())) {
+                throw e;
+            }
+            // Return null if not found.
+        }
         if (klass == null) {
             return StaticObject.NULL;
         }

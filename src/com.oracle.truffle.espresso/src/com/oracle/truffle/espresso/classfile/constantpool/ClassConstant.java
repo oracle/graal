@@ -122,9 +122,6 @@ public interface ClassConstant extends PoolConstant {
                 EspressoContext context = pool.getContext();
                 Symbol<Symbol.Type> type = context.getTypes().fromName(klassName);
                 Klass klass = context.getMeta().resolveSymbol(type, accessingKlass.getDefiningClassLoader());
-                if (klass == null) {
-                    throw Meta.throwException(pool.getContext().getMeta().java_lang_ClassNotFoundException);
-                }
                 if (!Klass.checkAccess(klass.getElementalType(), accessingKlass)) {
                     Meta meta = context.getMeta();
                     context.getLogger().log(Level.WARNING,

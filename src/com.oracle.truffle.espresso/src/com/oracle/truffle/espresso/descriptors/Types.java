@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.descriptors;
 
+import static com.oracle.truffle.espresso.descriptors.ByteSequence.EMPTY;
+
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -199,31 +201,11 @@ public final class Types {
         return index;
     }
 
-    public static boolean isPrimitive(Symbol<Type> type) {
+    public static boolean isPrimitive(ByteSequence type) {
         if (type.length() != 1) {
             return false;
         }
         switch (type.byteAt(0)) {
-            case 'B': // byte
-            case 'C': // char
-            case 'D': // double
-            case 'F': // float
-            case 'I': // int
-            case 'J': // long
-            case 'S': // short
-            case 'V': // void
-            case 'Z': // boolean
-                return true;
-            default:
-                return false;
-        }
-    }
-
-    public static boolean isPrimitive(String type) {
-        if (type.length() != 1) {
-            return false;
-        }
-        switch (type.charAt(0)) {
             case 'B': // byte
             case 'C': // char
             case 'D': // double
@@ -254,7 +236,7 @@ public final class Types {
     /**
      * Gets the number of array dimensions in this type descriptor.
      */
-    public static int getArrayDimensions(Symbol<Type> type) {
+    public static int getArrayDimensions(ByteSequence type) {
         int dims = 0;
         while (dims < type.length() && type.byteAt(dims) == '[') {
             dims++;
@@ -356,23 +338,19 @@ public final class Types {
         return symbols.lookup(checkType(type));
     }
 
-    public static String getRuntimePackage(Symbol<Type> symbol) {
-        String typeString = symbol.toString();
-        if (typeString.startsWith("[")) {
-            return getRuntimePackage(typeString.substring(getArrayDimensions(symbol)));
+    public static ByteSequence getRuntimePackage(ByteSequence symbol) {
+        if (symbol.byteAt(0) == '[') {
+            int arrayDimensions = getArrayDimensions(symbol);
+            return getRuntimePackage(symbol.subSequence(arrayDimensions, symbol.length() - arrayDimensions));
         }
-        return getRuntimePackage(typeString);
-    }
-
-    private static String getRuntimePackage(String typeString) {
-        if (!typeString.startsWith("L")) {
-            assert isPrimitive(typeString);
-            return "";
+        if (symbol.byteAt(0) != 'L') {
+            assert isPrimitive(symbol);
+            return EMPTY;
         }
-        int lastSlash = typeString.lastIndexOf('/');
+        int lastSlash = symbol.lastIndexOf((byte) '/');
         if (lastSlash < 0) {
-            return "";
+            return EMPTY;
         }
-        return typeString.substring(1, lastSlash);
+        return symbol.subSequence(1, lastSlash - 1);
     }
 }

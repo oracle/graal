@@ -52,6 +52,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
@@ -922,8 +923,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     }
 
     private Symbol<Name> initRuntimePackage() {
-        String hostPkgName = Types.getRuntimePackage(getType());
-        assert !hostPkgName.endsWith(";");
+        ByteSequence hostPkgName = Types.getRuntimePackage(getType());
         if (hostPkgName.length() == 0) {
             return null;
         }
