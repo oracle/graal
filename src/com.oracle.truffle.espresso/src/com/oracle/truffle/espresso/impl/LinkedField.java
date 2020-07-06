@@ -25,39 +25,22 @@ package com.oracle.truffle.espresso.impl;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.Attribute;
 
-public final class LinkedField {
-    public static final LinkedField[] EMPTY_ARRAY = new LinkedField[0];
-
+final class LinkedField {
     private final ParserField parserField;
-    private final JavaKind kind;
     private final int index;
     private final int slot;
 
     public LinkedField(ParserField parserField, int slot, int index) {
         this.parserField = parserField;
-        this.kind = Types.getJavaKind(getType());
         this.slot = slot;
         this.index = index;
     }
 
-    static LinkedField createHidden(Symbol<Name> name, int slot, int index) {
+    public static LinkedField createHidden(Symbol<Name> name, int slot, int index) {
         return new LinkedField(new ParserField(ParserField.HIDDEN, name, Type.java_lang_Object, null), slot, index);
-    }
-
-    ParserField getParserField() {
-        return parserField;
-    }
-
-    public Symbol<Type> getType() {
-        return parserField.getType();
-    }
-
-    public Symbol<Name> getName() {
-        return parserField.getName();
     }
 
     /**
@@ -74,12 +57,20 @@ public final class LinkedField {
         return index;
     }
 
+    public Symbol<Type> getType() {
+        return parserField.getType();
+    }
+
+    public Symbol<Name> getName() {
+        return parserField.getName();
+    }
+
     public int getFlags() {
         return parserField.getFlags();
     }
 
     public JavaKind getKind() {
-        return kind;
+        return parserField.getKind();
     }
 
     public Attribute getAttribute(Symbol<Name> name) {
@@ -91,7 +82,7 @@ public final class LinkedField {
         return null;
     }
 
-   boolean isHidden() {
+    public boolean isHidden() {
         return parserField.isHidden();
     }
 }
