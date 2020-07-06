@@ -238,6 +238,7 @@ suite = {
                 "java.base" : [
                     "jdk.internal.loader",
                     "jdk.internal.misc",
+                    "jdk.internal.platform",
                     "sun.invoke.util",
                 ],
             },
