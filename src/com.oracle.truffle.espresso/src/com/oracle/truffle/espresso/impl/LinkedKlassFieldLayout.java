@@ -80,14 +80,18 @@ class LinkedKlassFieldLayout {
             }
         }
 
-        // stats about primitive fields
+        // Stats about primitive fields
         int superTotalByteCount;
         int superTotalStaticByteCount;
         int[][] leftoverHoles;
 
-        // stats about object fields
+        // Indexes for object fields
+        int instanceFieldInsertionIndex = 0;
         int nextFieldTableSlot;
         int nextObjectFieldIndex;
+        // The staticFieldTable does not include fields of parent classes.
+        // Therefore, nextStaticFieldTableSlot can be used also as staticFieldInsertionIndex.
+        int nextStaticFieldTableSlot = 0;
         int nextStaticObjectFieldIndex;
 
         LinkedKlass superKlass = linkedKlass.getSuperKlass();
@@ -112,11 +116,6 @@ class LinkedKlassFieldLayout {
         LinkedField[] instanceFields = new LinkedField[numberOfNonHiddenInstanceFields + hiddenFieldNames.length];
         LinkedField[] staticFields = new LinkedField[numberOfStaticFields];
 
-        int instanceFieldIndex = 0;
-        // The staticFieldTable does not include fields of parent classes.
-        // Therefore, staticFieldIndex is also used as staticFieldTable slot.
-        int staticFieldIndex = 0;
-
         int[] primitiveOffsets = new int[N_PRIMITIVES];
         int startOffset = startOffset(superTotalByteCount, primitiveCounts);
         primitiveOffsets[0] = startOffset;
@@ -133,43 +132,43 @@ class LinkedKlassFieldLayout {
         }
 
         for (ParserField parserField : linkedKlass.getParserKlass().getFields()) {
-            LinkedField f = new LinkedField(parserField);
-            JavaKind kind = f.getKind();
+            JavaKind kind = parserField.getKind();
+            int index;
             if (parserField.isStatic()) {
-                staticFields[staticFieldIndex] = f;
-                f.setSlot(staticFieldIndex++);
                 if (kind.isPrimitive()) {
                     ScheduleEntry entry = staticSchedule.query(kind);
                     if (entry != null) {
-                        f.setFieldIndex(entry.offset);
+                        index = entry.offset;
                     } else {
-                        f.setFieldIndex(staticPrimitiveOffsets[indexFromKind(kind)]);
+                        index = staticPrimitiveOffsets[indexFromKind(kind)];
                         staticPrimitiveOffsets[indexFromKind(kind)] += kind.getByteCount();
                     }
                 } else {
-                    f.setFieldIndex(nextStaticObjectFieldIndex++);
+                    index = nextStaticObjectFieldIndex++;
                 }
+                LinkedField linkedField = new LinkedField(parserField, nextStaticFieldTableSlot, index);
+                staticFields[nextStaticFieldTableSlot++] = linkedField;
             } else {
-                instanceFields[instanceFieldIndex++] = f;
-                f.setSlot(nextFieldTableSlot++);
                 if (kind.isPrimitive()) {
                     ScheduleEntry entry = schedule.query(kind);
                     if (entry != null) {
-                        f.setFieldIndex(entry.offset);
+                        index = entry.offset;
                     } else {
-                        f.setFieldIndex(primitiveOffsets[indexFromKind(kind)]);
+                        index = primitiveOffsets[indexFromKind(kind)];
                         primitiveOffsets[indexFromKind(kind)] += kind.getByteCount();
                     }
                 } else {
-                    f.setFieldIndex(nextObjectFieldIndex++);
+                    index = nextObjectFieldIndex++;
                 }
+                LinkedField linkedField = new LinkedField(parserField, nextFieldTableSlot++, index);
+                instanceFields[instanceFieldInsertionIndex++] = linkedField;
             }
         }
 
         // Add hidden fields after all instance fields
         for (Symbol<Name> hiddenFieldName : hiddenFieldNames) {
             LinkedField hiddenField = LinkedField.createHidden(hiddenFieldName, nextFieldTableSlot++, nextObjectFieldIndex++);
-            instanceFields[instanceFieldIndex++] = hiddenField;
+            instanceFields[instanceFieldInsertionIndex++] = hiddenField;
         }
 
         return new LinkedKlassFieldLayout(

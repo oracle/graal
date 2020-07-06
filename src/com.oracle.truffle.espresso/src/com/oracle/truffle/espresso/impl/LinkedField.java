@@ -38,22 +38,14 @@ public final class LinkedField {
 
     private final ParserField parserField;
     private final JavaKind kind;
+    private final int fieldIndex;
+    private final int slot;
 
-    @CompilerDirectives.CompilationFinal //
-    private int fieldIndex = -1;
-
-    @CompilerDirectives.CompilationFinal //
-    private int slot = -1;
-
-    public LinkedField(ParserField parserField) {
+    public LinkedField(ParserField parserField, int slot, int index) {
         this.parserField = parserField;
         this.kind = Types.getJavaKind(getType());
-    }
-
-    private LinkedField(ParserField parserField, int slot, int index) {
-        this(parserField);
-        setSlot(slot);
-        setFieldIndex(index);
+        this.slot = slot;
+        this.fieldIndex = index;
     }
 
     static LinkedField createHidden(Symbol<Name> name, int slot, int index) {
@@ -72,11 +64,6 @@ public final class LinkedField {
         return parserField.getName();
     }
 
-    void setSlot(int slot) {
-        CompilerAsserts.neverPartOfCompilation();
-        this.slot = slot;
-    }
-
     /**
      * The slot is the position in the `fieldTable` of the ObjectKlass.
      */
@@ -89,11 +76,6 @@ public final class LinkedField {
      */
     public int getFieldIndex() {
         return fieldIndex;
-    }
-
-    void setFieldIndex(int index) {
-        CompilerAsserts.neverPartOfCompilation();
-        this.fieldIndex = index;
     }
 
     public int getFlags() {
