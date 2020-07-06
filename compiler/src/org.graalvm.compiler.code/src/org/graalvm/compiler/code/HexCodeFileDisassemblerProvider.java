@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.util.Arrays;
 
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.ServiceProvider;
 
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -50,7 +51,7 @@ import jdk.vm.ci.code.site.Infopoint;
 public class HexCodeFileDisassemblerProvider implements DisassemblerProvider {
 
     @Override
-    public String disassembleCompiledCode(CodeCacheProvider codeCache, CompilationResult compResult) {
+    public String disassembleCompiledCode(OptionValues options, CodeCacheProvider codeCache, CompilationResult compResult) {
         assert compResult != null;
         return disassemble(codeCache, compResult, null);
     }
