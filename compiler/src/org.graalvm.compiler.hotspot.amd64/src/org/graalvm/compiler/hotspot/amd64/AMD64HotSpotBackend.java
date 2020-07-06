@@ -198,6 +198,11 @@ public class AMD64HotSpotBackend extends HotSpotHostBackend implements LIRGenera
                 }
             }
         }
+
+        @Override
+        public void returned(CompilationResultBuilder crb) {
+            // nothing to do
+        }
     }
 
     @Override
