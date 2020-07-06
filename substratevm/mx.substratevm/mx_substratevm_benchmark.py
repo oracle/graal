@@ -691,7 +691,7 @@ _scala_dacapo_iterations = {
     'scalaxb'       : 60,
     'kiama'         : 40,
     'factorie'      : 6,  # GR-21543
-    'specs'         : -1, # depends on awt
+    'specs'         : 4,
     'apparat'       : 5,
     'tmt'           : 12,
 }
@@ -699,14 +699,7 @@ _scala_dacapo_iterations = {
 _SCALA_DACAPO_EXTRA_VM_ARGS = {
     'scalariform'   : ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath'],
     'scalatest'     : ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath'],
-    'specs'         : ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath',
-                       # GR-24653 remove following lines when fixed
-                       '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.eclipse.mylyn.wikitext.core.parser.builder.HtmlDocumentBuilder',
-                       '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.eclipse.mylyn.wikitext.core.parser.builder.AbstractXmlDocumentBuilder',
-                       '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.eclipse.mylyn.wikitext.core.parser.builder.HtmlDocumentBuilder$ElementInfo',
-                       '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.eclipse.mylyn.wikitext.core.parser.DocumentBuilder$SpanType',
-                       '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.eclipse.mylyn.wikitext.core.parser.DocumentBuilder',
-                       '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.eclipse.mylyn.wikitext.core.parser.ImageAttributes$Align'],
+    'specs'         : ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath'],
     'tmt'           : ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath'],
 }
 
