@@ -80,7 +80,7 @@ final class LinkedKlass {
 
         this.methods = linkedMethods;
 
-        fieldLayout = LinkedKlassFieldLayout.create(this);
+        fieldLayout = LinkedKlassFieldLayout.create(parserKlass, superKlass);
     }
 
     public int getFlags() {
@@ -127,7 +127,7 @@ final class LinkedKlass {
         return getConstantPool().getMinorVersion();
     }
 
-    protected LinkedMethod[] getLinkedMethods() {
+    public LinkedMethod[] getLinkedMethods() {
         return methods;
     }
 
@@ -135,7 +135,7 @@ final class LinkedKlass {
         return fieldLayout.instanceFields;
     }
 
-    protected LinkedField[] getStaticFields() {
+    public LinkedField[] getStaticFields() {
         return fieldLayout.staticFields;
     }
 

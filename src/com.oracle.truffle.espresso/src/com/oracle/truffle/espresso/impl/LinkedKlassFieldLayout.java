@@ -64,8 +64,8 @@ final class LinkedKlassFieldLayout {
         this.staticObjectFields = staticObjectFields;
     }
 
-    static LinkedKlassFieldLayout create(LinkedKlass linkedKlass) {
-        FieldCounter fieldCounter = new FieldCounter(linkedKlass);
+    static LinkedKlassFieldLayout create(ParserKlass parserKlass, LinkedKlass superKlass) {
+        FieldCounter fieldCounter = new FieldCounter(parserKlass);
 
         // Stats about primitive fields
         int superTotalInstanceByteCount;
@@ -81,7 +81,6 @@ final class LinkedKlassFieldLayout {
         int nextStaticFieldTableSlot = 0;
         int nextStaticObjectFieldIndex;
 
-        LinkedKlass superKlass = linkedKlass.getSuperKlass();
         if (superKlass != null) {
             superTotalInstanceByteCount = superKlass.getPrimitiveFieldTotalByteCount();
             superTotalStaticByteCount = superKlass.getPrimitiveStaticFieldTotalByteCount();
@@ -104,7 +103,7 @@ final class LinkedKlassFieldLayout {
         LinkedField[] instanceFields = new LinkedField[fieldCounter.instanceFields];
         LinkedField[] staticFields = new LinkedField[fieldCounter.staticFields];
 
-        for (ParserField parserField : linkedKlass.getParserKlass().getFields()) {
+        for (ParserField parserField : parserKlass.getFields()) {
             JavaKind kind = parserField.getKind();
             int index;
             if (parserField.isStatic()) {
@@ -170,10 +169,10 @@ final class LinkedKlassFieldLayout {
         final int instanceFields;
         final int staticFields;
 
-        FieldCounter(LinkedKlass linkedKlass) {
+        FieldCounter(ParserKlass parserKlass) {
             int iFields = 0;
             int sFields = 0;
-            for (ParserField f : linkedKlass.getParserKlass().getFields()) {
+            for (ParserField f : parserKlass.getFields()) {
                 JavaKind kind = f.getKind();
                 if (f.isStatic()) {
                     sFields++;
@@ -188,14 +187,14 @@ final class LinkedKlassFieldLayout {
                 }
             }
             // All hidden fields are of Object kind
-            hiddenFieldNames = getHiddenFieldNames(linkedKlass);
+            hiddenFieldNames = getHiddenFieldNames(parserKlass);
             instanceFields = iFields + hiddenFieldNames.length;
             staticFields = sFields;
         }
 
         @SuppressWarnings({"rawtypes", "unchecked"})
-        private static Symbol<Name>[] getHiddenFieldNames(LinkedKlass klass) {
-            Symbol<Type> type = klass.getType();
+        private static Symbol<Name>[] getHiddenFieldNames(ParserKlass parserKlass) {
+            Symbol<Type> type = parserKlass.getType();
             if (type == Type.java_lang_invoke_MemberName) {
                 return new Symbol[]{
                                 Name.HIDDEN_VMTARGET,
