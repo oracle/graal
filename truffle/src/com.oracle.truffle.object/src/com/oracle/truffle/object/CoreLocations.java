@@ -990,12 +990,8 @@ abstract class CoreLocations {
         }
     }
 
-    static CoreLocation getInternalLocation(CoreLocation loc) {
-        return loc instanceof CoreLocations.PrimitiveLocationDecorator ? (CoreLocation) ((CoreLocations.PrimitiveLocationDecorator) loc).getInternalLocation() : loc;
-    }
-
     static int getLocationOrdinal(CoreLocation loc) {
-        CoreLocation internal = CoreLocations.getInternalLocation(Objects.requireNonNull(loc));
+        LocationImpl internal = loc.getInternalLocation();
         boolean isPrimitive = internal instanceof CoreLocations.LongLocation;
         if (internal instanceof CoreLocations.FieldLocation) {
             return (isPrimitive ? Integer.MIN_VALUE : 0) + ((CoreLocations.FieldLocation) internal).getIndex();

@@ -86,11 +86,11 @@ public abstract class DOTestAsserts {
     private static Location getInternalLocation(Location location) {
         assumeCoreLocation(location);
         try {
-            Class<?> locations = Class.forName("com.oracle.truffle.object.CoreLocations");
+            Class<?> locations = Class.forName("com.oracle.truffle.object.LocationImpl");
             Method getInternalLocationMethod = Arrays.stream(locations.getDeclaredMethods()).filter(
                             m -> m.getName().equals("getInternalLocation")).findFirst().get();
             getInternalLocationMethod.setAccessible(true);
-            return (Location) getInternalLocationMethod.invoke(null, location);
+            return (Location) getInternalLocationMethod.invoke(location);
         } catch (ClassNotFoundException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
             throw new AssertionError(e);
         }
