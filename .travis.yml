@@ -21,6 +21,7 @@ env:
     - JVMCI_VERSION="jvmci-20.2-b02"
     - JDK8_UPDATE_VERSION="252"
     - JDK8_UPDATE_VERSION_SUFFIX="+09"
+    - JDK11_VERSION="11.0.7+10"
 
 matrix:
   include:
@@ -45,7 +46,24 @@ matrix:
           - libc++1
           - libc++abi1
   - os: linux
-    env: JDK="jdk8" GATE="build,debuginfotest" PRIMARY="substratevm"
+    env:
+      - JDK="jdk8" GATE="build,debuginfotest" PRIMARY="substratevm"
+    addons:
+      apt:
+        packages:
+          - gdb
+  - os: linux
+    env:
+      - JDK="jdk11" GATE="build,debuginfotest" PRIMARY="substratevm"
+    addons:
+      apt:
+        packages:
+          - gdb
+  - os: linux
+    env:
+      - JDK="jdk11" GATE="build,debuginfotest" PRIMARY="substratevm"
+    arch:
+      - arm64
     addons:
       apt:
         packages:
@@ -97,22 +115,22 @@ install:
         fi
       fi
   - |
+      if [ "${TRAVIS_CPU_ARCH}" == "arm64" ]
+      then
+        export TRAVIS_CPU_ARCH="aarch64"
+      fi
+      JDK_TAR=${TRAVIS_BUILD_DIR}/../jdk.tar.gz
       if [ "${JDK}" == "jdk8" ]
       then
-        JDK_TAR=${TRAVIS_BUILD_DIR}/../jdk.tar.gz
-        wget https://github.com/graalvm/graal-jvmci-8/releases/download/${JVMCI_VERSION}/openjdk-8u${JDK8_UPDATE_VERSION}${JDK8_UPDATE_VERSION_SUFFIX}-${JVMCI_VERSION}-linux-amd64.tar.gz -O ${JDK_TAR}
-        tar -C ${TRAVIS_BUILD_DIR}/.. -xzf ${JDK_TAR}
-        export JAVA_HOME=${TRAVIS_BUILD_DIR}/../openjdk1.8.0_${JDK8_UPDATE_VERSION}-${JVMCI_VERSION}
+        wget https://github.com/graalvm/graal-jvmci-8/releases/download/${JVMCI_VERSION}/openjdk-8u${JDK8_UPDATE_VERSION}${JDK8_UPDATE_VERSION_SUFFIX}-${JVMCI_VERSION}-linux-${TRAVIS_CPU_ARCH}.tar.gz -O ${JDK_TAR}
       fi
-  - |
       if [ "${JDK}" == "jdk11" ]
       then
-        # Set the JAVA_HOME to openjdk11 if it is not set
-        if [ "${JAVA_HOME}" == "" ]
-        then
-          export JAVA_HOME=$(realpath $(dirname $(which java | xargs realpath))/../)
-        fi
+      wget https://github.com/graalvm/labs-openjdk-11/releases/download/${JVMCI_VERSION}/labsjdk-ce-${JDK11_VERSION}-${JVMCI_VERSION}-linux-${TRAVIS_CPU_ARCH}.tar.gz -O ${JDK_TAR}
       fi
+      mkdir -p ${TRAVIS_BUILD_DIR}/../jdk
+      tar -C ${TRAVIS_BUILD_DIR}/../jdk -xzf ${JDK_TAR} --strip-components=1
+      export JAVA_HOME=${TRAVIS_BUILD_DIR}/../jdk
 
 script:
   - echo ${JAVA_HOME}
