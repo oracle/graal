@@ -87,7 +87,7 @@ public interface EconomicMap<K, V> extends UnmodifiableEconomicMap<K, V> {
      *
      * @param key key with which the specified value is to be associated
      * @param value value to be associated with the specified key
-     * 
+     *
      * @return the previous value associated with the specified key, or {@code null} if there was no
      *         mapping for the key. (A {@code null} return can also indicate that the map previously
      *         associated {@code null} with the key, if the implementation supports null values.)

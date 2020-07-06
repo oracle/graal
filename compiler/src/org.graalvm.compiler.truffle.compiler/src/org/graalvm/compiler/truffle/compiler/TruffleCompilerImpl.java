@@ -471,10 +471,12 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
             // compilation time and memory usage reported by printer
             printer.finish(compilationResult);
         } catch (Throwable t) {
-            // Catch non-permanent bailouts due to "failed dependencies" aka "invalid assumptions"
-            // during code installation. Since there's no specific exception for such cases, it's
-            // assumed that non-permanent, non-cancellation bailouts are due to "invalid
-            // dependencies" during code installation.
+            /*
+             * Catch non-permanent bailouts due to "failed dependencies" aka "invalid assumptions"
+             * during code installation. Since there's no specific exception for such cases, it's
+             * assumed that non-permanent, non-cancellation bailouts are due to "invalid
+             * dependencies" during code installation.
+             */
             if (t instanceof BailoutException && !(t instanceof CancellationBailoutException)) {
                 BailoutException bailout = (BailoutException) t;
 
@@ -485,12 +487,13 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
                         assert graph.method() != null;
                         EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache = partialEvaluator.getOrCreateEncodedGraphCache();
 
-                        // At this point, the cache containing invalid graphs may be already
-                        // purged/dropped, but there's no way to know in which cache the invalid
-                        // method is/was present, so all encoded graphs, including the root and all
-                        // inlined methods must be evicted.
-                        // These bailouts (invalid dependencies) are very rare, the over-evicting
-                        // impact is negligible.
+                        /*
+                         * At this point, the cache containing invalid graphs may be already
+                         * purged/dropped, but there's no way to know in which cache the invalid
+                         * method is/was present, so all encoded graphs, including the root and all
+                         * inlined methods must be evicted. These bailouts (invalid dependencies)
+                         * are very rare, the over-evicting impact is negligible.
+                         */
                         if (!graphCache.isEmpty()) {
                             debug.log(DebugContext.VERBOSE_LEVEL, "Evict root %s", graph.method());
                             graphCache.removeKey(graph.method());
