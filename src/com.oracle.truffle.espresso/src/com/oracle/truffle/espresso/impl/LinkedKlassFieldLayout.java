@@ -98,7 +98,7 @@ final class LinkedKlassFieldLayout {
         }
 
         PrimitiveFieldIndexes instancePrimitiveFieldIndexes = new PrimitiveFieldIndexes(fieldCounter.instancePrimitiveFields, superTotalInstanceByteCount, leftoverHoles);
-        PrimitiveFieldIndexes staticPrimitiveFieldIndexes = new PrimitiveFieldIndexes(fieldCounter.staticPrimitiveFields, superTotalStaticByteCount, leftoverHoles);
+        PrimitiveFieldIndexes staticPrimitiveFieldIndexes = new PrimitiveFieldIndexes(fieldCounter.staticPrimitiveFields, superTotalStaticByteCount, null);
 
         LinkedField[] instanceFields = new LinkedField[fieldCounter.instanceFields];
         LinkedField[] staticFields = new LinkedField[fieldCounter.staticFields];
@@ -265,7 +265,11 @@ final class LinkedKlassFieldLayout {
             for (int i = 1; i < N_PRIMITIVES; i++) {
                 offsets[i] = offsets[i - 1] + primitiveFields[i - 1] * order[i - 1].getByteCount();
             }
-            schedule = FillingSchedule.create(superTotalByteCount, offsets[0], primitiveFields, leftoverHoles);
+            if (leftoverHoles == null) {
+                schedule = FillingSchedule.create(superTotalByteCount, offsets[0], primitiveFields);
+            } else {
+                schedule = FillingSchedule.create(superTotalByteCount, offsets[0], primitiveFields, leftoverHoles);
+            }
         }
 
         int getIndex(JavaKind kind) {
