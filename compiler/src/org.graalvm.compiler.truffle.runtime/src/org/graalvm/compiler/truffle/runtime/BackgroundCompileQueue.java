@@ -300,7 +300,7 @@ public class BackgroundCompileQueue {
     /**
      * Called when a compiler thread becomes idle for more than {@code delayMillis}.
      */
-    public void compilerThreadIdled() {
+    protected void compilerThreadIdled() {
         // nop
     }
 }

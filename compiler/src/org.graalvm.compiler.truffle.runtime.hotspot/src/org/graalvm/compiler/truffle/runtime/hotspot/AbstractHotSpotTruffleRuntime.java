@@ -116,7 +116,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         }
 
         @Override
-        public void compilerThreadIdled() {
+        protected void compilerThreadIdled() {
             TruffleCompiler compiler = ((AbstractHotSpotTruffleRuntime) runtime).truffleCompiler;
             ((HotSpotTruffleCompiler) compiler).purgeCaches();
         }
