@@ -44,8 +44,8 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 
 abstract class GuestToHostRootNode extends RootNode {
@@ -105,7 +105,7 @@ abstract class GuestToHostRootNode extends RootNode {
         if (node.isAdoptable()) {
             encapsulatingNode = node;
         } else {
-            encapsulatingNode = NodeUtil.getCurrentEncapsulatingNode();
+            encapsulatingNode = EncapsulatingNodeReference.getCurrent().get();
         }
         return EngineAccessor.RUNTIME.callInlined(encapsulatingNode, target, arguments);
     }

@@ -84,8 +84,8 @@ public abstract class IndirectCallNode extends Node {
 
     /**
      * Returns an uncached version of an indirect call node. Uncached versions of an indirect call
-     * node use the {@link NodeUtil#getCurrentEncapsulatingNode() current encapsulating node} as
-     * source location.
+     * node use the {@link EncapsulatingNodeReference#get() current encapsulating node} as source
+     * location.
      *
      * @since 19.0
      */

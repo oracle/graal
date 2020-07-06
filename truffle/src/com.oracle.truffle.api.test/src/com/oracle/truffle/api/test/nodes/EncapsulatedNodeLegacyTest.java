@@ -47,10 +47,6 @@ import static org.junit.Assert.fail;
 
 import java.util.Iterator;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 import org.junit.Test;
@@ -61,12 +57,13 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 
-public class EncapsulatedNodeTest {
+@SuppressWarnings("deprecation")
+public class EncapsulatedNodeLegacyTest {
 
     @Test
     @SuppressWarnings("unchecked")
@@ -99,18 +96,6 @@ public class EncapsulatedNodeTest {
         frame = iterator.next();
         assertSame(root, frame.getTarget());
         assertSame(callLocation, frame.getLocation());
-    }
-
-    @Test
-    public void testAccessWrongThread() throws InterruptedException, ExecutionException {
-        EncapsulatingNodeReference ref = EncapsulatingNodeReference.getCurrent();
-        ExecutorService service = Executors.newFixedThreadPool(1);
-        service.submit(() -> {
-            assertAssertionError(() -> ref.set(null));
-            assertAssertionError(() -> ref.get());
-        }).get();
-        service.shutdown();
-        service.awaitTermination(10000, TimeUnit.MILLISECONDS);
     }
 
     @Test
@@ -153,8 +138,7 @@ public class EncapsulatedNodeTest {
         Node node = new Node() {
         };
 
-        EncapsulatingNodeReference current = EncapsulatingNodeReference.getCurrent();
-        assertAssertionError(() -> current.set(node));
+        assertAssertionError(() -> NodeUtil.pushEncapsulatingNode(node));
     }
 
     @Test
@@ -166,8 +150,7 @@ public class EncapsulatedNodeTest {
                 return false;
             }
         };
-        EncapsulatingNodeReference current = EncapsulatingNodeReference.getCurrent();
-        assertAssertionError(() -> current.set(node));
+        assertAssertionError(() -> NodeUtil.pushEncapsulatingNode(node));
     }
 
     @Test
@@ -182,42 +165,39 @@ public class EncapsulatedNodeTest {
         };
         otherNode.adoptChildren();
 
-        EncapsulatingNodeReference current = EncapsulatingNodeReference.getCurrent();
-        assertAssertionError(() -> current.set(node));
+        assertAssertionError(() -> NodeUtil.pushEncapsulatingNode(node));
     }
 
     @Test
     @SuppressWarnings("unchecked")
     public void testNullAllowed() {
-        EncapsulatingNodeReference current = EncapsulatingNodeReference.getCurrent();
-        Node prev = current.set(null);
-        assertNull(current.get());
-        current.set(prev);
+        Node prev = NodeUtil.pushEncapsulatingNode(null);
+        assertNull(prev);
+        NodeUtil.popEncapsulatingNode(null);
     }
 
     @Test
     public void testGetEncapsulatingNode() {
-        EncapsulatingNodeReference current = EncapsulatingNodeReference.getCurrent();
-        Node node = current.get();
+        Node node = NodeUtil.getCurrentEncapsulatingNode();
         assertNull(node);
         Node node0 = adopt(new Node() {
         });
         Node node1 = adopt(new Node() {
         });
 
-        Node prev0 = current.set(node0);
+        Node prev0 = NodeUtil.pushEncapsulatingNode(node0);
         assertSame(null, prev0);
-        assertSame(node0, current.get());
+        assertSame(node0, NodeUtil.getCurrentEncapsulatingNode());
 
-        Node prev1 = current.set(node1);
+        Node prev1 = NodeUtil.pushEncapsulatingNode(node1);
         assertSame(node0, prev1);
-        assertSame(node1, current.get());
-        current.set(prev1);
+        assertSame(node1, NodeUtil.getCurrentEncapsulatingNode());
+        NodeUtil.popEncapsulatingNode(prev1);
 
-        assertSame(node0, current.get());
-        current.set(prev0);
+        assertSame(node0, NodeUtil.getCurrentEncapsulatingNode());
+        NodeUtil.popEncapsulatingNode(prev0);
 
-        assertSame(null, current.get());
+        assertSame(null, NodeUtil.getCurrentEncapsulatingNode());
     }
 
     private static void assertAssertionError(Runnable r) {
@@ -242,12 +222,11 @@ public class EncapsulatedNodeTest {
 
     @TruffleBoundary
     public static Object boundary(Node callNode, Supplier<Object> run) {
-        EncapsulatingNodeReference current = EncapsulatingNodeReference.getCurrent();
-        Node prev = current.set(callNode);
+        Node prev = NodeUtil.pushEncapsulatingNode(callNode);
         try {
             return run.get();
         } finally {
-            current.set(prev);
+            NodeUtil.popEncapsulatingNode(prev);
         }
     }
 

@@ -57,6 +57,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.DefaultCompilerOptions;
 import com.oracle.truffle.api.nodes.ControlFlowException;
+import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
@@ -344,11 +345,12 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     @Override
     public final Object call(Object... args) {
-        Node encapsulatingNode = NodeUtil.pushEncapsulatingNode(null);
+        EncapsulatingNodeReference encapsulating = EncapsulatingNodeReference.getCurrent();
+        Node encapsulatingNode = encapsulating.set(null);
         try {
             return callIndirect(encapsulatingNode, args);
         } finally {
-            NodeUtil.popEncapsulatingNode(encapsulatingNode);
+            encapsulating.set(encapsulatingNode);
         }
     }
 

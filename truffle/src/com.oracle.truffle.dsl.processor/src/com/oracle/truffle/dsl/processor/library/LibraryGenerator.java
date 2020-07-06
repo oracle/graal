@@ -465,8 +465,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
                 builder.returnTrue();
             } else {
                 GeneratorUtils.addBoundaryOrTransferToInterpreter(execute, builder);
-                builder.startStatement().type(types.Node).string(" prev_ = ").//
-                                startStaticCall(types.NodeUtil, "pushEncapsulatingNode").string("getParent()").end().end();
+                GeneratorUtils.pushEncapsulatingNode(builder, "getParent()");
                 builder.startTryBlock();
                 builder.startReturn().startCall("INSTANCE.getUncached(receiver_)", execute.getSimpleName().toString());
                 for (VariableElement var : execute.getParameters()) {
@@ -474,7 +473,7 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
                 }
                 builder.end().end();
                 builder.end().startFinallyBlock();
-                builder.startStatement().startStaticCall(types.NodeUtil, "popEncapsulatingNode").string("prev_").end().end();
+                GeneratorUtils.popEncapsulatingNode(builder);
                 builder.end();
                 ExportsGenerator.injectCachedAssertions(model, execute);
             }
