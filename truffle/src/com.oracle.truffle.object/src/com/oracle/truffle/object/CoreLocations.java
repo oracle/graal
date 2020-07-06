@@ -990,10 +990,6 @@ abstract class CoreLocations {
         }
     }
 
-    static boolean isSameLocation(CoreLocation loc1, CoreLocation loc2) {
-        return loc1 == loc2 || getInternalLocation(loc1).equals(getInternalLocation(loc2));
-    }
-
     static CoreLocation getInternalLocation(CoreLocation loc) {
         return loc instanceof CoreLocations.PrimitiveLocationDecorator ? (CoreLocation) ((CoreLocations.PrimitiveLocationDecorator) loc).getInternalLocation() : loc;
     }
