@@ -89,7 +89,6 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.code.CGlobalDataReference;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
-import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionValues;
@@ -408,13 +407,13 @@ public abstract class NativeBootImage extends AbstractBootImage {
      */
     @Override
     @SuppressWarnings("try")
-    public void build(DebugContext debug, ImageHeapLayouter layouter) {
+    public void build(DebugContext debug) {
         try (DebugContext.Scope buildScope = debug.scope("NativeBootImage.build")) {
             final CGlobalDataFeature cGlobals = CGlobalDataFeature.singleton();
 
             long roSectionSize = codeCache.getAlignedConstantsSize();
             long rwSectionSize = ConfigurationValues.getObjectLayout().alignUp(cGlobals.getSize());
-            ImageHeapLayoutInfo heapLayout = layouter.layout(heap, objectFile.getPageSize());
+            ImageHeapLayoutInfo heapLayout = heap.getLayouter().layout(heap, objectFile.getPageSize());
             // after this point, the layout is final and must not be changed anymore
             assert !hasDuplicatedObjects(heap.getObjects()) : "heap.getObjects() must not contain any duplicates";
 
@@ -489,7 +488,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
 
             // We print the heap statistics after the heap was successfully written because this
             // could modify objects that will be part of the image heap.
-            printHeapStatistics(layouter.getPartitions());
+            printHeapStatistics(heap.getLayouter().getPartitions());
         }
 
         // [Footnote 1]

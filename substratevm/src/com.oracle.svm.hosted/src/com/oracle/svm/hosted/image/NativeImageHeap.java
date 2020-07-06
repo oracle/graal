@@ -173,6 +173,10 @@ public final class NativeImageHeap implements ImageHeap {
         return objectLayout;
     }
 
+    public ImageHeapLayouter getLayouter() {
+        return heapLayouter;
+    }
+
     @Fold
     static boolean useHeapBase() {
         return SubstrateOptions.SpawnIsolates.getValue() && ImageSingletons.lookup(CompressEncoding.class).hasBase();

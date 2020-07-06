@@ -24,9 +24,14 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import java.nio.ByteBuffer;
+import java.util.List;
+
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.genscavenge.ChunkedImageHeapAllocator.Chunk;
 import com.oracle.svm.core.image.AbstractImageHeapLayouter;
 import com.oracle.svm.core.image.ImageHeap;
 
@@ -35,6 +40,7 @@ public class ChunkedImageHeapLayouter extends AbstractImageHeapLayouter<ChunkedI
     private final ImageHeapInfo heapInfo;
     private final boolean compressedNullPadding;
     private final long hugeObjectThreshold;
+    private ChunkedImageHeapAllocator allocator;
 
     public ChunkedImageHeapLayouter(ImageHeapInfo heapInfo, boolean compressedNullPadding) {
         this.heapInfo = heapInfo;
@@ -60,7 +66,7 @@ public class ChunkedImageHeapLayouter extends AbstractImageHeapLayouter<ChunkedI
     @Override
     protected void doLayout(ImageHeap imageHeap) {
         assert !compressedNullPadding || AlignedHeapChunk.getObjectsStartOffset().aboveThan(0) : "Expecting header to pad start so object offsets are strictly greater than 0";
-        ChunkedImageHeapAllocator allocator = new ChunkedImageHeapAllocator(0);
+        allocator = new ChunkedImageHeapAllocator(0);
         for (ChunkedImageHeapPartition partition : getPartitions()) {
             partition.layout(allocator);
         }
@@ -76,5 +82,31 @@ public class ChunkedImageHeapLayouter extends AbstractImageHeapLayouter<ChunkedI
                         getReadOnlyRelocatable().firstObject, getReadOnlyRelocatable().lastObject, getWritablePrimitive().firstObject, getWritablePrimitive().lastObject,
                         getWritableReference().firstObject, getWritableReference().lastObject, getWritableHuge().firstObject, getWritableHuge().lastObject,
                         getReadOnlyHuge().firstObject, getReadOnlyHuge().lastObject);
+    }
+
+    @Override
+    public void writeMetadata(ByteBuffer imageHeapBytes) {
+        ImageHeapChunkWriter writer = new ImageHeapChunkWriter();
+        writeHeaders(imageHeapBytes, writer, allocator.getAlignedChunks());
+        writeHeaders(imageHeapBytes, writer, allocator.getUnalignedChunks());
+    }
+
+    private static void writeHeaders(ByteBuffer imageHeapBytes, ImageHeapChunkWriter writer, List<? extends Chunk> chunks) {
+        Chunk previous = null;
+        Chunk current = null;
+        for (Chunk next : chunks) {
+            writeHeader(imageHeapBytes, writer, previous, current, next);
+            previous = current;
+            current = next;
+        }
+        writeHeader(imageHeapBytes, writer, previous, current, null);
+    }
+
+    private static void writeHeader(ByteBuffer imageHeapBytes, ImageHeapChunkWriter writer, Chunk previous, Chunk current, Chunk next) {
+        if (current != null) {
+            long offsetToPrevious = (previous != null) ? (previous.begin - current.begin) : 0;
+            long offsetToNext = (next != null) ? (next.begin - current.begin) : 0;
+            writer.writeHeader(imageHeapBytes, NumUtil.safeToInt(current.begin), current.getTopOffset(), current.getEndOffset(), offsetToPrevious, offsetToNext);
+        }
     }
 }

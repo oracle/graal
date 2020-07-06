@@ -87,9 +87,12 @@ public final class NativeImageHeapWriter {
                 assert !heap.isBlacklisted(info.getObject());
                 writeObject(info, buffer);
             }
+
             // Only static fields that are writable get written to the native image heap,
             // the read-only static fields have been inlined into the code.
             writeStaticFields(buffer);
+
+            heap.getLayouter().writeMetadata(buffer.getByteBuffer());
         }
         return sectionOffsetOfARelocatablePointer;
     }

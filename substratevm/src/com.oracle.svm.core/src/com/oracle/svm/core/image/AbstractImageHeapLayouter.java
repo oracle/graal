@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.image;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -117,6 +118,11 @@ public abstract class AbstractImageHeapLayouter<T extends AbstractImageHeapLayou
         }
 
         return createLayoutInfo();
+    }
+
+    @Override
+    public void writeMetadata(ByteBuffer imageHeapBytes) {
+        // For implementation in subclasses, if necessary.
     }
 
     protected abstract void doLayout(ImageHeap imageHeap);
