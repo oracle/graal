@@ -284,7 +284,7 @@ public final class CardTable {
                     }
                     witness.newline();
                     HeapChunk.Header<?> objChunk = AlignedHeapChunk.getEnclosingChunk(obj);
-                    witness.string("  objChunk: ").hex(objChunk).string("  objChunk space: ").string(objChunk.getSpace().getName()).string("  contains young: ").bool(containsYoung).newline();
+                    witness.string("  objChunk: ").hex(objChunk).string("  objChunk space: ").string(HeapChunk.getSpace(objChunk).getName()).string("  contains young: ").bool(containsYoung).newline();
                     /* Repeat the search for old-to-young references, this time as a witness. */
                     getReferenceToYoungObjectVisitor().witnessReferenceToYoungObject(obj);
                     witness.string(" returns false for index: ").unsigned(index).string("]").newline();
@@ -413,14 +413,15 @@ public final class CardTable {
                 failure.string("  objRef: ").hex(objRef).string("  has no enclosing chunk").string("]").newline();
                 return false;
             }
-            Space chunkSpace = objChunk.getSpace();
+            Space chunkSpace = HeapChunk.getSpace(objChunk);
             trace.string("  chunkSpace: ").object(chunkSpace).string(" ").string(chunkSpace.getName());
             if (chunkSpace.isYoungSpace()) {
                 found = true;
                 if (witnessForDebugging) {
                     Log witness = Log.log().string("[ReferenceToYoungObjectReferenceVisitor.visitObjectReference:").string("  witness").newline();
                     witness.string("  objRef: ").hex(objRef).string("  p: ").hex(p).string("  obj: ").object(obj).newline();
-                    witness.string("  chunk: ").hex(objChunk).string("  chunk.getSpace(): ").string(objChunk.getSpace().getName()).string("  found: true  returns false").string("]").newline();
+                    witness.string("  chunk: ").hex(objChunk).string("  chunk.getSpace(): ").string(HeapChunk.getSpace(objChunk).getName())
+                                    .string("  found: true  returns false").string("]").newline();
                 }
                 return true;
             }
