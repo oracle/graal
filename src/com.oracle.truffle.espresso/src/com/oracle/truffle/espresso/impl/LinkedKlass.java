@@ -36,7 +36,7 @@ import com.oracle.truffle.espresso.runtime.Attribute;
 // Structural shareable klass (superklass in superinterfaces resolved and linked)
 // contains shape, field locations.
 // Klass shape, vtable and field locations can be computed at the structural level.
-public final class LinkedKlass {
+final class LinkedKlass {
 
     public static final LinkedKlass[] EMPTY_ARRAY = new LinkedKlass[0];
     private final ParserKlass parserKlass;
@@ -52,26 +52,9 @@ public final class LinkedKlass {
 
     private final boolean hasFinalizer;
 
-    // instance fields declared in this class (includes hidden fields)
-    @CompilationFinal(dimensions = 1) //
-    private final LinkedField[] instanceFields;
-
-    // static fields declared in this class (no hidden fields)
-    @CompilationFinal(dimensions = 1) //
-    private final LinkedField[] staticFields;
-
-    @CompilationFinal(dimensions = 2) //
-    private final int[][] leftoverHoles;
-
-    private final int primitiveFieldTotalByteCount;
-    private final int primitiveStaticFieldTotalByteCount;
-
-    private final int fieldTableLength;
-    private final int objectFields;
-    private final int staticObjectFields;
+    private final LinkedKlassFieldLayout fieldLayout;
 
     public LinkedKlass(ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces) {
-
         this.parserKlass = parserKlass;
         this.superKlass = superKlass;
         this.interfaces = interfaces;
@@ -97,21 +80,10 @@ public final class LinkedKlass {
 
         this.methods = linkedMethods;
 
-        LinkedKlassFieldLayout fieldLayout = LinkedKlassFieldLayout.create(this);
-
-        this.instanceFields = fieldLayout.instanceFields;
-        this.staticFields = fieldLayout.staticFields;
-
-        this.primitiveFieldTotalByteCount = fieldLayout.primitiveFieldTotalByteCount;
-        this.primitiveStaticFieldTotalByteCount = fieldLayout.primitiveStaticFieldTotalByteCount;
-        this.fieldTableLength = fieldLayout.fieldTableLength;
-        this.objectFields = fieldLayout.objectFields;
-        this.staticObjectFields = fieldLayout.staticObjectFields;
-
-        this.leftoverHoles = fieldLayout.leftoverHoles;
+        fieldLayout = LinkedKlassFieldLayout.create(this);
     }
 
-    int getFlags() {
+    public int getFlags() {
         int flags = parserKlass.getFlags();
         if (hasFinalizer) {
             flags |= ACC_FINALIZER;
@@ -119,7 +91,7 @@ public final class LinkedKlass {
         return flags;
     }
 
-    ConstantPool getConstantPool() {
+    public ConstantPool getConstantPool() {
         return parserKlass.getConstantPool();
     }
 
@@ -127,7 +99,7 @@ public final class LinkedKlass {
         return parserKlass.getAttribute(name);
     }
 
-    Symbol<Type> getType() {
+    public Symbol<Type> getType() {
         return parserKlass.getType();
     }
 
@@ -160,34 +132,34 @@ public final class LinkedKlass {
     }
 
     public LinkedField[] getInstanceFields() {
-        return instanceFields;
+        return fieldLayout.instanceFields;
     }
 
     protected LinkedField[] getStaticFields() {
-        return staticFields;
+        return fieldLayout.staticFields;
     }
 
     public int getFieldTableLength() {
-        return fieldTableLength;
+        return fieldLayout.fieldTableLength;
     }
 
     public int getObjectFieldsCount() {
-        return objectFields;
+        return fieldLayout.objectFields;
     }
 
     public int getPrimitiveFieldTotalByteCount() {
-        return primitiveFieldTotalByteCount;
+        return fieldLayout.primitiveFieldTotalByteCount;
     }
 
     public int getStaticObjectFieldsCount() {
-        return staticObjectFields;
+        return fieldLayout.staticObjectFields;
     }
 
     public int getPrimitiveStaticFieldTotalByteCount() {
-        return primitiveStaticFieldTotalByteCount;
+        return fieldLayout.primitiveStaticFieldTotalByteCount;
     }
 
     public int[][] getLeftoverHoles() {
-        return leftoverHoles;
+        return fieldLayout.leftoverHoles;
     }
 }

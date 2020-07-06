@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.impl;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
@@ -35,9 +36,14 @@ final class LinkedKlassFieldLayout {
     private static final int N_PRIMITIVES = 8;
     private static final JavaKind[] order = {JavaKind.Long, JavaKind.Double, JavaKind.Int, JavaKind.Float, JavaKind.Short, JavaKind.Char, JavaKind.Byte, JavaKind.Boolean};
 
+    // instance fields declared in the corresponding LinkedKlass (includes hidden fields)
+    @CompilerDirectives.CompilationFinal(dimensions = 1) //
     final LinkedField[] instanceFields;
+    // static fields declared in the corresponding LinkedKlass (no hidden fields)
+    @CompilerDirectives.CompilationFinal(dimensions = 1) //
     final LinkedField[] staticFields;
 
+    @CompilerDirectives.CompilationFinal(dimensions = 2) //
     final int[][] leftoverHoles;
 
     final int primitiveFieldTotalByteCount;
