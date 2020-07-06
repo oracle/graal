@@ -80,6 +80,7 @@ import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
+import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
@@ -359,7 +360,12 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
     }
 
     @Override
+    public final HotSpotPartialEvaluator getPartialEvaluator() {
+        return (HotSpotPartialEvaluator) super.getPartialEvaluator();
+    }
+
+    @Override
     public void purgeCaches() {
-        partialEvaluator.purgeEncodedGraphCache();
+        getPartialEvaluator().purgeEncodedGraphCache();
     }
 }

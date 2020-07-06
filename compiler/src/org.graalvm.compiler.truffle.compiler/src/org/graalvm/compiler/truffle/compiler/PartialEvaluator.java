@@ -25,7 +25,6 @@
 package org.graalvm.compiler.truffle.compiler;
 
 import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.getPolyglotOptionValue;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.EncodedGraphCacheCapacity;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExcludeAssertions;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InlineAcrossTruffleBoundary;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.IterativePartialEscape;
@@ -36,13 +35,7 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Print
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TracePerformanceWarnings;
 
 import java.net.URI;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -136,9 +129,6 @@ public abstract class PartialEvaluator {
     final ResolvedJavaMethod callBoundary;
     private volatile GraphBuilderConfiguration configForParsing;
 
-    private final AtomicReference<EconomicMap<ResolvedJavaMethod, EncodedGraph>> graphCacheRef;
-    private int encodedGraphCacheCapacity;
-
     /**
      * Holds instrumentation options initialized in
      * {@link #initialize(org.graalvm.options.OptionValues)} method before the first compilation.
@@ -174,47 +164,9 @@ public abstract class PartialEvaluator {
         this.configPrototype = createGraphBuilderConfig(configForRoot, true);
         this.decodingInvocationPlugins = createDecodingInvocationPlugins(configForRoot.getPlugins());
         this.nodePlugins = createNodePlugins(configForRoot.getPlugins());
-        this.graphCacheRef = new AtomicReference<>();
     }
 
-    private Map<ResolvedJavaMethod, EncodedGraph> createEncodedGraphMap() {
-        if (encodedGraphCacheCapacity < 0) {
-            // Unbounded cache.
-            return new ConcurrentHashMap<>();
-        }
-
-        // Access-based LRU bounded cache. The overhead of the synchronized map is negligible
-        // compared to the cost of re-parsing the graphs.
-        return Collections.synchronizedMap(
-                        new LinkedHashMap<ResolvedJavaMethod, EncodedGraph>(16, 0.75f, true) {
-                            @Override
-                            protected boolean removeEldestEntry(Map.Entry<ResolvedJavaMethod, EncodedGraph> eldest) {
-                                // encodedGraphCacheCapacity < 0 => unbounded capacity
-                                return (encodedGraphCacheCapacity >= 0) && size() > encodedGraphCacheCapacity;
-                            }
-                        });
-    }
-
-    public EconomicMap<ResolvedJavaMethod, EncodedGraph> getOrCreateEncodedGraphCache() {
-        if (encodedGraphCacheCapacity == 0) {
-            // The encoded graph cache is disabled across different compilations. The returned map
-            // can still be used and propagated within the same compilation unit.
-            return EconomicMap.create();
-        }
-        EconomicMap<ResolvedJavaMethod, EncodedGraph> cache;
-        do {
-            cache = graphCacheRef.get();
-        } while (cache == null &&
-                        !graphCacheRef.compareAndSet(null, cache = EconomicMap.wrapMap(createEncodedGraphMap())));
-        assert cache != null;
-        return cache;
-    }
-
-    public void purgeEncodedGraphCache() {
-        graphCacheRef.set(null);
-    }
-
-    void initialize(OptionValues options) {
+    protected void initialize(OptionValues options) {
         instrumentationCfg = new InstrumentPhase.InstrumentationConfiguration(options);
         boolean needSourcePositions = TruffleCompilerOptions.getPolyglotOptionValue(options, NodeSourcePositions) ||
                         instrumentationCfg.instrumentBranches ||
@@ -222,7 +174,10 @@ public abstract class PartialEvaluator {
                         !TruffleCompilerOptions.getPolyglotOptionValue(options, TracePerformanceWarnings).isEmpty();
         configForParsing = configPrototype.withNodeSourcePosition(configPrototype.trackNodeSourcePosition() || needSourcePositions).withOmitAssertions(
                         TruffleCompilerOptions.getPolyglotOptionValue(options, ExcludeAssertions));
-        encodedGraphCacheCapacity = TruffleCompilerOptions.getPolyglotOptionValue(options, EncodedGraphCacheCapacity);
+    }
+
+    public EconomicMap<ResolvedJavaMethod, EncodedGraph> getOrCreateEncodedGraphCache() {
+        return EconomicMap.create();
     }
 
     /**
