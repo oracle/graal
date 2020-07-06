@@ -284,7 +284,7 @@ public class BackgroundCompileQueue {
     private final class IdlingPriorityBlockingQueue<E> extends PriorityBlockingQueue<E> {
         @Override
         public E take() throws InterruptedException {
-            while (compilationExecutorService.allowsCoreThreadTimeOut()) {
+            while (!compilationExecutorService.allowsCoreThreadTimeOut()) {
                 E elem = poll(delayMillis, TimeUnit.MILLISECONDS);
                 if (elem == null) {
                     compilerThreadIdled();
