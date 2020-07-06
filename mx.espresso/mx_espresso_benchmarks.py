@@ -111,24 +111,3 @@ mx_benchmark.java_vm_registry.add_vm(EspressoVm('inline-accessors', ['--experime
 mx_benchmark.java_vm_registry.add_vm(EspressoMinHeapVm(0, 0, 64, 'infinite-overhead', []), _suite)
 mx_benchmark.java_vm_registry.add_vm(EspressoMinHeapVm(1.5, 0, 2048, '1.5-overhead', []), _suite)
 
-
-def createBenchmarkShortcut(benchSuite, args):
-    if not args:
-        benchname = "*"
-        remaining_args = []
-    elif args[0] == "--":
-        # not a benchmark name
-        benchname = "*"
-        remaining_args = args
-    else:
-        benchname = args[0]
-        remaining_args = args[1:]
-    return mx_benchmark.benchmark([benchSuite + ":" + benchname] + remaining_args)
-
-
-mx.update_commands(_suite, {
-    'awfy': [
-      lambda args: createBenchmarkShortcut("awfy", args),
-      '[<benchmarks>|*] [-- [VM options] ] [-- [AWFY options] ]]'
-    ],
-})
