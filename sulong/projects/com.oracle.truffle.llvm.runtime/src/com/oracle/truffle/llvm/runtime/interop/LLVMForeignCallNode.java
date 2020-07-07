@@ -66,8 +66,6 @@ public class LLVMForeignCallNode extends RootNode {
 
         abstract Object[] execute(Object[] arguments, StackPointer stackPointer) throws ArityException;
 
-        static final int UNKNOWN = -1;
-
         @Children final LLVMGetInteropParamNode[] toLLVM;
         final int numberOfSourceArguments;
 
@@ -156,18 +154,27 @@ public class LLVMForeignCallNode extends RootNode {
                 }
             }
 
-            return PackForeignArgumentsNodeGen.create(toLLVM, sourceType == null ? UNKNOWN : sourceType.getNumberOfParameters());
+            return PackForeignArgumentsNodeGen.create(toLLVM, sourceType);
         }
 
-        PackForeignArgumentsNode(LLVMGetInteropParamNode[] toLLVM, int numberOfSourceArguments) {
+        PackForeignArgumentsNode(LLVMGetInteropParamNode[] toLLVM, LLVMSourceFunctionType sourceType) {
             this.toLLVM = toLLVM;
-            this.numberOfSourceArguments = numberOfSourceArguments;
+            if (sourceType == null) {
+                /*
+                 * We don't have debug info, so we assume that there is a 1:1 mapping between source
+                 * and bitcode arguments. We also assume that the number of passed in arguments is
+                 * the same as the number of source arguments.
+                 */
+                this.numberOfSourceArguments = toLLVM.length;
+            } else {
+                this.numberOfSourceArguments = sourceType.getNumberOfParameters();
+            }
         }
 
         @Specialization
         @ExplodeLoop
         Object[] packNonVarargs(Object[] arguments, StackPointer stackPointer, @Cached BranchProfile exceptionProfile) throws ArityException {
-            if (numberOfSourceArguments != UNKNOWN && arguments.length < numberOfSourceArguments) {
+            if (arguments.length < numberOfSourceArguments) {
                 exceptionProfile.enter();
                 throw ArityException.create(numberOfSourceArguments, arguments.length);
             }
