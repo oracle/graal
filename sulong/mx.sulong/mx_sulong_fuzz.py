@@ -165,6 +165,12 @@ def ll_reduce(args=None, out=None):
                 mx_sulong.runLLVM([tmp_out], timeout=lli_timeout, nonZeroIsFatal=False, out=o, err=e)
 
         shutil.copy(parsed_args.input, tmp_ll)
+
+        # check whether the input is interesting
+        orig_interesting = subprocess.call(shlex.split(parsed_args.interestingness_test) + [tmp_ll])
+        if not orig_interesting:
+            mx.abort("Input program is not interesting!")
+
         run_lli(tmp_ll, tmp_sulong_out_original, tmp_sulong_err_original)
         while (not parsed_args.timeout or time.time()-starttime < parsed_args.timeout) and \
                  (not starttime_stabilized or time.time()-starttime_stabilized < parsed_args.timeout_stabilized):
