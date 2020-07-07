@@ -162,7 +162,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
                     SnippetReflectionProvider snippetReflection) {
         super(runtime, plugins, suites, lirSuites, backend, firstTierSuites, firstTierLirSuites, firstTierProviders, snippetReflection);
         this.hotspotGraalRuntime = hotspotGraalRuntime;
-        installTruffleCallBoundaryMethods();
+        installTruffleCallBoundaryMethods(null);
     }
 
     @Override
@@ -214,8 +214,8 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
      * @see #compileTruffleCallBoundaryMethod
      */
     @Override
-    @SuppressWarnings("try")
-    public void installTruffleCallBoundaryMethods() {
+    @SuppressWarnings({"try", "unused"})
+    public void installTruffleCallBoundaryMethods(CompilableTruffleAST compilable) {
         HotSpotTruffleCompilerRuntime runtime = (HotSpotTruffleCompilerRuntime) TruffleCompilerRuntime.getRuntime();
         for (ResolvedJavaMethod method : runtime.getTruffleCallBoundaryMethods()) {
             HotSpotResolvedJavaMethod hotSpotMethod = (HotSpotResolvedJavaMethod) method;
@@ -243,7 +243,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
     }
 
     @Override
-    public int pendingTransferToInterpreterOffset() {
+    public int pendingTransferToInterpreterOffset(CompilableTruffleAST compilable) {
         return hotspotGraalRuntime.getVMConfig().pendingTransferToInterpreterOffset;
     }
 

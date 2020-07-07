@@ -130,10 +130,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     private void initializeAtRuntime(OptimizedCallTarget callTarget) {
-        String[] warnings = truffleCompiler.initialize(TruffleRuntimeOptions.getOptionsForCompiler(callTarget));
-        for (String warning : warnings) {
-            callTarget.log(warning);
-        }
+        truffleCompiler.initialize(TruffleRuntimeOptions.getOptionsForCompiler(callTarget), callTarget, true);
         if (SubstateTruffleOptions.isMultiThreaded()) {
             compileQueue = TruffleFeature.getSupport().createBackgroundCompileQueue(this);
             RuntimeSupport.getRuntimeSupport().addTearDownHook(this::tearDown);
