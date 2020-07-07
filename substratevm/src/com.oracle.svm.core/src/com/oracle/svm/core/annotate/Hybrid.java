@@ -40,8 +40,8 @@ import com.oracle.svm.core.hub.DynamicHub;
  *
  * <p>
  * The array length is located directly after the HUB pointer, like in regular array. Then (if
- * present) the bits are located. Then the instance fields are placed, and at the end of the layout
- * the array elements are located.
+ * present) the bits are located. Then the instance fields are placed. Then, with the default GC,
+ * there is an optional identity hashcode. At the end of the layout, the array elements are located.
  * 
  * <pre>
  *    +--------------------------------+
@@ -54,6 +54,8 @@ import com.oracle.svm.core.hub.DynamicHub;
  *    +--------------------------------+
  *    | instance fields                |
  *    |     ...                        |
+ *    +--------------------------------+
+ *    | identity hashcode (optional)   |
  *    +--------------------------------+
  *    | array elements                 |
  *    :     ...                        :
