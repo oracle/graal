@@ -108,6 +108,9 @@ fastr_linux: ${fastr} {
     GNUR_HOME_BINARY: "/cm/shared/apps/gnur/3.6.1-gcc4.8.5/lib64/R",
     FASTR_FC: "/cm/shared/apps/gcc/4.8.5/bin/gfortran"
   }
+  downloads: {
+    BLAS_LAPACK_DIR: { name: "fastr-blas-lapack-gcc", version: "4.8.5", platformspecific: true }
+  }
 }
 
 fastr_darwin: ${fastr} {
