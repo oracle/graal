@@ -219,26 +219,6 @@ public abstract class DynamicObjectLibrary extends Library {
     }
 
     /**
-     * Gets the value of an existing property or returns the provided default value if no such
-     * property exists.
-     *
-     * @param key the property key
-     * @param defaultValue the value to be returned if the property does not exist
-     * @return the property's value if it exists, else {@code defaultValue}.
-     * @throws UnexpectedResultException if the (default) value is not a {@code boolean}
-     * @see #getOrDefault(DynamicObject, Object, Object)
-     * @since 20.2.0
-     */
-    public boolean getBooleanOrDefault(DynamicObject object, Object key, Object defaultValue) throws UnexpectedResultException {
-        Object value = getOrDefault(object, key, defaultValue);
-        if (value instanceof Boolean) {
-            return (boolean) value;
-        } else {
-            throw new UnexpectedResultException(value);
-        }
-    }
-
-    /**
      * Sets the value of an existing property or adds a new property if no such property exists.
      *
      * A newly added property will have flags 0; flags of existing properties will not be changed.
@@ -259,7 +239,6 @@ public abstract class DynamicObjectLibrary extends Library {
      * @see #putInt(DynamicObject, Object, int)
      * @see #putDouble(DynamicObject, Object, double)
      * @see #putLong(DynamicObject, Object, long)
-     * @see #putBoolean(DynamicObject, Object, boolean)
      * @see #putIfPresent(DynamicObject, Object, Object)
      * @see #putWithFlags(DynamicObject, Object, Object, int)
      * @since 20.2.0
@@ -293,16 +272,6 @@ public abstract class DynamicObjectLibrary extends Library {
      * @since 20.2.0
      */
     public void putLong(DynamicObject object, Object key, long value) {
-        put(object, key, value);
-    }
-
-    /**
-     * Boolean-typed variant of {@link #put}.
-     *
-     * @see #put(DynamicObject, Object, Object)
-     * @since 20.2.0
-     */
-    public void putBoolean(DynamicObject object, Object key, boolean value) {
         put(object, key, value);
     }
 

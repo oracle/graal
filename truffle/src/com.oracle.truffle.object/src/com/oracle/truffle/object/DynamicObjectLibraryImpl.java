@@ -147,13 +147,6 @@ abstract class DynamicObjectLibraryImpl {
     }
 
     @ExportMessage
-    static boolean getBooleanOrDefault(DynamicObject object, Object key, Object defaultValue,
-                    @Shared("cachedShape") @Cached(value = "object.getShape()", allowUncached = true) Shape cachedShape,
-                    @Shared("keyCache") @Cached("create(object.getShape(), key)") KeyCacheNode keyCache) throws UnexpectedResultException {
-        return keyCache.getBooleanOrDefault(object, cachedShape, key, defaultValue);
-    }
-
-    @ExportMessage
     static boolean containsKey(DynamicObject object, Object key,
                     @Shared("cachedShape") @Cached(value = "object.getShape()", allowUncached = true) Shape cachedShape,
                     @Shared("keyCache") @Cached("create(object.getShape(), key)") KeyCacheNode keyCache) {
@@ -186,13 +179,6 @@ abstract class DynamicObjectLibraryImpl {
                     @Shared("cachedShape") @Cached(value = "object.getShape()", allowUncached = true) Shape cachedShape,
                     @Shared("keyCache") @Cached("create(object.getShape(), key)") KeyCacheNode keyCache) {
         keyCache.putDouble(object, cachedShape, key, value, Flags.DEFAULT);
-    }
-
-    @ExportMessage
-    static void putBoolean(DynamicObject object, Object key, boolean value,
-                    @Shared("cachedShape") @Cached(value = "object.getShape()", allowUncached = true) Shape cachedShape,
-                    @Shared("keyCache") @Cached("create(object.getShape(), key)") KeyCacheNode keyCache) {
-        keyCache.putBoolean(object, cachedShape, key, value, Flags.DEFAULT);
     }
 
     @ExportMessage
