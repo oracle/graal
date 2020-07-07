@@ -35,12 +35,17 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 
+import jdk.vm.ci.code.BailoutException;
+import jdk.vm.ci.meta.Assumptions;
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.runtime.GraalJVMCICompiler;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.CompilationWrapper.ExceptionAction;
+import org.graalvm.compiler.core.common.CancellationBailoutException;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.target.Backend;
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Activation;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
@@ -57,6 +62,7 @@ import org.graalvm.compiler.hotspot.HotSpotGraalServices;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.phases.LIRSuites;
+import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -367,5 +373,51 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
     @Override
     public void purgeCaches() {
         getPartialEvaluator().purgeEncodedGraphCache();
+    }
+
+    @Override
+    protected void handleBailout(DebugContext debug, StructuredGraph graph, BailoutException bailout) {
+        /*
+         * Catch non-permanent bailouts due to "failed dependencies" aka "invalid assumptions"
+         * during code installation. Since there's no specific exception for such cases, it's
+         * assumed that non-permanent, non-cancellation bailouts are due to "invalid dependencies"
+         * during code installation.
+         */
+        if (!(bailout instanceof CancellationBailoutException)) {
+            // Evict only the methods that could have caused the invalidation e.g. methods with
+            // assumptions.
+            if (!bailout.isPermanent() && graph != null && !graph.getAssumptions().isEmpty()) {
+                try (DebugCloseable dummy = EncodedGraphCacheEvictionTime.start(debug)) {
+                    assert graph.method() != null;
+                    EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache = partialEvaluator.getOrCreateEncodedGraphCache();
+
+                    /*
+                     * At this point, the cache containing invalid graphs may be already
+                     * purged/dropped, but there's no way to know in which cache the invalid method
+                     * is/was present, so all encoded graphs, including the root and all inlined
+                     * methods must be evicted. These bailouts (invalid dependencies) are very rare,
+                     * the over-evicting impact is negligible.
+                     */
+                    if (!graphCache.isEmpty()) {
+                        debug.log(DebugContext.VERBOSE_LEVEL, "Evict root %s", graph.method());
+                        graphCache.removeKey(graph.method());
+
+                        // Bailout may have been caused by an assumption on some inlined method.
+                        for (ResolvedJavaMethod method : graph.getMethods()) {
+                            EncodedGraph encodedGraph = graphCache.get(method);
+                            if (encodedGraph == null) {
+                                continue;
+                            }
+
+                            Assumptions assumptions = encodedGraph.getAssumptions();
+                            if (assumptions != null && !assumptions.isEmpty()) {
+                                debug.log(DebugContext.VERBOSE_LEVEL, "\tEvict inlined %s", method);
+                                graphCache.removeKey(method);
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
