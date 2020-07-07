@@ -141,10 +141,16 @@ def ll_reduce(args=None, out=None):
     parser.add_argument('input', help='The input file.', metavar='<input>')
     parsed_args = parser.parse_args(args)
 
+    mx.log("Running ll-reduce with the following configuration:")
+    for k, v in vars(parsed_args).items():
+        mx.log("{:>30}: {}".format(k, v))
+
     tmp_dir = None
     nrmutations = 4
     starttime = time.time()
     starttime_stabilized = None
+    tmp_ll = None
+
     try:
         tmp_dir = tempfile.mkdtemp()
         tmp_bc = os.path.join(tmp_dir, 'tmp.bc')
@@ -156,6 +162,13 @@ def ll_reduce(args=None, out=None):
         rand = Random(parsed_args.seed)
         lli_timeout = 10
         devnull = open(os.devnull, 'w')
+
+        def count_lines(file):
+            i = 0
+            with open(file) as f:
+                for i, l in enumerate(f, 1):
+                    pass
+            return i
 
         def run_lli(input_f, out_f, err_f):
             additional_clang_input = [mx_subst.path_substitutions.substitute(ci) for ci in parsed_args.clang_input or []]
@@ -174,23 +187,27 @@ def ll_reduce(args=None, out=None):
         run_lli(tmp_ll, tmp_sulong_out_original, tmp_sulong_err_original)
         while (not parsed_args.timeout or time.time()-starttime < parsed_args.timeout) and \
                  (not starttime_stabilized or time.time()-starttime_stabilized < parsed_args.timeout_stabilized):
-            mx.log("nrmutations: {} filesize: {} bytes".format(nrmutations, os.path.getsize(tmp_ll)))
             mx_sulong.llvm_tool(["llvm-as", "-o", tmp_bc, tmp_ll])
+            mx.log("nrmutations: {} filesize: {} bytes (bc), number of lines {} (ll)".format(nrmutations, os.path.getsize(tmp_bc), count_lines(tmp_ll)))
             mx.run([_get_fuzz_tool("llvm-reduce"), tmp_bc, "-ignore_remaining_args=1", "-mtriple", "x86_64-unknown-linux-gnu", "-nrmutations", str(nrmutations), "-seed", str(rand.randint(0, 10000000)), "-o", tmp_ll_reduced], out=devnull, err=devnull)
             reduced_interesting = subprocess.call(shlex.split(parsed_args.interestingness_test) + [tmp_ll_reduced])
             if reduced_interesting:
-                tmp_ll, tmp_ll_reduced = tmp_ll_reduced, tmp_ll
-                nrmutations *= 2
-                starttime_stabilized = None
+                if not filecmp.cmp(tmp_ll, tmp_ll_reduced, shallow=False):
+                    tmp_ll, tmp_ll_reduced = tmp_ll_reduced, tmp_ll
+                    nrmutations *= 2
+                    starttime_stabilized = None
+                    continue
+                mx.log("Reduced file is identical to input file!")
+            if nrmutations > 1:
+                nrmutations //= 2
             else:
-                if nrmutations > 1:
-                    nrmutations //= 2
-                else:
-                    if not starttime_stabilized:
-                        starttime_stabilized = time.time()
+                if not starttime_stabilized:
+                    starttime_stabilized = time.time()
     finally:
         if tmp_ll and os.path.isfile(tmp_ll):
-            shutil.copy(tmp_ll, parsed_args.output or (os.path.splitext(parsed_args.input)[0] + ".reduced.ll"))
+            result = parsed_args.output or (os.path.splitext(parsed_args.input)[0] + ".reduced.ll")
+            mx.log("Writing reduced ll file to {}".format(result))
+            shutil.copy(tmp_ll, result)
         if tmp_dir:
             shutil.rmtree(tmp_dir)
 
@@ -202,6 +219,22 @@ def check_interesting(args=None, out=None):
     parser.add_argument('--bin-startswith', help='Prefix the reference output of interesting testprograms has to start with.', metavar='<refstartswith>', default=None)
     parser.add_argument('--sulong-startswith', help='Prefix the output of interesting testprograms has to start with when executed on Sulong.', metavar='<teststartswith>', default=None)
     parsed_args = parser.parse_args(args)
+
+    def _not_interesting(msg=None):
+        if msg:
+            mx.logv(mx.colorize("mx check-interesting: no ({})".format(msg), color="blue"))
+        exit(0)
+
+    def _interesting(msg=None):
+        if msg:
+            mx.logv(mx.colorize("mx check-interesting: yes ({})".format(msg), color="cyan"))
+        exit(1)
+
+    def _files_match_pattern(prefix, out_file, err_file):
+        with open(out_file, 'r') as o, open(err_file, 'r') as e:
+            if not any(fl.startswith(prefix) for fl in (next(o, ""), next(e, ""))):
+                return False
+        return True
 
     tmp_dir = None
     try:
@@ -219,28 +252,28 @@ def check_interesting(args=None, out=None):
             mx.run([toolchain_clang, "-O0", "-Wno-everything", "-o", tmp_out, parsed_args.input])
             mx.run([toolchain_clang, "-O3", "-Wno-everything", "-o", tmp_out_o3, parsed_args.input])
         except SystemExit:
-            exit(0)
+            _not_interesting("Compiling the input file failed!")
         with open(tmp_sulong_out, 'w') as o, open(tmp_sulong_err, 'w') as e:
             mx_sulong.runLLVM([tmp_out], timeout=10, nonZeroIsFatal=False, out=o, err=e)
         with open(tmp_bin_out, 'w') as o, open(tmp_bin_err, 'w') as e:
             try:
                 mx.run([tmp_out], timeout=10, out=o, err=e)
             except SystemExit:
-                exit(0)
+                _not_interesting("Running the O0 compiled input files natively failed!")
         with open(tmp_bin_out_o3, 'w') as o, open(tmp_bin_err_o3, 'w') as e:
             try:
                 mx.run([tmp_out_o3], timeout=10, out=o, err=e)
             except SystemExit:
-                exit(0)
+                _not_interesting("Running the O3 compiled input files natively failed!")
         if not all(filecmp.cmp(bin_f, bin_f_o3, shallow=False) for bin_f, bin_f_o3 in ((tmp_bin_out, tmp_bin_out_o3), (tmp_bin_err, tmp_bin_err_o3))):
-            exit(0)
-        if not all(filecmp.cmp(sulong_f, bin_f, shallow=False) for sulong_f, bin_f in ((tmp_sulong_out, tmp_bin_out), (tmp_sulong_err, tmp_bin_err))):
-            for prefix, out_file, err_file in ((parsed_args.bin_startswith, tmp_bin_out, tmp_bin_err), (parsed_args.sulong_startswith, tmp_sulong_out, tmp_sulong_err)):
-                if prefix:
-                    with open(out_file, 'r') as o, open(err_file, 'r') as e:
-                        if not any(fl.startswith(prefix) for fl in (next(o, ""), next(e, ""))):
-                            exit(0)
-            exit(1)
+            _not_interesting("The result of O0 and O3 is different!")
+        if all(filecmp.cmp(sulong_f, bin_f, shallow=False) for sulong_f, bin_f in ((tmp_sulong_out, tmp_bin_out), (tmp_sulong_err, tmp_bin_err))):
+            _not_interesting("The result of native and sulong is the same!")
+        if parsed_args.bin_startswith and not _files_match_pattern(parsed_args.bin_startswith, tmp_bin_out, tmp_bin_err):
+            _not_interesting("The native result does not match the pattern")
+        if parsed_args.sulong_startswith and not _files_match_pattern(parsed_args.sulong_startswith, tmp_sulong_out, tmp_sulong_err):
+            _not_interesting("The sulong result does not match the pattern")
+        _interesting("Results are different and match the pattern (if provided)")
     finally:
         if tmp_dir:
             shutil.rmtree(tmp_dir)
