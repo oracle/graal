@@ -98,7 +98,7 @@ final class LinkedKlassFieldLayout {
         }
 
         PrimitiveFieldIndexes instancePrimitiveFieldIndexes = new PrimitiveFieldIndexes(fieldCounter.instancePrimitiveFields, superTotalInstanceByteCount, leftoverHoles);
-        PrimitiveFieldIndexes staticPrimitiveFieldIndexes = new PrimitiveFieldIndexes(fieldCounter.staticPrimitiveFields, superTotalStaticByteCount, null);
+        PrimitiveFieldIndexes staticPrimitiveFieldIndexes = new PrimitiveFieldIndexes(fieldCounter.staticPrimitiveFields, superTotalStaticByteCount, FillingSchedule.EMPTY_INT_ARRAY_ARRAY);
 
         LinkedField[] instanceFields = new LinkedField[fieldCounter.instanceFields];
         LinkedField[] staticFields = new LinkedField[fieldCounter.staticFields];
@@ -218,8 +218,7 @@ final class LinkedKlassFieldLayout {
             } else if (type == Type.java_lang_ref_Reference) {
                 return new Symbol[]{
                                 // All references (including strong) get an extra hidden field, this
-                                // simplifies the code
-                                // for weak/soft/phantom/final references.
+                                // simplifies the code for weak/soft/phantom/final references.
                                 Name.HIDDEN_HOST_REFERENCE
                 };
             } else if (type == Type.java_lang_Throwable) {
@@ -259,16 +258,16 @@ final class LinkedKlassFieldLayout {
         final int[] offsets;
         final FillingSchedule schedule;
 
+        // To ignore leftoverHoles, pass FillingSchedule.EMPTY_INT_ARRAY_ARRAY.
+        // This is used for static fields, where the gain would be negligible.
         PrimitiveFieldIndexes(int[] primitiveFields, int superTotalByteCount, int[][] leftoverHoles) {
             offsets = new int[N_PRIMITIVES];
             offsets[0] = startOffset(superTotalByteCount, primitiveFields);
+            this.schedule = FillingSchedule.create(superTotalByteCount, offsets[0], primitiveFields, leftoverHoles);
+            // FillingSchedule.create() modifies primitiveFields.
+            // Only offsets[0] must be initialized before creating the filling schedule.
             for (int i = 1; i < N_PRIMITIVES; i++) {
                 offsets[i] = offsets[i - 1] + primitiveFields[i - 1] * order[i - 1].getByteCount();
-            }
-            if (leftoverHoles == null) {
-                schedule = FillingSchedule.create(superTotalByteCount, offsets[0], primitiveFields);
-            } else {
-                schedule = FillingSchedule.create(superTotalByteCount, offsets[0], primitiveFields, leftoverHoles);
             }
         }
 
@@ -312,27 +311,22 @@ final class LinkedKlassFieldLayout {
 
         static FillingSchedule create(int holeStart, int holeEnd, int[] counts, int[][] leftoverHoles) {
             List<ScheduleEntry> schedule = new ArrayList<>();
-            List<int[]> nextHoles = new ArrayList<>();
-
-            scheduleHole(holeStart, holeEnd, counts, schedule, nextHoles);
-            if (leftoverHoles != null) {
-                for (int[] hole : leftoverHoles) {
-                    scheduleHole(hole[0], hole[1], counts, schedule, nextHoles);
+            if (leftoverHoles == EMPTY_INT_ARRAY_ARRAY) {
+                // packing static fields is not as interesting as instance fields: the array created
+                // to remember the hole would be bigger than what we would gain. Only schedule for
+                // direct parent.
+                scheduleHole(holeStart, holeEnd, counts, schedule);
+                return new FillingSchedule(schedule);
+            } else {
+                List<int[]> nextHoles = new ArrayList<>();
+                scheduleHole(holeStart, holeEnd, counts, schedule, nextHoles);
+                if (leftoverHoles != null) {
+                    for (int[] hole : leftoverHoles) {
+                        scheduleHole(hole[0], hole[1], counts, schedule, nextHoles);
+                    }
                 }
+                return new FillingSchedule(schedule, nextHoles);
             }
-
-            return new FillingSchedule(schedule, nextHoles);
-        }
-
-        // packing static fields is not as interesting as instance fields: the array created to
-        // remember the hole would be bigger than what we would gain. Only schedule for direct
-        // parent.
-        static FillingSchedule create(int holeStart, int holeEnd, int[] counts) {
-            List<ScheduleEntry> schedule = new ArrayList<>();
-
-            scheduleHole(holeStart, holeEnd, counts, schedule);
-
-            return new FillingSchedule(schedule);
         }
 
         private static void scheduleHole(int holeStart, int holeEnd, int[] counts, List<ScheduleEntry> schedule, List<int[]> nextHoles) {
