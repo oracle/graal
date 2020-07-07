@@ -74,8 +74,7 @@ public class BackgroundCompileQueue {
             }
 
             // NOTE: The value from the first Engine compiling wins for now
-            int delaySeconds = callTarget.getOptionValue(PolyglotCompilerOptions.EncodedGraphCachePurgeDelay);
-            this.delayMillis = TimeUnit.SECONDS.toMillis(delaySeconds);
+            this.delayMillis = callTarget.getOptionValue(PolyglotCompilerOptions.EncodedGraphCachePurgeDelay);
 
             // NOTE: the value from the first Engine compiling wins for now
             int threads = callTarget.getOptionValue(PolyglotCompilerOptions.CompilerThreads);

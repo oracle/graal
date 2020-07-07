@@ -426,10 +426,10 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<Boolean> InstrumentBranchesPerInlineSite = new OptionKey<>(false);
 
     @Option(help = "Maximum number of entries in the encoded graph cache (< 0 unbounded, 0 disabled).", category = OptionCategory.EXPERT)
-    public static final OptionKey<Integer> EncodedGraphCacheCapacity = new OptionKey<>(2048);
+    public static final OptionKey<Integer> EncodedGraphCacheCapacity = new OptionKey<>(0);
 
-    @Option(help = "Delay, in seconds, after which the encoded graph cache is dropped when the compile queue becomes idle.", category = OptionCategory.EXPERT)
-    public static final OptionKey<Integer> EncodedGraphCachePurgeDelay = new OptionKey<>(30);
+    @Option(help = "Delay, in milliseconds, after which the encoded graph cache is dropped when the compile queue becomes idle.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Integer> EncodedGraphCachePurgeDelay = new OptionKey<>(10_000);
 
     // Language agnostic inlining
 
