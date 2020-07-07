@@ -483,10 +483,11 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
 
     /**
      * Hook for processing bailout exceptions.
-     * 
+     *
      * @param graph graph producing the bailout, can be null
      * @param bailout {@link BailoutException to process}
      */
+    @SuppressWarnings("unused")
     protected void handleBailout(DebugContext debug, StructuredGraph graph, BailoutException bailout) {
         // nop
     }

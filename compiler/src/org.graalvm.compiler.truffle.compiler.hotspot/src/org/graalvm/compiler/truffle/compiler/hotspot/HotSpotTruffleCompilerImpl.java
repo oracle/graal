@@ -35,7 +35,6 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 
-import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.Assumptions;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -86,11 +85,11 @@ import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompiler;
 import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime;
-import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 
+import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.InstalledCode;
@@ -366,7 +365,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
     }
 
     @Override
-    public final HotSpotPartialEvaluator getPartialEvaluator() {
+    public HotSpotPartialEvaluator getPartialEvaluator() {
         return (HotSpotPartialEvaluator) super.getPartialEvaluator();
     }
 
