@@ -88,23 +88,23 @@ suite = {
       "license" : "BSD-new"
     },
     "LLVM_ORG" : {
-      "version" : "9.0.0-5-g80b1d876fd-bgb66b241662",
+      "version" : "9.0.0-5-g80b1d876fd-bg83994d0b4b",
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
       "os_arch" : {
         "linux" : {
           "amd64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-linux-amd64.tar.gz"],
-            "sha1" : "7fd347a6ebe38b02b7cfe1a9e4352e297962a4fc",
+            "sha1" : "9343a50712a5cce4d6c0376c409cced4a6c9d90c",
           },
           "aarch64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-linux-aarch64.tar.gz"],
-            "sha1" : "8061112dd5cf95ed5e43128199fd2d2959bd9fbf",
+            "sha1" : "08c612ee826c6df031caa0d40b26dc0e8977c2a2",
           }
         },
         "darwin" : {
           "amd64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-darwin-amd64.tar.gz"],
-            "sha1" : "a863230a50eddeef4a808742ddb987475c61fd10",
+            "sha1" : "4d51403d4d891573dc321d106494b391d964f3a0",
           }
         },
         "<others>": {
@@ -116,20 +116,19 @@ suite = {
       }
     },
     "LLVM_ORG_COMPILER_RT_LINUX" : {
-      "version" : "9.0.0-5-g80b1d876fd-bgb66b241662",
+      "version" : "9.0.0-5-g80b1d876fd-bg83994d0b4b",
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
       # we really want linux-amd64, also on non-linux and non-amd64 platforms for cross-compilation
       "urls" : ["{host}/compiler-rt-llvmorg-{version}-linux-amd64.tar.gz"],
-      "sha1" : "0fde45454791eff6b1cd1dbed21645ebe073c0d2",
+      "sha1" : "43e65c50e38f45f7777ff91481508921031f9ca6",
       "license" : "Apache-2.0-LLVM",
     },
     "LLVM_ORG_SRC" : {
-      # version difference since the sources where repackaged
-      "version" : "9.0.0-5-g80b1d876fd-bg0c808efbe5",
+      "version" : "9.0.0-5-g80b1d876fd-bg83994d0b4b",
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
       "packedResource" : True,
       "urls" : ["{host}/llvm-src-llvmorg-{version}.tar.gz"],
-      "sha1" : "27bea70346768ee43893df3f65cf785c5b5d0342",
+      "sha1" : "09785ad93dd96c5f0f9d80ded80ec30fb9aed9e9",
       "license" : "Apache-2.0-LLVM",
       },
   },
