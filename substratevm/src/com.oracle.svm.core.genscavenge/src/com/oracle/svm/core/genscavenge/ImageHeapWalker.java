@@ -25,18 +25,22 @@
 package com.oracle.svm.core.genscavenge;
 
 import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.util.UnsignedUtils;
 
 public final class ImageHeapWalker {
     private static final MemoryWalker.NativeImageHeapRegionAccess<ImageHeapInfo> READ_ONLY_PRIMITIVE_WALKER = new ReadOnlyPrimitiveMemoryWalkerAccess();
@@ -88,17 +92,46 @@ public final class ImageHeapWalker {
         Pointer firstPointer = Word.objectToUntrackedPointer(firstObject);
         Pointer lastPointer = Word.objectToUntrackedPointer(lastObject);
         Pointer current = firstPointer;
-        while (current.belowOrEqual(lastPointer)) {
-            Object currentObject = KnownIntrinsics.convertUnknownValue(current.toObject(), Object.class);
-            if (inlineObjectVisit) {
-                if (!visitor.visitObjectInline(currentObject)) {
+        HeapChunk.Header<?> currentChunk = WordFactory.nullPointer();
+        if (HeapOptions.ChunkedImageHeapLayout.getValue()) {
+            Pointer base = WordFactory.zero();
+            if (!CommittedMemoryProvider.get().guaranteesHeapPreferredAddressSpaceAlignment()) {
+                base = (Pointer) Isolates.getHeapBase(CurrentIsolate.getIsolate());
+            }
+            Pointer offset = current.subtract(base);
+            UnsignedWord chunkOffset = alignedChunks ? UnsignedUtils.roundDown(offset, HeapPolicy.getAlignedHeapChunkAlignment())
+                            : offset.subtract(UnalignedHeapChunk.getObjectStartOffset());
+            currentChunk = (HeapChunk.Header<?>) chunkOffset.add(base);
+
+            // Assumption: the order of chunks in their linked list is the same order as in memory,
+            // and objects are laid out as a continuous sequence without any gaps.
+        }
+        do {
+            Pointer limit = lastPointer;
+            if (HeapOptions.ChunkedImageHeapLayout.getValue()) {
+                Pointer chunkTop = HeapChunk.getTopPointer(currentChunk);
+                if (lastPointer.aboveThan(chunkTop)) {
+                    limit = chunkTop.subtract(1); // lastObject in another chunk, visit all objects
+                }
+            }
+            while (current.belowOrEqual(limit)) {
+                Object currentObject = KnownIntrinsics.convertUnknownValue(current.toObject(), Object.class);
+                if (inlineObjectVisit) {
+                    if (!visitor.visitObjectInline(currentObject)) {
+                        return false;
+                    }
+                } else if (!visitor.visitObject(currentObject)) {
                     return false;
                 }
-            } else if (!visitor.visitObject(currentObject)) {
-                return false;
+                current = LayoutEncoding.getObjectEnd(current.toObject());
             }
-            current = HeapImpl.getNextObjectInImageHeapPartition(currentObject, alignedChunks);
-        }
+            if (HeapOptions.ChunkedImageHeapLayout.getValue() && current.belowThan(lastPointer)) {
+                currentChunk = HeapChunk.getNext(currentChunk);
+                current = alignedChunks ? AlignedHeapChunk.getObjectsStart((AlignedHeapChunk.AlignedHeader) currentChunk)
+                                : UnalignedHeapChunk.getObjectStart((UnalignedHeapChunk.UnalignedHeader) currentChunk);
+                // Note: current can be equal to lastPointer now, despite not having visited it yet
+            }
+        } while (current.belowOrEqual(lastPointer));
         return true;
     }
 

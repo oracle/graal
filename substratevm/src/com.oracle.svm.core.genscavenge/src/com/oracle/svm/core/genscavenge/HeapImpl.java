@@ -41,9 +41,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -62,20 +60,17 @@ import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.ReferenceInternals;
-import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
-import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.ThreadStatus;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.util.UnsignedUtils;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -413,45 +408,6 @@ public final class HeapImpl extends Heap {
             }
             return true;
         }
-    }
-
-    /**
-     * Computes a pointer to the start of the next object in the same image heap partition as the
-     * passed object. If the passed object is the last object in its partition, the behavior is
-     * undefined.
-     */
-    static Pointer getNextObjectInImageHeapPartition(Object obj, boolean inAlignedChunk) {
-        Pointer end = LayoutEncoding.getObjectEnd(obj);
-        if (HeapOptions.ChunkedImageHeapLayout.getValue()) {
-            if (inAlignedChunk) {
-                /*
-                 * TODO: Image heap walks should use chunk headers to detect boundaries and advance
-                 * to the next chunk. Since we haven't implemented writing headers yet, we detect
-                 * chunk boundaries with simple address arithmetic and by checking if a zero word is
-                 * where the next object's header should be. Utilizing heap address space alignment
-                 * to make the arithmetic a bit simpler probably does not have a significant
-                 * advantage right now, but it should make barriers for card marking more efficient.
-                 */
-                Pointer alignmentBase = WordFactory.zero();
-                if (!CommittedMemoryProvider.get().guaranteesHeapPreferredAddressSpaceAlignment()) {
-                    alignmentBase = SubstrateOptions.SpawnIsolates.getValue() ? KnownIntrinsics.heapBase() : Isolates.IMAGE_HEAP_BEGIN.get();
-                }
-                UnsignedWord endOffset = end.subtract(alignmentBase);
-                UnsignedWord nextChunkOffset = UnsignedUtils.roundUp(endOffset, HeapPolicy.getAlignedHeapChunkAlignment());
-                if (endOffset.add(getMinimumObjectSize()).aboveThan(nextChunkOffset) || ObjectHeaderImpl.readHeaderFromPointer(end).equal(0)) {
-                    Pointer nextChunk = alignmentBase.add(nextChunkOffset);
-                    return AlignedHeapChunk.getObjectsStart((AlignedHeapChunk.AlignedHeader) nextChunk);
-                }
-            } else {
-                return UnalignedHeapChunk.getObjectStart((UnalignedHeapChunk.UnalignedHeader) end);
-            }
-        }
-        return end;
-    }
-
-    @Fold
-    static UnsignedWord getMinimumObjectSize() {
-        return WordFactory.unsigned(ConfigurationValues.getObjectLayout().getMinimumObjectSize());
     }
 
     /*

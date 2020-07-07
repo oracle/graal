@@ -309,7 +309,7 @@ final class HeapChunk {
 
     public static HeapChunk.Header<?> getEnclosingHeapChunk(Pointer ptrToObj, UnsignedWord header) {
         if (ObjectHeaderImpl.isAlignedHeader(ptrToObj, header)) {
-            return AlignedHeapChunk.getEnclosingChunkFromPointer(ptrToObj);
+            return AlignedHeapChunk.getEnclosingChunkFromObjectPointer(ptrToObj);
         } else {
             return UnalignedHeapChunk.getEnclosingChunkFromObjectPointer(ptrToObj);
         }
