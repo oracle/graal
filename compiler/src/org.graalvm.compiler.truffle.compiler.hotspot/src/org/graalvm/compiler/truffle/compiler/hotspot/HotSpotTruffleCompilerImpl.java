@@ -382,6 +382,9 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
          * assumed that non-permanent, non-cancellation bailouts are due to "invalid dependencies"
          * during code installation.
          */
+        if (!getPartialEvaluator().isEncodedGraphCacheEnabled()) {
+            return;
+        }
         if (!(bailout instanceof CancellationBailoutException)) {
             // Evict only the methods that could have caused the invalidation e.g. methods with
             // assumptions.

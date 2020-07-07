@@ -47,6 +47,11 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public final class HotSpotPartialEvaluator extends PartialEvaluator {
 
     private final AtomicReference<EconomicMap<ResolvedJavaMethod, EncodedGraph>> graphCacheRef;
+
+    public boolean isEncodedGraphCacheEnabled() {
+        return encodedGraphCacheCapacity != 0;
+    }
+
     private int encodedGraphCacheCapacity;
 
     public HotSpotPartialEvaluator(Providers providers, GraphBuilderConfiguration configForRoot, SnippetReflectionProvider snippetReflection, Architecture architecture) {
