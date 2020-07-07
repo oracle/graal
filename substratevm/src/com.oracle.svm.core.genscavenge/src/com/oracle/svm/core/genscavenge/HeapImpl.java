@@ -49,6 +49,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -382,27 +383,35 @@ public final class HeapImpl extends Heap {
         /* Two threads might race to set classList, but they compute the same result. */
         if (classList == null) {
             List<Class<?>> list = new ArrayList<>(1024);
-            boolean alignedChunks = true; // always in read-only partitions with aligned chunks
-            addClassObjectsInPartition(list, imageHeapInfo.firstReadOnlyReferenceObject, imageHeapInfo.lastReadOnlyReferenceObject, alignedChunks);
-            addClassObjectsInPartition(list, imageHeapInfo.firstReadOnlyRelocatableObject, imageHeapInfo.lastReadOnlyRelocatableObject, alignedChunks);
+            ImageHeapWalker.walkRegions(imageHeapInfo, new ClassListBuilderVisitor(list));
             classList = Collections.unmodifiableList(list);
         }
         return classList;
     }
 
-    private static void addClassObjectsInPartition(List<Class<?>> list, Object firstObject, Object lastObject, boolean alignedChunks) {
-        if (firstObject == null) {
-            return;
+    private static class ClassListBuilderVisitor implements MemoryWalker.ImageHeapRegionVisitor, ObjectVisitor {
+        private final List<Class<?>> list;
+
+        ClassListBuilderVisitor(List<Class<?>> list) {
+            this.list = list;
         }
-        Pointer currentPointer = Word.objectToUntrackedPointer(firstObject);
-        Pointer lastPointer = Word.objectToUntrackedPointer(lastObject);
-        while (currentPointer.belowOrEqual(lastPointer)) {
-            Object currentObject = KnownIntrinsics.convertUnknownValue(currentPointer.toObject(), Object.class);
-            if (currentObject instanceof Class<?>) {
-                Class<?> asClass = (Class<?>) currentObject;
-                list.add(asClass);
+
+        @Override
+        public <T> boolean visitNativeImageHeapRegion(T region, MemoryWalker.NativeImageHeapRegionAccess<T> access) {
+            if (!access.isWritable(region) && access.containsReferences(region)) {
+                access.visitObjects(region, this);
             }
-            currentPointer = getNextObjectInImageHeapPartition(currentObject, alignedChunks);
+            return true;
+        }
+
+        @Override
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, //
+                        reason = "Allocation is fine: this method traverses only the image heap.")
+        public boolean visitObject(Object o) {
+            if (o instanceof Class<?>) {
+                list.add(KnownIntrinsics.convertUnknownValue(o, Class.class));
+            }
+            return true;
         }
     }
 
@@ -508,7 +517,6 @@ public final class HeapImpl extends Heap {
         }
         if (getVerifyDirtyCardBeforeGC()) {
             assert heapVerifier != null : "No heap verifier!";
-            Log.log().string("[Verify dirtyCard before GC: ");
             HeapVerifier.verifyDirtyCard(false);
         }
         trace.string("]").newline();
@@ -532,7 +540,6 @@ public final class HeapImpl extends Heap {
         }
         if (getVerifyDirtyCardAfterGC()) {
             assert heapVerifier != null : "No heap verifier!";
-            Log.log().string("[Verify dirtyCard after GC: ");
             HeapVerifier.verifyDirtyCard(true);
         }
     }
@@ -625,7 +632,7 @@ public final class HeapImpl extends Heap {
         return getYoungGeneration().walkObjects(visitor) && getOldGeneration().walkObjects(visitor);
     }
 
-    boolean walkNativeImageHeapRegions(MemoryWalker.Visitor visitor) {
+    boolean walkNativeImageHeapRegions(MemoryWalker.ImageHeapRegionVisitor visitor) {
         return ImageHeapWalker.walkRegions(imageHeapInfo, visitor) &&
                         (!AuxiliaryImageHeap.isPresent() || AuxiliaryImageHeap.singleton().walkRegions(visitor));
     }

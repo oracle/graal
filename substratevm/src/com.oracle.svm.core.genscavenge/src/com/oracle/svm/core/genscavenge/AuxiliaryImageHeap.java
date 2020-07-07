@@ -51,5 +51,5 @@ public interface AuxiliaryImageHeap {
 
     boolean walkObjects(ObjectVisitor visitor);
 
-    boolean walkRegions(MemoryWalker.Visitor visitor);
+    boolean walkRegions(MemoryWalker.ImageHeapRegionVisitor visitor);
 }

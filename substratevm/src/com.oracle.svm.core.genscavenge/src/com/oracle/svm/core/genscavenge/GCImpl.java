@@ -43,7 +43,6 @@ import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -730,35 +729,16 @@ public final class GCImpl implements GC {
         trace.string("]").newline();
     }
 
-    private class BlackenImageHeapRootsVisitor implements MemoryWalker.Visitor {
+    private class BlackenImageHeapRootsVisitor implements MemoryWalker.ImageHeapRegionVisitor {
         @Override
         @SuppressWarnings("try")
         public <T> boolean visitNativeImageHeapRegion(T region, MemoryWalker.NativeImageHeapRegionAccess<T> access) {
             if (access.containsReferences(region) && access.isWritable(region)) {
-                boolean alignedChunks = !access.hasHugeObjects(region);
                 try (Timer timer = timers.blackenImageHeapRoots.open()) {
-                    Pointer cur = (Pointer) access.getStart(region);
-                    Pointer endOfLastObject = cur.add(access.getSize(region));
-                    while (cur.belowThan(endOfLastObject)) {
-                        Object obj = cur.toObject();
-                        if (obj != null) {
-                            greyToBlackObjectVisitor.visitObjectInline(obj);
-                        }
-                        cur = HeapImpl.getNextObjectInImageHeapPartition(obj, alignedChunks);
-                    }
+                    access.visitObjects(region, greyToBlackObjectVisitor);
                 }
             }
             return true;
-        }
-
-        @Override
-        public <T extends PointerBase> boolean visitHeapChunk(T heapChunk, MemoryWalker.HeapChunkAccess<T> access) {
-            throw VMError.shouldNotReachHere();
-        }
-
-        @Override
-        public <T extends CodeInfo> boolean visitCode(T codeInfo, MemoryWalker.CodeAccess<T> access) {
-            throw VMError.shouldNotReachHere();
         }
     }
 
