@@ -211,7 +211,7 @@ public class StrictExactArithTests {
         try {
             // Test toIntExact
             int value = StrictMath.toIntExact(x);
-            if ((long) value != x) {
+            if (value != x) {
                 fail("FAIL: " + "long StrictMath.toIntExact" + "(" + x + ") = " + value + "; expected an arithmetic exception: ");
             }
         } catch (ArithmeticException ex) {

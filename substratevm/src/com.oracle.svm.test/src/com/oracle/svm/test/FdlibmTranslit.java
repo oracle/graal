@@ -113,29 +113,30 @@ public final class FdlibmTranslit {
             double t = 0.0;
             double w;
             int sign; // unsigned
+            double localX = x;
 
-            hx = hi(x);           // high word of x
+            hx = hi(localX);           // high word of x
             sign = hx & 0x80000000;             // sign= sign(x)
             hx ^= sign;
             if (hx >= 0x7ff00000) {
-                return (x + x); // cbrt(NaN,INF) is itself
+                return (localX + localX); // cbrt(NaN,INF) is itself
             }
-            if ((hx | lo(x)) == 0) {
-                return (x);          // cbrt(0) is itself
+            if ((hx | lo(localX)) == 0) {
+                return (localX);          // cbrt(0) is itself
             }
 
-            x = hi(x, hx);   // x <- |x|
+            localX = hi(localX, hx);   // x <- |x|
             // rough cbrt to 5 bits
             if (hx < 0x00100000) {               // subnormal number
                 t = hi(t, 0x43500000);          // set t= 2**54
-                t *= x;
+                t *= localX;
                 t = hi(t, hi(t) / 3 + B2);
             } else {
                 t = hi(t, hx / 3 + B1);
             }
 
             // new cbrt to 23 bits, may be implemented in single precision
-            r = t * t / x;
+            r = t * t / localX;
             s = C + r * t;
             t *= G + F / (s + E + D / s);
 
@@ -145,7 +146,7 @@ public final class FdlibmTranslit {
 
             // one step newton iteration to 53 bits with error less than 0.667 ulps
             s = t * t;          // t*t is exact
-            r = x / s;
+            r = localX / s;
             w = t + t;
             r = (r - t) / (w + r);  // r-s is exact
             t = t + t * r;
@@ -335,24 +336,25 @@ public final class FdlibmTranslit {
             int k = 0;
             int xsb;
             /* unsigned */ int hx;
+            double localX = x;
 
-            hx = hi(x); /* high word of x */
+            hx = hi(localX); /* high word of x */
             xsb = (hx >> 31) & 1; /* sign bit of x */
             hx &= 0x7fffffff; /* high word of |x| */
 
             /* filter out non-finite argument */
             if (hx >= 0x40862E42) { /* if |x|>=709.78... */
                 if (hx >= 0x7ff00000) {
-                    if (((hx & 0xfffff) | lo(x)) != 0) {
-                        return x + x; /* NaN */
+                    if (((hx & 0xfffff) | lo(localX)) != 0) {
+                        return localX + localX; /* NaN */
                     } else {
-                        return (xsb == 0) ? x : 0.0; /* exp(+-inf)={inf,0} */
+                        return (xsb == 0) ? localX : 0.0; /* exp(+-inf)={inf,0} */
                     }
                 }
-                if (x > o_threshold) {
+                if (localX > o_threshold) {
                     return huge * huge; /* overflow */
                 }
-                if (x < u_threshold) {
+                if (localX < u_threshold) {
                     return twom1000 * twom1000; /* underflow */
                 }
             }
@@ -360,31 +362,31 @@ public final class FdlibmTranslit {
             /* argument reduction */
             if (hx > 0x3fd62e42) { /* if |x| > 0.5 ln2 */
                 if (hx < 0x3FF0A2B2) { /* and |x| < 1.5 ln2 */
-                    hi = x - ln2HI[xsb];
+                    hi = localX - ln2HI[xsb];
                     lo = ln2LO[xsb];
                     k = 1 - xsb - xsb;
                 } else {
-                    k = (int) (invln2 * x + halF[xsb]);
+                    k = (int) (invln2 * localX + halF[xsb]);
                     t = k;
-                    hi = x - t * ln2HI[0]; /* t*ln2HI is exact here */
+                    hi = localX - t * ln2HI[0]; /* t*ln2HI is exact here */
                     lo = t * ln2LO[0];
                 }
-                x = hi - lo;
+                localX = hi - lo;
             } else if (hx < 0x3e300000) { /* when |x|<2**-28 */
-                if (huge + x > one) {
-                    return one + x; /* trigger inexact */
+                if (huge + localX > one) {
+                    return one + localX; /* trigger inexact */
                 }
             } else {
                 k = 0;
             }
 
             /* x is now in primary range */
-            t = x * x;
-            c = x - t * (P1 + t * (P2 + t * (P3 + t * (P4 + t * P5))));
+            t = localX * localX;
+            c = localX - t * (P1 + t * (P2 + t * (P3 + t * (P4 + t * P5))));
             if (k == 0) {
-                return one - ((x * c) / (c - 2.0) - x);
+                return one - ((localX * c) / (c - 2.0) - localX);
             } else {
-                y = one - ((lo - (x * c) / (2.0 - c)) - hi);
+                y = one - ((lo - (localX * c) / (2.0 - c)) - hi);
             }
             if (k >= -1021) {
                 y = hi(y, hi(y) + (k << 20)); /* add k to y's exponent */
