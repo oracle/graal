@@ -61,7 +61,7 @@ public class EncapsulatingNodeBenchmark extends TruffleBenchmark {
 
     static final String TEST_LANGUAGE = "benchmark-test-language";
 
-    @State(org.openjdk.jmh.annotations.Scope.Thread)
+    @State(Scope.Thread)
     public static class PushPopOldCompiled {
         final Source source = Source.create(TEST_LANGUAGE, "");
         final Context context = Context.create(TEST_LANGUAGE);
@@ -135,7 +135,7 @@ public class EncapsulatingNodeBenchmark extends TruffleBenchmark {
         return null;
     }
 
-    @State(org.openjdk.jmh.annotations.Scope.Thread)
+    @State(Scope.Thread)
     public static class PushPopNewCompiled {
         final Source source = Source.create(TEST_LANGUAGE, "");
         final Context context = Context.create(TEST_LANGUAGE);

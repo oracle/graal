@@ -79,7 +79,7 @@ import com.oracle.truffle.api.TruffleException;
  *
  *     LanguageException(Node locationNode) {
  *         CompilerAsserts.partialEvaluationConstant(locationNode);
- *         if (locationNode == null && !locationNode.isAdoptable()) {
+ *         if (locationNode == null || !locationNode.isAdoptable()) {
  *             this.locationNode = EncapsulatingNodeReference.getCurrent().get();
  *         } else {
  *             this.locationNode = locationNode;
@@ -94,7 +94,7 @@ import com.oracle.truffle.api.TruffleException;
  * }
  * </pre>
  *
- * Note that {@link Node#isAdoptable()} is way to find out whether a node was used in an uncached
+ * Note that {@link Node#isAdoptable()} is a way to find out whether a node was used in an uncached
  * scenario or not.
  *
  *
@@ -139,9 +139,9 @@ public final class EncapsulatingNodeReference {
     /**
      * Returns the current encapsulating node for the current thread. Returned node may be
      * <code>null</code>. If the returned node is non-null then it is guaranteed to be
-     * {@link Node#isAdoptable() adoptable} and adopatede by a {@link RootNode}. This method must
-     * only be used from the thread it was {@link #getCurrent() requested} for. This method is safe
-     * to be called from compiled code paths.
+     * {@link Node#isAdoptable() adoptable} and adopted by a {@link RootNode}. This method must only
+     * be used from the thread it was {@link #getCurrent() requested} for. This method is safe to be
+     * called from compiled code paths.
      *
      * @since 20.2
      */
