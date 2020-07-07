@@ -47,6 +47,7 @@ import org.graalvm.compiler.nodes.java.AtomicReadAndWriteNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.Replacements;
+import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins;
 import org.graalvm.compiler.replacements.TargetGraphBuilderPlugins;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.FusedMultiplyAddNode;
@@ -80,7 +81,7 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                     registerStringLatin1Plugins(invocationPlugins, replacements);
                     registerStringUTF16Plugins(invocationPlugins, replacements);
                 }
-                registerUnsafePlugins(invocationPlugins, replacements);
+                registerUnsafePlugins(invocationPlugins, replacements, explicitUnsafeNullChecks);
                 // This is temporarily disabled until we implement correct emitting of the CAS
                 // instructions of the proper width.
                 registerPlatformSpecificUnsafePlugins(invocationPlugins, replacements, explicitUnsafeNullChecks,
@@ -246,17 +247,17 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         }
     }
 
-    private static void registerUnsafePlugins(InvocationPlugins plugins, Replacements replacements) {
-        registerUnsafePlugins(new Registration(plugins, Unsafe.class),
+    private static void registerUnsafePlugins(InvocationPlugins plugins, Replacements replacements, boolean explicitUnsafeNullChecks) {
+        registerUnsafePlugins(new Registration(plugins, Unsafe.class), explicitUnsafeNullChecks,
                         new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object}, "Object");
         if (JavaVersionUtil.JAVA_SPEC > 8) {
-            registerUnsafePlugins(new Registration(plugins, "jdk.internal.misc.Unsafe", replacements),
+            registerUnsafePlugins(new Registration(plugins, "jdk.internal.misc.Unsafe", replacements), explicitUnsafeNullChecks,
                             new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object},
                             JavaVersionUtil.JAVA_SPEC <= 11 ? "Object" : "Reference");
         }
     }
 
-    private static void registerUnsafePlugins(Registration r, JavaKind[] unsafeJavaKinds, String objectKindName) {
+    private static void registerUnsafePlugins(Registration r, boolean explicitUnsafeNullChecks, JavaKind[] unsafeJavaKinds, String objectKindName) {
 
         for (JavaKind kind : unsafeJavaKinds) {
             Class<?> javaClass = kind == JavaKind.Object ? Object.class : kind.toJavaClass();
@@ -285,6 +286,13 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                     }
                 });
             }
+        }
+
+        for (JavaKind kind : new JavaKind[]{JavaKind.Char, JavaKind.Short, JavaKind.Int, JavaKind.Long}) {
+            Class<?> javaClass = kind.toJavaClass();
+            r.registerOptional3("get" + kind.name() + "Unaligned", Receiver.class, Object.class, long.class, new StandardGraphBuilderPlugins.UnsafeGetPlugin(kind, explicitUnsafeNullChecks));
+            r.registerOptional4("put" + kind.name() + "Unaligned", Receiver.class, Object.class, long.class, javaClass,
+                            new StandardGraphBuilderPlugins.UnsafePutPlugin(kind, explicitUnsafeNullChecks));
         }
     }
 }
