@@ -1589,7 +1589,7 @@ public final class BytecodeNode extends EspressoMethodNode {
             invoke = InlinedGetterNode.create(resolved, top, opcode, curBCI);
         } else if (allowFieldAccessInlining && resolved.isInlinableSetter()) {
             invoke = InlinedSetterNode.create(resolved, top, opcode, curBCI);
-        } else if (resolved.isMethodHandleIntrinsic()) {
+        } else if (resolved.isPolySignatureIntrinsic()) {
             invoke = new InvokeHandleNode(resolved, getMethod().getDeclaringKlass(), top, curBCI);
         } else if (opcode == INVOKEINTERFACE && resolved.getITableIndex() < 0) {
             // Can happen in old classfiles that calls j.l.Object on interfaces.

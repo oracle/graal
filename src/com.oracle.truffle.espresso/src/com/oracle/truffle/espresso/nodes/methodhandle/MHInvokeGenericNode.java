@@ -28,6 +28,7 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
@@ -38,6 +39,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  */
 public class MHInvokeGenericNode extends MethodHandleIntrinsicNode {
     private final StaticObject appendix;
+    private final boolean unbasic;
     @Child private DirectCallNode callNode;
 
     public MHInvokeGenericNode(Method method, StaticObject memberName, StaticObject appendix) {
@@ -50,6 +52,7 @@ public class MHInvokeGenericNode extends MethodHandleIntrinsicNode {
         } else {
             this.callNode = DirectCallNode.create(target.getCallTarget());
         }
+        this.unbasic = target.getReturnKind() != method.getReturnKind();
     }
 
     @Override
@@ -67,9 +70,17 @@ public class MHInvokeGenericNode extends MethodHandleIntrinsicNode {
         StaticObject memberName = (StaticObject) meta.java_lang_invoke_MethodHandleNatives_linkMethod.invokeDirect(
                         null,
                         callerKlass.mirror(), (int) REF_invokeVirtual,
-                        meta.java_lang_invoke_MethodHandle.mirror(), meta.toGuestString(methodName), meta.toGuestString(signature),
+                        method.getDeclaringKlass().mirror(), meta.toGuestString(methodName), meta.toGuestString(signature),
                         appendixBox);
         StaticObject appendix = appendixBox.get(0);
         return new MHInvokeGenericNode(method, memberName, appendix);
+    }
+
+    @Override
+    public Object processReturnValue(Object obj, JavaKind kind) {
+        if (unbasic) {
+            return super.processReturnValue(obj, kind);
+        }
+        return obj;
     }
 }
