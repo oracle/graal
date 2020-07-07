@@ -48,6 +48,7 @@ def _get_fuzz_tool(tool):
     return tool
 
 
+@mx.command("sulong", "fuzz")
 def fuzz(args=None, out=None):
     parser = ArgumentParser(prog='mx fuzz', description='')
     parser.add_argument('--seed', help='Seed used for randomness.', metavar='<seed>', type=int, default=int(time.time()))
@@ -128,6 +129,7 @@ def fuzz(args=None, out=None):
     mx.log("interesting testcases: {} invalid testcases: {}".format(parsed_args.nrtestcases-invalid-passed, invalid))
 
 
+@mx.command("sulong", "ll-reduce")
 def ll_reduce(args=None, out=None):
     parser = ArgumentParser(prog='mx ll-reduce', description='')
     parser.add_argument('--interestingness-test', help='Command which exits with code 1 if a given .ll file is interesting and exits with code 0 otherwise.', metavar='<interestingnesstest>', default='mx check-interesting')
@@ -186,6 +188,8 @@ def ll_reduce(args=None, out=None):
         if tmp_dir:
             shutil.rmtree(tmp_dir)
 
+
+@mx.command("sulong", "check-interesting")
 def check_interesting(args=None, out=None):
     parser = ArgumentParser(prog='mx check-interesting', description='')
     parser.add_argument('input', help='The input file.', metavar='<input>')
