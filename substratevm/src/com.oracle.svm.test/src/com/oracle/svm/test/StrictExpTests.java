@@ -33,7 +33,7 @@ public class StrictExpTests {
 
     // From the fdlibm source, the overflow threshold in hex is:
     // 0x4086_2E42_FEFA_39EF.
-    static final double EXP_OVERFLOW_THRESH  = Double.longBitsToDouble(0x4086_2E42_FEFA_39EFL);
+    static final double EXP_OVERFLOW_THRESH = Double.longBitsToDouble(0x4086_2E42_FEFA_39EFL);
 
     // From the fdlibm source, the underflow threshold in hex is:
     // 0xc087_4910_D52D_3051L.
@@ -41,19 +41,19 @@ public class StrictExpTests {
 
     @Test
     public void testExp() {
-        double [][] testCases = {
-            // Some of these could be moved to common Math/StrictMath exp testing.
-            {Double.NaN,                      Double.NaN},
-            {Double.MAX_VALUE,                Double.POSITIVE_INFINITY},
-            {Double.POSITIVE_INFINITY,        Double.POSITIVE_INFINITY},
-            {Double.NEGATIVE_INFINITY,        +0.0},
-            {EXP_OVERFLOW_THRESH,                 0x1.ffff_ffff_fff2ap1023},
-            {Math.nextUp(EXP_OVERFLOW_THRESH),    Double.POSITIVE_INFINITY},
-            {Math.nextDown(EXP_UNDERFLOW_THRESH), +0.0},
-            {EXP_UNDERFLOW_THRESH,                +Double.MIN_VALUE},
+        double[][] testCases = {
+                        // Some of these could be moved to common Math/StrictMath exp testing.
+                        {Double.NaN, Double.NaN},
+                        {Double.MAX_VALUE, Double.POSITIVE_INFINITY},
+                        {Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY},
+                        {Double.NEGATIVE_INFINITY, +0.0},
+                        {EXP_OVERFLOW_THRESH, 0x1.ffff_ffff_fff2ap1023},
+                        {Math.nextUp(EXP_OVERFLOW_THRESH), Double.POSITIVE_INFINITY},
+                        {Math.nextDown(EXP_UNDERFLOW_THRESH), +0.0},
+                        {EXP_UNDERFLOW_THRESH, +Double.MIN_VALUE},
         };
 
-        for (double[] testCase: testCases) {
+        for (double[] testCase : testCases) {
             Assert.assertEquals(testCase[1], StrictMath.exp(testCase[0]), 0);
         }
     }
@@ -64,21 +64,21 @@ public class StrictExpTests {
     @Test
     public void testAgainstTranslit() {
         double[] decisionPoints = {
-            // Near overflow threshold
-            EXP_OVERFLOW_THRESH - 512 * Math.ulp(EXP_OVERFLOW_THRESH),
+                        // Near overflow threshold
+                        EXP_OVERFLOW_THRESH - 512 * Math.ulp(EXP_OVERFLOW_THRESH),
 
-            // Near underflow threshold
-            EXP_UNDERFLOW_THRESH - 512 * Math.ulp(EXP_UNDERFLOW_THRESH),
+                        // Near underflow threshold
+                        EXP_UNDERFLOW_THRESH - 512 * Math.ulp(EXP_UNDERFLOW_THRESH),
 
-            // Straddle algorithm conditional checks
-            Double.longBitsToDouble(0x4086_2E42_0000_0000L - 512L),
-            Double.longBitsToDouble(0x3fd6_2e42_0000_0000L - 512L),
-            Double.longBitsToDouble(0x3FF0_A2B2_0000_0000L - 512L),
-            Double.longBitsToDouble(0x3e30_0000_0000_0000L - 512L),
+                        // Straddle algorithm conditional checks
+                        Double.longBitsToDouble(0x4086_2E42_0000_0000L - 512L),
+                        Double.longBitsToDouble(0x3fd6_2e42_0000_0000L - 512L),
+                        Double.longBitsToDouble(0x3FF0_A2B2_0000_0000L - 512L),
+                        Double.longBitsToDouble(0x3e30_0000_0000_0000L - 512L),
 
-            // Other notable points
-            Double.MIN_NORMAL - Math.ulp(Double.MIN_NORMAL) * 512,
-            -Double.MIN_VALUE * 512,
+                        // Other notable points
+                        Double.MIN_NORMAL - Math.ulp(Double.MIN_NORMAL) * 512,
+                        -Double.MIN_VALUE * 512,
         };
 
         for (double decisionPoint : decisionPoints) {

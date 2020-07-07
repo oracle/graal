@@ -311,16 +311,32 @@ public final class FdlibmTranslit {
      */
     static class Exp {
         private static final double one = 1.0;
-        private static final double[] halF = {0.5, -0.5, };
+        private static final double[] halF = {0.5, -0.5,
+        };
         private static final double huge = 1.0e+300;
-        private static final double twom1000 = 9.33263618503218878990e-302; /* 2**-1000=0x01700000,0 */
-        private static final double o_threshold = 7.09782712893383973096e+02; /* 0x40862E42, 0xFEFA39EF */
-        private static final double u_threshold = -7.45133219101941108420e+02; /* 0xc0874910, 0xD52D3051 */
-        private static final double[] ln2HI = {6.93147180369123816490e-01, /* 0x3fe62e42, 0xfee00000 */
-                                               -6.93147180369123816490e-01}; /* 0xbfe62e42, 0xfee00000 */
-        private static final double[] ln2LO = {1.90821492927058770002e-10, /* 0x3dea39ef, 0x35793c76 */
-                                               -1.90821492927058770002e-10, }; /* 0xbdea39ef, 0x35793c76 */
-        private static final double invln2 = 1.44269504088896338700e+00; /* 0x3ff71547, 0x652b82fe */
+        private static final double twom1000 = 9.33263618503218878990e-302; /*
+                                                                             * 2**-1000=0x01700000,0
+                                                                             */
+        private static final double o_threshold = 7.09782712893383973096e+02; /*
+                                                                               * 0x40862E42,
+                                                                               * 0xFEFA39EF
+                                                                               */
+        private static final double u_threshold = -7.45133219101941108420e+02; /*
+                                                                                * 0xc0874910,
+                                                                                * 0xD52D3051
+                                                                                */
+        private static final double[] ln2HI = {6.93147180369123816490e-01, /*
+                                                                            * 0x3fe62e42, 0xfee00000
+                                                                            */
+                        -6.93147180369123816490e-01}; /* 0xbfe62e42, 0xfee00000 */
+        private static final double[] ln2LO = {1.90821492927058770002e-10, /*
+                                                                            * 0x3dea39ef, 0x35793c76
+                                                                            */
+                        -1.90821492927058770002e-10,
+        }; /* 0xbdea39ef, 0x35793c76 */
+        private static final double invln2 = 1.44269504088896338700e+00; /*
+                                                                          * 0x3ff71547, 0x652b82fe
+                                                                          */
         private static final double P1 = 1.66666666666666019037e-01; /* 0x3FC55555, 0x5555553E */
         private static final double P2 = -2.77777777770155933842e-03; /* 0xBF66C16C, 0x16BEBD93 */
         private static final double P3 = 6.61375632143793436117e-05; /* 0x3F11566A, 0xAF25DE2C */

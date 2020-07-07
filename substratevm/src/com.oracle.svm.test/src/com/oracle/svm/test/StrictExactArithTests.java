@@ -31,13 +31,14 @@ import java.math.BigInteger;
 import static org.junit.Assert.fail;
 
 /**
- * This test is based on test/jdk/java/lang/StrictMath/ExactArithTests.java from JDK 11 tag jdk-11+28.
+ * This test is based on test/jdk/java/lang/StrictMath/ExactArithTests.java from JDK 11 tag
+ * jdk-11+28.
  */
 public class StrictExactArithTests {
 
     /**
-     * Test StrictMath.addExact, multiplyExact, subtractExact, toIntValue methods
-     * with {@code int} arguments.
+     * Test StrictMath.addExact, multiplyExact, subtractExact, toIntValue methods with {@code int}
+     * arguments.
      */
     @Test
     public void testIntegerExact() {
@@ -61,9 +62,9 @@ public class StrictExactArithTests {
     }
 
     /**
-     * Test exact arithmetic by comparing with the same operations using long
-     * and checking that the result is the same as the integer truncation.
-     * Errors are reported with {@link Assert#fail(String)}.
+     * Test exact arithmetic by comparing with the same operations using long and checking that the
+     * result is the same as the integer truncation. Errors are reported with
+     * {@link Assert#fail(String)}.
      *
      * @param x first parameter
      * @param y second parameter
@@ -118,8 +119,8 @@ public class StrictExactArithTests {
     }
 
     /**
-     * Test StrictMath.addExact, multiplyExact, subtractExact, toIntExact methods
-     * with {@code long} arguments.
+     * Test StrictMath.addExact, multiplyExact, subtractExact, toIntExact methods with {@code long}
+     * arguments.
      */
     @Test
     public void testLongExact() {
@@ -151,8 +152,7 @@ public class StrictExactArithTests {
     }
 
     /**
-     * Test each of the exact operations with the arguments and
-     * with the arguments reversed.
+     * Test each of the exact operations with the arguments and with the arguments reversed.
      *
      * @param x
      * @param y
@@ -162,11 +162,10 @@ public class StrictExactArithTests {
         testLongExact(y, x);
     }
 
-
     /**
-     * Test long exact arithmetic by comparing with the same operations using BigInteger
-     * and checking that the result is the same as the long truncation.
-     * Errors are reported with {@link Assert#fail(String)}.
+     * Test long exact arithmetic by comparing with the same operations using BigInteger and
+     * checking that the result is the same as the long truncation. Errors are reported with
+     * {@link Assert#fail(String)}.
      *
      * @param x first parameter
      * @param y second parameter
@@ -225,10 +224,10 @@ public class StrictExactArithTests {
     /**
      * Compare the expected and actual results.
      *
-     * @param message  message for the error
-     * @param x        first argument
-     * @param y        second argument
-     * @param result   actual result value
+     * @param message message for the error
+     * @param x first argument
+     * @param y second argument
+     * @param result actual result value
      * @param expected expected result value
      */
     static void checkResult(String message, long x, long y, long result, BigInteger expected) {
