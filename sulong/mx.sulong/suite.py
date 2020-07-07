@@ -442,15 +442,11 @@ suite = {
         "bin/<exe:llvm-stress>",
       ],
       "buildDependencies" : [
-        # "sdk:LLVM_TOOLCHAIN",
-        "sdk:LLVM_ORG_SRC",
+        "sdk:LLVM_TOOLCHAIN_FULL",
       ],
       "buildEnv" : {
-        # LLVM_TOOLCHAIN currently does not ship the llvm header files [GR-23492] - relying on system LLVM for now
-        # "LLVM_CONFIG" : "<path:LLVM_TOOLCHAIN>/bin/llvm-config",
-        # "CXX" : "<path:LLVM_TOOLCHAIN>/bin/clang++",
-        "LLVM_CONFIG" : "llvm-config",
-        "CXX" : "clang++",
+        "LLVM_CONFIG" : "<path:LLVM_TOOLCHAIN_FULL>/bin/llvm-config",
+        "CXX" : "<path:LLVM_TOOLCHAIN_FULL>/bin/clang++",
         "LLVM_REDUCE" :"bin/<exe:llvm-reduce>",
         "LLVM_STRESS" :"bin/<exe:llvm-stress>",
         "LLVM_ORG_SRC" : "<path:LLVM_ORG_SRC>",
