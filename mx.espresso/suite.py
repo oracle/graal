@@ -100,6 +100,15 @@ suite = {
 
     "projects": {
 
+	"com.oracle.truffle.espresso.polyglot": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+            ],
+            "javaCompliance": "1.8+",
+            "checkstyle": "com.oracle.truffle.espresso",
+	},
+
         "com.oracle.truffle.espresso": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -150,6 +159,9 @@ suite = {
         "com.oracle.truffle.espresso.playground": {
             "subDir": "src",
             "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.truffle.espresso.polyglot",
+            ],
             "jniHeaders": True,
             "javaCompliance": "1.8+",
         },
@@ -375,6 +387,9 @@ suite = {
 
         "ESPRESSO_PLAYGROUND": {
             "subDir": "src",
+            "distDependencies": [
+                "espresso:POLYGLOT",
+            ],
             "dependencies": [
                 "com.oracle.truffle.espresso.playground"
             ],
@@ -408,6 +423,14 @@ suite = {
             ],
             "testDistribution": True,
             "maven": False,
+        },
+
+        "POLYGLOT": {
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.truffle.espresso.polyglot"
+            ],
+            "description": "Espresso polyglot API",
         },
     }
 }
