@@ -112,10 +112,27 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
              * class Lock for all its locking needs.
              */
             HashSet<Class<?>> monitorTypes = new HashSet<>();
-            Class<?> referenceQueueLock = Class.forName("java.lang.ref.ReferenceQueue$Lock");
-            monitorTypes.add(referenceQueueLock);
+            monitorTypes.add(Class.forName("java.lang.ref.ReferenceQueue$Lock"));
             /* The WeakIdentityHashMap also synchronizes on its internal ReferenceQueue field. */
             monitorTypes.add(java.lang.ref.ReferenceQueue.class);
+
+            /*
+             * Whenever the monitor allocation in
+             * MultiThreadedMonitorSupport.getOrCreateMonitorFromMap() is done via
+             * ThreadLocalAllocation.slowPathNewInstance() then
+             * LinuxPhysicalMemory$PhysicalMemorySupportImpl.sizeFromCGroup() is called which
+             * triggers file IO using the synchronized java.io.FileDescriptor.attach().
+             */
+            monitorTypes.add(java.io.FileDescriptor.class);
+
+            /*
+             * The map access in MultiThreadedMonitorSupport.getOrCreateMonitorFromMap() calls
+             * System.identityHashCode() which on the slow path calls
+             * IdentityHashCodeSupport.generateIdentityHashCode(). The hashcode generation calls
+             * SplittableRandomAccessors.initialize() which synchronizes on the a Lock object.
+             */
+            monitorTypes.add(Class.forName("com.oracle.svm.core.jdk.SplittableRandomAccessors$Lock"));
+
             FORCE_MONITOR_SLOT_TYPES = Collections.unmodifiableSet(monitorTypes);
         } catch (ClassNotFoundException e) {
             throw VMError.shouldNotReachHere("Error building the list of types that always need a monitor slot.", e);
