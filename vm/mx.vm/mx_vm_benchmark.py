@@ -79,10 +79,10 @@ class GraalVm(mx_benchmark.OutputCapturingJavaVm):
 
     def run_launcher(self, cmd, args, cwd):
         """Run the 'cmd' command in the 'bin' directory."""
-        self.extract_vm_info(args)
-        out = mx.TeeOutputCapture(mx.OutputCapture())
         args = self.post_process_launcher_command_line_args(args)
+        self.extract_vm_info(args)
         mx.log("Running '{}' on '{}' with args: '{}'".format(cmd, self.name(), " ".join(args)))
+        out = mx.TeeOutputCapture(mx.OutputCapture())
         code = mx.run([os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin', cmd)] + args, out=out, err=out, cwd=cwd, nonZeroIsFatal=False)
         out = out.underlying.data
         dims = self.dimensions(cwd, args, code, out)
