@@ -48,7 +48,7 @@ final class JLine3Feature implements Feature {
     }
 }
 
-@TargetClass(className = "org.jline.terminal.impl.jna.JnaSupportImpl", onlyWith = JLine3Feature.IsEnabled.class)
+@TargetClass(className = "org.jline.terminal.impl.jna.JnaSupportImpl", onlyWith = com.oracle.svm.thirdparty.jline.JLine3Feature.IsEnabled.class)
 final class Target_org_jline_terminal_impl_jna_JnaSupportImpl_open {
     @Substitute
     public Object open() {
@@ -56,7 +56,7 @@ final class Target_org_jline_terminal_impl_jna_JnaSupportImpl_open {
     }
 }
 
-@TargetClass(className = "org.mozilla.universalchardet.UniversalDetector", onlyWith = JLine3Feature.IsEnabled.class)
+@TargetClass(className = "org.mozilla.universalchardet.UniversalDetector", onlyWith = com.oracle.svm.thirdparty.jline.JLine3Feature.IsEnabled.class)
 final class Target_org_mozilla_universalchardet_UniversalDetector {
     @Substitute
     Target_org_mozilla_universalchardet_UniversalDetector() {
