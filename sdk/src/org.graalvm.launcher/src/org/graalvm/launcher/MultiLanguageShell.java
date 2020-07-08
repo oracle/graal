@@ -256,7 +256,7 @@ class MultiLanguageShell implements Closeable {
     }
 
     private Terminal terminal() throws IOException {
-        return TerminalBuilder.builder().jansi(true).jna(false).streams(in, out).system(true).signalHandler(Terminal.SignalHandler.SIG_IGN).build();
+        return TerminalBuilder.builder().jansi(true).jna(false).streams(in, out).system(false).signalHandler(Terminal.SignalHandler.SIG_IGN).build();
     }
 
     private Map<String, Language> prompts() {
