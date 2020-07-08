@@ -63,7 +63,7 @@ public class VMInspection implements Feature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return isEnabled();
+        return isEnabled() || VMInspectionOptions.DumpThreadStacksOnSignal.getValue();
     }
 
     @Override
@@ -82,7 +82,7 @@ public class VMInspection implements Feature {
 
     @Fold
     public static boolean isEnabled() {
-        return VMInspectionOptions.AllowVMInspection.getValue() || VMInspectionOptions.DumpThreadStacksOnSignal.getValue();
+        return VMInspectionOptions.AllowVMInspection.getValue();
     }
 }
 
