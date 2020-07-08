@@ -33,9 +33,12 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
- * Orchestrates the semantics of invoke and invoke exacts. Creating a call site for an invoke method
- * goes to java code to create an invoker method that implements type checking and the actual
- * invocation of the payload. This node is basically a bridge to the actual work.
+ * Orchestrates the semantics of invoke and invoke exacts, and newer polymorphic signature methods
+ * (eg: VarHandle.get(), ...).
+ * 
+ * Creating a call site for such a method goes to java code to create an invoker method that
+ * implements type checking and the actual invocation of the payload. This node is basically a
+ * bridge to the actual work.
  */
 public class MHInvokeGenericNode extends MethodHandleIntrinsicNode {
     private final StaticObject appendix;

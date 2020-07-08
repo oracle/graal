@@ -23,10 +23,7 @@
 
 package com.oracle.truffle.espresso.impl;
 
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.InvokeBasic;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.InvokeGeneric;
 import static com.oracle.truffle.espresso.runtime.StaticObject.CLASS_TO_STATIC;
-import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.toBasic;
 
 import java.util.Comparator;
 import java.util.function.IntFunction;
@@ -838,7 +835,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     public Method lookupPolysigMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
         Method m = lookupPolysignatureDeclaredMethod(methodName);
         if (m != null) {
-            return findMethodHandleIntrinsic(m, methodName, signature, MethodHandleIntrinsics.getId(m));
+            return findMethodHandleIntrinsic(m, signature);
         }
         return null;
     }
@@ -854,36 +851,14 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     @TruffleBoundary
     private Method findMethodHandleIntrinsic(Method m,
-                    Symbol<Name> methodName,
-                    Symbol<Signature> signature,
-                    MethodHandleIntrinsics.PolySigIntrinsics methodHandleId) {
-        if (methodHandleId == InvokeGeneric) {
-            if (methodName == Name.invoke) {
-                return getMeta().java_lang_invoke_MethodHandle_invoke.findIntrinsic(signature, methodHandleId);
-            } else {
-                return m.findIntrinsic(signature, methodHandleId);
-            }
-        } else if (methodHandleId == InvokeBasic) {
-            return getMeta().java_lang_invoke_MethodHandle_invokeBasic.findIntrinsic(signature, methodHandleId);
-        } else {
-            Symbol<Signature> basicSignature = toBasic(getSignatures().parsed(signature), true, getSignatures());
-            switch (methodHandleId) {
-                case LinkToInterface:
-                    return findLinkToIntrinsic(getMeta().java_lang_invoke_MethodHandle_linkToInterface, basicSignature, methodHandleId);
-                case LinkToSpecial:
-                    return findLinkToIntrinsic(getMeta().java_lang_invoke_MethodHandle_linkToSpecial, basicSignature, methodHandleId);
-                case LinkToStatic:
-                    return findLinkToIntrinsic(getMeta().java_lang_invoke_MethodHandle_linkToStatic, basicSignature, methodHandleId);
-                case LinkToVirtual:
-                    return findLinkToIntrinsic(getMeta().java_lang_invoke_MethodHandle_linkToVirtual, basicSignature, methodHandleId);
-                default:
-                    throw EspressoError.shouldNotReachHere();
-            }
+                    Symbol<Signature> signature) {
+        assert m.isSignaturePolymorphicDeclared();
+        MethodHandleIntrinsics.PolySigIntrinsics iid = MethodHandleIntrinsics.getId(m);
+        Symbol<Signature> sig = signature;
+        if (iid.isStaticPolymorphicSignature()) {
+            sig = getSignatures().toBasic(signature, true);
         }
-    }
-
-    private static Method findLinkToIntrinsic(Method m, Symbol<Signature> signature, MethodHandleIntrinsics.PolySigIntrinsics id) {
-        return m.findIntrinsic(signature, id);
+        return m.findIntrinsic(sig);
     }
 
     /**

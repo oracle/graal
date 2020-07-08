@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.descriptors;
 
+import static java.lang.Math.max;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -55,6 +57,42 @@ public final class Signatures {
     public Signatures(Symbols symbols, Types types) {
         this.symbols = symbols;
         this.types = types;
+    }
+
+    /**
+     * Converts a regular signature to a basic one.
+     *
+     * @param raw Signature to convert
+     * @param keepLastArg Whether or not to erase the last parameter.
+     * @return A basic signature corresponding to @sig
+     */
+    @SuppressWarnings({"unchecked"})
+    public Symbol<Signature> toBasic(Symbol<Signature> raw, boolean keepLastArg) {
+        Symbol<Type>[] sig = parsed(raw);
+        int pcount = parameterCount(sig, false);
+        int params = max(pcount - (keepLastArg ? 0 : 1), 0);
+        List<Symbol<Type>> buf = new ArrayList<>();
+        for (int i = 0; i < params; i++) {
+            Symbol<Type> t = parameterType(sig, i);
+            if (i == params - 1 && keepLastArg) {
+                buf.add(t);
+            } else {
+                buf.add(toBasic(t));
+            }
+        }
+
+        Symbol<Type> rtype = toBasic(returnType(sig));
+        return makeRaw(rtype, buf.toArray(Symbol.EMPTY_ARRAY));
+    }
+
+    private static Symbol<Type> toBasic(Symbol<Type> t) {
+        if (t == Type.java_lang_Object || t.toString().charAt(0) == '[') {
+            return Type.java_lang_Object;
+        } else if (t == Type._int || t == Type._short || t == Type._boolean || t == Type._char) {
+            return Type._int;
+        } else {
+            return t;
+        }
     }
 
     public Symbol<Signature> lookupValidSignature(String signatureString) {
