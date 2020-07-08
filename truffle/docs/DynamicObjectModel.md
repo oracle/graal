@@ -1,7 +1,7 @@
 # Dynamic Object Model Tutorial
 
 This tutorial demonstrates how to get started with using the [DynamicObject](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/DynamicObject.html) and [DynamicObjectLibrary](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/DynamicObjectLibrary.html) API introduced with GraalVM 20.2.0.
-The full documentation can be found in the Javadoc.
+The full documentation can be found in the [Javadoc](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/DynamicObjectLibrary.html).
 
 ## Motivation
 
@@ -121,7 +121,7 @@ public final class MyLanguage extends TruffleLanguage<MyContext> {
     }
 
     public createObject() {
-        return new SLObject(initialObjectShape);
+        return new MyObject(initialObjectShape);
     }
     //...
 }
@@ -149,3 +149,32 @@ public class ExtendedObject extends SimpleObject {
     }
 }
 ```
+
+## Caching Considerations
+
+In order to ensure optimal caching, avoid reusing the same cached `DynamicObjectLibrary` for multiple, independent operations (`get`, `put`, etc.) and try to minimize the number of different shapes and property keys seen by each cached library instance.
+When the property keys are known statically (compilation-final), always use a separate `DynamicObjectLibrary` for each property key.
+Use dispatched libraries (`@CachedLibrary(limit=...)`) when putting multiple properties in succession.
+Example:
+```java
+public abstract class MakePairNode extends BinaryExpressionNode {
+    @Specialization
+    Object makePair(Object left, Object right,
+                    @CachedLanguage MyLanguage language,
+                    @CachedLibrary(limit = "3") putLeft,
+                    @CachedLibrary(limit = "3") putRight) {
+        MyObject obj = language.createObject();
+        putLeft.put(obj, "left", left);
+        putRight.put(obj, "right", right);
+        return obj;
+    }
+}
+```
+
+<hr/>
+
+### Further Reading
+
+A high-level description of the object model has been published in [**An Object Storage Model for the Truffle Language Implementation Framework**](http://dl.acm.org/citation.cfm?id=2647517).
+
+See [Truffle docs](https://github.com/oracle/graal/tree/master/truffle/docs) and [Publications.md](https://github.com/oracle/graal/blob/master/docs/Publications.md) for more tutorials, presentations, and publications about Truffle and GraalVM.
