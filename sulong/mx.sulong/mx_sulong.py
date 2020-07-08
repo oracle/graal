@@ -691,10 +691,22 @@ def findBundledLLVMProgram(llvm_program):
     dep = mx.dependency(llvm_dist, fatalIfMissing=True)
     return os.path.join(dep.get_output(), 'bin', llvm_program)
 
+@mx.command(_suite.name, 'llvm-tool', 'Run a tool from the LLVM_TOOLCHAIN distribution')
 def llvm_tool(args=None, nonZeroIsFatal=True, out=None, err=None):
     if len(args) < 1:
         mx.abort("usage: mx llvm-tool <llvm-tool> [args...]")
     llvm_program = findBundledLLVMProgram(args[0])
+    mx.run([llvm_program] + args[1:], nonZeroIsFatal=nonZeroIsFatal, out=out, err=err)
+
+
+_LLVM_EXTRA_TOOL_DIST = 'LLVM_TOOLCHAIN_FULL'
+@mx.command(_suite.name, 'llvm-extra-tool', 'Run a tool from the ' + _LLVM_EXTRA_TOOL_DIST + ' distribution')
+def llvm_extra_tool(args=None, nonZeroIsFatal=True, out=None, err=None):
+    if len(args) < 1:
+        mx.abort("usage: llvm-extra-tool <llvm-tool> [args...]")
+    program = args[0]
+    dep = mx.dependency(_LLVM_EXTRA_TOOL_DIST, fatalIfMissing=True)
+    llvm_program = os.path.join(dep.get_output(), 'bin', program)
     mx.run([llvm_program] + args[1:], nonZeroIsFatal=nonZeroIsFatal, out=out, err=err)
 
 def getClasspathOptions(extra_dists=None):
@@ -1419,7 +1431,6 @@ mx.update_commands(_suite, {
     'create-debugexpr-parser' : [create_debugexpr_parser, 'create the debug expression parser using antlr'],
     'create-parsers' : [create_parsers, 'create the debug expression and the inline assembly parser using antlr'],
     'extract-bitcode' : [extract_bitcode, 'Extract embedded LLVM bitcode from object files'],
-    'llvm-tool' : [llvm_tool, 'Run a tool from the LLVM.ORG distribution'],
     'llvm-dis' : [llvm_dis, 'Disassemble (embedded) LLVM bitcode to LLVM assembly'],
     'fuzz' : [fuzz, ''],
     'll-reduce' : [ll_reduce, ''],
