@@ -400,6 +400,32 @@ public interface FileSystem {
     }
 
     /**
+     * Tests if the given paths refer to the same physical file.
+     *
+     * The default implementation firstly converts the paths into absolute paths. If the absolute
+     * paths are equal it returns {@code true} without checking if the file exists. Otherwise, this
+     * method converts the paths into canonical representations and tests the canonical paths for
+     * equality. The {@link FileSystem} may re-implement the method with a more efficient test. When
+     * re-implemented the method must have the same security privileges as the
+     * {@link #toAbsolutePath(Path) toAbsolutePath} and {@link #toRealPath(Path, LinkOption...)
+     * toRealPath}.
+     *
+     * @param path1 the path to the file
+     * @param path2 the other path
+     * @param options the options determining how the symbolic links should be handled
+     * @return {@code true} if the given paths refer to the same physical file
+     * @throws IOException in case of IO error
+     * @throws SecurityException if this {@link FileSystem} denied the operation
+     * @since 20.2.0
+     */
+    default boolean isSameFile(Path path1, Path path2, LinkOption... options) throws IOException {
+        if (toAbsolutePath(path1).equals(toAbsolutePath(path2))) {
+            return true;
+        }
+        return toRealPath(path1, options).equals(toRealPath(path2, options));
+    }
+
+    /**
      * Creates a {@link FileSystem} implementation based on the host Java NIO. The returned instance
      * can be used as a delegate by a decorating {@link FileSystem}.
      * <p>

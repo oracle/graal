@@ -103,6 +103,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.RootNode;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
+import org.graalvm.polyglot.io.FileSystem;
 
 public class ContextPreInitializationTest {
 
@@ -1468,6 +1469,99 @@ public class ContextPreInitializationTest {
             }
         };
         doContextPreinitialize(FIRST);
+    }
+
+    @Test
+    public void testIsSameFileAllowedIO() throws Exception {
+        IsSameFileResult res = testIsSameFileImpl(true, null);
+        assertTrue(res.imageBuildInternalFile.isSameFile(res.imageBuildPublicFile));
+        assertTrue(res.imageBuildInternalFile.isSameFile(res.imageExecInternalFile));
+        assertTrue(res.imageBuildInternalFile.isSameFile(res.imageExecPublicFile));
+        assertTrue(res.imageBuildPublicFile.isSameFile(res.imageBuildInternalFile));
+        assertTrue(res.imageBuildPublicFile.isSameFile(res.imageExecInternalFile));
+        assertTrue(res.imageBuildPublicFile.isSameFile(res.imageExecPublicFile));
+        assertTrue(res.imageExecInternalFile.isSameFile(res.imageBuildInternalFile));
+        assertTrue(res.imageExecInternalFile.isSameFile(res.imageBuildPublicFile));
+        assertTrue(res.imageExecInternalFile.isSameFile(res.imageExecPublicFile));
+        assertTrue(res.imageExecPublicFile.isSameFile(res.imageBuildInternalFile));
+        assertTrue(res.imageExecPublicFile.isSameFile(res.imageBuildPublicFile));
+        assertTrue(res.imageExecPublicFile.isSameFile(res.imageExecInternalFile));
+    }
+
+    @Test
+    public void testIsSameFileDeniedIO() throws Exception {
+        IsSameFileResult res = testIsSameFileImpl(false, null);
+        assertFalse(res.imageBuildInternalFile.isSameFile(res.imageBuildPublicFile));
+        assertTrue(res.imageBuildInternalFile.isSameFile(res.imageExecInternalFile));
+        assertFalse(res.imageBuildInternalFile.isSameFile(res.imageExecPublicFile));
+        assertFalse(res.imageBuildPublicFile.isSameFile(res.imageBuildInternalFile));
+        assertFalse(res.imageBuildPublicFile.isSameFile(res.imageExecInternalFile));
+        assertTrue(res.imageBuildPublicFile.isSameFile(res.imageExecPublicFile));
+        assertTrue(res.imageExecInternalFile.isSameFile(res.imageBuildInternalFile));
+        assertFalse(res.imageExecInternalFile.isSameFile(res.imageBuildPublicFile));
+        assertFalse(res.imageExecInternalFile.isSameFile(res.imageExecPublicFile));
+        assertFalse(res.imageExecPublicFile.isSameFile(res.imageBuildInternalFile));
+        assertTrue(res.imageExecPublicFile.isSameFile(res.imageBuildPublicFile));
+        assertFalse(res.imageExecPublicFile.isSameFile(res.imageExecInternalFile));
+    }
+
+    @Test
+    public void testIsSameFileCustomFileSystem() throws Exception {
+        IsSameFileResult res = testIsSameFileImpl(true, FileSystem.newDefaultFileSystem());
+        assertTrue(res.imageBuildInternalFile.isSameFile(res.imageBuildPublicFile));
+        assertTrue(res.imageBuildInternalFile.isSameFile(res.imageExecInternalFile));
+        assertTrue(res.imageBuildInternalFile.isSameFile(res.imageExecPublicFile));
+        assertTrue(res.imageBuildPublicFile.isSameFile(res.imageBuildInternalFile));
+        assertTrue(res.imageBuildPublicFile.isSameFile(res.imageExecInternalFile));
+        assertTrue(res.imageBuildPublicFile.isSameFile(res.imageExecPublicFile));
+        assertTrue(res.imageExecInternalFile.isSameFile(res.imageBuildInternalFile));
+        assertTrue(res.imageExecInternalFile.isSameFile(res.imageBuildPublicFile));
+        assertTrue(res.imageExecInternalFile.isSameFile(res.imageExecPublicFile));
+        assertTrue(res.imageExecPublicFile.isSameFile(res.imageBuildInternalFile));
+        assertTrue(res.imageExecPublicFile.isSameFile(res.imageBuildPublicFile));
+        assertTrue(res.imageExecPublicFile.isSameFile(res.imageExecInternalFile));
+    }
+
+    private static IsSameFileResult testIsSameFileImpl(boolean allowIO, FileSystem fs) throws ReflectiveOperationException {
+        String path = Paths.get(".").toAbsolutePath().toString();
+        setPatchable(FIRST);
+        IsSameFileResult result = new IsSameFileResult();
+        ContextPreInitializationTestFirstLanguage.onPreInitAction = (env) -> {
+            result.imageBuildInternalFile = env.getInternalTruffleFile(path);
+            result.imageBuildPublicFile = env.getPublicTruffleFile(path);
+        };
+        doContextPreinitialize(FIRST);
+        List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+        assertEquals(1, contexts.size());
+        final CountingContext firstLangCtx = findContext(FIRST, contexts);
+        assertEquals(1, firstLangCtx.createContextCount);
+        assertEquals(1, firstLangCtx.initializeContextCount);
+        assertEquals(0, firstLangCtx.patchContextCount);
+        ContextPreInitializationTestFirstLanguage.onPatchAction = (env) -> {
+            result.imageExecInternalFile = env.getInternalTruffleFile(path);
+            result.imageExecPublicFile = env.getPublicTruffleFile(path);
+        };
+        Context.Builder builder = Context.newBuilder().allowIO(allowIO);
+        if (fs != null) {
+            builder.fileSystem(fs);
+        }
+        try (Context ctx = builder.build()) {
+            Value res = ctx.eval(Source.create(FIRST, "test"));
+            assertEquals("test", res.asString());
+            contexts = new ArrayList<>(emittedContexts);
+            assertEquals(1, contexts.size());
+            assertEquals(1, firstLangCtx.createContextCount);
+            assertEquals(1, firstLangCtx.initializeContextCount);
+            assertEquals(1, firstLangCtx.patchContextCount);
+            return result;
+        }
+    }
+
+    private static final class IsSameFileResult {
+        TruffleFile imageBuildPublicFile;
+        TruffleFile imageBuildInternalFile;
+        TruffleFile imageExecPublicFile;
+        TruffleFile imageExecInternalFile;
     }
 
     private static com.oracle.truffle.api.source.Source createSource(TruffleLanguage.Env env, Path resource, boolean cached) {

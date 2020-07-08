@@ -389,6 +389,27 @@ final class FileSystems {
             return wrap(delegate.getTempDirectory());
         }
 
+        @Override
+        public boolean isSameFile(Path path1, Path path2, LinkOption... options) throws IOException {
+            return delegate.isSameFile(unwrap(path1), unwrap(path2), options);
+        }
+
+        @Override
+        public int hashCode() {
+            return delegate.hashCode();
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            if (other == this) {
+                return true;
+            }
+            if (!(other instanceof PreInitializeContextFileSystem)) {
+                return false;
+            }
+            return delegate.equals(((PreInitializeContextFileSystem) other).delegate);
+        }
+
         Path wrap(Path path) {
             return path == null ? null : factory.apply(path);
         }
@@ -667,7 +688,7 @@ final class FileSystems {
 
     private static final class NIOFileSystem implements InternalFileSystem {
 
-        private final FileSystemProvider delegate;
+        private final FileSystemProvider hostfs;
         private final boolean explicitUserDir;
         private volatile Path userDir;
         private volatile Path tmpDir;
@@ -682,20 +703,20 @@ final class FileSystems {
 
         private NIOFileSystem(final FileSystemProvider fileSystemProvider, final boolean explicitUserDir, final Path userDir) {
             Objects.requireNonNull(fileSystemProvider, "FileSystemProvider must be non null.");
-            this.delegate = fileSystemProvider;
+            this.hostfs = fileSystemProvider;
             this.explicitUserDir = explicitUserDir;
             this.userDir = userDir;
         }
 
         @Override
         public boolean hasAllAccess() {
-            return FILE_SCHEME.equals(delegate.getScheme());
+            return FILE_SCHEME.equals(hostfs.getScheme());
         }
 
         @Override
         public Path parsePath(URI uri) {
             try {
-                return delegate.getPath(uri);
+                return hostfs.getPath(uri);
             } catch (IllegalArgumentException | FileSystemNotFoundException e) {
                 throw new UnsupportedOperationException(e);
             }
@@ -703,7 +724,7 @@ final class FileSystems {
 
         @Override
         public Path parsePath(String path) {
-            if (!"file".equals(delegate.getScheme())) {
+            if (!"file".equals(hostfs.getScheme())) {
                 throw new IllegalStateException("The ParsePath(String path) should be called only for file scheme.");
             }
             return Paths.get(path);
@@ -712,9 +733,9 @@ final class FileSystems {
         @Override
         public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) throws IOException {
             if (isFollowLinks(linkOptions)) {
-                delegate.checkAccess(resolveRelative(path), modes.toArray(new AccessMode[modes.size()]));
+                hostfs.checkAccess(resolveRelative(path), modes.toArray(new AccessMode[modes.size()]));
             } else if (modes.isEmpty()) {
-                delegate.readAttributes(path, "isRegularFile", LinkOption.NOFOLLOW_LINKS);
+                hostfs.readAttributes(path, "isRegularFile", LinkOption.NOFOLLOW_LINKS);
             } else {
                 throw new UnsupportedOperationException("CheckAccess for NIO Provider is unsupported with non empty AccessMode and NOFOLLOW_LINKS.");
             }
@@ -722,31 +743,31 @@ final class FileSystems {
 
         @Override
         public void createDirectory(Path dir, FileAttribute<?>... attrs) throws IOException {
-            delegate.createDirectory(resolveRelative(dir), attrs);
+            hostfs.createDirectory(resolveRelative(dir), attrs);
         }
 
         @Override
         public void delete(Path path) throws IOException {
-            delegate.delete(resolveRelative(path));
+            hostfs.delete(resolveRelative(path));
         }
 
         @Override
         public void copy(Path source, Path target, CopyOption... options) throws IOException {
-            delegate.copy(resolveRelative(source), resolveRelative(target), options);
+            hostfs.copy(resolveRelative(source), resolveRelative(target), options);
         }
 
         @Override
         public void move(Path source, Path target, CopyOption... options) throws IOException {
-            delegate.move(resolveRelative(source), resolveRelative(target), options);
+            hostfs.move(resolveRelative(source), resolveRelative(target), options);
         }
 
         @Override
         public SeekableByteChannel newByteChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
             final Path resolved = resolveRelative(path);
             try {
-                return delegate.newFileChannel(resolved, options, attrs);
+                return hostfs.newFileChannel(resolved, options, attrs);
             } catch (UnsupportedOperationException uoe) {
-                return delegate.newByteChannel(resolved, options, attrs);
+                return hostfs.newByteChannel(resolved, options, attrs);
             }
         }
 
@@ -762,7 +783,7 @@ final class FileSystems {
                 resolvedPath = dir;
                 relativize = false;
             }
-            DirectoryStream<Path> result = delegate.newDirectoryStream(resolvedPath, filter);
+            DirectoryStream<Path> result = hostfs.newDirectoryStream(resolvedPath, filter);
             if (relativize) {
                 result = new RelativizeDirectoryStream(cwd, result);
             }
@@ -771,27 +792,27 @@ final class FileSystems {
 
         @Override
         public void createLink(Path link, Path existing) throws IOException {
-            delegate.createLink(resolveRelative(link), resolveRelative(existing));
+            hostfs.createLink(resolveRelative(link), resolveRelative(existing));
         }
 
         @Override
         public void createSymbolicLink(Path link, Path target, FileAttribute<?>... attrs) throws IOException {
-            delegate.createSymbolicLink(resolveRelative(link), resolveRelative(target), attrs);
+            hostfs.createSymbolicLink(resolveRelative(link), resolveRelative(target), attrs);
         }
 
         @Override
         public Path readSymbolicLink(Path link) throws IOException {
-            return delegate.readSymbolicLink(resolveRelative(link));
+            return hostfs.readSymbolicLink(resolveRelative(link));
         }
 
         @Override
         public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options) throws IOException {
-            return delegate.readAttributes(resolveRelative(path), attributes, options);
+            return hostfs.readAttributes(resolveRelative(path), attributes, options);
         }
 
         @Override
         public void setAttribute(Path path, String attribute, Object value, LinkOption... options) throws IOException {
-            delegate.setAttribute(resolveRelative(path), attribute, value, options);
+            hostfs.setAttribute(resolveRelative(path), attribute, value, options);
         }
 
         @Override
@@ -818,7 +839,7 @@ final class FileSystems {
             }
             boolean isDirectory;
             try {
-                isDirectory = Boolean.TRUE.equals(delegate.readAttributes(currentWorkingDirectory, "isDirectory").get("isDirectory"));
+                isDirectory = Boolean.TRUE.equals(hostfs.readAttributes(currentWorkingDirectory, "isDirectory").get("isDirectory"));
             } catch (IOException ioe) {
                 isDirectory = false;
             }
@@ -848,6 +869,19 @@ final class FileSystems {
                 tmpDir = result;
             }
             return result;
+        }
+
+        @Override
+        public boolean isSameFile(Path path1, Path path2, LinkOption... options) throws IOException {
+            if (isFollowLinks(options)) {
+                Path absolutePath1 = resolveRelative(path1);
+                Path absolutePath2 = resolveRelative(path2);
+                return hostfs.isSameFile(absolutePath1, absolutePath2);
+            } else {
+                // The FileSystemProvider.isSameFile always resolves symlinks
+                // we need to use the default implementation comparing the canonical paths
+                return InternalFileSystem.super.isSameFile(path1, path2, options);
+            }
         }
 
         private Path resolveRelative(Path path) {
@@ -999,6 +1033,11 @@ final class FileSystems {
         public Path readSymbolicLink(Path link) throws IOException {
             throw forbidden(link);
         }
+
+        @Override
+        public boolean isSameFile(Path path1, Path path2, LinkOption... options) throws IOException {
+            throw forbidden(path1);
+        }
     }
 
     private static class LanguageHomeFileSystem extends DeniedIOFileSystem {
@@ -1087,6 +1126,11 @@ final class FileSystems {
         @Override
         public Path toRealPath(Path path, LinkOption... linkOptions) throws IOException {
             return fullIO.toRealPath(path, linkOptions);
+        }
+
+        @Override
+        public boolean isSameFile(Path path1, Path path2, LinkOption... options) throws IOException {
+            return fullIO.isSameFile(path1, path2, options);
         }
 
         private boolean inLanguageHome(final Path path) {
