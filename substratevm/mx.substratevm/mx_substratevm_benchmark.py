@@ -319,6 +319,7 @@ def extract_archive(path, extracted_name):
                 zf.extractall(sdu.directory)
     return extracted_archive
 
+
 def list_jars(path):
     jars = []
     for f in os.listdir(path):
@@ -368,6 +369,15 @@ _renaissance_config = {
     "scrabble"         : ("jdk-streams", 12)
 }
 
+# breeze jar is replaced with a patched jar because of IncompatibleClassChange errors due to a bug in the Scala compiler.
+_renaissance_additional_lib = {
+    'apache-spark'               : ['SPARK_BREEZE_PATCHED']
+}
+
+_renaissance_exclude_lib = {
+    'apache-spark'               : ['breeze_2.11-0.11.2.jar']
+}
+
 
 def benchmark_group(benchmark):
     return _renaissance_config[benchmark][0]
@@ -405,6 +415,9 @@ class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchma
 
     def renaissance_unpacked(self):
         return extract_archive(self.renaissancePath(), 'renaissance.extracted')
+
+    def renaissance_additional_lib(self, lib):
+        return mx.library(lib).get_path(True)
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         bench_arg = ""
@@ -462,10 +475,19 @@ class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchma
         def classpath_repr(self, resolve=True):
             return None
 
-        def get_dependencies(self, group):
+        def get_dependencies(self, path, group):
             deps = []
-            for jar in list_jars(group):
-                deps.append(RenaissanceNativeImageBenchmarkSuite.RenaissanceDependency(os.path.basename(jar), mx.join(group, jar)))
+            for jar in list_jars(path):
+                deps.append(RenaissanceNativeImageBenchmarkSuite.RenaissanceDependency(os.path.basename(jar), mx.join(path, jar)))
+            if group in _renaissance_exclude_lib:
+                for lib in _renaissance_exclude_lib[group]:
+                    lib_dep = RenaissanceNativeImageBenchmarkSuite.RenaissanceDependency(lib, mx.join(path, lib))
+                    if lib_dep in deps:
+                        deps.remove(lib_dep)
+            if group in _renaissance_additional_lib:
+                for lib in _renaissance_additional_lib[group]:
+                    lib_path = RenaissanceNativeImageBenchmarkSuite.renaissance_additional_lib(self.suite, lib)
+                    deps.append(RenaissanceNativeImageBenchmarkSuite.RenaissanceDependency(os.path.basename(lib_path), lib_path))
             return deps
 
         def collect_group_dependencies(self, group, scala_version):
@@ -478,7 +500,7 @@ class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchma
             else:
                 unpacked_renaissance = RenaissanceNativeImageBenchmarkSuite.renaissance_unpacked(self.suite)
                 path = mx.join(unpacked_renaissance, 'benchmarks', group)
-            return self.get_dependencies(path)
+            return self.get_dependencies(path, group)
 
 
 mx_benchmark.add_bm_suite(RenaissanceNativeImageBenchmarkSuite())
@@ -512,6 +534,9 @@ class BaseDaCapoNativeImageBenchmarkSuite():
 
     def benchmark_resources(self, benchmark):
         pass
+
+    def additional_lib(self, lib):
+        return mx.library(lib).get_path(True)
 
     def create_dacapo_classpath(self, dacapo_path, benchmark):
         dacapo_nested_resources = []
@@ -712,6 +737,10 @@ _scala_daCapo_exclude_lib = {
     'tmt'         : ['scala-library-2.8.0.jar'],
 }
 
+_scala_daCapo_additional_lib = {
+    'scalaxb'     : ['XERCES_IMPL']
+}
+
 
 class ScalaDaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.ScalaDaCapoBenchmarkSuite, BaseDaCapoNativeImageBenchmarkSuite): #pylint: disable=too-many-ancestors
     def name(self):
@@ -731,9 +760,6 @@ class ScalaDaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.ScalaDaCapoBenchma
 
     def daCapoIterations(self):
         return _scala_dacapo_iterations
-
-    def daCapoAdditionalLib(self):
-        return mx.library('XERCES_IMPL').get_path(True)
 
     def benchmark_resources(self, benchmark):
         return _scala_dacapo_resources[benchmark]
@@ -758,8 +784,9 @@ class ScalaDaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.ScalaDaCapoBenchma
         dacapo_extracted, dacapo_dat_resources, dacapo_nested_resources = self.create_dacapo_classpath(self.daCapoPath(), benchmark)
         dacapo_jars = super(ScalaDaCapoNativeImageBenchmarkSuite, self).collect_unique_dependencies(os.path.join(dacapo_extracted, 'jar'), benchmark, _scala_daCapo_exclude_lib)
         cp = ':'.join([self.substitution_path()] + [dacapo_extracted] + dacapo_jars + dacapo_dat_resources + dacapo_nested_resources)
-        if benchmark == 'scalaxb':
-            cp += ':' + self.daCapoAdditionalLib()
+        if benchmark in _scala_daCapo_additional_lib:
+            for lib in _scala_daCapo_additional_lib[benchmark]:
+                cp += ':' +  super(ScalaDaCapoNativeImageBenchmarkSuite, self).additional_lib(lib)
         return cp
 
 
