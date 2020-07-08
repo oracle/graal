@@ -492,7 +492,7 @@ public final class StaticObject implements TruffleObject {
         this.primitiveFields = primitiveFieldCount > 0 ? new byte[primitiveFieldCount] : null;
         initInstanceFields(guestClass);
         if (klass.getContext().modulesEnabled()) {
-            setField(klass.getMeta().java_lang_class_classLoader, klass.getDefiningClassLoader());
+            setField(klass.getMeta().java_lang_Class_classLoader, klass.getDefiningClassLoader());
             setModule(klass);
         }
         setHiddenField(klass.getMeta().HIDDEN_MIRROR_KLASS, klass);
@@ -503,12 +503,12 @@ public final class StaticObject implements TruffleObject {
             StaticObject module = klass.module().module();
             if (StaticObject.isNull(module)) {
                 if (klass.getRegistries().javaBaseDefined()) {
-                    setField(klass.getMeta().java_lang_class_module, klass.getRegistries().getJavaBaseModule().module());
+                    setField(klass.getMeta().java_lang_Class_module, klass.getRegistries().getJavaBaseModule().module());
                 } else {
                     klass.getRegistries().addToFixupList(klass);
                 }
             } else {
-                setField(klass.getMeta().java_lang_class_module, module);
+                setField(klass.getMeta().java_lang_Class_module, module);
             }
         }
     }

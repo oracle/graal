@@ -26,7 +26,6 @@ package com.oracle.truffle.espresso.impl;
 import java.util.ArrayList;
 import java.util.concurrent.locks.ReadWriteLock;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
@@ -111,7 +110,6 @@ public class PackageTable extends EntryTable<PackageTable.PackageEntry, ModuleEn
             }
         }
 
-        @TruffleBoundary // SVM blacklisted Object.equals
         public boolean contains(ModuleEntry m) {
             return exports.contains(m);
         }
