@@ -87,6 +87,50 @@ public abstract class Shape {
         return new Builder();
     }
 
+    abstract static class AbstractBuilder<T extends AbstractBuilder<T>> {
+        /**
+         * Sets initial dynamic object type identifier.
+         *
+         * @param dynamicType type identifier object; an instance of {@link ObjectType}
+         * @throws NullPointerException if the type is {@code null}
+         * @throws IllegalArgumentException if the type is not an instance of {@link ObjectType}
+         * @since 20.2.0
+         */
+        public abstract T dynamicType(Object dynamicType);
+
+        /**
+         * Sets initial shape flags (default: 0). Currently limited to 8 bits.
+         *
+         * @param flags an int value in the range from 0 to 255 (inclusive)
+         * @throws IllegalArgumentException if the flags value is not in the supported range
+         * @since 20.2.0
+         */
+        public abstract T shapeFlags(int flags);
+
+        /**
+         * If {@code true}, makes the object shared (default: {@code false}).
+         *
+         * @see Shape#isShared()
+         * @since 20.2.0
+         */
+        public abstract T shared(boolean isShared);
+
+        static int checkShapeFlags(int flags) {
+            if ((flags & ~OBJECT_FLAGS_MASK) != 0) {
+                throw new IllegalArgumentException("flags must be in the range (0, 255)");
+            }
+            return flags;
+        }
+
+        static Object checkDynamicType(Object dynamicType) {
+            Objects.requireNonNull(dynamicType, "dynamicType");
+            if (!(dynamicType instanceof ObjectType)) {
+                throw new IllegalArgumentException("dynamicType must be an instance of ObjectType");
+            }
+            return dynamicType;
+        }
+    }
+
     /**
      * Builder class to construct initial {@link Shape} instances. A builder instance is not
      * thread-safe and must not be used from multiple threads at the same time.
@@ -95,7 +139,7 @@ public abstract class Shape {
      * @since 20.2.0
      */
     @SuppressWarnings("hiding")
-    public static final class Builder {
+    public static final class Builder extends AbstractBuilder<Builder> {
         private static final Layout DEFAULT_LAYOUT = Layout.newLayout().type(DynamicObject.class).build();
 
         private Layout layout = DEFAULT_LAYOUT;
@@ -185,36 +229,31 @@ public abstract class Shape {
         }
 
         /**
-         * Sets initial dynamic object type identifier.
+         * {@inheritDoc}
          *
-         * @param dynamicType type identifier object; an instance of {@link ObjectType}
-         * @throws NullPointerException if the type identifier is {@code null}
-         * @throws IllegalArgumentException if the type is not an instance of {@link ObjectType}
+         * @throws NullPointerException {@inheritDoc}
+         * @throws IllegalArgumentException {@inheritDoc}
+         * @see DynamicObjectLibrary#getDynamicType(DynamicObject)
+         * @see DynamicObjectLibrary#setDynamicType(DynamicObject, Object)
          * @since 20.2.0
          */
+        @Override
         public Builder dynamicType(Object dynamicType) {
-            Objects.requireNonNull(dynamicType, "dynamicType");
-            if (!(dynamicType instanceof ObjectType)) {
-                throw new IllegalArgumentException("dynamicType must be an instance of ObjectType");
-            }
-            this.dynamicType = dynamicType;
+            this.dynamicType = checkDynamicType(dynamicType);
             return this;
         }
 
         /**
-         * Sets initial shape flags (default: 0). Currently limited to 8 bits.
+         * {@inheritDoc}
          *
-         * @param flags an int value in the range from 0 to 255 (inclusive)
-         * @throws IllegalArgumentException if the flags value is not in the supported range
+         * @throws IllegalArgumentException {@inheritDoc}
          * @see DynamicObjectLibrary#getShapeFlags(DynamicObject)
          * @see DynamicObjectLibrary#setShapeFlags(DynamicObject, int)
          * @since 20.2.0
          */
+        @Override
         public Builder shapeFlags(int flags) {
-            if ((flags & ~OBJECT_FLAGS_MASK) != 0) {
-                throw new IllegalArgumentException("flags must be in the range (0, 255)");
-            }
-            this.shapeFlags = flags;
+            this.shapeFlags = checkShapeFlags(flags);
             return this;
         }
 
@@ -222,8 +261,11 @@ public abstract class Shape {
          * If {@code true}, makes the object shared (default: {@code false}).
          *
          * @see Shape#isShared()
+         * @see DynamicObjectLibrary#isShared(DynamicObject)
+         * @see DynamicObjectLibrary#markShared(DynamicObject)
          * @since 20.2.0
          */
+        @Override
         public Builder shared(boolean isShared) {
             this.shared = isShared;
             return this;
@@ -251,7 +293,7 @@ public abstract class Shape {
 
         /**
          * Sets shared data to be associated with the root shape and any derived shapes (e.g. a
-         * {@code TruffleLanguage} instance).
+         * {@code TruffleLanguage} instance). May be null (the default).
          *
          * @see Shape#getSharedData()
          * @since 20.2.0
