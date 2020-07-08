@@ -33,8 +33,10 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMCallNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListLibrary;
 import com.oracle.truffle.llvm.runtime.LLVMVarArgCompoundValue;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
@@ -45,6 +47,7 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVM80BitFloatStoreNod
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI32StoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMI64StoreNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNodeGen;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 
@@ -220,43 +223,49 @@ public abstract class LLVMX86_64VAStart extends LLVMExpressionNode {
         return usedGpArea;
     }
 
-    @Specialization
-    protected Object vaStart(VirtualFrame frame, LLVMPointer targetAddress) {
+    @Specialization(limit = "3")
+    protected Object vaStart(VirtualFrame frame, LLVMManagedPointer targetAddress, @CachedLibrary("targetAddress.getObject()") LLVMVaListLibrary vaListLibrary) {
         final Object[] arguments = getArgumentsArray(frame);
-        final int vaLength = arguments.length - numberOfExplicitArguments;
-
-        LLVMPointer regSaveArea = stackAllocationNode.executeWithTarget(frame, X86_64BitVarArgs.FP_LIMIT);
-        int overflowArgAreaSize = computeOverflowArgAreaSize(arguments);
-        LLVMPointer overflowArgArea = stackAllocationNode.executeWithTarget(frame, overflowArgAreaSize);
-
-        int gpOffset = calculateUsedGpArea(arguments);
-        int fpOffset = X86_64BitVarArgs.GP_LIMIT + calculateUsedFpArea(arguments);
-
-        initializeVaList(targetAddress, gpOffset, fpOffset, overflowArgArea, regSaveArea);
-
-        // reconstruct register_save_area and overflow_arg_area according to AMD64 ABI
-        if (vaLength > 0) {
-            int overflowOffset = 0;
-
-            // TODO (chaeubl): this generates pretty bad machine code as we don't know anything
-            // about the arguments
-            for (int i = 0; i < vaLength; i++) {
-                final Object object = arguments[numberOfExplicitArguments + i];
-                final VarArgArea area = getVarArgArea(object);
-
-                if (area == VarArgArea.GP_AREA && gpOffset < X86_64BitVarArgs.GP_LIMIT) {
-                    storeArgument(regSaveArea, gpOffset, memmove, i64RegSaveAreaStore, i32RegSaveAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, object);
-                    gpOffset += X86_64BitVarArgs.GP_STEP;
-                } else if (area == VarArgArea.FP_AREA && fpOffset < X86_64BitVarArgs.FP_LIMIT) {
-                    storeArgument(regSaveArea, fpOffset, memmove, i64RegSaveAreaStore, i32RegSaveAreaStore, fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, object);
-                    fpOffset += X86_64BitVarArgs.FP_STEP;
-                } else {
-                    assert overflowArgAreaSize >= overflowOffset;
-                    overflowOffset += storeArgument(overflowArgArea, overflowOffset, memmove, i64OverflowArgAreaStore, i32OverflowArgAreaStore,
-                                    fp80bitOverflowArgAreaStore, pointerOverflowArgAreaStore, object);
-                }
-            }
-        }
+        Object vaList = targetAddress.getObject();
+        vaListLibrary.initialize(vaList, arguments, numberOfExplicitArguments);
+// final int vaLength = arguments.length - numberOfExplicitArguments;
+//
+// LLVMPointer regSaveArea = stackAllocationNode.executeWithTarget(frame,
+// X86_64BitVarArgs.FP_LIMIT);
+// int overflowArgAreaSize = computeOverflowArgAreaSize(arguments);
+// LLVMPointer overflowArgArea = stackAllocationNode.executeWithTarget(frame, overflowArgAreaSize);
+//
+// int gpOffset = calculateUsedGpArea(arguments);
+// int fpOffset = X86_64BitVarArgs.GP_LIMIT + calculateUsedFpArea(arguments);
+//
+// initializeVaList(targetAddress, gpOffset, fpOffset, overflowArgArea, regSaveArea);
+//
+// // reconstruct register_save_area and overflow_arg_area according to AMD64 ABI
+// if (vaLength > 0) {
+// int overflowOffset = 0;
+//
+// // TODO (chaeubl): this generates pretty bad machine code as we don't know anything
+// // about the arguments
+// for (int i = 0; i < vaLength; i++) {
+// final Object object = arguments[numberOfExplicitArguments + i];
+// final VarArgArea area = getVarArgArea(object);
+//
+// if (area == VarArgArea.GP_AREA && gpOffset < X86_64BitVarArgs.GP_LIMIT) {
+// storeArgument(regSaveArea, gpOffset, memmove, i64RegSaveAreaStore, i32RegSaveAreaStore,
+// fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, object);
+// gpOffset += X86_64BitVarArgs.GP_STEP;
+// } else if (area == VarArgArea.FP_AREA && fpOffset < X86_64BitVarArgs.FP_LIMIT) {
+// storeArgument(regSaveArea, fpOffset, memmove, i64RegSaveAreaStore, i32RegSaveAreaStore,
+// fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, object);
+// fpOffset += X86_64BitVarArgs.FP_STEP;
+// } else {
+// assert overflowArgAreaSize >= overflowOffset;
+// overflowOffset += storeArgument(overflowArgArea, overflowOffset, memmove,
+// i64OverflowArgAreaStore, i32OverflowArgAreaStore,
+// fp80bitOverflowArgAreaStore, pointerOverflowArgAreaStore, object);
+// }
+// }
+// }
 
         return null;
     }

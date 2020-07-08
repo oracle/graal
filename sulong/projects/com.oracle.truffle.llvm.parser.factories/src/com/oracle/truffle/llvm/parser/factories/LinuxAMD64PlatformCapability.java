@@ -41,6 +41,7 @@ import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallSetTidA
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMNativeSyscallNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMSyscallExitNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.linux.amd64.LinuxAMD64Syscall;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMX86_64VaListStorage;
 
 final class LinuxAMD64PlatformCapability extends BasicPlatformCapability<LinuxAMD64Syscall> {
 
@@ -74,4 +75,10 @@ final class LinuxAMD64PlatformCapability extends BasicPlatformCapability<LinuxAM
                 return new LLVMNativeSyscallNode(syscall);
         }
     }
+
+    @Override
+    public Object createVAListStorage() {
+        return new LLVMX86_64VaListStorage();
+    }
+
 }

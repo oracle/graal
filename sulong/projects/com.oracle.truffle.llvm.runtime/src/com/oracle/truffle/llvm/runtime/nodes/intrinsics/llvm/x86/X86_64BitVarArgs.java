@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86;
 
-class X86_64BitVarArgs {
+public class X86_64BitVarArgs {
 
     // see http://www.x86-64.org/documentation/abi.pdf
 
@@ -43,5 +43,7 @@ class X86_64BitVarArgs {
     public static final int FP_LIMIT = 176;
     public static final int FP_STEP = 16;
     public static final int STACK_STEP = 8;
+
+    public static final int GP_REG_COUNT = GP_LIMIT / GP_STEP;
 
 }

@@ -88,7 +88,7 @@ public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> i
 
     /**
      * Inject implicit or modify explicit dependencies for a {@code library}.
-     * 
+     *
      * @param context the {@link LLVMContext}
      * @param library the library for which dependencies might be injected
      * @param dependencies (unmodifiable) list of dependencies specified by the library
@@ -96,4 +96,6 @@ public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> i
     public List<String> preprocessDependencies(LLVMContext context, ExternalLibrary library, List<String> dependencies) {
         return dependencies;
     }
+
+    public abstract Object createVAListStorage();
 }

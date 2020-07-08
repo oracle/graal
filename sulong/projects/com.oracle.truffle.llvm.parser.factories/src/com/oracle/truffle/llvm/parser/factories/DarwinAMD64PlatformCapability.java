@@ -34,6 +34,7 @@ import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallMmapNod
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMNativeSyscallNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMSyscallExitNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.darwin.amd64.DarwinAMD64Syscall;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMX86_64VaListStorage;
 
 final class DarwinAMD64PlatformCapability extends BasicPlatformCapability<DarwinAMD64Syscall> {
 
@@ -52,4 +53,10 @@ final class DarwinAMD64PlatformCapability extends BasicPlatformCapability<Darwin
                 return new LLVMNativeSyscallNode(syscall);
         }
     }
+
+    @Override
+    public Object createVAListStorage() {
+        return new LLVMX86_64VaListStorage();
+    }
+
 }

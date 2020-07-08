@@ -62,4 +62,10 @@ final class UnknownBasicPlatformCapability extends BasicPlatformCapability<Unkno
     protected LLVMSyscallOperationNode createSyscallNode(UnknownSyscalls syscall) {
         throw new UnsupportedOperationException("Should not reach.");
     }
+
+    @Override
+    public Object createVAListStorage() {
+        throw new UnsupportedOperationException("Should not reach.");
+    }
+
 }
