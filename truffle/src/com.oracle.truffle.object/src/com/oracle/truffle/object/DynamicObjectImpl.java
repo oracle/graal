@@ -174,11 +174,7 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
     /** @since 0.17 or earlier */
     @Override
     protected final DynamicObject clone() {
-        try {
-            return (DynamicObject) super.clone();
-        } catch (CloneNotSupportedException e) {
-            throw new IllegalStateException();
-        }
+        return LayoutImpl.ACCESS.objectClone(this);
     }
 
     /** @since 0.17 or earlier */

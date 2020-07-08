@@ -414,7 +414,8 @@ public abstract class DynamicObject implements TruffleObject {
      *
      * @param currentShape the object's current shape (must equal {@link #getShape()})
      * @since 0.8 or earlier
-     * @deprecated Implement {@link Cloneable} and use {@link #clone()} instead.
+     * @deprecated No longer supported; as a replacement, you should implement your own copy method
+     *             that constructs a new object and copies any properties over.
      */
     @Deprecated
     public DynamicObject copy(Shape currentShape) {
@@ -422,35 +423,28 @@ public abstract class DynamicObject implements TruffleObject {
     }
 
     /**
-     * {@inheritDoc}
+     * The {@link #clone()} method is not supported by {@link DynamicObject} at this point in time,
+     * so it always throws {@link CloneNotSupportedException}, even if the {@link Cloneable}
+     * interface is implemented in a subclass.
+     *
+     * Subclasses may however override this method and create a copy of this object by constructing
+     * a new object and copying any properties over manually.
      *
      * @since 20.2.0
+     * @throws CloneNotSupportedException
      */
     @Override
     protected Object clone() throws CloneNotSupportedException {
-        return cloneImpl();
+        throw cloneNotSupported();
     }
 
-    private DynamicObject cloneImpl() throws CloneNotSupportedException {
-        final DynamicObject clone = (DynamicObject) super.clone();
-        Object[] o = this.getObjectStore();
-        if (o != null && o.length > 0) {
-            clone.setObjectStore(o.clone());
-        }
-        int[] p = this.getPrimitiveStore();
-        if (p != null && p.length > 0) {
-            clone.setPrimitiveStore(p.clone());
-        }
-        return clone;
+    @TruffleBoundary
+    private static CloneNotSupportedException cloneNotSupported() throws CloneNotSupportedException {
+        throw new CloneNotSupportedException();
     }
 
-    final DynamicObject copy() {
-        try {
-            return cloneImpl();
-        } catch (CloneNotSupportedException e) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new IllegalStateException();
-        }
+    final DynamicObject objectClone() throws CloneNotSupportedException {
+        return (DynamicObject) super.clone();
     }
 
     final Object[] getObjectStore() {
