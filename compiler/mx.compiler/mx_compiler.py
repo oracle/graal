@@ -28,8 +28,8 @@
 
 from __future__ import print_function
 import os
-from os.path import join, exists, getmtime, basename, isdir
-from argparse import ArgumentParser, RawDescriptionHelpFormatter
+from os.path import join, exists, getmtime, basename, dirname, isdir
+from argparse import ArgumentParser, RawDescriptionHelpFormatter, REMAINDER
 import re
 import stat
 import zipfile
@@ -895,17 +895,94 @@ def get_graaljdk():
         graaljdk = _graaljdk_override
     return graaljdk
 
+def collate_metrics(args):
+    """
+    collates files created by the AggregatedMetricsFile option for one or more executions
+
+    The collated results file will have rows of the format:
+
+    <name>;<value1>;<value2>;...;<valueN>;<unit>
+
+    where <value1> is from the first <filename>, <value2> is from the second
+    <filename> etc. 0 is inserted for missing values.
+
+    """
+    parser = ArgumentParser(prog='mx collate-metrics')
+    parser.add_argument('filenames', help='per-execution values passed to AggregatedMetricsFile',
+                        nargs=REMAINDER, metavar='<path>')
+    args = parser.parse_args(args)
+
+    results = {}
+    units = {}
+
+    filename_index = 0
+    for filename in args.filenames:
+        if not filename.endswith('.csv'):
+            mx.abort('Cannot collate metrics from non-CSV files: ' + filename)
+
+        # Keep in sync with org.graalvm.compiler.debug.GlobalMetrics.print(OptionValues)
+        abs_filename = join(os.getcwd(), filename)
+        directory = dirname(abs_filename)
+        rootname = basename(filename)[0:-len('.csv')]
+        isolate_metrics_re = re.compile(rootname + r'@\d+\.csv')
+        for entry in os.listdir(directory):
+            m = isolate_metrics_re.match(entry)
+            if m:
+                isolate_metrics = join(directory, entry)
+                with open(isolate_metrics) as fp:
+                    line_no = 1
+                    for line in fp.readlines():
+                        values = line.strip().split(';')
+                        if len(values) != 3:
+                            mx.abort('{}:{}: invalid line: {}'.format(isolate_metrics, line_no, line))
+                        if len(values) != 3:
+                            mx.abort('{}:{}: expected 3 semicolon separated values: {}'.format(isolate_metrics, line_no, line))
+                        name, metric, unit = values
+
+                        series = results.get(name, None)
+                        if series is None:
+                            series = [0 for _ in range(filename_index)] + [int(metric)]
+                            results[name] = series
+                        else:
+                            while len(series) < filename_index + 1:
+                                series.append(0)
+                            assert len(series) == filename_index + 1, '{}, {}'.format(name, series)
+                            series[filename_index] += int(metric)
+                        if units.get(name, unit) != unit:
+                            mx.abort('{}:{}: inconsistent units for {}: {} != {}'.format(isolate_metrics, line_no, name, unit, units.get(name)))
+                        units[name] = unit
+        filename_index += 1
+
+    if args.filenames:
+        collated_filename = args.filenames[0][:-len('.csv')] + '.collated.csv'
+        with open(collated_filename, 'w') as fp:
+            for n, series in sorted(results.items()):
+                while len(series) < len(args.filenames):
+                    series.append(0)
+                print(n +';' + ';'.join((str(v) for v in series)) + ';' + units[n], file=fp)
+        mx.log('Collated metrics into ' + collated_filename)
+
 def run_java(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, env=None, addDefaultArgs=True):
     graaljdk = get_graaljdk()
-    args = ['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'] + _parseVmArgs(args, addDefaultArgs=addDefaultArgs)
+    vm_args = _parseVmArgs(args, addDefaultArgs=addDefaultArgs)
+    args = ['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'] + vm_args
     add_exports = join(graaljdk.home, '.add_exports')
     if exists(add_exports):
         args = ['@' + add_exports] + args
     _check_bootstrap_config(args)
     cmd = get_vm_prefix() + [graaljdk.java] + ['-server'] + args
     map_file = join(graaljdk.home, 'proguard.map')
+
     with StdoutUnstripping(args, out, err, mapFiles=[map_file]) as u:
-        return mx.run(cmd, nonZeroIsFatal=nonZeroIsFatal, out=u.out, err=u.err, cwd=cwd, env=env)
+        try:
+            return mx.run(cmd, nonZeroIsFatal=nonZeroIsFatal, out=u.out, err=u.err, cwd=cwd, env=env)
+        finally:
+            # Collate AggratedMetricsFile
+            for a in vm_args:
+                if a.startswith('-Dgraal.AggregatedMetricsFile='):
+                    metrics_file = a[len('-Dgraal.AggregatedMetricsFile='):]
+                    if metrics_file:
+                        collate_metrics([metrics_file])
 
 _JVMCI_JDK_TAG = 'jvmci'
 
@@ -1367,6 +1444,7 @@ mx.update_commands(_suite, {
     'vm': [run_vm, '[-options] class [args...]'],
     'jaotc': [mx_jaotc.run_jaotc, '[-options] class [args...]'],
     'jaotc-test': [mx_jaotc.jaotc_test, ''],
+    'collate-metrics': [collate_metrics, 'filename'],
     'ctw': [ctw, '[-vmoptions|noinline|nocomplex|full]'],
     'nodecostdump' : [_nodeCostDump, ''],
     'verify_jvmci_ci_versions': [verify_jvmci_ci_versions, ''],
