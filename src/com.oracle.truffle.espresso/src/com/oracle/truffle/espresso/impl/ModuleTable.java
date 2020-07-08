@@ -26,6 +26,7 @@ package com.oracle.truffle.espresso.impl;
 import java.util.ArrayList;
 import java.util.concurrent.locks.ReadWriteLock;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -75,8 +76,10 @@ public class ModuleTable extends EntryTable<ModuleTable.ModuleEntry, ClassRegist
 
         private final ClassRegistry registry;
         private StaticObject module = StaticObject.NULL;
-        private boolean canReadAllUnnamed = false;
         private boolean isOpen = false;
+
+        @SuppressWarnings("unused") // For later use.
+        private boolean canReadAllUnnamed = false;
 
         private ArrayList<ModuleEntry> reads;
 
@@ -96,7 +99,7 @@ public class ModuleTable extends EntryTable<ModuleTable.ModuleEntry, ClassRegist
                 if (reads == null) {
                     reads = new ArrayList<>();
                 }
-                if (!reads.contains(from)) {
+                if (!contains(from)) {
                     reads.add(from);
                 }
             }
@@ -110,9 +113,14 @@ public class ModuleTable extends EntryTable<ModuleTable.ModuleEntry, ClassRegist
                 if (!hasReads()) {
                     return false;
                 } else {
-                    return reads.contains(from);
+                    return contains(from);
                 }
             }
+        }
+
+        @TruffleBoundary // Object.equals blacklisted by SVM
+        private boolean contains(ModuleEntry from) {
+            return reads.contains(from);
         }
 
         public void setModule(StaticObject module) {

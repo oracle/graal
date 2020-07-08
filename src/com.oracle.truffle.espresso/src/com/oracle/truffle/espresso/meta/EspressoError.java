@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Locale;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * Indicates a condition in Espresso related code that should never occur during normal operation.
@@ -64,7 +65,7 @@ public final class EspressoError extends Error {
         throw new EspressoError(msg, cause);
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public static String cat(Object... strs) {
         StringBuilder res = new StringBuilder();
         for (Object str : strs) {

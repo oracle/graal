@@ -85,22 +85,29 @@ public final class ClassRegistries {
             synchronized (weakClassLoaderSet) {
                 classRegistry = (ClassRegistry) classLoader.getHiddenFieldVolatile(context.getMeta().HIDDEN_CLASS_LOADER_REGISTRY);
                 if (classRegistry == null) {
-                    classRegistry = new GuestClassRegistry(context, classLoader);
-                    classLoader.setHiddenFieldVolatile(context.getMeta().HIDDEN_CLASS_LOADER_REGISTRY, classRegistry);
-                    // Register the class loader in the weak set.
-                    assert Thread.holdsLock(weakClassLoaderSet);
-                    weakClassLoaderSet.add(classLoader);
-                    totalClassLoadersSet++;
-                    int size = weakClassLoaderSet.size();
-                    if (totalClassLoadersSet > size) {
-                        constraints.purge();
-                        totalClassLoadersSet = size;
-                    }
+                    classRegistry = registerRegistry(classLoader);
                 }
             }
         }
 
         assert classRegistry != null;
+        return classRegistry;
+    }
+
+    @TruffleBoundary
+    private ClassRegistry registerRegistry(@Host(ClassLoader.class) StaticObject classLoader) {
+        assert Thread.holdsLock(weakClassLoaderSet);
+        ClassRegistry classRegistry;
+        classRegistry = new GuestClassRegistry(context, classLoader);
+        classLoader.setHiddenFieldVolatile(context.getMeta().HIDDEN_CLASS_LOADER_REGISTRY, classRegistry);
+        // Register the class loader in the weak set.
+        weakClassLoaderSet.add(classLoader);
+        totalClassLoadersSet++;
+        int size = weakClassLoaderSet.size();
+        if (totalClassLoadersSet > size) {
+            constraints.purge();
+            totalClassLoadersSet = size;
+        }
         return classRegistry;
     }
 

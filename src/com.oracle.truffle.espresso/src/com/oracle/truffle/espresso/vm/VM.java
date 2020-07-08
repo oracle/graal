@@ -2492,12 +2492,17 @@ public final class VM extends NativeEnv implements ContextAccess {
             profiler.profile(11);
             // If we have an exploded build, and the module is defined to the bootloader, prepend a
             // class path entry for this module.
-            Path path = getContext().getVmProperties().javaHome().resolve(MODULES).resolve(moduleName);
-            Classpath.Entry newEntry = Classpath.createEntry(path.toString());
-            if (newEntry.isDirectory()) {
-                getContext().getBootClasspath().prepend(newEntry);
-                // TODO: prepend path to VM properties' bootClasspath
-            }
+            prependModuleClasspath(moduleName);
+        }
+    }
+
+    @TruffleBoundary
+    void prependModuleClasspath(String moduleName) {
+        Path path = getContext().getVmProperties().javaHome().resolve(MODULES).resolve(moduleName);
+        Classpath.Entry newEntry = Classpath.createEntry(path.toString());
+        if (newEntry.isDirectory()) {
+            getContext().getBootClasspath().prepend(newEntry);
+            // TODO: prepend path to VM properties' bootClasspath
         }
     }
 

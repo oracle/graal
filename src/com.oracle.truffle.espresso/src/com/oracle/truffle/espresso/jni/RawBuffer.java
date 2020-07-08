@@ -42,6 +42,7 @@ public final class RawBuffer implements AutoCloseable {
 
     @Override
     public void close() {
+        buffer.clear();
         this.buffer = null;
     }
 }
