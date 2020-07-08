@@ -86,6 +86,8 @@ public final class StaticObject implements TruffleObject {
 
     public static final StaticObject NULL = new StaticObject();
 
+    private static final byte[] INTEROP_MARKER = new byte[0];
+
     private volatile EspressoLock lock;
 
     private final Klass klass; // != PrimitiveKlass
@@ -964,6 +966,13 @@ public final class StaticObject implements TruffleObject {
         this.primitiveFields = null;
     }
 
+    private StaticObject(Klass klass, Object interopObject) {
+        this.klass = klass;
+        assert interopObject != null;
+        this.primitiveFields = INTEROP_MARKER;
+        this.fields = interopObject;
+    }
+
     public static StaticObject createNew(ObjectKlass klass) {
         assert !klass.isAbstract() && !klass.isInterface();
         return new StaticObject(klass);
@@ -983,6 +992,13 @@ public final class StaticObject implements TruffleObject {
         assert !(array instanceof StaticObject);
         assert array.getClass().isArray();
         return new StaticObject(klass, array);
+    }
+
+    public static StaticObject createInterop(Klass klass, Object interopObject) {
+        if (interopObject == null) {
+            return NULL;
+        }
+        return new StaticObject(klass, interopObject);
     }
 
     public Klass getKlass() {
@@ -1020,6 +1036,15 @@ public final class StaticObject implements TruffleObject {
 
     public static boolean notNull(StaticObject object) {
         return !isNull(object);
+    }
+
+    public boolean isInterop() {
+        return this.primitiveFields == INTEROP_MARKER;
+    }
+
+    public Object rawInteropObject() {
+        assert isInterop();
+        return this.fields;
     }
 
     public boolean isStaticStorage() {
