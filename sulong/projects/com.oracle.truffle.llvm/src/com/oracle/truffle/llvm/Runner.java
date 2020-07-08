@@ -519,7 +519,7 @@ final class Runner {
 
                 if (context.isInternalLibrary(parserResult.getRuntime().getLibrary())) {
                     // renaming is attempted only for internal libraries.
-                    resolveRenamedSymbols(parserResult, language);
+                    initSymbols.append(resolveRenamedSymbols(parserResult, language));
                 }
 
                 if (frame.getArguments().length == 0) {
@@ -548,7 +548,7 @@ final class Runner {
         }
 
         @TruffleBoundary
-        private void queAdd(ArrayDeque<CallTarget> que, CallTarget callTarget) {
+        private static void queAdd(ArrayDeque<CallTarget> que, CallTarget callTarget) {
             que.add(callTarget);
         }
 
@@ -766,6 +766,8 @@ final class Runner {
 
         /**
          * Fallback for when the same symbol is being overwritten.
+         *
+         * There exists code where the symbol is not there.
          */
         @Fallback
         LLVMPointer allocateFromLocalScopeFallback(@SuppressWarnings("unused") LLVMLocalScope localScope,
@@ -1102,13 +1104,18 @@ final class Runner {
         @Children final AllocGlobalNode[] allocGlobals;
         final String moduleName;
 
-        @Children final AllocSymbolNode[] allocFuncs;
+        @Children AllocSymbolNode[] allocFuncs;
+        final ArrayList<AllocSymbolNode> allocFuncsAndAliasesList = new ArrayList<>();
+
 
         private final LLVMScope fileScope;
         private NodeFactory nodeFactory;
 
         private final int bitcodeID;
         private final int globalLength;
+
+        private final boolean lazyParsing;
+        private final boolean isInternalSulongLibrary;
 
         InitializeSymbolsNode(LLVMParserResult result, NodeFactory nodeFactory, boolean lazyParsing, boolean isInternalSulongLibrary, String moduleName) throws TypeOverflowException {
             DataLayout dataLayout = result.getDataLayout();
@@ -1118,6 +1125,8 @@ final class Runner {
             this.globalLength = result.getSymbolTableSize();
             this.bitcodeID = result.getRuntime().getBitcodeID();
             this.moduleName = moduleName;
+            this.lazyParsing = lazyParsing;
+            this.isInternalSulongLibrary = isInternalSulongLibrary;
 
             // allocate all non-pointer types as two structs
             // one for read-only and one for read-write
@@ -1144,7 +1153,7 @@ final class Runner {
              * bitcode function, or eager llvm bitcode function.
              */
 
-            ArrayList<AllocSymbolNode> allocFuncsAndAliasesList = new ArrayList<>();
+            //ArrayList<AllocSymbolNode> allocFuncsAndAliasesList = new ArrayList<>();
             for (FunctionSymbol functionSymbol : result.getDefinedFunctions()) {
                 LLVMFunction function = fileScope.getFunction(functionSymbol.getName());
                 // Internal libraries in the llvm library path are allowed to have intriniscs.
@@ -1159,7 +1168,6 @@ final class Runner {
             this.allocRoSection = roSection.getAllocateNode(nodeFactory, "roglobals_struct", true);
             this.allocRwSection = rwSection.getAllocateNode(nodeFactory, "rwglobals_struct", false);
             this.allocGlobals = allocGlobalsList.toArray(AllocGlobalNode.EMPTY);
-            this.allocFuncs = allocFuncsAndAliasesList.toArray(AllocSymbolNode.EMPTY);
             this.writeSymbols = LLVMWriteSymbolNodeGen.create();
         }
 
@@ -1175,6 +1183,7 @@ final class Runner {
         }
 
         public LLVMPointer execute(LLVMContext ctx) {
+            this.allocFuncs = allocFuncsAndAliasesList.toArray(AllocSymbolNode.EMPTY);
             if (ctx.loaderTraceStream() != null) {
                 LibraryLocator.traceStaticInits(ctx, "symbol initializers", moduleName);
             }
@@ -1233,6 +1242,20 @@ final class Runner {
                 return null;
             }
         }
+
+        @TruffleBoundary
+        private void append(ArrayList<LLVMFunction> functions ){
+            LLVMIntrinsicProvider intrinsicProvider = LLVMLanguage.getLanguage().getCapability(LLVMIntrinsicProvider.class);
+            for (LLVMFunction function : functions) {
+                if (isInternalSulongLibrary && intrinsicProvider.isIntrinsified(function.getName())) {
+                    allocFuncsAndAliasesList.add(new AllocIntrinsicFunctionNode(function, nodeFactory, intrinsicProvider));
+                } else if (lazyParsing) {
+                    allocFuncsAndAliasesList.add(new AllocLLVMFunctionNode(function));
+                } else {
+                    allocFuncsAndAliasesList.add(new AllocLLVMEagerFunctionNode(function));
+                }
+            }
+        }
     }
 
     private static void addPaddingTypes(ArrayList<Type> result, int padding) {
@@ -1279,8 +1302,9 @@ final class Runner {
     static final String SULONG_RENAME_MARKER = "___sulong_import_";
     static final int SULONG_RENAME_MARKER_LEN = SULONG_RENAME_MARKER.length();
 
-    protected static void resolveRenamedSymbols(LLVMParserResult parserResult, LLVMLanguage language) {
+    protected static ArrayList<LLVMFunction> resolveRenamedSymbols(LLVMParserResult parserResult, LLVMLanguage language) {
         ListIterator<FunctionSymbol> it = parserResult.getExternalFunctions().listIterator();
+        ArrayList<LLVMFunction> functions = new ArrayList<>();
         while (it.hasNext()) {
             FunctionSymbol external = it.next();
             String name = external.getName();
@@ -1333,10 +1357,12 @@ final class Runner {
                     fileScope.remove(name);
                 }
                 fileScope.register(newFunction);
+                functions.add(newFunction);
                 it.remove();
                 parserResult.getDefinedFunctions().add(external);
             }
         }
+        return functions;
     }
 
     /**
@@ -1429,12 +1455,18 @@ final class Runner {
             ExternalLibrary dependency = context.findExternalLibrary(lib, library, binaryParserResult.getLocator());
             if (dependency != null && !dependencies.contains(dependency)) {
                 dependencies.add(dependency);
-                dependenciesSource.add(createDependencySource(dependency));
+                Source source = createDependencySource(dependency);
+                if (!dependenciesSource.contains(source)) {
+                    dependenciesSource.add(source);
+                }
             } else {
                 dependency = context.addExternalLibrary(lib, library, binaryParserResult.getLocator());
                 if (dependency != null && !dependencies.contains(dependency)) {
                     dependencies.add(dependency);
-                    dependenciesSource.add(createDependencySource(dependency));
+                    Source source = createDependencySource(dependency);
+                    if (!dependenciesSource.contains(source)) {
+                        dependenciesSource.add(source);
+                    }
                 }
             }
         }
