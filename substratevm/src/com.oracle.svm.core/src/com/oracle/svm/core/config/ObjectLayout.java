@@ -155,8 +155,8 @@ public final class ObjectLayout {
      * appended after instance fields.
      *
      * @return {@code true} if an identity hashcode field should be placed after instance fields if
-     *         necessary, or
-     *         {@code false} if the identity hashcode is mandatory and already has a set location.
+     *         necessary, or {@code false} if the identity hashcode is mandatory and already has a
+     *         set location.
      */
     public boolean useExplicitIdentityHashCodeField() {
         return useExplicitIdentityHashCodeField;
@@ -165,9 +165,8 @@ public final class ObjectLayout {
     /**
      * The offset of the identity hashcode field for instance objects.
      *
-     * @return The (>= 0) offset of the identity hashcode field if it is known, or
-     *         < 0 if the offset should be queried from the hub (see
-     *         {@link DynamicHub#getHashCodeOffset()}).
+     * @return The (>= 0) offset of the identity hashcode field if it is known, or < 0 if the offset
+     *         should be queried from the hub (see {@link DynamicHub#getHashCodeOffset()}).
      */
     public int getInstanceIdentityHashCodeOffset() {
         return instanceIdentityHashCodeOffset;

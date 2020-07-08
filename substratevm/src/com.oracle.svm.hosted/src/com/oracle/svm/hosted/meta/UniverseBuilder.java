@@ -721,7 +721,10 @@ public class UniverseBuilder {
             int fieldSize = ConfigurationValues.getObjectLayout().sizeInBytes(JavaKind.Int);
             startSize += fieldSize;
 
-            /* Set start after bitset field, if the hybrid class has one. For now, only DynamicHubs can have bitsets. */
+            /*
+             * Set start after bitset field, if the hybrid class has one. For now, only DynamicHubs
+             * can have bitsets.
+             */
             if (clazz.equals(hMetaAccess.lookupJavaType(DynamicHub.class))) {
                 startSize += (hUniverse.numInterfaceBits + Byte.SIZE - 1) / Byte.SIZE;
             }

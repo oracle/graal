@@ -48,8 +48,8 @@ public class HybridLayoutSupport {
      * Finds the hybrid array and bitset fields of a class annotated with {@link Hybrid}.
      *
      * @param hybridClass A class annotated with {@link Hybrid}
-     * @return A {@link Pair} containing the (non-null) hybrid array field in the left position,
-     *         and the (nullable) hybrid bitset field in the right position.
+     * @return A {@link Pair} containing the (non-null) hybrid array field in the left position, and
+     *         the (nullable) hybrid bitset field in the right position.
      */
     public Pair<HostedField, HostedField> findHybridFields(HostedInstanceClass hybridClass) {
         assert hybridClass.getAnnotation(Hybrid.class) != null;
