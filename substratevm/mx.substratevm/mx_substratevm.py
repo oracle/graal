@@ -121,6 +121,17 @@ def svmbuild_dir(suite=None):
         suite = svm_suite()
     return join(suite.dir, 'svmbuild')
 
+
+def is_musl_gcc_wrapper_on_path():
+    mx.logv('Probing if musl-gcc exists on path.')
+    throwaway_capture = mx.LinesOutputCapture()
+    try:
+        ret_code = mx.run(['musl-gcc', '-v'], nonZeroIsFatal=False, out=throwaway_capture, err=throwaway_capture)
+        return ret_code == 0
+    except OSError as _:
+        return False
+
+
 def is_musl_supported():
     jdk = mx.get_jdk(tag='default')
     if mx.is_linux() and mx.get_arch() == "amd64" and mx.get_jdk(tag='default').javaCompliance == '11':
@@ -202,11 +213,7 @@ _graalvm_skip_libraries = ['native-image-agent']
 _graalvm_exclude_components = ['gu'] if mx.is_windows() else []  # gu does not work on Windows atm
 
 def _graalvm_config():
-    return GraalVMConfig(primary_suite_dir=svm_suite().dir,
-                         disable_libpolyglot=True,
-                         force_bash_launchers=_graalvm_force_bash_launchers,
-                         skip_libraries=_graalvm_skip_libraries,
-                         exclude_components=_graalvm_exclude_components)
+    return GraalVMConfig(primary_suite_dir=svm_suite().dir)
 
 def _graalvm_jvm_config():
     return GraalVMConfig(primary_suite_dir=svm_suite().dir,
@@ -276,47 +283,9 @@ def vm_executable_path(executable, config):
     return join(_vm_home(config), 'bin', executable)
 
 
-def get_muslc_compilation_arg(bundle_url=None, bundle_sha1=None, bundle_download_dir=None):
-    """
-    Forms an argument that can be passed to native-image to link the resulting image against musl.
-    This function ensures that the necessary bundle exists, downloading it if missing.
-    :return An argument that can be passed to native-image:
-    """
-    if bundle_url is None:
-        bundle_url = "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jdk-static-libs/musl-zlib-libstdcpp-static.tar.gz"
-        bundle_sha1 = "3d893a0ceea4b3c4eacb02445c30a771b50b8acb"
-    elif bundle_sha1 is None:
-        mx.abort("When passing a musl bundle url, you must also pass in the bundle sha1.")
-
-    if bundle_download_dir is None:
-        bundle_download_dir = join(svmbuild_dir(), "musl-static-libs-bundle")
-
-    bundle_download_dir = os.path.abspath(bundle_download_dir)
-    bundle_name = bundle_url.rsplit('/', 1)[-1]
-    bundle_url = rewriteurl(bundle_url)
-    bundle_root = join(bundle_download_dir, "bundle")
-
-    if not exists(bundle_root):
-        with mx.TempDir() as temp_dir:
-            bundle_download_location = join(temp_dir, bundle_name)
-            mx.download_file_with_sha1(bundle_name, bundle_download_location, [bundle_url], bundle_sha1, bundle_download_location + ".sha1", True, True, sources=False)
-            extractor = mx.TarExtractor(bundle_download_location)
-            extractor.extract(join(temp_dir))
-            mx.rmtree(bundle_download_location)
-            mx.rmtree(bundle_download_location + ".sha1")
-            bundle_extracted_root = join(temp_dir, "bundle")
-            if exists(bundle_extracted_root):
-                mx.atomic_file_move_with_fallback(bundle_extracted_root, bundle_root)
-            else:
-                mx.abort("Musl libc, zlib and libstdc++ bundle layout requires a `bundle` folder in the top level. Please update the bundle archive accordingly.")
-
-    native_image_muslc_flag = "-H:UseMuslC="
-    return native_image_muslc_flag + os.path.abspath(bundle_root)
-
-
 def run_musl_basic_tests():
     if is_musl_supported():
-        helloworld(['--output-path', svmbuild_dir(), '--static', get_muslc_compilation_arg()])
+        helloworld(['--output-path', svmbuild_dir(), '--static', '--libc=musl'])
 
 
 @contextmanager
@@ -380,10 +349,11 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
         image = join(path, name)
         if not has_server and '--no-server' in all_args:
             all_args = [arg for arg in all_args if arg != '--no-server']
+
         _native_image(all_args, **kwargs)
         return image
     try:
-        if exists(native_image_cmd) and has_server:
+        if exists(native_image_cmd) and has_server and server_use:
             _native_image(['--server-wipe'])
         yield native_image_func
     finally:
@@ -1697,23 +1667,10 @@ def javac_image(args):
     )
 
 if is_musl_supported():
-    doc_string = "Downloads a muslc static library bundle and prints the native-image arguments required to use it."
-    @mx.command(suite.name, command_name='muslc-ni-args', usage_msg='[options]', doc_function=lambda: doc_string)
-    def mx_muslc_native_image_args(args):
-        parser = ArgumentParser(prog='mx muslc-ni-args', description=doc_string)
-        parser.add_argument('--bundle-url', action='store', required=False, help='Bundle archive URL location.')
-        parser.add_argument('--bundle-sha1', action='store', required=False, help='Bundle archive SHA1 signature.')
-        parser.add_argument('bundle_download_location', action='store', help='Bundle download location.')
-        parsed_args = parser.parse_args(args)
-        if parsed_args.bundle_url is None and parsed_args.bundle_sha1 is not None:
-            mx.abort("When using --bundle-url, you must also supply the bundle SHA1 signature.")
-        muslc_argument = get_muslc_compilation_arg(parsed_args.bundle_url, parsed_args.bundle_sha1, parsed_args.bundle_download_location)
-        print("Add the following to the native-image command line: --static " + muslc_argument)
-
     doc_string = "Runs a musl based Hello World static native-image with custom build arguments."
     @mx.command(suite.name, command_name='muslhelloworld', usage_msg='[options]', doc_function=lambda: doc_string)
     def musl_helloworld(args, config=None):
-        musl_arg = get_muslc_compilation_arg()
-        args.append("--static")
-        args.append(musl_arg)
-        run_helloworld_command(args, config, 'muslhelloworld')
+        if not is_musl_gcc_wrapper_on_path():
+            mx.abort('musl-gcc wrapper not detected on path. Cannot run musl helloworld. Please consult substratevm/STATIC-IMAGES.md')
+        final_args = ['--static', '--libc=musl'] + args
+        run_helloworld_command(final_args, config, 'muslhelloworld')
