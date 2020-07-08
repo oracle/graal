@@ -28,6 +28,7 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 import os
+import stat
 import tempfile
 import shutil
 import datetime
@@ -278,3 +279,48 @@ def check_interesting(args=None, out=None):
         if tmp_dir:
             shutil.rmtree(tmp_dir)
 
+
+@mx.command("sulong", "bugpoint")
+def bugpoint(args=None, out=None):
+    parser = ArgumentParser(prog='mx bugpoint', description="Run 'bugpoint' with useful defaults.", epilog="Remaining arguments are passed to 'bugpoint'.")
+    parser.add_argument('--opt-command', help="Path to opt. (default: use 'opt' from the toolchain)", default=mx_sulong.findBundledLLVMProgram('opt'))
+    parser.add_argument('--keep-main', help= 'Force function reduction to keep main. (always true)', action='store_true')
+    parser.add_argument('--compile-custom', help='Use -compile-command to define a command to compile the bitcode. Useful to avoid linking. (always true)', action='store_true')
+    parser.add_argument('--compile-command', help='Command to compile the bitcode. (default: mx check-interesting) The command will be stored in a temporary script file.', default='mx check-interesting')
+    parser.add_argument('--mlimit', metavar="<MBytes>", help='Maximum amount of memory to use. 0 disables check. Defaults to 0.', type=int, default=0)
+    parser.add_argument('--help-bugpoint', help='Show the bugpoint help.', action='store_true')
+    parsed_args, remaining_args = parser.parse_known_args(args)
+
+    if parsed_args.help_bugpoint:
+        mx_sulong.llvm_extra_tool(['bugpoint', '--help'])
+        return
+
+    class ClosedExecutableTempFile(object):
+        def __init__(self, content, *args, **kwargs):
+            self.content = content
+            self.args = args
+            self.kwargs = kwargs
+            self.name = None
+
+        def __enter__(self):
+            with tempfile.NamedTemporaryFile(*self.args, delete=False, **self.kwargs) as fp:
+                fp.write(mx._encode(self.content))
+                st = os.stat(fp.name)
+                os.chmod(fp.name, st.st_mode | stat.S_IEXEC)
+                self.name = fp.name
+            # ensure the file is closed!
+            return self.name
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            if self.name:
+                os.remove(self.name)
+
+    script_content = "#!/bin/bash\n"
+    compile_command = parsed_args.compile_command
+    if compile_command.startswith("mx "):
+        compile_command = mx_sulong.get_mx_exe() + " -p {} ".format(mx_sulong._suite.dir) + compile_command[3:]
+    script_content += compile_command + " $@\n"
+
+    with ClosedExecutableTempFile(script_content, prefix="bugpoint-compile-command-", suffix=".sh") as compile_script:
+        mx_sulong.llvm_extra_tool(['bugpoint', '--opt-command=' + parsed_args.opt_command, '--keep-main', '--compile-custom',
+                                   '--mlimit=' + str(parsed_args.mlimit), '--compile-command=' + compile_script] + remaining_args)
