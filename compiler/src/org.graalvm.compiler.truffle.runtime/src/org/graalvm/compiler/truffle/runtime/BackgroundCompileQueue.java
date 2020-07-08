@@ -277,7 +277,7 @@ public class BackgroundCompileQueue {
      *
      * There are no guarantees on which thread will run the {@code onIdleDelayed} hook. Note that,
      * starved threads can also trigger the notification, even if the compile queue is not idle
-     * during the delay period, the idling criteria thread-based, not queue-based.
+     * during the delay period, the idling criteria is thread-based, not queue-based.
      */
     @SuppressWarnings("serial")
     private final class IdlingPriorityBlockingQueue<E> extends PriorityBlockingQueue<E> {
