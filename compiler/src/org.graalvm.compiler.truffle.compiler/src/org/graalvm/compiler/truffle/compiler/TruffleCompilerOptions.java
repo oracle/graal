@@ -340,7 +340,7 @@ public final class TruffleCompilerOptions {
                 String polyglotOptionName = polyglotOptionKeyToName.get(deprecatedCursor.getValue());
                 formatter.format("WARNING: The option '%s' was deprecated. Truffle runtime options are no longer specified as Graal options (-Dgraal.*).%n", deprecatedOptionKey.getName());
                 formatter.format("Replace the Graal option usage with one of the following replacements:%n");
-                if (value instanceof Boolean) {
+                if (value instanceof Boolean && ((boolean) value) == true) {
                     formatter.format("* '--%s' if the option is passed using a guest language launcher.%n", polyglotOptionName);
                 } else {
                     formatter.format("* '--%s=%s' if the option is passed using a guest language launcher.%n", polyglotOptionName, strValue);

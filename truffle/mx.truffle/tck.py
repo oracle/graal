@@ -85,8 +85,9 @@ class Mode:
     def compile():
         if not Mode._compile:
             Mode._compile = Mode('compile', [
-                '-Dgraal.TruffleCompileImmediately=true',
-                '-Dgraal.TruffleBackgroundCompilation=false',
+                '-Dpolyglot.engine.AllowExperimentalOptions=true',
+                '-Dpolyglot.engine.CompileImmediately=true',
+                '-Dpolyglot.engine.BackgroundCompilation=false',
                 '-Dtck.inlineVerifierInstrument=false'])
         return Mode._compile
 
