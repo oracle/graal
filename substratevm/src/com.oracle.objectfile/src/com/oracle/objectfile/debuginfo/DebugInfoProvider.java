@@ -62,6 +62,12 @@ public interface DebugInfoProvider {
         Path filePath();
 
         /**
+         * @return a relative path to the source cache containing the sources of a compiled method
+         *         or {@code null} if sources are not available.
+         */
+        Path cachePath();
+
+        /**
          * @return the fully qualified name of the class owning the compiled method.
          */
         String className();
@@ -142,6 +148,12 @@ public interface DebugInfoProvider {
          *         its package name or null if the method is in the empty package.
          */
         Path filePath();
+
+        /**
+         * @return a relative path to the source cache containing the sources of a compiled method
+         *         or {@code null} if sources are not available.
+         */
+        Path cachePath();
 
         /**
          * @return the fully qualified name of the class owning the outer or inlined method.

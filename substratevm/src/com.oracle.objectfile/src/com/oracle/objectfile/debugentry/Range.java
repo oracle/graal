@@ -36,6 +36,7 @@ import java.nio.file.Paths;
  */
 
 public class Range {
+    private final String cachePath;
     private String fileName;
     private Path filePath;
     private String className;
@@ -55,22 +56,23 @@ public class Range {
     /*
      * Create a primary range.
      */
-    public Range(String fileName, Path filePath, String className, String methodName, String paramNames, String returnTypeName, StringTable stringTable, int lo, int hi, int line,
+    public Range(String fileName, Path filePath, Path cachePath, String className, String methodName, String paramNames, String returnTypeName, StringTable stringTable, int lo, int hi, int line,
                     boolean isDeoptTarget) {
-        this(fileName, filePath, className, methodName, paramNames, returnTypeName, stringTable, lo, hi, line, isDeoptTarget, null);
+        this(fileName, filePath, cachePath, className, methodName, paramNames, returnTypeName, stringTable, lo, hi, line, isDeoptTarget, null);
     }
 
     /*
      * Create a secondary range.
      */
-    public Range(String fileName, Path filePath, String className, String methodName, String paramNames, String returnTypeName, StringTable stringTable, int lo, int hi, int line, Range primary) {
-        this(fileName, filePath, className, methodName, paramNames, returnTypeName, stringTable, lo, hi, line, false, primary);
+    public Range(String fileName, Path filePath, Path cachePath, String className, String methodName, String paramNames, String returnTypeName, StringTable stringTable, int lo, int hi, int line,
+                    Range primary) {
+        this(fileName, filePath, cachePath, className, methodName, paramNames, returnTypeName, stringTable, lo, hi, line, false, primary);
     }
 
     /*
      * Create a primary or secondary range.
      */
-    private Range(String fileName, Path filePath, String className, String methodName, String paramNames, String returnTypeName, StringTable stringTable, int lo, int hi, int line,
+    private Range(String fileName, Path filePath, Path cachePath, String className, String methodName, String paramNames, String returnTypeName, StringTable stringTable, int lo, int hi, int line,
                     boolean isDeoptTarget, Range primary) {
         /*
          * Currently file name and full method name need to go into the debug_str section other
@@ -78,6 +80,7 @@ public class Range {
          */
         this.fileName = (fileName == null ? null : stringTable.uniqueDebugString(fileName));
         this.filePath = filePath;
+        this.cachePath = (cachePath == null ? "" : stringTable.uniqueDebugString(cachePath.toString()));
         this.className = stringTable.uniqueString(className);
         this.methodName = stringTable.uniqueString(methodName);
         this.paramNames = stringTable.uniqueString(paramNames);
@@ -169,5 +172,12 @@ public class Range {
 
     private String constructClassAndMethodNameWithParams() {
         return getExtendedMethodName(true, false);
+    }
+
+    /**
+     * Get the compilation directory in which to look for source files as a {@link String}.
+     */
+    public String getCachePath() {
+        return cachePath;
     }
 }

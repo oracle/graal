@@ -260,6 +260,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeAttrData1(DW_LANG_Java, buffer, pos);
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(classEntry.getFileName()), classEntry.getFileName());
         pos = writeAttrStrp(classEntry.getFileName(), buffer, pos);
+        String compilationDirectory = classEntry.getCachePath();
+        log(context, "  [0x%08x]     comp_dir  0x%x (%s)", pos, debugStringIndex(compilationDirectory), compilationDirectory);
+        pos = writeAttrStrp(compilationDirectory, buffer, pos);
         int lo = findLo(classPrimaryEntries, isDeoptTargetCU);
         int hi = findHi(classPrimaryEntries, classEntry.includesDeoptTarget(), isDeoptTargetCU);
         log(context, "  [0x%08x]     lo_pc  0x%08x", pos, lo);

@@ -32,6 +32,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_ABBREV_CODE_compile_unit;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_ABBREV_CODE_subprogram;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_ABBREV_SECTION_NAME;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_AT_comp_dir;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_AT_external;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_AT_hi_pc;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_AT_language;
@@ -184,6 +185,8 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeAttrType(DW_AT_language, buffer, pos);
         pos = writeAttrForm(DW_FORM_data1, buffer, pos);
         pos = writeAttrType(DW_AT_name, buffer, pos);
+        pos = writeAttrForm(DW_FORM_strp, buffer, pos);
+        pos = writeAttrType(DW_AT_comp_dir, buffer, pos);
         pos = writeAttrForm(DW_FORM_strp, buffer, pos);
         pos = writeAttrType(DW_AT_low_pc, buffer, pos);
         pos = writeAttrForm(DW_FORM_addr, buffer, pos);
