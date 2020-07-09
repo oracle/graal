@@ -102,22 +102,30 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         final Map<Class<?>, PolyglotValue> valueCache;
         final Thread.UncaughtExceptionHandler uncaughtExceptionHandler;
         final PolyglotLanguageInstance languageInstance;
-        final Map<String, LanguageInfo> accessibleInternalLanguages;
-        final Map<String, LanguageInfo> accessiblePublicLanguages;
+        @CompilationFinal Map<String, LanguageInfo> accessibleInternalLanguages;
+        @CompilationFinal Map<String, LanguageInfo> accessiblePublicLanguages;
         final Object internalFileSystemContext;
         final Object publicFileSystemContext;
 
         Lazy(PolyglotLanguageInstance languageInstance, PolyglotContextConfig config) {
+            /*
+             * Important anything that is initialized here must be properly patched in #patch.
+             */
             this.languageInstance = languageInstance;
             this.sourceCache = languageInstance.getSourceCache();
             this.activePolyglotThreads = new HashSet<>();
             this.polyglotGuestBindings = new PolyglotBindings(PolyglotLanguageContext.this);
             this.uncaughtExceptionHandler = new PolyglotUncaughtExceptionHandler();
             this.valueCache = new ConcurrentHashMap<>();
-            this.accessibleInternalLanguages = computeAccessibleLanguages(config, true);
-            this.accessiblePublicLanguages = computeAccessibleLanguages(config, false);
+            this.computeAccessPermissions(config);
+            // file systems are patched after preinitialization internally using a delegate field
             this.publicFileSystemContext = EngineAccessor.LANGUAGE.createFileSystemContext(PolyglotLanguageContext.this, config.fileSystem);
             this.internalFileSystemContext = EngineAccessor.LANGUAGE.createFileSystemContext(PolyglotLanguageContext.this, config.internalFileSystem);
+        }
+
+        void computeAccessPermissions(PolyglotContextConfig config) {
+            this.accessibleInternalLanguages = computeAccessibleLanguages(config, true);
+            this.accessiblePublicLanguages = computeAccessibleLanguages(config, false);
         }
 
         private Map<String, LanguageInfo> computeAccessibleLanguages(PolyglotContextConfig config, boolean internal) {
@@ -620,8 +628,9 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     boolean patch(PolyglotContextConfig newConfig) {
         if (isCreated()) {
             try {
-                final OptionValuesImpl newOptionValues = newConfig.getOptionValues(language);
-                final Env newEnv = LANGUAGE.patchEnvContext(env, newConfig.out, newConfig.err, newConfig.in,
+                OptionValuesImpl newOptionValues = newConfig.getOptionValues(language);
+                lazy.computeAccessPermissions(newConfig);
+                Env newEnv = LANGUAGE.patchEnvContext(env, newConfig.out, newConfig.err, newConfig.in,
                                 Collections.emptyMap(), newOptionValues, newConfig.getApplicationArguments(language));
                 if (newEnv != null) {
                     env = newEnv;
