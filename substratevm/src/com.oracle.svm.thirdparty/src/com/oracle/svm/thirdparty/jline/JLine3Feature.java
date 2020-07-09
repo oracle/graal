@@ -101,13 +101,15 @@ final class Target_org_jline_terminal_Size {
 @TargetClass(className = "org.jline.terminal.impl.jna.JnaSupportImpl", onlyWith = com.oracle.svm.thirdparty.jline.JLine3Feature.IsEnabled.class)
 final class Target_org_jline_terminal_impl_jna_JnaSupportImpl_open {
 
+    @SuppressWarnings({"unused", "static-method"})
     @Substitute
-    public Target_org_jline_terminal_spi_Pty open(Target_org_jline_terminal_Attributes attributes, Target_org_jline_terminal_Size size) throws IOException {
+    public Target_org_jline_terminal_spi_Pty open(Target_org_jline_terminal_Attributes attributes, Target_org_jline_terminal_Size size) {
         throw new RuntimeException();
     }
 
     @Substitute
-    public Target_org_jline_terminal_spi_Pty current() throws IOException {
+    @SuppressWarnings("static-method")
+    public Target_org_jline_terminal_spi_Pty current() {
         throw new RuntimeException();
     }
 }
@@ -179,6 +181,7 @@ final class Target_org_jline_builtins_Nano_Buffer {
         this.moveToChar(0);
     }
 
+    @SuppressWarnings("unused")
     @Alias
     private void moveToChar(int i) {
     }
