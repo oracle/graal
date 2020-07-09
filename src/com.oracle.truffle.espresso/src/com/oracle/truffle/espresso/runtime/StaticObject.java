@@ -39,6 +39,8 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -51,6 +53,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
@@ -382,9 +385,9 @@ public final class StaticObject implements TruffleObject {
     }
 
     @ExportMessage
-    long getArraySize() throws UnsupportedMessageException {
+    long getArraySize(@Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
         if (!isArray()) {
-            CompilerDirectives.transferToInterpreter();
+            error.enter();
             throw UnsupportedMessageException.create();
         }
         return length();
@@ -398,109 +401,136 @@ public final class StaticObject implements TruffleObject {
     @ExportMessage
     abstract static class ReadArrayElement {
         @Specialization(guards = "isBooleanArray(receiver)")
-        static boolean doBoolean(StaticObject receiver, long index) throws InvalidArrayIndexException {
+        static boolean doBoolean(StaticObject receiver, long index,
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
             if (index < 0 || index > Integer.MAX_VALUE) {
+                error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
             try {
                 return receiver.<boolean[]> unwrap()[(int) index];
             } catch (IndexOutOfBoundsException outOfBounds) {
+                error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
         }
 
         @Specialization(guards = "isCharArray(receiver)")
-        static char doChar(StaticObject receiver, long index) throws InvalidArrayIndexException {
+        static char doChar(StaticObject receiver, long index,
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
             if (index < 0 || index > Integer.MAX_VALUE) {
+                error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
             try {
                 return receiver.<char[]> unwrap()[(int) index];
             } catch (IndexOutOfBoundsException outOfBounds) {
+                error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
         }
 
         @Specialization(guards = "isByteArray(receiver)")
-        static byte doByte(StaticObject receiver, long index) throws InvalidArrayIndexException {
+        static byte doByte(StaticObject receiver, long index,
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
             if (index < 0 || index > Integer.MAX_VALUE) {
+                error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
             try {
                 return receiver.<byte[]> unwrap()[(int) index];
             } catch (IndexOutOfBoundsException outOfBounds) {
+                error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
         }
 
         @Specialization(guards = "isShortArray(receiver)")
-        static short doShort(StaticObject receiver, long index) throws InvalidArrayIndexException {
+        static short doShort(StaticObject receiver, long index,
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
             if (index < 0 || index > Integer.MAX_VALUE) {
+                error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
             try {
                 return receiver.<short[]> unwrap()[(int) index];
             } catch (IndexOutOfBoundsException outOfBounds) {
+                error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
         }
 
         @Specialization(guards = "isIntArray(receiver)")
-        static int doInt(StaticObject receiver, long index) throws InvalidArrayIndexException {
+        static int doInt(StaticObject receiver, long index,
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
             if (index < 0 || index > Integer.MAX_VALUE) {
+                error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
             try {
                 return receiver.<int[]> unwrap()[(int) index];
             } catch (IndexOutOfBoundsException outOfBounds) {
+                error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
         }
 
         @Specialization(guards = "isLongArray(receiver)")
-        static long doLong(StaticObject receiver, long index) throws InvalidArrayIndexException {
+        static long doLong(StaticObject receiver, long index,
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
             if (index < 0 || index > Integer.MAX_VALUE) {
+                error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
             try {
                 return receiver.<long[]> unwrap()[(int) index];
             } catch (IndexOutOfBoundsException outOfBounds) {
+                error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
         }
 
         @Specialization(guards = "isFloatArray(receiver)")
-        static float doFloat(StaticObject receiver, long index) throws InvalidArrayIndexException {
+        static float doFloat(StaticObject receiver, long index,
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
             if (index < 0 || index > Integer.MAX_VALUE) {
+                error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
             try {
                 return receiver.<float[]> unwrap()[(int) index];
             } catch (IndexOutOfBoundsException outOfBounds) {
+                error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
         }
 
         @Specialization(guards = "isDoubleArray(receiver)")
-        static double doDouble(StaticObject receiver, long index) throws InvalidArrayIndexException {
+        static double doDouble(StaticObject receiver, long index,
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
             if (index < 0 || index > Integer.MAX_VALUE) {
+                error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
             try {
                 return receiver.<double[]> unwrap()[(int) index];
             } catch (IndexOutOfBoundsException outOfBounds) {
+                error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
         }
 
         @Specialization(guards = {"receiver.isArray()", "!isPrimitiveArray(receiver)"})
-        static Object doObject(StaticObject receiver, long index) throws InvalidArrayIndexException {
+        static Object doObject(StaticObject receiver, long index,
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
             if (index < 0 || index > Integer.MAX_VALUE) {
+                error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
             try {
                 return receiver.<Object[]> unwrap()[(int) index];
             } catch (IndexOutOfBoundsException outOfBounds) {
+                error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
         }
@@ -516,157 +546,190 @@ public final class StaticObject implements TruffleObject {
     abstract static class WriteArrayElement {
         @Specialization(guards = "isBooleanArray(receiver)", limit = "1")
         static void doBoolean(StaticObject receiver, long index, Object value,
-                        @CachedLibrary("value") InteropLibrary interopLibrary) throws InvalidArrayIndexException, UnsupportedTypeException {
+                        @CachedLibrary("value") InteropLibrary interopLibrary,
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
             if (index < 0 || index > Integer.MAX_VALUE) {
+                error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
             boolean boolValue;
             try {
                 boolValue = interopLibrary.asBoolean(value);
             } catch (UnsupportedMessageException e) {
+                error.enter();
                 throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
             }
             try {
                 receiver.<boolean[]> unwrap()[(int) index] = boolValue;
             } catch (IndexOutOfBoundsException outOfBounds) {
+                error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
         }
 
         @Specialization(guards = "isCharArray(receiver)", limit = "1")
         static void doChar(StaticObject receiver, long index, Object value,
-                        @CachedLibrary("value") InteropLibrary interopLibrary) throws InvalidArrayIndexException, UnsupportedTypeException {
+                        @CachedLibrary("value") InteropLibrary interopLibrary,
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
             if (index < 0 || index > Integer.MAX_VALUE) {
+                error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
             char charValue;
             try {
                 String s = interopLibrary.asString(value);
                 if (s.length() != 1) {
+                    error.enter();
                     String message = "Expected a string of length 1 as an element of char array, got " + s;
                     throw UnsupportedTypeException.create(new Object[]{value}, message);
                 }
                 charValue = s.charAt(0);
             } catch (UnsupportedMessageException e) {
+                error.enter();
                 throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
             }
             try {
                 receiver.<char[]> unwrap()[(int) index] = charValue;
             } catch (IndexOutOfBoundsException outOfBounds) {
+                error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
         }
 
         @Specialization(guards = "isByteArray(receiver)", limit = "1")
         static void doByte(StaticObject receiver, long index, Object value,
-                        @CachedLibrary("value") InteropLibrary interopLibrary) throws InvalidArrayIndexException, UnsupportedTypeException {
+                        @CachedLibrary("value") InteropLibrary interopLibrary,
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
             if (index < 0 || index > Integer.MAX_VALUE) {
+                error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
             byte byteValue;
             try {
                 byteValue = interopLibrary.asByte(value);
             } catch (UnsupportedMessageException e) {
+                error.enter();
                 throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
             }
             try {
                 receiver.<byte[]> unwrap()[(int) index] = byteValue;
             } catch (IndexOutOfBoundsException outOfBounds) {
+                error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
         }
 
         @Specialization(guards = "isShortArray(receiver)", limit = "1")
         static void doShort(StaticObject receiver, long index, Object value,
-                        @CachedLibrary("value") InteropLibrary interopLibrary) throws InvalidArrayIndexException, UnsupportedTypeException {
+                        @CachedLibrary("value") InteropLibrary interopLibrary,
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
             if (index < 0 || index > Integer.MAX_VALUE) {
+                error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
             short shortValue;
             try {
                 shortValue = interopLibrary.asShort(value);
             } catch (UnsupportedMessageException e) {
+                error.enter();
                 throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
             }
             try {
                 receiver.<short[]> unwrap()[(int) index] = shortValue;
             } catch (IndexOutOfBoundsException outOfBounds) {
+                error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
         }
 
         @Specialization(guards = "isIntArray(receiver)", limit = "1")
         static void doInt(StaticObject receiver, long index, Object value,
-                        @CachedLibrary("value") InteropLibrary interopLibrary) throws InvalidArrayIndexException, UnsupportedTypeException {
+                        @CachedLibrary("value") InteropLibrary interopLibrary,
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
             if (index < 0 || index > Integer.MAX_VALUE) {
+                error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
             int intValue;
             try {
                 intValue = interopLibrary.asInt(value);
             } catch (UnsupportedMessageException e) {
+                error.enter();
                 throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
             }
             try {
                 receiver.<int[]> unwrap()[(int) index] = intValue;
             } catch (IndexOutOfBoundsException outOfBounds) {
+                error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
         }
 
         @Specialization(guards = "isLongArray(receiver)", limit = "1")
         static void doLong(StaticObject receiver, long index, Object value,
-                        @CachedLibrary("value") InteropLibrary interopLibrary) throws InvalidArrayIndexException, UnsupportedTypeException {
+                        @CachedLibrary("value") InteropLibrary interopLibrary,
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
             if (index < 0 || index > Integer.MAX_VALUE) {
+                error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
             long longValue;
             try {
                 longValue = interopLibrary.asLong(value);
             } catch (UnsupportedMessageException e) {
+                error.enter();
                 throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
             }
             try {
                 receiver.<long[]> unwrap()[(int) index] = longValue;
             } catch (IndexOutOfBoundsException outOfBounds) {
+                error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
         }
 
         @Specialization(guards = "isFloatArray(receiver)", limit = "1")
         static void doFloat(StaticObject receiver, long index, Object value,
-                        @CachedLibrary("value") InteropLibrary interopLibrary) throws InvalidArrayIndexException, UnsupportedTypeException {
+                        @CachedLibrary("value") InteropLibrary interopLibrary,
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
             if (index < 0 || index > Integer.MAX_VALUE) {
+                error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
             float floatValue;
             try {
                 floatValue = interopLibrary.asFloat(value);
             } catch (UnsupportedMessageException e) {
+                error.enter();
                 throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
             }
             try {
                 receiver.<float[]> unwrap()[(int) index] = floatValue;
             } catch (IndexOutOfBoundsException outOfBounds) {
+                error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
         }
 
         @Specialization(guards = "isDoubleArray(receiver)", limit = "1")
         static void doDouble(StaticObject receiver, long index, Object value,
-                        @CachedLibrary("value") InteropLibrary interopLibrary) throws InvalidArrayIndexException, UnsupportedTypeException {
+                        @CachedLibrary("value") InteropLibrary interopLibrary,
+                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
             if (index < 0 || index > Integer.MAX_VALUE) {
+                error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
             double doubleValue;
             try {
                 doubleValue = interopLibrary.asDouble(value);
             } catch (UnsupportedMessageException e) {
+                error.enter();
                 throw UnsupportedTypeException.create(new Object[]{value}, e.getMessage());
             }
             try {
                 receiver.<double[]> unwrap()[(int) index] = doubleValue;
             } catch (IndexOutOfBoundsException outOfBounds) {
+                error.enter();
                 throw InvalidArrayIndexException.create(index);
             }
         }
