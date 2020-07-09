@@ -33,7 +33,6 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 public class JDKInitializationFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-
         RuntimeClassInitialization.initializeAtBuildTime("com.sun.java.util.jar.pack", "Core JDK classes are initialized at build time");
         RuntimeClassInitialization.initializeAtBuildTime("com.sun.management", "Core JDK classes are initialized at build time");
         RuntimeClassInitialization.initializeAtBuildTime("com.sun.naming.internal", "Core JDK classes are initialized at build time");
@@ -78,5 +77,44 @@ public class JDKInitializationFeature implements Feature {
         RuntimeClassInitialization.initializeAtRunTime("com.sun.naming.internal.ResourceManager$AppletParameter", "Initializes AWT");
         RuntimeClassInitialization.initializeAtBuildTime("java.awt.font.TextAttribute", "Required for sun.text.bidi.BidiBase.NumericShapings");
         RuntimeClassInitialization.initializeAtBuildTime("java.awt.font.NumericShaper", "Required for sun.text.bidi.BidiBase.NumericShapings");
+
+        /* Security services */
+        RuntimeClassInitialization.initializeAtBuildTime("com.sun.crypto.provider", "Core JDK classes are initialized at build time");
+        RuntimeClassInitialization.initializeAtBuildTime("com.sun.security.auth", "Core JDK classes are initialized at build time");
+        RuntimeClassInitialization.initializeAtBuildTime("com.sun.security.jgss", "Core JDK classes are initialized at build time for better performance");
+        RuntimeClassInitialization.initializeAtBuildTime("com.sun.security.cert.internal.x509", "Core JDK classes are initialized at build time");
+        RuntimeClassInitialization.initializeAtBuildTime("com.sun.security.ntlm", "Core JDK classes are initialized at build time");
+        RuntimeClassInitialization.initializeAtBuildTime("com.sun.security.sasl", "Core JDK classes are initialized at build time");
+
+        RuntimeClassInitialization.initializeAtBuildTime("java.security", "Core JDK classes are initialized at build time");
+
+        RuntimeClassInitialization.initializeAtBuildTime("javax.crypto", "Core JDK classes are initialized at build time");
+        RuntimeClassInitialization.initializeAtBuildTime("javax.security.auth", "Core JDK classes are initialized at build time");
+        RuntimeClassInitialization.initializeAtBuildTime("javax.security.cert", "Core JDK classes are initialized at build time");
+        RuntimeClassInitialization.initializeAtBuildTime("javax.security.sasl", "Core JDK classes are initialized at build time");
+
+        RuntimeClassInitialization.initializeAtBuildTime("sun.security.action", "Core JDK classes are initialized at build time");
+        RuntimeClassInitialization.initializeAtBuildTime("sun.security.ec", "Core JDK classes are initialized at build time");
+        RuntimeClassInitialization.initializeAtBuildTime("sun.security.internal.interfaces", "Core JDK classes are initialized at build time");
+        RuntimeClassInitialization.initializeAtBuildTime("sun.security.internal.spec", "Core JDK classes are initialized at build time");
+        RuntimeClassInitialization.initializeAtBuildTime("sun.security.jca", "Core JDK classes are initialized at build time");
+        RuntimeClassInitialization.initializeAtBuildTime("sun.security.jgss", "Core JDK classes are initialized at build time");
+        RuntimeClassInitialization.initializeAtBuildTime("org.ietf.jgss.GSSException", "Core JDK classes are initialized at build time");
+        RuntimeClassInitialization.initializeAtBuildTime("org.ietf.jgss.GSSName", "Core JDK classes are initialized at build time");
+        RuntimeClassInitialization.initializeAtBuildTime("sun.security.krb5", "Core JDK classes are initialized at build time");
+        RuntimeClassInitialization.initializeAtBuildTime("sun.security.pkcs", "Core JDK classes are initialized at build time");
+        RuntimeClassInitialization.initializeAtBuildTime("sun.security.pkcs10", "Core JDK classes are initialized at build time");
+        RuntimeClassInitialization.initializeAtBuildTime("sun.security.pkcs11", "Core JDK classes are initialized at build time for better performance");
+        RuntimeClassInitialization.initializeAtBuildTime("sun.security.pkcs12", "Core JDK classes are initialized at build time");
+        RuntimeClassInitialization.initializeAtBuildTime("sun.security.provider", "Core JDK classes are initialized at build time");
+        RuntimeClassInitialization.initializeAtBuildTime("sun.security.rsa", "Core JDK classes are initialized at build time");
+        RuntimeClassInitialization.initializeAtBuildTime("sun.security.ssl", "Core JDK classes are initialized at build time");
+        RuntimeClassInitialization.initializeAtBuildTime("sun.security.timestamp", "Core JDK classes are initialized at build time");
+        RuntimeClassInitialization.initializeAtBuildTime("sun.security.tools", "Core JDK classes are initialized at build time");
+        RuntimeClassInitialization.initializeAtBuildTime("sun.security.util", "Core JDK classes are initialized at build time");
+        RuntimeClassInitialization.initializeAtBuildTime("sun.security.validator", "Core JDK classes are initialized at build time");
+        RuntimeClassInitialization.initializeAtBuildTime("sun.security.x509", "Core JDK classes are initialized at build time");
+        RuntimeClassInitialization.initializeAtBuildTime("sun.security.smartcardio", "Core JDK classes are initialized at build time");
+
     }
 }
