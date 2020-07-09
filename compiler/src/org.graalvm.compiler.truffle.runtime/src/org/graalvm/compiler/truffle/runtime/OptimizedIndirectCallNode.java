@@ -28,10 +28,10 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.profiles.ValueProfile;
 
 /**
@@ -77,11 +77,12 @@ public final class OptimizedIndirectCallNode extends IndirectCallNode {
                  * Clear encapsulating node for uncached indirect call boundary. The encapsulating
                  * node is not longer needed if a call boundary is crossed.
                  */
-                Node prev = NodeUtil.pushEncapsulatingNode(null);
+                EncapsulatingNodeReference encapsulating = EncapsulatingNodeReference.getCurrent();
+                Node prev = encapsulating.set(null);
                 try {
                     return ((OptimizedCallTarget) target).callIndirect(prev, arguments);
                 } finally {
-                    NodeUtil.popEncapsulatingNode(prev);
+                    encapsulating.set(prev);
                 }
             }
         };

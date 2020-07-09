@@ -83,6 +83,17 @@ import com.oracle.truffle.dsl.processor.model.TemplateMethod;
 
 public class GeneratorUtils {
 
+    public static void pushEncapsulatingNode(CodeTreeBuilder builder, String nodeRef) {
+        TruffleTypes types = ProcessorContext.getInstance().getTypes();
+        builder.startStatement().type(types.EncapsulatingNodeReference).string(" encapsulating_ = ").//
+                        startStaticCall(types.EncapsulatingNodeReference, "getCurrent").end().end();
+        builder.startStatement().type(types.Node).string(" prev_ = encapsulating_.set(" + nodeRef + ")").end();
+    }
+
+    public static void popEncapsulatingNode(CodeTreeBuilder builder) {
+        builder.startStatement().string("encapsulating_.set(prev_)").end();
+    }
+
     public static CodeTree createTransferToInterpreterAndInvalidate() {
         ProcessorContext context = ProcessorContext.getInstance();
         CodeTreeBuilder builder = CodeTreeBuilder.createBuilder();

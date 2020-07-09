@@ -53,8 +53,8 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.test.UncachedEncapsulatedNodeTestFactory.Test1NodeGen;
+import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.test.AbstractLibraryTest;
 
 @SuppressWarnings("static-method")
@@ -77,7 +77,7 @@ public class UncachedEncapsulatedNodeTest extends AbstractLibraryTest {
 
         @ExportMessage
         Object m0() {
-            return NodeUtil.getCurrentEncapsulatingNode();
+            return EncapsulatingNodeReference.getCurrent().get();
         }
 
     }

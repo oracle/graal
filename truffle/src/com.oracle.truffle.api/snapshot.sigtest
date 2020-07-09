@@ -36,7 +36,6 @@ meth public static <%0 extends java.lang.Object> void partialEvaluationConstant(
 meth public static void neverPartOfCompilation()
 meth public static void neverPartOfCompilation(java.lang.String)
 supr java.lang.Object
-hcls ShouldNotReachHere
 
 CLSS public final com.oracle.truffle.api.CompilerDirectives
 fld public final static double FASTPATH_PROBABILITY = 0.9999
@@ -54,6 +53,10 @@ meth public static boolean inInterpreter()
 meth public static boolean injectBranchProbability(double,boolean)
 meth public static boolean isCompilationConstant(java.lang.Object)
 meth public static boolean isPartialEvaluationConstant(java.lang.Object)
+meth public static java.lang.RuntimeException shouldNotReachHere()
+meth public static java.lang.RuntimeException shouldNotReachHere(java.lang.String)
+meth public static java.lang.RuntimeException shouldNotReachHere(java.lang.String,java.lang.Throwable)
+meth public static java.lang.RuntimeException shouldNotReachHere(java.lang.Throwable)
 meth public static void bailout(java.lang.String)
 meth public static void ensureVirtualized(java.lang.Object)
 meth public static void ensureVirtualizedHere(java.lang.Object)
@@ -61,11 +64,8 @@ meth public static void interpreterOnly(java.lang.Runnable)
 meth public static void materialize(java.lang.Object)
 meth public static void transferToInterpreter()
 meth public static void transferToInterpreterAndInvalidate()
-meth public static java.lang.RuntimeException shouldNotReachHere()
-meth public static java.lang.RuntimeException shouldNotReachHere(java.lang.String)
-meth public static java.lang.RuntimeException shouldNotReachHere(java.lang.String,java.lang.Throwable)
-meth public static java.lang.RuntimeException shouldNotReachHere(java.lang.Throwable)
 supr java.lang.Object
+hcls ShouldNotReachHere
 
 CLSS public abstract interface static !annotation com.oracle.truffle.api.CompilerDirectives$CompilationFinal
  outer com.oracle.truffle.api.CompilerDirectives
@@ -442,7 +442,7 @@ meth public void exportSymbol(java.lang.String,java.lang.Object)
 meth public void registerService(java.lang.Object)
 meth public void setCurrentWorkingDirectory(com.oracle.truffle.api.TruffleFile)
 supr java.lang.Object
-hfds UNSET_CONTEXT,applicationArguments,config,context,contextUnchangedAssumption,err,fileSystemContext,in,initialized,initializedUnchangedAssumption,internalFileSystemContext,languageServicesCollector,options,out,polyglotLanguageContext,services,spi,valid
+hfds UNSET_CONTEXT,applicationArguments,config,context,contextUnchangedAssumption,err,in,initialized,initializedUnchangedAssumption,languageServicesCollector,options,out,polyglotLanguageContext,services,spi,valid
 
 CLSS public final static com.oracle.truffle.api.TruffleLanguage$InlineParsingRequest
  outer com.oracle.truffle.api.TruffleLanguage
@@ -780,6 +780,13 @@ meth public java.lang.String toString()
 meth public static com.oracle.truffle.api.nodes.DirectCallNode create(com.oracle.truffle.api.CallTarget)
 supr com.oracle.truffle.api.nodes.Node
 
+CLSS public final com.oracle.truffle.api.nodes.EncapsulatingNodeReference
+meth public com.oracle.truffle.api.nodes.Node get()
+meth public com.oracle.truffle.api.nodes.Node set(com.oracle.truffle.api.nodes.Node)
+meth public static com.oracle.truffle.api.nodes.EncapsulatingNodeReference getCurrent()
+supr java.lang.Object
+hfds CURRENT,reference,thread
+
 CLSS public abstract com.oracle.truffle.api.nodes.ExecutableNode
 cons protected init(com.oracle.truffle.api.TruffleLanguage<?>)
 meth public abstract java.lang.Object execute(com.oracle.truffle.api.frame.VirtualFrame)
@@ -1069,8 +1076,10 @@ meth public static boolean isReplacementSafe(com.oracle.truffle.api.nodes.Node,c
 meth public static boolean replaceChild(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.nodes.Node)
 meth public static boolean verify(com.oracle.truffle.api.nodes.Node)
 meth public static com.oracle.truffle.api.nodes.Node getCurrentEncapsulatingNode()
+ anno 0 java.lang.Deprecated()
 meth public static com.oracle.truffle.api.nodes.Node getNthParent(com.oracle.truffle.api.nodes.Node,int)
 meth public static com.oracle.truffle.api.nodes.Node pushEncapsulatingNode(com.oracle.truffle.api.nodes.Node)
+ anno 0 java.lang.Deprecated()
 meth public static com.oracle.truffle.api.nodes.NodeFieldAccessor findChildField(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.nodes.Node)
  anno 0 java.lang.Deprecated()
 meth public static int countNodes(com.oracle.truffle.api.nodes.Node)
@@ -1083,13 +1092,13 @@ meth public static java.util.Iterator<com.oracle.truffle.api.nodes.Node> makeRec
 meth public static java.util.List<com.oracle.truffle.api.nodes.Node> collectNodes(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.nodes.Node)
 meth public static java.util.List<com.oracle.truffle.api.nodes.Node> findNodeChildren(com.oracle.truffle.api.nodes.Node)
 meth public static void popEncapsulatingNode(com.oracle.truffle.api.nodes.Node)
+ anno 0 java.lang.Deprecated()
 meth public static void printCompactTree(java.io.OutputStream,com.oracle.truffle.api.nodes.Node)
 meth public static void printSourceAttributionTree(java.io.OutputStream,com.oracle.truffle.api.nodes.Node)
 meth public static void printSourceAttributionTree(java.io.PrintWriter,com.oracle.truffle.api.nodes.Node)
 meth public static void printTree(java.io.OutputStream,com.oracle.truffle.api.nodes.Node)
 meth public static void printTree(java.io.PrintWriter,com.oracle.truffle.api.nodes.Node)
 supr java.lang.Object
-hfds CURRENT_ENCAPSULATING_NODE
 hcls NodeCounter,RecursiveNodeIterator
 
 CLSS public abstract interface static com.oracle.truffle.api.nodes.NodeUtil$NodeCountFilter
@@ -1195,7 +1204,6 @@ meth public static java.lang.String findMimeType(com.oracle.truffle.api.TruffleF
 meth public static java.lang.String findMimeType(java.net.URL) throws java.io.IOException
 supr java.lang.Object
 hfds ALLOW_IO,BUFFER_SIZE,BYTE_SEQUENCE_CLASS,CONTENT_UNSET,EMPTY,MAX_BUFFER_SIZE,NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE,SOURCES,URI_SCHEME,computedURI,polyglotSource,textMap
-hcls FileSystemContextSupplier
 
 CLSS public final com.oracle.truffle.api.source.Source$LiteralBuilder
  outer com.oracle.truffle.api.source.Source
@@ -1227,7 +1235,7 @@ meth public com.oracle.truffle.api.source.Source$SourceBuilder mimeType(java.lan
 meth public com.oracle.truffle.api.source.Source$SourceBuilder name(java.lang.String)
 meth public com.oracle.truffle.api.source.Source$SourceBuilder uri(java.net.URI)
 supr java.lang.Object
-hfds cached,canonicalizePath,content,embedderFileSystemContext,fileEncoding,interactive,internal,language,mimeType,name,origin,path,uri,url
+hfds cached,canonicalizePath,content,fileEncoding,fileSystemContext,interactive,internal,language,mimeType,name,origin,path,uri,url
 
 CLSS public abstract com.oracle.truffle.api.source.SourceSection
 meth public abstract boolean equals(java.lang.Object)
