@@ -1,5 +1,7 @@
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va;
 
+import java.util.function.Supplier;
+
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -13,9 +15,16 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 
 public abstract class LLVMVAListNode extends LLVMExpressionNode {
 
+    private final Supplier<LLVMExpressionNode> allocaNodeFactory;
+
+    protected LLVMVAListNode(Supplier<LLVMExpressionNode> allocaNodeFactory) {
+        this.allocaNodeFactory = allocaNodeFactory;
+    }
+
     @Specialization
     public LLVMManagedPointer createVAList(@CachedLanguage LanguageReference<LLVMLanguage> langRef) {
-        Object vaListStorage = langRef.get().getCapability(PlatformCapability.class).createVAListStorage();
+        @SuppressWarnings("unchecked")
+        Object vaListStorage = langRef.get().getCapability(PlatformCapability.class).createVAListStorage(allocaNodeFactory);
         return LLVMManagedPointer.create(vaListStorage);
     }
 

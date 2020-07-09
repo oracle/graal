@@ -32,10 +32,12 @@ package com.oracle.truffle.llvm.runtime;
 import java.lang.reflect.Array;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.function.Supplier;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> implements LLVMCapability {
 
@@ -97,5 +99,5 @@ public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> i
         return dependencies;
     }
 
-    public abstract Object createVAListStorage();
+    public abstract Object createVAListStorage(Supplier<LLVMExpressionNode> allocaNodeFactory);
 }

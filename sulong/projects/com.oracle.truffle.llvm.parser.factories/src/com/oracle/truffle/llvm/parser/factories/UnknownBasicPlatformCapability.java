@@ -29,8 +29,11 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
+import java.util.function.Supplier;
+
 import com.oracle.truffle.llvm.runtime.LLVMSyscallEntry;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMUnsupportedSyscallNode;
 
 /**
@@ -64,7 +67,7 @@ final class UnknownBasicPlatformCapability extends BasicPlatformCapability<Unkno
     }
 
     @Override
-    public Object createVAListStorage() {
+    public Object createVAListStorage(Supplier<LLVMExpressionNode> allocaNodeFactory) {
         throw new UnsupportedOperationException("Should not reach.");
     }
 

@@ -954,13 +954,18 @@ public class BasicNodeFactory implements NodeFactory {
     @Override
     public LLVMExpressionNode createAlloca(Type type, int alignment) {
         if (LLVMVAListNode.isVAListType(type)) {
-            return LLVMVAListNodeGen.create();
+            return LLVMVAListNodeGen.create(() -> createAllocaNative(type, alignment));
+        } else {
+            return createAllocaNative(type, alignment);
         }
+    }
 
+    protected LLVMExpressionNode createAllocaNative(Type type, int alignment) {
         try {
             long byteSize = getByteSize(type);
             LLVMGetStackForConstInstruction alloc = LLVMAllocaConstInstructionNodeGen.create(byteSize, alignment, type);
-            return createGetStackSpace(type, alloc, byteSize);
+            LLVMExpressionNode allocaNode = createGetStackSpace(type, alloc, byteSize);
+            return allocaNode;
         } catch (TypeOverflowException e) {
             return Type.handleOverflowExpression(e);
         }
