@@ -26,6 +26,7 @@ package org.graalvm.compiler.core.test;
 
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.LongStream;
 
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.options.OptionValues;
@@ -59,18 +60,23 @@ public class DeepUnrollingTest extends SubprocessTest {
         return v;
     }
 
-    private static final int ACCEPTABLE_FACTOR = 50;
+    private static final int ACCEPTABLE_FACTOR = 100;
 
     public void loopTest() {
         // warmup
-        time("reference");
-        time("loops");
-        long reference = time("reference");
-        long loops = time("loops");
+        timeStream("reference").limit(5).sum();
+        timeStream("loops").limit(5).sum();
+        // measurement
+        long reference = timeStream("reference").limit(5).max().getAsLong();
+        long loops = timeStream("loops").limit(5).min().getAsLong();
         // observed ratio is ~20-30x. Pathological case before fix was ~300x
         if (loops > reference * ACCEPTABLE_FACTOR) {
             fail("Compilation of the loop nest is too slow. loops: %dms > %d * reference: %dms", loops, ACCEPTABLE_FACTOR, reference);
         }
+    }
+
+    public LongStream timeStream(String methodName) {
+        return LongStream.generate(() -> time(methodName));
     }
 
     public long time(String methodName) {
