@@ -436,6 +436,7 @@ suite = {
               "./lib/Checker*",
               "./lib/Sample*",
               "./lib/libRemarks*",
+              "./lib/libLLVM*.a",
               "./lib/libclang.so*",
               "./lib/libclang.dylib*",
               "./lib/libclang*.a",
