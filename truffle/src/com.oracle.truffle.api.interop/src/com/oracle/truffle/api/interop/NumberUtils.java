@@ -72,11 +72,11 @@ final class NumberUtils {
     }
 
     static boolean isNegativeZero(double d) {
-        return d == 0d && Double.doubleToRawLongBits(d) == Double.doubleToRawLongBits(-0d);
+        return Double.doubleToRawLongBits(d) == Double.doubleToRawLongBits(-0d);
     }
 
     static boolean isNegativeZero(float f) {
-        return f == 0f && Float.floatToRawIntBits(f) == Float.floatToRawIntBits(-0f);
+        return Float.floatToRawIntBits(f) == Float.floatToRawIntBits(-0f);
     }
 
 }
