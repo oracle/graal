@@ -52,26 +52,9 @@ public final class LinkedKlass {
 
     private final boolean hasFinalizer;
 
-    @CompilationFinal(dimensions = 2) //
-    private final int[][] leftoverHoles;
-
-    // instance fields declared in this class (includes hidden fields)
-    @CompilationFinal(dimensions = 1) //
-    private final LinkedField[] instanceFields;
-
-    // static fields declared in this class (no hidden fields)
-    @CompilationFinal(dimensions = 1) //
-    private final LinkedField[] staticFields;
-
-    private final int primitiveFieldTotalByteCount;
-    private final int primitiveStaticFieldTotalByteCount;
-
-    private final int fieldTableLength;
-    private final int objectFields;
-    private final int staticObjectFields;
+    private final LinkedKlassFieldLayout fieldLayout;
 
     public LinkedKlass(ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces) {
-
         this.parserKlass = parserKlass;
         this.superKlass = superKlass;
         this.interfaces = interfaces;
@@ -97,18 +80,23 @@ public final class LinkedKlass {
 
         this.methods = linkedMethods;
 
-        LinkedFieldTable.CreationResult fieldCR = LinkedFieldTable.create(this);
+        fieldLayout = LinkedKlassFieldLayout.create(parserKlass, superKlass);
+    }
 
-        this.instanceFields = fieldCR.instanceFields;
-        this.staticFields = fieldCR.staticFields;
+    public int getObjectFieldsCount() {
+        return fieldLayout.objectFields;
+    }
 
-        this.primitiveFieldTotalByteCount = fieldCR.primitiveFieldTotalByteCount;
-        this.primitiveStaticFieldTotalByteCount = fieldCR.primitiveStaticFieldTotalByteCount;
-        this.fieldTableLength = fieldCR.fieldTableLength;
-        this.objectFields = fieldCR.objectFields;
-        this.staticObjectFields = fieldCR.staticObjectFields;
+    public int getPrimitiveFieldTotalByteCount() {
+        return fieldLayout.primitiveFieldTotalByteCount;
+    }
 
-        this.leftoverHoles = fieldCR.leftoverHoles;
+    public int getStaticObjectFieldsCount() {
+        return fieldLayout.staticObjectFields;
+    }
+
+    public int getPrimitiveStaticFieldTotalByteCount() {
+        return fieldLayout.primitiveStaticFieldTotalByteCount;
     }
 
     int getFlags() {
@@ -123,7 +111,7 @@ public final class LinkedKlass {
         return parserKlass.getConstantPool();
     }
 
-    public Attribute getAttribute(Symbol<Name> name) {
+    Attribute getAttribute(Symbol<Name> name) {
         return parserKlass.getAttribute(name);
     }
 
@@ -131,63 +119,47 @@ public final class LinkedKlass {
         return parserKlass.getType();
     }
 
-    public Symbol<Name> getName() {
+    Symbol<Name> getName() {
         return parserKlass.getName();
     }
 
-    public ParserKlass getParserKlass() {
+    ParserKlass getParserKlass() {
         return parserKlass;
     }
 
-    public LinkedKlass getSuperKlass() {
+    LinkedKlass getSuperKlass() {
         return superKlass;
     }
 
-    public LinkedKlass[] getInterfaces() {
+    LinkedKlass[] getInterfaces() {
         return interfaces;
     }
 
-    public int getMajorVersion() {
+    int getMajorVersion() {
         return getConstantPool().getMajorVersion();
     }
 
-    public int getMinorVersion() {
+    int getMinorVersion() {
         return getConstantPool().getMinorVersion();
     }
 
-    protected LinkedMethod[] getLinkedMethods() {
+    LinkedMethod[] getLinkedMethods() {
         return methods;
     }
 
-    public LinkedField[] getInstanceFields() {
-        return instanceFields;
+    LinkedField[] getInstanceFields() {
+        return fieldLayout.instanceFields;
     }
 
-    protected LinkedField[] getStaticFields() {
-        return staticFields;
+    LinkedField[] getStaticFields() {
+        return fieldLayout.staticFields;
     }
 
-    public int getFieldTableLength() {
-        return fieldTableLength;
+    int getFieldTableLength() {
+        return fieldLayout.fieldTableLength;
     }
 
-    public int getObjectFieldsCount() {
-        return objectFields;
-    }
-
-    public int getPrimitiveFieldTotalByteCount() {
-        return primitiveFieldTotalByteCount;
-    }
-
-    public int getStaticObjectFieldsCount() {
-        return staticObjectFields;
-    }
-
-    public int getPrimitiveStaticFieldTotalByteCount() {
-        return primitiveStaticFieldTotalByteCount;
-    }
-
-    public int[][] getLeftoverHoles() {
-        return leftoverHoles;
+    int[][] getLeftoverHoles() {
+        return fieldLayout.leftoverHoles;
     }
 }

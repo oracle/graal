@@ -527,7 +527,7 @@ public final class InterpreterToVM implements ContextAccess {
     @SuppressWarnings("unused")
     public static StaticObject fillInStackTrace(@Host(Throwable.class) StaticObject throwable, Meta meta) {
         // Inlined calls to help StackOverflows.
-        VM.StackTrace frames = (VM.StackTrace) throwable.getUnsafeField(meta.HIDDEN_FRAMES.getFieldIndex());
+        VM.StackTrace frames = (VM.StackTrace) throwable.getUnsafeField(meta.HIDDEN_FRAMES.getIndex());
         if (frames != null) {
             return throwable;
         }

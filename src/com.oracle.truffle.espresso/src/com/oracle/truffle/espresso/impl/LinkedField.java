@@ -22,59 +22,25 @@
  */
 package com.oracle.truffle.espresso.impl;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
-import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.Attribute;
 
-import java.lang.reflect.Modifier;
-
-public final class LinkedField {
-    public static final LinkedField[] EMPTY_ARRAY = new LinkedField[0];
-
+final class LinkedField {
     private final ParserField parserField;
-    private final JavaKind kind;
+    private final int index;
+    private final int slot;
 
-    @CompilerDirectives.CompilationFinal //
-    private int fieldIndex = -1;
-
-    @CompilerDirectives.CompilationFinal //
-    private int slot = -1;
-
-    public LinkedField(ParserField parserField) {
+    LinkedField(ParserField parserField, int slot, int index) {
         this.parserField = parserField;
-        this.kind = Types.getJavaKind(getType());
-    }
-
-    private LinkedField(ParserField parserField, int slot, int index) {
-        this(parserField);
-        setSlot(slot);
-        setFieldIndex(index);
-    }
-
-    static LinkedField createHidden(Symbol<Name> name, int slot, int index) {
-        return new LinkedField(new ParserField(ParserField.HIDDEN, name, Type.java_lang_Object, null), slot, index);
-    }
-
-    ParserField getParserField() {
-        return parserField;
-    }
-
-    public Symbol<Type> getType() {
-        return parserField.getType();
-    }
-
-    public Symbol<Name> getName() {
-        return parserField.getName();
-    }
-
-    void setSlot(int slot) {
-        CompilerAsserts.neverPartOfCompilation();
         this.slot = slot;
+        this.index = index;
+    }
+
+    public static LinkedField createHidden(Symbol<Name> name, int slot, int index) {
+        return new LinkedField(new ParserField(ParserField.HIDDEN, name, Type.java_lang_Object, null), slot, index);
     }
 
     /**
@@ -85,15 +51,18 @@ public final class LinkedField {
     }
 
     /**
-     * The fieldIndex is the actual position in the field array of an actual instance.
+     * The index is the actual position in the field array of an actual instance.
      */
-    public int getFieldIndex() {
-        return fieldIndex;
+    public int getIndex() {
+        return index;
     }
 
-    void setFieldIndex(int index) {
-        CompilerAsserts.neverPartOfCompilation();
-        this.fieldIndex = index;
+    public Symbol<Type> getType() {
+        return parserField.getType();
+    }
+
+    public Symbol<Name> getName() {
+        return parserField.getName();
     }
 
     public int getFlags() {
@@ -101,7 +70,7 @@ public final class LinkedField {
     }
 
     public JavaKind getKind() {
-        return kind;
+        return parserField.getKind();
     }
 
     public Attribute getAttribute(Symbol<Name> name) {
@@ -113,11 +82,7 @@ public final class LinkedField {
         return null;
     }
 
-    boolean isStatic() {
-        return Modifier.isStatic(getParserField().getFlags());
-    }
-
-    boolean isHidden() {
+    public boolean isHidden() {
         return parserField.isHidden();
     }
 }

@@ -101,10 +101,10 @@ public final class Field extends Member<Type> implements FieldRef {
     }
 
     /**
-     * The fieldIndex is the actual position in the field array of an actual instance.
+     * The index is the actual position in the field array of an actual instance.
      */
-    public int getFieldIndex() {
-        return linkedField.getFieldIndex();
+    public int getIndex() {
+        return linkedField.getIndex();
     }
 
     @Override
