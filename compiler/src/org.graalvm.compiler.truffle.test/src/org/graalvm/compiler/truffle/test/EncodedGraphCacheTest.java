@@ -36,6 +36,7 @@ import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
@@ -242,13 +243,22 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
 
     @Test
     public void testCacheIsReleased() {
-        testHelper(1024, 200, compiler -> {
+        /*
+         * SLOW TEST WARNING!
+         *
+         * The cache release mechanism is implemented on the compile queue, which at this point, is
+         * already initialized and running with the options of the first engine it sees. We assume
+         * the default value for EncodedGraphCachePurgeDelay is used, so this test will take at
+         * least EncodedGraphCachePurgeDelay milliseconds to finish.
+         */
+        int purgeDelay = PolyglotCompilerOptions.EncodedGraphCachePurgeDelay.getDefaultValue();
+        testHelper(1024, purgeDelay, compiler -> {
             assertTrue("Delay has not passed yet",
                             encodedGraphCacheContains(compiler, testMethod));
 
             assertEventuallyTrue("Encoded graph cache must be dropped after delay elapsed",
-                            100,
                             1000,
+                            purgeDelay + 2000,
                             () -> !encodedGraphCacheContains(compiler, testMethod));
         });
     }
