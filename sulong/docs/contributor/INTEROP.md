@@ -11,6 +11,8 @@ runtime can be found in `polyglot.h` (in `mxbuild/<platform>-<arch>/SULONG_HOME/
 when building from source, or in `$GRAALVM_HOME/jre/languages/llvm/include/polyglot.h`
 in the GraalVM distribution).
 
+To use the functions from `polyglot.h`, binaries have to link against `-lpolyglot-mock`.
+
 ## How the LLVM runtime responds to messages from other languages
 
 ### `getMembers`, `readMember`, `writeMember`
