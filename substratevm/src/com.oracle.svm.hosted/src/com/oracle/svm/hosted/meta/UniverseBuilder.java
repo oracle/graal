@@ -716,12 +716,18 @@ public class UniverseBuilder {
         }
 
         if (HybridLayout.isHybrid(clazz)) {
+            /* Set start after array length field */
             assert startSize == ConfigurationValues.getObjectLayout().getArrayLengthOffset();
             int fieldSize = ConfigurationValues.getObjectLayout().sizeInBytes(JavaKind.Int);
             startSize += fieldSize;
 
-            assert clazz.equals(hMetaAccess.lookupJavaType(DynamicHub.class)) : "currently only DynamicHub may be a hybrid class";
-            startSize += (hUniverse.numInterfaceBits + Byte.SIZE - 1) / Byte.SIZE;
+            /*
+             * Set start after bitset field, if the hybrid class has one. For now, only DynamicHubs
+             * can have bitsets.
+             */
+            if (clazz.equals(hMetaAccess.lookupJavaType(DynamicHub.class))) {
+                startSize += (hUniverse.numInterfaceBits + Byte.SIZE - 1) / Byte.SIZE;
+            }
         }
 
         // Sort so that a) all Object fields are consecutive, and b) bigger types come first.
