@@ -309,7 +309,7 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
 
                 } else if (mhMethodId != None) {
                     assert (!mhMethodId.isStaticPolymorphicSignature());
-                    if (mhMethodId.isSignatrePolymorphicIntrinsic()) {
+                    if (mhMethodId.isSignaturePolymorphicIntrinsic()) {
                         profiler.profile(5);
                         plantInvokeBasic(memberName, sig, defKlass, callerKlass, methodName, flagField, refKind, meta);
                     } else {

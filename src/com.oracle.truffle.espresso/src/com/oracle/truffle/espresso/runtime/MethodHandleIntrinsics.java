@@ -203,39 +203,54 @@ public final class MethodHandleIntrinsics implements ContextAccess {
     }
 
     public enum PolySigIntrinsics {
-        None(0),
-        InvokeGeneric(1),
-        InvokeBasic(2),
-        LinkToVirtual(3),
-        LinkToStatic(4),
-        LinkToSpecial(5),
-        LinkToInterface(6);
+        None(false, false),
+        InvokeGeneric(false, false),
+        InvokeBasic(false, true),
+        LinkToVirtual(true, true),
+        LinkToStatic(true, true),
+        LinkToSpecial(true, true),
+        LinkToInterface(true, true);
 
-        public final int value;
+        public final boolean isSignaturePolymorphicIntrinsic;
+        public final boolean isStatic;
 
-        PolySigIntrinsics(int value) {
-            this.value = value;
+        PolySigIntrinsics(boolean isStatic, boolean isSignaturePolymorphic) {
+            this.isStatic = isStatic;
+            this.isSignaturePolymorphicIntrinsic = isSignaturePolymorphic;
         }
 
+        /**
+         * Indicates that the given ID represent a static polymorphic signature method. As of Java
+         * 11, there exists only 4 such methods.
+         * 
+         * @see "java.lang.invoke.MethodHandle.linkToInterface(Object...)"
+         * @see "java.lang.invoke.MethodHandle.linkToSpecial(Object...)"
+         * @see "java.lang.invoke.MethodHandle.linkToStatic(Object...)"
+         * @see "java.lang.invoke.MethodHandle.linkToVirtual(Object...)"
+         */
         public final boolean isStaticPolymorphicSignature() {
-            return value >= FIRST_STATIC_SIG_POLY && value <= LAST_STATIC_SIG_POLY;
+            return isStatic;
         }
 
-        public final boolean isSignatrePolymorphicIntrinsic() {
-            return this != InvokeGeneric;
+        /**
+         * Indicates whether or not a given PolymorphicSignature ID has its behavior entirely
+         * implemented in the VM.
+         * <p>
+         * For example, invokeBasic's behavior is implemented in the VM (see
+         * {@link com.oracle.truffle.espresso.nodes.methodhandle.MHInvokeBasicNode}). In particular,
+         * target extraction and payload invocation is entirely done in Espresso.
+         * <p>
+         * On the contrary, methods with IDs represented by {@link PolySigIntrinsics#InvokeGeneric}
+         * are managed by the VM, their behavior is implemented through Java code, which is then
+         * simply called by the VM.
+         */
+        public final boolean isSignaturePolymorphicIntrinsic() {
+            return isSignaturePolymorphicIntrinsic;
         }
 
         private boolean isSignaturePolymorphic() {
-            return (value >= FIRST_MH_SIG_POLY.value &&
-                            value <= LAST_MH_SIG_POLY.value);
+            return (this != None);
         }
-
-        private static final int FIRST_STATIC_SIG_POLY = PolySigIntrinsics.LinkToVirtual.value;
-        private static final int LAST_STATIC_SIG_POLY = PolySigIntrinsics.LinkToInterface.value;
-
-        private static final PolySigIntrinsics FIRST_MH_SIG_POLY = PolySigIntrinsics.InvokeGeneric;
-
-        private static final PolySigIntrinsics LAST_MH_SIG_POLY = PolySigIntrinsics.LinkToInterface;
     }
 
 }
