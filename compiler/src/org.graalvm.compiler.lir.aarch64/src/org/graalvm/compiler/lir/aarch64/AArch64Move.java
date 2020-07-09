@@ -632,7 +632,7 @@ public class AArch64Move {
                     masm.mov(dst, 0xDEADDEADDEADDEADL, true);
                 } else {
                     crb.recordDataReferenceInCode(input, 8);
-                    AArch64Address address = AArch64Address.createScaledImmediateAddress(dst, 0x0);
+                    AArch64Address address = AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, dst, 0x0);
                     masm.adrpLdr(64, dst, address);
                 }
                 break;
