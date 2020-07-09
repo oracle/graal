@@ -875,7 +875,7 @@ public final class NativeImageHeap implements ImageHeap {
 
         @Override
         public void setOffsetInPartition(long value) {
-            assert this.offsetInPartition == -1L;
+            assert this.offsetInPartition == -1L && value >= 0;
             this.offsetInPartition = value;
         }
 

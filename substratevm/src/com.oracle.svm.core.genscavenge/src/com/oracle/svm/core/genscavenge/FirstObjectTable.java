@@ -24,6 +24,10 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import java.nio.ByteBuffer;
+
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -239,6 +243,82 @@ public final class FirstObjectTable {
                 }
             }
             unbiasedExponent += 1;
+        }
+    }
+
+    /**
+     * Hosted variant of {@link #setTableForObjectUnchecked} for image heap chunks that operates on
+     * a {@link ByteBuffer} and avoids most boxing/unboxing of word types.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void setTableInBufferForObject(ByteBuffer buffer, int bufferTableOffset, int startOffset, int endOffset) {
+        assert bufferTableOffset >= 0 && startOffset >= 0 && endOffset > startOffset;
+        int actualEndOffset = endOffset - 1; // method wants last byte's offset
+        int startIndex = startOffset / BYTES_COVERED_BY_ENTRY;
+        int endIndex = actualEndOffset / BYTES_COVERED_BY_ENTRY;
+        int startMemoryOffset = startIndex * BYTES_COVERED_BY_ENTRY;
+        if (startIndex == endIndex && startOffset % BYTES_COVERED_BY_ENTRY != 0) {
+            /* The object does not cross, or start on, a card boundary: nothing to do. */
+            return;
+        }
+        int memoryOffsetIndex;
+        if (startOffset == startMemoryOffset) {
+            memoryOffsetIndex = startIndex;
+            setBufferEntryAtIndex(buffer, bufferTableOffset, memoryOffsetIndex, 0);
+        } else {
+            /*
+             * The startOffset is in the middle of the memory for startIndex. That is, before the
+             * memory for startIndex+1.
+             */
+            memoryOffsetIndex = startIndex + 1;
+            UnsignedWord memoryIndexOffset = indexToMemoryOffset(WordFactory.unsigned(memoryOffsetIndex));
+            int entry = memoryOffsetToEntry(memoryIndexOffset.subtract(startOffset));
+            setBufferEntryAtIndex(buffer, bufferTableOffset, memoryOffsetIndex, entry);
+        }
+        /*
+         * Fill from memoryOffsetIndex towards endIndex with offset entries referring back to
+         * memoryOffsetIndex.
+         */
+        /* First, as many linear offsets as are needed, or as I can have. */
+        int linearIndexMax = Math.min(endIndex, memoryOffsetIndex + LINEAR_OFFSET_MAX);
+        int entryIndex = memoryOffsetIndex + 1;
+        int entry = LINEAR_OFFSET_MIN;
+        while (entryIndex <= linearIndexMax) {
+            setBufferEntryAtIndex(buffer, bufferTableOffset, entryIndex, entry);
+            entryIndex++;
+            entry++;
+        }
+        /* Next, as many exponential offsets as are needed. */
+        int unbiasedExponent = EXPONENT_MIN;
+        while (entryIndex <= endIndex) {
+            /* There are 2^N entries with the exponent N. */
+            for (int count = 0; count < (1 << unbiasedExponent); count += 1) {
+                int biasedEntry = biasExponent(unbiasedExponent);
+                setBufferEntryAtIndex(buffer, bufferTableOffset, entryIndex, biasedEntry);
+                entryIndex++;
+                if (entryIndex > endIndex) {
+                    break;
+                }
+            }
+            unbiasedExponent += 1;
+        }
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static void setBufferEntryAtIndex(ByteBuffer table, int bufferTableOffset, int index, int value) {
+        assert bufferTableOffset >= 0 && index >= 0;
+        assert isValidEntry(value) : "Invalid entry";
+        int bufferIndex = bufferTableOffset + index;
+        byte entry = table.get(bufferIndex);
+        assert isUninitializedEntry(entry) || entry == value : "Overwriting!";
+        table.put(bufferIndex, (byte) value);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    static void initializeTableInBuffer(ByteBuffer buffer, int bufferTableOffset, int tableSize) {
+        assert bufferTableOffset >= 0 && tableSize >= 0;
+        for (int i = 0; i < tableSize; i++) {
+            buffer.put(bufferTableOffset + i, (byte) UNINITIALIZED_ENTRY);
         }
     }
 

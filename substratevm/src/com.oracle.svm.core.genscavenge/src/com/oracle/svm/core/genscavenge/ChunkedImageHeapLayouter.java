@@ -31,9 +31,12 @@ import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.genscavenge.ChunkedImageHeapAllocator.AlignedChunk;
 import com.oracle.svm.core.genscavenge.ChunkedImageHeapAllocator.Chunk;
+import com.oracle.svm.core.genscavenge.ChunkedImageHeapAllocator.UnalignedChunk;
 import com.oracle.svm.core.image.AbstractImageHeapLayouter;
 import com.oracle.svm.core.image.ImageHeap;
+import com.oracle.svm.core.image.ImageHeapObject;
 
 @Platforms(Platform.HOSTED_ONLY.class)
 public class ChunkedImageHeapLayouter extends AbstractImageHeapLayouter<ChunkedImageHeapPartition> {
@@ -104,9 +107,21 @@ public class ChunkedImageHeapLayouter extends AbstractImageHeapLayouter<ChunkedI
 
     private static void writeHeader(ByteBuffer imageHeapBytes, ImageHeapChunkWriter writer, Chunk previous, Chunk current, Chunk next) {
         if (current != null) {
-            long offsetToPrevious = (previous != null) ? (previous.begin - current.begin) : 0;
-            long offsetToNext = (next != null) ? (next.begin - current.begin) : 0;
-            writer.writeHeader(imageHeapBytes, NumUtil.safeToInt(current.begin), current.getTopOffset(), current.getEndOffset(), offsetToPrevious, offsetToNext);
+            long offsetToPrevious = (previous != null) ? (previous.getBegin() - current.getBegin()) : 0;
+            long offsetToNext = (next != null) ? (next.getBegin() - current.getBegin()) : 0;
+            int chunkPosition = NumUtil.safeToInt(current.getBegin());
+            if (current instanceof AlignedChunk) {
+                AlignedChunk aligned = (AlignedChunk) current;
+                writer.initializeAlignedChunk(imageHeapBytes, chunkPosition, current.getTopOffset(), current.getEndOffset(), offsetToPrevious, offsetToNext);
+                for (ImageHeapObject obj : aligned.getObjects()) {
+                    long offsetInChunk = obj.getOffsetInPartition() + obj.getPartition().getStartOffset() - chunkPosition;
+                    long endOffsetInChunk = offsetInChunk + obj.getSize();
+                    writer.insertIntoAlignedChunkFirstObjectTable(imageHeapBytes, chunkPosition, offsetInChunk, endOffsetInChunk);
+                }
+            } else {
+                assert current instanceof UnalignedChunk;
+                writer.initializeUnalignedChunk(imageHeapBytes, chunkPosition, current.getTopOffset(), current.getEndOffset(), offsetToPrevious, offsetToNext);
+            }
         }
     }
 }

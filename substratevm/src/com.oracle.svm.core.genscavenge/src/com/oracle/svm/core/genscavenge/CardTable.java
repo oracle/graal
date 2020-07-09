@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import java.nio.ByteBuffer;
+
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
@@ -113,6 +115,12 @@ public final class CardTable {
             cleanEntryAtIndex(table, index);
         }
         return table;
+    }
+
+    static void cleanTableInBuffer(ByteBuffer buffer, int bufferTableOffset, int tableSize) {
+        for (int i = 0; i < tableSize; i++) {
+            buffer.put(bufferTableOffset + i, (byte) CLEAN_ENTRY);
+        }
     }
 
     static void cleanEntryAtIndex(Pointer table, UnsignedWord index) {
