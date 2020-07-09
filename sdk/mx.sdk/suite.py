@@ -124,11 +124,12 @@ suite = {
       "license" : "Apache-2.0-LLVM",
     },
     "LLVM_ORG_SRC" : {
-      "version" : "9.0.0-5-g80b1d876fd-bg83994d0b4b",
+      # version difference as the binaries were repackaged but the sources stayed the same
+      "version" : "9.0.0-5-g80b1d876fd-bg0c808efbe5",
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
       "packedResource" : True,
       "urls" : ["{host}/llvm-src-llvmorg-{version}.tar.gz"],
-      "sha1" : "09785ad93dd96c5f0f9d80ded80ec30fb9aed9e9",
+      "sha1" : "27bea70346768ee43893df3f65cf785c5b5d0342",
       "license" : "Apache-2.0-LLVM",
       },
   },
