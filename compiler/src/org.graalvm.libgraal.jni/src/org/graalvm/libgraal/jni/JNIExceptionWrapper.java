@@ -168,19 +168,30 @@ public final class JNIExceptionWrapper extends RuntimeException {
      */
     @JNIFromLibGraal(CreateException)
     public static void throwInHotSpot(JNIEnv env, Throwable original) {
-        if (JNIUtil.tracingAt(1)) {
-            original.printStackTrace(TTY.out);
-        }
-        if (original.getClass() == JNIExceptionWrapper.class) {
-            ((JNIExceptionWrapper) original).throwInHotSpot(env);
-        } else {
-            String message = formatExceptionMessage(original.getClass().getName(), original.getMessage());
-            JString hsMessage = createHSString(env, message);
-            JThrowable hsThrowable = callCreateException(env, hsMessage);
-            StackTraceElement[] hsStack = getJNIExceptionStackTrace(env, hsThrowable);
-            StackTraceElement[] libGraalStack = original.getStackTrace();
-            String[] merged = encode(mergeStackTraces(hsStack, libGraalStack, 1, 0, false));
-            Throw(env, updateStackTrace(env, hsThrowable, merged));
+        try {
+            if (JNIUtil.tracingAt(1)) {
+                original.printStackTrace(TTY.out);
+            }
+            if (original.getClass() == JNIExceptionWrapper.class) {
+                ((JNIExceptionWrapper) original).throwInHotSpot(env);
+            } else {
+                String message = formatExceptionMessage(original.getClass().getName(), original.getMessage());
+                JString hsMessage = createHSString(env, message);
+                JThrowable hsThrowable = callCreateException(env, hsMessage);
+                StackTraceElement[] hsStack = getJNIExceptionStackTrace(env, hsThrowable);
+                StackTraceElement[] libGraalStack = original.getStackTrace();
+                String[] merged = encode(mergeStackTraces(hsStack, libGraalStack, 1, 0, false));
+                Throw(env, updateStackTrace(env, hsThrowable, merged));
+            }
+        } catch (Throwable t) {
+            // If something goes wrong when re-throwing the exception into HotSpot
+            // print the exception stack trace.
+            if (t instanceof ThreadDeath) {
+                throw t;
+            } else {
+                original.addSuppressed(t);
+                original.printStackTrace();
+            }
         }
     }
 
