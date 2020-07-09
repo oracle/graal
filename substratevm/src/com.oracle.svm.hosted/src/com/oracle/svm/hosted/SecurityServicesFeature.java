@@ -97,9 +97,18 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
     public void duringSetup(DuringSetupAccess access) {
         RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
 
-        rci.initializeAtBuildTime(java.security.SecureClassLoader.class, "Accidentally initialized at build time");
-        rci.rerunInitialization(java.security.ProtectionDomain.class, "Accidentally initialized at build time");
-        rci.rerunInitialization(java.security.Provider.class, "Accidentally initialized at build time");
+        rci.initializeAtBuildTime(java.security.SecureClassLoader.class, "Initialized by the image builder");
+        rci.initializeAtBuildTime(java.security.ProtectionDomain.class, "Necessary for security substitutions");
+        rci.initializeAtBuildTime(java.security.Provider.class, "Necessary for security substitutions");
+        rci.initializeAtBuildTime(sun.security.jca.ProviderList.class, "Necessary for security substitutions ");
+        rci.initializeAtBuildTime(sun.security.jca.Providers.class, "Necessary for correctness");
+        rci.initializeAtBuildTime("sun.security.jca.ProviderConfig$ProviderLoader", "Necessary for substitutions");
+        rci.initializeAtBuildTime("sun.security.provider.Sun", "Necessary for substitutions");
+        rci.initializeAtBuildTime(java.security.Policy.class, "Necessary for substitutions");
+        rci.rerunInitialization("java.security.BasicPermissionCollection", "Accidentally initialized");
+        rci.rerunInitialization(java.security.UnresolvedPermission.class, "Accidentally initialized");
+        rci.rerunInitialization(java.security.KeyStore.class, "Accidentally initialized");
+        rci.rerunInitialization(sun.security.util.SecurityConstants.class, "Accidentally initialized");
 
         /* Accidentally initialized during the image build */
         rci.rerunInitialization(NativePRNG.class, "for substitutions");
