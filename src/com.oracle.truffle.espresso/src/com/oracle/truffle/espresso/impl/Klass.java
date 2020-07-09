@@ -52,11 +52,14 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
+import com.oracle.truffle.espresso.impl.PackageTable.PackageEntry;
 import com.oracle.truffle.espresso.jdwp.api.ClassStatusConstants;
 import com.oracle.truffle.espresso.jdwp.api.JDWPConstantPool;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
@@ -252,6 +255,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         this.superInterfaces = superInterfaces;
         this.id = context.getNewKlassId();
         this.modifiers = modifiers;
+        this.runtimePackage = initRuntimePackage();
     }
 
     public abstract @Host(ClassLoader.class) StaticObject getDefiningClassLoader();
@@ -904,19 +908,26 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return InterpreterToVM.newObject(this, false);
     }
 
-    // TODO(garcia) Symbolify package ?
-    @CompilationFinal private String runtimePackage;
+    @CompilationFinal private Symbol<Name> runtimePackage;
 
-    public final String getRuntimePackage() {
-        String pkg = runtimePackage;
-        if (runtimePackage == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            assert !isArray();
-            pkg = Types.getRuntimePackage(getType());
-            assert !pkg.endsWith(";");
-            runtimePackage = pkg;
+    public Symbol<Name> getRuntimePackage() {
+        return runtimePackage;
+    }
+
+    public abstract ModuleEntry module();
+
+    public abstract PackageEntry packageEntry();
+
+    public final boolean inUnnamedPackage() {
+        return packageEntry() == null;
+    }
+
+    private Symbol<Name> initRuntimePackage() {
+        ByteSequence hostPkgName = Types.getRuntimePackage(getType());
+        if (hostPkgName.length() == 0) {
+            return null;
         }
-        return pkg;
+        return getNames().getOrCreate(hostPkgName);
     }
 
     public Symbol<Name> getName() {

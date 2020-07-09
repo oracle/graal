@@ -54,14 +54,13 @@ public final class StringTable {
 
     public StaticObject intern(Symbol<?> value) {
         // Weak values? Too expensive?
-        return interned.computeIfAbsent(
-                        cache.computeIfAbsent(value, new Function<Symbol<?>, String>() {
+        return interned.computeIfAbsent(cache.computeIfAbsent(value,
+                        new Function<Symbol<?>, String>() {
                             @Override
                             public String apply(Symbol<?> value1) {
                                 return createStringFromSymbol(value1);
                             }
-                        }),
-                        new Function<String, StaticObject>() {
+                        }), new Function<String, StaticObject>() {
                             @Override
                             public StaticObject apply(String value1) {
                                 return StringTable.this.createStringObjectFromString(value1);

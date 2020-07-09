@@ -2286,7 +2286,7 @@ public final class MethodVerifier implements ContextAccess {
                 if (!field.isProtected()) {
                     return;
                 }
-                if (!thisKlass.getRuntimePackage().equals(Types.getRuntimePackage(fieldHolderType))) {
+                if (!thisKlass.getRuntimePackage().contentEquals(Types.getRuntimePackage(fieldHolderType))) {
                     if (!stackOp.compliesWith(thisOperand)) {
                         /**
                          * Otherwise, use of a member of an object of type Target requires that
@@ -2337,7 +2337,7 @@ public final class MethodVerifier implements ContextAccess {
                 if (!method.isProtected()) {
                     return;
                 }
-                if (!thisKlass.getRuntimePackage().equals(Types.getRuntimePackage(methodHolderType))) {
+                if (!thisKlass.getRuntimePackage().contentEquals(Types.getRuntimePackage(methodHolderType))) {
                     if (stackOp.isArrayType() && Type.java_lang_Object.equals(methodHolderType) && Name.clone.equals(method.getName())) {
                         // Special case: Arrays pretend to implement Object.clone().
                         return;

@@ -546,7 +546,8 @@ public final class ClassfileParser {
                             methodFlags |= ACC_LAMBDA_FORM_COMPILED;
                         } else if (Type.java_lang_invoke_LambdaForm$Hidden.equals(annotType)) {
                             methodFlags |= ACC_LAMBDA_FORM_HIDDEN;
-                        } else if (Type.sun_reflect_CallerSensitive.equals(annotType)) {
+                        } else if (Type.sun_reflect_CallerSensitive.equals(annotType) ||
+                                        Type.jdk_internal_reflect_CallerSensitive.equals(annotType)) {
                             methodFlags |= ACC_CALLER_SENSITIVE;
                         }
                     }

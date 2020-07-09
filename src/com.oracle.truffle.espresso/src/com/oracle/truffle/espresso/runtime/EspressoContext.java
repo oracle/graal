@@ -36,6 +36,7 @@ import java.util.stream.Collectors;
 import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
@@ -114,6 +115,7 @@ public final class EspressoContext {
     }
 
     @CompilationFinal private boolean modulesInitialized = false;
+    @CompilationFinal private boolean metaInitialized = false;
     private boolean initialized = false;
 
     private Classpath bootClasspath;
@@ -195,7 +197,7 @@ public final class EspressoContext {
 
     public Classpath getBootClasspath() {
         if (bootClasspath == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
+            CompilerAsserts.neverPartOfCompilation();
             bootClasspath = new Classpath(
                             getVmProperties().bootClasspath().stream().map(new Function<Path, String>() {
                                 @Override
@@ -205,6 +207,10 @@ public final class EspressoContext {
                             }).collect(Collectors.joining(File.pathSeparator)));
         }
         return bootClasspath;
+    }
+
+    public void setBootClassPath(Classpath classPath) {
+        this.bootClasspath = classPath;
     }
 
     public EspressoProperties getVmProperties() {
@@ -263,12 +269,18 @@ public final class EspressoContext {
 
         initVmProperties();
 
+        if (modulesEnabled()) {
+            registries.initJavaBaseModule();
+            registries.getBootClassRegistry().initUnnamedModule(StaticObject.NULL);
+        }
+
         // Spawn JNI first, then the VM.
         this.vm = VM.create(getJNI()); // Mokapot is loaded
 
         // TODO: link libjimage
 
         this.meta = new Meta(this);
+        this.metaInitialized = true;
 
         this.interpreterToVM = new InterpreterToVM(this);
 
@@ -348,6 +360,7 @@ public final class EspressoContext {
             if (e != 0) {
                 throw EspressoError.shouldNotReachHere();
             }
+            modulesInitialized = true;
             meta.java_lang_System_initPhase3.invokeDirect(null);
         }
 
@@ -526,6 +539,10 @@ public final class EspressoContext {
         klass.safeInitialize();
     }
 
+    public boolean metaInitialized() {
+        return metaInitialized;
+    }
+
     public boolean modulesInitialized() {
         return modulesInitialized;
     }
@@ -545,7 +562,7 @@ public final class EspressoContext {
     public JImageLibrary jimageLibrary() {
         if (jimageLibrary == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            EspressoError.guarantee((getJavaVersion() >= 9), "Jimage availbale for java >= 9");
+            EspressoError.guarantee(modulesEnabled(), "Jimage availbale for java >= 9");
             this.jimageLibrary = new JImageLibrary(this);
         }
         return jimageLibrary;
@@ -553,6 +570,10 @@ public final class EspressoContext {
 
     public int getJavaVersion() {
         return getVmProperties().bootClassPathType().getJavaVersion();
+    }
+
+    public boolean modulesEnabled() {
+        return getJavaVersion() >= 9;
     }
 
     public Types getTypes() {

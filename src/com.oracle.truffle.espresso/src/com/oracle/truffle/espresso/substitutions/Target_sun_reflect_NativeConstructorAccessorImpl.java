@@ -29,7 +29,7 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-@EspressoSubstitutions
+@EspressoSubstitutions(nameProvider = Target_sun_reflect_NativeConstructorAccessorImpl.SharedNativeConstructorAccessorImpl.class)
 public class Target_sun_reflect_NativeConstructorAccessorImpl {
     @Substitution
     public static @Host(Object.class) StaticObject newInstance0(@Host(Constructor.class) StaticObject constructor, @Host(Object[].class) StaticObject args0,
@@ -45,4 +45,20 @@ public class Target_sun_reflect_NativeConstructorAccessorImpl {
         Target_sun_reflect_NativeMethodAccessorImpl.callMethodReflectively(meta, instance, args0, reflectedMethod, klass, parameterTypes);
         return instance;
     }
+
+    public static class SharedNativeConstructorAccessorImpl extends SubstitutionNamesProvider {
+        private static String[] NAMES = new String[]{
+                        TARGET_SUN_REFLECT_NATIVECONSTRUCTORACCESSORIMPL,
+                        TARGET_JDK_INTERNAL_REFLECT_NATIVECONSTRUCTORACCESSORIMPL
+        };
+        public static SubstitutionNamesProvider INSTANCE = new SharedNativeConstructorAccessorImpl();
+
+        @Override
+        public String[] substitutionClassNames() {
+            return NAMES;
+        }
+    }
+
+    private static final String TARGET_SUN_REFLECT_NATIVECONSTRUCTORACCESSORIMPL = "Target_sun_reflect_NativeConstructorAccessorImpl";
+    private static final String TARGET_JDK_INTERNAL_REFLECT_NATIVECONSTRUCTORACCESSORIMPL = "Target_jdk_internal_reflect_NativeConstructorAccessorImpl";
 }

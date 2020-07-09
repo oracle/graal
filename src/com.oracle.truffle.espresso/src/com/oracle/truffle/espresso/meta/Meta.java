@@ -22,6 +22,10 @@
  */
 package com.oracle.truffle.espresso.meta;
 
+import static com.oracle.truffle.espresso.meta.StringUtil.LATIN1;
+
+import java.util.logging.Level;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -87,6 +91,18 @@ public final class Meta implements ContextAccess {
         _long = new PrimitiveKlass(context, JavaKind.Long);
         _void = new PrimitiveKlass(context, JavaKind.Void);
 
+        PRIMITIVE_KLASSES = new PrimitiveKlass[]{
+                        _boolean,
+                        _byte,
+                        _char,
+                        _short,
+                        _float,
+                        _int,
+                        _double,
+                        _long,
+                        _void
+        };
+
         _boolean_array = _boolean.array();
         _byte_array = _byte.array();
         _char_array = _char.array();
@@ -139,8 +155,10 @@ public final class Meta implements ContextAccess {
 
         java_lang_String_hash = java_lang_String.lookupDeclaredField(Name.hash, Type._int);
         java_lang_String_coder = java_lang_String.lookupDeclaredField(Name.coder, Type._byte);
+        java_lang_String_COMPACT_STRINGS = java_lang_String.lookupDeclaredField(Name.COMPACT_STRINGS, Type._boolean);
         java_lang_String_hashCode = java_lang_String.lookupDeclaredMethod(Name.hashCode, Signature._int);
         java_lang_String_length = java_lang_String.lookupDeclaredMethod(Name.length, Signature._int);
+        java_lang_String_toCharArray = java_lang_String.lookupDeclaredMethod(Name.toCharArray, Signature._char_array);
 
         java_lang_Throwable = knownKlass(Type.java_lang_Throwable);
         java_lang_Throwable_getStackTrace = java_lang_Throwable.lookupDeclaredMethod(Name.getStackTrace, Signature.StackTraceElement_array);
@@ -197,6 +215,9 @@ public final class Meta implements ContextAccess {
         java_lang_IncompatibleClassChangeError = knownKlass(Type.java_lang_IncompatibleClassChangeError);
         java_lang_BootstrapMethodError = knownKlass(Type.java_lang_BootstrapMethodError);
 
+        // Initialize dispatch once common exceptions are discovered.
+        this.dispatch = new ExceptionDispatch(this);
+
         java_security_PrivilegedActionException = knownKlass(Type.java_security_PrivilegedActionException);
         java_security_PrivilegedActionException_init_Exception = java_security_PrivilegedActionException.lookupDeclaredMethod(Name._init_, Signature._void_Exception);
 
@@ -206,6 +227,7 @@ public final class Meta implements ContextAccess {
         java_lang_ClassLoader_findNative = java_lang_ClassLoader.lookupDeclaredMethod(Name.findNative, Signature._long_ClassLoader_String);
         java_lang_ClassLoader_getSystemClassLoader = java_lang_ClassLoader.lookupDeclaredMethod(Name.getSystemClassLoader, Signature.ClassLoader);
         java_lang_ClassLoader_parent = java_lang_ClassLoader.lookupDeclaredField(Name.parent, Type.java_lang_ClassLoader);
+        java_lang_ClassLoader_unnamedModule = java_lang_ClassLoader.lookupDeclaredField(Name.unnamedModule, Type.java_lang_Module);
         HIDDEN_CLASS_LOADER_REGISTRY = java_lang_ClassLoader.lookupHiddenField(Name.HIDDEN_CLASS_LOADER_REGISTRY);
 
         // Guest reflection.
@@ -340,7 +362,7 @@ public final class Meta implements ContextAccess {
 
         java_lang_invoke_MethodHandleNatives = knownKlass(Type.java_lang_invoke_MethodHandleNatives);
         java_lang_invoke_MethodHandleNatives_linkMethod = java_lang_invoke_MethodHandleNatives.lookupDeclaredMethod(Name.linkMethod, Signature.MemberName_Class_int_Class_String_Object_Object_array);
-        java_lang_invoke_MethodHandleNatives_linkCallSite = java_lang_invoke_MethodHandleNatives.lookupDeclaredMethod(Name.linkCallSite,
+        java_lang_invoke_MethodHandleNatives_linkCallSite8 = java_lang_invoke_MethodHandleNatives.lookupDeclaredMethod(Name.linkCallSite,
                         Signature.MemberName_Object_Object_Object_Object_Object_Object_array);
         java_lang_invoke_MethodHandleNatives_linkMethodHandleConstant = java_lang_invoke_MethodHandleNatives.lookupDeclaredMethod(Name.linkMethodHandleConstant,
                         Signature.MethodHandle_Class_int_Class_String_Object);
@@ -375,15 +397,26 @@ public final class Meta implements ContextAccess {
         java_lang_AssertionStatusDirectives_packageEnabled = java_lang_AssertionStatusDirectives.lookupField(Name.packageEnabled, Type._boolean_array);
         java_lang_AssertionStatusDirectives_deflt = java_lang_AssertionStatusDirectives.lookupField(Name.deflt, Type._boolean);
 
-        // java.management
-        java_lang_management_MemoryUsage = knownKlass(Type.java_lang_management_MemoryUsage);
-
-        java_lang_management_ThreadInfo = knownKlass(Type.java_lang_management_ThreadInfo);
-
         // Classes and Members that differ from Java 8 to 11
-        // TODO(garcia) Decide on a naming convention for these classes
 
         java_lang_String_value = lookupFieldDiffVersion(java_lang_String, Name.value, Type._char_array, Name.value, Type._byte_array);
+
+        java_lang_Class_classLoader = java_lang_Class.lookupField(Name.classLoader, Type.java_lang_ClassLoader);
+
+        jdk_internal_ClassLoaders_PlatformClassLoader = knownKlass(Type.jdk_internal_ClassLoaders$PlatformClassLoader);
+
+        java_lang_Module = knownKlass(Type.java_lang_Module);
+        if (java_lang_Module != null) {
+            java_lang_Module_name = java_lang_Module.lookupField(Name.name, Type.java_lang_String);
+            java_lang_Module_loader = java_lang_Module.lookupField(Name.loader, Type.java_lang_ClassLoader);
+            HIDDEN_MODULE_ENTRY = java_lang_Module.lookupHiddenField(Name.HIDDEN_MODULE_ENTRY);
+        } else {
+            java_lang_Module_name = null;
+            java_lang_Module_loader = null;
+            HIDDEN_MODULE_ENTRY = null;
+        }
+
+        java_lang_Class_module = java_lang_Class.lookupField(Name.module, Type.java_lang_Module);
 
         java_lang_System_initializeSystemClass = java_lang_System.lookupDeclaredMethod(Name.initializeSystemClass, Signature._void);
         java_lang_System_initPhase1 = java_lang_System.lookupDeclaredMethod(Name.initPhase1, Signature._void);
@@ -410,6 +443,17 @@ public final class Meta implements ContextAccess {
 
         sun_reflect_Reflection_getCallerClass = knownKlassDiffVersion(Type.sun_reflect_Reflection, Type.jdk_internal_reflect_Reflection).lookupDeclaredMethod(Name.getCallerClass, Signature.Class);
 
+        java_lang_invoke_MethodHandleNatives_linkCallSite11 = java_lang_invoke_MethodHandleNatives.lookupDeclaredMethod(Name.linkCallSite,
+                        Signature.MemberName_Object_int_Object_Object_Object_Object_Object_array);
+
+        // TODO: these classes are in module java.management. These become known after modules
+        // initialization.
+
+        // java.management
+        java_lang_management_MemoryUsage = knownKlass(Type.java_lang_management_MemoryUsage);
+
+        java_lang_management_ThreadInfo = knownKlass(Type.java_lang_management_ThreadInfo);
+
         sun_management_ManagementFactory = knownKlass(Type.sun_management_ManagementFactory);
         if (sun_management_ManagementFactory != null) {
             // MemoryPoolMXBean createMemoryPool(String var0, boolean var1, long var2, long var4)
@@ -427,7 +471,6 @@ public final class Meta implements ContextAccess {
             // GarbageCollectorMXBean createGarbageCollector(String var0, String var1)
             sun_management_ManagementFactory_createGarbageCollector = null;
         }
-        this.dispatch = new ExceptionDispatch(this);
     }
 
     private static Field lookupFieldDiffVersion(ObjectKlass klass, Symbol<Name> n1, Symbol<Type> t1, Symbol<Name> n2, Symbol<Type> t2) {
@@ -456,6 +499,8 @@ public final class Meta implements ContextAccess {
     public final Field HIDDEN_MIRROR_KLASS;
     public final Field HIDDEN_PROTECTION_DOMAIN;
     public final Field HIDDEN_SIGNERS;
+    public final Field java_lang_Class_module;
+    public final Field java_lang_Class_classLoader;
     public final Field sun_reflect_ConstantPool_constantPoolOop;
     public final ArrayKlass java_lang_Class_array;
     public final Method java_lang_Class_forName_String;
@@ -515,16 +560,26 @@ public final class Meta implements ContextAccess {
     public final Field java_lang_String_value;
     public final Field java_lang_String_hash;
     public final Field java_lang_String_coder;
+    public final Field java_lang_String_COMPACT_STRINGS;
     public final Method java_lang_String_hashCode;
     public final Method java_lang_String_length;
+    public final Method java_lang_String_toCharArray;
 
     public final ObjectKlass java_lang_ClassLoader;
     public final Field java_lang_ClassLoader_parent;
+    public final Field java_lang_ClassLoader_unnamedModule;
     public final ObjectKlass java_lang_ClassLoader$NativeLibrary;
     public final Method java_lang_ClassLoader$NativeLibrary_getFromClass;
     public final Method java_lang_ClassLoader_findNative;
     public final Method java_lang_ClassLoader_getSystemClassLoader;
     public final Field HIDDEN_CLASS_LOADER_REGISTRY;
+
+    public final ObjectKlass jdk_internal_ClassLoaders_PlatformClassLoader;
+
+    public final ObjectKlass java_lang_Module;
+    public final Field java_lang_Module_name;
+    public final Field java_lang_Module_loader;
+    public final Field HIDDEN_MODULE_ENTRY;
 
     public final ObjectKlass java_lang_AssertionStatusDirectives;
     public final Field java_lang_AssertionStatusDirectives_classes;
@@ -735,7 +790,8 @@ public final class Meta implements ContextAccess {
     public final Method java_lang_invoke_MethodHandleNatives_linkMethod;
     public final Method java_lang_invoke_MethodHandleNatives_linkMethodHandleConstant;
     public final Method java_lang_invoke_MethodHandleNatives_findMethodHandleType;
-    public final Method java_lang_invoke_MethodHandleNatives_linkCallSite;
+    public final Method java_lang_invoke_MethodHandleNatives_linkCallSite8;
+    public final Method java_lang_invoke_MethodHandleNatives_linkCallSite11;
 
     public final Method java_lang_Object_wait;
     public final Method java_lang_Object_toString;
@@ -774,6 +830,9 @@ public final class Meta implements ContextAccess {
 
     @CompilationFinal(dimensions = 1) //
     public final ObjectKlass[] BOXED_PRIMITIVE_KLASSES;
+
+    @CompilationFinal(dimensions = 1) //
+    public final PrimitiveKlass[] PRIMITIVE_KLASSES;
 
     // Checkstyle: resume field name check
 
@@ -952,7 +1011,17 @@ public final class Meta implements ContextAccess {
         CompilerAsserts.neverPartOfCompilation();
         assert !Types.isArray(type);
         assert !Types.isPrimitive(type);
-        return (ObjectKlass) getRegistries().loadKlassWithBootClassLoader(type);
+        try {
+            return (ObjectKlass) getRegistries().loadKlassWithBootClassLoader(type);
+        } catch (EspressoException e) {
+            assert dispatch != null;
+            if (java_lang_ClassNotFoundException.isAssignableFrom(e.getExceptionObject().getKlass())) {
+                // TODO: rework loading of classes with differences according to version.
+                getContext().getLogger().log(Level.FINE, "Failed loading known class: " + type + ", discovered java version: " + getContext().getJavaVersion());
+                return null;
+            }
+            throw e;
+        }
     }
 
     /**
@@ -1028,9 +1097,8 @@ public final class Meta implements ContextAccess {
         }
         Meta meta = str.getKlass().getMeta();
         if (meta.getContext().getJavaVersion() >= 9) {
-            // TODO(garcia): make it work for other than UTF16
-            byte[] value = ((StaticObject) meta.java_lang_String_value.get(str)).unwrap();
-            return HostJava.createString(StringUtil.toChars(value));
+            StaticObject wrappedChars = (StaticObject) meta.java_lang_String_toCharArray.invokeDirect(str);
+            return HostJava.createString(wrappedChars.unwrap());
         }
         char[] value = ((StaticObject) meta.java_lang_String_value.get(str)).unwrap();
         return HostJava.createString(value);
@@ -1046,8 +1114,17 @@ public final class Meta implements ContextAccess {
         StaticObject guestString = java_lang_String.allocateInstance();
         if (getContext().getJavaVersion() >= 9) {
             // TODO(garcia): avoid expensive array copies
-            java_lang_String_value.set(guestString, StaticObject.wrap(StringUtil.toBytes(value), this));
-            java_lang_String_coder.set(guestString, StringUtil.UTF16);
+            byte[] bytes = null;
+            byte coder = LATIN1;
+            if (java_lang_String.getStatics().getBooleanField(java_lang_String_COMPACT_STRINGS)) {
+                bytes = StringUtil.compress(value);
+            }
+            if (bytes == null) {
+                bytes = StringUtil.toBytes(value);
+                coder = StringUtil.UTF16;
+            }
+            java_lang_String_value.set(guestString, StaticObject.wrap(bytes, this));
+            java_lang_String_coder.set(guestString, coder);
             java_lang_String_hash.set(guestString, hash);
         } else {
             java_lang_String_value.set(guestString, StaticObject.wrap(value, this));

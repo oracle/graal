@@ -21,7 +21,7 @@
 # questions.
 #
 suite = {
-    "mxversion": "5.266.1",
+    "mxversion": "5.268.0",
     "name": "espresso",
 
     # ------------- licenses
@@ -42,7 +42,7 @@ suite = {
                 "name": "truffle",
                 "subdir": True,
                 # Custom changes in Truffle (NFI) for Espresso (branch slimbeans).
-                "version": "629748897ea4bb1e47e08508505cd333e79adccd",
+                "version": "70943dd83fa70d88f45741cb31d1c22e3fc8a3e1",
                 "urls": [
                     {"url": "https://github.com/graalvm/graal", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -52,7 +52,7 @@ suite = {
                 "name": "tools",
                 "subdir": True,
                 # Custom changes in Truffle (NFI) for Espresso (branch slimbeans).
-                "version": "629748897ea4bb1e47e08508505cd333e79adccd",
+                "version": "70943dd83fa70d88f45741cb31d1c22e3fc8a3e1",
                 "urls": [
                     {"url": "https://github.com/graalvm/graal", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -60,7 +60,7 @@ suite = {
             },
             {
                 "name": "truffleruby",
-                "version": "090a1db38de77aa7baeb3dcfd3efd9f29ec6a57a",
+                "version": "1fca74f03fe10a2bd4ef81a5eeb48b7d5c2f3edc",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
@@ -93,12 +93,6 @@ suite = {
                 "https://sourceware.org/pub/libffi/libffi-3.2.1.tar.gz",
             ],
             "sha1": "280c265b789e041c02e5c97815793dfc283fb1e6",
-        },
-
-        # https://github.com/smarr/are-we-fast-yet
-        "AWFY" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/awfy/awfy-770c6649.jar"],
-            "sha1" : "f1bf1febd81ce7fbd83244682ddc79e74fec0076",
         },
     },
 

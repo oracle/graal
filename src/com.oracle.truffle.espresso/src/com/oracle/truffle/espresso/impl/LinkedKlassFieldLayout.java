@@ -249,6 +249,10 @@ final class LinkedKlassFieldLayout {
                 return new Symbol[]{
                                 Name.HIDDEN_CLASS_LOADER_REGISTRY
                 };
+            } else if (type == Type.java_lang_Module) {
+                return new Symbol[]{
+                                Name.HIDDEN_MODULE_ENTRY
+                };
             }
             return Symbol.EMPTY_ARRAY;
         }
