@@ -33,7 +33,6 @@ import tempfile
 import shutil
 import datetime
 import time
-import subprocess
 import filecmp
 import shlex
 from random import Random
@@ -44,18 +43,24 @@ import mx_subst
 import mx_sulong
 
 
-def _get_fuzz_tool(tool):
-    tool = os.path.join(mx.dependency('SULONG_TOOLS', fatalIfMissing=True).get_output(), 'bin', tool)
-    return tool
+def _run_fuzz_tool(tool_name, tool_args, *args, **kwargs):
+    dist = 'SULONG_TOOLS'
+    tool = os.path.join(mx.dependency(dist, fatalIfMissing=True).get_output(), 'bin', tool_name)
+    if not os.path.exists(tool):
+        msg = "The executable {} does not exist: {}{}".format(tool_name, tool, os.linesep)
+        msg += "This might be solved by running: mx build --dependencies={}".format(dist)
+        mx.abort(msg)
+    return mx.run([tool] + tool_args, *args, **kwargs)
 
 
 @mx.command("sulong", "fuzz")
 def fuzz(args=None, out=None):
     parser = ArgumentParser(prog='mx fuzz', description='')
     parser.add_argument('--seed', help='Seed used for randomness.', metavar='<seed>', type=int, default=int(time.time()))
-    parser.add_argument('--size', help='Approximate size for the generated testcases in lines of code.', metavar='<size>', type=int, default=30)
-    parser.add_argument('--generator', help='Tool used for generating the testcases. Valid options: llvm-stress|csmith', metavar='<generator>', choices=["llvm-stress", "csmith"], default="llvm-stress")
-    parser.add_argument('--nrtestcases', help='Number of testcases to be generated.', metavar='<nrtestcases>', type=int, default=10)
+    parser.add_argument('--size', help='Approximate size for the generated testcases in lines of code. (default:  %(default)s)', metavar='<size>', type=int, default=30)
+    parser.add_argument('--timeout', help='Timeout for running the generated program. (default:  %(default)s)', metavar='<timeout>', type=int, default=10)
+    parser.add_argument('--generator', help='Tool used for generating the testcases. (default:  %(default)s)', choices=("llvm-stress", "csmith"), default="llvm-stress")
+    parser.add_argument('--nrtestcases', help='Number of testcases to be generated. (default:  %(default)s)', metavar='<nrtestcases>', type=int, default=10)
     parser.add_argument('outdir', help='The output directory.', metavar='<outdir>')
     parsed_args = parser.parse_args(args)
 
@@ -78,7 +83,7 @@ def fuzz(args=None, out=None):
         for _ in range(parsed_args.nrtestcases):
             toolchain_clang = mx_sulong._get_toolchain_tool("native,CC")
             if parsed_args.generator == "llvm-stress":
-                mx.run([_get_fuzz_tool("llvm-stress"), "-o", tmp_ll, "--size", str(parsed_args.size), "--seed", str(rand.randint(0, 10000000))])
+                _run_fuzz_tool("llvm-stress", ["-o", tmp_ll, "--size", str(parsed_args.size), "--seed", str(rand.randint(0, 10000000))])
                 fuzz_main = os.path.join(mx.dependency('com.oracle.truffle.llvm.tools.fuzzing.native', fatalIfMissing=True).dir, "src", "fuzzmain.c")
                 mx.run([toolchain_clang, "-O0", "-Wno-everything", "-o", tmp_out, tmp_ll, fuzz_main])
                 mx_sulong.llvm_tool(["clang", "-O0", "-Wno-everything", "-S", "-emit-llvm", "-o", tmp_main_ll, fuzz_main])
@@ -95,7 +100,7 @@ def fuzz(args=None, out=None):
                 mx.run([toolchain_clang, "-O0", "-Wno-everything", "-I" + csmith_headers, "-o", tmp_out, tmp_c])
                 mx_sulong.llvm_tool(["clang", "-O0", "-Wno-everything", "-S", "-emit-llvm", "-I" + csmith_headers, "-o", tmp_ll, tmp_c])
                 gen.append((tmp_c, 'autogen.c'))
-            timeout = 10
+            timeout = parsed_args.timeout
             with open(tmp_sulong_out, 'w') as o, open(tmp_sulong_err, 'w') as e:
                 mx_sulong.runLLVM(['--llvm.llDebug', '--llvm.traceIR', '--experimental-options', tmp_out], timeout=timeout, nonZeroIsFatal=False, out=o, err=e)
             with open(tmp_bin_out, 'w') as o, open(tmp_bin_err, 'w') as e:
@@ -109,7 +114,7 @@ def fuzz(args=None, out=None):
                 passed += 1
             else:
                 now = str(datetime.datetime.now())
-                now = now.replace(":", "_")
+                now = now.replace(":", "_").replace(" ", "_")
                 current_out_dir = os.path.join(parsed_args.outdir, now + "_" + parsed_args.generator)
                 os.makedirs(current_out_dir)
                 gen += [
@@ -133,7 +138,7 @@ def fuzz(args=None, out=None):
 @mx.command("sulong", "ll-reduce")
 def ll_reduce(args=None, out=None):
     parser = ArgumentParser(prog='mx ll-reduce', description='')
-    parser.add_argument('--interestingness-test', help='Command which exits with code 1 if a given .ll file is interesting and exits with code 0 otherwise.', metavar='<interestingnesstest>', default='mx check-interesting')
+    parser.add_argument('--interestingness-test', help='Command which exits with code 1 if a given .ll file is interesting and exits with code 0 otherwise. (default:  %(default)s)', metavar='<interestingnesstest>', default='mx check-interesting')
     parser.add_argument('--seed', help='Seed used for randomness.', metavar='<seed>', type=int, default=int(time.time()))
     parser.add_argument('--timeout', help='Time in seconds until no new reduction operations are permitted to start.', metavar='<timeout>', type=int, default=None)
     parser.add_argument('--timeout-stabilized', help='Time in seconds that should pass since no successful minimal reduction operation has been performed until no new reduction operations are permitted to start.', metavar='<timeout-stabilized>', type=int, default=10)
@@ -162,7 +167,6 @@ def ll_reduce(args=None, out=None):
         tmp_sulong_err_original = os.path.join(tmp_dir, 'tmp_sulong_err_original.txt')
         rand = Random(parsed_args.seed)
         lli_timeout = 10
-        devnull = open(os.devnull, 'w')
 
         def count_lines(file):
             i = 0
@@ -178,20 +182,42 @@ def ll_reduce(args=None, out=None):
             with open(out_f, 'w') as o, open(err_f, 'w') as e:
                 mx_sulong.runLLVM([tmp_out], timeout=lli_timeout, nonZeroIsFatal=False, out=o, err=e)
 
+        def run_interestingness_test(interestingness_test, input):
+            return mx.run(shlex.split(interestingness_test) + [input], nonZeroIsFatal=False)
+
+        def run_llvm_reduce(nrmutations, input_bc, output_ll):
+            reduce_out = mx.OutputCapture()
+            try:
+                args = [input_bc,
+                        "-ignore_remaining_args=1",
+                        "-mtriple", "x86_64-unknown-linux-gnu",
+                        "-nrmutations", str(nrmutations),
+                        "-seed", str(rand.randint(0, 10000000)),
+                        "-o", output_ll]
+                _run_fuzz_tool("llvm-reduce", args, out=reduce_out, err=reduce_out)
+            except SystemExit as se:
+                mx.log_error(reduce_out.data)
+                mx.abort("Error executing llvm-reduce: {}".format(se))
+
         shutil.copy(parsed_args.input, tmp_ll)
 
         # check whether the input is interesting
-        orig_interesting = subprocess.call(shlex.split(parsed_args.interestingness_test) + [tmp_ll])
+        orig_interesting = run_interestingness_test(parsed_args.interestingness_test, tmp_ll)
         if not orig_interesting:
             mx.abort("Input program is not interesting!")
 
         run_lli(tmp_ll, tmp_sulong_out_original, tmp_sulong_err_original)
-        while (not parsed_args.timeout or time.time()-starttime < parsed_args.timeout) and \
-                 (not starttime_stabilized or time.time()-starttime_stabilized < parsed_args.timeout_stabilized):
+        while True:
+            if parsed_args.timeout and time.time() - starttime > parsed_args.timeout:
+                mx.log("Timeout exceeded")
+                break
+            if starttime_stabilized and time.time() - starttime_stabilized > parsed_args.timeout_stabilized:
+                mx.log("Result stabilized (no more progress)")
+                break
             mx_sulong.llvm_tool(["llvm-as", "-o", tmp_bc, tmp_ll])
             mx.log("nrmutations: {} filesize: {} bytes (bc), number of lines {} (ll)".format(nrmutations, os.path.getsize(tmp_bc), count_lines(tmp_ll)))
-            mx.run([_get_fuzz_tool("llvm-reduce"), tmp_bc, "-ignore_remaining_args=1", "-mtriple", "x86_64-unknown-linux-gnu", "-nrmutations", str(nrmutations), "-seed", str(rand.randint(0, 10000000)), "-o", tmp_ll_reduced], out=devnull, err=devnull)
-            reduced_interesting = subprocess.call(shlex.split(parsed_args.interestingness_test) + [tmp_ll_reduced])
+            run_llvm_reduce(nrmutations, tmp_bc, tmp_ll_reduced)
+            reduced_interesting = run_interestingness_test(parsed_args.interestingness_test, tmp_ll_reduced)
             if reduced_interesting:
                 if not filecmp.cmp(tmp_ll, tmp_ll_reduced, shallow=False):
                     tmp_ll, tmp_ll_reduced = tmp_ll_reduced, tmp_ll
@@ -286,7 +312,9 @@ def bugpoint(args=None, out=None):
     parser.add_argument('--opt-command', help="Path to opt. (default: use 'opt' from the toolchain)", default=mx_sulong.findBundledLLVMProgram('opt'))
     parser.add_argument('--keep-main', help= 'Force function reduction to keep main. (always true)', action='store_true')
     parser.add_argument('--compile-custom', help='Use -compile-command to define a command to compile the bitcode. Useful to avoid linking. (always true)', action='store_true')
-    parser.add_argument('--compile-command', help='Command to compile the bitcode. (default: mx check-interesting) The command will be stored in a temporary script file.', default='mx check-interesting')
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('--compile-command', help='Command to compile the bitcode. The command will be stored in a temporary script file.  (default:  %(default)s)', default='mx check-interesting')
+    group.add_argument('--interestingness-test', help='synonym for --compile-command', dest='compile_command')
     parser.add_argument('--mlimit', metavar="<MBytes>", help='Maximum amount of memory to use. 0 disables check. Defaults to 0.', type=int, default=0)
     parser.add_argument('--help-bugpoint', help='Show the bugpoint help.', action='store_true')
     parsed_args, remaining_args = parser.parse_known_args(args)
