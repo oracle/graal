@@ -62,6 +62,14 @@ import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeHandleNode;
  */
 public final class MethodHandleIntrinsics implements ContextAccess {
 
+    private final EspressoContext context;
+    private final ConcurrentHashMap<MethodRef, Method> intrinsics;
+
+    MethodHandleIntrinsics(EspressoContext context) {
+        this.context = context;
+        this.intrinsics = new ConcurrentHashMap<>();
+    }
+
     public MethodHandleIntrinsicNode createIntrinsicNode(Method method, Klass accessingKlass, Symbol<Name> methodName, Symbol<Signature> signature) {
         PolySigIntrinsics id = getId(method);
         switch (id) {
@@ -82,36 +90,6 @@ public final class MethodHandleIntrinsics implements ContextAccess {
 
     public Method findIntrinsic(Method thisMethod, Symbol<Signature> signature) {
         return findIntrinsic(thisMethod, new MethodRef(thisMethod, signature));
-    }
-
-    public enum PolySigIntrinsics {
-        None(0),
-        InvokeGeneric(1),
-        InvokeBasic(2),
-        LinkToVirtual(3),
-        LinkToStatic(4),
-        LinkToSpecial(5),
-        LinkToInterface(6);
-
-        public final int value;
-
-        PolySigIntrinsics(int value) {
-            this.value = value;
-        }
-
-        public final boolean isStaticPolymorphicSignature() {
-            return value >= FIRST_STATIC_SIG_POLY && value <= LAST_STATIC_SIG_POLY;
-        }
-
-        public final boolean isSignatrePolymorphicIntrinsic() {
-            return this != InvokeGeneric;
-        }
-
-        private boolean isSignaturePolymorphic() {
-            return (value >= FIRST_MH_SIG_POLY.value &&
-                            value <= LAST_MH_SIG_POLY.value);
-        }
-
     }
 
     public static boolean isMethodHandleIntrinsic(Method m) {
@@ -157,22 +135,6 @@ public final class MethodHandleIntrinsics implements ContextAccess {
         return PolySigIntrinsics.None;
     }
 
-    private static final int FIRST_STATIC_SIG_POLY = PolySigIntrinsics.LinkToVirtual.value;
-    private static final int LAST_STATIC_SIG_POLY = PolySigIntrinsics.LinkToVirtual.value;
-
-    private static final PolySigIntrinsics FIRST_MH_SIG_POLY = PolySigIntrinsics.InvokeGeneric;
-
-    private static final PolySigIntrinsics LAST_MH_SIG_POLY = PolySigIntrinsics.LinkToInterface;
-
-    private final EspressoContext context;
-
-    private final ConcurrentHashMap<MethodRef, Method> intrinsics;
-
-    MethodHandleIntrinsics(EspressoContext context) {
-        this.context = context;
-        this.intrinsics = new ConcurrentHashMap<>();
-    }
-
     @Override
     public EspressoContext getContext() {
         return context;
@@ -201,6 +163,7 @@ public final class MethodHandleIntrinsics implements ContextAccess {
     }
 
     private static final class MethodRef {
+
         private final Symbol<Type> clazz;
         private final Symbol<Name> methodName;
         private final Symbol<Signature> signature;
@@ -236,5 +199,43 @@ public final class MethodHandleIntrinsics implements ContextAccess {
         public String toString() {
             return Types.binaryName(clazz) + "#" + methodName + signature;
         }
+
     }
+
+    public enum PolySigIntrinsics {
+        None(0),
+        InvokeGeneric(1),
+        InvokeBasic(2),
+        LinkToVirtual(3),
+        LinkToStatic(4),
+        LinkToSpecial(5),
+        LinkToInterface(6);
+
+        public final int value;
+
+        PolySigIntrinsics(int value) {
+            this.value = value;
+        }
+
+        public final boolean isStaticPolymorphicSignature() {
+            return value >= FIRST_STATIC_SIG_POLY && value <= LAST_STATIC_SIG_POLY;
+        }
+
+        public final boolean isSignatrePolymorphicIntrinsic() {
+            return this != InvokeGeneric;
+        }
+
+        private boolean isSignaturePolymorphic() {
+            return (value >= FIRST_MH_SIG_POLY.value &&
+                            value <= LAST_MH_SIG_POLY.value);
+        }
+
+        private static final int FIRST_STATIC_SIG_POLY = PolySigIntrinsics.LinkToVirtual.value;
+        private static final int LAST_STATIC_SIG_POLY = PolySigIntrinsics.LinkToInterface.value;
+
+        private static final PolySigIntrinsics FIRST_MH_SIG_POLY = PolySigIntrinsics.InvokeGeneric;
+
+        private static final PolySigIntrinsics LAST_MH_SIG_POLY = PolySigIntrinsics.LinkToInterface;
+    }
+
 }

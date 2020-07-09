@@ -601,7 +601,8 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     public boolean isSignaturePolymorphicDeclared() {
         // JVM 2.9 Special Methods:
         // A method is signature polymorphic if and only if all of the following conditions hold :
-        // * It is declared in the java.lang.invoke.MethodHandle class.
+        // * It is declared in the java.lang.invoke.MethodHandle or java.lang.invoke.VarHandle
+        // class.
         // * It has a single formal parameter of type Object[].
         // * It has the ACC_VARARGS and ACC_NATIVE flags set.
         // * ONLY JAVA < 9: It has a return type of Object.
@@ -830,7 +831,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public Method forceSplit() {
-        assert isPolySignatureIntrinsic();
         Method result = new Method(this, getCodeAttribute().forceSplit());
         FrameDescriptor frameDescriptor = initFrameDescriptor(result.getMaxLocals() + result.getMaxStackSize());
 
