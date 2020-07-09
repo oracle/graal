@@ -153,7 +153,7 @@ public abstract class LoopNode extends Node {
      *
      * @param frame the current execution frame or null if the repeating node does not require a
      *            frame
-     * @return a value different than {@link RepeatingNode#DEFAULT_CONTINUE_LOOP_STATUS}, which can be used
+     * @return a value different than {@link RepeatingNode#CONTINUE_LOOP_STATUS}, which can be used
      *         in a language-specific way (for example, to encode structured jumps)
      * @since 19.3
      */

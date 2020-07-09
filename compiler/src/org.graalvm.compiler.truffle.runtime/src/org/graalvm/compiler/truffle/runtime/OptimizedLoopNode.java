@@ -52,7 +52,7 @@ public final class OptimizedLoopNode extends LoopNode {
         Object status;
         int loopCount = 0;
         try {
-            while ((status = repeatingNode.executeRepeatingWithValue(frame)) == repeatingNode.continueLoopStatus()) {
+            while (repeatingNode.shouldContinue(status = repeatingNode.executeRepeatingWithValue(frame))) {
                 if (CompilerDirectives.inInterpreter()) {
                     loopCount++;
                 }
