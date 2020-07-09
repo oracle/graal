@@ -86,7 +86,7 @@ public final class Signatures {
     }
 
     private static Symbol<Type> toBasic(Symbol<Type> t) {
-        if (t == Type.java_lang_Object || t.toString().charAt(0) == '[') {
+        if (t == Type.java_lang_Object || Types.isArray(t)) {
             return Type.java_lang_Object;
         } else if (t == Type._int || t == Type._short || t == Type._boolean || t == Type._char) {
             return Type._int;

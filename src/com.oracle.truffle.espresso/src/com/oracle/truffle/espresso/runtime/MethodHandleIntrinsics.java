@@ -249,7 +249,7 @@ public final class MethodHandleIntrinsics implements ContextAccess {
         }
 
         private boolean isSignaturePolymorphic() {
-            return (this != None);
+            return this != None;
         }
     }
 
