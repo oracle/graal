@@ -1256,7 +1256,7 @@ public final class Target_sun_misc_Unsafe {
     @Substitution(hasReceiver = true, nameProvider = Unsafe11.class)
     @SuppressWarnings("unused")
     public static boolean unalignedAccess0(@Host(Unsafe.class) StaticObject self) {
-        // Be conservative, unobtainable
+        // Be conservative, unobtainable (in java.nio.Bits, package-private class)
         return false;
     }
 

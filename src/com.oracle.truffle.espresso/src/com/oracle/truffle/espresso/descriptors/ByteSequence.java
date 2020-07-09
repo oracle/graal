@@ -44,6 +44,8 @@ public abstract class ByteSequence {
     @Stable @CompilationFinal(dimensions = 1) //
     protected final byte[] value;
 
+    public static final ByteSequence EMPTY = ByteSequence.create("");
+
     ByteSequence(final byte[] underlyingBytes, int hashCode) {
         this.value = Objects.requireNonNull(underlyingBytes);
         this.hashCode = hashCode;
@@ -148,5 +150,14 @@ public abstract class ByteSequence {
         } catch (IOException e) {
             throw EspressoError.shouldNotReachHere(e);
         }
+    }
+
+    public int lastIndexOf(byte b) {
+        for (int i = length() - 1; i >= offset(); i--) {
+            if (byteAt(i) == b) {
+                return i - offset();
+            }
+        }
+        return -1;
     }
 }

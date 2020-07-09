@@ -316,15 +316,13 @@ public final class Classpath {
 
         @Override
         public boolean contains(String path) {
-            String moduleName = helper.packageToModule(path);
-            byte[] classBytes = helper.getClassBytes(moduleName, path);
+            byte[] classBytes = helper.getClassBytes(path);
             return classBytes != null;
         }
 
         @Override
         ClasspathFile readFile(String archiveName, String fsPath) {
-            String moduleName = helper.packageToModule(archiveName);
-            byte[] classBytes = helper.getClassBytes(moduleName, archiveName);
+            byte[] classBytes = helper.getClassBytes(archiveName);
             if (classBytes == null) {
                 return null;
             }
@@ -465,6 +463,19 @@ public final class Classpath {
     public Classpath prepend(String entry) {
         ArrayList<Entry> newEntries = new ArrayList<>(this.entries.size());
         newEntries.add(createEntry(entry));
+        newEntries.addAll(this.entries);
+        return new Classpath(newEntries);
+    }
+
+    /**
+     * Gets a new classpath obtained by prepending a given entry to this class classpath.
+     *
+     * @param entry the entry to prepend to this classpath
+     * @return the result of prepending {@code classpath} to this classpath
+     */
+    public Classpath prepend(Entry entry) {
+        ArrayList<Entry> newEntries = new ArrayList<>(this.entries.size());
+        newEntries.add(entry);
         newEntries.addAll(this.entries);
         return new Classpath(newEntries);
     }

@@ -87,6 +87,9 @@ public final class EspressoException extends RuntimeException implements Truffle
             if (message == null) {
                 return true;
             }
+            if (getMessage() == null) {
+                return false;
+            }
             return getMessage().contains(message);
         }
         return false;

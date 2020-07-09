@@ -176,6 +176,30 @@ public final class Target_java_lang_Class {
     }
 
     @Substitution(hasReceiver = true)
+    public static @Host(String.class) StaticObject getSimpleBinaryName0(@Host(Class.class) StaticObject self,
+                    @InjectMeta Meta meta) {
+        Klass k = self.getMirrorKlass();
+        if (k.isPrimitive() || k.isArray()) {
+            return StaticObject.NULL;
+        }
+        ObjectKlass klass = (ObjectKlass) k;
+        RuntimeConstantPool pool = klass.getConstantPool();
+        InnerClassesAttribute inner = klass.getInnerClasses();
+        for (InnerClassesAttribute.Entry entry : inner.entries()) {
+            int innerClassIndex = entry.innerClassIndex;
+            if (innerClassIndex != 0) {
+                if (pool.classAt(innerClassIndex).getName(pool) == klass.getName()) {
+                    if (pool.resolvedKlassAt(k, innerClassIndex) == k) {
+                        Symbol<Name> innerName = pool.symbolAt(entry.innerNameIndex);
+                        return meta.toGuestString(innerName);
+                    }
+                }
+            }
+        }
+        return StaticObject.NULL;
+    }
+
+    @Substitution(hasReceiver = true)
     public static @Host(String.class) StaticObject initClassName(@Host(Class.class) StaticObject self,
                     @InjectMeta Meta meta) {
         return getName0(self, meta);
@@ -790,5 +814,4 @@ public final class Target_java_lang_Class {
             self.setHiddenField(meta.HIDDEN_SIGNERS, signers);
         }
     }
-
 }

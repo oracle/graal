@@ -1578,7 +1578,12 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
      */
     @JniImpl
     public void GetStringRegion(@Host(String.class) StaticObject str, int start, int len, @Pointer TruffleObject bufPtr) {
-        char[] chars = ((StaticObject) getMeta().java_lang_String_value.get(str)).unwrap();
+        char[] chars;
+        if (getContext().getJavaVersion() >= 9) {
+            chars = Meta.toHostString(str).toCharArray();
+        } else {
+            chars = ((StaticObject) getMeta().java_lang_String_value.get(str)).unwrap();
+        }
         if (start < 0 || start + (long) len > chars.length) {
             throw Meta.throwException(getMeta().java_lang_StringIndexOutOfBoundsException);
         }

@@ -22,14 +22,14 @@
  */
 package com.oracle.truffle.espresso.impl;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
-
-import java.util.ArrayList;
-import java.util.List;
 
 class LinkedFieldTable {
     static class CreationResult {
@@ -249,6 +249,9 @@ class LinkedFieldTable {
             instanceFields.add(LinkedField.createHidden(Name.HIDDEN_PROTECTION_DOMAIN, nfts++, nofi++));
         } else if (type == Type.java_lang_ClassLoader) {
             instanceFields.add(LinkedField.createHidden(Name.HIDDEN_CLASS_LOADER_REGISTRY, nfts++, nofi++));
+            instanceFields.add(LinkedField.createHidden(Name.HIDDEN_CLASS_LOADER_REGISTRY, nfts++, nofi++));
+        } else if (type == Type.java_lang_Module) {
+            instanceFields.add(LinkedField.createHidden(Name.HIDDEN_MODULE_ENTRY, nfts++, nofi++));
         }
         return nfts - nextFieldTableSlot;
     }

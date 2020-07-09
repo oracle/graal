@@ -29,6 +29,8 @@ import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
+import com.oracle.truffle.espresso.impl.ModuleTable.ModuleEntry;
+import com.oracle.truffle.espresso.impl.PackageTable.PackageEntry;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -119,6 +121,16 @@ public final class PrimitiveKlass extends Klass {
     @Override
     public Field[] getDeclaredFields() {
         return Field.EMPTY_ARRAY;
+    }
+
+    @Override
+    public ModuleEntry module() {
+        return getRegistries().getJavaBaseModule();
+    }
+
+    @Override
+    public PackageEntry packageEntry() {
+        return null;
     }
 
     @Override

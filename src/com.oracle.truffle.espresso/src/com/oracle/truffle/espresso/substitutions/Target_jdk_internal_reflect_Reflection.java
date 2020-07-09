@@ -21,29 +21,26 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.runtime;
+package com.oracle.truffle.espresso.substitutions;
 
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.vm.VM;
 
-/**
- * 
- */
-public class JImageHelper {
-
-    // pointer to native JImageFile
-    private final TruffleObject jimage;
-    private final JImageLibrary library;
-
-    JImageHelper(JImageLibrary library, TruffleObject jimage) {
-        this.library = library;
-        this.jimage = jimage;
-    }
-
-    public void close() {
-        library.close(jimage);
-    }
-
-    public byte[] getClassBytes(String name) {
-        return library.getClassBytes(jimage, name);
+@EspressoSubstitutions
+public class Target_jdk_internal_reflect_Reflection {
+    /**
+     * This substitution is here because the VM method JVM_GetCallerClass has a different signature
+     * between java8 and java11.
+     * 
+     * Since the linking mechanism for VM methods uses only the names, it is delicate to declare two
+     * methods with different signatures (but same name) and dispatch them according to the java
+     * version we are running.
+     * 
+     * Therefore, we are creating this java11 substitution as a workaround.
+     */
+    @Substitution
+    public static @Host(Class.class) StaticObject getCallerClass(@InjectMeta Meta meta, @InjectProfile SubstitutionProfiler profiler) {
+        return meta.getVM().JVM_GetCallerClass(VM.jvmCallerDepth(), profiler);
     }
 }

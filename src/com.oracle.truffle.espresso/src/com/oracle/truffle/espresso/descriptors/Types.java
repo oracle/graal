@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.descriptors;
 
+import static com.oracle.truffle.espresso.descriptors.ByteSequence.EMPTY;
+
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -199,7 +201,7 @@ public final class Types {
         return index;
     }
 
-    public static boolean isPrimitive(Symbol<Type> type) {
+    public static boolean isPrimitive(ByteSequence type) {
         if (type.length() != 1) {
             return false;
         }
@@ -234,7 +236,7 @@ public final class Types {
     /**
      * Gets the number of array dimensions in this type descriptor.
      */
-    public static int getArrayDimensions(Symbol<Type> type) {
+    public static int getArrayDimensions(ByteSequence type) {
         int dims = 0;
         while (dims < type.length() && type.byteAt(dims) == '[') {
             dims++;
@@ -336,13 +338,19 @@ public final class Types {
         return symbols.lookup(checkType(type));
     }
 
-    public static String getRuntimePackage(Symbol<Type> symbol) {
-        String typeString = symbol.toString();
-        int lastSlash = typeString.lastIndexOf('/');
-        if (lastSlash < 0) {
-            return "";
+    public static ByteSequence getRuntimePackage(ByteSequence symbol) {
+        if (symbol.byteAt(0) == '[') {
+            int arrayDimensions = getArrayDimensions(symbol);
+            return getRuntimePackage(symbol.subSequence(arrayDimensions, symbol.length() - arrayDimensions));
         }
-        assert typeString.startsWith("L");
-        return typeString.substring(1, lastSlash);
+        if (symbol.byteAt(0) != 'L') {
+            assert isPrimitive(symbol);
+            return EMPTY;
+        }
+        int lastSlash = symbol.lastIndexOf((byte) '/');
+        if (lastSlash < 0) {
+            return EMPTY;
+        }
+        return symbol.subSequence(1, lastSlash - 1);
     }
 }

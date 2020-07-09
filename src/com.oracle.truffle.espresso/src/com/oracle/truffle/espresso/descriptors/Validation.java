@@ -55,6 +55,22 @@ public final class Validation {
         return true;
     }
 
+    public static boolean validUnqualifiedName(CharSequence chars) {
+        if (chars.length() == 0) {
+            return false;
+        }
+        if (chars.charAt(0) == '(') { // maybe a signature
+            return false;
+        }
+        for (int i = 0; i < chars.length(); ++i) {
+            char ch = chars.charAt(i);
+            if (ch == '.' || ch == ';' || ch == '[' || ch == '/') {
+                return false;
+            }
+        }
+        return true;
+    }
+
     /**
      * Method names are further constrained so that, with the exception of the special method names
      * <init> and <clinit> (&sect;2.9), they must not contain the ASCII characters < or > (that is,
@@ -100,6 +116,28 @@ public final class Validation {
                 ++i;
             }
             if (!validUnqualifiedName(bytes.subSequence(prev, i - prev))) {
+                return false;
+            }
+            prev = i + 1;
+            ++i;
+        }
+        return true;
+    }
+
+    public static boolean validBinaryName(CharSequence chars) {
+        if (chars.length() == 0) {
+            return false;
+        }
+        if (chars.charAt(0) == '/') {
+            return false;
+        }
+        int prev = 0;
+        int i = 0;
+        while (i < chars.length()) {
+            while (i < chars.length() && chars.charAt(i) != '/') {
+                ++i;
+            }
+            if (!validUnqualifiedName(chars.subSequence(prev, i))) {
                 return false;
             }
             prev = i + 1;

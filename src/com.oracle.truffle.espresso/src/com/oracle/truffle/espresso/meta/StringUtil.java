@@ -47,6 +47,32 @@ public class StringUtil {
         return dst;
     }
 
+    public static byte[] compress(char[] val) {
+        int off = 0;
+        int len = val.length;
+        byte[] ret = new byte[len];
+        if (compress(val, off, ret, 0, len) == len) {
+            return ret;
+        }
+        return null;
+    }
+
+    // compressedCopy char[] -> byte[]
+    private static int compress(char[] src, int srcOffset, byte[] dst, int dstOffset, int len) {
+        int dstOff = dstOffset;
+        int srcOff = srcOffset;
+        for (int i = 0; i < len; i++) {
+            char c = src[srcOff];
+            if (c > 0xFF) {
+                return 0;
+            }
+            dst[dstOff] = (byte) c;
+            srcOff++;
+            dstOff++;
+        }
+        return len;
+    }
+
     private static byte[] toBytes(char[] value, int offset, int len) {
         int off = offset;
         byte[] val = newBytesFor(len);

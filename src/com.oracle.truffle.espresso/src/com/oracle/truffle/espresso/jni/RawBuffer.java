@@ -21,29 +21,28 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.runtime;
+package com.oracle.truffle.espresso.jni;
+
+import java.nio.ByteBuffer;
 
 import com.oracle.truffle.api.interop.TruffleObject;
 
-/**
- * 
- */
-public class JImageHelper {
+public final class RawBuffer implements AutoCloseable {
+    private ByteBuffer buffer;
+    private TruffleObject pointer;
 
-    // pointer to native JImageFile
-    private final TruffleObject jimage;
-    private final JImageLibrary library;
-
-    JImageHelper(JImageLibrary library, TruffleObject jimage) {
-        this.library = library;
-        this.jimage = jimage;
+    public RawBuffer(ByteBuffer buffer, TruffleObject pointer) {
+        this.buffer = buffer;
+        this.pointer = pointer;
     }
 
+    public TruffleObject pointer() {
+        return pointer;
+    }
+
+    @Override
     public void close() {
-        library.close(jimage);
-    }
-
-    public byte[] getClassBytes(String name) {
-        return library.getClassBytes(jimage, name);
+        buffer.clear();
+        this.buffer = null;
     }
 }
