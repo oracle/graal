@@ -179,11 +179,11 @@ public final class ClassRegistries {
         return list.toArray(Klass.EMPTY_ARRAY);
     }
 
-    @TruffleBoundary
-    public Klass loadKlassWithBootClassLoader(Symbol<Type> type) {
-        return loadKlass(type, StaticObject.NULL);
-    }
-
+    /**
+     * Do not call directly. Use
+     * {@link com.oracle.truffle.espresso.meta.Meta#loadKlassOrFail(Symbol, StaticObject)} or
+     * {@link com.oracle.truffle.espresso.meta.Meta#loadKlassOrNull(Symbol, StaticObject)}.
+     */
     @TruffleBoundary
     public Klass loadKlass(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader) {
         assert classLoader != null : "use StaticObject.NULL for BCL";

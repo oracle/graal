@@ -1011,50 +1011,70 @@ public final class Meta implements ContextAccess {
         CompilerAsserts.neverPartOfCompilation();
         assert !Types.isArray(type);
         assert !Types.isPrimitive(type);
-        try {
-            return (ObjectKlass) getRegistries().loadKlassWithBootClassLoader(type);
-        } catch (EspressoException e) {
-            assert dispatch != null;
-            if (java_lang_ClassNotFoundException.isAssignableFrom(e.getExceptionObject().getKlass())) {
-                // TODO: rework loading of classes with differences according to version.
-                getContext().getLogger().log(Level.FINE, "Failed loading known class: " + type + ", discovered java version: " + getContext().getJavaVersion());
-                return null;
-            }
-            throw e;
+        ObjectKlass k = loadKlassWithBootClassLoader(type);
+        if (k == null) {
+            // TODO: rework loading of classes with differences according to version.
+            getContext().getLogger().log(Level.FINE, "Failed loading known class: " + type + ", discovered java version: " + getContext().getJavaVersion());
         }
+        return k;
     }
 
     /**
      * Performs class loading according to {&sect;5.3. Creation and Loading}. This method directly
      * asks the given class loader to perform the load, even for internal primitive types. This is
      * the method to use when loading symbols that are not directly taken from a constant pool, for
-     * example, when loading a class whose name is given by a guest string..
+     * example, when loading a class whose name is given by a guest string.
+     * 
+     * This method is designed to fail if given the type symbol for primitives (eg: 'Z' for
+     * booleans).
      *
      * @param type The symbolic type.
      * @param classLoader The class loader
      * @return The asked Klass.
+     * @throws NoClassDefFoundError guest exception is no representation of type can be found.
      */
     @TruffleBoundary
-    public Klass loadKlass(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader) {
+    public Klass loadKlassOrFail(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader) {
         assert classLoader != null : "use StaticObject.NULL for BCL";
+        Klass k = loadKlassOrNull(type, classLoader);
+        if (k == null) {
+            throw throwException(java_lang_NoClassDefFoundError);
+        }
+        return k;
+    }
+
+    /**
+     * Same as {@link #loadKlassOrFail(Symbol, StaticObject)}, except this method returns null
+     * instead of throwing if class is not found. Note that this mthod can still throw due to other
+     * errors (class file malformed, etc...)
+     * 
+     * @see #loadKlassOrFail(Symbol, StaticObject)
+     */
+    @TruffleBoundary
+    public Klass loadKlassOrNull(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader) {
         return getRegistries().loadKlass(type, classLoader);
+    }
+
+    @TruffleBoundary
+    private ObjectKlass loadKlassWithBootClassLoader(Symbol<Type> type) {
+        return (ObjectKlass) getRegistries().loadKlass(type, StaticObject.NULL);
     }
 
     /**
      * Resolves an internal symbolic type descriptor taken from the constant pool, and returns the
      * corresponding Klass.
-     * <li>If the symbol represents an internal primitive (/ex: 'B' or 'I'), this method returns
-     * immediately returns the corresponding primitive. Thus, primitives are not 'loaded'.
+     * <li>If the symbol represents an internal primitive (/ex: 'B' or 'I'), this method returns the
+     * corresponding primitive. Primitives are therefore not "loaded", but directly resolved..
      * <li>If the symbol is a symbolic references, it asks the given ClassLoader to load the
      * corresponding Klass.
-     * <li>If the symbol represents an array, recursively resolve its elemental type, and returns
-     * the array Klass need.
+     * <li>If the symbol represents an array, resolves its elemental type, and returns the array
+     * corresponding array Klass.
      *
      * @param type The symbolic type
      * @param classLoader The class loader of the constant pool holder.
-     * @return The asked Klass.
+     * @return The asked Klass, or null if no representation can be found.
      */
-    public Klass resolveSymbol(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader) {
+    public Klass resolveSymbolOrNull(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader) {
         assert classLoader != null : "use StaticObject.NULL for BCL";
         // Resolution only resolves references. Bypass loading for primitives.
         if (type.length() == 1) {
@@ -1081,13 +1101,35 @@ public final class Meta implements ContextAccess {
             }
         }
         if (Types.isArray(type)) {
-            Klass elemental = resolveSymbol(getTypes().getElementalType(type), classLoader);
+            Klass elemental = resolveSymbolOrNull(getTypes().getElementalType(type), classLoader);
             if (elemental == null) {
                 return null;
             }
             return elemental.getArrayClass(Types.getArrayDimensions(type));
         }
-        return loadKlass(type, classLoader);
+        return loadKlassOrNull(type, classLoader);
+    }
+
+    /**
+     * Same as {@link #resolveSymbolOrNull(Symbol, StaticObject)}, except this throws an exception
+     * of the given klass if the representation for the type can not be found.
+     * 
+     * @see #resolveSymbolOrNull(Symbol, StaticObject)
+     */
+    public Klass resolveSymbolOrFail(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader, ObjectKlass exception) {
+        Klass k = resolveSymbolOrNull(type, classLoader);
+        if (k == null) {
+            throw throwException(exception);
+        }
+        return k;
+    }
+
+    /**
+     * Same as {@link #resolveSymbolOrFail(Symbol, StaticObject, ObjectKlass)}, but throws
+     * {@link NoClassDefFoundError} by default..
+     */
+    public Klass resolveSymbolOrFail(Symbol<Type> type, @Host(ClassLoader.class) StaticObject classLoader) {
+        return resolveSymbolOrFail(type, classLoader, java_lang_NoClassDefFoundError);
     }
 
     @TruffleBoundary
