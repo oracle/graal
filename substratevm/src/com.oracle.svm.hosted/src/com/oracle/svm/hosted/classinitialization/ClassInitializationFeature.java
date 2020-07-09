@@ -154,8 +154,6 @@ public class ClassInitializationFeature implements GraalFeature {
     }
 
     private static void initializeSVMClasses(ClassInitializationSupport initializationSupport) {
-        initializationSupport.initializeAtBuildTime("jdk.vm.ci", "Native Image classes are always initialized at build time");
-
         initializationSupport.initializeAtBuildTime("com.oracle.svm", "Native Image classes are always initialized at build time");
         initializationSupport.initializeAtBuildTime("com.oracle.graal", "Native Image classes are always initialized at build time");
         initializationSupport.initializeAtBuildTime("com.oracle.graalvm.locator", "Native Image classes are always initialized at build time");
