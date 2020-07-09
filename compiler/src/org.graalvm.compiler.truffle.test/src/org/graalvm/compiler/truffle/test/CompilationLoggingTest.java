@@ -27,6 +27,9 @@ package org.graalvm.compiler.truffle.test;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.RootNode;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -34,23 +37,27 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 import java.util.regex.Pattern;
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
+import java.util.stream.Collectors;
+import org.graalvm.compiler.test.SubprocessUtil;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Test;
 
 public class CompilationLoggingTest extends TestWithPolyglotOptions {
 
+    private static final String CONFIGURED_PROPERTY = ExceptionActionTest.class.getSimpleName() + ".configured";
+
     @Test
-    public void testCompilationSuccessTracingOff() {
+    public void testCompilationSuccessTracingOff() throws Exception {
         testHelper(
                         () -> RootNode.createConstantNode(true),
                         Collections.emptyMap(),
@@ -59,7 +66,7 @@ public class CompilationLoggingTest extends TestWithPolyglotOptions {
     }
 
     @Test
-    public void testCompilationSuccessTracingOn() {
+    public void testCompilationSuccessTracingOn() throws Exception {
         testHelper(
                         () -> RootNode.createConstantNode(true),
                         Collections.singletonMap("engine.TraceCompilation", "true"),
@@ -68,7 +75,7 @@ public class CompilationLoggingTest extends TestWithPolyglotOptions {
     }
 
     @Test
-    public void testCompilationSuccessTracingDetails() {
+    public void testCompilationSuccessTracingDetails() throws Exception {
         testHelper(
                         () -> RootNode.createConstantNode(true),
                         Collections.singletonMap("engine.TraceCompilationDetails", "true"),
@@ -77,7 +84,7 @@ public class CompilationLoggingTest extends TestWithPolyglotOptions {
     }
 
     @Test
-    public void testCompilationFailureTracingOff() {
+    public void testCompilationFailureTracingOff() throws Exception {
         testHelper(
                         CompilationLoggingTest::createFailureNode,
                         Collections.emptyMap(),
@@ -86,7 +93,7 @@ public class CompilationLoggingTest extends TestWithPolyglotOptions {
     }
 
     @Test
-    public void testCompilationFailureTracingOn() {
+    public void testCompilationFailureTracingOn() throws Exception {
         testHelper(
                         CompilationLoggingTest::createFailureNode,
                         Collections.singletonMap("engine.TraceCompilation", "true"),
@@ -95,7 +102,7 @@ public class CompilationLoggingTest extends TestWithPolyglotOptions {
     }
 
     @Test
-    public void testCompilationFailureTracingDetails() {
+    public void testCompilationFailureTracingDetails() throws Exception {
         testHelper(
                         CompilationLoggingTest::createFailureNode,
                         Collections.singletonMap("engine.TraceCompilationDetails", "true"),
@@ -104,7 +111,7 @@ public class CompilationLoggingTest extends TestWithPolyglotOptions {
     }
 
     @Test
-    public void testExceptionFromPublish() {
+    public void testExceptionFromPublish() throws Exception {
         testHelper(
                         () -> RootNode.createConstantNode(true),
                         Collections.singletonMap("engine.TraceCompilationDetails", "true"),
@@ -117,27 +124,108 @@ public class CompilationLoggingTest extends TestWithPolyglotOptions {
                         });
     }
 
-    private void testHelper(Supplier<RootNode> rootProvider, Map<String, String> additionalOptions, List<String> expected, List<String> unexpected) {
+    @Test
+    public void testNoEngineTracingOn() throws Exception {
+        executeForked(() -> {
+            PrintStream origSystemErr = System.err;
+            ByteArrayOutputStream rawStdErr = new ByteArrayOutputStream();
+            System.setErr(new PrintStream(rawStdErr, true, "UTF-8"));
+            OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(10));
+            target.call();
+            System.setErr(origSystemErr);
+            String strStdErr = rawStdErr.toString("UTF-8");
+            Assert.assertTrue(strStdErr, strStdErr.contains("[engine] opt done"));
+            return null;
+        }, "-Dpolyglot.engine.BackgroundCompilation=false", "-Dpolyglot.engine.CompileImmediately=true", "-Dpolyglot.engine.TraceCompilation=true");
+    }
+
+    private static void executeForked(Callable<Void> r, String... additionalVmOptions) throws Exception {
+        if (!isConfigured()) {
+            String testName = getTestName();
+            execute(testName, additionalVmOptions);
+        } else {
+            r.call();
+        }
+    }
+
+    private static boolean isConfigured() {
+        return Boolean.getBoolean(CONFIGURED_PROPERTY);
+    }
+
+    private static String getTestName() {
+        boolean inExecuteForked = false;
+        StackTraceElement[] stack = Thread.currentThread().getStackTrace();
+        if (stack != null) {
+            for (StackTraceElement frame : stack) {
+                String methodName = frame.getMethodName();
+                if ("executeForked".equals(methodName)) {
+                    inExecuteForked = true;
+                } else if (inExecuteForked && !"testHelper".equals(methodName)) {
+                    return frame.getMethodName();
+                }
+            }
+        }
+        throw new IllegalStateException("Failed to find test name");
+    }
+
+    private static void execute(String testName, String... additionalVmOptions) throws IOException, InterruptedException {
+        SubprocessUtil.Subprocess subprocess = SubprocessUtil.java(
+                        configure(getVmArgs(), additionalVmOptions),
+                        "com.oracle.mxtool.junit.MxJUnitWrapper",
+                        String.format("%s#%s", CompilationLoggingTest.class.getName(), testName));
+        Assert.assertEquals(String.join("\n", subprocess.output), 0, subprocess.exitCode);
+    }
+
+    private static List<String> configure(List<String> vmArgs, String... additionalVmOptions) {
+        List<String> newVmArgs = new ArrayList<>();
+        newVmArgs.addAll(vmArgs.stream().filter(new Predicate<String>() {
+            @Override
+            public boolean test(String vmArg) {
+                // Filter out the LogFile option to prevent overriding of the unit tests log file by
+                // a sub-process.
+                return !vmArg.contains("LogFile") &&
+                                !vmArg.contains("graal.DumpOnError") &&
+                                !vmArg.contains("polyglot.engine.TraceCompilation") &&
+                                !vmArg.contains("polyglot.engine.TraceCompilationDetails");
+            }
+        }).collect(Collectors.toList()));
+        for (String additionalVmOption : additionalVmOptions) {
+            newVmArgs.add(1, additionalVmOption);
+        }
+        newVmArgs.add(1, String.format("-D%s=true", CONFIGURED_PROPERTY));
+        return newVmArgs;
+    }
+
+    private static List<String> getVmArgs() {
+        List<String> vmArgs = SubprocessUtil.getVMCommandLine();
+        vmArgs.add(SubprocessUtil.PACKAGE_OPENING_OPTIONS);
+        return vmArgs;
+    }
+
+    private void testHelper(Supplier<RootNode> rootProvider, Map<String, String> additionalOptions, List<String> expected, List<String> unexpected) throws Exception {
         testHelper(rootProvider, additionalOptions, expected, unexpected, null);
     }
 
-    private void testHelper(Supplier<RootNode> rootProvider, Map<String, String> additionalOptions, List<String> expected, List<String> unexpected, Consumer<LogRecord> onPublishAction) {
-        Assume.assumeFalse(hasTracingEnabled(rootProvider));
-        TestHandler.Builder builder = TestHandler.newBuilder().onPublish(onPublishAction);
-        for (String s : expected) {
-            builder.expect(s);
-        }
-        for (String s : unexpected) {
-            builder.ban(s);
-        }
-        TestHandler handler = builder.build();
-        setupContext(newContextBuilder(additionalOptions, handler));
-        OptimizedCallTarget warmUpTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(rootProvider.get());
-        warmUpTarget.call();
-        handler.start();
-        OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(rootProvider.get());
-        target.call();
-        handler.assertLogs();
+    private void testHelper(Supplier<RootNode> rootProvider, Map<String, String> additionalOptions, List<String> expected, List<String> unexpected, Consumer<LogRecord> onPublishAction)
+                    throws Exception {
+        executeForked(() -> {
+            TestHandler.Builder builder = TestHandler.newBuilder().onPublish(onPublishAction);
+            for (String s : expected) {
+                builder.expect(s);
+            }
+            for (String s : unexpected) {
+                builder.ban(s);
+            }
+            TestHandler handler = builder.build();
+            setupContext(newContextBuilder(additionalOptions, handler));
+            OptimizedCallTarget warmUpTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(rootProvider.get());
+            warmUpTarget.call();
+            handler.start();
+            OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(rootProvider.get());
+            target.call();
+            handler.assertLogs();
+            return null;
+        });
     }
 
     private static Context.Builder newContextBuilder(Map<String, String> additionalOptions, Handler handler) {
@@ -147,12 +235,6 @@ public class CompilationLoggingTest extends TestWithPolyglotOptions {
             builder.option(e.getKey(), e.getValue());
         }
         return builder;
-    }
-
-    private boolean hasTracingEnabled(Supplier<RootNode> rootProvider) {
-        setupContext();
-        OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(rootProvider.get());
-        return target.getOptionValue(PolyglotCompilerOptions.TraceCompilation) || target.getOptionValue(PolyglotCompilerOptions.TraceCompilationDetails);
     }
 
     private static final class TestHandler extends Handler {

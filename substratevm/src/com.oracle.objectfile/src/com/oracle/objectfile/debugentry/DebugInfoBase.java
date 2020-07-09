@@ -137,8 +137,9 @@ public abstract class DebugInfoBase {
             int lo = debugCodeInfo.addressLo();
             int hi = debugCodeInfo.addressHi();
             int primaryLine = debugCodeInfo.line();
+            boolean isDeoptTarget = debugCodeInfo.isDeoptTarget();
 
-            Range primaryRange = new Range(fileName, filePath, className, methodName, paramNames, returnTypeName, stringTable, lo, hi, primaryLine);
+            Range primaryRange = new Range(fileName, filePath, className, methodName, paramNames, returnTypeName, stringTable, lo, hi, primaryLine, isDeoptTarget);
             debugContext.log(DebugContext.INFO_LEVEL, "PrimaryRange %s.%s %s %s:%d [0x%x, 0x%x]", className, methodName, filePath, fileName, primaryLine, lo, hi);
             addRange(primaryRange, debugCodeInfo.getFrameSizeChanges(), debugCodeInfo.getFrameSize());
             debugCodeInfo.lineInfoProvider().forEach(debugLineInfo -> {

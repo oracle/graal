@@ -238,6 +238,10 @@
 				"arch": "amd64"
 			},
 			{
+				"os": "linux",
+				"arch": "aarch64"
+			},
+			{
 				"os": "darwin",
 				"arch": "amd64"
 			}

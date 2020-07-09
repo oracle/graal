@@ -29,7 +29,6 @@ import static com.oracle.svm.hosted.classinitialization.InitKind.RERUN;
 import static com.oracle.svm.hosted.classinitialization.InitKind.RUN_TIME;
 import static com.oracle.svm.hosted.classinitialization.InitKind.SEPARATOR;
 
-import java.lang.reflect.Modifier;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -37,12 +36,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
-import com.oracle.svm.hosted.NativeImageOptions;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
@@ -73,11 +70,7 @@ import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.meta.MethodPointer;
-
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 @AutomaticFeature
 public class ClassInitializationFeature implements GraalFeature {
@@ -332,98 +325,48 @@ public class ClassInitializationFeature implements GraalFeature {
     }
 
     private void buildClassInitializationInfo(FeatureImpl.DuringAnalysisAccessImpl access, AnalysisType type, DynamicHub hub) {
-        ClassInitializationInfo info = null;
-        boolean shouldFindDefaultMethods = true;
+        ClassInitializationInfo info;
         if (classInitializationSupport.shouldInitializeAtRuntime(type)) {
-            assert !type.isInitialized();
-            AnalysisMethod classInitializer = type.getClassInitializer();
-            if (type.isLinked()) {
-                if (classInitializer != null) {
-                    assert classInitializer.getCode() != null;
-                    access.registerAsCompiled(classInitializer);
-                }
-                info = new ClassInitializationInfo(MethodPointer.factory(classInitializer));
-            } else {
-                // Can't read methods from unlinked classes
-                shouldFindDefaultMethods = false;
-                try {
-                    /*
-                     * Workaround to force linking the type which is not provided by the JVMCI API.
-                     * This throws verification errors even if linking was attempted and had failed
-                     * beforehand
-                     */
-                    type.getDeclaredConstructors();
-                    type.getDeclaredMethods();
-                    shouldFindDefaultMethods = true;
-                } catch (VerifyError e) {
-                    /* Synthesize a VerifyError to be thrown at run time. */
-                    AnalysisMethod throwVerifyError = access.getMetaAccess().lookupJavaMethod(ExceptionSynthesizer.throwVerifyErrorMethod);
-                    access.registerAsCompiled(throwVerifyError);
-                    info = new ClassInitializationInfo(MethodPointer.factory(throwVerifyError));
-                } catch (NoClassDefFoundError e) {
-                    info = ClassInitializationInfo.FAILED_INFO_SINGLETON;
-                } catch (Throwable t) {
-                    // silently ignore other errors
-                }
-
-                if (info == null) {
-                    /*
-                     * The type failed to link due to verification issues triggered by missing
-                     * types.
-                     */
-                    assert classInitializer == null || classInitializer.getCode() == null;
-                    info = ClassInitializationInfo.FAILED_INFO_SINGLETON;
-                }
-            }
+            info = buildRuntimeInitializationInfo(access, type);
         } else {
             assert type.isInitialized();
             info = ClassInitializationInfo.INITIALIZED_INFO_SINGLETON;
         }
-
-        if (shouldFindDefaultMethods) {
-            hub.setClassInitializationInfo(info, hasDefaultMethods(type), declaresDefaultMethods(type));
-        } else {
-            hub.setClassInitializationInfo(info, false, false);
-        }
+        hub.setClassInitializationInfo(info, type.hasDefaultMethods(), type.declaresDefaultMethods());
     }
 
-    private static boolean hasDefaultMethods(ResolvedJavaType type) {
-        if (!type.isInterface() && type.getSuperclass() != null && hasDefaultMethods(type.getSuperclass())) {
-            return true;
-        }
-        for (ResolvedJavaType iface : type.getInterfaces()) {
-            if (hasDefaultMethods(iface)) {
-                return true;
-            }
-        }
-        return declaresDefaultMethods(type);
-    }
-
-    static boolean declaresDefaultMethods(ResolvedJavaType type) {
-        if (!type.isInterface()) {
-            /* Only interfaces can declare default methods. */
-            return false;
-        }
-
+    private static ClassInitializationInfo buildRuntimeInitializationInfo(FeatureImpl.DuringAnalysisAccessImpl access, AnalysisType type) {
+        assert !type.isInitialized();
         try {
             /*
-             * We call getDeclaredMethods() directly on the wrapped type. We avoid calling it on the
-             * AnalysisType because it resolves all the methods in the AnalysisUniverse.
+             * Check if there are any linking errors. This method throws an error even if linking
+             * already failed in a previous attempt.
              */
-            for (ResolvedJavaMethod method : Inflation.toWrappedType(type).getDeclaredMethods()) {
-                if (method.isDefault()) {
-                    assert !Modifier.isStatic(method.getModifiers()) : "Default method that is static?";
-                    return true;
-                }
-            }
-            return false;
-        } catch (NoClassDefFoundError e) {
-            if (!NativeImageOptions.AllowIncompleteClasspath.getValue()) {
-                return false;
-            }
+            type.link();
 
-            throw new GraalError(e, "Missing classes when looking up default methods in %s. Consider adding them to the classpath.", type.toClassName());
+        } catch (VerifyError e) {
+            /* Synthesize a VerifyError to be thrown at run time. */
+            AnalysisMethod throwVerifyError = access.getMetaAccess().lookupJavaMethod(ExceptionSynthesizer.throwVerifyErrorMethod);
+            access.registerAsCompiled(throwVerifyError);
+            return new ClassInitializationInfo(MethodPointer.factory(throwVerifyError));
+        } catch (Throwable t) {
+            /*
+             * All other linking errors will be reported as NoClassDefFoundError when initialization
+             * is attempted at run time.
+             */
+            return ClassInitializationInfo.FAILED_INFO_SINGLETON;
         }
-    }
 
+        /*
+         * Now we now that there are no linking errors, we can register the class initialization
+         * information.
+         */
+        assert type.isLinked();
+        AnalysisMethod classInitializer = type.getClassInitializer();
+        if (classInitializer != null) {
+            assert classInitializer.getCode() != null;
+            access.registerAsCompiled(classInitializer);
+        }
+        return new ClassInitializationInfo(MethodPointer.factory(classInitializer));
+    }
 }

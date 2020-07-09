@@ -26,6 +26,7 @@ package org.graalvm.compiler.truffle.runtime;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.lang.ref.WeakReference;
 import java.util.Map;
 
 import org.graalvm.compiler.truffle.common.TruffleDebugContext;
@@ -116,6 +117,6 @@ final class GraalTestTVMCI extends TVMCI.Test<GraalTestContext, OptimizedCallTar
     @SuppressWarnings("try")
     @Override
     public void finishWarmup(GraalTestContext testContext, OptimizedCallTarget callTarget) {
-        truffleRuntime.doCompile(callTarget, new CancellableCompileTask(true));
+        truffleRuntime.doCompile(callTarget, new CancellableCompileTask(new WeakReference<>(callTarget), true));
     }
 }

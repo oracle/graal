@@ -138,6 +138,14 @@ suite = {
 
   "projects" : {
 
+    "com.oracle.truffle.llvm.docs" : {
+      "class" : "DocumentationProject",
+      "subDir" : "docs",
+      "dir" : "docs",
+      "sourceDirs" : ["src"],
+      "license" : "BSD-new",
+      "defaultBuild" : False,
+    },
     "com.oracle.truffle.llvm.tests" : {
       "subDir" : "tests",
       "sourceDirs" : ["src"],

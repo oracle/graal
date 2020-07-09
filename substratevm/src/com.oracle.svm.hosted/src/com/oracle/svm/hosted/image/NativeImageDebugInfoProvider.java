@@ -198,10 +198,18 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                 } else if (mark.id.equals(SubstrateBackend.SubstrateMarkId.EPILOGUE_INCD_RSP)) {
                     NativeImageDebugFrameSizeChange sizeChange = new NativeImageDebugFrameSizeChange(mark.pcOffset, CONTRACT);
                     frameSizeChanges.add(sizeChange);
-                    // } else if(mark.id.equals("EPILOGUE_END")) {
+                } else if (mark.id.equals(SubstrateBackend.SubstrateMarkId.EPILOGUE_END) && mark.pcOffset < compilation.getTargetCodeSize()) {
+                    // there is code after this return point so notify stack extend again
+                    NativeImageDebugFrameSizeChange sizeChange = new NativeImageDebugFrameSizeChange(mark.pcOffset, EXTEND);
+                    frameSizeChanges.add(sizeChange);
                 }
             }
             return frameSizeChanges;
+        }
+
+        @Override
+        public boolean isDeoptTarget() {
+            return methodName().endsWith(HostedMethod.METHOD_NAME_DEOPT_SUFFIX);
         }
     }
 

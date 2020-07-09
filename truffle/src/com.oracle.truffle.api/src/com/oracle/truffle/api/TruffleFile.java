@@ -1599,6 +1599,47 @@ public final class TruffleFile {
         return detectMimeType(null);
     }
 
+    /**
+     * Tests if this and the given {@link TruffleFile} refer to the same physical file. If both
+     * {@code TruffleFile} objects are {@link TruffleFile#equals(Object) equal} then this method
+     * returns {@code true} without any checks. If the {@link TruffleFile}s have different
+     * filesystems then this method returns {@code false}. Otherwise, this method checks if both
+     * {@link TruffleFile}s refer to the same physical file. Depending on the {@link FileSystem}
+     * implementation it may require to read the files attributes. This implies:
+     * <ul>
+     * <li>Public and Internal files with disabled IO are never the same.
+     * <li>Public and Internal files with allowed IO are potentially the same.
+     * <li>Files created by different languages are potentially the same.
+     * <li>Files created during the Context pre-initialization and files created during Context
+     * execution are potentially the same.
+     * </ul>
+     *
+     * @param other the other {@link TruffleFile}
+     * @return {@code true} if this and the given {@link TruffleFile} refer to the same physical
+     *         file
+     * @throws IOException in case of IO error
+     * @throws SecurityException if the {@link FileSystem} denied the operation
+     * @since 20.2.0
+     */
+    @TruffleBoundary
+    public boolean isSameFile(TruffleFile other, LinkOption... options) throws IOException {
+        try {
+            checkFileOperationPreconditions();
+            other.checkFileOperationPreconditions();
+            if (this.equals(other)) {
+                return true;
+            }
+            if (!fileSystemContext.fileSystem.equals(other.fileSystemContext.fileSystem)) {
+                return false;
+            }
+            return fileSystemContext.fileSystem.isSameFile(normalizedPath, other.normalizedPath, options);
+        } catch (IOException | SecurityException e) {
+            throw e;
+        } catch (Throwable t) {
+            throw wrapHostException(t);
+        }
+    }
+
     @TruffleBoundary
     String detectMimeType(Set<String> validMimeTypes) {
         try {

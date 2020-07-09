@@ -106,6 +106,8 @@ int get_cpuid (unsigned int leaf, unsigned int *eax, unsigned int *ebx, unsigned
 #define bit_SSSE3_compat         0x00000200
 #define bit_POPCNT_compat        0x00800000
 #define bit_AVX_compat           0x10000000
+#define bit_SHA_compat           0x20000000
+#define bit_FMA_compat           0x00001000
 
 /*
  * Extracts the CPU features by using cpuid.h.
@@ -142,6 +144,7 @@ void determineCPUFeatures(CPUFeatures* features) {
   features->fAVX    = !!(ecx & bit_AVX_compat);
   features->fAES    = !!(ecx & bit_AES_compat);
   features->fCLMUL  = !!(ecx & bit_PCLMUL_compat);
+  features->fFMA    = !!(ecx & bit_FMA_compat);
 
   if (max_level >= 7) {
     get_cpuid_count (7, 0, &eax, &ebx, &ecx, &edx);
@@ -158,6 +161,7 @@ void determineCPUFeatures(CPUFeatures* features) {
     features->fAVX512ER = !!(ebx & bit_AVX512ER_compat);
     features->fAVX512CD = !!(ebx & bit_AVX512CD_compat);
     features->fAVX512BW = !!(ebx & bit_AVX512BW_compat);
+    features->fSHA      = !!(ebx & bit_SHA_compat);
   }
 
   // figuring out extended features
@@ -216,6 +220,7 @@ void determineCPUFeatures(CPUFeatures* features) {
 #endif
 
 #define CPU_ARM 'A'
+#define CPU_CAVIUM 'C'
 
 /*
  * Extracts the CPU features by both reading the hwcaps as well as
@@ -235,6 +240,7 @@ void determineCPUFeatures(CPUFeatures* features) {
   features->fLSE = !!(auxv & HWCAP_LSE);
   features->fSTXRPREFETCH = !!(auxv & HWCAP_STXR_PREFETCH);
   features->fA53MAC = !!(auxv & HWCAP_A53MAC);
+  features->fDMBATOMICS = 0;
 
   //checking for features signaled in another way
 
@@ -269,6 +275,7 @@ void determineCPUFeatures(CPUFeatures* features) {
   if (_cpu == CPU_ARM && _cpu_lines == 1 && _model == 0xd07) features->fA53MAC = !!(1);
   if (_cpu == CPU_ARM && (_model == 0xd03 || _model2 == 0xd03)) features->fA53MAC = !!(1);
   if (_cpu == CPU_ARM && (_model == 0xd07 || _model2 == 0xd07)) features->fSTXRPREFETCH = !!(1);
+  if (_cpu == CPU_CAVIUM && _model == 0xA1 && _variant == 0) features->fDMBATOMICS = !!(1);
 }
 
 #else

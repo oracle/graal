@@ -50,9 +50,9 @@ public class NativeImageOptions {
                     "For AMD64, SSE and SSE2 are enabled by default. Available features are: " +
                     "CX8, CMOV, FXSR, HT, MMX, AMD_3DNOW_PREFETCH, SSE3, SSSE3, SSE4A, SSE4_1, " +
                     "SSE4_2, POPCNT, LZCNT, TSC, TSCINV, AVX, AVX2, AES, ERMS, CLMUL, BMI1, " +
-                    "BMI2, RTM, ADX, AVX512F, AVX512DQ, AVX512PF, AVX512ER, AVX512CD, AVX512BW. " +
-                    "On AArch64, no features are enabled by default. Available features are: " +
-                    "FP, ASIMD, EVTSTRM, AES, PMULL, SHA1, SHA2, CRC32, LSE, STXR_PREFETCH, " +
+                    "BMI2, RTM, ADX, AVX512F, AVX512DQ, AVX512PF, AVX512ER, AVX512CD, AVX512BW, " +
+                    "SHA, FMA. On AArch64, no features are enabled by default. Available features " +
+                    "are: FP, ASIMD, EVTSTRM, AES, PMULL, SHA1, SHA2, CRC32, LSE, STXR_PREFETCH, " +
                     "A53MAC", type = User)//
     public static final HostedOptionKey<String[]> CPUFeatures = new HostedOptionKey<>(null);
 

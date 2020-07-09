@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted;
 
+import static org.graalvm.compiler.hotspot.JVMCIVersionCheck.JVMCI11_RELEASES_URL;
+import static org.graalvm.compiler.hotspot.JVMCIVersionCheck.JVMCI8_RELEASES_URL;
 import static org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.registerInvocationPlugins;
 
 import java.io.IOException;
@@ -438,6 +440,17 @@ public class NativeImageGenerator {
         try {
             if (!buildStarted.compareAndSet(false, true)) {
                 throw UserError.abort("An image build has already been performed with this generator.");
+            }
+
+            try {
+                /*
+                 * JVMCI 20.2-b01 introduced new methods for linking and querying whether an
+                 * interface has default methods. Fail early if these methods are missing.
+                 */
+                ResolvedJavaType.class.getDeclaredMethod("link");
+            } catch (ReflectiveOperationException ex) {
+                throw UserError.abort("JVMCI version provided %s is missing the 'ResolvedJavaType.link()' method added in jvmci-20.2-b01. " +
+                                "Please use the latest JVMCI JDK from %s or %s.", System.getProperty("java.home"), JVMCI8_RELEASES_URL, JVMCI11_RELEASES_URL);
             }
 
             setSystemPropertiesForImageLate(k);

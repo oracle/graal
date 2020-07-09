@@ -114,6 +114,11 @@ public interface DebugInfoProvider {
          *         to an empty frame
          */
         List<DebugFrameSizeChange> getFrameSizeChanges();
+
+        /**
+         * @return true if this method has been compiled in as a deoptimization target
+         */
+        boolean isDeoptTarget();
     }
 
     /**

@@ -6,8 +6,8 @@ vm_java_11: ${labsjdk-ce-11} {
 }
 svm_suite: /substratevm
 vm_extra_suites: "truffleruby,graalpython,fastr,/wasm"
-vm_extra_suites_aarch64: /wasm
-vm_extra_suites_windows: /wasm
+vm_extra_suites_aarch64: "/wasm,truffleruby"
+vm_extra_suites_windows: "/wasm"
 custom_vm_linux: {}
 custom_vm_darwin: {}
 vm_profiles: []

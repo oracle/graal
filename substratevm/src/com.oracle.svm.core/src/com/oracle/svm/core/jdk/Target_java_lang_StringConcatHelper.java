@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,11 +22,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.reflect.helpers;
+package com.oracle.svm.core.jdk;
 
-public class ExceptionHelpers {
+import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
 
-    public static IllegalArgumentException createFailedCast(Class<?> expected, Object actual) {
-        return new IllegalArgumentException("cannot cast " + actual.getClass().getName() + " to " + expected.getName());
+@TargetClass(className = "java.lang.StringConcatHelper", onlyWith = JDK11OrLater.class)
+final class Target_java_lang_StringConcatHelper {
+
+    /**
+     * The original implementation allocates the OutOfMemoryError in this method. This is OK with
+     * JIT compilation, but bad for AOT compilation because there is no profiling information that
+     * replaces the allocation with a deopt.
+     */
+    @Substitute
+    private static int checkOverflow(int len) {
+        if (len < 0) {
+            throw StringConcatHelperSupport.throwOutOfMemoryError();
+        }
+        return len;
+    }
+}
+
+class StringConcatHelperSupport {
+    @NeverInline("slow path")
+    static OutOfMemoryError throwOutOfMemoryError() {
+        throw new OutOfMemoryError("Overflow: String length out of range");
     }
 }

@@ -351,23 +351,29 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
 
     def query_native_image(all_args, option):
 
+        stdoutdata = []
+        def stdout_collector(x):
+            stdoutdata.append(x.rstrip())
+        _native_image(['--dry-run'] + all_args, out=stdout_collector)
+
         def remove_quotes(val):
             if len(val) >= 2 and val.startswith("'") and val.endswith("'"):
                 return val[1:-1].replace("\\'", "'")
             else:
                 return val
 
-        out = mx.LinesOutputCapture()
-        _native_image(['--dry-run'] + all_args, out=out)
-        for line in out.lines:
+        for line in stdoutdata:
             arg = remove_quotes(line.rstrip('\\').strip())
             _, sep, after = arg.partition(option)
             if sep:
                 return after.split(' ')[0].rstrip()
         return None
 
+    server_use = set()
     def native_image_func(args, **kwargs):
         all_args = base_args + common_args + args
+        if '--experimental-build-server' in all_args:
+            server_use.add(True)
         path = query_native_image(all_args, '-H:Path=')
         name = query_native_image(all_args, '-H:Name=')
         image = join(path, name)
@@ -380,7 +386,7 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
             _native_image(['--server-wipe'])
         yield native_image_func
     finally:
-        if exists(native_image_cmd) and has_server:
+        if exists(native_image_cmd) and has_server and server_use:
             def timestr():
                 return time.strftime('%d %b %Y %H:%M:%S') + ' - '
             mx.log(timestr() + 'Shutting down image build servers for ' + native_image_cmd)
@@ -1415,8 +1421,6 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
             graal_compiler_flags_map[11] = [
                 # Disable the check for JDK-8 graal version.
                 '-Dsubstratevm.IgnoreGraalVersionCheck=true',
-                # GR-11937: Use bytecodes instead of invoke-dynamic for string concatenation.
-                '-Djava.lang.invoke.stringConcat=BC_SB',
             ]
 
             # Packages to add-export

@@ -144,12 +144,13 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                 }
             } else {
                 if (configuredAccess == null) {
-                    resolveLanguages = config.allowedPublicLanguages;
-                } else {
-                    resolveLanguages = EconomicSet.create(Equivalence.DEFAULT, configuredAccess);
-                    resolveLanguages.add(thisLanguage.getId());
+                    // all access configuration
+                    configuredAccess = config.allowedPublicLanguages;
                 }
+                resolveLanguages = EconomicSet.create(Equivalence.DEFAULT, configuredAccess);
+                resolveLanguages.add(thisLanguage.getId());
             }
+
             Map<String, LanguageInfo> resolvedLanguages = new LinkedHashMap<>();
             for (String id : resolveLanguages) {
                 PolyglotLanguage resolvedLanguage = engine.idToLanguage.get(id);
@@ -295,13 +296,21 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     }
 
     Object getPublicFileSystemContext() {
-        assert lazy != null;
-        return lazy.publicFileSystemContext;
+        Lazy l = lazy;
+        if (l != null) {
+            return l.publicFileSystemContext;
+        } else {
+            return null;
+        }
     }
 
     Object getInternalFileSystemContext() {
-        assert lazy != null;
-        return lazy.internalFileSystemContext;
+        Lazy l = lazy;
+        if (l != null) {
+            return l.internalFileSystemContext;
+        } else {
+            return null;
+        }
     }
 
     Value getHostBindings() {
@@ -627,7 +636,9 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                     throw t;
                 }
                 LOG.log(Level.FINE, "Exception during patching context of language: {0}", this.language.getId());
-                throw PolyglotImpl.guestToHostException(this, t);
+                // The conversion to the host exception happens in the
+                // PolyglotEngineImpl.createContext
+                throw GuestToHostRootNode.silenceException(RuntimeException.class, t);
             }
         } else {
             return true;

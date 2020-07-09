@@ -28,6 +28,7 @@ import static org.graalvm.libgraal.jni.processor.AbstractFromLibGraalProcessor.t
 import static org.graalvm.libgraal.jni.processor.AbstractFromLibGraalProcessor.createSourceFile;
 
 import java.io.PrintWriter;
+import java.util.List;
 import java.util.Set;
 import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedAnnotationTypes;
@@ -39,6 +40,7 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic.Kind;
@@ -85,6 +87,7 @@ public final class FromLibGraalEntryPointsResolverProcessor extends AbstractProc
                             ((DeclaredType) fromLibGraalId).asElement().getSimpleName());
         }
         boolean method = annotatedElement.getKind() == ElementKind.METHOD;
+        boolean requiresJNIEnv = false;
         if (method) {
             if (!entryPointsClassName.isEmpty()) {
                 throw new ProcessingException(annotatedElement, "The FromLibGraalEntryPointsResolver on method cannot have entryPointsClassName.");
@@ -96,13 +99,14 @@ public final class FromLibGraalEntryPointsResolverProcessor extends AbstractProc
             if (methodElement.getModifiers().contains(Modifier.PRIVATE)) {
                 throw new ProcessingException(annotatedElement, "Method %s cannot be private.", methodElement.getSimpleName());
             }
-            if (!methodElement.getParameters().isEmpty()) {
-                throw new ProcessingException(annotatedElement, "Method %s cannot have parameters.", methodElement.getSimpleName());
+            if (!verifyParameters(methodElement)) {
+                throw new ProcessingException(annotatedElement, "Method %s can have either a single JNIEnv parameter or no parameters.", methodElement.getSimpleName());
             }
             TypeMirror jclass = getTypeElement("org.graalvm.libgraal.jni.JNI.JClass").asType();
             if (!processingEnv.getTypeUtils().isSameType(methodElement.getReturnType(), jclass)) {
                 throw new ProcessingException(annotatedElement, "Method %s must return JClass.", methodElement.getSimpleName());
             }
+            requiresJNIEnv = !methodElement.getParameters().isEmpty();
         } else {
             if (entryPointsClassName.isEmpty()) {
                 throw new ProcessingException(annotatedElement, "The FromLibGraalEntryPointsResolver on class or package must have entryPointsClassName.");
@@ -139,13 +143,30 @@ public final class FromLibGraalEntryPointsResolverProcessor extends AbstractProc
             out.println("    @Override");
             out.println("    protected JClass resolvePeer(JNIEnv env) {");
             if (method) {
-                out.printf("        return %s.%s();%n", annotatedElement.getEnclosingElement().getSimpleName(), annotatedElement.getSimpleName());
+                out.printf("        return %s.%s(%s);%n",
+                                annotatedElement.getEnclosingElement().getSimpleName(),
+                                annotatedElement.getSimpleName(),
+                                requiresJNIEnv ? "env" : "");
             } else {
                 out.printf("        return getJNIClass(env, \"%s\");%n", entryPointsClassName);
             }
             out.println("    }");
             out.println("}");
         }
+    }
+
+    private boolean verifyParameters(ExecutableElement method) {
+        List<? extends VariableElement> params = method.getParameters();
+        if (params.isEmpty()) {
+            return true;
+        }
+        if (params.size() == 1) {
+            VariableElement param = params.get(0);
+            TypeMirror expectedType = processingEnv.getElementUtils().getTypeElement("org.graalvm.libgraal.jni.JNI.JNIEnv").asType();
+            TypeMirror actualType = param.asType();
+            return processingEnv.getTypeUtils().isSameType(expectedType, actualType);
+        }
+        return false;
     }
 
     @SuppressWarnings("serial")

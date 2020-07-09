@@ -40,10 +40,9 @@ import time
 import functools
 import zipfile
 import mx
-import mx_substratevm
-import mx_graal_benchmark
 import mx_benchmark
-import mx_compiler
+import mx_substratevm
+import mx_java_benchmarks
 
 _suite = mx.suite("substratevm")
 
@@ -315,7 +314,7 @@ def extract_archive(path, extracted_name):
     extracted_archive = mx.join(mx.dirname(path), extracted_name)
     if not mx.exists(extracted_archive):
         # There can be multiple processes doing this so be atomic about it
-        with mx_compiler.SafeDirectoryUpdater(extracted_archive, create=True) as sdu:
+        with mx.SafeDirectoryUpdater(extracted_archive, create=True) as sdu:
             with zipfile.ZipFile(path, 'r') as zf:
                 zf.extractall(sdu.directory)
     return extracted_archive
@@ -378,7 +377,7 @@ def benchmark_scalaversion(benchmark):
     return _renaissance_config[benchmark][1]
 
 
-class RenaissanceNativeImageBenchmarkSuite(mx_graal_benchmark.RenaissanceBenchmarkSuite): #pylint: disable=too-many-ancestors
+class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchmarkSuite): #pylint: disable=too-many-ancestors
     """
     Building an image for a renaissance benchmark requires all libraries for the group this benchmark belongs to
     and a harness project compiled with the same scala version as the benchmark.
@@ -616,7 +615,7 @@ _daCapo_exclude_lib = {
     'h2'          : ['derbytools.jar', 'derbyclient.jar', 'derbynet.jar']  # multiple derby classes occurrences on the classpath can cause a security error
 }
 
-class DaCapoNativeImageBenchmarkSuite(mx_graal_benchmark.DaCapoBenchmarkSuite, BaseDaCapoNativeImageBenchmarkSuite): #pylint: disable=too-many-ancestors
+class DaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.DaCapoBenchmarkSuite, BaseDaCapoNativeImageBenchmarkSuite): #pylint: disable=too-many-ancestors
     def name(self):
         return 'dacapo-native-image'
 
@@ -729,7 +728,7 @@ _scala_daCapo_exclude_lib = {
 }
 
 
-class ScalaDaCapoNativeImageBenchmarkSuite(mx_graal_benchmark.ScalaDaCapoBenchmarkSuite, BaseDaCapoNativeImageBenchmarkSuite): #pylint: disable=too-many-ancestors
+class ScalaDaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.ScalaDaCapoBenchmarkSuite, BaseDaCapoNativeImageBenchmarkSuite): #pylint: disable=too-many-ancestors
     def name(self):
         return 'scala-dacapo-native-image'
 

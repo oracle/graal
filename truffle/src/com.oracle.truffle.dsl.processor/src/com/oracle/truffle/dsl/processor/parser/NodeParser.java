@@ -1569,8 +1569,9 @@ public final class NodeParser extends AbstractParser<NodeData> {
             return;
         }
 
-        initializeExpressions(elements, node);
         initializeReplaces(node);
+        resolveReplaces(node);
+        initializeExpressions(elements, node);
 
         if (node.hasErrors()) {
             return;
@@ -1583,7 +1584,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
         initializeReachability(node);
         initializeFallbackReachability(node);
         initializeCheckedExceptions(node);
-        resolveReplaces(node);
 
         List<SpecializationData> specializations = node.getSpecializations();
         for (SpecializationData cur : specializations) {
@@ -1722,6 +1722,11 @@ public final class NodeParser extends AbstractParser<NodeData> {
             if (specialization.getReplaces().isEmpty()) {
                 continue;
             }
+
+            for (SpecializationData replaced : specialization.getReplaces()) {
+                replaced.setReplaced(true);
+            }
+
             Set<SpecializationData> foundSpecializations = new HashSet<>();
             collectIncludes(specialization, foundSpecializations, new HashSet<SpecializationData>());
             specialization.getReplaces().addAll(foundSpecializations);
@@ -2242,25 +2247,34 @@ public final class NodeParser extends AbstractParser<NodeData> {
     }
 
     private SpecializationData parseCachedLibraries(SpecializationData specialization, DSLExpressionResolver resolver, List<CacheExpression> libraries) {
-        SpecializationData uncachedSpecialization = specialization.copy();
-        uncachedSpecialization.getReplaces().add(specialization);
 
-        List<CacheExpression> uncachedLibraries = new ArrayList<>();
-        for (int i = 0; i < uncachedSpecialization.getCaches().size(); i++) {
-            CacheExpression expression = uncachedSpecialization.getCaches().get(i);
-            if (expression.isCachedLibrary()) {
-                expression = expression.copy();
-                uncachedSpecialization.getCaches().set(i, expression);
-                uncachedLibraries.add(expression);
+        SpecializationData uncachedSpecialization = null;
+        List<CacheExpression> uncachedLibraries = null;
+        /*
+         * No uncached specialization needed if there is a specialization that is strictly more
+         * generic than this one.
+         */
+        if (!specialization.isReplaced()) {
+            uncachedSpecialization = specialization.copy();
+            uncachedLibraries = new ArrayList<>();
+            uncachedSpecialization.getReplaces().add(specialization);
+
+            for (int i = 0; i < uncachedSpecialization.getCaches().size(); i++) {
+                CacheExpression expression = uncachedSpecialization.getCaches().get(i);
+                if (expression.isCachedLibrary()) {
+                    expression = expression.copy();
+                    uncachedSpecialization.getCaches().set(i, expression);
+                    uncachedLibraries.add(expression);
+                }
             }
+            specialization.setUncachedSpecialization(uncachedSpecialization);
         }
-        specialization.setExcludeCompanion(uncachedSpecialization);
 
         boolean seenDynamicParameterBound = false;
 
         for (int i = 0; i < libraries.size(); i++) {
             CacheExpression cachedLibrary = libraries.get(i);
-            CacheExpression uncachedLibrary = uncachedLibraries.get(i);
+            CacheExpression uncachedLibrary = uncachedLibraries != null ? uncachedLibraries.get(i) : null;
 
             TypeMirror parameterType = cachedLibrary.getParameter().getType();
             TypeElement type = ElementUtils.fromTypeMirror(parameterType);
@@ -2361,11 +2375,14 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 cachedLibrary.setUncachedExpression(uncachedExpression);
 
                 uncachedExpression = resolveCachedExpression(cachedResolver, cachedLibrary, libraryType, uncachedExpression, expression);
-                uncachedLibrary.setDefaultExpression(uncachedExpression);
-                uncachedLibrary.setUncachedExpression(uncachedExpression);
 
-                uncachedLibrary.setAlwaysInitialized(true);
-                uncachedLibrary.setRequiresBoundary(true);
+                if (uncachedLibrary != null) {
+                    uncachedLibrary.setDefaultExpression(uncachedExpression);
+                    uncachedLibrary.setUncachedExpression(uncachedExpression);
+
+                    uncachedLibrary.setAlwaysInitialized(true);
+                    uncachedLibrary.setRequiresBoundary(true);
+                }
             }
 
         }

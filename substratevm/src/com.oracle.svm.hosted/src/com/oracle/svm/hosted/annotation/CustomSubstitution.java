@@ -26,9 +26,12 @@ package com.oracle.svm.hosted.annotation;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.graalvm.collections.Pair;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 
@@ -69,19 +72,27 @@ public class CustomSubstitution<T extends CustomSubstitutionType<?, ?>> extends 
         return result;
     }
 
-    protected static List<String> findAttributes(ResolvedJavaType annotationType) {
-        List<String> attributes = new ArrayList<>();
+    /*
+     * Return the annotation attributes. For each attribute return both the name and the original
+     * type, as declared by the return type of the annotation method. The name is later used to find
+     * the corresponding synthetic field that holds the value. The declared type of the field can be
+     * different than that of the actual attribute type: when the attribute type is either Class or
+     * Class[] the field type is Object since it can also store a TypeNotPresentExceptionProxy.
+     */
+    protected static List<Pair<String, ResolvedJavaType>> findAttributes(ResolvedJavaType annotationType) {
+        List<Pair<String, ResolvedJavaType>> attributes = new ArrayList<>();
         for (ResolvedJavaMethod method : annotationType.getDeclaredMethods()) {
             String methodName = canonicalMethodName(method);
             if (methodName.equals("equals") || methodName.equals("hashCode") || methodName.equals("toString") || methodName.equals("annotationType")) {
                 /* Ignore non-accessor methods. */
             } else {
-                attributes.add(methodName);
+                ResolvedJavaType returnType = (ResolvedJavaType) method.getSignature().getReturnType(null);
+                attributes.add(Pair.create(methodName, returnType));
             }
         }
 
         /* Sort them (by any order) so that the Graal graphs are deterministic. */
-        Collections.sort(attributes);
+        Collections.sort(attributes, Comparator.comparing(Pair::getLeft));
         return attributes;
     }
 

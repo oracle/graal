@@ -167,6 +167,35 @@ suite = {
             "javaCompliance" : "8+",
             "workingSets" : "Tools",
         },
+        "com.oracle.truffle.tools.warmup" : {
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "dependencies" : [
+                "truffle:TRUFFLE_API",
+                "TruffleJSON",
+                ],
+            "exports" : [
+              "<package-info>", # exports all packages containing package-info.java
+              # "com.oracle.truffle.tools.warmup.impl to org.graalvm.truffle",
+            ],
+            "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+            "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
+            "javaCompliance" : "8+",
+            "workingSets" : "Tools",
+        },
+        "com.oracle.truffle.tools.warmup.test" : {
+            "subDir" : "src",
+            "sourceDirs" : ["src"],
+            "dependencies" : [
+                "com.oracle.truffle.tools.warmup",
+                "truffle:TRUFFLE_TEST",
+                "mx:JUNIT"
+            ],
+            "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+            "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
+            "javaCompliance" : "8+",
+            "workingSets" : "Tools",
+        },
         "org.graalvm.tools.api.lsp": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -416,6 +445,39 @@ suite = {
             "description" : "Truffle Code coverage support distribution for the GraalVM",
             "layout" : {
                 "native-image.properties" : "file:mx.tools/tools-coverage.properties",
+            },
+        },
+        "TRUFFLE_WARMUP_ESTIMATOR": {
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.truffle.tools.warmup",
+            ],
+            "distDependencies" : [
+                "truffle:TRUFFLE_API",
+            ],
+            "maven" : {
+              "artifactId" : "warmup",
+            },
+            "description" : "Truffle warmup estimation tool.",
+            "javadocType" : "api",
+        },
+        "TRUFFLE_WARMUP_ESTIMATOR_TEST": {
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.truffle.tools.warmup.test",
+            ],
+            "distDependencies" : [
+                "truffle:TRUFFLE_TEST",
+                "TRUFFLE_WARMUP_ESTIMATOR",
+            ],
+            "description" : "Tests for the truffle warmup estimator tool.",
+            "maven" : False,
+        },
+        "TRUFFLE_WARMUP_ESTIMATOR_GRAALVM_SUPPORT" : {
+            "native" : True,
+            "description" : "Truffle Profiler support distribution for the GraalVM",
+            "layout" : {
+                "native-image.properties" : "file:mx.tools/tools-profiler.properties",
             },
         },
         "VISUALVM_GRAALVM_SUPPORT": {

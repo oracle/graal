@@ -42,12 +42,15 @@ package com.oracle.truffle.api.dsl.test;
 
 import java.math.BigInteger;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeChildren;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.Abstract;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.BExtendsAbstract;
 import com.oracle.truffle.api.dsl.test.TypeSystemTest.ValueNode;
+import com.oracle.truffle.api.nodes.Node;
 
 public class ReachabilityTest {
 
@@ -301,4 +304,62 @@ public class ReachabilityTest {
 
     }
 
+    abstract static class ReachabilityUncached extends Node {
+        abstract int execute();
+
+        int foo() {
+            return 0;
+        }
+    }
+
+    @GenerateUncached
+    abstract static class ReachabilityUncached1 extends ReachabilityUncached {
+        @Specialization
+        int doCached(@Cached("foo()") int cached) {
+            return cached;
+        }
+
+        @Specialization(replaces = "doCached")
+        int doUncached() {
+            return 1;
+        }
+    }
+
+    @GenerateUncached
+    abstract static class ReachabilityUncached2 extends ReachabilityUncached {
+        @Specialization
+        int doCached(@Cached("foo()") int cached) {
+            return cached;
+        }
+
+        @Specialization(replaces = "doCached")
+        int doUncached1() {
+            return 1;
+        }
+
+        @ExpectError("Specialization is not reachable. It is shadowed by doUncached1().")
+        @Specialization
+        int doUncached2() {
+            return 2;
+        }
+    }
+
+    @GenerateUncached
+    abstract static class ReachabilityUncached3 extends ReachabilityUncached {
+        @Specialization
+        int doCached1(@Cached("foo()") int cached) {
+            return cached;
+        }
+
+        @ExpectError("Specialization is not reachable. It is shadowed by doCached1(int).")
+        @Specialization(replaces = "doCached1")
+        int doCached2(@Cached("foo()") int cached) {
+            return cached + 1;
+        }
+
+        @Specialization(replaces = "doCached2")
+        int doUncached() {
+            return 1;
+        }
+    }
 }

@@ -84,7 +84,6 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.junit.After;
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -104,6 +103,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.RootNode;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
+import org.graalvm.polyglot.io.FileSystem;
 
 public class ContextPreInitializationTest {
 
@@ -121,7 +121,6 @@ public class ContextPreInitializationTest {
     public void setUp() throws Exception {
         // Initialize IMPL
         Class.forName("org.graalvm.polyglot.Engine$ImplHolder", true, ContextPreInitializationTest.class.getClassLoader());
-        Assume.assumeTrue(false);
     }
 
     @After
@@ -965,7 +964,7 @@ public class ContextPreInitializationTest {
         assertEquals(0, firstLangCtx.disposeContextCount);
         assertEquals(0, firstLangCtx.initializeThreadCount);
         assertEquals(0, firstLangCtx.disposeThreadCount);
-        final TestHandler testHandler = new TestHandler();
+        final TestHandler testHandler = new TestHandler("engine.com.oracle.truffle.polyglot.PolyglotLanguageContext");
         final Context ctx = Context.newBuilder().option("log.engine.level", "FINE").logHandler(testHandler).build();
         Value res = ctx.eval(Source.create(FIRST, "test"));
         assertEquals("test", res.asString());
@@ -1340,7 +1339,7 @@ public class ContextPreInitializationTest {
         Path testFolder = Files.createTempDirectory("testSources").toRealPath();
         try {
             Path buildtimeHome = Files.createDirectories(testFolder.resolve("build").resolve(FIRST));
-            Path buildtimeResource = Files.write(buildtimeHome.resolve("lib.test"), Collections.singleton("test"));
+            Path buildtimeResource = Files.write(buildtimeHome.resolve("testSourceInLanguageHome.test"), Collections.singleton("test"));
             Path runtimeHome = Files.createDirectories(testFolder.resolve("exec").resolve(FIRST));
             Path runtimeResource = Files.copy(buildtimeResource, runtimeHome.resolve(buildtimeResource.getFileName()));
             System.setProperty(String.format("org.graalvm.language.%s.home", FIRST), buildtimeHome.toString());
@@ -1389,7 +1388,7 @@ public class ContextPreInitializationTest {
         try {
             Path buildtimeHome = Files.createDirectories(testFolder.resolve("build").resolve(FIRST));
             Path runtimeHome = Files.createDirectories(testFolder.resolve("exec").resolve(FIRST));
-            Path resource = Files.write(testFolder.resolve("lib.test"), Collections.singleton("test"));
+            Path resource = Files.write(testFolder.resolve("testSourceOutsideLanguageHome.test"), Collections.singleton("test"));
             System.setProperty(String.format("org.graalvm.language.%s.home", FIRST), buildtimeHome.toString());
             AtomicReference<com.oracle.truffle.api.source.Source> buildtimeCachedSource = new AtomicReference<>();
             AtomicReference<com.oracle.truffle.api.source.Source> buildtimeUnCachedSource = new AtomicReference<>();
@@ -1434,7 +1433,7 @@ public class ContextPreInitializationTest {
         Path testFolder = Files.createTempDirectory("testSources").toRealPath();
         try {
             Path buildtimeHome = Files.createDirectories(testFolder.resolve("build").resolve(FIRST));
-            Path buildtimeResource = Files.write(buildtimeHome.resolve("lib.test"), Collections.singleton("test"));
+            Path buildtimeResource = Files.write(buildtimeHome.resolve("testSourceNotPatchedContext.test"), Collections.singleton("test"));
             Path runtimeHome = Files.createDirectories(testFolder.resolve("exec").resolve(FIRST));
             Path runtimeResource = Files.copy(buildtimeResource, runtimeHome.resolve(buildtimeResource.getFileName()));
             System.setProperty(String.format("org.graalvm.language.%s.home", FIRST), buildtimeHome.toString());
@@ -1470,6 +1469,99 @@ public class ContextPreInitializationTest {
             }
         };
         doContextPreinitialize(FIRST);
+    }
+
+    @Test
+    public void testIsSameFileAllowedIO() throws Exception {
+        IsSameFileResult res = testIsSameFileImpl(true, null);
+        assertTrue(res.imageBuildInternalFile.isSameFile(res.imageBuildPublicFile));
+        assertTrue(res.imageBuildInternalFile.isSameFile(res.imageExecInternalFile));
+        assertTrue(res.imageBuildInternalFile.isSameFile(res.imageExecPublicFile));
+        assertTrue(res.imageBuildPublicFile.isSameFile(res.imageBuildInternalFile));
+        assertTrue(res.imageBuildPublicFile.isSameFile(res.imageExecInternalFile));
+        assertTrue(res.imageBuildPublicFile.isSameFile(res.imageExecPublicFile));
+        assertTrue(res.imageExecInternalFile.isSameFile(res.imageBuildInternalFile));
+        assertTrue(res.imageExecInternalFile.isSameFile(res.imageBuildPublicFile));
+        assertTrue(res.imageExecInternalFile.isSameFile(res.imageExecPublicFile));
+        assertTrue(res.imageExecPublicFile.isSameFile(res.imageBuildInternalFile));
+        assertTrue(res.imageExecPublicFile.isSameFile(res.imageBuildPublicFile));
+        assertTrue(res.imageExecPublicFile.isSameFile(res.imageExecInternalFile));
+    }
+
+    @Test
+    public void testIsSameFileDeniedIO() throws Exception {
+        IsSameFileResult res = testIsSameFileImpl(false, null);
+        assertFalse(res.imageBuildInternalFile.isSameFile(res.imageBuildPublicFile));
+        assertTrue(res.imageBuildInternalFile.isSameFile(res.imageExecInternalFile));
+        assertFalse(res.imageBuildInternalFile.isSameFile(res.imageExecPublicFile));
+        assertFalse(res.imageBuildPublicFile.isSameFile(res.imageBuildInternalFile));
+        assertFalse(res.imageBuildPublicFile.isSameFile(res.imageExecInternalFile));
+        assertTrue(res.imageBuildPublicFile.isSameFile(res.imageExecPublicFile));
+        assertTrue(res.imageExecInternalFile.isSameFile(res.imageBuildInternalFile));
+        assertFalse(res.imageExecInternalFile.isSameFile(res.imageBuildPublicFile));
+        assertFalse(res.imageExecInternalFile.isSameFile(res.imageExecPublicFile));
+        assertFalse(res.imageExecPublicFile.isSameFile(res.imageBuildInternalFile));
+        assertTrue(res.imageExecPublicFile.isSameFile(res.imageBuildPublicFile));
+        assertFalse(res.imageExecPublicFile.isSameFile(res.imageExecInternalFile));
+    }
+
+    @Test
+    public void testIsSameFileCustomFileSystem() throws Exception {
+        IsSameFileResult res = testIsSameFileImpl(true, FileSystem.newDefaultFileSystem());
+        assertTrue(res.imageBuildInternalFile.isSameFile(res.imageBuildPublicFile));
+        assertTrue(res.imageBuildInternalFile.isSameFile(res.imageExecInternalFile));
+        assertTrue(res.imageBuildInternalFile.isSameFile(res.imageExecPublicFile));
+        assertTrue(res.imageBuildPublicFile.isSameFile(res.imageBuildInternalFile));
+        assertTrue(res.imageBuildPublicFile.isSameFile(res.imageExecInternalFile));
+        assertTrue(res.imageBuildPublicFile.isSameFile(res.imageExecPublicFile));
+        assertTrue(res.imageExecInternalFile.isSameFile(res.imageBuildInternalFile));
+        assertTrue(res.imageExecInternalFile.isSameFile(res.imageBuildPublicFile));
+        assertTrue(res.imageExecInternalFile.isSameFile(res.imageExecPublicFile));
+        assertTrue(res.imageExecPublicFile.isSameFile(res.imageBuildInternalFile));
+        assertTrue(res.imageExecPublicFile.isSameFile(res.imageBuildPublicFile));
+        assertTrue(res.imageExecPublicFile.isSameFile(res.imageExecInternalFile));
+    }
+
+    private static IsSameFileResult testIsSameFileImpl(boolean allowIO, FileSystem fs) throws ReflectiveOperationException {
+        String path = Paths.get(".").toAbsolutePath().toString();
+        setPatchable(FIRST);
+        IsSameFileResult result = new IsSameFileResult();
+        ContextPreInitializationTestFirstLanguage.onPreInitAction = (env) -> {
+            result.imageBuildInternalFile = env.getInternalTruffleFile(path);
+            result.imageBuildPublicFile = env.getPublicTruffleFile(path);
+        };
+        doContextPreinitialize(FIRST);
+        List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+        assertEquals(1, contexts.size());
+        final CountingContext firstLangCtx = findContext(FIRST, contexts);
+        assertEquals(1, firstLangCtx.createContextCount);
+        assertEquals(1, firstLangCtx.initializeContextCount);
+        assertEquals(0, firstLangCtx.patchContextCount);
+        ContextPreInitializationTestFirstLanguage.onPatchAction = (env) -> {
+            result.imageExecInternalFile = env.getInternalTruffleFile(path);
+            result.imageExecPublicFile = env.getPublicTruffleFile(path);
+        };
+        Context.Builder builder = Context.newBuilder().allowIO(allowIO);
+        if (fs != null) {
+            builder.fileSystem(fs);
+        }
+        try (Context ctx = builder.build()) {
+            Value res = ctx.eval(Source.create(FIRST, "test"));
+            assertEquals("test", res.asString());
+            contexts = new ArrayList<>(emittedContexts);
+            assertEquals(1, contexts.size());
+            assertEquals(1, firstLangCtx.createContextCount);
+            assertEquals(1, firstLangCtx.initializeContextCount);
+            assertEquals(1, firstLangCtx.patchContextCount);
+            return result;
+        }
+    }
+
+    private static final class IsSameFileResult {
+        TruffleFile imageBuildPublicFile;
+        TruffleFile imageBuildInternalFile;
+        TruffleFile imageExecPublicFile;
+        TruffleFile imageExecInternalFile;
     }
 
     private static com.oracle.truffle.api.source.Source createSource(TruffleLanguage.Env env, Path resource, boolean cached) {
@@ -1849,11 +1941,20 @@ public class ContextPreInitializationTest {
     }
 
     private static final class TestHandler extends Handler {
+
+        private final Set<String> importantLoggers;
         final List<LogRecord> logs = new ArrayList<>();
+
+        TestHandler(String... importantLoggers) {
+            this.importantLoggers = new HashSet<>();
+            Collections.addAll(this.importantLoggers, importantLoggers);
+        }
 
         @Override
         public void publish(LogRecord record) {
-            logs.add(record);
+            if (importantLoggers.isEmpty() || importantLoggers.contains(record.getLoggerName())) {
+                logs.add(record);
+            }
         }
 
         @Override

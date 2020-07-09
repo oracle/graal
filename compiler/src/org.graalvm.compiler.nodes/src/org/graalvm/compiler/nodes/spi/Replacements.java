@@ -86,6 +86,14 @@ public interface Replacements extends GeneratedPluginInjectionProvider {
     boolean isSnippet(ResolvedJavaMethod method);
 
     /**
+     * Returns {@code true} if this {@code Replacements} is being used for preparation of snippets
+     * and substitutions for libgraal.
+     */
+    default boolean isEncodingSnippets() {
+        return false;
+    }
+
+    /**
      * Registers a method as snippet.
      */
     void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition, OptionValues options);

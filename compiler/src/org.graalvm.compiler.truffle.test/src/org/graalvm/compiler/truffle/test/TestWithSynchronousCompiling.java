@@ -76,7 +76,7 @@ public abstract class TestWithSynchronousCompiling extends TestWithPolyglotOptio
     protected static void assertNotCompiled(OptimizedCallTarget target) {
         if (target != null) {
             assertFalse(target.isValid());
-            assertFalse(target.isCompiling());
+            assertFalse(target.isSubmittedForCompilation());
         }
     }
 }

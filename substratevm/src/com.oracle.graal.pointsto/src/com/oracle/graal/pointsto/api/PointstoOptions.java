@@ -90,16 +90,10 @@ public class PointstoOptions {
     public static final OptionKey<Integer> AnalysisSizeCutoff = new OptionKey<>(8);
 
     @Option(help = "The maximum number of types recorded in a type flow. -1 indicates no limitation.")//
-    public static final OptionKey<Integer> TypeFlowSaturationCutoff = new OptionKey<Integer>(20) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Integer oldValue, Integer newValue) {
-            assert newValue.intValue() >= AnalysisSizeCutoff.getValueOrDefault(values);
-            super.onValueUpdate(values, oldValue, newValue);
-        }
-    };
+    public static final OptionKey<Integer> TypeFlowSaturationCutoff = new OptionKey<>(20);
 
     @Option(help = "Enable the type flow saturation analysis performance optimization.")//
-    public static final OptionKey<Boolean> RemoveSaturatedTypeFlows = new OptionKey<Boolean>(false) {
+    public static final OptionKey<Boolean> RemoveSaturatedTypeFlows = new OptionKey<Boolean>(true) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
             /* Removing saturated type flows needs array type flows aliasing. */
@@ -108,7 +102,7 @@ public class PointstoOptions {
     };
 
     @Option(help = "Model all array type flows using a unique elements type flow abstraction.")//
-    public static final OptionKey<Boolean> AliasArrayTypeFlows = new OptionKey<Boolean>(false) {
+    public static final OptionKey<Boolean> AliasArrayTypeFlows = new OptionKey<Boolean>(true) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
             /* Aliasing array type flows implies relaxation of type flow constraints. */
@@ -117,7 +111,7 @@ public class PointstoOptions {
     };
 
     @Option(help = "Allow a type flow state to contain types not compatible with its declared type.")//
-    public static final OptionKey<Boolean> RelaxTypeFlowStateConstraints = new OptionKey<>(false);
+    public static final OptionKey<Boolean> RelaxTypeFlowStateConstraints = new OptionKey<>(true);
 
     @Option(help = "Report unresolved elements as errors.")//
     public static final OptionKey<Boolean> UnresolvedIsError = new OptionKey<>(true);

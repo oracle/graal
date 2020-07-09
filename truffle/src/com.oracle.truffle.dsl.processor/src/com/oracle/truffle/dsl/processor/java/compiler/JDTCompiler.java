@@ -54,6 +54,11 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import java.lang.reflect.Field;
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.AnnotationValue;
+import javax.lang.model.element.ElementKind;
+import javax.tools.Diagnostic.Kind;
 
 public class JDTCompiler extends AbstractCompiler {
 
@@ -283,6 +288,64 @@ public class JDTCompiler extends AbstractCompiler {
                 Integer declarationSourceStart = (Integer) field(declarations[i], "declarationSourceStart");
                 orderedBindings.put(declarationSourceStart, field(declarations[i], "binding"));
             }
+        }
+    }
+
+    @Override
+    protected boolean emitDeprecationWarningImpl(ProcessingEnvironment environment, Element element) {
+        try {
+            Object binding = field(element, "_binding");
+            if (binding == null) {
+                return false;
+            }
+            Object astNode = getASTNode(element);
+            if (astNode == null) {
+                return false;
+            }
+            Object problemReporter = field(method(environment, "getCompiler"), "problemReporter");
+            Object prev = useSource(problemReporter, astNode);
+            try {
+                return reportProblem(problemReporter, element.getKind(), binding, astNode);
+            } finally {
+                useSource(problemReporter, prev);
+            }
+        } catch (ReflectiveOperationException e) {
+            return false;
+        }
+    }
+
+    private static Object getASTNode(Element element) throws ReflectiveOperationException {
+        Class<?> baseMessagerImplClass = Class.forName("org.eclipse.jdt.internal.compiler.apt.dispatch.BaseMessagerImpl", false, element.getClass().getClassLoader());
+        Object problem = staticMethod(baseMessagerImplClass, "createProblem",
+                        new Class<?>[]{Kind.class, CharSequence.class, Element.class, AnnotationMirror.class, AnnotationValue.class},
+                        Kind.WARNING, "", element, null, null);
+        return field(problem, "_referenceContext");
+    }
+
+    private static Object useSource(Object problemReporter, Object astNode) throws ReflectiveOperationException {
+        Field referenceContextField = problemReporter.getClass().getField("referenceContext");
+        Object res = referenceContextField.get(problemReporter);
+        referenceContextField.set(problemReporter, astNode);
+        return res;
+    }
+
+    private static boolean reportProblem(Object problemReporter, ElementKind kind, Object binding, Object astNode) throws ReflectiveOperationException {
+        ClassLoader cl = binding.getClass().getClassLoader();
+        Class<?> astNodeClass = Class.forName("org.eclipse.jdt.internal.compiler.ast.ASTNode", false, cl);
+        if (kind.isClass() || kind.isInterface()) {
+            Class<?> typeBindingClass = Class.forName("org.eclipse.jdt.internal.compiler.lookup.TypeBinding", false, cl);
+            method(problemReporter, "deprecatedType", new Class<?>[]{typeBindingClass, astNodeClass}, binding, astNode);
+            return true;
+        } else if (kind.isField()) {
+            Class<?> fieldBindingClass = Class.forName("org.eclipse.jdt.internal.compiler.lookup.FieldBinding", false, cl);
+            method(problemReporter, "deprecatedField", new Class<?>[]{fieldBindingClass, astNodeClass}, binding, astNode);
+            return true;
+        } else if (kind == ElementKind.METHOD || kind == ElementKind.CONSTRUCTOR) {
+            Class<?> methodBindingClass = Class.forName("org.eclipse.jdt.internal.compiler.lookup.MethodBinding", false, cl);
+            method(problemReporter, "deprecatedMethod", new Class<?>[]{methodBindingClass, astNodeClass}, binding, astNode);
+            return true;
+        } else {
+            return false;
         }
     }
 }

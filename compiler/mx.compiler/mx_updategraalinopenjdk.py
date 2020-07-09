@@ -316,6 +316,21 @@ def updategraalinopenjdk(args):
                     with open(dst_file, 'w' + binary_flag) as fp:
                         fp.write(contents)
 
+    def replace_line(filename, old_line, new_line):
+        mx.log('Updating ' + filename + '...')
+        old_lines = []
+        new_lines = []
+        with open(filename) as fp:
+            old_lines = fp.readlines()
+        for line in old_lines:
+            if line == old_line:
+                new_line = line.replace(old_line, new_line)
+                if old_line != new_line:
+                    mx.log('Replaced \n ' + old_line.strip() + '\nwith\n ' + new_line.strip())
+            new_lines.append(line.replace(old_line, new_line))
+        with open(filename, 'w') as fp:
+            fp.writelines(new_lines)
+
     def replace_lines(filename, begin_lines, end_line, replace_lines, old_line_check, preserve_indent=False, append_mode=False):
         mx.log('Updating ' + filename + '...')
         old_lines = []
@@ -383,6 +398,12 @@ def updategraalinopenjdk(args):
     end_line = '#'
     old_line_check = single_column_with_continuation
     replace_lines(CompileJavaModules_gmk, begin_lines, end_line, new_lines, old_line_check, preserve_indent=True)
+
+    # replace renamed service
+    compiler_module_info = join(jdkrepo, 'src', 'jdk.internal.vm.compiler', 'share', 'classes', 'module-info.java')
+    old_line = '    uses org.graalvm.compiler.nodes.graphbuilderconf.NodeIntrinsicPluginFactory;\n'
+    new_line = '    uses org.graalvm.compiler.nodes.graphbuilderconf.GeneratedPluginFactory;\n'
+    replace_line(compiler_module_info, old_line, new_line)
 
     if args.version == 11:
         # add aot exclude

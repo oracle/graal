@@ -65,6 +65,7 @@ import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.WordFactory;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import org.graalvm.compiler.hotspot.management.AggregatedMemoryPoolBean;
 import org.graalvm.libgraal.jni.annotation.FromLibGraalEntryPointsResolver;
 
 class MBeanProxy<T extends DynamicMBean> {
@@ -86,6 +87,7 @@ class MBeanProxy<T extends DynamicMBean> {
     private static final ClassData HS_CALLS_CLASS = ClassData.create(JMXToLibGraalCalls.class);
     private static final ClassData HS_PUSHBACK_ITER_CLASS = ClassData.create(LibGraalMBean.PushBackIterator.class);
     private static final ClassData HS_ENTRYPOINTS_CLASS = ClassData.create(JMXFromLibGraalEntryPoints.class);
+    private static final ClassData HS_AGGREGATED_MEMORY_POOL_BEAN_CLASS = ClassData.create(AggregatedMemoryPoolBean.class);
 
     /**
      * Pending MBeans registrations on HotSpot side.
@@ -120,7 +122,7 @@ class MBeanProxy<T extends DynamicMBean> {
      *
      * @see State
      */
-    private static State state = State.ACTIVE;
+    private static State state = State.INIT;
 
     /**
      * The MBean instance.
@@ -284,7 +286,7 @@ class MBeanProxy<T extends DynamicMBean> {
 
     static String nameWithIsolateId(String name) {
         long id = IsolateUtil.getIsolateID();
-        return id == 0L ? name : name + "@" + id;
+        return id == 0L ? name : name + ",isolate=" + id;
     }
 
     /**
@@ -294,7 +296,7 @@ class MBeanProxy<T extends DynamicMBean> {
      *         in not accepted because the isolate is closing
      */
     private static synchronized <T extends MBeanProxy<?>> T enqueueForRegistration(T instance, HotSpotGraalRuntime runtime) {
-        if (state != State.ACTIVE) {
+        if (state == State.CLOSED) {
             return null;
         }
         registrations.add(instance);
@@ -306,15 +308,27 @@ class MBeanProxy<T extends DynamicMBean> {
     }
 
     /**
+     * Updates state to active. The state is set to active when the Factory was successfully created
+     * on the HotSpot side. In Factory fails to register native methods the updateStateToActive is
+     * not called. This prevents the repetitive exception from the shutdown hook.
+     */
+    private static synchronized void updateStateToActive() {
+        if (state == State.INIT) {
+            state = State.ACTIVE;
+        }
+    }
+
+    /**
      * Uses JNI to define the classes in HotSpot heap.
      */
     private static void defineClassesInHotSpot(JNI.JNIEnv env) {
-        JNI.JObject classLoader = DefineClassSupport.getJVMCIClassLoader(env);
+        JNI.JObject classLoader = JNIUtil.getJVMCIClassLoader(env);
         findOrDefineClassInHotSpot(env, classLoader, HS_CALLS_CLASS);
         JNI.JClass entryPoints = findOrDefineClassInHotSpot(env, classLoader, HS_ENTRYPOINTS_CLASS);
         findOrDefineClassInHotSpot(env, classLoader, HS_BEAN_CLASS);
         findOrDefineClassInHotSpot(env, classLoader, HS_BEAN_FACTORY_CLASS);
         findOrDefineClassInHotSpot(env, classLoader, HS_PUSHBACK_ITER_CLASS);
+        findOrDefineClassInHotSpot(env, classLoader, HS_AGGREGATED_MEMORY_POOL_BEAN_CLASS);
         fromLibGraalEntryPoints = JNIUtil.NewGlobalRef(env, entryPoints, "Class<" + HS_ENTRYPOINTS_CLASS.binaryName + ">");
     }
 
@@ -345,7 +359,7 @@ class MBeanProxy<T extends DynamicMBean> {
         try {
             if (classLoader.isNonNull()) {
                 allowedException = required ? null : ClassNotFoundException.class;
-                return DefineClassSupport.findClass(env, classLoader, className);
+                return JNIUtil.findClass(env, classLoader, className);
             } else {
                 allowedException = required ? null : NoClassDefFoundError.class;
                 return JNIUtil.findClass(env, className);
@@ -401,6 +415,7 @@ class MBeanProxy<T extends DynamicMBean> {
     private static void signalRegistrationRequest() {
         JNI.JNIEnv env = getCurrentJNIEnv();
         JNI.JObject factory = getFactory(env);
+        updateStateToActive();
         callSignalRegistrationRequest(env, factory, CurrentIsolate.getIsolate().rawValue());
     }
 
@@ -426,6 +441,11 @@ class MBeanProxy<T extends DynamicMBean> {
         /**
          * Initial state when an isolate is created.
          */
+        INIT,
+
+        /**
+         * Active state, the MBeans are registered.
+         */
         ACTIVE,
 
         /**
@@ -439,12 +459,16 @@ class MBeanProxy<T extends DynamicMBean> {
         @Override
         public void run() {
             List<MBeanProxy<?>> toUnregister;
+            State prevState;
             synchronized (MBeanProxy.class) {
-                state = MBeanProxy.State.CLOSED;
+                prevState = state;
+                state = State.CLOSED;
                 toUnregister = mBeansToUnregisterOnIsolateClose;
                 mBeansToUnregisterOnIsolateClose = null;
             }
-            unregister(toUnregister);
+            if (prevState == State.ACTIVE) {
+                unregister(toUnregister);
+            }
         }
     }
 

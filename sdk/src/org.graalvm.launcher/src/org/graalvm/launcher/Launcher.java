@@ -1449,7 +1449,9 @@ public abstract class Launcher {
             System.out.println("Native VM options:");
             SortedMap<String, OptionDescriptor> sortedOptions = new TreeMap<>();
             for (OptionDescriptor descriptor : getVMOptions()) {
-                sortedOptions.put(descriptor.getName(), descriptor);
+                if (!descriptor.isDeprecated()) {
+                    sortedOptions.put(descriptor.getName(), descriptor);
+                }
             }
             for (Entry<String, OptionDescriptor> entry : sortedOptions.entrySet()) {
                 OptionDescriptor descriptor = entry.getValue();
@@ -1481,7 +1483,9 @@ public abstract class Launcher {
             System.out.println("Compiler options:");
             SortedMap<String, OptionDescriptor> sortedOptions = new TreeMap<>();
             for (OptionDescriptor descriptor : getCompilerOptions()) {
-                sortedOptions.put(descriptor.getName(), descriptor);
+                if (!descriptor.isDeprecated()) {
+                    sortedOptions.put(descriptor.getName(), descriptor);
+                }
             }
             for (Entry<String, OptionDescriptor> entry : sortedOptions.entrySet()) {
                 OptionDescriptor descriptor = entry.getValue();

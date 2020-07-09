@@ -719,7 +719,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 if (decision.shouldInline()) {
                     OptimizedCallTarget target = decision.getTarget();
                     if (target != optimizedCallTarget) {
-                        target.cancelInstalledTask(decision.getProfile().getCallNode(), "Inlining caller compiled.");
+                        target.cancelCompilation("Inlining caller compiled.");
                     }
                     dequeueInlinedCallSites(decision, optimizedCallTarget);
                 }
@@ -734,15 +734,13 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         Priority priority = lastTierCompilation ? Priority.LAST_TIER : Priority.FIRST_TIER;
         return getCompileQueue().submitTask(priority, optimizedCallTarget, new BackgroundCompileQueue.Request() {
             @Override
-            protected void execute(TruffleCompilationTask task, WeakReference<OptimizedCallTarget> targetRef) {
+            protected void execute(CancellableCompileTask task, WeakReference<OptimizedCallTarget> targetRef) {
                 OptimizedCallTarget callTarget = targetRef.get();
-                if (callTarget != null) {
+                if (callTarget != null && task.start()) {
                     try {
-                        if (!task.isCancelled()) {
-                            doCompile(callTarget, task);
-                        }
+                        doCompile(callTarget, task);
                     } finally {
-                        callTarget.resetCompilationTask();
+                        task.finished();
                     }
                 }
             }
@@ -798,17 +796,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         }
     }
 
-    public boolean cancelInstalledTask(OptimizedCallTarget optimizedCallTarget, Object source, CharSequence reason) {
-        CancellableCompileTask task = optimizedCallTarget.getCompilationTask();
-        if (task != null) {
-            if (task.cancel()) {
-                getListener().onCompilationDequeued(optimizedCallTarget, source, reason);
-                return true;
-            }
-        }
-        return false;
-    }
-
     public void waitForCompilation(OptimizedCallTarget optimizedCallTarget, long timeout) throws ExecutionException, TimeoutException {
         CancellableCompileTask task = optimizedCallTarget.getCompilationTask();
         if (task != null && !task.isCancelled()) {
@@ -824,10 +811,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     public int getCompilationQueueSize() {
         return getCompileQueue().getQueueSize();
-    }
-
-    public boolean isCompiling(OptimizedCallTarget optimizedCallTarget) {
-        return optimizedCallTarget.isCompiling();
     }
 
     /**
@@ -1063,8 +1046,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     /**
      * Gets a closeable that will be used in a try-with-resources statement surrounding the run-loop
-     * of a Truffle compiler thread. In conjunction with {@link #getCompilerIdleDelay()}, this can
-     * be used to release resources held by idle Truffle compiler threads.
+     * of a Truffle compiler thread. In conjunction with
+     * {@link #getCompilerIdleDelay(OptimizedCallTarget)}, this can be used to release resources
+     * held by idle Truffle compiler threads.
      *
      * If a non-null value is returned, its {@link AutoCloseable#close()} must not throw an
      * exception.
@@ -1075,10 +1059,10 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     /**
      * Gets the time in milliseconds an idle Truffle compiler thread will wait for new tasks before
-     * terminating. A value of {@code < 0} means that Truffle compiler threads block indefinitely
+     * terminating. A value of {@code <= 0} means that Truffle compiler threads block indefinitely
      * waiting for a task and thus never terminate.
      */
-    protected long getCompilerIdleDelay() {
-        return -1;
+    protected long getCompilerIdleDelay(@SuppressWarnings("unused") OptimizedCallTarget callTarget) {
+        return 0;
     }
 }

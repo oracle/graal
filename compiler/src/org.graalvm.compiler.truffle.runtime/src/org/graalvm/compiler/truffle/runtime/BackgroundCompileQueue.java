@@ -36,7 +36,6 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
 /**
@@ -86,7 +85,7 @@ public class BackgroundCompileQueue {
 
             ThreadFactory factory = newThreadFactory("TruffleCompilerThread", callTarget);
 
-            long compilerIdleDelay = runtime.getCompilerIdleDelay();
+            long compilerIdleDelay = runtime.getCompilerIdleDelay(callTarget);
             long keepAliveTime = compilerIdleDelay >= 0 ? compilerIdleDelay : 0;
             ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(threads, threads,
                             keepAliveTime, TimeUnit.MILLISECONDS,
@@ -96,7 +95,7 @@ public class BackgroundCompileQueue {
                     return new RequestFutureTask<>((RequestImpl<T>) callable);
                 }
             };
-            if (compilerIdleDelay >= 0) {
+            if (compilerIdleDelay > 0) {
                 threadPoolExecutor.allowCoreThreadTimeOut(true);
             }
             return compilationExecutorService = threadPoolExecutor;
@@ -109,8 +108,9 @@ public class BackgroundCompileQueue {
     }
 
     public CancellableCompileTask submitTask(Priority priority, OptimizedCallTarget target, Request request) {
-        CancellableCompileTask cancellable = new CancellableCompileTask(priority == Priority.LAST_TIER);
-        RequestImpl<Void> requestImpl = new RequestImpl<>(nextId(), priority, target, cancellable, request);
+        final WeakReference<OptimizedCallTarget> targetReference = new WeakReference<>(target);
+        CancellableCompileTask cancellable = new CancellableCompileTask(targetReference, priority == Priority.LAST_TIER);
+        RequestImpl<Void> requestImpl = new RequestImpl<>(nextId(), priority, targetReference, cancellable, request);
         cancellable.setFuture(getExecutorService(target).submit(requestImpl));
         return cancellable;
     }
@@ -162,7 +162,7 @@ public class BackgroundCompileQueue {
 
     public abstract static class Request {
 
-        protected abstract void execute(TruffleCompilationTask task, WeakReference<OptimizedCallTarget> targetRef);
+        protected abstract void execute(CancellableCompileTask task, WeakReference<OptimizedCallTarget> targetRef);
 
     }
 
@@ -170,14 +170,14 @@ public class BackgroundCompileQueue {
 
         private final long id;
         private final Priority priority;
-        private final TruffleCompilationTask task;
+        private final CancellableCompileTask task;
         private final WeakReference<OptimizedCallTarget> targetRef;
         private final Request request;
 
-        RequestImpl(long id, Priority priority, OptimizedCallTarget callTarget, TruffleCompilationTask task, Request request) {
+        RequestImpl(long id, Priority priority, WeakReference<OptimizedCallTarget> targetRef, CancellableCompileTask task, Request request) {
             this.id = id;
             this.priority = priority;
-            this.targetRef = new WeakReference<>(callTarget);
+            this.targetRef = targetRef;
             this.task = task;
             this.request = request;
         }

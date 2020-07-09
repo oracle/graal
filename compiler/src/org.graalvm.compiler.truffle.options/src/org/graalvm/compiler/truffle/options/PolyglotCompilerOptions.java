@@ -217,6 +217,13 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Manually set the number of compiler threads", category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> CompilerThreads = new OptionKey<>(0);
 
+    @Option(help = "Set the time in milliseconds an idle Truffle compiler thread will wait for new tasks before terminating. " +
+            "New compiler threads will be started once new compilation tasks are submitted. " +
+            "Select '0' to never terminate the Truffle compiler thread. " +
+            "The option is not supported by all Truffle runtimes. On the runtime which doesn't support it the option has no effect.",
+            category = OptionCategory.EXPERT)
+    public static final OptionKey<Long> CompilerIdleDelay = new OptionKey<>(1000L);
+
     @Option(help = "Minimum number of invocations or loop iterations needed to compile a guest language root.",
                     category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> CompilationThreshold = new OptionKey<>(1000);

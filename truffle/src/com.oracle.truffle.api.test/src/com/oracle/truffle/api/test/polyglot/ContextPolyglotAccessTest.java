@@ -97,6 +97,36 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
     }
 
     @Test
+    public void testEmbedderAccessDependent() {
+        setupEnv(Context.newBuilder(ProxyLanguage.ID, DEPENDENT, LANGUAGE1).allowPolyglotAccess(PolyglotAccess.ALL).build());
+        context.initialize(LANGUAGE1);
+
+        Env language1 = Language1.getContext(Language1.class);
+        language1.initializeLanguage(language1.getInternalLanguages().get(DEPENDENT));
+
+        Env dependent = Dependent.getContext(Dependent.class);
+        assertPublicEvalDenied(language1, INTERNAL);
+        assertPublicEvalAllowed(language1, DEPENDENT);
+        assertPublicEvalAllowed(language1, LANGUAGE1);
+        assertPublicEvalDenied(language1, LANGUAGE2);
+
+        assertInternalEvalAllowed(language1, INTERNAL);
+        assertInternalEvalAllowed(language1, DEPENDENT);
+        assertInternalEvalAllowed(language1, LANGUAGE1);
+        assertInternalEvalDenied(language1, LANGUAGE2);
+
+        assertPublicEvalDenied(dependent, INTERNAL);
+        assertPublicEvalAllowed(dependent, DEPENDENT);
+        assertPublicEvalAllowed(dependent, LANGUAGE1);
+        assertPublicEvalDenied(dependent, LANGUAGE2);
+
+        assertInternalEvalAllowed(dependent, INTERNAL);
+        assertInternalEvalAllowed(dependent, DEPENDENT);
+        assertInternalEvalAllowed(dependent, LANGUAGE1);
+        assertInternalEvalDenied(dependent, LANGUAGE2);
+    }
+
+    @Test
     public void testNotExistingEmbedder() {
         setupEnv(Context.newBuilder(ProxyLanguage.ID, LANGUAGE1, NOT_EXISTING_LANGUAGE).allowPolyglotAccess(PolyglotAccess.ALL).build());
         context.initialize(LANGUAGE1);

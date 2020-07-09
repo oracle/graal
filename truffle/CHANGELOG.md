@@ -27,6 +27,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * All subclasses of `InteropException` do no longer provide a Java stack trace. They are intended to be thrown, immediately caught by the caller and not re-thrown. As a result they can now be allocated on compiled code paths and do no longer require a `@TruffleBoundary` or `transferToInterpreterAndInvalidate()` before use. Languages are encouraged to remove `@TruffleBoundary` annotations or leading `transferToInterpreterAndInvalidate()` method calls before interop exceptions are thrown. 
 * All `InteropException` subclasses now offer a new `create` factory method to provide a cause. This cause should only be used if user provided guest application code caused the problem.
 * The use of `InteropException.initCause` is now deprecated for performance reasons. Instead pass the cause when the `InteropException` is constructed. The method `initCause` will throw `UnsupportedOperationException` in future versions. Please validate all calls to `Throwable.initCause` for language or tool implementation code.
+* Added [TruffleFile.isSameFile](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#isSameFile-com.oracle.truffle.api.TruffleFile-java.nio.file.LinkOption...-) method to test if two `TruffleFile`s refer to the same physical file.
 
 ## Version 20.1.0
 * Added `@GenerateLibrary(dynamicDispatchEnabled = false)` that allows to disable dynamic dispatch semantics for a library. The default is `true`.

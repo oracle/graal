@@ -40,13 +40,15 @@ simpleToolMavenProjectGate:  {
       maven : "==3.3.9"
     }
     run : [
+        [set-export, ROOT_DIR, [pwd]]
         ${simpleToolMavenProjectGate.mx_cmd} ["build"],
-        ${simpleToolMavenProjectGate.mx_cmd} ["maven-deploy", "--all-suites", "--suppress-javadoc", "--version-string", ${simpleToolMavenProjectGate.mx_cmd} ["graalvm-version"]],
+        ["mkdir", "tmp_mvn_repo"]
+        ["mx", "maven-install", "--repo", "tmp_mvn_repo", "--version-string", ${simpleToolMavenProjectGate.mx_cmd} ["graalvm-version"]],
         ["set-export", "JAVA_HOME", ${simpleToolMavenProjectGate.mx_cmd} ["graalvm-home"]],
         ["cd", "external_repos/"],
         ["python", "populate.py"],
         ["cd", "simpletool"],
-        ["mvn", "package"],
+        ["mvn", "-Dmaven.repo.local=$ROOT_DIR/tmp_mvn_repo", "package"],
         ["./simpletool", "js", "example.js"],
     ],
     targets : [gate],
@@ -63,13 +65,18 @@ simpleLanguageMavenProjectGate:  {
         valgrind: ">=3.9.0"
     }
     run : [
+        [set-export, ROOT_DIR, [pwd]]
         ${simpleLanguageMavenProjectGate.mx_cmd} ["build"],
-        ${simpleLanguageMavenProjectGate.mx_cmd} ["maven-deploy", "--all-suites", "--suppress-javadoc", "--version-string", ${simpleLanguageMavenProjectGate.mx_cmd} ["graalvm-version"]],
+        ["mkdir", "tmp_mvn_repo"]
+        ["mx", "maven-install", "--all-suites", "--repo", "tmp_mvn_repo", "--version-string", ${simpleLanguageMavenProjectGate.mx_cmd} ["graalvm-version"]],
         ["set-export", "JAVA_HOME", ${simpleLanguageMavenProjectGate.mx_cmd} ["graalvm-home"]],
         ["cd", "external_repos"],
         ["python", "populate.py"],
         ["cd", "simplelanguage"],
-        ["mvn", "package"],
+        ["mvn", "-Dmaven.repo.local=$ROOT_DIR/tmp_mvn_repo", "package"],
+        ["./sl", "language/tests/Add.sl"],
+        ["./sl", "-dump", "language/tests/Add.sl"],
+        ["./sl", "-disassemble", "language/tests/Add.sl"],
         ["./sl", "language/tests/Add.sl"],
         ["./native/slnative", "language/tests/Add.sl"],
         ["$JAVA_HOME/bin/gu", "install", "-L", "component/sl-component.jar"],

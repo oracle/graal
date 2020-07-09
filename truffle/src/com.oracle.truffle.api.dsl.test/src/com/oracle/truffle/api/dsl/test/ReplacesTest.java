@@ -251,7 +251,7 @@ public class ReplacesTest {
             return a;
         }
 
-        @Specialization(replaces = {"f0"})
+        @Specialization
         Object f1(double a) {
             return a;
         }

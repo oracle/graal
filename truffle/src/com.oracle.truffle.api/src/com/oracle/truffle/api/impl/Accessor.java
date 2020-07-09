@@ -437,7 +437,7 @@ public abstract class Accessor {
 
         public abstract String getUnparsedOptionValue(OptionValues optionValues, OptionKey<?> optionKey);
 
-        public abstract String getPreinitializedRelativePathInLanguageHome(TruffleFile truffleFile);
+        public abstract String getRelativePathInLanguageHome(TruffleFile truffleFile);
 
         public abstract void onSourceCreated(Source source);
 

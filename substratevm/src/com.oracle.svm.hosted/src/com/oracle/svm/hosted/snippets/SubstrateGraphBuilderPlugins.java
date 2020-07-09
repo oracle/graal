@@ -58,6 +58,7 @@ import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
@@ -501,26 +502,49 @@ public class SubstrateGraphBuilderPlugins {
         if (JavaVersionUtil.JAVA_SPEC > 8) {
             Registration r = new Registration(plugins, "jdk.internal.misc.Unsafe");
             registerUnsafePlugins(metaAccess, r, snippetReflection, analysis);
-            if (JavaVersionUtil.JAVA_SPEC >= 11) {
-                /* JDK 11 and later have Unsafe.objectFieldOffset(Class, String). */
-                r.register3("objectFieldOffset", Receiver.class, Class.class, String.class, new InvocationPlugin() {
-                    @Override
-                    public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode classNode, ValueNode nameNode) {
-                        if (classNode.isConstant() && nameNode.isConstant()) {
-                            /* If the class and field name arguments are constant. */
-                            Class<?> clazz = snippetReflection.asObject(Class.class, classNode.asJavaConstant());
-                            String fieldName = snippetReflection.asObject(String.class, nameNode.asJavaConstant());
-                            try {
-                                Field targetField = clazz.getDeclaredField(fieldName);
-                                return processObjectFieldOffset(b, targetField, analysis, metaAccess);
-                            } catch (NoSuchFieldException | NoClassDefFoundError e) {
-                                return false;
-                            }
+
+            r.register3("objectFieldOffset", Receiver.class, Class.class, String.class, new InvocationPlugin() {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode classNode, ValueNode nameNode) {
+                    if (classNode.isConstant() && nameNode.isConstant()) {
+                        /* If the class and field name arguments are constant. */
+                        Class<?> clazz = snippetReflection.asObject(Class.class, classNode.asJavaConstant());
+                        String fieldName = snippetReflection.asObject(String.class, nameNode.asJavaConstant());
+                        try {
+                            Field targetField = clazz.getDeclaredField(fieldName);
+                            return processObjectFieldOffset(b, targetField, analysis, metaAccess);
+                        } catch (NoSuchFieldException | NoClassDefFoundError e) {
+                            return false;
                         }
-                        return false;
                     }
-                });
-            }
+                    return false;
+                }
+            });
+            r.register3("allocateUninitializedArray", Receiver.class, Class.class, int.class, new InvocationPlugin() {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode componentTypeNode, ValueNode lengthNode) {
+                    BytecodeParser p = (BytecodeParser) b;
+                    /*
+                     * For simplicity, we only intrinsify if the componentType is a compile-time
+                     * constant. That also allows us to constant-fold the required check that the
+                     * component type is a primitive type.
+                     */
+                    if (componentTypeNode.isJavaConstant() && componentTypeNode.asJavaConstant().isNonNull()) {
+                        ResolvedJavaType componentType = b.getConstantReflection().asJavaType(componentTypeNode.asJavaConstant());
+                        if (componentType.isPrimitive()) {
+                            /* Emits a null-check for the otherwise unused receiver. */
+                            unsafe.get();
+
+                            LogicNode lengthNegative = b.append(IntegerLessThanNode.create(lengthNode, ConstantNode.forInt(0), NodeView.DEFAULT));
+                            p.emitBytecodeExceptionCheck(lengthNegative, false, BytecodeExceptionNode.BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION,
+                                            ConstantNode.forConstant(snippetReflection.forObject("Negative length"), b.getMetaAccess(), b.getGraph()));
+                            b.addPush(JavaKind.Object, new NewArrayNode(componentType, lengthNode, false));
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+            });
         }
     }
 

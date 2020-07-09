@@ -24,20 +24,16 @@
  */
 package com.oracle.svm.hosted.phases;
 
-import java.lang.reflect.InvocationTargetException;
-
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.java.GraphBuilderPhase.Instance;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
-import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.util.Providers;
 
@@ -45,7 +41,9 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.graal.code.SubstrateCompilationIdentifier;
+import com.oracle.svm.core.graal.nodes.DeadEndNode;
 import com.oracle.svm.core.graal.replacements.SubstrateGraphKit;
+import com.oracle.svm.core.util.ExceptionHelpers;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.nodes.SubstrateMethodCallTargetNode;
@@ -87,12 +85,13 @@ public class HostedGraphKit extends SubstrateGraphKit {
     public void emitEnsureInitializedCall(ResolvedJavaType type) {
         if (SubstrateClassInitializationPlugin.needsRuntimeInitialization(graph.method().getDeclaringClass(), type)) {
             ValueNode hub = createConstant(getConstantReflection().asJavaClass(type), JavaKind.Object);
+            int bci = bci();
             EnsureClassInitializedNode ensureInitializedNode = append(new EnsureClassInitializedNode(hub));
-            ensureInitializedNode.setStateAfter(getFrameState().create(bci(), ensureInitializedNode));
+            ensureInitializedNode.setStateAfter(getFrameState().create(bci, ensureInitializedNode));
 
             AbstractBeginNode noExceptionEdge = add(ensureInitializedNode.createNextBegin());
             ensureInitializedNode.setNext(noExceptionEdge);
-            ExceptionObjectNode exceptionEdge = createExceptionObjectNode(getFrameState(), bci());
+            ExceptionObjectNode exceptionEdge = createExceptionObjectNode(getFrameState(), bci);
             ensureInitializedNode.setExceptionEdge(exceptionEdge);
 
             lastFixedNode = exceptionEdge;
@@ -104,19 +103,9 @@ public class HostedGraphKit extends SubstrateGraphKit {
     }
 
     public void throwInvocationTargetException(ValueNode exception) {
-        ResolvedJavaType exceptionType = getMetaAccess().lookupJavaType(InvocationTargetException.class);
-        ValueNode ite = append(new NewInstanceNode(exceptionType, true));
-
-        ResolvedJavaMethod cons = null;
-        for (ResolvedJavaMethod c : exceptionType.getDeclaredConstructors()) {
-            if (c.getSignature().getParameterCount(false) == 1) {
-                cons = c;
-            }
-        }
-
-        createJavaCallWithExceptionAndUnwind(InvokeKind.Special, cons, ite, exception);
-
-        append(new UnwindNode(ite));
+        ResolvedJavaMethod throwInvocationTargetException = findMethod(ExceptionHelpers.class, "throwInvocationTargetException", true);
+        createJavaCallWithExceptionAndUnwind(InvokeKind.Static, throwInvocationTargetException, exception);
+        append(new DeadEndNode());
     }
 
 }

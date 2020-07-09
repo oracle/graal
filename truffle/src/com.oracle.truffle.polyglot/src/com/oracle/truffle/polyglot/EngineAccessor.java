@@ -1082,7 +1082,7 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public String getPreinitializedRelativePathInLanguageHome(TruffleFile truffleFile) {
+        public String getRelativePathInLanguageHome(TruffleFile truffleFile) {
             return FileSystems.getRelativePathInLanguageHome(truffleFile);
         }
 
