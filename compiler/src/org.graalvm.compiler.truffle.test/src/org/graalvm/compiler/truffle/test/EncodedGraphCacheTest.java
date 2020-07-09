@@ -43,6 +43,7 @@ import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
 import org.graalvm.polyglot.Context;
+import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Before;
@@ -60,9 +61,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public final class EncodedGraphCacheTest extends PartialEvaluationTest {
 
-    @SuppressWarnings("static-method")
-    @Before
-    public void resetCompiler() {
+    @AfterClass
+    public static void resetCompiler() {
         Assume.assumeFalse("This test does not apply to SVM runtime where the compiler is initialized eagerly.", TruffleOptions.AOT);
         try {
             Method m = Truffle.getRuntime().getClass().getMethod("resetCompiler");
@@ -70,6 +70,12 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
         } catch (Exception e) {
             throw new AssertionError(e);
         }
+    }
+
+    @SuppressWarnings("static-method")
+    @Before
+    public void resetCompilerBefore() {
+        resetCompiler();
     }
 
     private static TruffleCompilerImpl getTruffleCompilerFromRuntime(OptimizedCallTarget callTarget) {
