@@ -116,6 +116,7 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
         return cache.containsKey(method);
     }
 
+    @SuppressWarnings("try")
     private static OptimizedCallTarget compileAST(RootNode rootNode) {
         GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
         OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
