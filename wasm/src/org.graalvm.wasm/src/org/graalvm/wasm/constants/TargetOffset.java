@@ -42,32 +42,32 @@ package org.graalvm.wasm.constants;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
-public final class TargetOffset {
-    public final int value;
-
-    private TargetOffset(int value) {
-        this.value = value;
-    }
-
-    public static TargetOffset get(int value) {
-        // The cache index starts with value -1, so we need a +1 offset.
-        return CACHE[value + 1];
-    }
-
-    public static final TargetOffset MINUS_ONE = new TargetOffset(-1);
-    public static final TargetOffset ZERO = new TargetOffset(0);
-
-    @CompilationFinal(dimensions = 1) private static TargetOffset[] CACHE;
-
-    public static void ensureCacheSize(int n) {
-        int size = Integer.highestOneBit(n + 1) << 1;
-        if (CACHE == null || CACHE.length < size) {
-            CACHE = new TargetOffset[size];
-            CACHE[0] = MINUS_ONE;
-            CACHE[1] = ZERO;
-            for (int i = 2; i < size; i++) {
-                CACHE[i] = new TargetOffset(i - 1);
-            }
-        }
-    }
-}
+//public final class TargetOffset {
+//    public final int value;
+//
+//    private TargetOffset(int value) {
+//        this.value = value;
+//    }
+//
+//    public static TargetOffset get(int value) {
+//        // The cache index starts with value -1, so we need a +1 offset.
+//        return CACHE[value + 1];
+//    }
+//
+//    public static final TargetOffset MINUS_ONE = new TargetOffset(-1);
+//    public static final TargetOffset ZERO = new TargetOffset(0);
+//
+//    @CompilationFinal(dimensions = 1) private static TargetOffset[] CACHE;
+//
+//    public static void ensureCacheSize(int n) {
+//        int size = Integer.highestOneBit(n + 1) << 1;
+//        if (CACHE == null || CACHE.length < size) {
+//            CACHE = new TargetOffset[size];
+//            CACHE[0] = MINUS_ONE;
+//            CACHE[1] = ZERO;
+//            for (int i = 2; i < size; i++) {
+//                CACHE[i] = new TargetOffset(i - 1);
+//            }
+//        }
+//    }
+//}

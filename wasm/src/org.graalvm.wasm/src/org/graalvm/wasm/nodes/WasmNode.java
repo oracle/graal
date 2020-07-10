@@ -46,7 +46,6 @@ import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.WasmCodeEntry;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.constants.TargetOffset;
 
 public abstract class WasmNode extends Node implements WasmNodeInterface {
     // TODO: We should not cache the module in the nodes, only the symbol table.
