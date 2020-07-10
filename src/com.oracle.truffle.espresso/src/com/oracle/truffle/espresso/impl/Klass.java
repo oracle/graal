@@ -910,6 +910,11 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     @CompilationFinal private Symbol<Name> runtimePackage;
 
+    private Symbol<Name> initRuntimePackage() {
+        ByteSequence hostPkgName = Types.getRuntimePackage(getType());
+        return getNames().getOrCreate(hostPkgName);
+    }
+
     public Symbol<Name> getRuntimePackage() {
         return runtimePackage;
     }
@@ -922,20 +927,19 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return packageEntry() == null;
     }
 
-    private Symbol<Name> initRuntimePackage() {
-        ByteSequence hostPkgName = Types.getRuntimePackage(getType());
-        if (hostPkgName.length() == 0) {
-            return null;
-        }
-        return getNames().getOrCreate(hostPkgName);
-    }
-
     public Symbol<Name> getName() {
         return name;
     }
 
     public boolean sameRuntimePackage(Klass other) {
-        return this.getDefiningClassLoader() == other.getDefiningClassLoader() && this.getRuntimePackage().equals(other.getRuntimePackage());
+        if (this.getDefiningClassLoader() != other.getDefiningClassLoader()) {
+            return false;
+        }
+        if (getContext().modulesEnabled()) {
+            return this.packageEntry() == other.packageEntry();
+        } else {
+            return this.getRuntimePackage().equals(other.getRuntimePackage());
+        }
     }
 
     // region jdwp-specific
