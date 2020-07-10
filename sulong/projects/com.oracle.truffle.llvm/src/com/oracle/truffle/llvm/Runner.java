@@ -517,11 +517,6 @@ final class Runner {
                     }
                 }
 
-                if (context.isInternalLibrary(parserResult.getRuntime().getLibrary())) {
-                    // renaming is attempted only for internal libraries.
-                    initSymbols.append(resolveRenamedSymbols(parserResult, language));
-                }
-
                 if (frame.getArguments().length == 0) {
                     //This is only performed for the root node of the top level call target.
                     LLVMFunctionDescriptor startFunctionDescriptor = findAndSetSulongSpecificFunctions(language, context);
@@ -588,6 +583,7 @@ final class Runner {
 
         getDefaultLibrariesForRootNode(dependenciesSource);
         LLVMParserResult result = parseLibraryWithSource(source, library, bytes, dependenciesSource);
+        boolean isInternalLibrary = context.isInternalLibrary(library);
 
         if (result == null) {
             // if result is null, then it does not contain bitcode. (NFI can handle it later if it's
@@ -603,8 +599,14 @@ final class Runner {
         // Need to clear libsulong++ if we are already in libsulong.
         removeCyclicDependency(source, dependenciesSource);
 
+        // Need to do the renaming here, it is only for internal libraries.
+        if (isInternalLibrary) {
+            // renaming is attempted only for internal libraries.
+            resolveRenamedSymbols(result, language);
+        }
+
         addExternalSymbolsToScopes(result);
-        if (context.isInternalLibrary(library)) {
+        if (isInternalLibrary) {
             String libraryName = getSimpleLibraryName(library.getName());
             // Add the file scope to the language
             language.addInternalFileScope(libraryName, result.getRuntime().getFileScope());
@@ -1104,18 +1106,13 @@ final class Runner {
         @Children final AllocGlobalNode[] allocGlobals;
         final String moduleName;
 
-        @Children AllocSymbolNode[] allocFuncs;
-        final ArrayList<AllocSymbolNode> allocFuncsAndAliasesList = new ArrayList<>();
-
+        @Children final AllocSymbolNode[] allocFuncs;
 
         private final LLVMScope fileScope;
         private NodeFactory nodeFactory;
 
         private final int bitcodeID;
         private final int globalLength;
-
-        private final boolean lazyParsing;
-        private final boolean isInternalSulongLibrary;
 
         InitializeSymbolsNode(LLVMParserResult result, NodeFactory nodeFactory, boolean lazyParsing, boolean isInternalSulongLibrary, String moduleName) throws TypeOverflowException {
             DataLayout dataLayout = result.getDataLayout();
@@ -1125,8 +1122,6 @@ final class Runner {
             this.globalLength = result.getSymbolTableSize();
             this.bitcodeID = result.getRuntime().getBitcodeID();
             this.moduleName = moduleName;
-            this.lazyParsing = lazyParsing;
-            this.isInternalSulongLibrary = isInternalSulongLibrary;
 
             // allocate all non-pointer types as two structs
             // one for read-only and one for read-write
@@ -1153,7 +1148,7 @@ final class Runner {
              * bitcode function, or eager llvm bitcode function.
              */
 
-            //ArrayList<AllocSymbolNode> allocFuncsAndAliasesList = new ArrayList<>();
+            ArrayList<AllocSymbolNode> allocFuncsAndAliasesList = new ArrayList<>();
             for (FunctionSymbol functionSymbol : result.getDefinedFunctions()) {
                 LLVMFunction function = fileScope.getFunction(functionSymbol.getName());
                 // Internal libraries in the llvm library path are allowed to have intriniscs.
@@ -1168,6 +1163,7 @@ final class Runner {
             this.allocRoSection = roSection.getAllocateNode(nodeFactory, "roglobals_struct", true);
             this.allocRwSection = rwSection.getAllocateNode(nodeFactory, "rwglobals_struct", false);
             this.allocGlobals = allocGlobalsList.toArray(AllocGlobalNode.EMPTY);
+            this.allocFuncs = allocFuncsAndAliasesList.toArray(AllocSymbolNode.EMPTY);
             this.writeSymbols = LLVMWriteSymbolNodeGen.create();
         }
 
@@ -1183,7 +1179,6 @@ final class Runner {
         }
 
         public LLVMPointer execute(LLVMContext ctx) {
-            this.allocFuncs = allocFuncsAndAliasesList.toArray(AllocSymbolNode.EMPTY);
             if (ctx.loaderTraceStream() != null) {
                 LibraryLocator.traceStaticInits(ctx, "symbol initializers", moduleName);
             }
@@ -1240,20 +1235,6 @@ final class Runner {
                 return allocNode.executeWithTarget();
             } else {
                 return null;
-            }
-        }
-
-        @TruffleBoundary
-        private void append(ArrayList<LLVMFunction> functions ){
-            LLVMIntrinsicProvider intrinsicProvider = LLVMLanguage.getLanguage().getCapability(LLVMIntrinsicProvider.class);
-            for (LLVMFunction function : functions) {
-                if (isInternalSulongLibrary && intrinsicProvider.isIntrinsified(function.getName())) {
-                    allocFuncsAndAliasesList.add(new AllocIntrinsicFunctionNode(function, nodeFactory, intrinsicProvider));
-                } else if (lazyParsing) {
-                    allocFuncsAndAliasesList.add(new AllocLLVMFunctionNode(function));
-                } else {
-                    allocFuncsAndAliasesList.add(new AllocLLVMEagerFunctionNode(function));
-                }
             }
         }
     }
@@ -1353,9 +1334,6 @@ final class Runner {
                 LLVMFunction newFunction = LLVMFunction.create(name, originalSymbol.getLibrary(), originalSymbol.getFunction(), originalSymbol.getType(),
                         parserResult.getRuntime().getBitcodeID(), external.getIndex(), external.isExported());
                 LLVMScope fileScope = parserResult.getRuntime().getFileScope();
-                if (fileScope.contains(name)) {
-                    fileScope.remove(name);
-                }
                 fileScope.register(newFunction);
                 functions.add(newFunction);
                 it.remove();

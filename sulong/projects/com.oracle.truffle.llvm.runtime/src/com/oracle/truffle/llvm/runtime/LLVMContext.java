@@ -299,6 +299,17 @@ public final class LLVMContext {
             addLibraryPath(internalLibraryPath.toString());
         }
         try {
+            /*
+             * The default internal libraries are parsed, but not initialised, in reverse dependency order.
+             * (libsulong for basic sulong / libc, libsulong, libsulong-override for managed sulong)
+             */
+            String[] sulongLibraryNames = language.getCapability(PlatformCapability.class).getSulongDefaultLibraries();
+            for (int i = sulongLibraryNames.length - 1; i >= 0 ; i--) {
+                ExternalLibrary library = addInternalLibrary(sulongLibraryNames[i], "<default bitcode library>");
+                TruffleFile file = library.hasFile() ? library.getFile() : env.getInternalTruffleFile(library.getPath().toUri());
+                env.parseInternal(Source.newBuilder("llvm", file).internal(library.isInternal()).build());
+            }
+
             CallTarget libpolyglotMock = env.parseInternal(Source.newBuilder("llvm",
                             env.getInternalTruffleFile(internalLibraryPath.resolve(language.getCapability(PlatformCapability.class).getPolyglotMockLibrary()).toUri())).internal(true).build());
             libpolyglotMock.call();
@@ -608,7 +619,7 @@ public final class LLVMContext {
      * native one until it is parsed and we know for sure.
      *
      * @see ExternalLibrary#makeBitcodeLibrary
-     * @return null if already added
+     * @return the cached library if already added
      */
     public ExternalLibrary addExternalLibrary(String lib, Object reason, LibraryLocator locator) {
         CompilerAsserts.neverPartOfCompilation();
@@ -618,11 +629,10 @@ public final class LLVMContext {
             return null;
         }
         ExternalLibrary existingLib = getOrAddExternalLibrary(newLib);
-        if (existingLib == newLib) {
-            return newLib;
+        if (existingLib != newLib) {
+            LibraryLocator.traceAlreadyLoaded(this, existingLib);
         }
-        LibraryLocator.traceAlreadyLoaded(this, existingLib);
-        return null;
+        return existingLib;
     }
 
     /**
