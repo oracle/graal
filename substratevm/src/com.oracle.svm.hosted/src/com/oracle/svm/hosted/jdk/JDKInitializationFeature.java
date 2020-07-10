@@ -39,7 +39,7 @@ public class JDKInitializationFeature implements Feature {
         RuntimeClassInitialization.initializeAtBuildTime("com.sun.net.ssl", "Core JDK classes are initialized at build time");
         RuntimeClassInitialization.initializeAtBuildTime("com.sun.nio.file", "Core JDK classes are initialized at build time");
         RuntimeClassInitialization.initializeAtBuildTime("com.sun.nio.sctp", "Core JDK classes are initialized at build time");
-        RuntimeClassInitialization.initializeAtBuildTime("com.sun.nio.zipfs", "Native Image classes are always initialized at build time");
+        RuntimeClassInitialization.initializeAtBuildTime("com.sun.nio.zipfs", "Core JDK classes are initialized at build time");
 
         RuntimeClassInitialization.initializeAtBuildTime("java.io", "Core JDK classes are initialized at build time");
         RuntimeClassInitialization.initializeAtBuildTime("java.lang", "Core JDK classes are initialized at build time");
