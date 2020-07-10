@@ -26,6 +26,7 @@
 
 package com.oracle.svm.hosted.image.sources;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.util.ModuleSupport;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -39,7 +40,7 @@ import java.util.HashMap;
  */
 public class SourceManager {
     /**
-     * Find and cache a source file for a give Java class and return a Path to the file relative to
+     * Find and cache a source file for a given Java class and return a Path to the file relative to
      * the source.
      * 
      * @param resolvedType the Java type whose source file should be located and cached
@@ -72,6 +73,8 @@ public class SourceManager {
                         path = Paths.get("", packageName.split("\\."));
                         path = path.resolve(fileName);
                     }
+                } else {
+                    verifiedCachePaths.put(resolvedType, SubstrateOptions.getDebugInfoSourceCacheRoot().resolve(sourceCacheType.getSubdir()));
                 }
             }
         }
@@ -79,6 +82,17 @@ public class SourceManager {
         verifiedPaths.put(resolvedType, (path != null ? path : INVALID_PATH));
 
         return path;
+    }
+
+    /**
+     * Get the cache Path of the source file for a given Java class.
+     *
+     * @param resolvedType the Java type whose source file should be located and cached
+     * @return a path identifying the cache location for a successfully cached file for inclusion in
+     *         the generated debug info or {@code null} if a source file cannot be found or cached.
+     */
+    public Path getCachePathForSource(ResolvedJavaType resolvedType) {
+        return verifiedCachePaths.get(resolvedType);
     }
 
     /**
@@ -229,6 +243,11 @@ public class SourceManager {
      * entry in the relevant source file cache. This is used to memoize previous lookups.
      */
     private static HashMap<ResolvedJavaType, Path> verifiedPaths = new HashMap<>();
+
+    /**
+     * A map from a Java type to an associated source file cache path.
+     */
+    private static HashMap<ResolvedJavaType, Path> verifiedCachePaths = new HashMap<>();
 
     /**
      * An invalid path used as a marker to track failed lookups so we don't waste time looking up

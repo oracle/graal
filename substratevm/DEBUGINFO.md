@@ -174,31 +174,38 @@ configure extra source search paths (see below).
 Configuring source paths in gdb
 -------------------------------
 
-In order for gdb to be able to locate the source files for your app
-classes, Graal classes and JDK runtime classes you need to provide gdb
-with a list of source root dirs using the 'set directories' command:
+By default gdb will employ the three local directory roots
+`sources/{jdk,graal,src}` to locate the source files for your app classes, Graal
+classes and JDK runtime classes. If the sources cache is not located in the
+directory in which you run gdb you can configure the required paths using the
+following command:
 
     (gdb) set directories /path/to/sources/jdk:/path/to/sources/graal:/path/to/sources/src
 
-Directory .../sources/jdk should contain source files for all JDK runtime
+Directory `/path/to/sources/jdk` should contain source files for all JDK runtime
 classes referenced from debug records.
 
-Directory .../sources/graal should contain source files for all GraalVM
+Directory `/path/to/sources/graal` should contain source files for all GraalVM
 classes referenced from debug records. Note that the current
 implementation does not yet find some sources for the GraalVM JIT
 compiler in the org.graalvm.compiler* package subspace.
 
-Directory .../sources/src should contain source files for all
+Directory `/path/to/sources/src` should contain source files for all
 application classes referenced from debug records, assuming they can
 be located using the lookup strategy described above.
 
-You can supplement the files cached in sources/src by unzipping
+You can supplement the files cached in `sources/src` by unzipping
 application source jars or copying application source trees into the
 cache. You need to ensure that any new subdirectory you add to
-sources/src corresponds to the top level package for the classes whose
+`sources/src` corresponds to the top level package for the classes whose
 sources are being included.
 
-You can also add extra directories to the search path. Note that gdb
+You can also add extra directories to the search path using the 'set
+directories' command:
+
+    (gdb) set directories /path/to/my/sources/:/path/to/my/other/sources
+
+Note that gdb
 does not understand zip format file systems so any extra entries you
 add must identify a directory tree containing the relevant
 sources. Once again. top level entries in the directory added to the
