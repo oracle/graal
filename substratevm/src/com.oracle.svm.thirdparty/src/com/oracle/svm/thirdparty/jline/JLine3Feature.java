@@ -22,6 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+/*
+ * Copyright (c) 2002-2020, the original author or authors.
+ *
+ * This software is distributable under the BSD license. See the terms of the
+ * BSD license in the documentation provided with this software.
+ *
+ * https://opensource.org/licenses/BSD-3-Clause
+ */
 package com.oracle.svm.thirdparty.jline;
 
 import java.io.BufferedReader;
@@ -120,10 +128,15 @@ final class Target_org_jline_builtins_Nano_Buffer {
     @Alias List<String> lines;
     @Alias private Charset charset;
 
+    /**
+     * This is a slightly modified version of the original {@linkplain Nano#read
+     * https://github.com/jline/jline3/blob/804236549a36e46a5d262feafab26a4c9805bdbb/builtins/src/main/java/org/jline/builtins/Nano.java#L257}
+     * method. The modification is the removal of the attempt to detect the charset using an
+     * optional dependency (UniversalDetector) which, when not on the classpath would break the
+     * native-image build. The original source code is provided under the BSD licence.
+     */
     @Substitute
     void read(InputStream fis) throws IOException {
-        // TODO: Licence? This is a copy of the jline method
-        // https://github.com/jline/jline3/blob/master/builtins/src/main/java/org/jline/builtins/Nano.java#L267
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         byte[] buffer = new byte[4096];
 
@@ -134,16 +147,7 @@ final class Target_org_jline_builtins_Nano_Buffer {
 
         byte[] bytes = bos.toByteArray();
 
-/*-        try {
-/*-            UniversalDetector detector = new UniversalDetector((CharsetListener) null);
-/*-            detector.handleData(bytes, 0, bytes.length);
-/*-            detector.dataEnd();
-/*-            if (detector.getDetectedCharset() != null) {
-/*-                this.charset = Charset.forName(detector.getDetectedCharset());
-/*-            }
-/*-        } catch (Throwable var17) {
-/*-            ;
-/*-        } */
+        // Part of the original method is removed here for easier compilation to native-image
 
         BufferedReader reader = new BufferedReader(new InputStreamReader(new ByteArrayInputStream(bytes), this.charset));
         Throwable var7 = null;
