@@ -51,7 +51,6 @@ import mx_javamodules
 import mx_subst
 from mx_compiler import GraalArchiveParticipant
 from mx_gate import Task
-from mx_substratevm_benchmark import run_js, host_vm_tuple, output_processors, rule_snippets  # pylint: disable=unused-import
 from mx_unittest import _run_tests, _VMLauncher
 from mx_urlrewrites import rewriteurl
 
