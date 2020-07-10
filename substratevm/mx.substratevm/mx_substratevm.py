@@ -202,23 +202,18 @@ _graalvm_force_bash_launchers = ['polyglot', 'native-image-configure', 'gu']
 _graalvm_skip_libraries = ['native-image-agent']
 _graalvm_exclude_components = ['gu'] if mx.is_windows() else []  # gu does not work on Windows atm
 
+
 def _graalvm_config():
     return GraalVMConfig(disable_libpolyglot=True,
                          force_bash_launchers=_graalvm_force_bash_launchers,
                          skip_libraries=_graalvm_skip_libraries,
                          exclude_components=_graalvm_exclude_components)
 
+
 def _graalvm_jvm_config():
     return GraalVMConfig(disable_libpolyglot=True,
                          force_bash_launchers=True,
                          skip_libraries=True,
-                         exclude_components=_graalvm_exclude_components)
-
-def _graalvm_js_config():
-    return GraalVMConfig(dynamicimports=['/graal-js'],
-                         disable_libpolyglot=True,
-                         force_bash_launchers=_graalvm_force_bash_launchers + ['js'],
-                         skip_libraries=_graalvm_skip_libraries,
                          exclude_components=_graalvm_exclude_components)
 
 
@@ -399,7 +394,7 @@ IMAGE_ASSERTION_FLAGS = ['-H:+VerifyGraalGraphs', '-H:+VerifyPhases']
 
 def svm_gate_body(args, tasks):
     build_native_image_image()
-    with native_image_context(IMAGE_ASSERTION_FLAGS) as native_image:
+    with native_image_context(IMAGE_ASSERTION_FLAGS):
         with Task('image demos', tasks, tags=[GraalTags.helloworld]) as t:
             if t:
                 if svm_java8():
@@ -509,14 +504,6 @@ def svm_gate_body(args, tasks):
                 mx.abort('mx native-image --help does not seem to output the proper message. This can happen if you add extra arguments the mx native-image call without checking if an argument was --help or --help-extra.')
 
             mx.log('mx native-image --help output check detected no errors.')
-
-    with Task('JavaScript', tasks, tags=[GraalTags.js]) as t:
-        if t:
-            build_native_image_image(config=_graalvm_js_config())
-            with native_image_context(IMAGE_ASSERTION_FLAGS, config=_graalvm_js_config()) as native_image:
-                js = build_js(native_image)
-                test_run([js, '-e', 'print("hello:" + Array.from(new Array(10), (x,i) => i*i ).join("|"))'], 'hello:0|1|4|9|16|25|36|49|64|81\n')
-                test_js(js, [('octane-richards', 1000, 100, 300)])
 
     with Task('maven plugin checks', tasks, tags=[GraalTags.maven]) as t:
         if t:
