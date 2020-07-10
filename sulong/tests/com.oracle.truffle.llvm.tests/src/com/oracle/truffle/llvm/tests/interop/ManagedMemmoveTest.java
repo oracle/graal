@@ -85,7 +85,7 @@ public final class ManagedMemmoveTest extends ManagedMemAccessTestBase {
                 src[i] = i;
             }
             srcArray = src;
-            srcObject = new DoubleArrayObject(src, srcType);
+            srcObject = new DoubleArrayObject(srcType, src);
         } else {
             // integer
             long[] src = new long[arrayLength];
@@ -104,7 +104,7 @@ public final class ManagedMemmoveTest extends ManagedMemAccessTestBase {
             // float or double
             double[] dst = new double[size / dstTestType.elementSize];
             dstArray = dst;
-            dstObject = new DoubleArrayObject(dst, dstType);
+            dstObject = new DoubleArrayObject(dstType, dst);
         } else {
             // integer
             long[] dst = new long[size / dstTestType.elementSize];
