@@ -107,12 +107,22 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
      * Contains lazily computed data such as the compilation queue and helper for stack
      * introspection.
      */
-    static class Lazy extends BackgroundCompileQueue {
+    static final class Lazy extends BackgroundCompileQueue {
         StackIntrospection stackIntrospection;
 
         Lazy(AbstractHotSpotTruffleRuntime runtime) {
             super(runtime);
             runtime.installDefaultListeners();
+        }
+
+        @Override
+        protected void compilerThreadIdled() {
+            TruffleCompiler compiler = ((AbstractHotSpotTruffleRuntime) runtime).truffleCompiler;
+            // truffleCompiler should never be null outside unit-tests, this check avoids transient
+            // failures.
+            if (compiler != null) {
+                ((HotSpotTruffleCompiler) compiler).purgeCaches();
+            }
         }
     }
 

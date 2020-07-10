@@ -85,4 +85,16 @@ public class EconomicMapTest {
         Assert.assertEquals(map.toString(), "map(size=2, {(0,0),(1,1)})");
     }
 
+    @Test
+    public void testPutIfAbsent() {
+        EconomicMap<Integer, Integer> map = EconomicMap.create();
+        Assert.assertNull(map.putIfAbsent(1, 2));
+        Assert.assertEquals(Integer.valueOf(2), map.get(1));
+        Assert.assertEquals(Integer.valueOf(2), map.putIfAbsent(1, 4));
+        Assert.assertEquals(map.toString(), "map(size=1, {(1,2)})");
+        map.removeKey(1);
+        Assert.assertNull(map.putIfAbsent(1, 5));
+        Assert.assertEquals(Integer.valueOf(5), map.get(1));
+    }
+
 }

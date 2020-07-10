@@ -425,6 +425,15 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Instrument branches by considering different inlining sites as different branches.", category = OptionCategory.EXPERT)
     public static final OptionKey<Boolean> InstrumentBranchesPerInlineSite = new OptionKey<>(false);
 
+    @Option(help = "Maximum number of entries in the encoded graph cache (< 0 unbounded, 0 disabled).", category = OptionCategory.EXPERT)
+    public static final OptionKey<Integer> EncodedGraphCacheCapacity = new OptionKey<>(0);
+
+    @Option(help = "Delay, in milliseconds, after which the encoded graph cache is dropped when the compile queue becomes idle." +
+            "The option is only supported on the HotSpot (non-libgraal) Truffle runtime." +
+            "On runtimes which doesn't support it the option has no effect.",
+            category = OptionCategory.EXPERT)
+    public static final OptionKey<Integer> EncodedGraphCachePurgeDelay = new OptionKey<>(10_000);
+
     // Language agnostic inlining
 
     @Option(help = "Print detailed information for inlining (i.e. the entire explored call tree).", category = OptionCategory.EXPERT)
