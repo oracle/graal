@@ -137,7 +137,7 @@ public class ClassInitializationFeature implements GraalFeature {
     }
 
     public static void processClassInitializationOptions(ClassInitializationSupport initializationSupport) {
-        initializeSVMClasses(initializationSupport);
+        initializeNativeImagePackagesAtBuildTime(initializationSupport);
         String[] initializationInfo = Options.ClassInitialization.getValue();
         for (String infos : initializationInfo) {
             for (String info : infos.split(",")) {
@@ -153,10 +153,9 @@ public class ClassInitializationFeature implements GraalFeature {
         }
     }
 
-    private static void initializeSVMClasses(ClassInitializationSupport initializationSupport) {
+    private static void initializeNativeImagePackagesAtBuildTime(ClassInitializationSupport initializationSupport) {
         initializationSupport.initializeAtBuildTime("com.oracle.svm", "Native Image classes are always initialized at build time");
         initializationSupport.initializeAtBuildTime("com.oracle.graal", "Native Image classes are always initialized at build time");
-        initializationSupport.initializeAtBuildTime("com.oracle.graalvm.locator", "Native Image classes are always initialized at build time");
 
         initializationSupport.initializeAtBuildTime("org.graalvm.collections", "Native Image classes are always initialized at build time");
         initializationSupport.initializeAtBuildTime("org.graalvm.compiler", "Native Image classes are always initialized at build time");
