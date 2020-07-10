@@ -66,6 +66,7 @@ public final class AccessAdvisor {
         internalCallerFilter.addOrGetChildren("jdk.jfr.**", RuleNode.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("jdk.net.**", RuleNode.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("jdk.nio.**", RuleNode.Inclusion.Exclude);
+        internalCallerFilter.addOrGetChildren("jdk.vm.**", RuleNode.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("sun.invoke.**", RuleNode.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("sun.launcher.**", RuleNode.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("sun.misc.**", RuleNode.Inclusion.Exclude);
