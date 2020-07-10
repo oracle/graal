@@ -96,7 +96,13 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
     @Override
     public void duringSetup(DuringSetupAccess access) {
         RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
-        /* Accidentally initialized during the image build */
+        /*
+         * The SecureRandom implementations open the /dev/random and /dev/urandom files which are
+         * used as sources for entropy. These files are opened in the static initializers. That's
+         * why we rerun the static initializers at runtime. We cannot completely delay the static
+         * initializers execution to runtime because the SecureRandom classes are needed by the
+         * native image generator too, e.g., by Files.createTempDirectory().
+         */
         rci.rerunInitialization(NativePRNG.class, "for substitutions");
         rci.rerunInitialization(NativePRNG.Blocking.class, "for substitutions");
         rci.rerunInitialization(NativePRNG.NonBlocking.class, "for substitutions");
