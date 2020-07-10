@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,39 +27,36 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.factories;
+package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va;
 
-import java.util.function.Supplier;
-
-import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallMmapNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMNativeSyscallNode;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMSyscallExitNode;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.darwin.amd64.DarwinAMD64Syscall;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_64VaListStorage;
+import com.oracle.truffle.llvm.runtime.nodes.func.LLVMCallNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
-final class DarwinAMD64PlatformCapability extends BasicPlatformCapability<DarwinAMD64Syscall> {
+@NodeChild
+public abstract class LLVMVAStart extends LLVMExpressionNode {
 
-    DarwinAMD64PlatformCapability(boolean loadCxxLibraries) {
-        super(DarwinAMD64Syscall.class, loadCxxLibraries);
+    private final int numberOfExplicitArguments;
+
+    public LLVMVAStart(int numberOfExplicitArguments) {
+        this.numberOfExplicitArguments = numberOfExplicitArguments;
     }
 
-    @Override
-    protected LLVMSyscallOperationNode createSyscallNode(DarwinAMD64Syscall syscall) {
-        switch (syscall) {
-            case SYS_mmap:
-                return LLVMAMD64SyscallMmapNodeGen.create();
-            case SYS_exit:
-                return new LLVMSyscallExitNode();
-            default:
-                return new LLVMNativeSyscallNode(syscall);
-        }
+    private static Object[] getArgumentsArray(VirtualFrame frame) {
+        Object[] arguments = frame.getArguments();
+        Object[] newArguments = new Object[arguments.length - LLVMCallNode.USER_ARGUMENT_OFFSET];
+        System.arraycopy(arguments, LLVMCallNode.USER_ARGUMENT_OFFSET, newArguments, 0, newArguments.length);
+
+        return newArguments;
     }
 
-    @Override
-    public Object createVAListStorage(Supplier<LLVMExpressionNode> allocaNodeFactory) {
-        return new LLVMX86_64VaListStorage(allocaNodeFactory);
+    @Specialization(limit = "1")
+    protected Object vaStart(VirtualFrame frame, LLVMManagedPointer targetAddress, @CachedLibrary("targetAddress.getObject()") LLVMVaListLibrary vaListLibrary) {
+        vaListLibrary.initialize(targetAddress.getObject(), getArgumentsArray(frame), numberOfExplicitArguments);
+        return null;
     }
-
 }

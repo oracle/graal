@@ -15,4 +15,6 @@ public abstract class LLVMVaListLibrary extends Library {
 
     public abstract void initialize(Object vaList, Object[] arguments, int numberOfExplicitArgumentsd);
 
+    public abstract void cleanup(Object vaList);
+
 }

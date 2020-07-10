@@ -27,22 +27,23 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86;
+package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va;
 
+import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 
-public abstract class LLVMX86_64BitVAEnd extends LLVMExpressionNode {
+@NodeChild
+public abstract class LLVMVAEnd extends LLVMExpressionNode {
 
-    @Child private LLVMExpressionNode target;
-
-    public LLVMX86_64BitVAEnd(LLVMExpressionNode target) {
-        this.target = target;
+    public LLVMVAEnd() {
     }
 
-    @Specialization
-    Object doGeneric() {
-        // nop
+    @Specialization(limit = "1")
+    Object doGeneric(LLVMManagedPointer targetAddress, @CachedLibrary("targetAddress.getObject()") LLVMVaListLibrary vaListLibrary) {
+        vaListLibrary.cleanup(targetAddress.getObject());
         return null;
     }
 }
