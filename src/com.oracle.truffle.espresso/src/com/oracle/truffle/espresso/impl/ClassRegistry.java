@@ -165,7 +165,7 @@ public abstract class ClassRegistry implements ContextAccess {
      * @param type the symbolic reference to the Klass we want to load
      * @return The Klass corresponding to given type
      */
-    protected Klass loadKlass(Symbol<Type> type) {
+    Klass loadKlass(Symbol<Type> type) {
         if (Types.isArray(type)) {
             Klass elemental = loadKlass(getTypes().getElementalType(type));
             if (elemental == null) {

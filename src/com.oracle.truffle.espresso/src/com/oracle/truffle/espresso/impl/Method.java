@@ -549,7 +549,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         Klass[] paramsKlasses = paramCount > 0 ? new Klass[paramCount] : Klass.EMPTY_ARRAY;
         for (int i = 0; i < paramCount; ++i) {
             Symbol<Type> paramType = Signatures.parameterType(signature, i);
-            paramsKlasses[i] = getMeta().resolveSymbol(paramType, getDeclaringKlass().getDefiningClassLoader());
+            paramsKlasses[i] = getMeta().resolveSymbolOrFail(paramType, getDeclaringKlass().getDefiningClassLoader());
         }
         return paramsKlasses;
     }
@@ -557,7 +557,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     public Klass resolveReturnKlass() {
         // TODO(peterssen): Use resolved signature.
         Symbol<Type> returnType = Signatures.returnType(getParsedSignature());
-        return getMeta().resolveSymbol(returnType, getDeclaringKlass().getDefiningClassLoader());
+        return getMeta().resolveSymbolOrFail(returnType, getDeclaringKlass().getDefiningClassLoader());
     }
 
     public int getParameterCount() {

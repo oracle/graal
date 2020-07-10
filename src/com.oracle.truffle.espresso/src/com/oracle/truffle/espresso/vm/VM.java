@@ -1476,15 +1476,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         if (Types.isPrimitive(type)) {
             return StaticObject.NULL;
         }
-        Klass klass = null;
-        try {
-            klass = getRegistries().loadKlassWithBootClassLoader(type);
-        } catch (EspressoException e) {
-            if (!getMeta().java_lang_ClassNotFoundException.isAssignableFrom(e.getExceptionObject().getKlass())) {
-                throw e;
-            }
-            // Return null if not found.
-        }
+        Klass klass = getMeta().resolveSymbolOrNull(type, StaticObject.NULL);
         if (klass == null) {
             return StaticObject.NULL;
         }
@@ -2147,7 +2139,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     public @Host(Object[].class) StaticObject GetMemoryPools(@SuppressWarnings("unused") @Host(Object.class) StaticObject unused,
                     @GuestCall(target = "sun_management_ManagementFactory_createMemoryPool") DirectCallNode createMemoryPool) {
-        Klass memoryPoolMXBean = getMeta().loadKlass(Type.java_lang_management_MemoryPoolMXBean, StaticObject.NULL);
+        Klass memoryPoolMXBean = getMeta().resolveSymbolOrFail(Type.java_lang_management_MemoryPoolMXBean, StaticObject.NULL);
         return memoryPoolMXBean.allocateReferenceArray(1, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int value) {
@@ -2165,7 +2157,7 @@ public final class VM extends NativeEnv implements ContextAccess {
     @VmImpl
     public @Host(Object[].class) StaticObject GetMemoryManagers(@SuppressWarnings("unused") @Host(Object.class) StaticObject pool,
                     @GuestCall(target = "sun_management_ManagementFactory_createMemoryManager") DirectCallNode createMemoryManager) {
-        Klass memoryManagerMXBean = getMeta().loadKlass(Type.java_lang_management_MemoryManagerMXBean, StaticObject.NULL);
+        Klass memoryManagerMXBean = getMeta().resolveSymbolOrFail(Type.java_lang_management_MemoryManagerMXBean, StaticObject.NULL);
         return memoryManagerMXBean.allocateReferenceArray(1, new IntFunction<StaticObject>() {
             @Override
             public StaticObject apply(int value) {

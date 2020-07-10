@@ -131,11 +131,11 @@ public final class Target_java_lang_Class {
         Symbol<Type> type = meta.getTypes().fromClassGetName(hostName);
 
         try {
-            Klass klass = null;
-            if (Types.isArray(type)) {
-                klass = meta.resolveSymbol(type, loader);
+            Klass klass;
+            if (Types.isPrimitive(type)) {
+                klass = null;
             } else {
-                klass = meta.loadKlass(type, loader);
+                klass = meta.resolveSymbolOrNull(type, loader);
             }
 
             if (klass == null) {

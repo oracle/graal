@@ -121,7 +121,7 @@ public interface ClassConstant extends PoolConstant {
             try {
                 EspressoContext context = pool.getContext();
                 Symbol<Symbol.Type> type = context.getTypes().fromName(klassName);
-                Klass klass = context.getMeta().resolveSymbol(type, accessingKlass.getDefiningClassLoader());
+                Klass klass = context.getMeta().resolveSymbolOrFail(type, accessingKlass.getDefiningClassLoader());
                 if (!Klass.checkAccess(klass.getElementalType(), accessingKlass)) {
                     Meta meta = context.getMeta();
                     context.getLogger().log(Level.WARNING,
@@ -191,9 +191,9 @@ public interface ClassConstant extends PoolConstant {
             Symbol<Name> klassName = getName(pool);
             try {
                 EspressoContext context = pool.getContext();
-                Klass klass = context.getMeta().resolveSymbol(context.getTypes().fromName(klassName), accessingKlass.getDefiningClassLoader());
+                Meta meta = context.getMeta();
+                Klass klass = meta.resolveSymbolOrFail(context.getTypes().fromName(klassName), accessingKlass.getDefiningClassLoader());
                 if (!Klass.checkAccess(klass.getElementalType(), accessingKlass)) {
-                    Meta meta = context.getMeta();
                     context.getLogger().log(Level.WARNING,
                                     EspressoOptions.INCEPTION_NAME + " Access check of: " + klass.getType() + " from " + accessingKlass.getType() + " throws IllegalAccessError");
                     throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString(klassName));

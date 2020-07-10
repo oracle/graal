@@ -1721,14 +1721,14 @@ public final class BytecodeNode extends EspressoMethodNode {
         try {
             for (int i = 0; i < pcount; i++) {
                 Symbol<Type> paramType = Signatures.parameterType(signature, i);
-                ptypes[i] = meta.resolveSymbol(paramType, accessingKlass.getDefiningClassLoader()).mirror();
+                ptypes[i] = meta.resolveSymbolOrFail(paramType, accessingKlass.getDefiningClassLoader()).mirror();
             }
         } catch (Throwable e) {
             throw Meta.throwException(meta.java_lang_NoClassDefFoundError);
         }
         StaticObject rtype;
         try {
-            rtype = meta.resolveSymbol(rt, accessingKlass.getDefiningClassLoader()).mirror();
+            rtype = meta.resolveSymbolOrFail(rt, accessingKlass.getDefiningClassLoader()).mirror();
         } catch (Throwable e) {
             throw Meta.throwException(meta.java_lang_BootstrapMethodError);
         }

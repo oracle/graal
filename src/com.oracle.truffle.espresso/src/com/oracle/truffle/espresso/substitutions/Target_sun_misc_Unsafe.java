@@ -35,7 +35,6 @@ import com.oracle.truffle.espresso.classfile.ClassfileStream;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
-import com.oracle.truffle.espresso.impl.ClassRegistries;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.LinkedKlass;
@@ -105,11 +104,10 @@ public final class Target_sun_misc_Unsafe {
 
     private static ObjectKlass defineAnonymousKlass(ParserKlass parserKlass, EspressoContext context, StaticObject classLoader, Klass hostKlass) {
         Symbol<Type> superKlassType = parserKlass.getSuperKlass();
-        ClassRegistries classRegistry = context.getRegistries();
 
         // TODO(garcia): Superclass must be a class, and non-final.
         ObjectKlass superKlass = superKlassType != null
-                        ? (ObjectKlass) classRegistry.loadKlass(superKlassType, classLoader)
+                        ? (ObjectKlass) context.getMeta().loadKlassOrFail(superKlassType, classLoader)
                         : null;
 
         assert superKlass == null || !superKlass.isInterface();
@@ -126,7 +124,7 @@ public final class Target_sun_misc_Unsafe {
 
         // TODO(garcia): Superinterfaces must be interfaces.
         for (int i = 0; i < superInterfacesTypes.length; ++i) {
-            ObjectKlass interf = (ObjectKlass) classRegistry.loadKlass(superInterfacesTypes[i], classLoader);
+            ObjectKlass interf = (ObjectKlass) context.getMeta().loadKlassOrFail(superInterfacesTypes[i], classLoader);
             superInterfaces[i] = interf;
             linkedInterfaces[i] = interf.getLinkedKlass();
         }

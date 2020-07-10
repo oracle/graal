@@ -227,7 +227,7 @@ class ReferenceOperand extends Operand {
                 if (getType() == thisKlass.getType()) {
                     klass = thisKlass;
                 } else {
-                    klass = thisKlass.getMeta().loadKlass(type, thisKlass.getDefiningClassLoader());
+                    klass = thisKlass.getMeta().resolveSymbolOrNull(type, thisKlass.getDefiningClassLoader());
                 }
             } catch (EspressoException e) {
                 // TODO(garcia) fine grain this catch
