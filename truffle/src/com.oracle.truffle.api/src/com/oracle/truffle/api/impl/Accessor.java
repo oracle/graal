@@ -73,6 +73,8 @@ import org.graalvm.polyglot.io.ProcessHandler;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.ContextLocal;
+import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Scope;
@@ -469,6 +471,23 @@ public abstract class Accessor {
 
         public abstract AssertionError invalidSharingError(Object polyglotEngine) throws AssertionError;
 
+        public abstract boolean isPolyglotObject(Object polyglotObject);
+
+        public abstract void initializeLanguageContextLocal(List<? extends ContextLocal<?>> local, Object polyglotLanguageInstance);
+
+        public abstract void initializeLanguageContextThreadLocal(List<? extends ContextThreadLocal<?>> local, Object polyglotLanguageInstance);
+
+        public abstract void initializeInstrumentContextLocal(List<? extends ContextLocal<?>> local, Object polyglotInstrument);
+
+        public abstract void initializeInstrumentContextThreadLocal(List<? extends ContextThreadLocal<?>> local, Object polyglotInstrument);
+
+        public abstract <T> ContextThreadLocal<T> createLanguageContextThreadLocal(Object factory);
+
+        public abstract <T> ContextThreadLocal<T> createInstrumentContextThreadLocal(Object factory);
+
+        public abstract <T> ContextLocal<T> createLanguageContextLocal(Object factory);
+
+        public abstract <T> ContextLocal<T> createInstrumentContextLocal(Object factory);
     }
 
     public abstract static class LanguageSupport extends Support {
@@ -603,6 +622,12 @@ public abstract class Accessor {
 
         public abstract Object getFileSystemEngineObject(Object fileSystemContext);
 
+        public abstract Object getPolyglotContext(TruffleContext context);
+
+        public abstract Object invokeContextLocalFactory(Object factory, Object contextImpl);
+
+        public abstract Object invokeContextThreadLocalFactory(Object factory, Object contextImpl, Thread thread);
+
     }
 
     public abstract static class InstrumentSupport extends Support {
@@ -682,6 +707,10 @@ public abstract class Accessor {
         public abstract boolean isInputValueSlotIdentifier(Object identifier);
 
         public abstract boolean isInstrumentable(Node node);
+
+        public abstract Object invokeContextLocalFactory(Object factory, TruffleContext truffleContext);
+
+        public abstract Object invokeContextThreadLocalFactory(Object factory, TruffleContext truffleContext, Thread t);
 
     }
 
@@ -847,6 +876,7 @@ public abstract class Accessor {
     protected Accessor() {
         switch (this.getClass().getName()) {
             case "com.oracle.truffle.api.LanguageAccessor":
+            case "com.oracle.truffle.api.TruffleAccessor":
             case "com.oracle.truffle.api.nodes.NodeAccessor":
             case "com.oracle.truffle.api.instrumentation.InstrumentAccessor":
             case "com.oracle.truffle.api.source.SourceAccessor":

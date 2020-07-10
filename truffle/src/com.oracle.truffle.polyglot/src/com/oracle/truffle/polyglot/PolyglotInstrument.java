@@ -48,6 +48,8 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractInstrumentImpl;
 
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
+
 import java.util.function.Supplier;
 
 class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
@@ -63,6 +65,8 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
     private volatile boolean initialized;
     private volatile boolean created;
     int requestedAsyncStackDepth = 0;
+    LocalLocation[] contextLocalLocations;
+    LocalLocation[] contextThreadLocalLocations;
 
     PolyglotInstrument(PolyglotEngineImpl engine, InstrumentCache cache) {
         super(engine.impl);
@@ -118,12 +122,18 @@ class PolyglotInstrument extends AbstractInstrumentImpl implements com.oracle.tr
                         });
                         this.options = INSTRUMENT.describeOptions(engine.instrumentationHandler, this, cache.getId());
                     } catch (Exception e) {
-                        throw new IllegalStateException(String.format("Error initializing instrument '%s' using class '%s'.", cache.getId(), cache.getClassName()), e);
+                        throw new IllegalStateException(String.format("Error initializing instrument '%s' using class '%s'. Message: %s.", cache.getId(), cache.getClassName(), e.getMessage()), e);
                     }
+                    assert contextLocalLocations != null : "context local locations not initialized";
                     initialized = true;
                 }
             }
+
         }
+    }
+
+    public boolean isInitialized() {
+        return initialized;
     }
 
     void ensureCreated() {

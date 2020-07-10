@@ -46,7 +46,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 
-final class ContextThreadLocal extends ThreadLocal<Object> {
+final class PolyglotContextThreadLocal extends ThreadLocal<Object> {
 
     private final Assumption singleThread = Truffle.getRuntime().createAssumption("single thread");
     private volatile PolyglotContextImpl activeSingleContext;

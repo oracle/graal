@@ -60,7 +60,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 
 public class ContextThreadLocalTest {
 
-    private static final String CLASS_NAME = "com.oracle.truffle.polyglot.ContextThreadLocal";
+    private static final String CLASS_NAME = "com.oracle.truffle.polyglot.PolyglotContextThreadLocal";
     private static final String CONTEXT_CLASS = "com.oracle.truffle.polyglot.PolyglotContextImpl";
 
     @Before

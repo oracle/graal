@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api.instrumentation;
 
+import static com.oracle.truffle.api.instrumentation.InstrumentAccessor.ENGINE;
+
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
@@ -222,8 +224,22 @@ final class InstrumentationHandler {
         }
 
         Env env = new Env(polyglotInstrument, out, err, in, messageInterceptor);
+        TruffleInstrument instrument = (TruffleInstrument) instrumentSupplier.get();
+        if (instrument.contextLocals == null) {
+            instrument.contextLocals = Collections.emptyList();
+        } else {
+            instrument.contextLocals = Collections.unmodifiableList(instrument.contextLocals);
+        }
+        ENGINE.initializeInstrumentContextLocal(instrument.contextLocals, polyglotInstrument);
+
+        if (instrument.contextThreadLocals == null) {
+            instrument.contextThreadLocals = Collections.emptyList();
+        } else {
+            instrument.contextThreadLocals = Collections.unmodifiableList(instrument.contextThreadLocals);
+        }
+        ENGINE.initializeInstrumentContextThreadLocal(instrument.contextThreadLocals, polyglotInstrument);
+
         try {
-            TruffleInstrument instrument = (TruffleInstrument) instrumentSupplier.get();
             env.instrumenter = new InstrumentClientInstrumenter(env, instrumentClassName);
             env.instrumenter.instrument = instrument;
         } catch (Exception e) {

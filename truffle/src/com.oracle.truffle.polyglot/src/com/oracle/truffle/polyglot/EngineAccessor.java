@@ -79,6 +79,8 @@ import org.graalvm.polyglot.io.ProcessHandler;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.ContextLocal;
+import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.Truffle;
@@ -102,6 +104,10 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.polyglot.PolyglotSource.EmbedderFileSystemContext;
+import com.oracle.truffle.polyglot.PolyglotLocals.InstrumentContextLocal;
+import com.oracle.truffle.polyglot.PolyglotLocals.InstrumentContextThreadLocal;
+import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextLocal;
+import com.oracle.truffle.polyglot.PolyglotLocals.LanguageContextThreadLocal;
 
 final class EngineAccessor extends Accessor {
 
@@ -735,6 +741,9 @@ final class EngineAccessor extends Accessor {
                 impl.creatorApi = impl.getAPIAccess().newContext(impl);
                 impl.currentApi = impl.getAPIAccess().newContext(impl);
             }
+            synchronized (impl) {
+                impl.initializeContextLocals();
+            }
             return impl;
         }
 
@@ -1149,6 +1158,55 @@ final class EngineAccessor extends Accessor {
         public AssertionError invalidSharingError(Object polyglotEngine) throws AssertionError {
             return PolyglotReferences.invalidSharingError((PolyglotEngineImpl) polyglotEngine);
         }
+
+        public <T> ContextLocal<T> createInstrumentContextLocal(Object factory) {
+            return PolyglotLocals.createInstrumentContextLocal(factory);
+        }
+
+        @Override
+        public <T> ContextThreadLocal<T> createInstrumentContextThreadLocal(Object factory) {
+            return PolyglotLocals.createInstrumentContextThreadLocal(factory);
+        }
+
+        @Override
+        public <T> ContextLocal<T> createLanguageContextLocal(Object factory) {
+            return PolyglotLocals.createLanguageContextLocal(factory);
+        }
+
+        @Override
+        public <T> ContextThreadLocal<T> createLanguageContextThreadLocal(Object factory) {
+            return PolyglotLocals.createLanguageContextThreadLocal(factory);
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public void initializeInstrumentContextLocal(List<? extends ContextLocal<?>> locals, Object polyglotInstrument) {
+            PolyglotLocals.initializeInstrumentContextLocals((List<InstrumentContextLocal<?>>) locals, (PolyglotInstrument) polyglotInstrument);
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public void initializeInstrumentContextThreadLocal(List<? extends ContextThreadLocal<?>> local, Object polyglotInstrument) {
+            PolyglotLocals.initializeInstrumentContextThreadLocals((List<InstrumentContextThreadLocal<?>>) local, (PolyglotInstrument) polyglotInstrument);
+        }
+
+        @Override
+        public boolean isPolyglotObject(Object polyglotObject) {
+            return PolyglotImpl.getInstance() == polyglotObject;
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public void initializeLanguageContextLocal(List<? extends ContextLocal<?>> locals, Object polyglotLanguageInstance) {
+            PolyglotLocals.initializeLanguageContextLocals((List<LanguageContextLocal<?>>) locals, (PolyglotLanguageInstance) polyglotLanguageInstance);
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        public void initializeLanguageContextThreadLocal(List<? extends ContextThreadLocal<?>> local, Object polyglotLanguageInstance) {
+            PolyglotLocals.initializeLanguageContextThreadLocals((List<LanguageContextThreadLocal<?>>) local, (PolyglotLanguageInstance) polyglotLanguageInstance);
+        }
+
     }
 
     abstract static class AbstractClassLoaderSupplier implements Supplier<ClassLoader> {

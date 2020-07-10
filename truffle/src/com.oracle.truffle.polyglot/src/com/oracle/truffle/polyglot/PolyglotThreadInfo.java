@@ -67,6 +67,8 @@ final class PolyglotThreadInfo {
     private ClassLoaderEntry prevContextClassLoader;
     private SpecializationStatisticsEntry executionStatisticsEntry;
 
+    private volatile Object[] contextThreadLocals;
+
     private static volatile ThreadMXBean threadBean;
 
     PolyglotThreadInfo(PolyglotContextImpl context, Thread thread) {
@@ -77,6 +79,16 @@ final class PolyglotThreadInfo {
 
     Thread getThread() {
         return thread.get();
+    }
+
+    public Object[] getContextThreadLocals() {
+        assert Thread.holdsLock(context);
+        return contextThreadLocals;
+    }
+
+    public void setContextThreadLocals(Object[] contextThreadLocals) {
+        assert Thread.holdsLock(context);
+        this.contextThreadLocals = contextThreadLocals;
     }
 
     boolean isCurrent() {

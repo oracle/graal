@@ -39,6 +39,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * Added new `EncapsulatingNodeReference` class to lookup read and write the current encapsulating node. Deprecated encapsulating node methods in `NodeUtil`.
 * Added support for subclassing `DynamicObject` so that guest languages can directly base their object class hierarchy on it, add fields, and use `@ExportLibrary` on subclasses. Guest language object classes should implement `TruffleObject`.
 * Added new [DynamicObjectLibrary](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/DynamicObjectLibrary.html) API for accessing and mutating properties and the shape of `DynamicObject` instances. This is the recommended API from now on. Other, low-level property access APIs will be deprecated and removed in a future release.
+* Added the ability to create context and context thread locals in languages and instruments. See [ContextLocal](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/ContextLocal.html) and [ContextThreadLocal](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/ContextThreadLocal.html) for details.
 
 ## Version 20.1.0
 * Added `@GenerateLibrary(dynamicDispatchEnabled = false)` that allows to disable dynamic dispatch semantics for a library. The default is `true`.
