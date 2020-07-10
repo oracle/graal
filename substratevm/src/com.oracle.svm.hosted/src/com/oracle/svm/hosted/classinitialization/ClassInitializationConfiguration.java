@@ -117,12 +117,13 @@ public class ClassInitializationConfiguration {
     private Pair<InitializationNode, Boolean> lookupRec(InitializationNode node, List<String> classOrPackage, InitializationNode lastNonNullKind) {
         List<String> tail = new ArrayList<>(classOrPackage);
         tail.remove(0);
-        if (!tail.isEmpty() && node.children.containsKey(tail.get(0))) {
+        boolean reachedBottom = tail.isEmpty();
+        if (!reachedBottom && node.children.containsKey(tail.get(0))) {
             return lookupRec(node.children.get(tail.get(0)), tail, node.kind != null ? node : lastNonNullKind);
         } else if (node.kind == null) {
-            return Pair.create(lastNonNullKind, tail.isEmpty());
+            return Pair.create(lastNonNullKind, reachedBottom);
         } else {
-            return Pair.create(node, tail.isEmpty());
+            return Pair.create(node, reachedBottom);
         }
     }
 

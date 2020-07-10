@@ -141,7 +141,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
 
         typeFlow = new MethodTypeFlow(universe.hostVM().options(), this);
 
-        if (getDeclaringClass().isInitialized() && getName().startsWith("$SWITCH_TABLE$")) {
+        if (getName().startsWith("$SWITCH_TABLE$")) {
             /*
              * The Eclipse Java compiler generates methods that lazily initializes tables for Enum
              * switches. The first invocation fills the table, subsequent invocations reuse the
