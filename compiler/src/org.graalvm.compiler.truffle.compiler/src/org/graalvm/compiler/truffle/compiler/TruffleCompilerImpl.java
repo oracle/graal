@@ -266,13 +266,13 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     }
 
     @Override
-    public void initialize(Map<String, Object> optionsMap) {
+    public void initialize(Map<String, Object> optionsMap, CompilableTruffleAST compilable, boolean firstInitialization) {
         if (!initialized) {
             synchronized (this) {
                 if (!initialized) {
                     partialEvaluator.initialize(TruffleCompilerOptions.getOptionsForCompiler(optionsMap));
-                    if (Boolean.parseBoolean(System.getenv("TRUFFLE_STRICT_OPTION_DEPRECATION"))) {
-                        TruffleCompilerOptions.checkDeprecation();
+                    if (firstInitialization) {
+                        TruffleCompilerOptions.checkDeprecation(compilable);
                     }
                     initialized = true;
                 }

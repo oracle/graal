@@ -114,6 +114,7 @@ import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 
 import jdk.vm.ci.common.NativeImageReinitialize;
+import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 
 /**
  * Options for the Truffle compiler. Options shared with the Truffle runtime are declared in
@@ -311,7 +312,7 @@ public final class TruffleCompilerOptions {
         return new OptionValuesImpl(descriptors, parsedOptions);
     }
 
-    static void checkDeprecation() {
+    static String[] checkDeprecation(CompilableTruffleAST compilable) {
         EconomicMap<OptionKey<?>, org.graalvm.options.OptionKey<?>> deprecatedToReplacement = EconomicMap.create(Equivalence.IDENTITY);
         OptionValues options = getOptions();
         MapCursor<org.graalvm.options.OptionKey<?>, Pair<? extends OptionKey<?>, Function<Object, ?>>> cursor = Lazy.POLYGLOT_TO_COMPILER.getEntries();
@@ -339,7 +340,7 @@ public final class TruffleCompilerOptions {
                 String polyglotOptionName = polyglotOptionKeyToName.get(deprecatedCursor.getValue());
                 formatter.format("WARNING: The option '%s' was deprecated. Truffle runtime options are no longer specified as Graal options (-Dgraal.*).%n", deprecatedOptionKey.getName());
                 formatter.format("Replace the Graal option usage with one of the following replacements:%n");
-                if (value instanceof Boolean) {
+                if (value instanceof Boolean && ((boolean) value) == true) {
                     formatter.format("* '--%s' if the option is passed using a guest language launcher.%n", polyglotOptionName);
                 } else {
                     formatter.format("* '--%s=%s' if the option is passed using a guest language launcher.%n", polyglotOptionName, strValue);
@@ -348,8 +349,9 @@ public final class TruffleCompilerOptions {
                 String quot = value instanceof String ? "\"" : "";
                 formatter.format("* Using polyglot API: 'org.graalvm.polyglot.Context.newBuilder().option(\"%s\", " + quot + "%s" + quot + ")'", polyglotOptionName, strValue);
             }
-            throw new Error(warning.toString());
+            TruffleCompilerRuntime.getRuntime().log(compilable, warning.toString());
         }
+        return new String[0];
     }
 
     private static final class Lazy {

@@ -53,7 +53,7 @@ gateTestAVX1 : ${gateTest} {
 
 gateTestCompileImmediately : ${gateTest} {
   environment : {
-    EXTRA_VM_ARGS : "-Dgraal.TruffleBackgroundCompilation=false -Dgraal.TruffleCompileImmediately=true -Dtck.inlineVerifierInstrument=false"
+    EXTRA_VM_ARGS : "-Dpolyglot.engine.AllowExperimentalOptions=true -Dpolyglot.engine.CompileImmediately=true -Dpolyglot.engine.BackgroundCompilation=false -Dtck.inlineVerifierInstrument=false"
   }
 }
 
