@@ -106,7 +106,7 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
     public void testSingleImplementor() {
 
         if (GraalServices.hasLookupReferencedType()) {
-            testHelper(new RootNodeInterfaceSingleImplementorCall(), false, EMPTY_PERF_WARNINGS);
+            testHelper(truffleCompiler, new RootNodeInterfaceSingleImplementorCall(), false, EMPTY_PERF_WARNINGS);
         }
 
     }
