@@ -626,7 +626,7 @@ public final class LLVMContext {
         ExternalLibrary newLib = createExternalLibrary(lib, reason, locator);
         if (isDefaultLibrary(newLib)) {
             // Disallow loading default libraries explicitly.
-            return null;
+            throw new LLVMLinkerException("Adding an internal library (possibly from the command line) as an external library.");
         }
         ExternalLibrary existingLib = getOrAddExternalLibrary(newLib);
         if (existingLib != newLib) {
