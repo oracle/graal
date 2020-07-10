@@ -151,7 +151,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
     }
 
     @Override
-    public boolean shouldPartiallyUnroll(LoopEx loop) {
+    public boolean shouldPartiallyUnroll(LoopEx loop, CoreProviders providers) {
         LoopBeginNode loopBegin = loop.loopBegin();
         if (!loop.isCounted()) {
             loopBegin.getDebug().log(DebugContext.VERBOSE_LEVEL, "shouldPartiallyUnroll %s isn't counted", loopBegin);

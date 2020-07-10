@@ -91,8 +91,8 @@ public final class GraalDirectives {
      * A call to this method will force the compiler to assume this instruction has a visible memory
      * effect killing all memory locations.
      */
-    public static int sideEffect(@SuppressWarnings("unused") int a) {
-        return 0;
+    public static int sideEffect(int a) {
+        return a;
     }
 
     /**
