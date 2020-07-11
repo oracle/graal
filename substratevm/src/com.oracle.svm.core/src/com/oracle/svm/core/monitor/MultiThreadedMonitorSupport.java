@@ -198,6 +198,13 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         try {
             singleton().monitorEnter(obj);
 
+        } catch (OutOfMemoryError ex) {
+            /*
+             * Exposing OutOfMemoryError to application. Note that since the foreign call from
+             * snippets to this method does not have an exception edge, it is possible this throw
+             * will miss the proper exception handler.
+             */
+            throw ex;
         } catch (Throwable ex) {
             /*
              * The foreign call from snippets to this method does not have an exception edge. So we
@@ -235,6 +242,13 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         try {
             singleton().monitorExit(obj);
 
+        } catch (OutOfMemoryError ex) {
+            /*
+             * Exposing OutOfMemoryError to application. Note that since the foreign call from
+             * snippets to this method does not have an exception edge, it is possible this throw
+             * will miss the proper exception handler.
+             */
+            throw ex;
         } catch (Throwable ex) {
             /*
              * The foreign call from snippets to this method does not have an exception edge. So we
