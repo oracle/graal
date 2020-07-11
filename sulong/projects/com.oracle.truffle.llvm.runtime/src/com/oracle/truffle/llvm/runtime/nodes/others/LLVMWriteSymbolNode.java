@@ -31,6 +31,7 @@ package com.oracle.truffle.llvm.runtime.nodes.others;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.utilities.AssumedValue;
@@ -58,7 +59,7 @@ public abstract class LLVMWriteSymbolNode extends LLVMNode {
             CompilerAsserts.partialEvaluationConstant(global);
             try {
                 int index = global.getSymbolIndex(false);
-                symbols[index] = new AssumedValue<>("LLVMGlobal." + global.getName(), pointer);
+                symbols[index] = newAssumedValue("LLVMGlobal", global.getName(), pointer);
             } catch (LLVMIllegalSymbolIndexException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new LLVMLinkerException(this, "Writing global symbol into symbol table is inconsistent.");
@@ -75,7 +76,7 @@ public abstract class LLVMWriteSymbolNode extends LLVMNode {
             CompilerAsserts.partialEvaluationConstant(function);
             try {
                 int index = function.getSymbolIndex(false);
-                symbols[index] = new AssumedValue<>("LLVMFunction." + function.getName(), pointer);
+                symbols[index] = newAssumedValue("LLVMFunction", function.getName(), pointer);
             } catch (LLVMIllegalSymbolIndexException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new LLVMLinkerException(this, "Writing function symbol into symbol table is inconsistent.");
@@ -97,12 +98,17 @@ public abstract class LLVMWriteSymbolNode extends LLVMNode {
             try {
                 int index = target.getSymbolIndex(false);
                 if (symbols[index] == null) {
-                    symbols[index] = new AssumedValue<>(target.getKind() + "." + target.getName(), pointer);
+                    symbols[index] = newAssumedValue(target.getKind(), target.getName(), pointer);
                 }
             } catch (LLVMIllegalSymbolIndexException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new LLVMLinkerException(this, "Writing alias symbol into symbol table is inconsistent.");
             }
         }
+    }
+
+    @TruffleBoundary
+    private static AssumedValue<LLVMPointer> newAssumedValue(String prefix, String name, LLVMPointer pointer) {
+        return new AssumedValue<>(prefix + "." + name, pointer);
     }
 }
