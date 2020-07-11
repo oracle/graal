@@ -468,4 +468,8 @@ public final class GraalServices {
     public static boolean hasLookupReferencedType() {
         return constantPoolLookupReferencedType != null;
     }
+
+    public static int getJavaUpdateVersion() {
+        return Runtime.version().update();
+    }
 }
