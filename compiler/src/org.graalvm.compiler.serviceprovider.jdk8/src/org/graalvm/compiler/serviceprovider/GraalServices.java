@@ -37,6 +37,8 @@ import java.util.List;
 import java.util.ServiceConfigurationError;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import jdk.vm.ci.code.VirtualObject;
 import jdk.vm.ci.meta.ConstantPool;
@@ -464,5 +466,18 @@ public final class GraalServices {
 
     public static boolean hasLookupReferencedType() {
         return constantPoolLookupReferencedType != null;
+    }
+
+    public static int getJavaUpdateVersion() {
+        // JDK 8: Only simplified patterns like 25.242-b08 or 25.241-b07-jvmci-20.1-b01
+        // are being recognized. Update represents the numerical value after the first
+        // dot and before the first dash
+        Pattern p = Pattern.compile("\\d+\\.([^-]+)-.*");
+        String vmVersion = Services.getSavedProperties().get("java.vm.version");
+        Matcher matcher = p.matcher(vmVersion);
+        if (!matcher.matches()) {
+            throw new InternalError("Unexpected java.vm.version value: " + vmVersion);
+        }
+        return Integer.parseInt(matcher.group(1));
     }
 }
