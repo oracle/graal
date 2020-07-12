@@ -28,6 +28,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.util.VMError;
 
 public abstract class AbstractImageHeapLayouter<T extends AbstractImageHeapLayouter.AbstractImageHeapPartition> implements ImageHeapLayouter {
     /** A partition holding objects with only read-only primitive values, but no references. */
@@ -52,7 +54,15 @@ public abstract class AbstractImageHeapLayouter<T extends AbstractImageHeapLayou
     private static final int WRITABLE_PRIMITIVE = 3;
     /** A partition holding objects with writable references and primitive values. */
     private static final int WRITABLE_REFERENCE = 4;
-    private static final int PARTITION_COUNT = 5;
+    /** A partition holding very large writable objects with or without references. */
+    private static final int WRITABLE_HUGE = 5;
+    /**
+     * A partition holding very large read-only objects with or without references, but never with
+     * relocatable references.
+     */
+    private static final int READ_ONLY_HUGE = 6;
+
+    private static final int PARTITION_COUNT = 7;
 
     private final T[] partitions;
 
@@ -63,16 +73,18 @@ public abstract class AbstractImageHeapLayouter<T extends AbstractImageHeapLayou
 
     public AbstractImageHeapLayouter() {
         this.partitions = createPartitionsArray(PARTITION_COUNT);
-        this.partitions[READ_ONLY_PRIMITIVE] = createPartition("readOnlyPrimitive", false, false);
-        this.partitions[READ_ONLY_REFERENCE] = createPartition("readOnlyReference", true, false);
-        this.partitions[READ_ONLY_RELOCATABLE] = createPartition("readOnlyRelocatable", true, false);
-        this.partitions[WRITABLE_PRIMITIVE] = createPartition("writablePrimitive", false, true);
-        this.partitions[WRITABLE_REFERENCE] = createPartition("writableReference", true, true);
+        this.partitions[READ_ONLY_PRIMITIVE] = createPartition("readOnlyPrimitive", false, false, false);
+        this.partitions[READ_ONLY_REFERENCE] = createPartition("readOnlyReference", true, false, false);
+        this.partitions[READ_ONLY_RELOCATABLE] = createPartition("readOnlyRelocatable", true, false, false);
+        this.partitions[WRITABLE_PRIMITIVE] = createPartition("writablePrimitive", false, true, false);
+        this.partitions[WRITABLE_REFERENCE] = createPartition("writableReference", true, true, false);
+        this.partitions[WRITABLE_HUGE] = createPartition("writableHuge", true, true, true);
+        this.partitions[READ_ONLY_HUGE] = createPartition("readOnlyHuge", true, false, true);
     }
 
     @Override
     public void assignObjectToPartition(ImageHeapObject info, boolean immutable, boolean references, boolean relocatable) {
-        T partition = choosePartition(immutable, references, relocatable);
+        T partition = choosePartition(info, immutable, references, relocatable);
         info.setHeapPartition(partition);
         partition.assign(info);
     }
@@ -90,7 +102,7 @@ public abstract class AbstractImageHeapLayouter<T extends AbstractImageHeapLayou
                 endAlignment = pageSize;
             } else if (partition == getWritablePrimitive()) {
                 startAlignment = pageSize;
-            } else if (partition == getWritableReference()) {
+            } else if (partition == getWritableHuge()) {
                 endAlignment = pageSize;
             }
             partition.setStartAlignment(startAlignment);
@@ -129,28 +141,51 @@ public abstract class AbstractImageHeapLayouter<T extends AbstractImageHeapLayou
         return getPartitions()[WRITABLE_REFERENCE];
     }
 
-    private T choosePartition(boolean immutable, boolean references, boolean relocatable) {
+    protected T getWritableHuge() {
+        return getPartitions()[WRITABLE_HUGE];
+    }
+
+    protected T getReadOnlyHuge() {
+        return getPartitions()[READ_ONLY_HUGE];
+    }
+
+    /** The size in bytes at and above which an object should be assigned to the huge partitions. */
+    protected long getHugeObjectThreshold() {
+        // Do not use huge partitions by default, they remain empty and should not consume space
+        return Long.MAX_VALUE;
+    }
+
+    private T choosePartition(@SuppressWarnings("unused") ImageHeapObject info, boolean immutable, boolean hasReferences, boolean hasRelocatables) {
         if (immutable) {
-            if (relocatable) {
+            if (hasRelocatables) {
+                VMError.guarantee(info.getSize() < getHugeObjectThreshold(), "Objects with relocatable pointers cannot be huge objects");
                 return getReadOnlyRelocatable();
             }
-            return references ? getReadOnlyReference() : getReadOnlyPrimitive();
+            if (info.getSize() >= getHugeObjectThreshold()) {
+                VMError.guarantee(!(info.getObject() instanceof DynamicHub), "Class metadata (dynamic hubs) cannot be huge objects");
+                return getReadOnlyHuge();
+            }
+            return hasReferences ? getReadOnlyReference() : getReadOnlyPrimitive();
         } else {
-            return references ? getWritableReference() : getWritablePrimitive();
+            assert !(info.getObject() instanceof DynamicHub) : "Class metadata (dynamic hubs) cannot be writable";
+            if (info.getSize() >= getHugeObjectThreshold()) {
+                return getWritableHuge();
+            }
+            return hasReferences ? getWritableReference() : getWritablePrimitive();
         }
     }
 
     private ImageHeapLayoutInfo createLayoutInfo() {
         long writableBegin = getWritablePrimitive().getStartOffset();
-        long writableEnd = getWritableReference().getStartOffset() + getWritableReference().getSize();
+        long writableEnd = getWritableHuge().getStartOffset() + getWritableHuge().getSize();
         long writableSize = writableEnd - writableBegin;
-        long imageHeapSize = writableEnd;
+        long imageHeapSize = getReadOnlyHuge().getStartOffset() + getReadOnlyHuge().getSize();
         return new ImageHeapLayoutInfo(writableBegin, writableSize, getReadOnlyRelocatable().getStartOffset(), getReadOnlyRelocatable().getSize(), imageHeapSize);
     }
 
     protected abstract T[] createPartitionsArray(int count);
 
-    protected abstract T createPartition(String name, boolean containsReferences, boolean writable);
+    protected abstract T createPartition(String name, boolean containsReferences, boolean writable, boolean hugeObjects);
 
     /**
      * The native image heap comes in partitions. Each partition holds objects with different

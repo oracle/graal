@@ -36,6 +36,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
+import com.oracle.svm.core.heap.Heap;
 
 /**
  * A provider of ranges of committed memory, which is virtual memory that is backed by physical
@@ -52,6 +53,14 @@ public interface CommittedMemoryProvider {
     static CommittedMemoryProvider get() {
         return ImageSingletons.lookup(CommittedMemoryProvider.class);
     }
+
+    /**
+     * Returns whether this provider will always guarantee a heap address space alignment of
+     * {@link Heap#getPreferredAddressSpaceAlignment()} at image runtime, which may also depend on
+     * {@link ImageHeapProvider#guaranteesHeapPreferredAddressSpaceAlignment()}.
+     */
+    @Fold
+    boolean guaranteesHeapPreferredAddressSpaceAlignment();
 
     /**
      * Performs initializations <em>for the current isolate</em>, before any other methods of this

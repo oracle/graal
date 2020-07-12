@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,42 +24,45 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import com.oracle.svm.core.config.ConfigurationValues;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import com.oracle.svm.core.image.AbstractImageHeapLayouter;
 import com.oracle.svm.core.image.ImageHeap;
 
-public class LinearImageHeapLayouter extends AbstractImageHeapLayouter<LinearImageHeapPartition> {
+@Platforms(Platform.HOSTED_ONLY.class)
+public class ChunkedImageHeapLayouter extends AbstractImageHeapLayouter<ChunkedImageHeapPartition> {
     private final ImageHeapInfo heapInfo;
     private final boolean compressedNullPadding;
+    private final long hugeObjectThreshold;
 
-    public LinearImageHeapLayouter(ImageHeapInfo heapInfo, boolean compressedNullPadding) {
+    public ChunkedImageHeapLayouter(ImageHeapInfo heapInfo, boolean compressedNullPadding) {
         this.heapInfo = heapInfo;
         this.compressedNullPadding = compressedNullPadding;
+        this.hugeObjectThreshold = HeapPolicy.getLargeArrayThreshold().rawValue();
     }
 
     @Override
-    protected LinearImageHeapPartition[] createPartitionsArray(int count) {
-        return new LinearImageHeapPartition[count];
+    protected ChunkedImageHeapPartition[] createPartitionsArray(int count) {
+        return new ChunkedImageHeapPartition[count];
     }
 
     @Override
-    protected LinearImageHeapPartition createPartition(String name, boolean containsReferences, boolean writable, boolean hugeObjects) {
-        return new LinearImageHeapPartition(name, writable);
+    protected ChunkedImageHeapPartition createPartition(String name, boolean containsReferences, boolean writable, boolean hugeObjects) {
+        return new ChunkedImageHeapPartition(name, writable, hugeObjects);
+    }
+
+    @Override
+    protected long getHugeObjectThreshold() {
+        return hugeObjectThreshold;
     }
 
     @Override
     protected void doLayout(ImageHeap imageHeap) {
-        long startOffset = 0;
-        if (compressedNullPadding) {
-            /*
-             * Zero designates null, so adding some explicit padding at the beginning of the native
-             * image heap is the easiest approach to make object offsets strictly greater than 0.
-             */
-            startOffset += ConfigurationValues.getObjectLayout().getAlignment();
-        }
-        LinearImageHeapAllocator allocator = new LinearImageHeapAllocator(startOffset);
-        for (LinearImageHeapPartition partition : getPartitions()) {
-            partition.allocateObjects(allocator);
+        assert !compressedNullPadding || AlignedHeapChunk.getObjectsStartOffset().aboveThan(0) : "Expecting header to pad start so object offsets are strictly greater than 0";
+        ChunkedImageHeapAllocator allocator = new ChunkedImageHeapAllocator(0);
+        for (ChunkedImageHeapPartition partition : getPartitions()) {
+            partition.layout(allocator);
         }
         initializeHeapInfo();
     }

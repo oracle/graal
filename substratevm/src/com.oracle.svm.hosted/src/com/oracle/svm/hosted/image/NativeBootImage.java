@@ -462,18 +462,20 @@ public abstract class NativeBootImage extends AbstractBootImage {
                 objectFile.installDebugInfo(provider);
             }
             // - Write the heap to its own section.
+            // Dynamic linkers/loaders generally don't ensure any alignment to more than page
+            // boundaries, so we take care of this ourselves in CommittedMemoryProvider, if we can.
+            int alignment = objectFile.getPageSize();
             boolean writable = SubstrateOptions.UseOnlyWritableBootImageHeap.getValue();
-            long heapSize = heapLayout.getImageHeapSize();
-            RelocatableBuffer heapSectionBuffer = RelocatableBuffer.factory("heap", heapSize, objectFile.getByteOrder());
+            RelocatableBuffer heapSectionBuffer = RelocatableBuffer.factory("heap", heapLayout.getImageHeapSize(), objectFile.getByteOrder());
             ProgbitsSectionImpl heapSectionImpl = new BasicProgbitsSectionImpl(heapSectionBuffer.getBytes());
-            heapSection = objectFile.newProgbitsSection(SectionName.SVM_HEAP.getFormatDependentName(objectFile.getFormat()), objectFile.getPageSize(), writable, false, heapSectionImpl);
+            heapSection = objectFile.newProgbitsSection(SectionName.SVM_HEAP.getFormatDependentName(objectFile.getFormat()), alignment, writable, false, heapSectionImpl);
             objectFile.createDefinedSymbol(heapSection.getName(), heapSection, 0, 0, false, false);
 
             long offsetOfARelocatablePointer = writer.writeHeap(debug, heapSectionBuffer);
             assert !SubstrateOptions.SpawnIsolates.getValue() || castToByteBuffer(heapSectionBuffer).getLong((int) offsetOfARelocatablePointer) == 0L;
 
             defineDataSymbol(Isolates.IMAGE_HEAP_BEGIN_SYMBOL_NAME, heapSection, 0);
-            defineDataSymbol(Isolates.IMAGE_HEAP_END_SYMBOL_NAME, heapSection, heapSize);
+            defineDataSymbol(Isolates.IMAGE_HEAP_END_SYMBOL_NAME, heapSection, heapLayout.getImageHeapSize());
             defineDataSymbol(Isolates.IMAGE_HEAP_RELOCATABLE_BEGIN_SYMBOL_NAME, heapSection, heapLayout.getReadOnlyRelocatableOffset());
             defineDataSymbol(Isolates.IMAGE_HEAP_RELOCATABLE_END_SYMBOL_NAME, heapSection, heapLayout.getReadOnlyRelocatableOffset() + heapLayout.getReadOnlyRelocatableSize());
             defineDataSymbol(Isolates.IMAGE_HEAP_A_RELOCATABLE_POINTER_SYMBOL_NAME, heapSection, offsetOfARelocatablePointer);

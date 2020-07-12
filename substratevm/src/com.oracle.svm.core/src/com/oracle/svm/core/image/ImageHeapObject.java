@@ -24,7 +24,20 @@
  */
 package com.oracle.svm.core.image;
 
+import java.util.Comparator;
+
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 public interface ImageHeapObject {
+    @Platforms(value = Platform.HOSTED_ONLY.class)
+    class SizeComparator implements Comparator<ImageHeapObject> {
+        @Override
+        public int compare(ImageHeapObject o1, ImageHeapObject o2) {
+            return Long.signum(o1.getSize() - o2.getSize());
+        }
+    }
+
     long getSize();
 
     Object getObject();

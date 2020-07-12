@@ -22,21 +22,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix;
+package com.oracle.svm.core.heap;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
-
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.os.CommittedMemoryProvider;
-import com.oracle.svm.core.os.OSCommittedMemoryProvider;
-
-@AutomaticFeature
-class PosixOSCommittedMemoryProviderFeature implements Feature {
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (!ImageSingletons.contains(CommittedMemoryProvider.class)) {
-            ImageSingletons.add(CommittedMemoryProvider.class, new OSCommittedMemoryProvider());
-        }
-    }
+/** The smallest possible instance object, for filling in gaps in the heap. */
+public final class FillerObject {
 }
