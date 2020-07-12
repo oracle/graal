@@ -122,9 +122,12 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
     }
 
     private static void unhookCustomClassLoaders() {
-        NativeImageSystemClassLoader customSystemClassLoader = (NativeImageSystemClassLoader) ClassLoader.getSystemClassLoader();
-        customSystemClassLoader.setDelegate(null);
-        Thread.currentThread().setContextClassLoader(customSystemClassLoader.getDefaultSystemClassLoader());
+        ClassLoader loader = ClassLoader.getSystemClassLoader();
+        if (loader instanceof NativeImageSystemClassLoader) {
+            NativeImageSystemClassLoader customSystemClassLoader = (NativeImageSystemClassLoader) ClassLoader.getSystemClassLoader();
+            customSystemClassLoader.setDelegate(null);
+            Thread.currentThread().setContextClassLoader(customSystemClassLoader.getDefaultSystemClassLoader());
+        }
     }
 
     /**

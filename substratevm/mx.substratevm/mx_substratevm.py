@@ -1042,7 +1042,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
 def _native_image_configure_extra_jvm_args():
     if svm_java8():
         return []
-    packages = ['jdk.internal.vm.compiler/org.graalvm.compiler.phases.common', 'jdk.internal.vm.ci/jdk.vm.ci.meta']
+    packages = ['jdk.internal.vm.compiler/org.graalvm.compiler.phases.common', 'jdk.internal.vm.ci/jdk.vm.ci.meta', 'org.graalvm.compiler.core.common.util']
     args = ['--add-exports=' + packageName + '=ALL-UNNAMED' for packageName in packages]
     if not mx_sdk_vm.jdk_enables_jvmci_by_default(mx.get_jdk(tag='default')):
         args.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'])
@@ -1151,10 +1151,10 @@ def clinittest(args):
         mx.run([join(build_dir, 'clinittest')])
 
         # Check the reports for initialized classes
-        def check_class_initialization(classes_file_name, marker):
+        def check_class_initialization(classes_file_name, marker, prefix=''):
             classes_file = os.path.join(build_dir, 'reports', classes_file_name)
             with open(classes_file) as f:
-                wrongly_initialized_classes = [line.strip() for line in f if marker not in line.strip()]
+                wrongly_initialized_classes = [line.strip() for line in f if line.strip().startswith(prefix) and marker not in line.strip()]
                 if len(wrongly_initialized_classes) > 0:
                     mx.abort("Only classes with marker " + marker + " must be in file " + classes_file + ". Found:\n" +
                              str(wrongly_initialized_classes))
@@ -1163,7 +1163,7 @@ def clinittest(args):
         delayed_classes = next(report for report in reports if report.startswith('run_time_classes'))
         safe_classes = next(report for report in reports if report.startswith('safe_classes'))
 
-        check_class_initialization(delayed_classes, 'MustBeDelayed')
+        check_class_initialization(delayed_classes, 'MustBeDelayed', prefix='com.oracle.svm.test')
         check_class_initialization(safe_classes, 'MustBeSafe')
 
     native_image_context_run(build_and_test_clinittest_image, args, build_if_missing=True)
