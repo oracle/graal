@@ -42,7 +42,7 @@ public enum HotSpotMarkId implements CompilationResult.MarkId {
     OSR_ENTRY(false),
     EXCEPTION_HANDLER_ENTRY(false),
     DEOPT_HANDLER_ENTRY(false),
-    DEOPT_MH_HANDLER_ENTRY(false),
+    DEOPT_MH_HANDLER_ENTRY(false, true),
     FRAME_COMPLETE(true, true),
     INVOKEINTERFACE(false),
     INVOKEVIRTUAL(false),
@@ -57,7 +57,9 @@ public enum HotSpotMarkId implements CompilationResult.MarkId {
     NARROW_KLASS_BASE_ADDRESS(true),
     NARROW_OOP_BASE_ADDRESS(true),
     CRC_TABLE_ADDRESS(true),
-    LOG_OF_HEAP_REGION_GRAIN_BYTES(true);
+    LOG_OF_HEAP_REGION_GRAIN_BYTES(true),
+    VERIFY_OOPS(true, true),
+    VERIFY_OOP_COUNT_ADDRESS(true, true);
 
     private final boolean isMarkAfter;
     @NativeImageReinitialize private Integer value;
@@ -111,4 +113,5 @@ public enum HotSpotMarkId implements CompilationResult.MarkId {
                         ", optional=" + optional +
                         '}';
     }
+
 }

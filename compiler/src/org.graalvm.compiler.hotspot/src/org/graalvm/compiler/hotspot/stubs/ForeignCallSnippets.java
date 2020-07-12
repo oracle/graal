@@ -39,6 +39,7 @@ import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.nodes.DeoptimizeCallerNode;
+import org.graalvm.compiler.hotspot.nodes.GraalHotSpotVMConfigNode;
 import org.graalvm.compiler.hotspot.word.KlassPointer;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.PiNode;
@@ -88,7 +89,7 @@ public class ForeignCallSnippets implements Snippets {
     @Snippet
     public static Object verifyObject(Object object) {
         if (verifyOops(INJECTED_VMCONFIG)) {
-            Word verifyOopCounter = WordFactory.unsigned(verifyOopCounterAddress(INJECTED_VMCONFIG));
+            Word verifyOopCounter = WordFactory.unsigned(verifyOopCounterAddress());
             verifyOopCounter.writeInt(0, verifyOopCounter.readInt(0) + 1);
 
             Pointer oop = Word.objectToTrackedPointer(object);
@@ -108,9 +109,8 @@ public class ForeignCallSnippets implements Snippets {
         return object;
     }
 
-    @Fold
-    static long verifyOopCounterAddress(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.verifyOopCounterAddress;
+    static long verifyOopCounterAddress() {
+        return GraalHotSpotVMConfigNode.verifyOopCounterAddress();
     }
 
     @Fold
