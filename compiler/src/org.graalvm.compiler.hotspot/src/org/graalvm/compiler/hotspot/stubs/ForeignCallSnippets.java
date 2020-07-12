@@ -88,7 +88,7 @@ public class ForeignCallSnippets implements Snippets {
      */
     @Snippet
     public static Object verifyObject(Object object) {
-        if (verifyOops(INJECTED_VMCONFIG)) {
+        if (verifyOops()) {
             Word verifyOopCounter = WordFactory.unsigned(verifyOopCounterAddress());
             verifyOopCounter.writeInt(0, verifyOopCounter.readInt(0) + 1);
 
