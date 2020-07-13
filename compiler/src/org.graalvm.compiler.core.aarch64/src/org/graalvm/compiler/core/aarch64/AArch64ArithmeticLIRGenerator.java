@@ -27,6 +27,8 @@ package org.graalvm.compiler.core.aarch64;
 
 import static jdk.vm.ci.aarch64.AArch64Kind.DWORD;
 import static jdk.vm.ci.aarch64.AArch64Kind.QWORD;
+import static org.graalvm.compiler.core.target.Backend.ARITHMETIC_DREM;
+import static org.graalvm.compiler.core.target.Backend.ARITHMETIC_FREM;
 import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 import static org.graalvm.compiler.lir.aarch64.AArch64BitManipulationOp.BitManipulationOpCode.BSR;
@@ -38,6 +40,7 @@ import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
+import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.lir.LIRFrameState;
@@ -161,7 +164,21 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
 
     @Override
     public Value emitRem(Value a, Value b, LIRFrameState state) {
-        return emitBinary(LIRKind.combine(a, b), getOpCode(a, AArch64ArithmeticOp.REM, AArch64ArithmeticOp.FREM), false, asAllocatable(a), asAllocatable(b));
+        if (isNumericInteger(a.getPlatformKind())) {
+            return emitBinary(LIRKind.combine(a, b), AArch64ArithmeticOp.REM, false, asAllocatable(a), asAllocatable(b));
+        } else {
+            switch ((AArch64Kind) a.getPlatformKind()) {
+                case SINGLE:
+                    ForeignCallLinkage fremCall = getLIRGen().getForeignCalls().lookupForeignCall(ARITHMETIC_FREM);
+                    return getLIRGen().emitForeignCall(fremCall, state, a, b);
+                case DOUBLE:
+                    ForeignCallLinkage dremCall = getLIRGen().getForeignCalls().lookupForeignCall(ARITHMETIC_DREM);
+                    return getLIRGen().emitForeignCall(dremCall, state, a, b);
+                default:
+                    GraalError.shouldNotReachHere("emitRem on unexpected kind " + a.getPlatformKind());
+                    return null;
+            }
+        }
     }
 
     @Override
@@ -360,7 +377,6 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
         AllocatableValue x = moveSp(a);
         AllocatableValue y = moveSp(b);
         switch (op) {
-            case FREM:
             case REM:
             case UREM:
                 getLIRGen().append(new AArch64ArithmeticOp.BinaryCompositeOp(op, result, x, y));
