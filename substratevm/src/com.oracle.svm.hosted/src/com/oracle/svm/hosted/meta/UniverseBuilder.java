@@ -73,6 +73,7 @@ import com.oracle.svm.core.classinitialization.ClassInitializationInfo.ClassInit
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
+import com.oracle.svm.core.heap.FillerObject;
 import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
 import com.oracle.svm.core.heap.ReferenceMapEncoder;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
@@ -609,8 +610,8 @@ public class UniverseBuilder {
 
     /**
      * We want these types to be immutable so that they can be in the read-only part of the image
-     * heap. Moreover, all of them except for String *must* be read-only because they contain
-     * relocatable pointers. Therefore these types will not get a monitor field and will always use
+     * heap. Those types that contain relocatable pointers *must* be in the read-only relocatables
+     * partition of the image heap. Immutable types will not get a monitor field and will always use
      * the secondary storage for monitor slots.
      */
     private static final Set<Class<?>> IMMUTABLE_TYPES = new HashSet<>(Arrays.asList(
@@ -618,7 +619,8 @@ public class UniverseBuilder {
                     DynamicHub.class,
                     CEntryPointLiteral.class,
                     BoxedRelocatedPointer.class,
-                    ClassInitializerFunctionPointerHolder.class));
+                    ClassInitializerFunctionPointerHolder.class,
+                    FillerObject.class));
 
     private void collectMonitorFieldInfo(BigBang bb) {
         if (!SubstrateOptions.MultiThreaded.getValue()) {
@@ -716,12 +718,18 @@ public class UniverseBuilder {
         }
 
         if (HybridLayout.isHybrid(clazz)) {
+            /* Set start after array length field */
             assert startSize == ConfigurationValues.getObjectLayout().getArrayLengthOffset();
             int fieldSize = ConfigurationValues.getObjectLayout().sizeInBytes(JavaKind.Int);
             startSize += fieldSize;
 
-            assert clazz.equals(hMetaAccess.lookupJavaType(DynamicHub.class)) : "currently only DynamicHub may be a hybrid class";
-            startSize += (hUniverse.numInterfaceBits + Byte.SIZE - 1) / Byte.SIZE;
+            /*
+             * Set start after bitset field, if the hybrid class has one. For now, only DynamicHubs
+             * can have bitsets.
+             */
+            if (clazz.equals(hMetaAccess.lookupJavaType(DynamicHub.class))) {
+                startSize += (hUniverse.numInterfaceBits + Byte.SIZE - 1) / Byte.SIZE;
+            }
         }
 
         // Sort so that a) all Object fields are consecutive, and b) bigger types come first.

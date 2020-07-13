@@ -2976,8 +2976,7 @@ public class FlatNodeGenFactory {
             }
 
             if (pushEnclosingNode || extractInBoundary) {
-                innerBuilder.startStatement().type(types.Node).string(" prev_ = ").//
-                                startStaticCall(types.NodeUtil, "pushEncapsulatingNode").string("this").end().end();
+                GeneratorUtils.pushEncapsulatingNode(innerBuilder, "this");
                 innerBuilder.startTryBlock();
             }
 
@@ -2993,7 +2992,7 @@ public class FlatNodeGenFactory {
 
             if (pushEnclosingNode || extractInBoundary) {
                 innerBuilder.end().startFinallyBlock();
-                innerBuilder.startStatement().startStaticCall(types.NodeUtil, "popEncapsulatingNode").string("prev_").end().end();
+                GeneratorUtils.popEncapsulatingNode(innerBuilder);
                 innerBuilder.end();
             }
             builder.end(nonBoundaryIfCount.blockCount);
@@ -3040,9 +3039,7 @@ public class FlatNodeGenFactory {
                 boolean pushBoundary = cachesRequireFastPathBoundary(specialization.getCaches());
                 if (pushBoundary) {
                     builder.startBlock();
-                    builder.startStatement();
-                    builder.type(types.Node);
-                    builder.string(" prev_ = ").startStaticCall(types.NodeUtil, "pushEncapsulatingNode").string("this").end().end();
+                    GeneratorUtils.pushEncapsulatingNode(builder, "this");
                     builder.startTryBlock();
                 }
                 BlockState innerIfCount = BlockState.NONE;
@@ -3144,7 +3141,7 @@ public class FlatNodeGenFactory {
 
                 if (pushBoundary) {
                     builder.end().startFinallyBlock();
-                    builder.startStatement().startStaticCall(types.NodeUtil, "popEncapsulatingNode").string("prev_").end().end();
+                    GeneratorUtils.popEncapsulatingNode(builder);
                     builder.end();
                     builder.end();
                 }

@@ -59,6 +59,7 @@ import org.graalvm.compiler.nodes.java.StoreFieldNode;
 import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
+import org.graalvm.compiler.nodes.memory.VolatileReadNode;
 import org.graalvm.compiler.nodes.memory.WriteNode;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -123,16 +124,20 @@ public class ReadEliminationClosure extends EffectsClosure<ReadEliminationBlockS
             }
         } else if (node instanceof ReadNode) {
             ReadNode read = (ReadNode) node;
-            if (read.getLocationIdentity().isSingle()) {
-                ValueNode object = GraphUtil.unproxify(read.getAddress());
-                LoadCacheEntry identifier = new LoadCacheEntry(object, read.getLocationIdentity());
-                ValueNode cachedValue = state.getCacheEntry(identifier);
-                if (cachedValue != null && areValuesReplaceable(read, cachedValue, considerGuards)) {
-                    effects.replaceAtUsages(read, cachedValue, read);
-                    addScalarAlias(read, cachedValue);
-                    deleted = true;
-                } else {
-                    state.addCacheEntry(identifier, read);
+            if (read instanceof VolatileReadNode) {
+                killReadCacheByIdentity(state, any());
+            } else {
+                if (read.getLocationIdentity().isSingle()) {
+                    ValueNode object = GraphUtil.unproxify(read.getAddress());
+                    LoadCacheEntry identifier = new LoadCacheEntry(object, read.getLocationIdentity());
+                    ValueNode cachedValue = state.getCacheEntry(identifier);
+                    if (cachedValue != null && areValuesReplaceable(read, cachedValue, considerGuards)) {
+                        effects.replaceAtUsages(read, cachedValue, read);
+                        addScalarAlias(read, cachedValue);
+                        deleted = true;
+                    } else {
+                        state.addCacheEntry(identifier, read);
+                    }
                 }
             }
         } else if (node instanceof WriteNode) {

@@ -126,6 +126,17 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
             monitorTypes.add(java.io.FileDescriptor.class);
 
             /*
+             * LinuxPhysicalMemory$PhysicalMemorySupportImpl.sizeFromCGroup() also calls
+             * java.io.FileInputStream.close() which synchronizes on a 'Object closeLock = new
+             * Object()' object. We cannot modify the type of the monitor since it is in JDK code.
+             * Adding a monitor slot to java.lang.Object doesn't impact any subtypes.
+             * 
+             * This should also take care of the synchronization in
+             * ReferenceInternals.processPendingReferences().
+             */
+            monitorTypes.add(java.lang.Object.class);
+
+            /*
              * The map access in MultiThreadedMonitorSupport.getOrCreateMonitorFromMap() calls
              * System.identityHashCode() which on the slow path calls
              * IdentityHashCodeSupport.generateIdentityHashCode(). The hashcode generation calls
@@ -187,6 +198,13 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         try {
             singleton().monitorEnter(obj);
 
+        } catch (OutOfMemoryError ex) {
+            /*
+             * Exposing OutOfMemoryError to application. Note that since the foreign call from
+             * snippets to this method does not have an exception edge, it is possible this throw
+             * will miss the proper exception handler.
+             */
+            throw ex;
         } catch (Throwable ex) {
             /*
              * The foreign call from snippets to this method does not have an exception edge. So we
@@ -224,6 +242,13 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         try {
             singleton().monitorExit(obj);
 
+        } catch (OutOfMemoryError ex) {
+            /*
+             * Exposing OutOfMemoryError to application. Note that since the foreign call from
+             * snippets to this method does not have an exception edge, it is possible this throw
+             * will miss the proper exception handler.
+             */
+            throw ex;
         } catch (Throwable ex) {
             /*
              * The foreign call from snippets to this method does not have an exception edge. So we

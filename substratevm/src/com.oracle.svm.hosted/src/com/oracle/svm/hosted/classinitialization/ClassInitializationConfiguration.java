@@ -32,6 +32,7 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Pair;
 
 import com.oracle.svm.core.util.UserError;
 
@@ -63,14 +64,14 @@ public class ClassInitializationConfiguration {
         insertRec(root, qualifierList(classOrPackage), kind, reason, strict);
     }
 
-    synchronized InitKind lookupKind(String classOrPackage) {
-        InitializationNode node = lookupRec(root, qualifierList(classOrPackage), null);
-        return node == null ? null : node.kind;
+    synchronized Pair<InitKind, Boolean> lookupKind(String classOrPackage) {
+        Pair<InitializationNode, Boolean> kindPair = lookupRec(root, qualifierList(classOrPackage), null);
+        return Pair.create(kindPair.getLeft() == null ? null : kindPair.getLeft().kind, kindPair.getRight());
     }
 
     synchronized String lookupReason(String classOrPackage) {
-        assert lookupRec(root, qualifierList(classOrPackage), null) != null : "Path for a file should be ";
-        return String.join(" and ", lookupRec(root, qualifierList(classOrPackage), null).reasons);
+        assert lookupRec(root, qualifierList(classOrPackage), null).getLeft() != null : "Path for a file should be ";
+        return String.join(" and ", lookupRec(root, qualifierList(classOrPackage), null).getLeft().reasons);
     }
 
     private static List<String> qualifierList(String classOrPackage) {
@@ -113,15 +114,16 @@ public class ClassInitializationConfiguration {
         }
     }
 
-    private InitializationNode lookupRec(InitializationNode node, List<String> classOrPackage, InitializationNode lastNonNullKind) {
+    private Pair<InitializationNode, Boolean> lookupRec(InitializationNode node, List<String> classOrPackage, InitializationNode lastNonNullKind) {
         List<String> tail = new ArrayList<>(classOrPackage);
         tail.remove(0);
-        if (!tail.isEmpty() && node.children.containsKey(tail.get(0))) {
+        boolean reachedBottom = tail.isEmpty();
+        if (!reachedBottom && node.children.containsKey(tail.get(0))) {
             return lookupRec(node.children.get(tail.get(0)), tail, node.kind != null ? node : lastNonNullKind);
         } else if (node.kind == null) {
-            return lastNonNullKind;
+            return Pair.create(lastNonNullKind, reachedBottom);
         } else {
-            return node;
+            return Pair.create(node, reachedBottom);
         }
     }
 

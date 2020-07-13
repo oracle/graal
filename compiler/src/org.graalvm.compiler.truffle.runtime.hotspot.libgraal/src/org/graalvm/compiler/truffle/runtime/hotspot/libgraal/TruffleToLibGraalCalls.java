@@ -87,7 +87,7 @@ final class TruffleToLibGraalCalls {
     static native long newCompiler(long isolateThreadId, long truffleRuntimeHandle);
 
     @TruffleToLibGraal(InitializeCompiler)
-    static native void initializeCompiler(long isolateThreadId, long compilerHandle, byte[] options);
+    static native void initializeCompiler(long isolateThreadId, long compilerHandle, byte[] options, CompilableTruffleAST compilable, boolean firstInitialization);
 
     @TruffleToLibGraal(GetInitialOptions)
     static native byte[] getInitialOptions(long isolateThreadId, long truffleRuntimeHandle);
@@ -109,10 +109,10 @@ final class TruffleToLibGraalCalls {
                     TruffleCompilerListener listener);
 
     @TruffleToLibGraal(InstallTruffleCallBoundaryMethods)
-    static native void installTruffleCallBoundaryMethods(long isolateThreadId, long handle);
+    static native void installTruffleCallBoundaryMethods(long isolateThreadId, long handle, CompilableTruffleAST compilable);
 
     @TruffleToLibGraal(PendingTransferToInterpreterOffset)
-    static native int pendingTransferToInterpreterOffset(long isolateThreadId, long handle);
+    static native int pendingTransferToInterpreterOffset(long isolateThreadId, long handle, CompilableTruffleAST compilable);
 
     @TruffleToLibGraal(Shutdown)
     static native void shutdown(long isolateThreadId, long handle);

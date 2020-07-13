@@ -38,9 +38,15 @@ public interface TruffleCompiler {
     /**
      * Initializes the compiler before the first compilation.
      *
+     * @param options the options for initialization
+     * @param compilation the Truffle AST that triggered the initialization
+     * @param firstInitialization first initialization. For a multi-isolate compiler the
+     *            {@code firstInitialization} must be {@code true} for an initialization in the
+     *            first isolate and {@code false} for an initialization in the following isolates.
+     *
      * @since 20.0.0
      */
-    void initialize(Map<String, Object> options);
+    void initialize(Map<String, Object> options, CompilableTruffleAST compilation, boolean firstInitialization);
 
     /**
      * Opens a new compilation for {@code compilable}. Each call results in a new compilation

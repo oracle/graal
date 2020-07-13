@@ -39,8 +39,6 @@ public class HostedInstanceClass extends HostedClass {
     protected int instanceSize;
     protected boolean monitorFieldNeeded = false;
     protected int monitorFieldOffset = 0;
-    protected boolean waitNotifyConditionFieldNeeded = false;
-    protected int waitNotifyConditionFieldOffset = 0;
     protected boolean hashCodeFieldNeeded = false;
     protected int hashCodeFieldOffset = 0;
 

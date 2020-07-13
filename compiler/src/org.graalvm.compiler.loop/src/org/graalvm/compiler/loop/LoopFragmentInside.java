@@ -267,7 +267,7 @@ public class LoopFragmentInside extends LoopFragment {
         } else {
             AbstractBeginNode newSegmentBegin = getDuplicatedNode(mainLoopBegin);
             FixedNode newSegmentFirstNode = newSegmentBegin.next();
-            EndNode newSegmentEnd = getBlockEnd(newSegmentBegin);
+            EndNode newSegmentEnd = getBlockEnd((FixedNode) getDuplicatedNode(mainLoopBegin.loopEnds().first().predecessor()));
             FixedWithNextNode newSegmentLastNode = (FixedWithNextNode) newSegmentEnd.predecessor();
             LoopEndNode loopEndNode = mainLoopBegin.getSingleLoopEnd();
             FixedWithNextNode lastCodeNode = (FixedWithNextNode) loopEndNode.predecessor();
@@ -316,11 +316,15 @@ public class LoopFragmentInside extends LoopFragment {
         FrameState loopState = stateSplit.stateAfter();
         if (loopState != null) {
             loopState.applyToVirtual(v -> {
-                if (v.usages().filter(n -> nodes.isMarked(n) && n != stateSplit).isEmpty()) {
+                /*
+                 * Frame states can reuse virtual object mappings thus n can be new
+                 */
+                if (v.usages().filter(n -> !nodes.isNew(n) && nodes.isMarked(n) && n != stateSplit).isEmpty()) {
                     nodes.clear(v);
                 }
             });
         }
+
     }
 
     public NodeIterable<LoopExitNode> exits() {

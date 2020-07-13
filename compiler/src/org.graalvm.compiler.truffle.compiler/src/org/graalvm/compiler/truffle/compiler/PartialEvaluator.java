@@ -166,7 +166,7 @@ public abstract class PartialEvaluator {
         this.nodePlugins = createNodePlugins(configForRoot.getPlugins());
     }
 
-    void initialize(OptionValues options) {
+    protected void initialize(OptionValues options) {
         instrumentationCfg = new InstrumentPhase.InstrumentationConfiguration(options);
         boolean needSourcePositions = TruffleCompilerOptions.getPolyglotOptionValue(options, NodeSourcePositions) ||
                         instrumentationCfg.instrumentBranches ||
@@ -174,6 +174,10 @@ public abstract class PartialEvaluator {
                         !TruffleCompilerOptions.getPolyglotOptionValue(options, TracePerformanceWarnings).isEmpty();
         configForParsing = configPrototype.withNodeSourcePosition(configPrototype.trackNodeSourcePosition() || needSourcePositions).withOmitAssertions(
                         TruffleCompilerOptions.getPolyglotOptionValue(options, ExcludeAssertions));
+    }
+
+    public EconomicMap<ResolvedJavaMethod, EncodedGraph> getOrCreateEncodedGraphCache() {
+        return EconomicMap.create();
     }
 
     /**
@@ -567,7 +571,7 @@ public abstract class PartialEvaluator {
                 agnosticInlining.apply(request.graph, providers);
             } else {
                 final PEInliningPlanInvokePlugin plugin = new PEInliningPlanInvokePlugin(this, request.options, request.compilable, request.inliningPlan, request.graph);
-                doGraphPE(request, plugin, EconomicMap.create());
+                doGraphPE(request, plugin, getOrCreateEncodedGraphCache());
             }
         }
         request.debug.dump(DebugContext.BASIC_LEVEL, request.graph, "After Partial Evaluation");

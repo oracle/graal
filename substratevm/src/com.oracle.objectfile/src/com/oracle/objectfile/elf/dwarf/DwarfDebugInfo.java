@@ -72,7 +72,7 @@ public class DwarfDebugInfo extends DebugInfoBase {
      */
     public static final int DW_AT_null = 0x0;
     public static final int DW_AT_name = 0x3;
-    @SuppressWarnings("unused") public static final int DW_AT_comp_dir = 0x1b;
+    public static final int DW_AT_comp_dir = 0x1b;
     public static final int DW_AT_stmt_list = 0x10;
     public static final int DW_AT_low_pc = 0x11;
     public static final int DW_AT_hi_pc = 0x12;

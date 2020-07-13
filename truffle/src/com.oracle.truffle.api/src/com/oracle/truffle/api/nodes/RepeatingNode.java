@@ -98,8 +98,9 @@ public interface RepeatingNode extends NodeInterface {
      * should override this method.
      *
      * @param frame the current execution frame passed through the interpreter
-     * @return <code>CONTINUE_LOOP_STATUS</code> if the method should be executed again to complete
-     *         the loop and any other (language-specific) value if it must not.
+     * @return a value <code>v</code> satisfying {@link RepeatingNode#shouldContinue
+     *         shouldContinue(v)}<code> == true</code> if the method should be executed again to
+     *         complete the loop and any other value if it must not.
      * @since 19.3
      */
     default Object executeRepeatingWithValue(VirtualFrame frame) {
@@ -108,5 +109,30 @@ public interface RepeatingNode extends NodeInterface {
         } else {
             return BREAK_LOOP_STATUS;
         }
+    }
+
+    /**
+     * Returns a placeholder loop status used internally before the first iteration.
+     *
+     * @return a value satisfying
+     *         <code>{@link RepeatingNode#shouldContinue shouldContinue}({@link RepeatingNode#initialLoopStatus initialLoopStatus}(v)) == true</code>
+     * @since 20.2
+     */
+    default Object initialLoopStatus() {
+        return CONTINUE_LOOP_STATUS;
+    }
+
+    /**
+     * Predicate called on values returned by
+     * {@link RepeatingNode#executeRepeatingWithValue(VirtualFrame) executeRepeatingWithValue()}.
+     *
+     * @param returnValue a value returned by
+     *            {@link RepeatingNode#executeRepeatingWithValue(VirtualFrame)
+     *            executeRepeatingWithValue()}
+     * @return true if the loop should continue executing or false otherwise
+     * @since 20.2
+     */
+    default boolean shouldContinue(Object returnValue) {
+        return returnValue == initialLoopStatus();
     }
 }

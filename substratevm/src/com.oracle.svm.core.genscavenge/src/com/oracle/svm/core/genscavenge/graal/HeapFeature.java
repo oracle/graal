@@ -38,9 +38,11 @@ import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.genscavenge.ChunkedImageHeapLayouter;
 import com.oracle.svm.core.genscavenge.CompleteGarbageCollectorMXBean;
 import com.oracle.svm.core.genscavenge.HeapImpl;
 import com.oracle.svm.core.genscavenge.HeapImplMemoryMXBean;
+import com.oracle.svm.core.genscavenge.HeapOptions;
 import com.oracle.svm.core.genscavenge.ImageHeapInfo;
 import com.oracle.svm.core.genscavenge.IncrementalGarbageCollectorMXBean;
 import com.oracle.svm.core.genscavenge.LinearImageHeapLayouter;
@@ -70,7 +72,14 @@ class HeapFeature implements GraalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(Heap.class, new HeapImpl(access));
-        ImageSingletons.add(ImageHeapLayouter.class, new LinearImageHeapLayouter(HeapImpl.getImageHeapInfo(), true));
+
+        ImageHeapLayouter heapLayouter;
+        if (HeapOptions.ChunkedImageHeapLayout.getValue()) {
+            heapLayouter = new ChunkedImageHeapLayouter(HeapImpl.getImageHeapInfo(), true);
+        } else {
+            heapLayouter = new LinearImageHeapLayouter(HeapImpl.getImageHeapInfo(), true);
+        }
+        ImageSingletons.add(ImageHeapLayouter.class, heapLayouter);
 
         ManagementSupport managementSupport = ManagementSupport.getSingleton();
         managementSupport.addPlatformManagedObjectSingleton(java.lang.management.MemoryMXBean.class, new HeapImplMemoryMXBean());

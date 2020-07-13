@@ -51,9 +51,10 @@ import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 public class BackgroundCompileQueue {
 
     private final AtomicLong idCounter;
-    private volatile ExecutorService compilationExecutorService;
+    private volatile ThreadPoolExecutor compilationExecutorService;
     private boolean shutdown = false;
     protected final GraalTruffleRuntime runtime;
+    private long delayMillis;
 
     public BackgroundCompileQueue(GraalTruffleRuntime runtime) {
         this.runtime = runtime;
@@ -72,6 +73,9 @@ public class BackgroundCompileQueue {
                 throw new RejectedExecutionException("The BackgroundCompileQueue is shutdown");
             }
 
+            // NOTE: The value from the first Engine compiling wins for now
+            this.delayMillis = callTarget.getOptionValue(PolyglotCompilerOptions.EncodedGraphCachePurgeDelay);
+
             // NOTE: the value from the first Engine compiling wins for now
             int threads = callTarget.getOptionValue(PolyglotCompilerOptions.CompilerThreads);
             if (threads == 0) {
@@ -87,17 +91,23 @@ public class BackgroundCompileQueue {
 
             long compilerIdleDelay = runtime.getCompilerIdleDelay(callTarget);
             long keepAliveTime = compilerIdleDelay >= 0 ? compilerIdleDelay : 0;
+
             ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(threads, threads,
                             keepAliveTime, TimeUnit.MILLISECONDS,
-                            new PriorityBlockingQueue<>(), factory) {
+                            new IdlingPriorityBlockingQueue<>(), factory) {
                 @Override
                 protected <T> RunnableFuture<T> newTaskFor(Callable<T> callable) {
                     return new RequestFutureTask<>((RequestImpl<T>) callable);
                 }
             };
+
             if (compilerIdleDelay > 0) {
+                // There are two mechanisms to signal idleness: if core threads can timeout, then
+                // the notification is triggered by TruffleCompilerThreadFactory,
+                // otherwise, via IdlingBlockingQueue.take.
                 threadPoolExecutor.allowCoreThreadTimeOut(true);
             }
+
             return compilationExecutorService = threadPoolExecutor;
         }
     }
@@ -223,7 +233,7 @@ public class BackgroundCompileQueue {
         }
     }
 
-    private static final class TruffleCompilerThreadFactory implements ThreadFactory {
+    private final class TruffleCompilerThreadFactory implements ThreadFactory {
         private final String namePrefix;
         private final GraalTruffleRuntime runtime;
 
@@ -241,6 +251,11 @@ public class BackgroundCompileQueue {
                     setContextClassLoader(getClass().getClassLoader());
                     try (AutoCloseable scope = runtime.openCompilerThreadScope()) {
                         super.run();
+                        if (compilationExecutorService.allowsCoreThreadTimeOut()) {
+                            // If core threads are always kept alive (no timeout), the
+                            // IdlingPriorityBlockingQueue.take mechanism is used instead.
+                            compilerThreadIdled();
+                        }
                     } catch (Exception e) {
                         throw new InternalError(e);
                     }
@@ -253,4 +268,38 @@ public class BackgroundCompileQueue {
         }
     }
 
+    /**
+     * {@link PriorityBlockingQueue} with idling notification.
+     *
+     * <p>
+     * The idling notification is triggered when a compiler thread remains idle more than
+     * {@code delayMillis}.
+     *
+     * There are no guarantees on which thread will run the {@code onIdleDelayed} hook. Note that,
+     * starved threads can also trigger the notification, even if the compile queue is not idle
+     * during the delay period, the idling criteria is thread-based, not queue-based.
+     */
+    @SuppressWarnings("serial")
+    private final class IdlingPriorityBlockingQueue<E> extends PriorityBlockingQueue<E> {
+        @Override
+        public E take() throws InterruptedException {
+            while (!compilationExecutorService.allowsCoreThreadTimeOut()) {
+                E elem = poll(delayMillis, TimeUnit.MILLISECONDS);
+                if (elem == null) {
+                    compilerThreadIdled();
+                } else {
+                    return elem;
+                }
+            }
+            // Fallback to blocking version.
+            return super.take();
+        }
+    }
+
+    /**
+     * Called when a compiler thread becomes idle for more than {@code delayMillis}.
+     */
+    protected void compilerThreadIdled() {
+        // nop
+    }
 }

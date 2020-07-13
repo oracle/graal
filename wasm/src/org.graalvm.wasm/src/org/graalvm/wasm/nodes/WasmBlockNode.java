@@ -236,7 +236,6 @@ import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.constants.TargetOffset;
 import org.graalvm.wasm.exception.WasmExecutionException;
 import org.graalvm.wasm.exception.WasmTrap;
 import org.graalvm.wasm.memory.WasmMemory;
@@ -345,7 +344,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
 
     @Override
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
-    public TargetOffset execute(WasmContext context, VirtualFrame frame) {
+    public int execute(WasmContext context, VirtualFrame frame) {
         int childrenOffset = 0;
         int byteConstantOffset = initialByteConstantOffset;
         int intConstantOffset = initialIntConstantOffset;
@@ -373,10 +372,10 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     // The unwind counter indicates how many levels up we need to branch from within
                     // the block.
                     trace("block ENTER");
-                    TargetOffset unwindCounter = block.execute(context, frame);
-                    trace("block EXIT, target = %d", unwindCounter.value);
-                    if (unwindCounter.isGreaterThanZero()) {
-                        return unwindCounter.decrement();
+                    int unwindCounter = block.execute(context, frame);
+                    trace("block EXIT, target = %d", unwindCounter);
+                    if (unwindCounter > 0) {
+                        return unwindCounter - 1;
                     }
 
                     childrenOffset++;
@@ -405,14 +404,13 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     // "shallower" than the current loop block
                     // (break out of the loop and even further).
                     trace("loop ENTER");
-                    TargetOffset unwindCounter = (TargetOffset) loopNode.execute(frame);
-                    trace("loop EXIT, target = %d", unwindCounter.value);
-                    if (unwindCounter.isGreaterThanZero()) {
-                        return unwindCounter.decrement();
+                    int unwindCounter = ((Integer) loopNode.execute(frame));
+                    trace("loop EXIT, target = %d", unwindCounter);
+                    if (unwindCounter > 0) {
+                        return unwindCounter - 1;
                     }
-                    // The unwind counter cannot be 0 at this point, because that corresponds to
-                    // CONTINUE_LOOP_STATUS.
-                    assert unwindCounter.isMinusOne() : "Unwind counter after loop exit: " + unwindCounter.value;
+                    // The unwind counter cannot be 0 at this point.
+                    assert unwindCounter == -1 : "Unwind counter after loop exit: " + unwindCounter;
 
                     childrenOffset++;
                     offset += loopBody.byteLength();
@@ -427,10 +425,10 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     WasmIfNode ifNode = (WasmIfNode) children[childrenOffset];
                     stackPointer--;
                     trace("if ENTER");
-                    TargetOffset unwindCounter = ifNode.execute(context, frame);
-                    trace("if EXIT, target = %d", unwindCounter.value);
-                    if (unwindCounter.isGreaterThanZero()) {
-                        return unwindCounter.decrement();
+                    int unwindCounter = ifNode.execute(context, frame);
+                    trace("if EXIT, target = %d", unwindCounter);
+                    if (unwindCounter > 0) {
+                        return unwindCounter - 1;
                     }
                     childrenOffset++;
                     offset += ifNode.byteLength();
@@ -446,14 +444,13 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                 case END:
                     break;
                 case BR: {
-                    // region Load LEB128 Unsigned32 -> unwindCounterValue
-                    int unwindCounterValue = unsignedIntConstant(offset, intConstantOffset);
+                    // region Load LEB128 Unsigned32 -> unwindCounter
+                    int unwindCounter = unsignedIntConstant(offset, intConstantOffset);
                     int offsetDelta = offsetDelta(offset, byteConstantOffset);
                     intConstantOffset += intConstantDelta(offset);
                     byteConstantOffset += byteConstantDelta(offset);
                     offset += offsetDelta;
                     // endregion
-                    TargetOffset unwindCounter = TargetOffset.createOrCached(unwindCounterValue);
 
                     // Reset the stack pointer to the target block stack pointer.
                     // region Load int continuationStackPointer
@@ -465,7 +462,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     intConstantOffset++;
                     // endregion
 
-                    trace("br, target = %d", unwindCounterValue);
+                    trace("br, target = %d", unwindCounter);
 
                     // Populate the stack with the return values of the current block (the one we
                     // are escaping from).
@@ -475,8 +472,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                 }
                 case BR_IF: {
                     stackPointer--;
-                    // region Load LEB128 Unsigned32 -> unwindCounterValue
-                    int unwindCounterValue = unsignedIntConstant(offset, intConstantOffset);
+                    // region Load LEB128 Unsigned32 -> unwindCounter
+                    int unwindCounter = unsignedIntConstant(offset, intConstantOffset);
                     int offsetDelta = offsetDelta(offset, byteConstantOffset);
                     intConstantOffset += intConstantDelta(offset);
                     byteConstantOffset += byteConstantDelta(offset);
@@ -495,9 +492,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     ++profileOffset;
 
                     if (condition) {
-                        TargetOffset unwindCounter = TargetOffset.createOrCached(unwindCounterValue);
-
-                        trace("br_if, target = %d", unwindCounterValue);
+                        trace("br_if, target = %d", unwindCounter);
 
                         // Populate the stack with the return values of the current block (the one
                         // we are escaping from).
@@ -516,22 +511,22 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     // but since we are returning, it does not really matter.
 
                     int returnTypeLength = table[0];
-                    int unwindCounterValue = table[1 + 2 * index];
+                    int unwindCounter = table[1 + 2 * index];
                     int continuationStackPointer = table[1 + 2 * index + 1];
-                    trace("br_table, target = %d", unwindCounterValue);
+                    trace("br_table, target = %d", unwindCounter);
 
                     // Populate the stack with the return values of the current block (the one we
                     // are escaping from).
                     unwindStack(frame, stackPointer, continuationStackPointer, returnTypeLength);
 
-                    return TargetOffset.createOrCached(unwindCounterValue);
+                    return unwindCounter;
                 }
                 case RETURN: {
                     // A return statement causes the termination of the current function, i.e.
                     // causes the execution
                     // to resume after the instruction that invoked the current frame.
                     // region Load int unwindCounterValue
-                    int unwindCounterValue = codeEntry().intConstant(intConstantOffset);
+                    int unwindCounter = codeEntry().intConstant(intConstantOffset);
                     intConstantOffset++;
                     // endregion
                     // region Load int rootBlockReturnLength
@@ -540,7 +535,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     // endregion
                     unwindStack(frame, stackPointer, 0, rootBlockReturnLength);
                     trace("return");
-                    return TargetOffset.createOrCached(unwindCounterValue);
+                    return unwindCounter;
                 }
                 case CALL: {
                     // region Load LEB128 Unsigned32 -> functionIndex
@@ -2395,7 +2390,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     Assert.fail(Assert.format("Unknown opcode: 0x%02X", opcode));
             }
         }
-        return TargetOffset.MINUS_ONE;
+        return -1;
     }
 
     private boolean popCondition(VirtualFrame frame, int stackPointer) {
@@ -2441,11 +2436,13 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     @ExplodeLoop
     private void unwindStack(VirtualFrame frame, int stackPointer, int continuationStackPointer, int returnLength) {
         CompilerAsserts.partialEvaluationConstant(stackPointer);
-        CompilerAsserts.partialEvaluationConstant(returnLength);
+        CompilerAsserts.partialEvaluationConstant(continuationStackPointer);
         for (int i = 0; i < returnLength; ++i) {
             long value = pop(frame, stackPointer + i - 1);
             push(frame, continuationStackPointer + i, value);
         }
+        // This check will be removed in the next PR which makes continuationStackPointer always
+        // constants by improving the BR_TABLE implementation.
         if (CompilerDirectives.isPartialEvaluationConstant(continuationStackPointer)) {
             for (int i = continuationStackPointer + returnLength; i < stackPointer; ++i) {
                 pop(frame, i);
@@ -2454,30 +2451,22 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     @Override
+    public Object initialLoopStatus() {
+        return 0;
+    }
+
+    public boolean shouldContinue(Object value) {
+        return ((Integer) value) == 0;
+    }
+
+    @Override
     public boolean executeRepeating(VirtualFrame frame) {
         throw new WasmExecutionException(this, "This method should never have been called.");
     }
 
     @Override
-    public Object executeRepeatingWithValue(VirtualFrame frame) {
-        final TargetOffset offset = execute(contextReference().get(), frame);
-        if (offset.isZero()) {
-            return CONTINUE_LOOP_STATUS;
-        }
-        return offset;
-    }
-
-    @SuppressWarnings("unused")
-    public static boolean shouldContinue(Object value) {
-        // This is a trick to avoid the load of the value field.
-        // In particular, we avoid:
-        //
-        // return this.value == 0;
-        //
-        // This helps the partial evaluator short-circuit the
-        // pattern with a diamond and a loop exit check,
-        // when br_if occurs in the loop body.
-        return value == TargetOffset.ZERO;
+    public Integer executeRepeatingWithValue(VirtualFrame frame) {
+        return execute(contextReference().get(), frame);
     }
 
     @Override

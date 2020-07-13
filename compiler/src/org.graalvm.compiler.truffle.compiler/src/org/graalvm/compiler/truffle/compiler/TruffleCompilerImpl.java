@@ -188,6 +188,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     public static final TimerKey PartialEvaluationTime = DebugContext.timer("PartialEvaluationTime");
     public static final TimerKey CompilationTime = DebugContext.timer("CompilationTime");
     public static final TimerKey CodeInstallationTime = DebugContext.timer("CodeInstallation");
+    public static final TimerKey EncodedGraphCacheEvictionTime = DebugContext.timer("EncodedGraphCacheEvictionTime");
 
     public static final MemUseTrackerKey PartialEvaluationMemUse = DebugContext.memUseTracker("TrufflePartialEvaluationMemUse");
     public static final MemUseTrackerKey CompilationMemUse = DebugContext.memUseTracker("TruffleCompilationMemUse");
@@ -265,13 +266,13 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     }
 
     @Override
-    public void initialize(Map<String, Object> optionsMap) {
+    public void initialize(Map<String, Object> optionsMap, CompilableTruffleAST compilable, boolean firstInitialization) {
         if (!initialized) {
             synchronized (this) {
                 if (!initialized) {
                     partialEvaluator.initialize(TruffleCompilerOptions.getOptionsForCompiler(optionsMap));
-                    if (Boolean.parseBoolean(System.getenv("TRUFFLE_STRICT_OPTION_DEPRECATION"))) {
-                        TruffleCompilerOptions.checkDeprecation();
+                    if (firstInitialization) {
+                        TruffleCompilerOptions.checkDeprecation(compilable);
                     }
                     initialized = true;
                 }
@@ -466,6 +467,9 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
             // compilation time and memory usage reported by printer
             printer.finish(compilationResult);
         } catch (Throwable t) {
+            if (t instanceof BailoutException) {
+                handleBailout(debug, graph, (BailoutException) t);
+            }
             // Note: If the compiler cancels the compilation with a bailout exception, then the
             // graph is null
             if (listener != null) {
@@ -475,6 +479,17 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
             }
             throw t;
         }
+    }
+
+    /**
+     * Hook for processing bailout exceptions.
+     *
+     * @param graph graph producing the bailout, can be null
+     * @param bailout {@link BailoutException to process}
+     */
+    @SuppressWarnings("unused")
+    protected void handleBailout(DebugContext debug, StructuredGraph graph, BailoutException bailout) {
+        // nop
     }
 
     /**

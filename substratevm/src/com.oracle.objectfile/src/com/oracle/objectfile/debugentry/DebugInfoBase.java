@@ -129,6 +129,7 @@ public abstract class DebugInfoBase {
              */
             String fileName = debugCodeInfo.fileName();
             Path filePath = debugCodeInfo.filePath();
+            Path cachePath = debugCodeInfo.cachePath();
             // switch '$' in class names for '.'
             String className = debugCodeInfo.className().replaceAll("\\$", ".");
             String methodName = debugCodeInfo.methodName();
@@ -139,7 +140,7 @@ public abstract class DebugInfoBase {
             int primaryLine = debugCodeInfo.line();
             boolean isDeoptTarget = debugCodeInfo.isDeoptTarget();
 
-            Range primaryRange = new Range(fileName, filePath, className, methodName, paramNames, returnTypeName, stringTable, lo, hi, primaryLine, isDeoptTarget);
+            Range primaryRange = new Range(fileName, filePath, cachePath, className, methodName, paramNames, returnTypeName, stringTable, lo, hi, primaryLine, isDeoptTarget);
             debugContext.log(DebugContext.INFO_LEVEL, "PrimaryRange %s.%s %s %s:%d [0x%x, 0x%x]", className, methodName, filePath, fileName, primaryLine, lo, hi);
             addRange(primaryRange, debugCodeInfo.getFrameSizeChanges(), debugCodeInfo.getFrameSize());
             debugCodeInfo.lineInfoProvider().forEach(debugLineInfo -> {
@@ -151,11 +152,12 @@ public abstract class DebugInfoBase {
                 int loAtLine = lo + debugLineInfo.addressLo();
                 int hiAtLine = lo + debugLineInfo.addressHi();
                 int line = debugLineInfo.line();
+                Path cachePathAtLine = debugLineInfo.cachePath();
                 /*
                  * Record all subranges even if they have no line or file so we at least get a
                  * symbol for them.
                  */
-                Range subRange = new Range(fileNameAtLine, filePathAtLine, classNameAtLine, methodNameAtLine, "", "", stringTable, loAtLine, hiAtLine, line, primaryRange);
+                Range subRange = new Range(fileNameAtLine, filePathAtLine, cachePathAtLine, classNameAtLine, methodNameAtLine, "", "", stringTable, loAtLine, hiAtLine, line, primaryRange);
                 addSubRange(primaryRange, subRange);
                 try (DebugContext.Scope s = debugContext.scope("Subranges")) {
                     debugContext.log(DebugContext.VERBOSE_LEVEL, "SubRange %s.%s %s %s:%d 0x%x, 0x%x]", classNameAtLine, methodNameAtLine, filePathAtLine, fileNameAtLine, line, loAtLine, hiAtLine);
@@ -203,7 +205,7 @@ public abstract class DebugInfoBase {
         FileEntry fileEntry = filesIndex.get(fileAsPath);
         if (fileEntry == null) {
             DirEntry dirEntry = ensureDirEntry(filePath);
-            fileEntry = new FileEntry(fileName, dirEntry);
+            fileEntry = new FileEntry(fileName, dirEntry, range.getCachePath());
             files.add(fileEntry);
             /*
              * Index the file entry by file path.

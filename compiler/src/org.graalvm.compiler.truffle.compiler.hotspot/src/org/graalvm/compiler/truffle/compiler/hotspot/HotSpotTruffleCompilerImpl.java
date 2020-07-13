@@ -35,12 +35,16 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 
+import jdk.vm.ci.meta.Assumptions;
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.runtime.GraalJVMCICompiler;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.CompilationWrapper.ExceptionAction;
+import org.graalvm.compiler.core.common.CancellationBailoutException;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.target.Backend;
+import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Activation;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
@@ -57,6 +61,7 @@ import org.graalvm.compiler.hotspot.HotSpotGraalServices;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.phases.LIRSuites;
+import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -84,6 +89,7 @@ import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 
+import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.CompiledCode;
 import jdk.vm.ci.code.InstalledCode;
@@ -156,7 +162,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
                     SnippetReflectionProvider snippetReflection) {
         super(runtime, plugins, suites, lirSuites, backend, firstTierSuites, firstTierLirSuites, firstTierProviders, snippetReflection);
         this.hotspotGraalRuntime = hotspotGraalRuntime;
-        installTruffleCallBoundaryMethods();
+        installTruffleCallBoundaryMethods(null);
     }
 
     @Override
@@ -208,8 +214,8 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
      * @see #compileTruffleCallBoundaryMethod
      */
     @Override
-    @SuppressWarnings("try")
-    public void installTruffleCallBoundaryMethods() {
+    @SuppressWarnings({"try", "unused"})
+    public void installTruffleCallBoundaryMethods(CompilableTruffleAST compilable) {
         HotSpotTruffleCompilerRuntime runtime = (HotSpotTruffleCompilerRuntime) TruffleCompilerRuntime.getRuntime();
         for (ResolvedJavaMethod method : runtime.getTruffleCallBoundaryMethods()) {
             HotSpotResolvedJavaMethod hotSpotMethod = (HotSpotResolvedJavaMethod) method;
@@ -237,7 +243,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
     }
 
     @Override
-    public int pendingTransferToInterpreterOffset() {
+    public int pendingTransferToInterpreterOffset(CompilableTruffleAST compilable) {
         return hotspotGraalRuntime.getVMConfig().pendingTransferToInterpreterOffset;
     }
 
@@ -355,6 +361,66 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         HotSpotTruffleCompilationResult(CompilationIdentifier compilationId, String name, CompilableTruffleAST compilable) {
             super(compilationId, name);
             this.compilable = compilable;
+        }
+    }
+
+    @Override
+    public HotSpotPartialEvaluator getPartialEvaluator() {
+        return (HotSpotPartialEvaluator) super.getPartialEvaluator();
+    }
+
+    @Override
+    public void purgeCaches() {
+        getPartialEvaluator().purgeEncodedGraphCache();
+    }
+
+    @SuppressWarnings("try")
+    @Override
+    protected void handleBailout(DebugContext debug, StructuredGraph graph, BailoutException bailout) {
+        /*
+         * Catch non-permanent bailouts due to "failed dependencies" aka "invalid assumptions"
+         * during code installation. Since there's no specific exception for such cases, it's
+         * assumed that non-permanent, non-cancellation bailouts are due to "invalid dependencies"
+         * during code installation.
+         */
+        if (!getPartialEvaluator().isEncodedGraphCacheEnabled()) {
+            return;
+        }
+        if (!(bailout instanceof CancellationBailoutException)) {
+            // Evict only the methods that could have caused the invalidation e.g. methods with
+            // assumptions.
+            if (!bailout.isPermanent() && graph != null && !graph.getAssumptions().isEmpty()) {
+                try (DebugCloseable dummy = EncodedGraphCacheEvictionTime.start(debug)) {
+                    assert graph.method() != null;
+                    EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache = partialEvaluator.getOrCreateEncodedGraphCache();
+
+                    /*
+                     * At this point, the cache containing invalid graphs may be already
+                     * purged/dropped, but there's no way to know in which cache the invalid method
+                     * is/was present, so all encoded graphs, including the root and all inlined
+                     * methods must be evicted. These bailouts (invalid dependencies) are very rare,
+                     * the over-evicting impact is negligible.
+                     */
+                    if (!graphCache.isEmpty()) {
+                        debug.log(DebugContext.VERBOSE_LEVEL, "Evict root %s", graph.method());
+                        graphCache.removeKey(graph.method());
+
+                        // Bailout may have been caused by an assumption on some inlined method.
+                        for (ResolvedJavaMethod method : graph.getMethods()) {
+                            EncodedGraph encodedGraph = graphCache.get(method);
+                            if (encodedGraph == null) {
+                                continue;
+                            }
+
+                            Assumptions assumptions = encodedGraph.getAssumptions();
+                            if (assumptions != null && !assumptions.isEmpty()) {
+                                debug.log(DebugContext.VERBOSE_LEVEL, "\tEvict inlined %s", method);
+                                graphCache.removeKey(method);
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

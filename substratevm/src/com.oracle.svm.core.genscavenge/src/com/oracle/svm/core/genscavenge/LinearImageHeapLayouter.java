@@ -43,7 +43,7 @@ public class LinearImageHeapLayouter extends AbstractImageHeapLayouter<LinearIma
     }
 
     @Override
-    protected LinearImageHeapPartition createPartition(String name, boolean containsReferences, boolean writable) {
+    protected LinearImageHeapPartition createPartition(String name, boolean containsReferences, boolean writable, boolean hugeObjects) {
         return new LinearImageHeapPartition(name, writable);
     }
 
@@ -71,6 +71,7 @@ public class LinearImageHeapLayouter extends AbstractImageHeapLayouter<LinearIma
     private void initializeHeapInfo() {
         heapInfo.initialize(getReadOnlyPrimitive().firstObject, getReadOnlyPrimitive().lastObject, getReadOnlyReference().firstObject, getReadOnlyReference().lastObject,
                         getReadOnlyRelocatable().firstObject, getReadOnlyRelocatable().lastObject, getWritablePrimitive().firstObject, getWritablePrimitive().lastObject,
-                        getWritableReference().firstObject, getWritableReference().lastObject);
+                        getWritableReference().firstObject, getWritableReference().lastObject, getWritableHuge().firstObject, getWritableHuge().lastObject,
+                        getReadOnlyHuge().firstObject, getReadOnlyHuge().lastObject);
     }
 }

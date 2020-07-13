@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.config;
 
+import com.oracle.svm.core.hub.DynamicHub;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.c.constant.CEnum;
@@ -149,14 +150,29 @@ public final class ObjectLayout {
         return arrayLengthOffset;
     }
 
+    /**
+     * Whether instance objects should have an additional (optional) field for the identity hashcode
+     * appended after instance fields.
+     *
+     * @return {@code true} if an identity hashcode field should be placed after instance fields if
+     *         necessary, or {@code false} if the identity hashcode is mandatory and already has a
+     *         set location.
+     */
     public boolean useExplicitIdentityHashCodeField() {
         return useExplicitIdentityHashCodeField;
     }
 
+    /**
+     * The offset of the identity hashcode field for instance objects.
+     *
+     * @return The (>= 0) offset of the identity hashcode field if it is known, or < 0 if the offset
+     *         should be queried from the hub (see {@link DynamicHub#getHashCodeOffset()}).
+     */
     public int getInstanceIdentityHashCodeOffset() {
         return instanceIdentityHashCodeOffset;
     }
 
+    /** The offset of the identity hashcode field for array objects. */
     @Fold
     public int getArrayIdentityHashcodeOffset() {
         return arrayIdentityHashcodeOffset;
@@ -173,6 +189,18 @@ public final class ObjectLayout {
     public long getArraySize(JavaKind kind, int length) {
         assert length >= 0;
         return alignUp(getArrayBaseOffset(kind) + ((long) length << getArrayIndexShift(kind)));
+    }
+
+    public int getMinimumInstanceObjectSize() {
+        return alignUp(firstFieldOffset); // assumes there are no always-present "synthetic fields"
+    }
+
+    public int getMinimumArraySize() {
+        return NumUtil.safeToInt(getArraySize(JavaKind.Byte, 0));
+    }
+
+    public int getMinimumObjectSize() {
+        return Math.min(getMinimumArraySize(), getMinimumInstanceObjectSize());
     }
 
     public static JavaKind getCallSignatureKind(boolean isEntryPoint, ResolvedJavaType type, MetaAccessProvider metaAccess, TargetDescription target) {

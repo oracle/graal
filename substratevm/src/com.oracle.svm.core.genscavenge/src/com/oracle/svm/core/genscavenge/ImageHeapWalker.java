@@ -29,6 +29,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.heap.ObjectVisitor;
@@ -42,6 +43,8 @@ public final class ImageHeapWalker {
     private static final MemoryWalker.NativeImageHeapRegionAccess<ImageHeapInfo> READ_ONLY_RELOCATABLE_WALKER = new ReadOnlyRelocatableMemoryWalkerAccess();
     private static final MemoryWalker.NativeImageHeapRegionAccess<ImageHeapInfo> WRITABLE_PRIMITIVE_WALKER = new WritablePrimitiveMemoryWalkerAccess();
     private static final MemoryWalker.NativeImageHeapRegionAccess<ImageHeapInfo> WRITABLE_REFERENCE_WALKER = new WritableReferenceMemoryWalkerAccess();
+    private static final MemoryWalker.NativeImageHeapRegionAccess<ImageHeapInfo> WRITABLE_HUGE_WALKER = new WritableHugeMemoryWalkerAccess();
+    private static final MemoryWalker.NativeImageHeapRegionAccess<ImageHeapInfo> READ_ONLY_HUGE_WALKER = new ReadOnlyHugeMemoryWalkerAccess();
 
     private ImageHeapWalker() {
     }
@@ -51,18 +54,22 @@ public final class ImageHeapWalker {
                         visitor.visitNativeImageHeapRegion(heapInfo, READ_ONLY_REFERENCE_WALKER) &&
                         visitor.visitNativeImageHeapRegion(heapInfo, READ_ONLY_RELOCATABLE_WALKER) &&
                         visitor.visitNativeImageHeapRegion(heapInfo, WRITABLE_PRIMITIVE_WALKER) &&
-                        visitor.visitNativeImageHeapRegion(heapInfo, WRITABLE_REFERENCE_WALKER);
+                        visitor.visitNativeImageHeapRegion(heapInfo, WRITABLE_REFERENCE_WALKER) &&
+                        visitor.visitNativeImageHeapRegion(heapInfo, WRITABLE_HUGE_WALKER) &&
+                        visitor.visitNativeImageHeapRegion(heapInfo, READ_ONLY_HUGE_WALKER);
     }
 
     public static boolean walkImageHeapObjects(ImageHeapInfo heapInfo, ObjectVisitor visitor) {
-        return walkPartition(heapInfo.firstReadOnlyPrimitiveObject, heapInfo.lastReadOnlyPrimitiveObject, visitor) &&
-                        walkPartition(heapInfo.firstReadOnlyReferenceObject, heapInfo.lastReadOnlyReferenceObject, visitor) &&
-                        walkPartition(heapInfo.firstReadOnlyRelocatableObject, heapInfo.lastReadOnlyRelocatableObject, visitor) &&
-                        walkPartition(heapInfo.firstWritablePrimitiveObject, heapInfo.lastWritablePrimitiveObject, visitor) &&
-                        walkPartition(heapInfo.firstWritableReferenceObject, heapInfo.lastWritableReferenceObject, visitor);
+        return walkPartition(heapInfo.firstReadOnlyPrimitiveObject, heapInfo.lastReadOnlyPrimitiveObject, visitor, true) &&
+                        walkPartition(heapInfo.firstReadOnlyReferenceObject, heapInfo.lastReadOnlyReferenceObject, visitor, true) &&
+                        walkPartition(heapInfo.firstReadOnlyRelocatableObject, heapInfo.lastReadOnlyRelocatableObject, visitor, true) &&
+                        walkPartition(heapInfo.firstWritablePrimitiveObject, heapInfo.lastWritablePrimitiveObject, visitor, true) &&
+                        walkPartition(heapInfo.firstWritableReferenceObject, heapInfo.lastWritableReferenceObject, visitor, true) &&
+                        walkPartition(heapInfo.firstWritableHugeObject, heapInfo.lastWritableHugeObject, visitor, false) &&
+                        walkPartition(heapInfo.firstReadOnlyHugeObject, heapInfo.lastReadOnlyHugeObject, visitor, false);
     }
 
-    private static boolean walkPartition(Object firstObject, Object lastObject, ObjectVisitor visitor) {
+    private static boolean walkPartition(Object firstObject, Object lastObject, ObjectVisitor visitor, boolean alignedChunks) {
         if (firstObject == null || lastObject == null) {
             assert firstObject == null && lastObject == null;
             return true;
@@ -75,7 +82,7 @@ public final class ImageHeapWalker {
             if (!visitor.visitObject(currentObject)) {
                 return false;
             }
-            current = LayoutEncoding.getObjectEnd(currentObject);
+            current = HeapImpl.getNextObjectInImageHeapPartition(currentObject, alignedChunks);
         }
         return true;
     }
@@ -90,7 +97,11 @@ public final class ImageHeapWalker {
         log.string("Writable Primitives: ").hex(Word.objectToUntrackedPointer(imageHeapInfo.firstWritablePrimitiveObject)).string(" .. ").hex(
                         Word.objectToUntrackedPointer(imageHeapInfo.lastWritablePrimitiveObject)).newline();
         log.string("Writable References: ").hex(Word.objectToUntrackedPointer(imageHeapInfo.firstWritableReferenceObject)).string(" .. ").hex(
-                        Word.objectToUntrackedPointer(imageHeapInfo.lastWritableReferenceObject));
+                        Word.objectToUntrackedPointer(imageHeapInfo.lastWritableReferenceObject)).newline();
+        log.string("Writable Huge: ").hex(Word.objectToUntrackedPointer(imageHeapInfo.firstWritableHugeObject)).string(" .. ").hex(
+                        Word.objectToUntrackedPointer(imageHeapInfo.lastWritableHugeObject)).newline();
+        log.string("ReadOnly Huge: ").hex(Word.objectToUntrackedPointer(imageHeapInfo.firstReadOnlyHugeObject)).string(" .. ").hex(
+                        Word.objectToUntrackedPointer(imageHeapInfo.lastReadOnlyHugeObject));
     }
 }
 
@@ -98,12 +109,14 @@ abstract class MemoryWalkerAccessBase implements MemoryWalker.NativeImageHeapReg
     private final String regionName;
     private final boolean containsReferences;
     private final boolean isWritable;
+    private final boolean hasHugeObjects;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    MemoryWalkerAccessBase(String regionName, boolean containsReferences, boolean isWritable) {
+    MemoryWalkerAccessBase(String regionName, boolean containsReferences, boolean isWritable, boolean hasHugeObjects) {
         this.regionName = regionName;
         this.containsReferences = containsReferences;
         this.isWritable = isWritable;
+        this.hasHugeObjects = hasHugeObjects;
     }
 
     @Override
@@ -114,6 +127,9 @@ abstract class MemoryWalkerAccessBase implements MemoryWalker.NativeImageHeapReg
     @Override
     public UnsignedWord getSize(ImageHeapInfo info) {
         Pointer firstStart = Word.objectToUntrackedPointer(getFirstObject(info));
+        if (firstStart.isNull()) { // no objects
+            return WordFactory.zero();
+        }
         Pointer lastEnd = LayoutEncoding.getObjectEnd(getLastObject(info));
         return lastEnd.subtract(firstStart);
     }
@@ -133,6 +149,11 @@ abstract class MemoryWalkerAccessBase implements MemoryWalker.NativeImageHeapReg
         return isWritable;
     }
 
+    @Override
+    public boolean hasHugeObjects(ImageHeapInfo region) {
+        return hasHugeObjects;
+    }
+
     protected abstract Object getFirstObject(ImageHeapInfo info);
 
     protected abstract Object getLastObject(ImageHeapInfo info);
@@ -141,7 +162,7 @@ abstract class MemoryWalkerAccessBase implements MemoryWalker.NativeImageHeapReg
 final class ReadOnlyPrimitiveMemoryWalkerAccess extends MemoryWalkerAccessBase {
     @Platforms(Platform.HOSTED_ONLY.class)
     ReadOnlyPrimitiveMemoryWalkerAccess() {
-        super("read-only primitives", false, false);
+        super("read-only primitives", false, false, false);
     }
 
     @Override
@@ -158,7 +179,7 @@ final class ReadOnlyPrimitiveMemoryWalkerAccess extends MemoryWalkerAccessBase {
 final class ReadOnlyReferenceMemoryWalkerAccess extends MemoryWalkerAccessBase {
     @Platforms(Platform.HOSTED_ONLY.class)
     ReadOnlyReferenceMemoryWalkerAccess() {
-        super("read-only references", true, false);
+        super("read-only references", true, false, false);
     }
 
     @Override
@@ -175,7 +196,7 @@ final class ReadOnlyReferenceMemoryWalkerAccess extends MemoryWalkerAccessBase {
 final class ReadOnlyRelocatableMemoryWalkerAccess extends MemoryWalkerAccessBase {
     @Platforms(Platform.HOSTED_ONLY.class)
     ReadOnlyRelocatableMemoryWalkerAccess() {
-        super("read-only relocatables", true, false);
+        super("read-only relocatables", true, false, false);
     }
 
     @Override
@@ -192,7 +213,7 @@ final class ReadOnlyRelocatableMemoryWalkerAccess extends MemoryWalkerAccessBase
 final class WritablePrimitiveMemoryWalkerAccess extends MemoryWalkerAccessBase {
     @Platforms(Platform.HOSTED_ONLY.class)
     WritablePrimitiveMemoryWalkerAccess() {
-        super("writable primitives", false, true);
+        super("writable primitives", false, true, false);
     }
 
     @Override
@@ -209,7 +230,7 @@ final class WritablePrimitiveMemoryWalkerAccess extends MemoryWalkerAccessBase {
 final class WritableReferenceMemoryWalkerAccess extends MemoryWalkerAccessBase {
     @Platforms(Platform.HOSTED_ONLY.class)
     WritableReferenceMemoryWalkerAccess() {
-        super("writable references", true, true);
+        super("writable references", true, true, false);
     }
 
     @Override
@@ -220,5 +241,39 @@ final class WritableReferenceMemoryWalkerAccess extends MemoryWalkerAccessBase {
     @Override
     public Object getLastObject(ImageHeapInfo info) {
         return info.lastWritableReferenceObject;
+    }
+}
+
+final class WritableHugeMemoryWalkerAccess extends MemoryWalkerAccessBase {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    WritableHugeMemoryWalkerAccess() {
+        super("writable huge", true, true, true);
+    }
+
+    @Override
+    public Object getFirstObject(ImageHeapInfo info) {
+        return info.firstWritableHugeObject;
+    }
+
+    @Override
+    public Object getLastObject(ImageHeapInfo info) {
+        return info.lastWritableHugeObject;
+    }
+}
+
+final class ReadOnlyHugeMemoryWalkerAccess extends MemoryWalkerAccessBase {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    ReadOnlyHugeMemoryWalkerAccess() {
+        super("read-only huge", true, false, true);
+    }
+
+    @Override
+    public Object getFirstObject(ImageHeapInfo info) {
+        return info.firstReadOnlyHugeObject;
+    }
+
+    @Override
+    public Object getLastObject(ImageHeapInfo info) {
+        return info.lastReadOnlyHugeObject;
     }
 }

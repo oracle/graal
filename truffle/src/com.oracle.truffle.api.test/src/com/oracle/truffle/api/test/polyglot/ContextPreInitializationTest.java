@@ -66,7 +66,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.logging.Handler;
 import java.util.logging.LogRecord;
@@ -82,6 +84,7 @@ import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.FileSystem;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -95,15 +98,13 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.RootNode;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicReference;
-import org.graalvm.polyglot.io.FileSystem;
 
 public class ContextPreInitializationTest {
 
@@ -1455,6 +1456,25 @@ public class ContextPreInitializationTest {
     }
 
     @Test
+    public void testAccessPriviledgePatching() throws ReflectiveOperationException {
+        setPatchable(FIRST, SECOND);
+
+        doContextPreinitialize(FIRST, SECOND);
+
+        /*
+         * If language privileges would not be patched then FIRST would be accessible as public
+         * language. Context preinitialization always happens without any restrictions on the
+         * context set.
+         */
+        try (Context context = Context.create(SECOND)) {
+            context.enter();
+            Env env = ContextPreInitializationTestSecondLanguage.getCurrentContext();
+            assertFalse(env.getPublicLanguages().containsKey(FIRST));
+            assertTrue(env.getInternalLanguages().containsKey(FIRST));
+        }
+    }
+
+    @Test
     @SuppressWarnings("try")
     public void testFailToLookupInstrumentDuringContextPreInitialization() throws Exception {
         setPatchable(FIRST);
@@ -1914,6 +1934,10 @@ public class ContextPreInitializationTest {
             if (callDependentLanguageInCreate) {
                 useLanguage(context, FIRST);
             }
+        }
+
+        public static Env getCurrentContext() {
+            return getCurrentContext(ContextPreInitializationTestSecondLanguage.class).env;
         }
 
         @Override

@@ -539,19 +539,11 @@ class BaseDaCapoNativeImageBenchmarkSuite():
 
 
 _DACAPO_EXTRA_VM_ARGS = {
-    'avrora':     ['-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.apache.derby.jdbc.ClientDriver,'
-                    'org.h2.Driver,org.apache.derby.jdbc.AutoloadedDriver,'
-                    'org.apache.derby.client.am.Configuration,org.apache.derby.iapi.services.info.ProductVersionHolder'],
-    'h2':         ['-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-run-time=java.sql.DriverManager,org.apache.derby.jdbc.AutoloadedDriver,org.h2.Driver,org.apache.derby.jdbc.ClientDriver',
-                    '-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath'],
-    'pmd':        ['-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-run-time=org.apache.derby.jdbc.ClientDriver,org.h2.Driver,java.sql.DriverManager,org.apache.derby.jdbc.AutoloadedDriver,'
-                    'org.apache.derby.iapi.services.info.ProductVersionHolder', '-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath'],
-    'xalan':      ['-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.apache.xml.utils.res.CharArrayWrapper', '-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime'],
-    'sunflow':    ['-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-run-time=sun.awt.dnd.SunDropTargetContextPeer$EventDispatcher'],
-    'fop':        ['-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=com.sun.proxy.$Proxy188,com.sun.proxy.$Proxy187',
-                   '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.apache.fop.render.RendererEventProducer,org.apache.fop.layoutmgr.BlockLevelEventProducer',
-                   '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-run-time=sun.awt.dnd.SunDropTargetContextPeer$EventDispatcher',
-                   '-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath'],
+    'h2':         ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath'],
+    'pmd':        ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath', '-Dnative-image.benchmark.skip-agent-assertions=true'],
+    'sunflow':    ['-Dnative-image.benchmark.skip-agent-assertions=true'],
+    'xalan':      ['-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime'],
+    'fop':        ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath', '-Dnative-image.benchmark.skip-agent-assertions=true', '-Dnative-image.benchmark.extra-image-build-argument=--report-unsupported-elements-at-runtime'],
     # GR-19371
     'batik':       ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath']
 }
@@ -699,23 +691,16 @@ _scala_dacapo_iterations = {
     'scalaxb'       : 60,
     'kiama'         : 40,
     'factorie'      : 6,  # GR-21543
-    'specs'         : -1, # depends on awt
+    'specs'         : 4,
     'apparat'       : 5,
     'tmt'           : 12,
 }
 
 _SCALA_DACAPO_EXTRA_VM_ARGS = {
-    'scalac'        : ['-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-run-time=sun.awt.dnd.SunDropTargetContextPeer$EventDispatcher'],
     'scalariform'   : ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath'],
     'scalatest'     : ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath'],
-    'specs'         : ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath',
-                       '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.eclipse.mylyn.wikitext.core.parser.builder.HtmlDocumentBuilder',
-                       '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.eclipse.mylyn.wikitext.core.parser.builder.AbstractXmlDocumentBuilder',
-                       '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.eclipse.mylyn.wikitext.core.parser.builder.HtmlDocumentBuilder$ElementInfo',
-                       '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.eclipse.mylyn.wikitext.core.parser.DocumentBuilder$SpanType',
-                       '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.eclipse.mylyn.wikitext.core.parser.DocumentBuilder',
-                       '-Dnative-image.benchmark.extra-image-build-argument=--initialize-at-build-time=org.eclipse.mylyn.wikitext.core.parser.ImageAttributes$Align'],
-    'tmt'           : ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath']
+    'specs'         : ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath'],
+    'tmt'           : ['-Dnative-image.benchmark.extra-image-build-argument=--allow-incomplete-classpath'],
 }
 
 _scala_daCapo_exclude_lib = {

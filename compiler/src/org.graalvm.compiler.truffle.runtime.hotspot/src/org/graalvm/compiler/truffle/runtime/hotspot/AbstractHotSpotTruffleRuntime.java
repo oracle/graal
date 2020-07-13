@@ -107,12 +107,22 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
      * Contains lazily computed data such as the compilation queue and helper for stack
      * introspection.
      */
-    static class Lazy extends BackgroundCompileQueue {
+    static final class Lazy extends BackgroundCompileQueue {
         StackIntrospection stackIntrospection;
 
         Lazy(AbstractHotSpotTruffleRuntime runtime) {
             super(runtime);
             runtime.installDefaultListeners();
+        }
+
+        @Override
+        protected void compilerThreadIdled() {
+            TruffleCompiler compiler = ((AbstractHotSpotTruffleRuntime) runtime).truffleCompiler;
+            // truffleCompiler should never be null outside unit-tests, this check avoids transient
+            // failures.
+            if (compiler != null) {
+                ((HotSpotTruffleCompiler) compiler).purgeCaches();
+            }
         }
     }
 
@@ -239,7 +249,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
                 EngineData engineData = callTarget.engine;
                 profilingEnabled = engineData.profilingEnabled;
                 TruffleCompiler compiler = newTruffleCompiler();
-                compiler.initialize(TruffleRuntimeOptions.getOptionsForCompiler(callTarget));
+                compiler.initialize(TruffleRuntimeOptions.getOptionsForCompiler(callTarget), callTarget, true);
                 truffleCompiler = compiler;
                 traceTransferToInterpreter = engineData.traceTransferToInterpreter;
                 truffleCompilerInitialized = true;
@@ -304,8 +314,8 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
      * C1/C2-compiled caller jump to Graal-compiled {@code callBoundary()}, instead of having to go
      * back to the HotSpot interpreter for every execution of {@code callBoundary()}.
      *
-     * @see HotSpotTruffleCompiler#installTruffleCallBoundaryMethods() which compiles callBoundary()
-     *      with Graal
+     * @see HotSpotTruffleCompiler#installTruffleCallBoundaryMethods(CompilableTruffleAST) which
+     *      compiles callBoundary() with Graal
      */
     public static void setDontInlineCallBoundaryMethod(List<ResolvedJavaMethod> callBoundaryMethods) {
         for (ResolvedJavaMethod method : callBoundaryMethods) {
@@ -392,7 +402,7 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
             // do not wait for initialization
             return;
         }
-        getTruffleCompiler(target).installTruffleCallBoundaryMethods();
+        getTruffleCompiler(target).installTruffleCallBoundaryMethods(target);
     }
 
     @Override
@@ -448,11 +458,12 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         }
 
         static void traceTransferToInterpreter(AbstractHotSpotTruffleRuntime runtime, HotSpotTruffleCompiler compiler) {
+            OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.getCurrentFrame().getCallTarget();
             long thread = UNSAFE.getLong(Thread.currentThread(), THREAD_EETOP_OFFSET);
-            long pendingTransferToInterpreterAddress = thread + compiler.pendingTransferToInterpreterOffset();
+            long pendingTransferToInterpreterAddress = thread + compiler.pendingTransferToInterpreterOffset(callTarget);
             boolean deoptimized = UNSAFE.getByte(pendingTransferToInterpreterAddress) != 0;
             if (deoptimized) {
-                logTransferToInterpreter(runtime);
+                logTransferToInterpreter(runtime, callTarget);
                 UNSAFE.putByte(pendingTransferToInterpreterAddress, (byte) 0);
             }
         }
@@ -509,10 +520,8 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
             return sourceSection.getSource().getName();
         }
 
-        private static void logTransferToInterpreter(final AbstractHotSpotTruffleRuntime runtime) {
-            OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.getCurrentFrame().getCallTarget();
+        private static void logTransferToInterpreter(AbstractHotSpotTruffleRuntime runtime, OptimizedCallTarget callTarget) {
             final int limit = callTarget.getOptionValue(PolyglotCompilerOptions.TraceStackTraceLimit);
-
             StringBuilder messageBuilder = new StringBuilder();
             messageBuilder.append("transferToInterpreter at\n");
             runtime.iterateFrames(new FrameInstanceVisitor<Object>() {

@@ -32,6 +32,7 @@ import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.nodes.gc.CardTableBarrierSet;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.IsolateThread;
@@ -40,7 +41,9 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -49,6 +52,7 @@ import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
@@ -64,11 +68,13 @@ import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
+import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.ThreadStatus;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.util.UnsignedUtils;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -373,17 +379,18 @@ public final class HeapImpl extends Heap {
     /** Return a list of all the classes in the heap. */
     @Override
     public List<Class<?>> getClassList() {
+        /* Two threads might race to set classList, but they compute the same result. */
         if (classList == null) {
-            /* Two threads might race to set classList, but they compute the same result. */
             List<Class<?>> list = new ArrayList<>(1024);
-            addClassObjectsInPartition(list, imageHeapInfo.firstReadOnlyReferenceObject, imageHeapInfo.lastReadOnlyReferenceObject);
-            addClassObjectsInPartition(list, imageHeapInfo.firstReadOnlyRelocatableObject, imageHeapInfo.lastReadOnlyRelocatableObject);
+            boolean alignedChunks = true; // always in read-only partitions with aligned chunks
+            addClassObjectsInPartition(list, imageHeapInfo.firstReadOnlyReferenceObject, imageHeapInfo.lastReadOnlyReferenceObject, alignedChunks);
+            addClassObjectsInPartition(list, imageHeapInfo.firstReadOnlyRelocatableObject, imageHeapInfo.lastReadOnlyRelocatableObject, alignedChunks);
             classList = Collections.unmodifiableList(list);
         }
         return classList;
     }
 
-    private static void addClassObjectsInPartition(List<Class<?>> list, Object firstObject, Object lastObject) {
+    private static void addClassObjectsInPartition(List<Class<?>> list, Object firstObject, Object lastObject, boolean alignedChunks) {
         if (firstObject == null) {
             return;
         }
@@ -395,8 +402,47 @@ public final class HeapImpl extends Heap {
                 Class<?> asClass = (Class<?>) currentObject;
                 list.add(asClass);
             }
-            currentPointer = LayoutEncoding.getObjectEnd(currentObject);
+            currentPointer = getNextObjectInImageHeapPartition(currentObject, alignedChunks);
         }
+    }
+
+    /**
+     * Computes a pointer to the start of the next object in the same image heap partition as the
+     * passed object. If the passed object is the last object in its partition, the behavior is
+     * undefined.
+     */
+    static Pointer getNextObjectInImageHeapPartition(Object obj, boolean inAlignedChunk) {
+        Pointer end = LayoutEncoding.getObjectEnd(obj);
+        if (HeapOptions.ChunkedImageHeapLayout.getValue()) {
+            if (inAlignedChunk) {
+                /*
+                 * TODO: Image heap walks should use chunk headers to detect boundaries and advance
+                 * to the next chunk. Since we haven't implemented writing headers yet, we detect
+                 * chunk boundaries with simple address arithmetic and by checking if a zero word is
+                 * where the next object's header should be. Utilizing heap address space alignment
+                 * to make the arithmetic a bit simpler probably does not have a significant
+                 * advantage right now, but it should make barriers for card marking more efficient.
+                 */
+                Pointer alignmentBase = WordFactory.zero();
+                if (!CommittedMemoryProvider.get().guaranteesHeapPreferredAddressSpaceAlignment()) {
+                    alignmentBase = SubstrateOptions.SpawnIsolates.getValue() ? KnownIntrinsics.heapBase() : Isolates.IMAGE_HEAP_BEGIN.get();
+                }
+                UnsignedWord endOffset = end.subtract(alignmentBase);
+                UnsignedWord nextChunkOffset = UnsignedUtils.roundUp(endOffset, HeapPolicy.getAlignedHeapChunkAlignment());
+                if (endOffset.add(getMinimumObjectSize()).aboveThan(nextChunkOffset) || ObjectHeaderImpl.readHeaderFromPointer(end).equal(0)) {
+                    Pointer nextChunk = alignmentBase.add(nextChunkOffset);
+                    return AlignedHeapChunk.getObjectsStart((AlignedHeapChunk.AlignedHeader) nextChunk);
+                }
+            } else {
+                return UnalignedHeapChunk.getObjectStart((UnalignedHeapChunk.UnalignedHeader) end);
+            }
+        }
+        return end;
+    }
+
+    @Fold
+    static UnsignedWord getMinimumObjectSize() {
+        return WordFactory.unsigned(ConfigurationValues.getObjectLayout().getMinimumObjectSize());
     }
 
     /*
@@ -546,6 +592,15 @@ public final class HeapImpl extends Heap {
     @Override
     public void detachThread(IsolateThread isolateThread) {
         ThreadLocalAllocation.disableAndFlushForThread(isolateThread);
+    }
+
+    @Fold
+    @Override
+    public int getPreferredAddressSpaceAlignment() {
+        if (HeapOptions.ChunkedImageHeapLayout.getValue()) {
+            return NumUtil.safeToInt(HeapPolicy.getAlignedHeapChunkAlignment().rawValue());
+        }
+        return ConfigurationValues.getObjectLayout().getAlignment();
     }
 
     @Fold

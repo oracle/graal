@@ -55,6 +55,7 @@ final class DefaultCharacterExports {
         return true;
     }
 
+    @TruffleBoundary
     @ExportMessage
     static String asString(Character receiver) {
         return receiver.toString();

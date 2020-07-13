@@ -50,7 +50,7 @@ public abstract class TruffleCompilerImplTest extends GraalCompilerTest {
 
     protected final TruffleCompilerImpl getTruffleCompiler(OptimizedCallTarget callTarget) {
         if (compilerInitialized.compareAndSet(false, true)) {
-            truffleCompiler.initialize(TruffleRuntimeOptions.getOptionsForCompiler(callTarget));
+            truffleCompiler.initialize(TruffleRuntimeOptions.getOptionsForCompiler(callTarget), callTarget, true);
         }
         return truffleCompiler;
     }
