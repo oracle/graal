@@ -40,24 +40,36 @@
  */
 package com.oracle.truffle.object;
 
-import java.util.EnumSet;
-
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.object.Shape;
 
 public class BasicLayout extends DefaultLayout {
-    BasicLayout(EnumSet<ImplicitCast> allowedImplicitCasts, Class<? extends DynamicObject> dynamicObjectClass, LayoutStrategy strategy) {
-        super(allowedImplicitCasts, dynamicObjectClass, strategy);
+    BasicLayout(LayoutStrategy strategy, int allowedImplicitCasts) {
+        super(DynamicObjectBasic.class, strategy, allowedImplicitCasts, DynamicObjectBasic.OBJECT_FIELD_LOCATIONS, DynamicObjectBasic.PRIMITIVE_FIELD_LOCATIONS);
     }
 
     public static LayoutImpl createLayoutImpl(Layout.Builder builder) {
-        return new BasicLayout(getAllowedImplicitCasts(builder), DynamicObjectBasic.class, DefaultStrategy.SINGLETON);
+        Class<? extends DynamicObject> dynamicObjectClass = getType(builder);
+        if (dynamicObjectClass != null) {
+            return DefaultLayout.createCoreLayout(builder);
+        }
+        return new BasicLayout(DefaultStrategy.SINGLETON, implicitCastFlags(getAllowedImplicitCasts(builder)));
     }
 
     @Override
     public DynamicObject newInstance(Shape shape) {
         return new DynamicObjectBasic(shape);
+    }
+
+    @Override
+    protected DynamicObject construct(Shape shape) {
+        return new DynamicObjectBasic(shape);
+    }
+
+    @Override
+    protected boolean isLegacyLayout() {
+        return true;
     }
 
     @Override

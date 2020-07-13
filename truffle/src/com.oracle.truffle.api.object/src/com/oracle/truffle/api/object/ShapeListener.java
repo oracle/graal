@@ -44,7 +44,9 @@ package com.oracle.truffle.api.object;
  * A listener to be notified of property transitions.
  *
  * @since 0.8 or earlier
+ * @deprecated consider using {@link Shape#getPropertyAssumption(Object)} instead.
  */
+@Deprecated
 public interface ShapeListener {
     /**
      * Called when a property is added, removed, or replaced.

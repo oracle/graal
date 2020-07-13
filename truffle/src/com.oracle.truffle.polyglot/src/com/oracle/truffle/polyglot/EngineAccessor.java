@@ -53,8 +53,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -80,12 +80,13 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Scope;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLogger;
-import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.TruffleLocator;
@@ -257,7 +258,14 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public <T> Iterable<T> loadServices(Class<T> type) {
-            Map<Class<?>, T> found = new HashMap<>();
+            Map<Class<?>, T> found = new LinkedHashMap<>();
+            // Library providers exported by Truffle are not on the GuestLangToolsLoader path.
+            if (type.getClassLoader() == Truffle.class.getClassLoader()) {
+                for (T service : ServiceLoader.load(type, type.getClassLoader())) {
+                    found.putIfAbsent(service.getClass(), service);
+                }
+            }
+            // Search guest languages and tools.
             for (AbstractClassLoaderSupplier loaderSupplier : EngineAccessor.locatorOrDefaultLoaders()) {
                 ClassLoader loader = loaderSupplier.get();
                 if (seesTheSameClass(loader, type)) {
