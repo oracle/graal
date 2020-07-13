@@ -33,12 +33,14 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
@@ -65,6 +67,7 @@ public class LLVMForeignCallNode extends RootNode {
         abstract Object[] execute(Object[] arguments, StackPointer stackPointer) throws ArityException;
 
         @Children final LLVMGetInteropParamNode[] toLLVM;
+        final int numberOfSourceArguments;
 
         /**
          * The purpose is to produce a tree of nodes that will map bitcode parameters to interop
@@ -92,6 +95,8 @@ public class LLVMForeignCallNode extends RootNode {
             LLVMGetInteropParamNode[] toLLVM = new LLVMGetInteropParamNode[numberOfBitcodeParams];
 
             if (interopType instanceof LLVMInteropType.Function) {
+                assert sourceType != null : "A function interop type without debug information is not supported";
+
                 LLVMInteropType.Function interopFunctionType = (LLVMInteropType.Function) interopType;
 
                 for (int bitcodeArgIdx = 0, prevIdx = -1; bitcodeArgIdx < numberOfBitcodeParams; bitcodeArgIdx++) {
@@ -142,22 +147,38 @@ public class LLVMForeignCallNode extends RootNode {
                     }
                 }
             } else {
-                // Not a function, so no interop parameter types available.
+                assert sourceType == null;
+                // Debug info is unavailable, so interop parameter types are also unavailable.
                 for (int i = 0; i < numberOfBitcodeParams; i++) {
                     toLLVM[i] = LLVMGetInteropPrimitiveParamNode.create(i, ForeignToLLVM.convert(bitcodeFunctionType.getArgumentType(i)));
                 }
             }
 
-            return PackForeignArgumentsNodeGen.create(toLLVM);
+            return PackForeignArgumentsNodeGen.create(toLLVM, sourceType);
         }
 
-        PackForeignArgumentsNode(LLVMGetInteropParamNode[] toLLVM) {
+        PackForeignArgumentsNode(LLVMGetInteropParamNode[] toLLVM, LLVMSourceFunctionType sourceType) {
             this.toLLVM = toLLVM;
+            if (sourceType == null) {
+                /*
+                 * We don't have debug info, so we assume that there is a 1:1 mapping between source
+                 * and bitcode arguments. We also assume that the number of passed in arguments is
+                 * the same as the number of source arguments.
+                 */
+                this.numberOfSourceArguments = toLLVM.length;
+            } else {
+                this.numberOfSourceArguments = sourceType.getNumberOfParameters();
+            }
         }
 
         @Specialization
         @ExplodeLoop
-        Object[] packNonVarargs(Object[] arguments, StackPointer stackPointer) {
+        Object[] packNonVarargs(Object[] arguments, StackPointer stackPointer, @Cached BranchProfile exceptionProfile) throws ArityException {
+            if (arguments.length < numberOfSourceArguments) {
+                exceptionProfile.enter();
+                throw ArityException.create(numberOfSourceArguments, arguments.length);
+            }
+
             final Object[] packedArguments = new Object[1 + toLLVM.length];
             packedArguments[0] = stackPointer;
             for (int i = 0; i < toLLVM.length; i++) {
