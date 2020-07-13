@@ -49,6 +49,14 @@ public final class TargetOffset {
         this.value = value;
     }
 
+    public boolean isGreaterThanZero() {
+        return value > 0;
+    }
+
+    public TargetOffset decrement() {
+        return get(value - 1);
+    }
+
     public static TargetOffset get(int value) {
         // The cache index starts with value -1, so we need a +1 offset.
         return CACHE[value + 1];

@@ -74,7 +74,7 @@ public abstract class WasmNode extends Node implements WasmNodeInterface {
      *         greater than or equal to 0 means that the execution engine has to branch n levels up
      *         the block execution stack.
      */
-    public abstract int execute(WasmContext context, VirtualFrame frame);
+    public abstract TargetOffset execute(WasmContext context, VirtualFrame frame);
 
     public abstract byte returnTypeId();
 
