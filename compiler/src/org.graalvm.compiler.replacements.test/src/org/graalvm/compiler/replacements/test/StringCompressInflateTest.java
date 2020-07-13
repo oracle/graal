@@ -314,7 +314,7 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
         }
 
         StructuredGraph replacementGraph() {
-            return getReplacements().getSubstitution(javamethod, -1, false, null, testgraph.allowAssumptions(), getInitialOptions());
+            return getReplacements().getSubstitution(javamethod, 0, false, null, testgraph.allowAssumptions(), getInitialOptions());
         }
 
         StructuredGraph testMethodGraph() {
