@@ -51,24 +51,24 @@ nodes after partial evaluation as a proxy for call target size. This is a much
 better size proxy since partial evaluation removes all the abstractions of the
 AST and results in a graph that is much closer to the low-level instructions
 that the call target actually performs. This results in a more precise cost
-model when deciding weather or not to inline a call target and removes much of
+model when deciding whether or not to inline a call target and removes much of
 the language specific information that the AST carries (hence the name:
 Language-agnostic inlining). 
 
 This is achieved by performing partial evaluation on every candidate call
 target and then making the inlining decision after that (as opposed to the
 legacy inlining which made decisions before doing any partial evaluation). Both
-the amount of partial evaluation that will be done as well the amount that will
-be inlined are controlled by a notion of a budget. These are the "exploration
-budget" and "inlining budget" respectively, both expressed in terms of Graal
-node counts.
+the amount of partial evaluation that will be done as well as the amount that
+will be inlined are controlled by a notion of a budget. These are the
+"exploration budget" and "inlining budget" respectively, both expressed in
+terms of Graal node counts.
 
 The downside of this approach is that we need to do partial evaluation even on
 call targets which we ultimately decide not to inline.  This results in a
 measurable increase in average compilation time compared to legacy inlining
 (aprox. 10%). 
 
-## Observing and impacting the inlining.
+## Observing and impacting the inlining
 
 The inliner keeps an internal call tree to keep track of the states of
 individual calls to targets, as well as the inlining decisions that were made.
@@ -85,26 +85,26 @@ another twice, we will see this as two nodes despite it being the same call
 target.
 
 Each node can be in one of 6 states explained here:
-* Inlined - This state means that the call was inlined. Initially, only the
+* *Inlined* - This state means that the call was inlined. Initially, only the
   root of the compilation is in this state since it is implicitly "inlined"
 (i.e. part of the compilation unit).
-* Cutoff - This state means that the call target was not partially evaluated,
+* *Cutoff* - This state means that the call target was not partially evaluated,
   thus was not even considered for inlining. This is normally due to the
-inliner hitting it's exploration budget limitations 
-* Expanded - This state means that the call target was partially evaluated
+inliner hitting its exploration budget limitations 
+* *Expanded* - This state means that the call target was partially evaluated
   (thus, considered for inlining) but a decision was made not to inline. This
 could be due to inlining budget limitations or the target being deemed too
 expensive to inline (e.g. inlining a small target with multiple outgoing
 "Cutoff" calls would just introduce more calls to the compilation unit).
-* Removed - This state means that this call is present in the AST but partial
+* *Removed* - This state means that this call is present in the AST but partial
   evaluation removed the call. This is an advantage over the legacy inlining
 which made the decisions ahead of time and had no way of noticing such
 situations.
-* Indirect - This state denotes an indirect call. We cannot inline indirect
+* *Indirect* - This state denotes an indirect call. We cannot inline indirect
   call.
-* BailedOut - This state should be very rare and is considered a performance
+* *BailedOut* - This state should be very rare and is considered a performance
   problem. It means that partial evaluation of the target resulted in a
-BailoutException i.e. could not be completed successfully. This means there is
+`BailoutException` i.e. could not be completed successfully. This means there is
 some problem with that particular target, but rather than quit the entire
 compilation we treat that call as not possible to inline.
 
