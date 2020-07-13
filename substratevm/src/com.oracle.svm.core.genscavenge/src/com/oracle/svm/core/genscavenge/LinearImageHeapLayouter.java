@@ -27,6 +27,7 @@ package com.oracle.svm.core.genscavenge;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.image.AbstractImageHeapLayouter;
 import com.oracle.svm.core.image.ImageHeap;
+import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 
 public class LinearImageHeapLayouter extends AbstractImageHeapLayouter<LinearImageHeapPartition> {
     private final ImageHeapInfo heapInfo;
@@ -48,7 +49,7 @@ public class LinearImageHeapLayouter extends AbstractImageHeapLayouter<LinearIma
     }
 
     @Override
-    protected void doLayout(ImageHeap imageHeap) {
+    protected ImageHeapLayoutInfo doLayout(ImageHeap imageHeap) {
         long startOffset = 0;
         if (compressedNullPadding) {
             /*
@@ -62,6 +63,7 @@ public class LinearImageHeapLayouter extends AbstractImageHeapLayouter<LinearIma
             partition.allocateObjects(allocator);
         }
         initializeHeapInfo();
+        return createDefaultLayoutInfo();
     }
 
     /**

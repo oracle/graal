@@ -110,14 +110,17 @@ public abstract class AbstractImageHeapLayouter<T extends AbstractImageHeapLayou
             partition.setEndAlignment(endAlignment);
         }
 
-        doLayout(imageHeap);
+        ImageHeapLayoutInfo layoutInfo = doLayout(imageHeap);
 
         for (T partition : getPartitions()) {
             assert partition.getStartOffset() % partition.getStartAlignment() == 0;
             assert (partition.getStartOffset() + partition.getSize()) % partition.getEndAlignment() == 0;
         }
 
-        return createLayoutInfo();
+        assert layoutInfo.getReadOnlyRelocatableOffset() % pageSize == 0 && layoutInfo.getReadOnlyRelocatableSize() % pageSize == 0;
+        assert layoutInfo.getWritableOffset() % pageSize == 0 && layoutInfo.getWritableSize() % pageSize == 0;
+
+        return layoutInfo;
     }
 
     @Override
@@ -125,7 +128,7 @@ public abstract class AbstractImageHeapLayouter<T extends AbstractImageHeapLayou
         // For implementation in subclasses, if necessary.
     }
 
-    protected abstract void doLayout(ImageHeap imageHeap);
+    protected abstract ImageHeapLayoutInfo doLayout(ImageHeap imageHeap);
 
     protected T getReadOnlyPrimitive() {
         return getPartitions()[READ_ONLY_PRIMITIVE];
@@ -181,7 +184,7 @@ public abstract class AbstractImageHeapLayouter<T extends AbstractImageHeapLayou
         }
     }
 
-    private ImageHeapLayoutInfo createLayoutInfo() {
+    protected ImageHeapLayoutInfo createDefaultLayoutInfo() {
         long writableBegin = getWritablePrimitive().getStartOffset();
         long writableEnd = getWritableHuge().getStartOffset() + getWritableHuge().getSize();
         long writableSize = writableEnd - writableBegin;

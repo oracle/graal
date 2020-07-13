@@ -36,6 +36,7 @@ import com.oracle.svm.core.genscavenge.ChunkedImageHeapAllocator.Chunk;
 import com.oracle.svm.core.genscavenge.ChunkedImageHeapAllocator.UnalignedChunk;
 import com.oracle.svm.core.image.AbstractImageHeapLayouter;
 import com.oracle.svm.core.image.ImageHeap;
+import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.image.ImageHeapObject;
 
 @Platforms(Platform.HOSTED_ONLY.class)
@@ -67,13 +68,31 @@ public class ChunkedImageHeapLayouter extends AbstractImageHeapLayouter<ChunkedI
     }
 
     @Override
-    protected void doLayout(ImageHeap imageHeap) {
+    protected ImageHeapLayoutInfo doLayout(ImageHeap imageHeap) {
         assert !compressedNullPadding || AlignedHeapChunk.getObjectsStartOffset().aboveThan(0) : "Expecting header to pad start so object offsets are strictly greater than 0";
         allocator = new ChunkedImageHeapAllocator(0);
         for (ChunkedImageHeapPartition partition : getPartitions()) {
             partition.layout(allocator);
         }
         initializeHeapInfo();
+        return createLayoutInfo();
+    }
+
+    private ImageHeapLayoutInfo createLayoutInfo() {
+        // Determine writable start boundary from chunks: a chunk that contains writable objects
+        // must also have a writable card table
+        long writableBegin = getWritablePrimitive().getStartOffset();
+        for (AlignedChunk chunk : allocator.getAlignedChunks()) {
+            if (chunk.isWritable() && chunk.getBegin() < writableBegin) {
+                assert writableBegin <= chunk.getEnd();
+                writableBegin = chunk.getBegin();
+                break; // (chunks are in ascending memory order)
+            }
+        }
+        long writableEnd = getWritableHuge().getStartOffset() + getWritableHuge().getSize();
+        long writableSize = writableEnd - writableBegin;
+        long imageHeapSize = getReadOnlyHuge().getStartOffset() + getReadOnlyHuge().getSize();
+        return new ImageHeapLayoutInfo(writableBegin, writableSize, getReadOnlyRelocatable().getStartOffset(), getReadOnlyRelocatable().getSize(), imageHeapSize);
     }
 
     /**
