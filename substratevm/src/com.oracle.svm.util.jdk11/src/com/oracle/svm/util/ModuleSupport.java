@@ -102,7 +102,7 @@ public final class ModuleSupport {
         List<String> result = new ArrayList<>();
         for (String name : names) {
             Optional<ModuleReference> moduleReference = ModuleFinder.ofSystem().find(name);
-            if (!moduleReference.isPresent()) {
+            if (moduleReference.isEmpty()) {
                 throw new RuntimeException("Unable find ModuleReference for module " + name);
             }
             try (ModuleReader moduleReader = moduleReference.get().open()) {
