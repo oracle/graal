@@ -317,7 +317,6 @@ public final class EventContext {
      */
     @SuppressWarnings("static-method")
     public ThreadDeath createUnwind(Object info, EventBinding<?> unwindBinding) {
-        CompilerAsserts.neverPartOfCompilation();
         return new UnwindException(info, unwindBinding);
     }
 

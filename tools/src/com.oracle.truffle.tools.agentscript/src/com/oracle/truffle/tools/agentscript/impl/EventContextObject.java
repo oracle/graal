@@ -140,7 +140,6 @@ final class EventContextObject implements TruffleObject {
         throw UnknownIdentifierException.create(member);
     }
 
-
     @ExportMessage
     static boolean isMemberInvocable(EventContextObject obj, String member) {
         return "returnNow".equals(member);
