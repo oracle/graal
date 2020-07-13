@@ -49,6 +49,7 @@ import mx_unittest
 import mx_sdk_vm
 import mx_javamodules
 import mx_subst
+import mx_substratevm_benchmark  # pylint: disable=unused-import
 from mx_compiler import GraalArchiveParticipant
 from mx_gate import Task
 from mx_unittest import _run_tests, _VMLauncher
