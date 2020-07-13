@@ -216,7 +216,8 @@ def _graalvm_jvm_config():
                          exclude_components=_graalvm_exclude_components)
 
 def _graalvm_js_config():
-    return GraalVMConfig(dynamicimports=['/graal-js'],
+    return GraalVMConfig(primary_suite_dir=join(suite.vc_dir, 'vm'),  # Run from `vm` to clone the right revision of `graal-js` if needed
+                         dynamicimports=['/' + svm_suite().name, '/graal-js'],
                          disable_libpolyglot=True,
                          force_bash_launchers=_graalvm_force_bash_launchers + ['js'],
                          skip_libraries=_graalvm_skip_libraries,
