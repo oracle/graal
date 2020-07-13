@@ -916,6 +916,7 @@ suite = {
                 "requires": [
                     "java.management",
                     "jdk.management",
+                    "java.xml.crypto",
                 ],
                 "requiresConcealed": {
                     "jdk.internal.vm.ci": [
@@ -937,6 +938,9 @@ suite = {
                         "com.sun.crypto.provider",
                         "sun.reflect.generics.repository",
                         "jdk.internal.org.objectweb.asm",
+                    ],
+                    "java.xml.crypto": [
+                        "org.jcp.xml.dsig.internal.dom",
                     ],
                 },
             },
@@ -1122,6 +1126,7 @@ suite = {
                 "com.oracle.graal.pointsto.util",
                 "com.oracle.graal.pointsto.meta",
                 "com.oracle.graal.pointsto.flow",
+                "com.oracle.graal.pointsto.flow.builder",
                 "com.oracle.graal.pointsto.nodes",
                 "com.oracle.graal.pointsto.phases",
                 "com.oracle.graal.pointsto.results",
