@@ -28,6 +28,9 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.RepeatingNode;
+
+import static com.oracle.truffle.api.nodes.RepeatingNode.CONTINUE_LOOP_STATUS;
+
 public final class OptimizedLoopNode extends LoopNode {
 
     @Child private RepeatingNode repeatingNode;
@@ -52,7 +55,7 @@ public final class OptimizedLoopNode extends LoopNode {
         Object status;
         int loopCount = 0;
         try {
-            while ((status = repeatingNode.executeRepeatingWithValue(frame)) == repeatingNode.continueLoopStatus()) {
+            while ((status = repeatingNode.executeRepeatingWithValue(frame)) == CONTINUE_LOOP_STATUS) {
                 if (CompilerDirectives.inInterpreter()) {
                     loopCount++;
                 }

@@ -2454,18 +2454,17 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     @Override
-    public Object continueLoopStatus() {
-        return TargetOffset.ZERO;
-    }
-
-    @Override
     public boolean executeRepeating(VirtualFrame frame) {
         throw new WasmExecutionException(this, "This method should never have been called.");
     }
 
     @Override
     public Object executeRepeatingWithValue(VirtualFrame frame) {
-        return execute(contextReference().get(), frame);
+        final TargetOffset offset = execute(contextReference().get(), frame);
+        if (offset == TargetOffset.ZERO) {
+            return CONTINUE_LOOP_STATUS;
+        }
+        return offset;
     }
 
     @SuppressWarnings("unused")

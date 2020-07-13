@@ -118,7 +118,7 @@ public final class LLVMLoopDispatchNode extends LLVMNode implements RepeatingNod
                     basicBlockIndex = conditionalBranchNode.getTrueSuccessor();
                     LLVMDispatchBasicBlockNode.nullDeadSlots(frame, originalBodyNodes[basicBlockIndex].nullableBefore);
                     if (basicBlockIndex == headerId) {
-                        return RepeatingNode.DEFAULT_CONTINUE_LOOP_STATUS;
+                        return RepeatingNode.CONTINUE_LOOP_STATUS;
                     }
                     if (!isInLoop(basicBlockIndex)) {
                         frame.setInt(successorSlot, basicBlockIndex);
@@ -134,7 +134,7 @@ public final class LLVMLoopDispatchNode extends LLVMNode implements RepeatingNod
                     basicBlockIndex = conditionalBranchNode.getFalseSuccessor();
                     LLVMDispatchBasicBlockNode.nullDeadSlots(frame, originalBodyNodes[basicBlockIndex].nullableBefore);
                     if (basicBlockIndex == headerId) {
-                        return RepeatingNode.DEFAULT_CONTINUE_LOOP_STATUS;
+                        return RepeatingNode.CONTINUE_LOOP_STATUS;
                     }
                     if (!isInLoop(basicBlockIndex)) {
                         frame.setInt(successorSlot, basicBlockIndex);
@@ -156,7 +156,7 @@ public final class LLVMLoopDispatchNode extends LLVMNode implements RepeatingNod
                         basicBlockIndex = successors[i];
                         LLVMDispatchBasicBlockNode.nullDeadSlots(frame, originalBodyNodes[basicBlockIndex].nullableBefore);
                         if (basicBlockIndex == headerId) {
-                            return RepeatingNode.DEFAULT_CONTINUE_LOOP_STATUS;
+                            return RepeatingNode.CONTINUE_LOOP_STATUS;
                         }
                         if (!isInLoop(basicBlockIndex)) {
                             frame.setInt(successorSlot, basicBlockIndex);
@@ -175,7 +175,7 @@ public final class LLVMLoopDispatchNode extends LLVMNode implements RepeatingNod
                 basicBlockIndex = successors[i];
                 LLVMDispatchBasicBlockNode.nullDeadSlots(frame, originalBodyNodes[basicBlockIndex].nullableBefore);
                 if (basicBlockIndex == headerId) {
-                    return RepeatingNode.DEFAULT_CONTINUE_LOOP_STATUS;
+                    return RepeatingNode.CONTINUE_LOOP_STATUS;
                 }
                 if (!isInLoop(basicBlockIndex)) {
                     frame.setInt(successorSlot, basicBlockIndex);
@@ -192,7 +192,7 @@ public final class LLVMLoopDispatchNode extends LLVMNode implements RepeatingNod
                     if (successorBasicBlockIndex == successors[i]) {
                         basicBlockIndex = successors[i];
                         if (basicBlockIndex == headerId) {
-                            return RepeatingNode.DEFAULT_CONTINUE_LOOP_STATUS;
+                            return RepeatingNode.CONTINUE_LOOP_STATUS;
                         }
                         if (!isInLoop(basicBlockIndex)) {
                             frame.setInt(successorSlot, basicBlockIndex);
@@ -205,7 +205,7 @@ public final class LLVMLoopDispatchNode extends LLVMNode implements RepeatingNod
                 assert successors[i] == successorBasicBlockIndex : "Could not find loop successor!";
                 basicBlockIndex = successors[i];
                 if (basicBlockIndex == headerId) {
-                    return RepeatingNode.DEFAULT_CONTINUE_LOOP_STATUS;
+                    return RepeatingNode.CONTINUE_LOOP_STATUS;
                 }
                 if (!isInLoop(basicBlockIndex)) {
                     frame.setInt(successorSlot, basicBlockIndex);
@@ -228,7 +228,7 @@ public final class LLVMLoopDispatchNode extends LLVMNode implements RepeatingNod
                         basicBlockIndex = successors[i];
                         LLVMDispatchBasicBlockNode.nullDeadSlots(frame, originalBodyNodes[basicBlockIndex].nullableBefore);
                         if (basicBlockIndex == headerId) {
-                            return RepeatingNode.DEFAULT_CONTINUE_LOOP_STATUS;
+                            return RepeatingNode.CONTINUE_LOOP_STATUS;
                         }
                         if (!isInLoop(basicBlockIndex)) {
                             frame.setInt(successorSlot, basicBlockIndex);
@@ -247,7 +247,7 @@ public final class LLVMLoopDispatchNode extends LLVMNode implements RepeatingNod
                 basicBlockIndex = successors[i];
                 LLVMDispatchBasicBlockNode.nullDeadSlots(frame, originalBodyNodes[basicBlockIndex].nullableBefore);
                 if (basicBlockIndex == headerId) {
-                    return RepeatingNode.DEFAULT_CONTINUE_LOOP_STATUS;
+                    return RepeatingNode.CONTINUE_LOOP_STATUS;
                 }
                 if (!isInLoop(basicBlockIndex)) {
                     frame.setInt(successorSlot, basicBlockIndex);
@@ -262,7 +262,7 @@ public final class LLVMLoopDispatchNode extends LLVMNode implements RepeatingNod
                 basicBlockIndex = unconditionalNode.getSuccessor();
                 LLVMDispatchBasicBlockNode.nullDeadSlots(frame, originalBodyNodes[basicBlockIndex].nullableBefore);
                 if (basicBlockIndex == headerId) {
-                    return RepeatingNode.DEFAULT_CONTINUE_LOOP_STATUS;
+                    return RepeatingNode.CONTINUE_LOOP_STATUS;
                 }
                 if (!isInLoop(basicBlockIndex)) {
                     frame.setInt(successorSlot, basicBlockIndex);
@@ -278,7 +278,7 @@ public final class LLVMLoopDispatchNode extends LLVMNode implements RepeatingNod
                     basicBlockIndex = invokeNode.getNormalSuccessor();
                     LLVMDispatchBasicBlockNode.nullDeadSlots(frame, originalBodyNodes[basicBlockIndex].nullableBefore);
                     if (basicBlockIndex == headerId) {
-                        return RepeatingNode.DEFAULT_CONTINUE_LOOP_STATUS;
+                        return RepeatingNode.CONTINUE_LOOP_STATUS;
                     }
                     if (!isInLoop(basicBlockIndex)) {
                         frame.setInt(successorSlot, basicBlockIndex);
@@ -292,7 +292,7 @@ public final class LLVMLoopDispatchNode extends LLVMNode implements RepeatingNod
                     basicBlockIndex = invokeNode.getUnwindSuccessor();
                     LLVMDispatchBasicBlockNode.nullDeadSlots(frame, originalBodyNodes[basicBlockIndex].nullableBefore);
                     if (basicBlockIndex == headerId) {
-                        return RepeatingNode.DEFAULT_CONTINUE_LOOP_STATUS;
+                        return RepeatingNode.CONTINUE_LOOP_STATUS;
                     }
                     if (!isInLoop(basicBlockIndex)) {
                         frame.setInt(successorSlot, basicBlockIndex);
