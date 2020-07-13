@@ -409,7 +409,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     if (unwindCounter > 0) {
                         return unwindCounter - 1;
                     }
-                    // The unwind counter cannot be 0 at this point.
+                    // The unwind counter cannot be 0 at this point, because that corresponds to
+                    // CONTINUE_LOOP_STATUS.
                     assert unwindCounter == -1 : "Unwind counter after loop exit: " + unwindCounter;
 
                     childrenOffset++;
@@ -2441,17 +2442,15 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
             long value = pop(frame, stackPointer + i - 1);
             push(frame, continuationStackPointer + i, value);
         }
-        // This check will be removed in the next PR which makes continuationStackPointer always
-        // constants by improving the BR_TABLE implementation.
-        if (CompilerDirectives.isPartialEvaluationConstant(continuationStackPointer)) {
-            for (int i = continuationStackPointer + returnLength; i < stackPointer; ++i) {
-                pop(frame, i);
-            }
-        }
+//        if (CompilerDirectives.isPartialEvaluationConstant(continuationStackPointer)) {
+//            for (int i = continuationStackPointer + returnLength; i < stackPointer; ++i) {
+//                pop(frame, i);
+//            }
+//        }
     }
 
     @Override
-    public Object initialLoopStatus() {
+    public Object continueLoopStatus() {
         return 0;
     }
 
