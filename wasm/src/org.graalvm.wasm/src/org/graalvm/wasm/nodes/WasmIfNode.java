@@ -46,6 +46,7 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import org.graalvm.wasm.WasmCodeEntry;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.constants.TargetOffset;
 
 import static org.graalvm.wasm.WasmTracing.trace;
 

@@ -236,6 +236,7 @@ import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.constants.TargetOffset;
 import org.graalvm.wasm.exception.WasmExecutionException;
 import org.graalvm.wasm.exception.WasmTrap;
 import org.graalvm.wasm.memory.WasmMemory;
@@ -404,7 +405,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     // "shallower" than the current loop block
                     // (break out of the loop and even further).
                     trace("loop ENTER");
-                    int unwindCounter = ((Integer) loopNode.execute(frame));
+                    int unwindCounter = ((TargetOffset) loopNode.execute(frame)).value;
                     trace("loop EXIT, target = %d", unwindCounter);
                     if (unwindCounter > 0) {
                         return unwindCounter - 1;
@@ -2442,20 +2443,20 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
             long value = pop(frame, stackPointer + i - 1);
             push(frame, continuationStackPointer + i, value);
         }
-//        if (CompilerDirectives.isPartialEvaluationConstant(continuationStackPointer)) {
-//            for (int i = continuationStackPointer + returnLength; i < stackPointer; ++i) {
-//                pop(frame, i);
-//            }
-//        }
+        if (CompilerDirectives.isPartialEvaluationConstant(continuationStackPointer)) {
+            for (int i = continuationStackPointer + returnLength; i < stackPointer; ++i) {
+                pop(frame, i);
+            }
+        }
     }
 
     @Override
     public Object continueLoopStatus() {
-        return 0;
+        return TargetOffset.ZERO;
     }
 
     public boolean shouldContinue(Object value) {
-        return ((Integer) value) == 0;
+        return ((TargetOffset) value).value == 0;
     }
 
     @Override
@@ -2464,8 +2465,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     @Override
-    public Integer executeRepeatingWithValue(VirtualFrame frame) {
-        return execute(contextReference().get(), frame);
+    public TargetOffset executeRepeatingWithValue(VirtualFrame frame) {
+        return TargetOffset.get(execute(contextReference().get(), frame));
     }
 
     @Override
