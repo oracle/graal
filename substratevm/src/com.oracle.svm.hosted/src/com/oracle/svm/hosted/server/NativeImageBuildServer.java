@@ -69,6 +69,7 @@ import java.util.function.Supplier;
 import java.util.logging.LogManager;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.core.SubstrateOptions;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
@@ -395,11 +396,11 @@ public final class NativeImageBuildServer {
     }
 
     private static Integer executeCompilation(ArrayList<String> arguments) {
-        final String[] classpath = NativeImageGeneratorRunner.extractImageClassPath(arguments);
+        final String[] classpath = NativeImageGeneratorRunner.extractImagePathEntries(arguments, SubstrateOptions.IMAGE_CLASSPATH_PREFIX);
         NativeImageClassLoader imageClassLoader;
         ClassLoader applicationClassLoader = Thread.currentThread().getContextClassLoader();
         try {
-            imageClassLoader = NativeImageGeneratorRunner.installNativeImageClassLoader(classpath);
+            imageClassLoader = NativeImageGeneratorRunner.installNativeImageClassLoader(classpath, new String[0]);
             final ImageBuildTask task = loadCompilationTask(arguments, imageClassLoader);
             try {
                 tasks.add(task);
