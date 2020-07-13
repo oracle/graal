@@ -399,6 +399,7 @@ public final class Safepoint {
      */
     public static void transitionNativeToJava() {
         // Transition from C to Java, checking for safepoint.
+        StatusSupport.assertStatusNativeOrSafepoint();
         int newStatus = StatusSupport.STATUS_IN_JAVA;
         boolean needSlowPath = ThreadingSupportImpl.needsNativeToJavaSlowpath() || !StatusSupport.compareAndSetNativeToNewStatus(newStatus);
         if (BranchProbabilityNode.probability(BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY, needSlowPath)) {
@@ -408,10 +409,12 @@ public final class Safepoint {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean tryFastTransitionNativeToVM() {
+        StatusSupport.assertStatusNativeOrSafepoint();
         return StatusSupport.compareAndSetNativeToNewStatus(StatusSupport.STATUS_IN_VM);
     }
 
     public static void slowTransitionNativeToVM() {
+        StatusSupport.assertStatusNativeOrSafepoint();
         int newStatus = StatusSupport.STATUS_IN_VM;
         boolean needSlowPath = !StatusSupport.compareAndSetNativeToNewStatus(newStatus);
         if (BranchProbabilityNode.probability(BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY, needSlowPath)) {
@@ -423,6 +426,7 @@ public final class Safepoint {
     public static void transitionVMToJava() {
         // We can directly change the thread status as no other thread will touch the status field
         // as long as we are in VM status.
+        StatusSupport.assertStatusVM();
         StatusSupport.setStatusJavaUnguarded();
         boolean needSlowPath = ThreadingSupportImpl.needsNativeToJavaSlowpath();
         if (BranchProbabilityNode.probability(BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY, needSlowPath)) {
@@ -434,6 +438,7 @@ public final class Safepoint {
     public static void transitionJavaToVM() {
         // We can directly change the thread state without a safepoint check as the safepoint
         // mechanism does not touch the thread if the status is VM.
+        StatusSupport.assertStatusJava();
         StatusSupport.setStatusVM();
     }
 
@@ -441,6 +446,7 @@ public final class Safepoint {
     public static void transitionVMToNative() {
         // We can directly change the thread state without a safepoint check as the safepoint
         // mechanism does not touch the thread if the status is VM.
+        StatusSupport.assertStatusVM();
         StatusSupport.setStatusNative();
     }
 

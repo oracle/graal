@@ -26,7 +26,10 @@ package com.oracle.svm.core.thread;
 
 import static com.oracle.svm.core.SubstrateOptions.UseDedicatedVMOperationThread;
 
+import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.replacements.ReplacementsUtil;
+import org.graalvm.compiler.replacements.nodes.AssertionNode;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
@@ -635,6 +638,11 @@ public abstract class VMThreads {
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static boolean isStatusVM() {
+            return statusTL.getVolatile() == STATUS_IN_VM;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static boolean isStatusJava() {
             return (statusTL.getVolatile() == STATUS_IN_JAVA);
         }
@@ -642,6 +650,42 @@ public abstract class VMThreads {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static boolean isStatusIgnoreSafepoints(IsolateThread vmThread) {
             return safepointsDisabledTL.getVolatile(vmThread) == 1;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static void assertStatusJava() {
+            String msg = "Thread status must be 'Java'.";
+            if (GraalDirectives.inIntrinsic()) {
+                if (ReplacementsUtil.REPLACEMENTS_ASSERTIONS_ENABLED) {
+                    AssertionNode.dynamicAssert(isStatusJava(), msg);
+                }
+            } else {
+                assert isStatusJava() : msg;
+            }
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static void assertStatusNativeOrSafepoint() {
+            String msg = "Thread status must be 'native' or 'safepoint'.";
+            if (GraalDirectives.inIntrinsic()) {
+                if (ReplacementsUtil.REPLACEMENTS_ASSERTIONS_ENABLED) {
+                    AssertionNode.dynamicAssert(isStatusNativeOrSafepoint(), msg);
+                }
+            } else {
+                assert isStatusNativeOrSafepoint() : msg;
+            }
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static void assertStatusVM() {
+            String msg = "Thread status must be 'VM'.";
+            if (GraalDirectives.inIntrinsic()) {
+                if (ReplacementsUtil.REPLACEMENTS_ASSERTIONS_ENABLED) {
+                    AssertionNode.dynamicAssert(isStatusVM(), msg);
+                }
+            } else {
+                assert isStatusVM() : msg;
+            }
         }
 
         /**
