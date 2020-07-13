@@ -393,19 +393,20 @@ public class UniverseBuilder {
     private void layoutInstanceFields(HostedInstanceClass clazz, int superSize) {
         ArrayList<HostedField> rawFields = new ArrayList<>();
         ArrayList<HostedField> orderedFields = new ArrayList<>();
+        ObjectLayout layout = ConfigurationValues.getObjectLayout();
 
         HostedConfiguration.instance().findAllFieldsForLayout(hUniverse, hMetaAccess, hUniverse.fields, rawFields, orderedFields, clazz);
 
         int startSize = superSize;
         if (clazz.getAnnotation(DeoptimizedFrame.ReserveDeoptScratchSpace.class) != null) {
             assert startSize <= DeoptimizedFrame.getScratchSpaceOffset();
-            startSize = DeoptimizedFrame.getScratchSpaceOffset() + ConfigurationValues.getObjectLayout().getDeoptScratchSpace();
+            startSize = DeoptimizedFrame.getScratchSpaceOffset() + layout.getDeoptScratchSpace();
         }
 
         if (HybridLayout.isHybrid(clazz)) {
             /* Set start after array length field */
-            assert startSize == ConfigurationValues.getObjectLayout().getArrayLengthOffset();
-            int fieldSize = ConfigurationValues.getObjectLayout().sizeInBytes(JavaKind.Int);
+            assert startSize == layout.getArrayLengthOffset();
+            int fieldSize = layout.sizeInBytes(JavaKind.Int);
             startSize += fieldSize;
 
             /*
@@ -426,7 +427,7 @@ public class UniverseBuilder {
             boolean progress = false;
             for (int i = 0; i < rawFields.size(); i++) {
                 HostedField field = rawFields.get(i);
-                int fieldSize = ConfigurationValues.getObjectLayout().sizeInBytes(field.getStorageKind());
+                int fieldSize = layout.sizeInBytes(field.getStorageKind());
 
                 if (nextOffset % fieldSize == 0) {
                     field.setLocation(nextOffset);
@@ -457,14 +458,14 @@ public class UniverseBuilder {
         // A reference to a {@link java.util.concurrent.locks.ReentrantLock for "synchronized" or
         // Object.wait() and Object.notify() and friends.
         if (clazz.needMonitorField()) {
-            final int referenceFieldAlignmentAndSize = ConfigurationValues.getObjectLayout().getReferenceSize();
+            final int referenceFieldAlignmentAndSize = layout.getReferenceSize();
             nextOffset = NumUtil.roundUp(nextOffset, referenceFieldAlignmentAndSize);
             clazz.setMonitorFieldOffset(nextOffset);
             nextOffset += referenceFieldAlignmentAndSize;
         }
 
         clazz.instanceFields = orderedFields.toArray(new HostedField[orderedFields.size()]);
-        clazz.instanceSize = ConfigurationValues.getObjectLayout().alignUp(nextOffset);
+        clazz.instanceSize = layout.alignUp(nextOffset);
 
         for (HostedType subClass : clazz.subTypes) {
             if (subClass.isInstanceClass()) {
