@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,39 +38,55 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.impl;
+package org.graalvm.wasm.constants;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.LoopNode;
-import com.oracle.truffle.api.nodes.RepeatingNode;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 
-import static com.oracle.truffle.api.nodes.RepeatingNode.CONTINUE_LOOP_STATUS;
+public final class TargetOffset {
+    public final int value;
 
-public final class DefaultLoopNode extends LoopNode {
-
-    @Child private RepeatingNode repeatNode;
-
-    public DefaultLoopNode(RepeatingNode repeatNode) {
-        this.repeatNode = repeatNode;
+    private TargetOffset(int value) {
+        this.value = value;
     }
 
-    @Override
-    public RepeatingNode getRepeatingNode() {
-        return repeatNode;
+    public boolean isGreaterThanZero() {
+        return value > 0;
     }
 
-    @SuppressWarnings("deprecation")
-    @Override
-    public void executeLoop(VirtualFrame frame) {
-        execute(frame);
+    public boolean isZero() {
+        return value == 0;
     }
 
-    @Override
-    public Object execute(VirtualFrame frame) {
-        Object status;
-        while ((status = repeatNode.executeRepeatingWithValue(frame)) == CONTINUE_LOOP_STATUS) {
-            // Empty
+    public boolean isMinusOne() {
+        return value == -1;
+    }
+
+    public TargetOffset decrement() {
+        final int resultValue = value - 1;
+        return createOrCached(resultValue);
+    }
+
+    public static TargetOffset createOrCached(int value) {
+        // The cache index starts with value -1, so we need a +1 offset.
+        final int resultCacheIndex = value + 1;
+        if (resultCacheIndex < CACHE.length) {
+            return CACHE[resultCacheIndex];
         }
-        return status;
+        return new TargetOffset(value);
+    }
+
+    public static final TargetOffset MINUS_ONE = new TargetOffset(-1);
+    public static final TargetOffset ZERO = new TargetOffset(0);
+
+    private static final int CACHE_SIZE = 256;
+    @CompilationFinal(dimensions = 1) private static final TargetOffset[] CACHE;
+
+    static {
+        CACHE = new TargetOffset[CACHE_SIZE];
+        CACHE[0] = MINUS_ONE;
+        CACHE[1] = ZERO;
+        for (int i = 2; i < CACHE_SIZE; i++) {
+            CACHE[i] = new TargetOffset(i - 1);
+        }
     }
 }
