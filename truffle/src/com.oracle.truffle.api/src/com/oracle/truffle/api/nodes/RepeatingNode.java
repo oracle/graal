@@ -60,7 +60,7 @@ public interface RepeatingNode extends NodeInterface {
      *
      * @since 19.3
      */
-    Object CONTINUE_LOOP_STATUS = new Object() {
+    Object DEFAULT_CONTINUE_LOOP_STATUS = new Object() {
         @Override
         public String toString() {
             return "CONTINUE_LOOP_STATUS";
@@ -68,11 +68,7 @@ public interface RepeatingNode extends NodeInterface {
     };
 
     default Object continueLoopStatus() {
-        return CONTINUE_LOOP_STATUS;
-    }
-
-    default boolean shouldContinue(Object returnValue) {
-        return returnValue == continueLoopStatus();
+        return DEFAULT_CONTINUE_LOOP_STATUS;
     }
 
     /**
@@ -112,7 +108,7 @@ public interface RepeatingNode extends NodeInterface {
      */
     default Object executeRepeatingWithValue(VirtualFrame frame) {
         if (executeRepeating(frame)) {
-            return CONTINUE_LOOP_STATUS;
+            return DEFAULT_CONTINUE_LOOP_STATUS;
         } else {
             return BREAK_LOOP_STATUS;
         }
