@@ -599,13 +599,6 @@ final class Runner {
         // Need to clear libsulong++ if we are already in libsulong.
         removeCyclicDependency(source, dependenciesSource);
 
-        // Need to do the renaming here, it is only for internal libraries.
-        if (isInternalLibrary) {
-            // renaming is attempted only for internal libraries.
-            resolveRenamedSymbols(result, language);
-        }
-
-        addExternalSymbolsToScopes(result);
         if (isInternalLibrary) {
             String libraryName = getSimpleLibraryName(library.getName());
             // Add the file scope to the language
@@ -616,6 +609,14 @@ final class Runner {
             }
         }
 
+
+        // Need to do the renaming here, it is only for internal libraries.
+        if (isInternalLibrary) {
+            // renaming is attempted only for internal libraries.
+            resolveRenamedSymbols(result, language, context);
+        }
+
+        addExternalSymbolsToScopes(result);
         return createLibraryCallTarget(source.getName(), result, dependenciesSource, source);
     }
 
@@ -1283,7 +1284,7 @@ final class Runner {
     static final String SULONG_RENAME_MARKER = "___sulong_import_";
     static final int SULONG_RENAME_MARKER_LEN = SULONG_RENAME_MARKER.length();
 
-    protected static ArrayList<LLVMFunction> resolveRenamedSymbols(LLVMParserResult parserResult, LLVMLanguage language) {
+    protected static ArrayList<LLVMFunction> resolveRenamedSymbols(LLVMParserResult parserResult, LLVMLanguage language, LLVMContext context) {
         ListIterator<FunctionSymbol> it = parserResult.getExternalFunctions().listIterator();
         ArrayList<LLVMFunction> functions = new ArrayList<>();
         while (it.hasNext()) {
@@ -1306,23 +1307,51 @@ final class Runner {
                 if (idx > 0) {
                     lib = name.substring(SULONG_RENAME_MARKER_LEN, idx);
                     scope = language.getInternalFileScopes(lib);
-                    if (scope != null) {
-                        originalName = name.substring(idx + 1);
-                        createNewFunction = true;
-                    } else {
+                    if (scope == null) {
+                        try {
+                            /*
+                             * If the library that contains the function is not in the language, and therefore has not
+                             * been parsed, then we will try to lazily parse the library now.
+                             */
+                            String libName = lib + "." + NFIContextExtension.getNativeLibrarySuffix();
+                            ExternalLibrary library = context.addInternalLibrary(libName, "<default bitcode library>");
+                            TruffleFile file = library.hasFile() ? library.getFile() : context.getEnv().getInternalTruffleFile(library.getPath().toUri());
+                            context.getEnv().parseInternal(Source.newBuilder("llvm", file).internal(library.isInternal()).build());
+                            scope = language.getInternalFileScopes(lib);
+                        } catch (Exception e) {
+                            throw new IllegalStateException(e);
+                        }
+                    }
+                    if (scope == null) {
                         throw new LLVMLinkerException(String.format("The symbol %s could not be imported because library %s was not found", external.getName(), lib));
                     }
+                    originalName = name.substring(idx + 1);
+                    createNewFunction = true;
                 }
             } else if (CXXDemangler.isRenamedNamespaceSymbol(name)) {
                 ArrayList<String> namespaces = CXXDemangler.decodeNamespace(name);
                 lib = CXXDemangler.getAndRemoveLibraryName(namespaces);
                 scope = language.getInternalFileScopes(lib);
-                if (scope != null) {
-                    originalName = CXXDemangler.encodeNamespace(namespaces);
-                    createNewFunction = true;
-                } else {
+                if (scope == null) {
+                    try {
+                        /*
+                         * If the library that contains the function is not in the language, and therefore has not
+                         * been parsed, then we will try to lazily parse the library now.
+                         */
+                        String libName = lib + "." + NFIContextExtension.getNativeLibrarySuffix();
+                        ExternalLibrary library = context.addInternalLibrary(libName, "<default bitcode library>");
+                        TruffleFile file = library.hasFile() ? library.getFile() : context.getEnv().getInternalTruffleFile(library.getPath().toUri());
+                        context.getEnv().parseInternal(Source.newBuilder("llvm", file).internal(library.isInternal()).build());
+                        scope = language.getInternalFileScopes(lib);
+                    } catch (Exception e) {
+                        throw new IllegalStateException(e);
+                    }
+                }
+                if (scope == null) {
                     throw new LLVMLinkerException(String.format("The symbol %s could not be imported because library %s was not found", external.getName(), lib));
                 }
+                originalName = CXXDemangler.encodeNamespace(namespaces);
+                createNewFunction = true;
             }
 
             if (createNewFunction) {

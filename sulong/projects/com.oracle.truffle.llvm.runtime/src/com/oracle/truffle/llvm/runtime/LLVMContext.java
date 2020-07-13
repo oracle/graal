@@ -301,8 +301,9 @@ public final class LLVMContext {
         try {
             /*
              * The default internal libraries are parsed, but not initialised, in reverse dependency order.
-             * (libsulong for basic sulong / libc, libsulong, libsulong-override for managed sulong)
+             * (For C: libsulong / For C++: libsulong, libsulong++)
              */
+
             String[] sulongLibraryNames = language.getCapability(PlatformCapability.class).getSulongDefaultLibraries();
             for (int i = sulongLibraryNames.length - 1; i >= 0 ; i--) {
                 ExternalLibrary library = addInternalLibrary(sulongLibraryNames[i], "<default bitcode library>");
