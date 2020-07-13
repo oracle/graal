@@ -2459,7 +2459,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     public boolean shouldContinue(Object value) {
-        return ((TargetOffset) value).value == 0;
+        return ((TargetOffset) value).value == -1;
     }
 
     @Override
