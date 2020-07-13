@@ -70,7 +70,7 @@ public class ChunkedImageHeapLayouter extends AbstractImageHeapLayouter<ChunkedI
     @Override
     protected ImageHeapLayoutInfo doLayout(ImageHeap imageHeap) {
         assert !compressedNullPadding || AlignedHeapChunk.getObjectsStartOffset().aboveThan(0) : "Expecting header to pad start so object offsets are strictly greater than 0";
-        allocator = new ChunkedImageHeapAllocator(0);
+        allocator = new ChunkedImageHeapAllocator(imageHeap, 0);
         for (ChunkedImageHeapPartition partition : getPartitions()) {
             partition.layout(allocator);
         }
@@ -131,6 +131,7 @@ public class ChunkedImageHeapLayouter extends AbstractImageHeapLayouter<ChunkedI
             int chunkPosition = NumUtil.safeToInt(current.getBegin());
             if (current instanceof AlignedChunk) {
                 AlignedChunk aligned = (AlignedChunk) current;
+                assert aligned.isFinished();
                 writer.initializeAlignedChunk(imageHeapBytes, chunkPosition, current.getTopOffset(), current.getEndOffset(), offsetToPrevious, offsetToNext);
                 for (ImageHeapObject obj : aligned.getObjects()) {
                     long offsetInChunk = obj.getOffsetInPartition() + obj.getPartition().getStartOffset() - chunkPosition;

@@ -333,11 +333,9 @@ public final class NativeImageHeap implements ImageHeap {
     private boolean assertFillerObjectSizes() {
         assert minArraySize == objectLayout.getArraySize(JavaKind.Int, 0);
 
-        Optional<HostedType> filler = metaAccess.optionalLookupJavaType(FillerObject.class);
-        if (filler.isPresent()) { // image heap might not use it
-            UnsignedWord fillerSize = LayoutEncoding.getInstanceSize(filler.get().getHub().getLayoutEncoding());
-            assert fillerSize.equal(minInstanceSize);
-        }
+        HostedType filler = metaAccess.lookupJavaType(FillerObject.class);
+        UnsignedWord fillerSize = LayoutEncoding.getInstanceSize(filler.getHub().getLayoutEncoding());
+        assert fillerSize.equal(minInstanceSize);
 
         assert minInstanceSize * 2 >= minArraySize : "otherwise, we might need more than one non-array object";
 

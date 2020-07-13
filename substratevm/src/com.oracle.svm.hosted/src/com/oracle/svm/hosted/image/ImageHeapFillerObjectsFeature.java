@@ -22,13 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.heap;
+package com.oracle.svm.hosted.image;
 
-/** The smallest possible instance object, for filling in gaps in the heap. */
-public final class FillerObject {
-    /**
-     * This field is registered as accessed with the analysis and ensures that the class is
-     * considered reachable and is available during image heap construction.
-     */
-    static final Class<FillerObject> CLASS_OBJECT = FillerObject.class;
+import org.graalvm.nativeimage.hosted.Feature;
+
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.heap.FillerObject;
+import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
+import com.oracle.svm.util.ReflectionUtil;
+
+@AutomaticFeature
+class ImageHeapFillerObjectsFeature implements Feature {
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess arg) {
+        BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) arg;
+        access.registerAsAccessed(ReflectionUtil.lookupField(FillerObject.class, "CLASS_OBJECT"));
+        access.registerAsInHeap(FillerObject.class);
+        access.registerAsInHeap(int[].class);
+    }
 }

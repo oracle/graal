@@ -27,17 +27,23 @@ package com.oracle.svm.core.genscavenge;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.image.ImageHeap;
 import com.oracle.svm.core.image.ImageHeapObject;
+import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
 @Platforms(Platform.HOSTED_ONLY.class)
 class ChunkedImageHeapAllocator {
+    /** A pseudo-partition for filler objects, see {@link FillerObjectDummyPartition}. */
+    private static final ImageHeapPartition FILLERS_DUMMY_PARTITION = new FillerObjectDummyPartition();
+
     abstract static class Chunk {
         private final long begin;
         private final long endOffset;
@@ -109,8 +115,27 @@ class ChunkedImageHeapAllocator {
             if (padding > getUnallocatedBytes()) {
                 return false;
             }
-            topOffset += padding;
+            allocateFiller(padding);
+            assert getTop() % multiple == 0;
             return true;
+        }
+
+        public void finish() {
+            allocateFiller(getUnallocatedBytes());
+            assert isFinished();
+        }
+
+        public boolean isFinished() {
+            return topOffset == getEndOffset();
+        }
+
+        private void allocateFiller(long size) {
+            if (size != 0) {
+                ImageHeapObject filler = imageHeap.addFillerObject(NumUtil.safeToInt(size));
+                filler.setHeapPartition(FILLERS_DUMMY_PARTITION);
+                long location = allocate(filler, false);
+                filler.setOffsetInPartition(location);
+            }
         }
 
         public List<ImageHeapObject> getObjects() {
@@ -131,6 +156,7 @@ class ChunkedImageHeapAllocator {
         }
     }
 
+    private final ImageHeap imageHeap;
     private final int alignedChunkSize;
     private final int alignedChunkAlignment;
     private final int alignedChunkObjectsOffset;
@@ -142,7 +168,8 @@ class ChunkedImageHeapAllocator {
     private final ArrayList<AlignedChunk> alignedChunks = new ArrayList<>();
     private AlignedChunk currentAlignedChunk;
 
-    ChunkedImageHeapAllocator(long position) {
+    ChunkedImageHeapAllocator(ImageHeap imageHeap, long position) {
+        this.imageHeap = imageHeap;
         this.alignedChunkSize = UnsignedUtils.safeToInt(HeapPolicy.getAlignedHeapChunkSize());
         this.alignedChunkAlignment = UnsignedUtils.safeToInt(HeapPolicy.getAlignedHeapChunkAlignment());
         this.alignedChunkObjectsOffset = UnsignedUtils.safeToInt(AlignedHeapChunk.getObjectsStartOffset());
@@ -194,12 +221,14 @@ class ChunkedImageHeapAllocator {
     public void alignInAlignedChunk(int multiple) {
         if (!currentAlignedChunk.tryAlignTop(multiple)) {
             startNewAlignedChunk();
-            VMError.guarantee(currentAlignedChunk.tryAlignTop(multiple), "Cannot align to " + multiple + " bytes within an aligned chunk's object area");
+            boolean aligned = currentAlignedChunk.tryAlignTop(multiple);
+            VMError.guarantee(aligned, "Cannot align to " + multiple + " bytes within an aligned chunk's object area");
         }
     }
 
     public void maybeFinishAlignedChunk() {
         if (currentAlignedChunk != null) {
+            currentAlignedChunk.finish();
             currentAlignedChunk = null;
         }
     }
@@ -222,5 +251,42 @@ class ChunkedImageHeapAllocator {
     private static long computePadding(long offset, int alignment) {
         long remainder = offset % alignment;
         return (remainder == 0) ? 0 : (alignment - remainder);
+    }
+}
+
+/**
+ * A pseudo-partition for filler objects, which does not really exist at runtime, in any statistics,
+ * or otherwise. Necessary because like all other {@link ImageHeapObject}s, filler objects must be
+ * assigned to a partition, the start offset of which is used to compute their absolute locations.
+ * <p>
+ * For filler objects in the middle of a partition (between genuine objects of that partition), it
+ * would be acceptable to assign them to their enclosing partition. However, filler objects that are
+ * inserted between partitions for alignment purposes are problematic because if they were assigned
+ * to either partition, they would either be out of the partition's boundaries, or they would change
+ * those boundaries, which would make them useless because that's exactly why they are needed there.
+ */
+final class FillerObjectDummyPartition implements ImageHeapPartition {
+    /**
+     * Zero so that the {@linkplain ImageHeapObject#getOffsetInPartition() partition-relative
+     * offsets} of filler objects are always their absolute locations.
+     */
+    @Override
+    public long getStartOffset() {
+        return 0;
+    }
+
+    @Override
+    public String getName() {
+        throw VMError.shouldNotReachHere();
+    }
+
+    @Override
+    public boolean isWritable() {
+        throw VMError.shouldNotReachHere();
+    }
+
+    @Override
+    public long getSize() {
+        throw VMError.shouldNotReachHere();
     }
 }
