@@ -151,6 +151,24 @@ public class Containers {
 
         return Math.min(cpuCount, limitCount);
     }
+
+    /**
+     * Returns the limit of available memory for this process.
+     *
+     * @return memory limit in bytes or {@link Containers#UNKNOWN}
+     */
+    public static long memoryLimitInBytes() {
+        if (UseContainerSupport.getValue() && Platform.includedIn(Platform.LINUX.class)) {
+            ContainerInfo info = new ContainerInfo();
+            if (info.isContainerized()) {
+                long memoryLimit = info.getMemoryLimit();
+                if (memoryLimit > 0) {
+                    return memoryLimit;
+                }
+            }
+        }
+        return UNKNOWN;
+    }
 }
 
 /** A simple wrapper around the Container Metrics API that abstracts over the used JDK. */
@@ -171,6 +189,10 @@ final class ContainerInfo {
     }
 
     long getCpuShares() {
+        throw VMError.shouldNotReachHere(ERROR_MSG);
+    }
+
+    long getMemoryLimit() {
         throw VMError.shouldNotReachHere(ERROR_MSG);
     }
 }

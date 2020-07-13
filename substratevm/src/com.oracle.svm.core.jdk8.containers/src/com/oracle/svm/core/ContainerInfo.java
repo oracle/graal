@@ -48,4 +48,8 @@ final class ContainerInfo {
     long getCpuShares() {
         return isContainerized() ? metrics.getCpuShares() : UNKNOWN;
     }
+
+    long getMemoryLimit() {
+        return isContainerized() ? metrics.getMemoryLimit() : UNKNOWN;
+    }
 }
