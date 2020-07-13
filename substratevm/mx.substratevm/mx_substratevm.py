@@ -129,8 +129,8 @@ def is_musl_supported():
 
 
 class GraalVMConfig(object):
-    def __init__(self, primary_suite, dynamicimports=None, disable_libpolyglot=False, force_bash_launchers=None, skip_libraries=None, exclude_components=None):
-        self.primary_suite = primary_suite
+    def __init__(self, primary_suite_dir, dynamicimports=None, disable_libpolyglot=False, force_bash_launchers=None, skip_libraries=None, exclude_components=None):
+        self._primary_suite_dir = primary_suite_dir
         self.dynamicimports = dynamicimports or []
         self.disable_libpolyglot = disable_libpolyglot
         self.force_bash_launchers = force_bash_launchers or []
@@ -138,6 +138,9 @@ class GraalVMConfig(object):
         self.exclude_components = exclude_components or []
         for x, _ in mx.get_dynamic_imports():
             self.dynamicimports.append(x)
+
+    def primary_suite_dir(self):
+        return self._primary_suite_dir
 
     def mx_args(self):
         args = ['--disable-installables=true']
@@ -177,8 +180,7 @@ class GraalVMConfig(object):
 
 
 def _run_graalvm_cmd(args, config, nonZeroIsFatal=True, out=None, err=None, timeout=None, env=None, quiet=False):
-    primary_suite_dir = mx.suite(config.primary_suite).dir
-    return mx.run_mx(config.mx_args() + args, suite=primary_suite_dir, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, timeout=timeout, env=env, quiet=quiet)
+    return mx.run_mx(config.mx_args() + args, suite=config.primary_suite_dir(), nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, timeout=timeout, env=env, quiet=quiet)
 
 
 _vm_homes = {}
@@ -200,7 +202,7 @@ _graalvm_exclude_components = ['gu'] if mx.is_windows() else []  # gu does not w
 
 
 def _graalvm_config():
-    return GraalVMConfig(primary_suite='substratevm',
+    return GraalVMConfig(primary_suite_dir=svm_suite().dir,
                          disable_libpolyglot=True,
                          force_bash_launchers=_graalvm_force_bash_launchers,
                          skip_libraries=_graalvm_skip_libraries,
@@ -208,7 +210,7 @@ def _graalvm_config():
 
 
 def _graalvm_jvm_config():
-    return GraalVMConfig(primary_suite='substratevm',
+    return GraalVMConfig(primary_suite_dir=svm_suite().dir,
                          disable_libpolyglot=True,
                          force_bash_launchers=True,
                          skip_libraries=True,
