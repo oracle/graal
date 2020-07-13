@@ -44,9 +44,9 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
 
     static class Container {
         public volatile boolean booleanField;
-        public volatile byte byteField = 17;
+        public volatile byte byteField = -17;
         public volatile char charField = 1025;
-        public volatile short shortField = 2232;
+        public volatile short shortField = -2232;
         public volatile int intField = 0xcafebabe;
         public volatile long longField = 0xdedababafafaL;
         public volatile float floatField = 0.125f;
@@ -90,7 +90,7 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
 
     public static boolean unsafeCompareAndSetByte() {
         Container container = new Container();
-        return unsafe.compareAndSetByte(container, byteOffset, (byte) 17, (byte) 121);
+        return unsafe.compareAndSetByte(container, byteOffset, (byte) -17, (byte) 121);
     }
 
     public static boolean unsafeCompareAndSetChar() {
@@ -100,7 +100,7 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
 
     public static boolean unsafeCompareAndSetShort() {
         Container container = new Container();
-        return unsafe.compareAndSetShort(container, shortOffset, (short) 2232, (short) 12111);
+        return unsafe.compareAndSetShort(container, shortOffset, (short) -2232, (short) 12111);
     }
 
     public static boolean unsafeCompareAndSetInt() {
@@ -130,7 +130,7 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
 
     public static byte unsafeCompareAndExchangeByte() {
         Container container = new Container();
-        return unsafe.compareAndExchangeByte(container, byteOffset, (byte) 17, (byte) 31);
+        return unsafe.compareAndExchangeByte(container, byteOffset, (byte) -17, (byte) 31);
     }
 
     public static char unsafeCompareAndExchangeChar() {
@@ -140,7 +140,7 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
 
     public static short unsafeCompareAndExchangeShort() {
         Container container = new Container();
-        return unsafe.compareAndExchangeShort(container, shortOffset, (short) 2232, (short) 8121);
+        return unsafe.compareAndExchangeShort(container, shortOffset, (short) -2232, (short) 8121);
     }
 
     public static int unsafeCompareAndExchangeInt() {
@@ -166,22 +166,24 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
     @Test
     public void testCompareAndSet() {
         if (target.arch instanceof AMD64) {
+            testGraph("unsafeCompareAndSetFloat");
+            testGraph("unsafeCompareAndSetDouble");
+            testGraph("unsafeCompareAndExchangeFloat");
+            testGraph("unsafeCompareAndExchangeDouble");
+        }
+        if (target.arch instanceof AMD64 || target.arch instanceof AArch64) {
             testGraph("unsafeCompareAndSetBoolean");
             testGraph("unsafeCompareAndSetByte");
             testGraph("unsafeCompareAndSetChar");
             testGraph("unsafeCompareAndSetShort");
             testGraph("unsafeCompareAndSetInt");
             testGraph("unsafeCompareAndSetLong");
-            testGraph("unsafeCompareAndSetFloat");
-            testGraph("unsafeCompareAndSetDouble");
             testGraph("unsafeCompareAndExchangeBoolean");
             testGraph("unsafeCompareAndExchangeByte");
             testGraph("unsafeCompareAndExchangeChar");
             testGraph("unsafeCompareAndExchangeShort");
             testGraph("unsafeCompareAndExchangeInt");
             testGraph("unsafeCompareAndExchangeLong");
-            testGraph("unsafeCompareAndExchangeFloat");
-            testGraph("unsafeCompareAndExchangeDouble");
         }
         test("unsafeCompareAndSetBoolean");
         test("unsafeCompareAndSetByte");
@@ -234,12 +236,10 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
 
     @Test
     public void testGetAndAdd() {
-        if (target.arch instanceof AMD64) {
+        if (target.arch instanceof AMD64 || target.arch instanceof AArch64) {
             testGraph("unsafeGetAndAddByte");
             testGraph("unsafeGetAndAddChar");
             testGraph("unsafeGetAndAddShort");
-        }
-        if (target.arch instanceof AMD64 || target.arch instanceof AArch64) {
             testGraph("unsafeGetAndAddInt");
             testGraph("unsafeGetAndAddLong");
         }
@@ -289,13 +289,11 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
 
     @Test
     public void testGetAndSet() {
-        if (target.arch instanceof AMD64) {
+        if (target.arch instanceof AMD64 || target.arch instanceof AArch64) {
             testGraph("unsafeGetAndSetBoolean");
             testGraph("unsafeGetAndSetByte");
             testGraph("unsafeGetAndSetChar");
             testGraph("unsafeGetAndSetShort");
-        }
-        if (target.arch instanceof AMD64 || target.arch instanceof AArch64) {
             testGraph("unsafeGetAndSetInt");
             testGraph("unsafeGetAndSetLong");
         }

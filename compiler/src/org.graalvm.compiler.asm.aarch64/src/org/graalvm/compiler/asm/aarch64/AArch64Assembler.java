@@ -1510,7 +1510,7 @@ public abstract class AArch64Assembler extends Assembler {
      * compares it against a given value rs, and, if equal, stores the value rt to memory. The value
      * read from address rn is stored in register rs.
      *
-     * @param size size of bits read from memory. Must be 32 or 64.
+     * @param size size of bits read from memory. Must be 8, 16, 32 or 64.
      * @param rs general purpose register to be compared and loaded. May not be null.
      * @param rt general purpose register to be conditionally stored. May not be null.
      * @param rn general purpose register containing the address from which to read.
@@ -1518,8 +1518,9 @@ public abstract class AArch64Assembler extends Assembler {
      * @param release boolean value signifying if the store should use release semantics.
      */
     public void cas(int size, Register rs, Register rt, Register rn, boolean acquire, boolean release) {
-        assert size == 32 || size == 64;
-        compareAndSwapInstruction(CAS, rs, rt, rn, getLog2TransferSize(size), acquire, release);
+        assert size == 8 || size == 16 || size == 32 || size == 64;
+        int transferSize = NumUtil.log2Ceil(size / 8);
+        compareAndSwapInstruction(CAS, rs, rt, rn, transferSize, acquire, release);
     }
 
     private void compareAndSwapInstruction(Instruction instr, Register rs, Register rt, Register rn, int log2TransferSize, boolean acquire, boolean release) {

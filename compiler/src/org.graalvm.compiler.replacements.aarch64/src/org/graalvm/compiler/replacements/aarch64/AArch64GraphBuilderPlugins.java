@@ -89,7 +89,7 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 // This is temporarily disabled until we implement correct emitting of the CAS
                 // instructions of the proper width.
                 registerPlatformSpecificUnsafePlugins(invocationPlugins, replacements, explicitUnsafeNullChecks,
-                                new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object});
+                                new JavaKind[]{JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Short, JavaKind.Int, JavaKind.Long, JavaKind.Object});
             }
         });
     }
@@ -320,7 +320,8 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                         new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object}, "Object");
         if (JavaVersionUtil.JAVA_SPEC > 8) {
             Registration r = new Registration(plugins, "jdk.internal.misc.Unsafe", replacements);
-            registerUnsafePlugins(r, explicitUnsafeNullChecks, new JavaKind[]{JavaKind.Int, JavaKind.Long, JavaKind.Object},
+            registerUnsafePlugins(r, explicitUnsafeNullChecks,
+                            new JavaKind[]{JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Short, JavaKind.Int, JavaKind.Long, JavaKind.Object},
                             JavaVersionUtil.JAVA_SPEC <= 11 ? "Object" : "Reference");
             registerUnsafeUnalignedPlugins(r, explicitUnsafeNullChecks);
         }

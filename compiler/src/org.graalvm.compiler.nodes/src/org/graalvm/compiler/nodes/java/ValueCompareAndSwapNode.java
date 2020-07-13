@@ -59,7 +59,7 @@ public final class ValueCompareAndSwapNode extends AbstractCompareAndSwapNode {
         LIRGeneratorTool tool = gen.getLIRGeneratorTool();
         assert !this.canDeoptimize();
         Value result = tool.emitValueCompareAndSwap(tool.getLIRKind(getAccessStamp(NodeView.DEFAULT)),
-                        gen.operand(getAddress()), gen.operand(getExpectedValue()), gen.operand(getNewValue()), false);
+                        gen.operand(getAddress()), gen.operand(getExpectedValue()), gen.operand(getNewValue()));
         gen.setResult(this, result);
     }
 }
