@@ -391,6 +391,8 @@ public final class ProbeNode extends Node {
                 }
                 this.version = Truffle.getRuntime().createAssumption("Instruments unchanged");
             } while (executionBindingsSnapshot != handler.getExecutionBindingsSnapshot());
+
+            assert context.validEventContextOnLazyUpdate();
         } finally {
             lock.unlock();
         }
