@@ -50,7 +50,7 @@ public final class TargetOffset {
     }
 
     public boolean isGreaterThanZero() {
-        return value > 0;
+        return this != ZERO && this != MINUS_ONE;
     }
 
     public TargetOffset decrement() {
