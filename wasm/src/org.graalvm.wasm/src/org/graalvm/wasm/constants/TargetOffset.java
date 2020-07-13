@@ -50,32 +50,43 @@ public final class TargetOffset {
     }
 
     public boolean isGreaterThanZero() {
-        return this != ZERO && this != MINUS_ONE;
+        return value > 0;
+    }
+
+    public boolean isZero() {
+        return value == 0;
+    }
+
+    public boolean isMinusOne() {
+        return value == -1;
     }
 
     public TargetOffset decrement() {
-        return get(value - 1);
+        final int resultValue = value - 1;
+        return createOrCached(resultValue);
     }
 
-    public static TargetOffset get(int value) {
+    public static TargetOffset createOrCached(int value) {
         // The cache index starts with value -1, so we need a +1 offset.
-        return CACHE[value + 1];
+        final int resultCacheIndex = value + 1;
+        if (resultCacheIndex < CACHE.length) {
+            return CACHE[resultCacheIndex];
+        }
+        return new TargetOffset(value);
     }
 
     public static final TargetOffset MINUS_ONE = new TargetOffset(-1);
     public static final TargetOffset ZERO = new TargetOffset(0);
 
-    @CompilationFinal(dimensions = 1) private static TargetOffset[] CACHE;
+    private static final int CACHE_SIZE = 256;
+    @CompilationFinal(dimensions = 1) private static final TargetOffset[] CACHE;
 
-    public static void ensureCacheSize(int n) {
-        int size = Integer.highestOneBit(n + 1) << 1;
-        if (CACHE == null || CACHE.length < size) {
-            CACHE = new TargetOffset[size];
-            CACHE[0] = MINUS_ONE;
-            CACHE[1] = ZERO;
-            for (int i = 2; i < size; i++) {
-                CACHE[i] = new TargetOffset(i - 1);
-            }
+    static {
+        CACHE = new TargetOffset[CACHE_SIZE];
+        CACHE[0] = MINUS_ONE;
+        CACHE[1] = ZERO;
+        for (int i = 2; i < CACHE_SIZE; i++) {
+            CACHE[i] = new TargetOffset(i - 1);
         }
     }
 }

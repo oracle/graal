@@ -54,7 +54,6 @@ import org.graalvm.wasm.constants.ImportIdentifier;
 import org.graalvm.wasm.constants.Instructions;
 import org.graalvm.wasm.constants.LimitsPrefix;
 import org.graalvm.wasm.constants.Section;
-import org.graalvm.wasm.constants.TargetOffset;
 import org.graalvm.wasm.exception.WasmLinkerException;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.nodes.WasmBlockNode;
@@ -459,7 +458,7 @@ public class BinaryParser extends BinaryStreamParser {
                     // the stack depends on the branch target.
                     // Assert.assertEquals(state.stackSize() - startStackSize,
                     // currentBlock.returnTypeLength(), "Invalid stack state on BR instruction");
-                    final int unwindLevel = readTargetOffset(state);
+                    final int unwindLevel = readLabelIndex(state);
                     final int targetStackSize = state.getStackState(unwindLevel);
                     state.useIntConstant(targetStackSize);
                     final int continuationReturnLength = state.getContinuationReturnLength(unwindLevel);
@@ -479,7 +478,7 @@ public class BinaryParser extends BinaryStreamParser {
                     // stack depends on the branch target.
                     // Assert.assertEquals(state.stackSize() - startStackSize,
                     // currentBlock.returnTypeLength(), "Invalid stack state on BR instruction");
-                    final int unwindLevel = readTargetOffset(state);
+                    final int unwindLevel = readLabelIndex(state);
                     state.useIntConstant(state.getStackState(unwindLevel));
                     state.useIntConstant(state.getContinuationReturnLength(unwindLevel));
                     state.incrementProfileCount();
@@ -499,7 +498,7 @@ public class BinaryParser extends BinaryStreamParser {
                     // The BR_TABLE instruction behaves like a 'switch' statement.
                     // There is one extra label for the 'default' case.
                     for (int i = 0; i != numLabels + 1; ++i) {
-                        final int unwindLevel = readTargetOffset();
+                        final int unwindLevel = readLabelIndex();
                         branchTable[1 + 2 * i + 0] = unwindLevel;
                         branchTable[1 + 2 * i + 1] = state.getStackState(unwindLevel);
                         final int blockReturnLength = state.getContinuationReturnLength(unwindLevel);
@@ -1257,14 +1256,12 @@ public class BinaryParser extends BinaryStreamParser {
         return readUnsignedInt32(state);
     }
 
-    private int readTargetOffset() {
+    private int readLabelIndex() {
         return readUnsignedInt32(null);
     }
 
-    private int readTargetOffset(ExecutionState state) {
-        int value = readUnsignedInt32(state);
-        TargetOffset.ensureCacheSize(value);
-        return value;
+    private int readLabelIndex(ExecutionState state) {
+        return readUnsignedInt32(state);
     }
 
     private byte readExportType() {
