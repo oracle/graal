@@ -377,7 +377,6 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
         AllocatableValue x = moveSp(a);
         AllocatableValue y = moveSp(b);
         switch (op) {
-            case FREM:
             case REM:
             case UREM:
                 getLIRGen().append(new AArch64ArithmeticOp.BinaryCompositeOp(op, result, x, y));
