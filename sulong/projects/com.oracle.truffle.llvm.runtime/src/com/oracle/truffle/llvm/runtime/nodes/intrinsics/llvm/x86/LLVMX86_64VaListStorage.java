@@ -57,6 +57,7 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
     private OverflowArgArea overflowArgArea;
 
     LLVMNativePointer nativized;
+    private LLVMNativePointer overflowArgAreaBaseNativePtr;
 
     public LLVMX86_64VaListStorage(Supplier<LLVMExpressionNode> allocaNodeFactory) {
         this.allocaNodeFactory = allocaNodeFactory;
@@ -251,15 +252,12 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
     static class WritePointer {
 
         @Specialization(guards = "!vaList.isNativized()")
-        static void writeManaged(LLVMX86_64VaListStorage vaList, long offset, LLVMPointer value) {
+        static void writeManaged(LLVMX86_64VaListStorage vaList, long offset, @SuppressWarnings("unused") LLVMPointer value) {
             switch ((int) offset) {
                 case X86_64BitVarArgs.OVERFLOW_ARG_AREA:
                     // Assume that updating the overflowArea pointer means shifting the current
                     // argument
                     vaList.overflowArgArea.shift();
-                    break;
-                case X86_64BitVarArgs.REG_SAVE_AREA:
-                    vaList.regSaveAreaPtr = value;
                     break;
                 default:
                     throw new UnsupportedOperationException("Should not get here");
@@ -388,6 +386,44 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
         // nop
     }
 
+    @ExportMessage
+    static class Copy {
+
+        @Specialization(guards = {"!source.isNativized()"})
+        static void copyManaged(LLVMX86_64VaListStorage source, LLVMX86_64VaListStorage dest) {
+            dest.realArguments = source.realArguments;
+            dest.numberOfExplicitArguments = source.numberOfExplicitArguments;
+            dest.initFPOffset = source.initFPOffset;
+            dest.initGPOffset = source.initGPOffset;
+            dest.fpOffset = source.fpOffset;
+            dest.gpOffset = source.gpOffset;
+            dest.regSaveAreaPtr = source.regSaveAreaPtr;
+            dest.overflowArgArea = source.overflowArgArea.clone();
+            dest.nativized = null;
+            dest.overflowArgAreaBaseNativePtr = null;
+
+        }
+
+        @Specialization(guards = {"source.isNativized()"})
+        static void copyNative(LLVMX86_64VaListStorage source, LLVMX86_64VaListStorage dest, @CachedLibrary("source") LLVMManagedReadLibrary srcReadLib) {
+
+            // The destination va_list will be in the managed state, even if the source has been
+            // nativized. We need to read some state from the native memory, though.
+
+            copyManaged(source, dest);
+
+            dest.fpOffset = srcReadLib.readI32(source, X86_64BitVarArgs.FP_OFFSET);
+            dest.gpOffset = srcReadLib.readI32(source, X86_64BitVarArgs.GP_OFFSET);
+
+            // Calculate the number of argument shifts in the overflow area
+            LLVMNativePointer overflowAreaPtr = LLVMNativePointer.cast(srcReadLib.readPointer(source, X86_64BitVarArgs.OVERFLOW_ARG_AREA));
+            long curAddr = overflowAreaPtr.asNative();
+            long baseAddr = source.overflowArgAreaBaseNativePtr.asNative();
+            long shiftCnt = (curAddr - baseAddr) / 8;
+            dest.overflowArgArea.current = (int) shiftCnt;
+        }
+    }
+
     LLVMExpressionNode createAllocaNode() {
         return allocaNodeFactory.get();
     }
@@ -437,13 +473,13 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
         }
 
         VirtualFrame frame = (VirtualFrame) Truffle.getRuntime().getCurrentFrame().getFrame(FrameAccess.READ_WRITE);
-        nativized = (LLVMNativePointer) allocaNode.executeGeneric(frame);
+        nativized = LLVMNativePointer.cast(allocaNode.executeGeneric(frame));
 
         final int vaLength = this.realArguments.length - numberOfExplicitArguments;
 
         LLVMPointer regSaveArea = stackAllocationNode.executeWithTarget(frame,
                         X86_64BitVarArgs.FP_LIMIT);
-        LLVMPointer overflowArgAreaPtr = stackAllocationNode.executeWithTarget(frame, overflowArgArea.overflowAreaSize);
+        this.overflowArgAreaBaseNativePtr = LLVMNativePointer.cast(stackAllocationNode.executeWithTarget(frame, overflowArgArea.overflowAreaSize));
 
         Object p = nativized.increment(X86_64BitVarArgs.GP_OFFSET);
         gpOffsetStore.executeWithTarget(p, gpOffset);
@@ -452,7 +488,7 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
         fpOffsetStore.executeWithTarget(p, fpOffset);
 
         p = nativized.increment(X86_64BitVarArgs.OVERFLOW_ARG_AREA);
-        overflowArgAreaStore.executeWithTarget(p, overflowArgAreaPtr);
+        overflowArgAreaStore.executeWithTarget(p, overflowArgAreaBaseNativePtr.increment(8 * overflowArgArea.current));
 
         p = nativized.increment(X86_64BitVarArgs.REG_SAVE_AREA);
         regSaveAreaStore.executeWithTarget(p, regSaveArea);
@@ -481,7 +517,7 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
                     fp += X86_64BitVarArgs.FP_STEP;
                 } else {
                     assert overflowArgArea.overflowAreaSize >= overflowOffset;
-                    overflowOffset += storeArgument(overflowArgAreaPtr, overflowOffset, memMove,
+                    overflowOffset += storeArgument(overflowArgAreaBaseNativePtr, overflowOffset, memMove,
                                     i64OverflowArgAreaStore, i32OverflowArgAreaStore,
                                     fp80bitOverflowArgAreaStore, pointerOverflowArgAreaStore, object);
                 }
@@ -564,8 +600,6 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
 
         protected abstract int offsetToIndex(long offset);
 
-        abstract LLVMPointer getBasePointer(LLVMManagedReadLibrary vaListReadLibrary);
-
         @ExportMessage
         @SuppressWarnings("static-method")
         boolean isReadable() {
@@ -611,11 +645,6 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
         }
 
         @Override
-        LLVMPointer getBasePointer(LLVMManagedReadLibrary vaListReadLibrary) {
-            return vaListReadLibrary.readPointer(LLVMX86_64VaListStorage.this, X86_64BitVarArgs.REG_SAVE_AREA);
-        }
-
-        @Override
         protected int offsetToIndex(long offset) {
             if (offset < X86_64BitVarArgs.GP_LIMIT) {
                 int i = (int) offset / X86_64BitVarArgs.GP_STEP;
@@ -630,7 +659,7 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
     }
 
     @ExportLibrary(LLVMManagedReadLibrary.class)
-    final class OverflowArgArea extends ArgsArea {
+    static final class OverflowArgArea extends ArgsArea implements Cloneable {
         private final long[] offsets;
         final int overflowAreaSize;
         private int current = 0;
@@ -651,11 +680,6 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
             throw new UnsupportedOperationException("Should not get here.");
         }
 
-        @Override
-        LLVMPointer getBasePointer(LLVMManagedReadLibrary vaListReadLibrary) {
-            return vaListReadLibrary.readPointer(LLVMX86_64VaListStorage.this, X86_64BitVarArgs.OVERFLOW_ARG_AREA);
-        }
-
         void shift() {
             current++;
         }
@@ -667,6 +691,13 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
             } else {
                 return LLVMManagedPointer.create(this, offsets[current]);
             }
+        }
+
+        @Override
+        public OverflowArgArea clone() {
+            OverflowArgArea cloned = new OverflowArgArea(args, offsets, overflowAreaSize);
+            cloned.current = current;
+            return cloned;
         }
 
     }

@@ -17,4 +17,6 @@ public abstract class LLVMVaListLibrary extends Library {
 
     public abstract void cleanup(Object vaList);
 
+    public abstract void copy(Object source, Object dest);
+
 }
