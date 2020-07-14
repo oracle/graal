@@ -57,7 +57,7 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
     }
 
     @Substitution
-    public static @Host(Object.class) StaticObject getBinding(@Host(String.class) StaticObject name, @InjectMeta Meta meta) {
+    public static @Host(Object.class) StaticObject importObject(@Host(String.class) StaticObject name, @InjectMeta Meta meta) {
         if (!meta.getContext().getEnv().isPolyglotBindingsAccessAllowed()) {
             Meta.throwExceptionWithMessage(meta.java_lang_SecurityException,
                             "Polyglot bindings are not accessible for this language. Use --polyglot or allowPolyglotAccess when building the context.");
@@ -70,7 +70,7 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
     }
 
     @Substitution
-    public static void setBinding(@Host(String.class) StaticObject name, @Host(Object.class) StaticObject value, @InjectMeta Meta meta) {
+    public static void exportObject(@Host(String.class) StaticObject name, @Host(Object.class) StaticObject value, @InjectMeta Meta meta) {
         if (!meta.getContext().getEnv().isPolyglotBindingsAccessAllowed()) {
             Meta.throwExceptionWithMessage(meta.java_lang_SecurityException,
                             "Polyglot bindings are not accessible for this language. Use --polyglot or allowPolyglotAccess when building the context.");
