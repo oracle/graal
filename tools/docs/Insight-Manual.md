@@ -581,11 +581,30 @@ insight.on('enter', function(ctx, frame) {
 The `returnNow` method immediatelly stops execution and returns to the
 caller of the `plus` function. The body of the `plus` method isn't executed
 at all because we applied the insight `on('enter', ...)` - e.g. before the
-actual body of the function was executed.
-
+actual body of the function was executed. 
 Multiplying instead of adding two numbers may not sound very tempting, but
-the same approach is useful in providing add-on caching of repeating
-function invocations.
+the same approach is useful in providing add-on caching (e.g. memoization) 
+of repeating function invocations.
+
+It is also possible to let the original function code run and just alter
+its result. Let's alter the result of `plus` function to be always non-negative:
+
+```js
+insight.on('return', function(ctx, frame) {
+    let result = ctx.returnValue(frame);
+    ctx.returnNow(Math.abs(result));
+}, {
+    roots: true,
+    rootNameFilter: 'plus'
+});
+```
+
+The Insight hook is executed *on return* of the `plus` function and is
+using `returnValue` helper function to obtain the computed return value
+from the current `frame` object. Then it can alter the value and
+`returnNow` the new result instead. The `returnValue` function is always
+available on the provided `ctx` object, but it only returns meaningful
+value when used in `on('return', ...)` hooks.
 
 ### Hack into the C Code!
 

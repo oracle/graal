@@ -137,11 +137,15 @@ final class EventContextObject implements TruffleObject {
         if ("returnNow".equals(member)) {
             throw AgentExecutionNode.returnNow(obj.context, args);
         }
+        if ("returnValue".equals(member)) {
+            VariablesObject vars = (VariablesObject) args[0];
+            return vars.getReturnValue();
+        }
         throw UnknownIdentifierException.create(member);
     }
 
     @ExportMessage
     static boolean isMemberInvocable(EventContextObject obj, String member) {
-        return "returnNow".equals(member);
+        return "returnNow".equals(member) || "returnValue".equals(member);
     }
 }

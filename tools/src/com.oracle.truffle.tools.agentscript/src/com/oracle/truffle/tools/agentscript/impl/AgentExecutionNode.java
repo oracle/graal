@@ -59,7 +59,7 @@ final class AgentExecutionNode extends ExecutionEventNode {
     protected void onEnter(VirtualFrame frame) {
         if (enter != null) {
             try {
-                enterDispatch.execute(enter, ctx, new VariablesObject(env, this, frame));
+                enterDispatch.execute(enter, ctx, new VariablesObject(env, this, frame, null));
             } catch (InteropException ex) {
                 throw ctx.wrap(enter, 2, ex);
             } catch (RuntimeException ex) {
@@ -69,10 +69,10 @@ final class AgentExecutionNode extends ExecutionEventNode {
     }
 
     @Override
-    protected void onReturnValue(VirtualFrame frame, Object result) {
+    protected void onReturnValue(VirtualFrame frame, Object returnValue) {
         if (exit != null) {
             try {
-                exitDispatch.execute(exit, ctx, new VariablesObject(env, this, frame));
+                exitDispatch.execute(exit, ctx, new VariablesObject(env, this, frame, returnValue));
             } catch (InteropException ex) {
                 throw ctx.wrap(exit, 2, ex);
             } catch (RuntimeException ex) {
@@ -85,7 +85,7 @@ final class AgentExecutionNode extends ExecutionEventNode {
     protected void onReturnExceptional(VirtualFrame frame, Throwable exception) {
         if (exit != null) {
             try {
-                exitDispatch.execute(exit, ctx, new VariablesObject(env, this, frame));
+                exitDispatch.execute(exit, ctx, new VariablesObject(env, this, frame, null));
             } catch (InteropException ex) {
                 throw ctx.wrap(exit, 2, ex);
             } catch (RuntimeException ex) {

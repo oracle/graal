@@ -164,12 +164,26 @@ public interface InsightAPI {
              */
             int endColumn();
 
+            /** The current return value to be returned unless
+             * {@link #returnNow} is called. The only meaningful
+             * values can be expected inside of {@link #on on("return", ...)}
+             * handlers.
+             *
+             * @param frame object with variables provided
+             *    as a second parameter to {@link OnEventHandler#event(com.oracle.truffle.tools.agentscript.test.InsightAPI.OnEventHandler.Context, java.util.Map) event}
+             *    method
+             * @return the current return value of {@code null} if not applicable
+             * @since 0.7
+             */
+            Object returnValue(Map<String, Object> frame);
+
             /** Immediatelly exits the current handler and returns to the
              * caller, passing it the provided value as a return value
-             * from the current function.
+             * from the currently instrumented code.
              *
              * @param value the value to return to the caller
              * @since 0.7
+             * @see #returnValue(java.util.Map)
              */
             void returnNow(Object value);
         }

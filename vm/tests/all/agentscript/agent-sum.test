@@ -2,3 +2,5 @@
 21
 > js --insight=agent-summul.js --experimental-options agent-sum.js 
 720
+> js --insight=agent-sumneg.js --experimental-options agent-sum.js
+-21

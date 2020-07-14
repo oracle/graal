@@ -2,6 +2,10 @@
 
 This changelog summarizes major changes between Truffle Tools versions.
 
+## Version 20.3.0
+
+* [GraalVM Insight](docs/Insight-Manual.md#intercepting--altering-execution) can intercept execution and modify return values
+
 ## Version 20.2.0
 
 * [GraalVM Insight](docs/Insight-Manual.md#modifying-local-variables) can modify values of local variables
