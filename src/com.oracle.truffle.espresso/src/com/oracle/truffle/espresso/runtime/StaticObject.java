@@ -476,7 +476,7 @@ public final class StaticObject implements TruffleObject {
 
     @ExportMessage
     abstract static class ReadArrayElement {
-        @Specialization(guards = "isBooleanArray(receiver)")
+        @Specialization(guards = {"isBooleanArray(receiver)", "receiver.isEspressoObject()"})
         static boolean doBoolean(StaticObject receiver, long index,
                         @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
             if (index < 0 || index > Integer.MAX_VALUE) {
@@ -491,7 +491,7 @@ public final class StaticObject implements TruffleObject {
             }
         }
 
-        @Specialization(guards = "isCharArray(receiver)")
+        @Specialization(guards = {"isCharArray(receiver)", "receiver.isEspressoObject()"})
         static char doChar(StaticObject receiver, long index,
                         @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
             if (index < 0 || index > Integer.MAX_VALUE) {
@@ -506,7 +506,7 @@ public final class StaticObject implements TruffleObject {
             }
         }
 
-        @Specialization(guards = "isByteArray(receiver)")
+        @Specialization(guards = {"isByteArray(receiver)", "receiver.isEspressoObject()"})
         static byte doByte(StaticObject receiver, long index,
                         @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
             if (index < 0 || index > Integer.MAX_VALUE) {
@@ -521,7 +521,7 @@ public final class StaticObject implements TruffleObject {
             }
         }
 
-        @Specialization(guards = "isShortArray(receiver)")
+        @Specialization(guards = {"isShortArray(receiver)", "receiver.isEspressoObject()"})
         static short doShort(StaticObject receiver, long index,
                         @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
             if (index < 0 || index > Integer.MAX_VALUE) {
@@ -536,7 +536,7 @@ public final class StaticObject implements TruffleObject {
             }
         }
 
-        @Specialization(guards = "isIntArray(receiver)")
+        @Specialization(guards = {"isIntArray(receiver)", "receiver.isEspressoObject()"})
         static int doInt(StaticObject receiver, long index,
                         @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
             if (index < 0 || index > Integer.MAX_VALUE) {
@@ -551,7 +551,7 @@ public final class StaticObject implements TruffleObject {
             }
         }
 
-        @Specialization(guards = "isLongArray(receiver)")
+        @Specialization(guards = {"isLongArray(receiver)", "receiver.isEspressoObject()"})
         static long doLong(StaticObject receiver, long index,
                         @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
             if (index < 0 || index > Integer.MAX_VALUE) {
@@ -566,7 +566,7 @@ public final class StaticObject implements TruffleObject {
             }
         }
 
-        @Specialization(guards = "isFloatArray(receiver)")
+        @Specialization(guards = {"isFloatArray(receiver)", "receiver.isEspressoObject()"})
         static float doFloat(StaticObject receiver, long index,
                         @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
             if (index < 0 || index > Integer.MAX_VALUE) {
@@ -581,7 +581,7 @@ public final class StaticObject implements TruffleObject {
             }
         }
 
-        @Specialization(guards = "isDoubleArray(receiver)")
+        @Specialization(guards = {"isDoubleArray(receiver)", "receiver.isEspressoObject()"})
         static double doDouble(StaticObject receiver, long index,
                         @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
             if (index < 0 || index > Integer.MAX_VALUE) {
@@ -596,7 +596,7 @@ public final class StaticObject implements TruffleObject {
             }
         }
 
-        @Specialization(guards = {"receiver.isArray()", "!isPrimitiveArray(receiver)"})
+        @Specialization(guards = {"receiver.isArray()", "receiver.isEspressoObject()", "!isPrimitiveArray(receiver)"})
         static Object doObject(StaticObject receiver, long index,
                         @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
             if (index < 0 || index > Integer.MAX_VALUE) {
@@ -620,7 +620,7 @@ public final class StaticObject implements TruffleObject {
 
     @ExportMessage
     abstract static class WriteArrayElement {
-        @Specialization(guards = "isBooleanArray(receiver)", limit = "1")
+        @Specialization(guards = {"isBooleanArray(receiver)", "receiver.isEspressoObject()"}, limit = "1")
         static void doBoolean(StaticObject receiver, long index, Object value,
                         @CachedLibrary("value") InteropLibrary interopLibrary,
                         @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
@@ -643,7 +643,7 @@ public final class StaticObject implements TruffleObject {
             }
         }
 
-        @Specialization(guards = "isCharArray(receiver)", limit = "1")
+        @Specialization(guards = {"isCharArray(receiver)", "receiver.isEspressoObject()"}, limit = "1")
         static void doChar(StaticObject receiver, long index, Object value,
                         @CachedLibrary("value") InteropLibrary interopLibrary,
                         @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
@@ -672,7 +672,7 @@ public final class StaticObject implements TruffleObject {
             }
         }
 
-        @Specialization(guards = "isByteArray(receiver)", limit = "1")
+        @Specialization(guards = {"isByteArray(receiver)", "receiver.isEspressoObject()"}, limit = "1")
         static void doByte(StaticObject receiver, long index, Object value,
                         @CachedLibrary("value") InteropLibrary interopLibrary,
                         @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
@@ -695,7 +695,7 @@ public final class StaticObject implements TruffleObject {
             }
         }
 
-        @Specialization(guards = "isShortArray(receiver)", limit = "1")
+        @Specialization(guards = {"isShortArray(receiver)", "receiver.isEspressoObject()"}, limit = "1")
         static void doShort(StaticObject receiver, long index, Object value,
                         @CachedLibrary("value") InteropLibrary interopLibrary,
                         @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
@@ -718,7 +718,7 @@ public final class StaticObject implements TruffleObject {
             }
         }
 
-        @Specialization(guards = "isIntArray(receiver)", limit = "1")
+        @Specialization(guards = {"isIntArray(receiver)", "receiver.isEspressoObject()"}, limit = "1")
         static void doInt(StaticObject receiver, long index, Object value,
                         @CachedLibrary("value") InteropLibrary interopLibrary,
                         @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
@@ -741,7 +741,7 @@ public final class StaticObject implements TruffleObject {
             }
         }
 
-        @Specialization(guards = "isLongArray(receiver)", limit = "1")
+        @Specialization(guards = {"isLongArray(receiver)", "receiver.isEspressoObject()"}, limit = "1")
         static void doLong(StaticObject receiver, long index, Object value,
                         @CachedLibrary("value") InteropLibrary interopLibrary,
                         @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
@@ -764,7 +764,7 @@ public final class StaticObject implements TruffleObject {
             }
         }
 
-        @Specialization(guards = "isFloatArray(receiver)", limit = "1")
+        @Specialization(guards = {"isFloatArray(receiver)", "receiver.isEspressoObject()"}, limit = "1")
         static void doFloat(StaticObject receiver, long index, Object value,
                         @CachedLibrary("value") InteropLibrary interopLibrary,
                         @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
@@ -787,7 +787,7 @@ public final class StaticObject implements TruffleObject {
             }
         }
 
-        @Specialization(guards = "isDoubleArray(receiver)", limit = "1")
+        @Specialization(guards = {"isDoubleArray(receiver)", "receiver.isEspressoObject()"}, limit = "1")
         static void doDouble(StaticObject receiver, long index, Object value,
                         @CachedLibrary("value") InteropLibrary interopLibrary,
                         @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
