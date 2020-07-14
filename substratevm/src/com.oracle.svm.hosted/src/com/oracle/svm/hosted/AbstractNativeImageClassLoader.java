@@ -48,6 +48,7 @@ import java.security.SecureClassLoader;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Enumeration;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
@@ -140,16 +141,21 @@ public abstract class AbstractNativeImageClassLoader extends SecureClassLoader {
     public abstract void initAllClasses(ForkJoinPool executor, ImageClassLoader imageClassLoader);
 
     protected static class Util {
+
         /**
-         * {@code ClassLoader#loadClass(String, boolean)} is the terminal method that gets invoked
-         * when resolving a class, unfortunately it is protected method meant to be overridden.
-         * Since this class delegates to the appropriate ClassLoader, the method needs to be called
+         * Several classloader methods are terminal methods that get invoked when resolving a class
+         * or accessing resources, unfortunately they are protected methods meant to be overridden.
+         * Since this class delegates to the appropriate ClassLoader, the methods need to be called
          * via reflection to by pass the protected visibility
          */
         private static final Method loadClass = ReflectionUtil.lookupMethod(ClassLoader.class, "loadClass",
                         String.class, boolean.class);
 
         private static final Method getClassLoadingLock = ReflectionUtil.lookupMethod(ClassLoader.class, "getClassLoadingLock",
+                        String.class);
+        private static final Method findResource = ReflectionUtil.lookupMethod(ClassLoader.class, "findResource",
+                        String.class);
+        private static final Method findResources = ReflectionUtil.lookupMethod(ClassLoader.class, "findResources",
                         String.class);
 
         static Class<?> loadClass(ClassLoader classLoader, String name, boolean resolve) throws ClassNotFoundException {
@@ -170,23 +176,27 @@ public abstract class AbstractNativeImageClassLoader extends SecureClassLoader {
             return loadedClass;
         }
 
-        /**
-         * {@code ClassLoader#findResource(String)} is the terminal method that gets invoked when
-         * finding a resource, unfortunately it is protected method meant to be overridden. Since
-         * this class delegates to the appropriate ClassLoader, the method needs to be called via
-         * reflection to by pass the protected visibility
-         */
-        private static final Method findResource = ReflectionUtil.lookupMethod(ClassLoader.class, "findResource",
-                        String.class);
-
         static URL findResource(ClassLoader classLoader, String name) {
             try {
-                // invoke the "findResourceMethod" method on the current class loader
+                // invoke the "findResource" method on the current class loader
                 return (URL) findResource.invoke(classLoader, name);
             } catch (ReflectiveOperationException e) {
                 String message = String.format("Can not find resource: %s using class loader: %s", name, classLoader);
                 VMError.shouldNotReachHere(message, e);
             }
+            return null;
+        }
+
+        @SuppressWarnings("unchecked")
+        static Enumeration<URL> findResources(ClassLoader classLoader, String name) throws IOException {
+            try {
+                // invoke the "findResources" method on the current class loader
+                return (Enumeration<URL>) findResources.invoke(classLoader, name);
+            } catch (ReflectiveOperationException e) {
+                String message = String.format("Can not find resources: %s using class loader: %s", name, classLoader);
+                VMError.shouldNotReachHere(message, e);
+            }
+
             return null;
         }
 

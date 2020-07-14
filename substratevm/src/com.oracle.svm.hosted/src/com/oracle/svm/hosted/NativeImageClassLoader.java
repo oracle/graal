@@ -24,9 +24,11 @@
  */
 package com.oracle.svm.hosted;
 
+import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Path;
 import java.util.Collections;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ForkJoinPool;
@@ -55,6 +57,11 @@ public class NativeImageClassLoader extends AbstractNativeImageClassLoader {
     @Override
     protected URL findResource(String name) {
         return Util.findResource(classPathClassLoader, name);
+    }
+
+    @Override
+    protected Enumeration<URL> findResources(String name) throws IOException {
+        return Util.findResources(classPathClassLoader, name);
     }
 
     @Override

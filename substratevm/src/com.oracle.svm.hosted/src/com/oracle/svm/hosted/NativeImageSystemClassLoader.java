@@ -24,9 +24,11 @@
  */
 package com.oracle.svm.hosted;
 
+import java.io.IOException;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.security.SecureClassLoader;
+import java.util.Enumeration;
 import java.util.jar.JarFile;
 
 import com.oracle.svm.core.util.VMError;
@@ -69,6 +71,11 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
     @Override
     protected URL findResource(String name) {
         return AbstractNativeImageClassLoader.Util.findResource(getActiveClassLoader(), name);
+    }
+
+    @Override
+    protected Enumeration<URL> findResources(String name) throws IOException {
+        return AbstractNativeImageClassLoader.Util.findResources(getActiveClassLoader(), name);
     }
 
     @Override
