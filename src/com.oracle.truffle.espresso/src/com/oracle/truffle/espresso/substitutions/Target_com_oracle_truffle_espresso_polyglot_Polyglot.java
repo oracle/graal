@@ -63,6 +63,9 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                             "Polyglot bindings are not accessible for this language. Use --polyglot or allowPolyglotAccess when building the context.");
         }
         Object binding = meta.getContext().getEnv().importSymbol(name.toString());
+        if (binding == null) {
+            return StaticObject.NULL;
+        }
         if (binding instanceof StaticObject) {
             return (StaticObject) binding;
         }
