@@ -27,18 +27,47 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.asm.support;
+package com.oracle.truffle.llvm.runtime.nodes.asm.syscall;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-// All methods can be used without @TruffleBoundary
-public class LLVMString {
-    public static void strcpy(LLVMMemory memory, LLVMNativePointer dst, String src) {
-        memory.putByteArray(null, dst, getBytes(src));
-        LLVMNativePointer zero = dst.increment(src.length());
-        memory.putI8(null, zero, (byte) 0);
+public abstract class LLVMStringHelper extends LLVMNode {
+
+    public abstract void execute(LLVMPointer dst, long bufLength, String src);
+
+    @Specialization
+    void doNative(LLVMNativePointer dst, long bufLength, String src,
+                    @CachedLanguage LLVMLanguage language) {
+        LLVMMemory memory = language.getLLVMMemory();
+        byte[] bytes = getBytes(src);
+        long ptr = dst.asNative();
+        for (int i = 0; i < bytes.length && i < bufLength - 1; i++) {
+            memory.putI8(this, ptr++, bytes[i]);
+        }
+        memory.putI8(this, ptr++, (byte) 0);
+    }
+
+    @Specialization(limit = "3")
+    void doManaged(LLVMManagedPointer dst, long bufLength, String src,
+                    @Bind("dst.getObject()") Object obj,
+                    @CachedLibrary("obj") LLVMManagedWriteLibrary write) {
+        byte[] bytes = getBytes(src);
+        long offset = dst.getOffset();
+        for (int i = 0; i < bytes.length && i < bufLength - 1; i++) {
+            write.writeI8(obj, offset++, bytes[i]);
+        }
+        write.writeI8(obj, offset++, (byte) 0);
     }
 
     @TruffleBoundary
