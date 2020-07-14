@@ -45,6 +45,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.image.ImageHeapObject;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
@@ -53,17 +54,16 @@ import com.oracle.svm.core.util.VMError;
  * reference without a shift. This limits the address space where all hubs must be placed to 32/64
  * bits but due to the object alignment, the 3 least-significant bits can be reserved for the GC.
  *
- * Image heap objects are not marked explicitly and have the same header as an aligned object
- * without a remembered set. So, in places where it is necessary to explicitly distinguish image
- * heap objects, it is necessary to call {@link Heap#isInImageHeap}. Usually, image heap objects
- * must be treated specially anyways as they neither have a {@link HeapChunk} nor a {@link Space}.
+ * Image heap objects are not marked explicitly, but must be treated differently in some regards. In
+ * places where it is necessary to distinguish image heap objects, it is necessary to call
+ * {@link Heap#isInImageHeap}.
  */
 public final class ObjectHeaderImpl extends ObjectHeader {
     // @formatter:off
-    //                                Name                            Value                         // In hex:
-    private static final UnsignedWord UNALIGNED_BIT                 = WordFactory.unsigned(0b001);  // 0 or 8.
-    private static final UnsignedWord REMEMBERED_SET_BIT            = WordFactory.unsigned(0b010);  // 0 or 8.
-    private static final UnsignedWord FORWARDED_BIT                 = WordFactory.unsigned(0b100);  // 4 or c.
+    //                                Name                            Value
+    private static final UnsignedWord UNALIGNED_BIT                 = WordFactory.unsigned(0b001);
+    private static final UnsignedWord REMEMBERED_SET_BIT            = WordFactory.unsigned(0b010);
+    private static final UnsignedWord FORWARDED_BIT                 = WordFactory.unsigned(0b100);
 
     private static final int RESERVED_BITS_MASK                     = 0b111;
     private static final UnsignedWord MASK_HEADER_BITS              = WordFactory.unsigned(RESERVED_BITS_MASK);
@@ -249,9 +249,23 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     }
 
     @Override
-    public long encodeAsImageHeapObjectHeader(long heapBaseRelativeAddress) {
-        assert (heapBaseRelativeAddress & MASK_HEADER_BITS.rawValue()) == 0 : "Object header bits must be zero";
-        return heapBaseRelativeAddress;
+    public long encodeAsImageHeapObjectHeader(ImageHeapObject obj, long hubOffsetFromHeapBase) {
+        long header = hubOffsetFromHeapBase;
+        assert (header & MASK_HEADER_BITS.rawValue()) == 0 : "Object header bits must be zero initially";
+        if (HeapImpl.usesImageHeapRememberedSets()) {
+            if (obj.getPartition() instanceof ChunkedImageHeapPartition) {
+                ChunkedImageHeapPartition partition = (ChunkedImageHeapPartition) obj.getPartition();
+                if (partition.isWritable()) {
+                    header |= REMEMBERED_SET_BIT.rawValue();
+                }
+                if (partition.usesUnalignedObjects()) {
+                    header |= UNALIGNED_BIT.rawValue();
+                }
+            } else {
+                assert obj.getPartition() instanceof FillerObjectDummyPartition;
+            }
+        }
+        return header;
     }
 
     public static boolean isAlignedObject(Object o) {

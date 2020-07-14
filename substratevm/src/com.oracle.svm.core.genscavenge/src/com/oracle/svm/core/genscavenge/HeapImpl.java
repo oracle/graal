@@ -65,6 +65,7 @@ import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
+import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.ThreadStatus;
@@ -555,6 +556,11 @@ public final class HeapImpl extends Heap {
     @Override
     public void detachThread(IsolateThread isolateThread) {
         ThreadLocalAllocation.disableAndFlushForThread(isolateThread);
+    }
+
+    @Fold
+    public static boolean usesImageHeapRememberedSets() {
+        return HeapOptions.ChunkedImageHeapLayout.getValue() && CommittedMemoryProvider.get().guaranteesHeapPreferredAddressSpaceAlignment();
     }
 
     @Fold

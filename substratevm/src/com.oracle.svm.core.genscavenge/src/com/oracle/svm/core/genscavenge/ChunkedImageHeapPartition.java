@@ -57,6 +57,10 @@ public class ChunkedImageHeapPartition extends AbstractImageHeapPartition {
         this.hugeObjects = hugeObjects;
     }
 
+    boolean usesUnalignedObjects() {
+        return hugeObjects;
+    }
+
     void layout(ChunkedImageHeapAllocator allocator) {
         if (hugeObjects) {
             layoutInUnalignedChunks(allocator);
