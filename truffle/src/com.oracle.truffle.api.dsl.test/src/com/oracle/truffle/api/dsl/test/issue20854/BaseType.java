@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,22 +38,17 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex;
+package com.oracle.truffle.api.dsl.test.issue20854;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 
 @ExportLibrary(InteropLibrary.class)
-public abstract class AbstractConstantKeysObject extends AbstractRegexObject {
-
-    public abstract TruffleReadOnlyKeysArray getKeys();
-
-    public abstract Object readMemberImpl(String symbol) throws UnknownIdentifierException;
+public abstract class BaseType implements TruffleObject {
 
     @ExportMessage
     public boolean hasMembers() {
@@ -61,54 +56,34 @@ public abstract class AbstractConstantKeysObject extends AbstractRegexObject {
     }
 
     @ExportMessage
-    public Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-        return getKeys();
-    }
-
-    @ExportMessage
     public abstract static class IsMemberReadable {
 
         @SuppressWarnings("unused")
         @Specialization(guards = "symbol == cachedSymbol", limit = "8")
-        public static boolean cacheIdentity(AbstractConstantKeysObject receiver, String symbol,
-                        @Cached("symbol") String cachedSymbol,
-                        @Cached("isReadable(receiver, cachedSymbol)") boolean result) {
-            return result;
+        public static boolean b(BaseType receiver, String symbol,
+                        @Cached("symbol") String cachedSymbol) {
+            return false;
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = "symbol.equals(cachedSymbol)", limit = "8", replaces = "cacheIdentity")
-        public static boolean cacheEquals(AbstractConstantKeysObject receiver, String symbol,
-                        @Cached("symbol") String cachedSymbol,
-                        @Cached("isReadable(receiver, cachedSymbol)") boolean result) {
-            return result;
+        @Specialization(guards = "symbol.equals(cachedSymbol)", limit = "8", replaces = "b")
+        public static boolean a(BaseType receiver, String symbol,
+                        @Cached("symbol") String cachedSymbol) {
+            return false;
         }
 
-        @SuppressWarnings("unused")
-        @Specialization(replaces = "cacheEquals")
-        public static boolean isReadable(AbstractConstantKeysObject receiver, String symbol) {
-            return receiver.getKeys().contains(symbol);
-        }
     }
 
+    @SuppressWarnings("static-method")
     @ExportMessage
-    public abstract static class ReadMember {
-
-        @Specialization(guards = "symbol == cachedSymbol", limit = "8")
-        public static Object readIdentity(AbstractConstantKeysObject receiver, @SuppressWarnings("unused") String symbol,
-                        @Cached("symbol") String cachedSymbol) throws UnknownIdentifierException {
-            return read(receiver, cachedSymbol);
-        }
-
-        @Specialization(guards = "symbol.equals(cachedSymbol)", limit = "8", replaces = "readIdentity")
-        public static Object readEquals(AbstractConstantKeysObject receiver, @SuppressWarnings("unused") String symbol,
-                        @Cached("symbol") String cachedSymbol) throws UnknownIdentifierException {
-            return read(receiver, cachedSymbol);
-        }
-
-        @Specialization(replaces = "readEquals")
-        public static Object read(AbstractConstantKeysObject receiver, String symbol) throws UnknownIdentifierException {
-            return receiver.readMemberImpl(symbol);
-        }
+    final Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        return null;
     }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    final Object readMember(@SuppressWarnings("unused") String member) {
+        return null;
+    }
+
 }
