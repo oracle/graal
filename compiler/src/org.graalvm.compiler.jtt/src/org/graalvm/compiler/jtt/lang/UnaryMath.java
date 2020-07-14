@@ -50,7 +50,7 @@ public abstract class UnaryMath extends JTTTest {
             /*
              * Forces the assertion message shows the ulps by which a computed result is wrong.
              */
-            ulpDelta = 0D;
+            ulpDelta = System.getProperty("os.name", "").startsWith("Windows") ? 2D : 0D;
         }
         Object receiver = null;
         long testIteration = 0;
