@@ -114,10 +114,7 @@ public final class StaticObject implements TruffleObject {
 
     @ExportMessage
     public boolean isString() {
-        if (isEspressoObject()) {
-            return StaticObject.notNull(this) && getKlass() == getKlass().getMeta().java_lang_String;
-        }
-        return InteropLibrary.getUncached().isString(rawInteropObject());
+        return StaticObject.notNull(this) && getKlass() == getKlass().getMeta().java_lang_String;
     }
 
     @ExportMessage
