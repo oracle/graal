@@ -254,7 +254,7 @@ final class Runner {
         final LLVMLanguage language;
         private boolean hasInitialised;
 
-        protected enum LLVMLoadingPhase {
+        private enum LLVMLoadingPhase {
             ALL,
             BUILD_SCOPES,
             INIT_SYMBOLS,
@@ -535,7 +535,7 @@ final class Runner {
 
             LLVMScope scope = loadModule(frame, context);
 
-            if (scope != null) {
+            if (frame.getArguments().length == 0 || !(frame.getArguments()[0] instanceof LLVMLoadingPhase)) {
                 return new SulongLibrary(sourceName, scope, mainFunctionCallTarget, context);
             }
 
