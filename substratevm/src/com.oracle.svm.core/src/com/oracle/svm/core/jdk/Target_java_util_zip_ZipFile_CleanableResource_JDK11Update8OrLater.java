@@ -52,6 +52,6 @@ public final class Target_java_util_zip_ZipFile_CleanableResource_JDK11Update8Or
          * This substitution is only necessary for JDK 11. Changes made in JDK 14 removed the use of
          * finalizers and the get method.
          */
-        return new Target_java_util_zip_ZipFile_CleanableResource_JDK11Update8OrLater(zf, file, mode, false);
+        return new Target_java_util_zip_ZipFile_CleanableResource_JDK11Update8OrLater(zf, file, mode, true);
     }
 }
