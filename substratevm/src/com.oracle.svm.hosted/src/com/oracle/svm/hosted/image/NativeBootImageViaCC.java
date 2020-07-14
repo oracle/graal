@@ -92,6 +92,10 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
         BinutilsCCLinkerInvocation() {
             additionalPreOptions.add("-z");
             additionalPreOptions.add("noexecstack");
+            if (SubstrateOptions.UseOnlyWritableBootImageHeap.getValue()) {
+                additionalPreOptions.add("-fuse-ld=gold");
+                additionalPreOptions.add("-Wl,--rosegment");
+            }
 
             if (removeUnusedSymbols()) {
                 /* Perform garbage collection of unused input sections. */
