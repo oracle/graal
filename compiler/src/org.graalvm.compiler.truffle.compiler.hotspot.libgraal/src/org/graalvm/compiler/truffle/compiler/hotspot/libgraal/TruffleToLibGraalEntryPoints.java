@@ -145,7 +145,6 @@ final class TruffleToLibGraalEntryPoints {
     @CEntryPoint(name = "Java_org_graalvm_compiler_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls_initializeRuntime")
     public static long initializeRuntime(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId,
                     JObject truffleRuntime, long classLoaderDelegateId) {
-        traceGR24487();
         try (JNILibGraalScope<TruffleToLibGraal.Id> s = new JNILibGraalScope<>(InitializeRuntime, env)) {
             ResolvedJavaType classLoaderDelegate = LibGraal.unhand(ResolvedJavaType.class, classLoaderDelegateId);
             HSTruffleCompilerRuntime hsTruffleRuntime = new HSTruffleCompilerRuntime(env, truffleRuntime, classLoaderDelegate, HotSpotGraalOptionValues.defaultOptions());
@@ -155,21 +154,6 @@ final class TruffleToLibGraalEntryPoints {
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
             return 0L;
-        }
-    }
-
-    /**
-     * Trace the "Could not initialize class java.lang.ProcessEnvironment" The first call that
-     * triggers a class initialization has the full stack trace of what is wrong. The subsequent
-     * class initialization just throws the NoClassDefFoundError. Print the first stack trace. TODO:
-     * Remove when the GR-24487 is fixed.
-     */
-    private static void traceGR24487() {
-        try {
-            System.getenv("JNI_LIBGRAAL_TRACE_LEVEL");
-        } catch (Throwable t) {
-            t.printStackTrace();
-            throw t;
         }
     }
 
