@@ -89,7 +89,7 @@ public abstract class LLVMInteropWriteNode extends LLVMNode {
                 interop.writeMember(location.base, identifier, convertOutgoing.execute(value, location.type, writeType));
             } catch (UnsupportedMessageException ex) {
                 exception.enter();
-                throw new LLVMPolyglotException(this, "Can not write member '%s'.", identifier);
+                throw new LLVMPolyglotException(this, "Cannot write member '%s'.", identifier);
             } catch (UnknownIdentifierException ex) {
                 exception.enter();
                 throw new LLVMPolyglotException(this, "Member '%s' not found.", identifier);
@@ -141,7 +141,7 @@ public abstract class LLVMInteropWriteNode extends LLVMNode {
                 throw new LLVMPolyglotException(this, "Invalid array index %d.", idx);
             } catch (UnsupportedMessageException ex) {
                 exception.enter();
-                throw new LLVMPolyglotException(this, "Can not write array element %d.", idx);
+                throw new LLVMPolyglotException(this, "Cannot write array element %d.", idx);
             } catch (UnsupportedTypeException ex) {
                 exception.enter();
                 throw new LLVMPolyglotException(this, "Wrong type writing to array element %d.", idx);
