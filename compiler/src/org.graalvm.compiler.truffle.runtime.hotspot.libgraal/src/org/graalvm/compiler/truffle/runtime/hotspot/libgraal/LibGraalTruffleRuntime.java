@@ -41,6 +41,9 @@ import org.graalvm.libgraal.LibGraalScope.DetachAction;
 import org.graalvm.util.OptionsEncoder;
 
 import com.oracle.truffle.api.TruffleRuntime;
+import java.util.Collections;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -94,7 +97,7 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
 
     @Override
     protected AutoCloseable openCompilerThreadScope() {
-        return new LibGraalScope(DetachAction.DETACH_RUNTIME_AND_RELEASE);
+        return new CompilerThreadScope();
     }
 
     @Override
@@ -116,6 +119,30 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
         return TTYStream.INSTANCE;
     }
 
+    private static class CompilerThreadScope implements AutoCloseable {
+
+        private static Set<Thread> enteredThreads = Collections.newSetFromMap(new ConcurrentHashMap<Thread, Boolean>());
+
+        private final LibGraalScope libGraalScope;
+
+        CompilerThreadScope() {
+            this.libGraalScope = new LibGraalScope(DetachAction.DETACH_RUNTIME_AND_RELEASE);
+            enteredThreads.add(Thread.currentThread());
+        }
+
+        @Override
+        @SuppressWarnings("try")
+        public void close() {
+            try (LibGraalScope s = libGraalScope) {
+                enteredThreads.remove(Thread.currentThread());
+            }
+        }
+
+        static boolean isEntered() {
+            return enteredThreads.contains(Thread.currentThread());
+        }
+    }
+
     /**
      * Gets an output stream that write data to a libgraal TTY stream.
      */
@@ -123,36 +150,27 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
 
         static final TTYStream INSTANCE = new TTYStream();
 
-        private final ThreadLocal<LibGraalScope> localScope = new ThreadLocal<LibGraalScope>() {
-            @Override
-            protected LibGraalScope initialValue() {
-                return new LibGraalScope(DetachAction.DETACH_RUNTIME_AND_RELEASE);
-            }
-        };
-
         private TTYStream() {
-        }
-
-        private long isolateThread() {
-            return localScope.get().getIsolateThreadAddress();
         }
 
         @SuppressWarnings("try")
         @Override
-        public void write(int b) {
-            TruffleToLibGraalCalls.ttyWriteByte(isolateThread(), b);
+        public void write(int b) throws IOException {
+            if (CompilerThreadScope.isEntered()) {
+                TruffleToLibGraalCalls.ttyWriteByte(LibGraalScope.current().getIsolateThreadAddress(), b);
+            } else {
+                System.err.write(b);
+            }
         }
 
         @SuppressWarnings("try")
         @Override
         public void write(byte[] b, int off, int len) {
-            TruffleToLibGraalCalls.ttyWriteBytes(isolateThread(), b, off, len);
-        }
-
-        @Override
-        public void close() throws IOException {
-            localScope.get().close();
-            localScope.remove();
+            if (CompilerThreadScope.isEntered()) {
+                TruffleToLibGraalCalls.ttyWriteBytes(LibGraalScope.current().getIsolateThreadAddress(), b, off, len);
+            } else {
+                System.err.write(b, off, len);
+            }
         }
     }
 }
