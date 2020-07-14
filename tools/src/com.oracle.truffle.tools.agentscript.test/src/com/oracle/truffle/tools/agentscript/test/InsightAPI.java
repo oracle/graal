@@ -170,9 +170,10 @@ public interface InsightAPI {
              * handlers.
              *
              * @param frame object with variables provided
-             *    as a second parameter to {@link OnEventHandler#event(com.oracle.truffle.tools.agentscript.test.InsightAPI.OnEventHandler.Context, java.util.Map) event}
+             *    as a second parameter to {@link OnEventHandler#event event}
              *    method
-             * @return the current return value of {@code null} if not applicable
+             * @return the current return value or {@code null},
+             *    if not applicable
              * @since 0.7
              */
             Object returnValue(Map<String, Object> frame);

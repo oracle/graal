@@ -686,7 +686,7 @@ public class AgentObjectTest {
                 Object obj = ctx.returnValue(frame);
                 assertTrue("A string is returned: " + obj, obj instanceof String);
                 String[] constants = obj.toString().replaceAll("[\\(\\)]", "").split("\\+");
-                Assert.assertArrayEquals("6 and 7", new String[] { "6", "7" }, constants);
+                Assert.assertArrayEquals("6 and 7", new String[]{"6", "7"}, constants);
                 int mul = Integer.parseInt(constants[0]) * Integer.parseInt(constants[1]);
                 ctx.returnNow(mul);
             };
