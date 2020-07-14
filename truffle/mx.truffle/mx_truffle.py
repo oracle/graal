@@ -597,7 +597,7 @@ def create_sl_parser(args=None, out=None):
     """create the SimpleLanguage parser using antlr"""
     create_parser("com.oracle.truffle.sl", "com.oracle.truffle.sl.parser", "SimpleLanguage", COPYRIGHT_HEADER_UPL, args, out)
 
-def create_parser(grammar_project, grammar_package, grammar_name, copyright_template, args=None, out=None):
+def create_parser(grammar_project, grammar_package, grammar_name, copyright_template, args=None, out=None, postprocess=None):
     """create the DSL expression parser using antlr"""
     grammar_dir = os.path.join(mx.project(grammar_project).source_dirs()[0], *grammar_package.split(".")) + os.path.sep
     mx.run_java(mx.get_runtime_jvm_args(['ANTLR4_COMPLETE']) + ["org.antlr.v4.Tool", "-package", grammar_package, "-no-listener"] + args + [grammar_dir + grammar_name + ".g4"], out=out)
@@ -613,6 +613,9 @@ def create_parser(grammar_project, grammar_package, grammar_name, copyright_temp
         content = PTRN_TOKEN_CAST.sub('_errHandler.recoverInline(this)', content)
         # add copyright header
         content = copyright_template.format(content)
+        # user provided post-processing hook:
+        if postprocess is not None:
+            content = postprocess(content)
         with open(filename, 'w') as content_file:
             content_file.write(content)
 
