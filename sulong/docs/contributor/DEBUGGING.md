@@ -28,7 +28,8 @@ lli --inspect --enable-experimental-options --llvm.llDebug ...
 
 To debug on the LLVM-IR level, you need to provide disassembled bitcode files
 next to the binary files that are loaded by GraalVM. These can be produced with
-the `llvm-dis` tool.
+the `llvm-dis` tool. Use the `--llvm.llDebug.verbose` option to get diagnostic
+messages about missing disassembled bitcode files.
 
 There is a helper script in `mx` to produce the disassembled bitcode files and
 put them in the correct place:

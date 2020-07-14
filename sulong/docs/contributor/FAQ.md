@@ -75,12 +75,12 @@ SDK (from `workspace/graal/sdk`).
 
 ### How can I develop Sulong with Netbeans?
 
-For generating Netbeans project files, use `mx netbeans init`. Then
+For generating Netbeans project files, use `mx netbeansinit`. Then
 open the projects you are interested in (File>Open Project).
 
 ### How can I develop Sulong with IntelliJ?
 
-IntelliJ project files can be generated with `mx intellij init`.
+IntelliJ project files can be generated with `mx intellijinit`.
 
 ### How can I debug Sulong with my IDE?
 
@@ -93,3 +93,5 @@ Listening for transport dt_socket at address: 8000
 ```
 
 Then you can attach your IDE to the running Java process on port 8000.
+
+See also [Debugging the GraalVM Runtime](DEBUGGING.md).
