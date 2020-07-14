@@ -22,10 +22,17 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.espresso.impl.Field;
+import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
+
+import java.util.NoSuchElementException;
 
 @EspressoSubstitutions
 public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
@@ -37,13 +44,85 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
     @Substitution
     public static @Host(Object.class) StaticObject cast(@Host(Class.class) StaticObject targetClass, @Host(Object.class) StaticObject value, @InjectMeta Meta meta) {
         if (StaticObject.isNull(value)) {
-            Meta.throwExceptionWithMessage(meta.java_lang_NullPointerException, "Polyglot.cast: cannot cast null.");
+            return value;
         }
+        Klass targetKlass = targetClass.getMirrorKlass();
         if (value.isInterop()) {
-            return StaticObject.createInterop(targetClass.getMirrorKlass(), value.rawInteropObject());
+            if (targetKlass.isPrimitive()) {
+                try {
+                    return castToBoxed(targetKlass, value.rawInteropObject(), meta);
+                } catch (UnsupportedMessageException e) {
+                    throw Meta.throwExceptionWithMessage(meta.java_lang_ClassCastException,
+                                    String.format("Couldn't read %s value from interop object", targetKlass.getTypeAsString()));
+                }
+            }
+
+            try {
+                checkHasAllFieldsOrThrow(value.rawInteropObject(), targetKlass, InteropLibrary.getUncached());
+            } catch (NoSuchElementException e) {
+                throw Meta.throwExceptionWithMessage(meta.java_lang_ClassCastException,
+                                String.format("Field %s not found", e.getMessage()));
+            }
+
+            return StaticObject.createInterop(targetKlass, value.rawInteropObject());
         } else {
-            return InterpreterToVM.checkCast(value, targetClass.getMirrorKlass());
+            return InterpreterToVM.checkCast(value, targetKlass);
         }
+    }
+
+    private static void checkHasAllFieldsOrThrow(Object interopObject, Klass klass, InteropLibrary interopLibrary) {
+        for (Field f : klass.getDeclaredFields()) {
+            if (!f.isStatic() && interopLibrary.isMemberExisting(interopObject, f.getNameAsString())) {
+                throw new NoSuchElementException(f.getNameAsString());
+            }
+        }
+        if (klass.getSuperClass() != null) {
+            checkHasAllFieldsOrThrow(interopObject, klass.getSuperKlass(), interopLibrary);
+        }
+    }
+
+    private static StaticObject castToBoxed(Klass targetKlass, Object interopValue, Meta meta) throws UnsupportedMessageException {
+        InteropLibrary interopLibrary = InteropLibrary.getUncached();
+        if (targetKlass == meta._boolean) {
+            boolean boolValue = interopLibrary.asBoolean(interopValue);
+            return meta.boxBoolean(boolValue);
+        }
+        if (targetKlass == meta._char) {
+            String value = interopLibrary.asString(interopValue);
+            if (value.length() != 1) {
+                throw Meta.throwExceptionWithMessage(meta.java_lang_ClassCastException,
+                                String.format("Cannot cast string %s to char", value));
+            }
+            return meta.boxCharacter(value.charAt(0));
+        }
+        if (targetKlass == meta._byte) {
+            byte byteValue = interopLibrary.asByte(interopValue);
+            return meta.boxByte(byteValue);
+        }
+        if (targetKlass == meta._short) {
+            short shortValue = interopLibrary.asShort(interopValue);
+            return meta.boxShort(shortValue);
+        }
+        if (targetKlass == meta._int) {
+            int intValue = interopLibrary.asInt(interopValue);
+            return meta.boxInteger(intValue);
+        }
+        if (targetKlass == meta._long) {
+            long longValue = interopLibrary.asLong(interopValue);
+            return meta.boxLong(longValue);
+        }
+        if (targetKlass == meta._float) {
+            float floatValue = interopLibrary.asFloat(interopValue);
+            return meta.boxFloat(floatValue);
+        }
+        if (targetKlass == meta._double) {
+            double doubleValue = interopLibrary.asDouble(interopValue);
+            return meta.boxDouble(doubleValue);
+        }
+        if (targetKlass == meta._void) {
+            throw Meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Cannot cast to void");
+        }
+        throw EspressoError.shouldNotReachHere("Unexpected primitive klass: ", targetKlass);
     }
 
     @Substitution
