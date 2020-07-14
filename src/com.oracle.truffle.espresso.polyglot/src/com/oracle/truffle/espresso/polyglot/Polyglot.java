@@ -69,7 +69,7 @@ public final class Polyglot {
      */
     @SuppressWarnings("unused")
     public static Object eval(String language, String code) {
-        return null;
+        throw new UnsupportedOperationException("Polyglot is not available. Run Espresso on GraalVM to interact with other Truffle languages.");
     }
 
     /**
@@ -82,7 +82,7 @@ public final class Polyglot {
      */
     @SuppressWarnings("unused")
     public static Object importObject(String name) {
-        return null;
+        throw new UnsupportedOperationException("Polyglot is not available. Run Espresso on GraalVM to interact with other Truffle languages.");
     }
 
     /**
@@ -90,5 +90,6 @@ public final class Polyglot {
      */
     @SuppressWarnings("unused")
     public static void exportObject(String name, Object value) {
+        throw new UnsupportedOperationException("Polyglot is not available. Run Espresso on GraalVM to interact with other Truffle languages.");
     }
 }
