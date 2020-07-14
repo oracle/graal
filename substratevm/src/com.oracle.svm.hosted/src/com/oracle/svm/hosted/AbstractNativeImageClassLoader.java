@@ -188,7 +188,7 @@ public abstract class AbstractNativeImageClassLoader extends SecureClassLoader {
         }
 
         @SuppressWarnings("unchecked")
-        static Enumeration<URL> findResources(ClassLoader classLoader, String name) throws IOException {
+        static Enumeration<URL> findResources(ClassLoader classLoader, String name) {
             try {
                 // invoke the "findResources" method on the current class loader
                 return (Enumeration<URL>) findResources.invoke(classLoader, name);
