@@ -220,6 +220,7 @@ suite = {
             "jniHeaders": True,
             "dependencies": [
                 "com.oracle.truffle.espresso",
+                "espresso:POLYGLOT",
                 "truffle:TRUFFLE_TCK",
                 "mx:JUNIT",
                 "tools:AGENTSCRIPT"
@@ -331,6 +332,7 @@ suite = {
             ],
             "distDependencies": [
                 "espresso:ESPRESSO",
+                "espresso:POLYGLOT",
                 "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_TCK",
                 "tools:AGENTSCRIPT",
