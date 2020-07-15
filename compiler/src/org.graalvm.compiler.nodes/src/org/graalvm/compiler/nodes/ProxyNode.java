@@ -100,4 +100,6 @@ public abstract class ProxyNode extends FloatingNode implements Proxy, ValueNumb
     }
 
     public abstract PhiNode createPhi(AbstractMergeNode merge);
+
+    public abstract ProxyNode patchProxy(LoopExitNode newProxyPoint, ValueNode newOriginalNode);
 }
