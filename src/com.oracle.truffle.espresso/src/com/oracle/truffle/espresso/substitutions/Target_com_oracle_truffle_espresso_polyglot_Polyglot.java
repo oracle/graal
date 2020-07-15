@@ -38,7 +38,7 @@ import java.util.NoSuchElementException;
 public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
     @Substitution
     public static boolean isInteropObject(@Host(Object.class) StaticObject object) {
-        return object.isInterop();
+        return object.isInteropObject();
     }
 
     @Substitution
@@ -47,7 +47,7 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
             return value;
         }
         Klass targetKlass = targetClass.getMirrorKlass();
-        if (value.isInterop()) {
+        if (value.isInteropObject()) {
             if (targetKlass.isPrimitive()) {
                 try {
                     return castToBoxed(targetKlass, value.rawInteropObject(), meta);
@@ -157,7 +157,7 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
             Meta.throwExceptionWithMessage(meta.java_lang_SecurityException,
                             "Polyglot bindings are not accessible for this language. Use --polyglot or allowPolyglotAccess when building the context.");
         }
-        if (value.isInterop()) {
+        if (value.isInteropObject()) {
             meta.getContext().getEnv().exportSymbol(name.toString(), value.rawInteropObject());
         } else {
             meta.getContext().getEnv().exportSymbol(name.toString(), value);
