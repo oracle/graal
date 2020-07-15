@@ -66,7 +66,7 @@ import java.util.Collections;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @TruffleLanguage.Registration(id = LLVMLanguage.ID, name = LLVMLanguage.NAME, internal = false, interactive = false, defaultMimeType = LLVMLanguage.LLVM_BITCODE_MIME_TYPE, //
-                byteMimeTypes = {LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.LLVM_ELF_SHARED_MIME_TYPE, LLVMLanguage.LLVM_ELF_EXEC_MIME_TYPE}, //
+                byteMimeTypes = {LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.LLVM_ELF_SHARED_MIME_TYPE, LLVMLanguage.LLVM_ELF_EXEC_MIME_TYPE, LLVMLanguage.LLVM_MACHO_MIME_TYPE}, //
                 fileTypeDetectors = LLVMFileDetector.class, services = {Toolchain.class})
 @ProvidedTags({StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class, StandardTags.RootBodyTag.class, DebuggerTags.AlwaysHalt.class})
 public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
@@ -84,6 +84,8 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     static final String LLVM_ELF_SHARED_MIME_TYPE = "application/x-sharedlib";
     static final String LLVM_ELF_EXEC_MIME_TYPE = "application/x-executable";
     static final String LLVM_ELF_LINUX_EXTENSION = "so";
+
+    static final String LLVM_MACHO_MIME_TYPE = "application/x-mach-binary";
 
     static final String MAIN_ARGS_KEY = "Sulong Main Args";
     static final String PARSE_ONLY_KEY = "Parse only";
