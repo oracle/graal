@@ -341,7 +341,7 @@ final class Runner {
                     if (phase == LLVMLoadingPhase.BUILD_SCOPES) {
                         que = (ArrayDeque<CallTarget>) frame.getArguments()[3];
                     }
-                } else if (frame.getArguments().length == 0) {
+                } else if (frame.getArguments().length == 0 || !(frame.getArguments()[0] instanceof LLVMLoadingPhase)) {
                     phase = LLVMLoadingPhase.ALL;
                     localScope = createLocalScope();
                     context.addLocalScope(localScope);
