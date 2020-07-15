@@ -789,13 +789,17 @@ public class UniverseBuilder {
         }
 
         // An int to hold the result for System.identityHashCode.
-        if (ConfigurationValues.getObjectLayout().useExplicitIdentityHashCodeField() && clazz.needHashCodeField()) {
-            int intFieldSize = ConfigurationValues.getObjectLayout().sizeInBytes(JavaKind.Int);
-            nextOffset = NumUtil.roundUp(nextOffset, intFieldSize);
-            clazz.setHashCodeFieldOffset(nextOffset);
-            nextOffset += intFieldSize;
+        if (ConfigurationValues.getObjectLayout().useExplicitIdentityHashCodeField()) {
+            if (clazz.needHashCodeField()) {
+                int intFieldSize = ConfigurationValues.getObjectLayout().sizeInBytes(JavaKind.Int);
+                nextOffset = NumUtil.roundUp(nextOffset, intFieldSize);
+                clazz.setHashCodeFieldOffset(nextOffset);
+                nextOffset += intFieldSize;
+            }
         } else {
-            clazz.setHashCodeFieldOffset(ConfigurationValues.getObjectLayout().getInstanceIdentityHashCodeOffset());
+            int offset = ConfigurationValues.getObjectLayout().getInstanceIdentityHashCodeOffset();
+            assert offset >= 0;
+            clazz.setHashCodeFieldOffset(offset);
         }
 
         clazz.instanceFields = orderedFields.toArray(new HostedField[orderedFields.size()]);
