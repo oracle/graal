@@ -89,9 +89,10 @@ def _espresso_gate_runner(args, tasks):
         if t:
             unittest(['--enable-timing', '--very-verbose', '--suite', 'espresso',
                       '--', # pass VM options
-                      '-Dgraal.TruffleCompileImmediately=true',
-                      '-Dgraal.TruffleBackgroundCompilation=false',
-                      '-Dgraal.TruffleCompileOnly=espresso',
+                      '-Dpolyglot.engine.CompileImmediately=true',
+                      '-Dpolyglot.engine.BackgroundCompilation=false',
+                      '-Dpolyglot.engine.CompileOnly=espresso',
+                      '-Dpolyglot.engine.EncodedGraphCacheCapacity=-1', # unbounded
                       # '-Dgraal.TraceTruffleCompilation=true', # Too verbose
                       ])
 
