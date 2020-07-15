@@ -731,6 +731,12 @@ public final class Target_java_lang_Class {
         return cp;
     }
 
+    @Substitution(hasReceiver = true, methodName = "getConstantPool")
+    public static @Host(typeName = "Ljdk/internal/reflect/ConstantPool;") StaticObject getConstantPool_11(@Host(Class.class) StaticObject self,
+                    @InjectMeta Meta meta) {
+        return getConstantPool(self, meta);
+    }
+
     @Substitution(hasReceiver = true)
     public static @Host(String.class) StaticObject getGenericSignature0(@Host(Class.class) StaticObject self,
                     @InjectMeta Meta meta) {
