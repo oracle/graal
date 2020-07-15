@@ -29,6 +29,7 @@ package com.oracle.svm.hosted.image.sources;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.util.ModuleSupport;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.compiler.debug.DebugContext;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -45,10 +46,11 @@ public class SourceManager {
      * 
      * @param resolvedType the Java type whose source file should be located and cached
      * @param clazz the Java class associated with the resolved type
+     * @param debugContext context for logging details of any lookup failure
      * @return a path identifying the location of a successfully cached file for inclusion in the
      *         generated debug info or null if a source file cannot be found or cached.
      */
-    public Path findAndCacheSource(ResolvedJavaType resolvedType, Class<?> clazz) {
+    public Path findAndCacheSource(ResolvedJavaType resolvedType, Class<?> clazz, DebugContext debugContext) {
         /* short circuit if we have already seen this type */
         Path path = verifiedPaths.get(resolvedType);
         if (path != null) {
@@ -69,6 +71,9 @@ public class SourceManager {
                 path = locateSource(fileName, packageName, sourceCacheType, clazz);
                 if (path == null) {
                     // as a last ditch effort derive path from the Java class name
+                    if (debugContext.areScopesEnabled()) {
+                        debugContext.log(DebugContext.INFO_LEVEL, "Failed to find source file for class %s\n", resolvedType.toJavaName());
+                    }
                     if (packageName.length() > 0) {
                         path = Paths.get("", packageName.split("\\."));
                         path = path.resolve(fileName);
@@ -173,7 +178,7 @@ public class SourceManager {
     }
 
     /**
-     * A whitelist of packages prefixes used to pre-filter JDK runtime class lookups.
+     * An accept list of packages prefixes used to pre-filter JDK11+ runtime class lookups.
      */
     public static final String[] JDK_SRC_PACKAGE_PREFIXES = {
                     "java.",
@@ -186,9 +191,26 @@ public class SourceManager {
                     "org.omg.",
                     "org.w3c.",
                     "org.xml",
+                    "org.graalvm.compiler",
+    };
+
+    /**
+     * A variant accept list of packages prefixes used to pre-filter JDK8 runtime class lookups.
+     */
+    public static final String[] JDK8_SRC_PACKAGE_PREFIXES = {
+                    "java.",
+                    "jdk.",
+                    "javax.",
+                    "sun.",
+                    "com.sun.",
+                    "org.ietf.",
+                    "org.jcp.",
+                    "org.omg.",
+                    "org.w3c.",
+                    "org.xml",
     };
     /**
-     * A whitelist of packages prefixes used to pre-filter GraalVM class lookups.
+     * An accept list of packages prefixes used to pre-filter GraalVM class lookups.
      */
     public static final String[] GRAALVM_SRC_PACKAGE_PREFIXES = {
                     "com.oracle.graal.",
@@ -199,15 +221,15 @@ public class SourceManager {
     };
 
     /**
-     * Check a package name against a whitelist of acceptable packages.
+     * Check a package name against an accept list of acceptable packages.
      * 
      * @param packageName the package name of the class to be checked
-     * @param whitelist a list of prefixes one of which may form the initial prefix of the package
+     * @param acceptList a list of prefixes one of which may form the initial prefix of the package
      *            name being checked
-     * @return true if the package name matches an entry in the whitelist otherwise false
+     * @return true if the package name matches an entry in the acceptlist otherwise false
      */
-    private static boolean whiteListPackage(String packageName, String[] whitelist) {
-        for (String prefix : whitelist) {
+    private static boolean acceptList(String packageName, String[] acceptList) {
+        for (String prefix : acceptList) {
             if (packageName.startsWith(prefix)) {
                 return true;
             }
@@ -223,10 +245,10 @@ public class SourceManager {
      * @return the corresponding source cache type
      */
     private static SourceCacheType sourceCacheType(String packageName) {
-        if (whiteListPackage(packageName, JDK_SRC_PACKAGE_PREFIXES)) {
+        if (acceptList(packageName, (SourceCache.isJDK8() ? JDK8_SRC_PACKAGE_PREFIXES : JDK_SRC_PACKAGE_PREFIXES))) {
             return SourceCacheType.JDK;
         }
-        if (whiteListPackage(packageName, GRAALVM_SRC_PACKAGE_PREFIXES)) {
+        if (acceptList(packageName, GRAALVM_SRC_PACKAGE_PREFIXES)) {
             return SourceCacheType.GRAALVM;
         }
         return SourceCacheType.APPLICATION;

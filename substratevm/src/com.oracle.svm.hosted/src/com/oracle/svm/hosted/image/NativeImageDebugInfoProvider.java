@@ -101,8 +101,12 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             this.javaType = declaringClass.getWrapped();
             this.compilation = compilation;
             SourceManager sourceManager = ImageSingletons.lookup(SourceManager.class);
-            fullFilePath = sourceManager.findAndCacheSource(javaType, clazz);
-            this.cachePath = sourceManager.getCachePathForSource(javaType);
+            try (DebugContext.Scope s = debugContext.scope("DebugCodeInfo", declaringClass)) {
+                fullFilePath = ImageSingletons.lookup(SourceManager.class).findAndCacheSource(javaType, clazz, debugContext);
+                this.cachePath = sourceManager.getCachePathForSource(javaType);
+            } catch (Throwable e) {
+                throw debugContext.handle(e);
+            }
         }
 
         @SuppressWarnings("try")
@@ -312,8 +316,12 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             if (declaringClass instanceof AnalysisType) {
                 declaringClass = ((AnalysisType) declaringClass).getWrapped();
             }
-            fullFilePath = ImageSingletons.lookup(SourceManager.class).findAndCacheSource(declaringClass, clazz);
-            cachePath = ImageSingletons.lookup(SourceManager.class).getCachePathForSource(declaringClass);
+            try (DebugContext.Scope s = debugContext.scope("DebugCodeInfo", declaringClass)) {
+                fullFilePath = ImageSingletons.lookup(SourceManager.class).findAndCacheSource(declaringClass, clazz, debugContext);
+                cachePath = ImageSingletons.lookup(SourceManager.class).getCachePathForSource(declaringClass);
+            } catch (Throwable e) {
+                throw debugContext.handle(e);
+            }
         }
 
     }
