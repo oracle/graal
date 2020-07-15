@@ -1501,20 +1501,22 @@ public final class PolyglotNativeAPI {
                     " @param the data pointer for the callback.",
                     " @since 20.2",
     })
-    public static PolyglotStatus poly_get_callback_info_dynamic(PolyglotIsolateThread thread, PolyglotCallbackInfo callback_info, SizeTPointer argc, PolyglotValuePointerPointer argv, WordPointer data) {
+    public static PolyglotStatus poly_get_callback_info_dynamic(PolyglotIsolateThread thread, PolyglotCallbackInfo callback_info,
+                    SizeTPointer argc, PolyglotValuePointerPointer argv, WordPointer data) {
         return poly_get_callback_info_internal(thread, callback_info, argc, argv, data, true);
     }
 
-    private static PolyglotStatus poly_get_callback_info_internal(PolyglotIsolateThread thread, PolyglotCallbackInfo callback_info, SizeTPointer argc, PolyglotHandle argv, WordPointer data, boolean needAlloc) {
+    private static PolyglotStatus poly_get_callback_info_internal(PolyglotIsolateThread thread, PolyglotCallbackInfo callback_info,
+                    SizeTPointer argc, PolyglotHandle argv, WordPointer data, boolean needAlloc) {
         return withHandledErrors(() -> {
             PolyglotCallbackInfoInternal callbackInfo = fetchHandle(callback_info);
             UnsignedWord numberOfArguments = WordFactory.unsigned(callbackInfo.arguments.length);
             PolyglotValuePointer arglist;
-            if (needAlloc) { // argv instanceof PolyglotValuePointer: "Cannot use instanceof for word a type"
+            if (needAlloc) {
                 arglist = UnmanagedMemory.malloc(numberOfArguments.multiply(SizeOf.unsigned(PolyglotValue.class)));
-                ((PolyglotValuePointerPointer)argv).write(arglist);
+                ((PolyglotValuePointerPointer) argv).write(arglist);
             } else {
-                arglist = (PolyglotValuePointer)argv;
+                arglist = (PolyglotValuePointer) argv;
                 UnsignedWord bufferSize = argc.read();
                 if (bufferSize.belowThan(numberOfArguments)) {
                     numberOfArguments = bufferSize;
