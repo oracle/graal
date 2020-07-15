@@ -135,8 +135,9 @@ import org.graalvm.compiler.serviceprovider.GraalServices;
 /**
  * Entry points in libgraal for {@link TruffleToLibGraal calls} from HotSpot.
  *
- * To trace Truffle calls between HotSpot and libgraal, set the environment variable
- * {@code JNI_LIBGRAAL_TRACE_LEVEL} to {@code true}.
+ * To trace Truffle calls between HotSpot and libgraal, set the {@code JNI_LIBGRAAL_TRACE_LEVEL}
+ * system property to {@code 1}. For detailed tracing set the {@code JNI_LIBGRAAL_TRACE_LEVEL}
+ * system property to {@code 3}.
  */
 final class TruffleToLibGraalEntryPoints {
 
