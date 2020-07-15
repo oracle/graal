@@ -57,6 +57,10 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                 }
             }
 
+            if (targetKlass.isAssignableFrom(value.getKlass())) {
+                return value;
+            }
+
             try {
                 checkHasAllFieldsOrThrow(value.rawInteropObject(), targetKlass, InteropLibrary.getUncached());
             } catch (NoSuchElementException e) {
