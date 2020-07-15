@@ -101,7 +101,8 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public static final int JNI_COMMIT = 1;
     public static final int JNI_ABORT = 2;
 
-    public static final int JVM_INTERFACE_VERSION = 4;
+    public static final int JVM_INTERFACE_VERSION_8 = 4;
+    public static final int JVM_INTERFACE_VERSION_11 = 6;
     public static final int JNI_TRUE = 1;
     public static final int JNI_FALSE = 0;
 
