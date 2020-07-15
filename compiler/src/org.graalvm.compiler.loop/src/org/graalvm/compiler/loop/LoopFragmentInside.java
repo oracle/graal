@@ -44,7 +44,6 @@ import org.graalvm.compiler.nodes.AbstractEndNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.ControlSinkNode;
 import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
@@ -306,8 +305,7 @@ public class LoopFragmentInside extends LoopFragment {
      * proxies to properly proxy all values along the way.
      *
      * Unrolling loops with multiple exits is special in the way the exits are handled.
-     * Pre-Main-Post creation will merge them if applicable, or duplicate them if they are control
-     * sink nodes. Graal IR is a bit implicit about deopt nodes not requiring a proper loop exit.
+     * Pre-Main-Post creation will merge them.
      */
     private void mergeEarlyLoopExits(StructuredGraph graph, LoopBeginNode mainLoopBegin, CountedLoopInfo mainCounted, EconomicMap<Node, Node> new2OldPhis, LoopEx loop) {
         if (graph.hasValueProxies()) {
@@ -321,10 +319,8 @@ public class LoopFragmentInside extends LoopFragment {
                 AbstractBeginNode begin = getDuplicatedNode(exit);
                 if (next instanceof EndNode) {
                     mergeRegularEarlyExit(next, begin, exit, mainLoopBegin, graph, new2OldPhis, loop);
-                } else if (next instanceof ControlSinkNode) {
-                    rewireDataflowDuplicateSinkingExit(next, begin, exit, mainLoopBegin, graph, new2OldPhis);
                 } else {
-                    GraalError.shouldNotReachHere("Can only unroll loops where the early exits either merge on the same node or sink immediately " + next);
+                    GraalError.shouldNotReachHere("Can only unroll loops where the early exits which merge " + next);
                 }
             }
         }
@@ -366,27 +362,6 @@ public class LoopFragmentInside extends LoopFragment {
         } else {
             throw GraalError.shouldNotReachHere("Unknown phi type " + phi);
         }
-    }
-
-    /**
-     * If we have a control flow sink along the early exit we duplicate the sink and replace all
-     * values in the original iteration's sink with new values that might need proxy-ing along the
-     * new loop exit. Thus, we need to find the values of the original iteration in the unrolled
-     * iteration
-     */
-    private void rewireDataflowDuplicateSinkingExit(FixedNode next, AbstractBeginNode exitBranchBegin, LoopExitNode oldExit, LoopBeginNode mainLoopBegin, StructuredGraph graph,
-                    EconomicMap<Node, Node> new2OldPhis) {
-        ControlSinkNode sink = (ControlSinkNode) next;
-        ControlSinkNode sinkCopy = (ControlSinkNode) sink.copyWithInputs(true);
-        LoopExitNode newLoopExit = graph.add(new LoopExitNode(mainLoopBegin));
-        for (ProxyNode proxy : oldExit.proxies()) {
-            assert proxy instanceof ValueProxyNode : "A sink can only consume a value not a guard/memory edge " + proxy;
-            ValueNode replacement = getNodeInExitPathFromUnrolledSegment(proxy, new2OldPhis);
-            proxy.replaceAtMatchingUsages(graph.addOrUnique(new ValueProxyNode(replacement, newLoopExit)), x -> x == sinkCopy);
-        }
-        createExitStateForNewSegmentEarlyExit(graph, oldExit, newLoopExit, new2OldPhis);
-        exitBranchBegin.setNext(newLoopExit);
-        newLoopExit.setNext(sinkCopy);
     }
 
     private void createExitStateForNewSegmentEarlyExit(StructuredGraph graph, LoopExitNode exit, LoopExitNode lex, EconomicMap<Node, Node> new2OldPhis) {
