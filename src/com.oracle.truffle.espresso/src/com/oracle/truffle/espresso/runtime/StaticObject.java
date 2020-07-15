@@ -115,12 +115,12 @@ public final class StaticObject implements TruffleObject {
     }
 
     @ExportMessage
-    public String asString() {
+    String asString() {
         return Meta.toHostString(this);
     }
 
     @ExportMessage
-    public boolean isBoolean() {
+    boolean isBoolean() {
         if (isNull(this)) {
             return false;
         }
@@ -128,7 +128,7 @@ public final class StaticObject implements TruffleObject {
     }
 
     @ExportMessage
-    public boolean asBoolean() throws UnsupportedMessageException {
+    boolean asBoolean() throws UnsupportedMessageException {
         if (!isBoolean()) {
             throw UnsupportedMessageException.create();
         }
@@ -136,7 +136,7 @@ public final class StaticObject implements TruffleObject {
     }
 
     @ExportMessage
-    public boolean isNumber() {
+    boolean isNumber() {
         if (isNull(this)) {
             return false;
         }
@@ -209,7 +209,7 @@ public final class StaticObject implements TruffleObject {
     }
 
     @ExportMessage
-    public boolean fitsInInt() {
+    boolean fitsInInt() {
         if (isNull(this)) {
             return false;
         }
@@ -350,7 +350,7 @@ public final class StaticObject implements TruffleObject {
     }
 
     @ExportMessage
-    public int asInt() throws UnsupportedMessageException {
+    int asInt() throws UnsupportedMessageException {
         if (!fitsInInt()) {
             CompilerDirectives.transferToInterpreter();
             throw UnsupportedMessageException.create();
