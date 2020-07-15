@@ -43,7 +43,13 @@ import org.graalvm.util.OptionsEncoder;
 import com.oracle.truffle.api.TruffleRuntime;
 import java.util.Collections;
 import java.util.Set;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.RunnableFuture;
+import java.util.concurrent.TimeUnit;
 
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -159,7 +165,7 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
             if (CompilerThreadScope.isEntered()) {
                 TruffleToLibGraalCalls.ttyWriteByte(LibGraalScope.current().getIsolateThreadAddress(), b);
             } else {
-                System.err.write(b);
+                TTYWriter.getInstance().write(b);
             }
         }
 
@@ -169,8 +175,76 @@ final class LibGraalTruffleRuntime extends AbstractHotSpotTruffleRuntime {
             if (CompilerThreadScope.isEntered()) {
                 TruffleToLibGraalCalls.ttyWriteBytes(LibGraalScope.current().getIsolateThreadAddress(), b, off, len);
             } else {
-                System.err.write(b, off, len);
+                TTYWriter.getInstance().write(b, off, len);
             }
+        }
+    }
+
+    private static final class TTYWriter extends Thread {
+
+        private static final int TIMEOUT = 2500;    // milliseconds
+
+        private static volatile TTYWriter instance;
+
+        private final BlockingQueue<Runnable> requests;
+
+        private TTYWriter() {
+            requests = new LinkedBlockingQueue<>();
+            setName("LibGraal TTY Writer thread.");
+            setDaemon(true);
+        }
+
+        @Override
+        @SuppressWarnings("try")
+        public void run() {
+            while (true) {
+                try {
+                    Runnable r = requests.take();
+                    try (LibGraalScope scope = new LibGraalScope(DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
+                        do {
+                            r.run();
+                            r = requests.poll(TIMEOUT, TimeUnit.MILLISECONDS);
+                        } while (r != null);
+                    }
+                } catch (InterruptedException ie) {
+                }
+            }
+        }
+
+        void write(int b) {
+            scheduleRequest(() -> {
+                TruffleToLibGraalCalls.ttyWriteByte(LibGraalScope.current().getIsolateThreadAddress(), b);
+            });
+        }
+
+        void write(byte[] b, int offset, int len) {
+            scheduleRequest(() -> {
+                TruffleToLibGraalCalls.ttyWriteBytes(LibGraalScope.current().getIsolateThreadAddress(), b, offset, len);
+            });
+        }
+
+        private void scheduleRequest(Runnable runnable) {
+            RunnableFuture<Boolean> future = new FutureTask<>(runnable, true);
+            requests.add(future);
+            try {
+                future.get();
+            } catch (InterruptedException | ExecutionException e) {
+            }
+        }
+
+        static TTYWriter getInstance() {
+            TTYWriter res = instance;
+            if (res == null) {
+                synchronized (TTYWriter.class) {
+                    res = instance;
+                    if (res == null) {
+                        res = new TTYWriter();
+                        res.start();
+                        instance = res;
+                    }
+                }
+            }
+            return res;
         }
     }
 }
