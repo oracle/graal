@@ -1636,6 +1636,8 @@ def maven_plugin_install(args):
         new_env = os.environ.copy()
         if 'DYNAMIC_IMPORTS' in new_env:
             del new_env['DYNAMIC_IMPORTS']
+        if 'MX_ENV_PATH' in new_env:
+            del new_env['MX_ENV_PATH']
         mx.run_mx(['--suite=' + s for s in suites] + ['maven-deploy'] + deploy_args, suite, env=new_env)
 
     deploy_native_image_maven_plugin(svm_version, repo, parsed.gpg, parsed.gpg_keyid)
