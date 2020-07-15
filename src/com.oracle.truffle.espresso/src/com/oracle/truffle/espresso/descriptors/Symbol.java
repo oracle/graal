@@ -581,7 +581,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_lang_ref_Reference$Lock = StaticSymbols.putType("Ljava/lang/ref/Reference$Lock;");
 
         public static final Symbol<Type> sun_misc_Cleaner = StaticSymbols.putType("Lsun/misc/Cleaner;");
-        public static final Symbol<Type> jdk_internal_Cleaner = StaticSymbols.putType("Ljdk/internal/misc/Cleaner;");
+        public static final Symbol<Type> jdk_internal_ref_Cleaner = StaticSymbols.putType("Ljdk/internal/ref/Cleaner;");
 
         public static final Symbol<Type> java_lang_StackTraceElement = StaticSymbols.putType(StackTraceElement.class);
         public static final Symbol<Type> java_lang_StackTraceElement_array = StaticSymbols.putType(StackTraceElement[].class);

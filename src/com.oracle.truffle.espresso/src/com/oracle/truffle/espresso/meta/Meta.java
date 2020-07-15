@@ -442,7 +442,7 @@ public final class Meta implements ContextAccess {
         sun_reflect_ConstantPool = knownKlassDiffVersion(Type.sun_reflect_ConstantPool, Type.jdk_internal_reflect_ConstantPool);
         sun_reflect_ConstantPool_constantPoolOop = sun_reflect_ConstantPool.lookupDeclaredField(Name.constantPoolOop, Type.java_lang_Object);
 
-        sun_misc_Cleaner = knownKlassDiffVersion(Type.sun_misc_Cleaner, Type.jdk_internal_Cleaner);
+        sun_misc_Cleaner = knownKlassDiffVersion(Type.sun_misc_Cleaner, Type.jdk_internal_ref_Cleaner);
 
         java_lang_ref_Reference_pending = java_lang_ref_Reference.lookupDeclaredField(Name.pending, Type.java_lang_ref_Reference);
         java_lang_ref_Reference_lock = lookupFieldDiffVersion(java_lang_ref_Reference, Name.lock, Type.java_lang_ref_Reference$Lock, Name.processPendingLock, Type.java_lang_Object);
