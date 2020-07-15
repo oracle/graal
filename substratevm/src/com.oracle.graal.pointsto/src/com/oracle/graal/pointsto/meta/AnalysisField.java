@@ -24,8 +24,6 @@
  */
 package com.oracle.graal.pointsto.meta;
 
-import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
-
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -92,9 +90,12 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
     private final AnalysisType declaringClass;
     private final AnalysisType fieldType;
 
+    private final AnalysisUniverse universe;
+
     public AnalysisField(AnalysisUniverse universe, ResolvedJavaField wrappedField) {
         assert !wrappedField.isInternal();
 
+        this.universe = universe;
         this.position = -1;
         this.isUnsafeAccessed = new AtomicBoolean();
         this.unsafeFrozenTypeState = new AtomicBoolean();
@@ -263,10 +264,6 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
 
     public void registerAsUnsafeAccessed(UnsafePartitionKind partitionKind) {
 
-        if (isStatic()) {
-            throw shouldNotReachHere("Unsafe access of static fields is not supported.");
-        }
-
         /*
          * A field can potentially be registered as unsafe accessed multiple times. This is
          * especially true for the Graal nodes because FieldsOffsetsFeature.registerFields iterates
@@ -287,9 +284,14 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
 
             registerAsWritten(null);
 
-            /* Register the field as unsafe accessed on the declaring type. */
-            AnalysisType declaringType = getDeclaringClass();
-            declaringType.registerUnsafeAccessedField(this, partitionKind);
+            if (isStatic()) {
+                /* Register the static field as unsafe accessed with the analysis universe. */
+                universe.registerUnsafeAccessedStaticField(this);
+            } else {
+                /* Register the instance field as unsafe accessed on the declaring type. */
+                AnalysisType declaringType = getDeclaringClass();
+                declaringType.registerUnsafeAccessedField(this, partitionKind);
+            }
         }
 
     }
