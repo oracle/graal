@@ -82,45 +82,39 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
     }
 
     private static StaticObject castToBoxed(Klass targetKlass, Object interopValue, Meta meta) throws UnsupportedMessageException {
+        assert targetKlass.isPrimitive();
         InteropLibrary interopLibrary = InteropLibrary.getUncached();
-        if (targetKlass == meta._boolean) {
-            boolean boolValue = interopLibrary.asBoolean(interopValue);
-            return meta.boxBoolean(boolValue);
-        }
-        if (targetKlass == meta._char) {
-            String value = interopLibrary.asString(interopValue);
-            if (value.length() != 1) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_ClassCastException,
-                                String.format("Cannot cast string %s to char", value));
-            }
-            return meta.boxCharacter(value.charAt(0));
-        }
-        if (targetKlass == meta._byte) {
-            byte byteValue = interopLibrary.asByte(interopValue);
-            return meta.boxByte(byteValue);
-        }
-        if (targetKlass == meta._short) {
-            short shortValue = interopLibrary.asShort(interopValue);
-            return meta.boxShort(shortValue);
-        }
-        if (targetKlass == meta._int) {
-            int intValue = interopLibrary.asInt(interopValue);
-            return meta.boxInteger(intValue);
-        }
-        if (targetKlass == meta._long) {
-            long longValue = interopLibrary.asLong(interopValue);
-            return meta.boxLong(longValue);
-        }
-        if (targetKlass == meta._float) {
-            float floatValue = interopLibrary.asFloat(interopValue);
-            return meta.boxFloat(floatValue);
-        }
-        if (targetKlass == meta._double) {
-            double doubleValue = interopLibrary.asDouble(interopValue);
-            return meta.boxDouble(doubleValue);
-        }
-        if (targetKlass == meta._void) {
-            throw Meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Cannot cast to void");
+        switch (targetKlass.getJavaKind()) {
+            case Boolean:
+                boolean boolValue = interopLibrary.asBoolean(interopValue);
+                return meta.boxBoolean(boolValue);
+            case Char:
+                String value = interopLibrary.asString(interopValue);
+                if (value.length() != 1) {
+                    throw Meta.throwExceptionWithMessage(meta.java_lang_ClassCastException,
+                                    String.format("Cannot cast string %s to char", value));
+                }
+                return meta.boxCharacter(value.charAt(0));
+            case Byte:
+                byte byteValue = interopLibrary.asByte(interopValue);
+                return meta.boxByte(byteValue);
+            case Short:
+                short shortValue = interopLibrary.asShort(interopValue);
+                return meta.boxShort(shortValue);
+            case Int:
+                int intValue = interopLibrary.asInt(interopValue);
+                return meta.boxInteger(intValue);
+            case Long:
+                long longValue = interopLibrary.asLong(interopValue);
+                return meta.boxLong(longValue);
+            case Float:
+                float floatValue = interopLibrary.asFloat(interopValue);
+                return meta.boxFloat(floatValue);
+            case Double:
+                double doubleValue = interopLibrary.asDouble(interopValue);
+                return meta.boxDouble(doubleValue);
+            case Void:
+                throw Meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Cannot cast to void");
         }
         throw EspressoError.shouldNotReachHere("Unexpected primitive klass: ", targetKlass);
     }
@@ -138,7 +132,7 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
     @Substitution
     public static @Host(Object.class) StaticObject importObject(@Host(String.class) StaticObject name, @InjectMeta Meta meta) {
         if (!meta.getContext().getEnv().isPolyglotBindingsAccessAllowed()) {
-            Meta.throwExceptionWithMessage(meta.java_lang_SecurityException,
+            throw Meta.throwExceptionWithMessage(meta.java_lang_SecurityException,
                             "Polyglot bindings are not accessible for this language. Use --polyglot or allowPolyglotAccess when building the context.");
         }
         Object binding = meta.getContext().getEnv().importSymbol(name.toString());
@@ -154,13 +148,14 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
     @Substitution
     public static void exportObject(@Host(String.class) StaticObject name, @Host(Object.class) StaticObject value, @InjectMeta Meta meta) {
         if (!meta.getContext().getEnv().isPolyglotBindingsAccessAllowed()) {
-            Meta.throwExceptionWithMessage(meta.java_lang_SecurityException,
+            throw Meta.throwExceptionWithMessage(meta.java_lang_SecurityException,
                             "Polyglot bindings are not accessible for this language. Use --polyglot or allowPolyglotAccess when building the context.");
         }
+        String bindingName = Meta.toHostString(name);
         if (value.isInteropObject()) {
-            meta.getContext().getEnv().exportSymbol(name.toString(), value.rawInteropObject());
+            meta.getContext().getEnv().exportSymbol(bindingName, value.rawInteropObject());
         } else {
-            meta.getContext().getEnv().exportSymbol(name.toString(), value);
+            meta.getContext().getEnv().exportSymbol(bindingName, value);
         }
     }
 
