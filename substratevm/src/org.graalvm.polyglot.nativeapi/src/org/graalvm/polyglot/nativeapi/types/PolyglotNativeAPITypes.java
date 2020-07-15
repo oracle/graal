@@ -200,6 +200,11 @@ public class PolyglotNativeAPITypes {
         void write(int index, ObjectHandle value);
     }
 
+    @CPointerTo(PolyglotValuePointer.class)
+    public interface PolyglotValuePointerPointer extends PointerBase, PolyglotHandle {
+        void write(ObjectHandle value);
+    }
+
     @CPointerTo(nameOfCType = "poly_callback_info")
     @CTypedef(name = "poly_callback_info")
     public interface PolyglotCallbackInfo extends PointerBase, PolyglotHandle {
