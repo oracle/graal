@@ -254,7 +254,7 @@ public final class JDWPContextImpl implements JDWPContext {
     public String getStringValue(Object object) {
         if (object instanceof StaticObject) {
             StaticObject staticObject = (StaticObject) object;
-            return staticObject.asString();
+            return (String) staticObject.toDisplayString(false);
         }
         return object.toString();
     }
