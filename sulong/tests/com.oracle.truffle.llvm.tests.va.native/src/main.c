@@ -47,8 +47,44 @@ double testVariousTypesLLVM(int count, va_list* args) {
     return sum;
 }
  
+double testVACopy(vahandler vaHandler1, vahandler vaHandler2, int count, ...) 
+{
+    va_list args1;
+    va_start(args1, count);
+    va_list args2;
+    va_copy(args2, args1);
+	double res1 = (*vaHandler1)(count / 2, &args1);
+	double res2 = (*vaHandler2)(count / 2, &args2);
+    va_end(args1);
+    va_end(args2);
+    return res1 + res2;
+}
+
+double testDelayedVACopy(vahandler vaHandler1, vahandler vaHandler2, int count, ...) 
+{
+    va_list args1;
+    va_start(args1, count);
+    va_list args2;
+	double res1 = (*vaHandler1)(count / 2, &args1);
+    va_copy(args2, args1);
+	double res2 = (*vaHandler2)(count / 2, &args2);
+    va_end(args1);
+    va_end(args2);
+    return res1 + res2;
+}
+ 
 int main(void) 
 {
+	printf("VACopy test (LLVM, LLVM)     : %f\n", testVACopy(sumDoublesLLVM, sumDoublesLLVM, 6, 1., 2., 3., 4., 5., 6.));
+	printf("VACopy test (native, LLVM)   : %f\n", testVACopy(sumDoublesNative, sumDoublesLLVM, 6, 1., 2., 3., 4., 5., 6.));
+	printf("VACopy test (LLVM, native)   : %f\n", testVACopy(sumDoublesLLVM, sumDoublesNative, 6, 1., 2., 3., 4., 5., 6.));
+	printf("VACopy test (native, native) : %f\n", testVACopy(sumDoublesNative, sumDoublesNative, 6, 1., 2., 3., 4., 5., 6.));
+
+	printf("Delayed VACopy test (LLVM, LLVM)     : %f\n", testDelayedVACopy(sumDoublesLLVM, sumDoublesLLVM, 6, 1., 2., 3., 4., 5., 6.));
+	printf("Delayed VACopy test (native, LLVM)   : %f\n", testDelayedVACopy(sumDoublesNative, sumDoublesLLVM, 6, 1., 2., 3., 4., 5., 6.));
+	printf("Delayed VACopy test (LLVM, native)   : %f\n", testDelayedVACopy(sumDoublesLLVM, sumDoublesNative, 6, 1., 2., 3., 4., 5., 6.));
+	printf("Delayed VACopy test (native, native) : %f\n", testDelayedVACopy(sumDoublesNative, sumDoublesNative, 6, 1., 2., 3., 4., 5., 6.));
+
 	printf("Sum of doubles (LLVM)           : %f\n", callVAHandler(sumDoublesLLVM, 6, 1., 2., 3., 4., 5., 6.));
 	printf("Sum of doubles (native)         : %f\n", callVAHandler(sumDoublesNative, 6, 1., 2., 3., 4., 5., 6.));
 	printf("Sum of doubles (LLVM, native)   : %f\n", callVAHandlers(sumDoublesLLVM, sumDoublesNative, 6, 1., 2., 3., 4., 5., 6.));
