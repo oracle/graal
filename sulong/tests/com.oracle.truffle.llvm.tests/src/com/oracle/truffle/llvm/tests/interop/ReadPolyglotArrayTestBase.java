@@ -203,4 +203,17 @@ public class ReadPolyglotArrayTestBase extends ManagedMemAccessTestBase {
         }
     }
 
+    // endianness checks
+
+    static short toNativeEndian(short x) {
+        return Short.reverseBytes(x);
+    }
+
+    static int toNativeEndian(int x) {
+        return Integer.reverseBytes(x);
+    }
+
+    static long toNativeEndian(long x) {
+        return Long.reverseBytes(x);
+    }
 }
