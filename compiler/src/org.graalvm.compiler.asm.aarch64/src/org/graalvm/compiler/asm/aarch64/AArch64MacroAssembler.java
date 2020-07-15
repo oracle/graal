@@ -2345,7 +2345,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             int[] adrLoOffsets = {5};
             PatcherUtil.writeBitSequence(code, pos + 3, curValue, adrLoBits, adrLoOffsets);
             // ldr bits
-            curValue = (targetAddress >> shiftSize) & 0x1FF;
+            curValue = (targetAddress & 0xFFF) >> shiftSize;
             int[] ldrBits = {6, 6};
             int[] ldrOffsets = {2, 0};
             PatcherUtil.writeBitSequence(code, pos + 5, curValue, ldrBits, ldrOffsets);
