@@ -127,11 +127,11 @@ public abstract class LLVMInteropReadNode extends LLVMNode {
             try {
                 assert locationType == ForeignToLLVMType.I8;
                 long res = 0;
+                // TODO (je) this currently assumes little endian (GR-24919)
                 for (int i = 0; i < accessTypeSizeInBytes; i++, idx++) {
-                    res <<= 8;
                     Object ret = interop.readArrayElement(location.base, idx);
                     Object toLLVMValue = toLLVM.executeWithType(ret, LLVMInteropType.ValueKind.I8.type, LLVMInteropType.ValueKind.I8.foreignToLLVMType);
-                    res |= Byte.toUnsignedLong((byte) toLLVMValue);
+                    res |= Byte.toUnsignedLong((byte) toLLVMValue) << (8 * i);
                 }
                 return toLLVMNoConv.executeWithAccessType(res, accessType);
             } catch (InvalidArrayIndexException ex) {
