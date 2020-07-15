@@ -44,6 +44,7 @@ import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
+import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 
@@ -376,6 +377,31 @@ public final class CallNode extends Node implements Comparable<CallNode> {
                 child.collectTargetsToDequeue(provider);
             }
         }
+    }
+
+    public void updateTracingInfo(TruffleInliningPlan inliningPlan, int i, int i1) {
+
+    }
+
+    public int callCount() {
+        int sum = 0;
+        for (CallNode child : children) {
+            sum += 1;
+            if (child.state == State.Inlined) {
+                sum += child.callCount();
+            }
+        }
+        return sum;
+    }
+
+    public int inlinedCallCount() {
+        int sum = 0;
+        for (CallNode child : children) {
+            if (child.state == State.Inlined) {
+                sum += child.inlinedCallCount() + 1;
+            }
+        }
+        return sum;
     }
 
     public enum State {

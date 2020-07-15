@@ -137,6 +137,28 @@ class HSTruffleInliningPlan extends HSObject implements TruffleInliningPlan {
         callDequeueTargets(env, getHandle());
     }
 
+    @Override
+    public void setInlinedCallCount(int count) {
+        // TODO
+    }
+
+    @Override
+    public void setCallCount(int count) {
+        // TODO
+    }
+
+    @Override
+    public int countCalls() {
+        // TODO
+        return 0;
+    }
+
+    @Override
+    public int countInlinedCalls() {
+        // TODO
+        return 0;
+    }
+
     /**
      * Proxy for a {@code TruffleInliningPlan.Decision} object in the HotSpot heap.
      */
