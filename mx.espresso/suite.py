@@ -244,9 +244,8 @@ suite = {
             "dependencies": [
                 "com.oracle.truffle.espresso.test"
             ],
-            "overlayTarget": "com.oracle.truffle.espresso.test",
             "javaCompliance": "11",
-            "multiReleaseJarVersion": "11",
+            "checkstyle": "com.oracle.truffle.espresso",
         },
 
         # Native library for tests
@@ -335,6 +334,26 @@ suite = {
             "subDir": "src",
             "dependencies": [
                 "com.oracle.truffle.espresso.test"
+            ],
+            "distDependencies": [
+                "espresso:ESPRESSO",
+                "truffle:TRUFFLE_API",
+                "truffle:TRUFFLE_TCK",
+                "tools:AGENTSCRIPT",
+                "mx:JUNIT",
+            ],
+            "javaProperties": {
+                "native.test.lib": "<path:ESPRESSO_TESTS_NATIVE>/<lib:nativetest>",
+                "espresso.test.SingletonContext": "true",
+            },
+            "testDistribution": True,
+        },
+
+        "ESPRESSO_TESTS_11": {
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.truffle.espresso.test",
+                "com.oracle.truffle.espresso.test.jdk11"
             ],
             "distDependencies": [
                 "espresso:ESPRESSO",
