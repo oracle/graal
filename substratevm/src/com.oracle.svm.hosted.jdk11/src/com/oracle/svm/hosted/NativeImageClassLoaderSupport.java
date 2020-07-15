@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,14 +25,11 @@
 package com.oracle.svm.hosted;
 
 import java.io.File;
-import java.io.IOException;
 import java.lang.module.Configuration;
 import java.lang.module.ModuleFinder;
-import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
-import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -44,7 +41,7 @@ import java.util.stream.Stream;
 
 import com.oracle.svm.util.ModuleSupport;
 
-public class NativeImageClassLoader extends AbstractNativeImageClassLoader {
+public class NativeImageClassLoaderSupport extends AbstractNativeImageClassLoaderSupport {
 
     private final List<Path> imagemp;
     private final List<Path> buildmp;
@@ -53,11 +50,11 @@ public class NativeImageClassLoader extends AbstractNativeImageClassLoader {
     private final Function<String, Optional<Module>> moduleFinder;
     private final ModuleLayer.Controller moduleController;
 
-    NativeImageClassLoader(String[] classpath, String[] modulePath) {
+    NativeImageClassLoaderSupport(String[] classpath, String[] modulePath) {
         super(classpath);
 
         imagemp = Arrays.stream(modulePath).map(Paths::get).collect(Collectors.toUnmodifiableList());
-        buildmp = Arrays.stream(System.getProperty("jdk.module.path").split(File.pathSeparator)).map(Paths::get).collect(Collectors.toUnmodifiableList());
+        buildmp = Arrays.stream(System.getProperty("jdk.module.path", "").split(File.pathSeparator)).map(Paths::get).collect(Collectors.toUnmodifiableList());
 
         moduleController = createModuleController(imagemp.toArray(Path[]::new), classPathClassLoader);
         ModuleLayer moduleLayer = moduleController.layer();
@@ -107,33 +104,20 @@ public class NativeImageClassLoader extends AbstractNativeImageClassLoader {
         return clazz;
     }
 
-    @Override
-    protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
-        return Util.loadClass(classLoader, name, resolve);
+    public ClassLoader getClassLoader() {
+        return classLoader;
     }
 
-    @Override
-    protected URL findResource(String name) {
-        return Util.findResource(classLoader, name);
-    }
-
-    @Override
-    protected Enumeration<URL> findResources(String name) throws IOException {
-        return Util.findResources(classLoader, name);
-    }
-
-    @Override
-    protected ClassLoader replacementClassLoader(ClassLoader replaceCandidate) {
-        if (replaceCandidate == classLoader) {
-            return getParent();
-        } else {
-            return super.replacementClassLoader(replaceCandidate);
+    boolean isNativeImageClassLoader(ClassLoader c) {
+        if (c == classLoader) {
+            return true;
         }
+        return super.isNativeImageClassLoader(c);
     }
 
     private static class ClassInitWithModules extends ClassInit {
 
-        ClassInitWithModules(ForkJoinPool executor, ImageClassLoader imageClassLoader, AbstractNativeImageClassLoader nativeImageClassLoader) {
+        ClassInitWithModules(ForkJoinPool executor, ImageClassLoader imageClassLoader, AbstractNativeImageClassLoaderSupport nativeImageClassLoader) {
             super(executor, imageClassLoader, nativeImageClassLoader);
         }
 

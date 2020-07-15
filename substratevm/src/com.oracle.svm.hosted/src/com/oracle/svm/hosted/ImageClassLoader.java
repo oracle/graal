@@ -46,9 +46,6 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
-
-import com.oracle.svm.core.annotate.AutomaticFeature;
 
 public final class ImageClassLoader {
 
@@ -68,18 +65,19 @@ public final class ImageClassLoader {
     }
 
     final Platform platform;
-    private final NativeImageClassLoader classLoader;
+    final NativeImageClassLoaderSupport classLoaderSupport;
+
     private final EconomicSet<Class<?>> applicationClasses = EconomicSet.create();
     private final EconomicSet<Class<?>> hostedOnlyClasses = EconomicSet.create();
     private final EconomicSet<Method> systemMethods = EconomicSet.create();
     private final EconomicSet<Field> systemFields = EconomicSet.create();
 
-    private ImageClassLoader(Platform platform, NativeImageClassLoader classLoader) {
+    private ImageClassLoader(Platform platform, NativeImageClassLoaderSupport classLoaderSupport) {
         this.platform = platform;
-        this.classLoader = classLoader;
+        this.classLoaderSupport = classLoaderSupport;
     }
 
-    public static ImageClassLoader create(Platform platform, NativeImageClassLoader classLoader) {
+    public static ImageClassLoader create(Platform platform, NativeImageClassLoaderSupport classLoader) {
         /*
          * Iterating all classes can already trigger class initialization: We need annotation
          * information, which triggers class initialization of annotation classes and enum classes
@@ -95,7 +93,7 @@ public final class ImageClassLoader {
 
     private void initAllClasses() {
         final ForkJoinPool executor = new ForkJoinPool(Math.min(Runtime.getRuntime().availableProcessors(), CLASS_LOADING_MAX_SCALING));
-        classLoader.initAllClasses(executor, this);
+        classLoaderSupport.initAllClasses(executor, this);
         boolean completed = executor.awaitQuiescence(CLASS_LOADING_TIMEOUT_IN_MINUTES, TimeUnit.MINUTES);
         if (!completed) {
             throw shouldNotReachHere("timed out while initializing classes");
@@ -231,11 +229,11 @@ public final class ImageClassLoader {
     }
 
     public Enumeration<URL> findResourcesByName(String resource) throws IOException {
-        return classLoader.getResources(resource);
+        return classLoaderSupport.getClassLoader().getResources(resource);
     }
 
     public InputStream findResourceAsStreamByName(String resource) {
-        return classLoader.getResourceAsStream(resource);
+        return classLoaderSupport.getClassLoader().getResourceAsStream(resource);
     }
 
     public Class<?> findClassByName(String name) {
@@ -276,7 +274,7 @@ public final class ImageClassLoader {
     }
 
     Class<?> forName(String name) throws ClassNotFoundException {
-        return Class.forName(name, false, classLoader);
+        return Class.forName(name, false, classLoaderSupport.getClassLoader());
     }
 
     /**
@@ -290,11 +288,11 @@ public final class ImageClassLoader {
     }
 
     public List<Path> classpath() {
-        return classLoader.classpath();
+        return classLoaderSupport.classpath();
     }
 
     public List<Path> modulepath() {
-        return classLoader.modulepath();
+        return classLoaderSupport.modulepath();
     }
 
     public <T> List<Class<? extends T>> findSubclasses(Class<T> baseClass, boolean includeHostedOnly) {
@@ -394,24 +392,7 @@ public final class ImageClassLoader {
         return result;
     }
 
-    public NativeImageClassLoader getClassLoader() {
-        return classLoader;
-    }
-
-    Object runtimeClassLoaderObjectReplacer(Object replaceCandidate) {
-        if (!(replaceCandidate instanceof ClassLoader)) {
-            return replaceCandidate;
-        }
-        return classLoader.replacementClassLoader(((ClassLoader) replaceCandidate));
-    }
-}
-
-@AutomaticFeature
-class ClassLoaderFeature implements Feature {
-
-    @Override
-    public void duringSetup(DuringSetupAccess access) {
-        FeatureImpl.DuringSetupAccessImpl accessImpl = (FeatureImpl.DuringSetupAccessImpl) access;
-        access.registerObjectReplacer(accessImpl.getImageClassLoader()::runtimeClassLoaderObjectReplacer);
+    public ClassLoader getClassLoader() {
+        return classLoaderSupport.getClassLoader();
     }
 }

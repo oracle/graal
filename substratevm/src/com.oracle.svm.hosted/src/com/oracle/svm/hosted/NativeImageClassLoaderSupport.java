@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,18 +24,15 @@
  */
 package com.oracle.svm.hosted;
 
-import java.io.IOException;
-import java.net.URL;
 import java.nio.file.Path;
 import java.util.Collections;
-import java.util.Enumeration;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ForkJoinPool;
 
-public class NativeImageClassLoader extends AbstractNativeImageClassLoader {
+public class NativeImageClassLoaderSupport extends AbstractNativeImageClassLoaderSupport {
 
-    NativeImageClassLoader(String[] classpath, @SuppressWarnings("unused") String[] modulePath) {
+    NativeImageClassLoaderSupport(String[] classpath, @SuppressWarnings("unused") String[] modulePath) {
         super(classpath);
     }
 
@@ -47,21 +44,6 @@ public class NativeImageClassLoader extends AbstractNativeImageClassLoader {
     @Override
     public Optional<Object> findModule(String moduleName) {
         return Optional.empty();
-    }
-
-    @Override
-    protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
-        return Util.loadClass(classPathClassLoader, name, resolve);
-    }
-
-    @Override
-    protected URL findResource(String name) {
-        return Util.findResource(classPathClassLoader, name);
-    }
-
-    @Override
-    protected Enumeration<URL> findResources(String name) throws IOException {
-        return Util.findResources(classPathClassLoader, name);
     }
 
     @Override

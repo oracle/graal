@@ -118,7 +118,7 @@ public class FallbackFeature implements Feature {
 
         void apply(BytecodePosition invokeLocation) {
             ClassLoader classLoader = ((AnalysisMethod) invokeLocation.getMethod()).getDeclaringClass().getJavaClass().getClassLoader();
-            if (classLoader instanceof NativeImageClassLoader) {
+            if (ClassLoaderFeature.singleton().isNativeImageClassLoader(classLoader)) {
                 checker.check(this, invokeLocation);
             }
         }

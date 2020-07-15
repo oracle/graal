@@ -43,11 +43,11 @@ import com.oracle.svm.util.ReflectionUtil;
  * This ClassLoader is necessary to enable the loading of classes/resources during image build-time.
  * This class must be used as a replacement for {@link ClassLoader#getSystemClassLoader()} and its
  * parent must be the default system class loader. The delegate is set to an instance of
- * {@link NativeImageClassLoader}.
+ * {@link NativeImageClassLoaderSupport}.
  */
 public final class NativeImageSystemClassLoader extends SecureClassLoader {
 
-    private AbstractNativeImageClassLoader delegate = null;
+    private AbstractNativeImageClassLoaderSupport delegate = null;
     private final ClassLoader defaultSystemClassLoader;
 
     public NativeImageSystemClassLoader(ClassLoader defaultSystemClassLoader) {
@@ -55,7 +55,7 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
         this.defaultSystemClassLoader = defaultSystemClassLoader;
     }
 
-    public void setDelegate(AbstractNativeImageClassLoader delegateClassLoader) {
+    public void setDelegate(AbstractNativeImageClassLoaderSupport delegateClassLoader) {
         this.delegate = delegateClassLoader;
     }
 
@@ -65,17 +65,17 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
 
     @Override
     protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
-        return AbstractNativeImageClassLoader.Util.loadClass(getActiveClassLoader(), name, resolve);
+        return AbstractNativeImageClassLoaderSupport.Util.loadClass(getActiveClassLoader(), name, resolve);
     }
 
     @Override
     protected URL findResource(String name) {
-        return AbstractNativeImageClassLoader.Util.findResource(getActiveClassLoader(), name);
+        return AbstractNativeImageClassLoaderSupport.Util.findResource(getActiveClassLoader(), name);
     }
 
     @Override
     protected Enumeration<URL> findResources(String name) throws IOException {
-        return AbstractNativeImageClassLoader.Util.findResources(getActiveClassLoader(), name);
+        return AbstractNativeImageClassLoaderSupport.Util.findResources(getActiveClassLoader(), name);
     }
 
     @Override
@@ -89,7 +89,7 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
 
     private ClassLoader getActiveClassLoader() {
         return delegate != null
-                        ? delegate
+                        ? delegate.getClassLoader()
                         : defaultSystemClassLoader;
     }
 

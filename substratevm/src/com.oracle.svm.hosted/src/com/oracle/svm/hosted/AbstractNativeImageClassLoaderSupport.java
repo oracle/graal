@@ -44,7 +44,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.security.SecureClassLoader;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
@@ -65,7 +64,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
-public abstract class AbstractNativeImageClassLoader extends SecureClassLoader {
+public abstract class AbstractNativeImageClassLoaderSupport {
 
     /*
      * This cannot be a HostedOption because all Subclasses of OptionDescriptors from inside builtin
@@ -78,6 +77,7 @@ public abstract class AbstractNativeImageClassLoader extends SecureClassLoader {
     private final NativeImageSystemClassLoader nativeImageSystemClassLoader;
 
     protected final URLClassLoader classPathClassLoader;
+    protected final ClassLoader defaultSystemClassLoader;
 
     private static NativeImageSystemClassLoader nativeImageSystemClassLoader() {
         if (!(ClassLoader.getSystemClassLoader() instanceof NativeImageSystemClassLoader)) {
@@ -90,8 +90,7 @@ public abstract class AbstractNativeImageClassLoader extends SecureClassLoader {
         return (NativeImageSystemClassLoader) ClassLoader.getSystemClassLoader();
     }
 
-    protected AbstractNativeImageClassLoader(String[] classpath) {
-        super(nativeImageSystemClassLoader().getDefaultSystemClassLoader());
+    protected AbstractNativeImageClassLoaderSupport(String[] classpath) {
 
         /*
          * Make system class loader delegate to NativeImageClassLoader, enabling resolution of
@@ -100,7 +99,8 @@ public abstract class AbstractNativeImageClassLoader extends SecureClassLoader {
         nativeImageSystemClassLoader = nativeImageSystemClassLoader();
         nativeImageSystemClassLoader.setDelegate(this);
 
-        classPathClassLoader = new URLClassLoader(Util.verifyClassPathAndConvertToURLs(classpath), getParent());
+        defaultSystemClassLoader = nativeImageSystemClassLoader.getDefaultSystemClassLoader();
+        classPathClassLoader = new URLClassLoader(Util.verifyClassPathAndConvertToURLs(classpath), defaultSystemClassLoader);
 
         imagecp = Collections.unmodifiableList(Arrays.stream(classPathClassLoader.getURLs()).map(Util::urlToPath).collect(Collectors.toList()));
         buildcp = Collections.unmodifiableList(Arrays.stream(System.getProperty("java.class.path").split(File.pathSeparator)).map(Paths::get).collect(Collectors.toList()));
@@ -118,20 +118,17 @@ public abstract class AbstractNativeImageClassLoader extends SecureClassLoader {
         return Class.forName(className, false, classPathClassLoader);
     }
 
-    protected ClassLoader replacementClassLoader(ClassLoader replaceCandidate) {
-        boolean replace = false;
-        if (replaceCandidate == this) {
-            replace = true;
-        } else if (replaceCandidate == nativeImageSystemClassLoader) {
-            replace = true;
-        } else if (replaceCandidate == classPathClassLoader) {
-            replace = true;
+    public ClassLoader getClassLoader() {
+        return classPathClassLoader;
+    }
+
+    boolean isNativeImageClassLoader(ClassLoader c) {
+        if (c == nativeImageSystemClassLoader) {
+            return true;
+        } else if (c == classPathClassLoader) {
+            return true;
         }
-        if (replace) {
-            return getParent();
-        } else {
-            return replaceCandidate;
-        }
+        return false;
     }
 
     public abstract List<Path> modulepath();
@@ -239,9 +236,9 @@ public abstract class AbstractNativeImageClassLoader extends SecureClassLoader {
 
         protected final ForkJoinPool executor;
         protected final ImageClassLoader imageClassLoader;
-        protected final AbstractNativeImageClassLoader nativeImageClassLoader;
+        protected final AbstractNativeImageClassLoaderSupport nativeImageClassLoader;
 
-        ClassInit(ForkJoinPool executor, ImageClassLoader imageClassLoader, AbstractNativeImageClassLoader nativeImageClassLoader) {
+        ClassInit(ForkJoinPool executor, ImageClassLoader imageClassLoader, AbstractNativeImageClassLoaderSupport nativeImageClassLoader) {
             this.executor = executor;
             this.imageClassLoader = imageClassLoader;
             this.nativeImageClassLoader = nativeImageClassLoader;

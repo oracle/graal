@@ -432,7 +432,7 @@ public final class SVMHost implements HostVM {
     public void checkType(ResolvedJavaType type, AnalysisUniverse universe) {
         Class<?> originalClass = OriginalClassProvider.getJavaClass(universe.getOriginalSnippetReflection(), type);
         ClassLoader originalClassLoader = originalClass.getClassLoader();
-        if (originalClassLoader instanceof NativeImageClassLoader && !originalClassLoader.equals(classLoader)) {
+        if (ClassLoaderFeature.singleton().isNativeImageClassLoader(originalClassLoader) && !originalClassLoader.equals(classLoader)) {
             String message = "Class " + originalClass.getName() + " was loaded by " + originalClassLoader + " and not by the current image class loader " + classLoader + ". ";
             message += "This usually means that some objects from a previous build leaked in the current build. ";
             message += "This can happen when using the image build server. ";
