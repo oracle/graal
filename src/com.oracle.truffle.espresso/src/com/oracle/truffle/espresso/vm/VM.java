@@ -2575,16 +2575,20 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
-    public static StaticObject JVM_GetAndClearReferencePendingList() {
-        // TODO this
-        return StaticObject.NULL;
+    public StaticObject JVM_GetAndClearReferencePendingList() {
+        return getContext().getAndClearReferencePendingList();
     }
 
     @VmImpl
     @JniImpl
-    public static void JVM_WaitForReferencePendingList() {
-        // TODO this
-        return;
+    public void JVM_WaitForReferencePendingList() {
+        getContext().waitForReferencePendingList();
+    }
+
+    @VmImpl
+    @JniImpl
+    public boolean JVM_HasReferencePendingList() {
+        return getContext().hasReferencePendingList();
     }
 
     // Checkstyle: resume method name check

@@ -326,6 +326,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> next = StaticSymbols.putName("next");
         public static final Symbol<Name> NULL = StaticSymbols.putName("NULL");
         public static final Symbol<Name> pending = StaticSymbols.putName("pending");
+        public static final Symbol<Name> processPendingLock = StaticSymbols.putName("processPendingLock");
         public static final Symbol<Name> queue = StaticSymbols.putName("queue");
         public static final Symbol<Name> referent = StaticSymbols.putName("referent");
 
