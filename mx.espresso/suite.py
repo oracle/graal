@@ -154,6 +154,13 @@ suite = {
             "javaCompliance": "1.8+",
         },
 
+        "com.oracle.truffle.espresso.playground.jdk11": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "jniHeaders": True,
+            "javaCompliance": "11",
+        },
+
         "com.oracle.truffle.espresso.playground.native": {
             "subDir": "src",
             "native": "shared_lib",
@@ -389,6 +396,17 @@ suite = {
             "subDir": "src",
             "dependencies": [
                 "com.oracle.truffle.espresso.playground"
+            ],
+            "description": "Espresso experiments",
+            "javaProperties": {
+                "playground.library": "<path:ESPRESSO_PLAYGROUND_NATIVE>/<lib:playground>"
+            },
+        },
+
+        "ESPRESSO_PLAYGROUND_11": {
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.truffle.espresso.playground.jdk11"
             ],
             "description": "Espresso experiments",
             "javaProperties": {
