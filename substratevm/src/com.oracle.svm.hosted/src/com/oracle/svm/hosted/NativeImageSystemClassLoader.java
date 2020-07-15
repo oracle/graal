@@ -63,19 +63,77 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
         return defaultSystemClassLoader;
     }
 
+    /**
+     * Several classloader methods are terminal methods that get invoked when resolving a class or
+     * accessing resources, unfortunately they are protected methods meant to be overridden. Since
+     * this class delegates to the appropriate ClassLoader, the methods need to be called via
+     * reflection to by pass the protected visibility
+     */
+    private static final Method loadClass = ReflectionUtil.lookupMethod(ClassLoader.class, "loadClass",
+                    String.class, boolean.class);
+
+    private static final Method getClassLoadingLock = ReflectionUtil.lookupMethod(ClassLoader.class, "getClassLoadingLock",
+                    String.class);
+    private static final Method findResource = ReflectionUtil.lookupMethod(ClassLoader.class, "findResource",
+                    String.class);
+    private static final Method findResources = ReflectionUtil.lookupMethod(ClassLoader.class, "findResources",
+                    String.class);
+
+    static Class<?> loadClass(ClassLoader classLoader, String name, boolean resolve) throws ClassNotFoundException {
+        Class<?> loadedClass = null;
+        try {
+            final Object lock = getClassLoadingLock.invoke(classLoader, name);
+            synchronized (lock) {
+                // invoke the "loadClass" method on the current class loader
+                loadedClass = ((Class<?>) loadClass.invoke(classLoader, name, resolve));
+            }
+        } catch (Exception e) {
+            if (e.getCause() instanceof ClassNotFoundException) {
+                throw ((ClassNotFoundException) e.getCause());
+            }
+            String message = String.format("Can not load class: %s, with class loader: %s", name, classLoader);
+            VMError.shouldNotReachHere(message, e);
+        }
+        return loadedClass;
+    }
+
+    static URL findResource(ClassLoader classLoader, String name) {
+        try {
+            // invoke the "findResource" method on the current class loader
+            return (URL) findResource.invoke(classLoader, name);
+        } catch (ReflectiveOperationException e) {
+            String message = String.format("Can not find resource: %s using class loader: %s", name, classLoader);
+            VMError.shouldNotReachHere(message, e);
+        }
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    static Enumeration<URL> findResources(ClassLoader classLoader, String name) {
+        try {
+            // invoke the "findResources" method on the current class loader
+            return (Enumeration<URL>) findResources.invoke(classLoader, name);
+        } catch (ReflectiveOperationException e) {
+            String message = String.format("Can not find resources: %s using class loader: %s", name, classLoader);
+            VMError.shouldNotReachHere(message, e);
+        }
+
+        return null;
+    }
+
     @Override
     protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
-        return AbstractNativeImageClassLoaderSupport.Util.loadClass(getActiveClassLoader(), name, resolve);
+        return loadClass(getActiveClassLoader(), name, resolve);
     }
 
     @Override
     protected URL findResource(String name) {
-        return AbstractNativeImageClassLoaderSupport.Util.findResource(getActiveClassLoader(), name);
+        return findResource(getActiveClassLoader(), name);
     }
 
     @Override
     protected Enumeration<URL> findResources(String name) throws IOException {
-        return AbstractNativeImageClassLoaderSupport.Util.findResources(getActiveClassLoader(), name);
+        return findResources(getActiveClassLoader(), name);
     }
 
     @Override
