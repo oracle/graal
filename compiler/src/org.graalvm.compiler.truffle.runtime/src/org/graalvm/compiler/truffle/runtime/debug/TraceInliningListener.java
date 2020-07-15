@@ -52,9 +52,9 @@ public final class TraceInliningListener extends AbstractGraalTruffleRuntimeList
             return;
         }
         if (target.getOptionValue(Inlining)) {
-            runtime.logEvent(target, 0, "Inline start", target.getDebugProperties());
+            runtime.logEvent(target, 0, "inline start", target.getDebugProperties());
             logInliningDecisionRecursive(target, inliningDecision, 1);
-            runtime.logEvent(target, 0, "Inline done", target.getDebugProperties());
+            runtime.logEvent(target, 0, "inline done", target.getDebugProperties());
         } else {
             runtime.logEvent(target, 0, "TruffleFunctionInlining is set to false", "", null, null);
             return;

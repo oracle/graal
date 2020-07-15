@@ -81,9 +81,9 @@ public final class CallTree extends Graph {
         Boolean details = getPolyglotOptionValue(request.options, PolyglotCompilerOptions.TraceInliningDetails);
         if (getPolyglotOptionValue(request.options, PolyglotCompilerOptions.TraceInlining) || details) {
             TruffleCompilerRuntime runtime = TruffleCompilerRuntime.getRuntime();
-            runtime.logEvent(root.getTruffleAST(), 0, "inline start", root.getName(), root.getStringProperties(), null);
+            runtime.logEvent(root.getTruffleAST(), 0, "Inline start", root.getName(), root.getStringProperties(), null);
             traceRecursive(runtime, root, details, 0);
-            runtime.logEvent(root.getTruffleAST(), 0, "inline done", root.getName(), root.getStringProperties(), null);
+            runtime.logEvent(root.getTruffleAST(), 0, "Inline done", root.getName(), root.getStringProperties(), null);
         }
     }
 
