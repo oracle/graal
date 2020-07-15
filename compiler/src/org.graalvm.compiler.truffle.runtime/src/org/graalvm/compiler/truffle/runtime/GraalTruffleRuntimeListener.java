@@ -186,11 +186,7 @@ public interface GraalTruffleRuntimeListener {
 
     static void addASTSizeProperty(OptimizedCallTarget target, TruffleInlining inliningDecision, Map<String, Object> properties) {
         int nodeCount = target.getNonTrivialNodeCount();
-        int deepNodeCount = nodeCount;
-        if (inliningDecision != null) {
-            deepNodeCount += inliningDecision.getInlinedNodeCount();
-        }
-        properties.put("ASTSize", String.format("%5d/%5d", nodeCount, deepNodeCount));
+        properties.put("ASTSize", String.format("%5d", nodeCount));
     }
 
     /**

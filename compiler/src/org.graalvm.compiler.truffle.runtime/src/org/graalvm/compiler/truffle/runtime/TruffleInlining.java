@@ -204,16 +204,6 @@ public class TruffleInlining implements Iterable<TruffleInliningDecision>, Truff
         return callSites;
     }
 
-    public int getInlinedNodeCount() {
-        int sum = 0;
-        for (TruffleInliningDecision callSite : getCallSites()) {
-            if (callSite.shouldInline()) {
-                sum += callSite.getProfile().getDeepNodeCount();
-            }
-        }
-        return sum;
-    }
-
     @Override
     public int countCalls() {
         if (callCount != -1) {
