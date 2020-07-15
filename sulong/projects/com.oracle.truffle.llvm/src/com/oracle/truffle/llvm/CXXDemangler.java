@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 
 import java.util.ArrayList;
+import java.util.Base64;
 
 final class CXXDemangler {
     private static final String NAMESPACE_PREFIX = "_ZN";
@@ -148,11 +149,21 @@ final class CXXDemangler {
                     return rawLibname;
                 }
                 if (namespace.equals(SULONG_BASE64_NAMESPACE)) {
-                    return new String(Runner.decodeBase64(rawLibname));
+                    return new String(decodeBase64(rawLibname));
                 }
             }
         }
         return null;
+    }
+
+    static byte[] decodeBase64(CharSequence charSequence) {
+        byte[] result = new byte[charSequence.length()];
+        for (int i = 0; i < result.length; i++) {
+            char ch = charSequence.charAt(i);
+            assert ch >= 0 && ch <= Byte.MAX_VALUE;
+            result[i] = (byte) ch;
+        }
+        return Base64.getDecoder().decode(result);
     }
 
     static String encodeNamespace(ArrayList<String> namespaces) {

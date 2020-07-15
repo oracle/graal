@@ -67,7 +67,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 @TruffleLanguage.Registration(id = LLVMLanguage.ID, name = LLVMLanguage.NAME, internal = false, interactive = false, defaultMimeType = LLVMLanguage.LLVM_BITCODE_MIME_TYPE, //
                 byteMimeTypes = {LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.LLVM_ELF_SHARED_MIME_TYPE, LLVMLanguage.LLVM_ELF_EXEC_MIME_TYPE}, //
-                characterMimeTypes = {LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE}, fileTypeDetectors = LLVMFileDetector.class, services = {Toolchain.class})
+                fileTypeDetectors = LLVMFileDetector.class, services = {Toolchain.class})
 @ProvidedTags({StandardTags.StatementTag.class, StandardTags.CallTag.class, StandardTags.RootTag.class, StandardTags.RootBodyTag.class, DebuggerTags.AlwaysHalt.class})
 public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
@@ -80,12 +80,6 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     static final String LLVM_BITCODE_MIME_TYPE = "application/x-llvm-ir-bitcode";
     static final String LLVM_BITCODE_EXTENSION = "bc";
-
-    /*
-     * Using this mimeType is deprecated, it is just here for backwards compatibility. Bitcode
-     * should be passed directly using binary sources instead.
-     */
-    public static final String LLVM_BITCODE_BASE64_MIME_TYPE = "application/x-llvm-ir-bitcode-base64";
 
     static final String LLVM_ELF_SHARED_MIME_TYPE = "application/x-sharedlib";
     static final String LLVM_ELF_EXEC_MIME_TYPE = "application/x-executable";

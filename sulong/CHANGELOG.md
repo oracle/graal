@@ -26,6 +26,9 @@ Removed:
 * Removed the `--llvm.sourcePath` option (deprecated since 19.0), use
   `--inspect.SourcePath` instead.
 
+* Removed support for the application/x-llvm-ir-bitcode-base64 mime-type
+  (deprecated since 19.0).
+
 # Version 20.1.0
 
 Changes:
