@@ -297,6 +297,115 @@ public final class Target_sun_misc_Unsafe {
 
     // endregion compareAndSwap*
 
+    // region compareAndExchange*
+
+    /*
+     * Java 8 does not have these instrctions in Unsafe. Implement them by ourselves.
+     */
+
+    private static StaticObject doStaticObjectCompareExchange(StaticObject holder, Field f, StaticObject before, StaticObject after) {
+        StaticObject result;
+        do {
+            result = holder.getFieldVolatile(f);
+            if (result != before) {
+                return result;
+            }
+        } while (!holder.compareAndSwapField(f, before, after));
+        return before;
+    }
+
+    private static StaticObject doCompareExchange(Object holder, long offset, StaticObject before, StaticObject after) {
+        Object result;
+        do {
+            result = UNSAFE.getObjectVolatile(holder, offset);
+            if (result != before) {
+                return (StaticObject) result;
+            }
+        } while (!UNSAFE.compareAndSwapObject(holder, offset, before, after));
+        return before;
+    }
+
+    @Substitution(hasReceiver = true, nameProvider = Unsafe11.class)
+    public static @Host(Object.class) StaticObject compareAndExchangeObject(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset,
+                    @Host(Object.class) StaticObject before, @Host(Object.class) StaticObject after) {
+        if (isNullOrArray(holder)) {
+            return doCompareExchange(unwrapNullOrArray(holder), offset, before, after);
+        }
+        // TODO(peterssen): Current workaround assumes it's a field access, offset <-> field index.
+        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
+        return doStaticObjectCompareExchange(holder, f, before, after);
+    }
+
+    private static int doStaticObjectCompareExchangeInt(StaticObject holder, Field f, int before, int after) {
+        int result;
+        do {
+            result = holder.getIntFieldVolatile(f);
+            if (result != before) {
+                return result;
+            }
+        } while (!holder.compareAndSwapIntField(f, before, after));
+        return before;
+    }
+
+    private static int doCompareExchangeInt(Object holder, long offset, int before, int after) {
+        int result;
+        do {
+            result = UNSAFE.getIntVolatile(holder, offset);
+            if (result != before) {
+                return result;
+            }
+        } while (!UNSAFE.compareAndSwapInt(holder, offset, before, after));
+        return before;
+    }
+
+    @Substitution(hasReceiver = true, nameProvider = Unsafe11.class)
+    public static int compareAndExchangeInt(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, int before,
+                    int after) {
+        if (isNullOrArray(holder)) {
+            return doCompareExchangeInt(unwrapNullOrArray(holder), offset, before, after);
+        }
+        // TODO(peterssen): Current workaround assumes it's a field access, offset <-> field index.
+        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
+        return doStaticObjectCompareExchangeInt(holder, f, before, after);
+    }
+
+    private static long doStaticObjectCompareExchangeLong(StaticObject holder, Field f, long before, long after) {
+        long result;
+        do {
+            result = holder.getLongFieldVolatile(f);
+            if (result != before) {
+                return result;
+            }
+        } while (!holder.compareAndSwapLongField(f, before, after));
+        return before;
+    }
+
+    private static long doCompareExchangeLong(Object holder, long offset, long before, long after) {
+        long result;
+        do {
+            result = UNSAFE.getLongVolatile(holder, offset);
+            if (result != before) {
+                return result;
+            }
+        } while (!UNSAFE.compareAndSwapLong(holder, offset, before, after));
+        return before;
+    }
+
+    @Substitution(hasReceiver = true, nameProvider = Unsafe11.class)
+    public static boolean compareAndExchangeLong(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, long before,
+                    long after) {
+        if (isNullOrArray(holder)) {
+            return UNSAFE.compareAndSwapLong(unwrapNullOrArray(holder), offset, before, after);
+        }
+        Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
+        assert f != null;
+        return holder.compareAndSwapLongField(f, before, after);
+    }
+
+    // endregion compareAndExchange*
+
     @Substitution
     public static void registerNatives() {
         /* nop */
