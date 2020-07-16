@@ -264,7 +264,7 @@ final class Runner {
             INIT_CONTEXT,
             INIT_OVERWRITE,
             INIT_DONE,
-            PARSE_DEPENDENCIES;
+            BUILD_RETURN_SCOPES;
 
             boolean isActive(LLVMLoadingPhase phase) {
                 return phase == this || phase == ALL;
@@ -322,27 +322,32 @@ final class Runner {
 
         @ExplodeLoop
         @SuppressWarnings("unchecked")
-        LLVMLocalScope loadModule(VirtualFrame frame,
+        LLVMScope loadModule(VirtualFrame frame,
                         @CachedContext(LLVMLanguage.class) LLVMContext context) {
 
             try (StackPointer stackPointer = ctxRef.get().getThreadingStack().getStack().newFrame()) {
                 frame.setObject(stackPointerSlot, stackPointer);
 
                 LLVMLoadingPhase phase;
-                LLVMLocalScope localScope;
+                LLVMLocalScope localScope = null;
                 BitSet visited;
                 ArrayDeque<CallTarget> que = null;
+                LLVMScope resultScope = null;
                 // if no argument or first argument is not an enum of ours then it is a root, and we
                 // will need to create a fresh global scope, what do we do for local scope?
                 if (frame.getArguments().length > 0 && (frame.getArguments()[0] instanceof LLVMLoadingPhase)) {
                     phase = (LLVMLoadingPhase) frame.getArguments()[0];
-                    localScope = (LLVMLocalScope) frame.getArguments()[1];
-                    visited = (BitSet) frame.getArguments()[2];
+                    visited = (BitSet) frame.getArguments()[1];
                     if (phase == LLVMLoadingPhase.BUILD_SCOPES) {
+                        localScope = (LLVMLocalScope) frame.getArguments()[2];
                         que = (ArrayDeque<CallTarget>) frame.getArguments()[3];
-                    }
+                        resultScope = (LLVMScope) frame.getArguments()[4];
+                    } /*else if (phase == LLVMLoadingPhase.BUILD_RETURN_SCOPES) {
+                        resultScope = (LLVMScope) frame.getArguments()[2];
+                    }*/
                 } else if (frame.getArguments().length == 0 || !(frame.getArguments()[0] instanceof LLVMLoadingPhase)) {
                     phase = LLVMLoadingPhase.ALL;
+                    resultScope = new LLVMScope();
                     localScope = createLocalScope();
                     context.addLocalScope(localScope);
                     visited = createBitset();
@@ -357,6 +362,7 @@ final class Runner {
                         visited.set(bitcodeID);
                         addIDToLocalScope(localScope, bitcodeID);
                         initScopes.execute(context, localScope);
+                        resultScope.addMissingEntries(parserResult.getRuntime().getFileScope());
                         for (CallTarget callTarget : callTargets) {
                             if (callTarget != null) {
                                queAdd(que, callTarget);
@@ -365,7 +371,7 @@ final class Runner {
 
                         if(LLVMLoadingPhase.ALL.isActive(phase)) {
                             while (!que.isEmpty()) {
-                                indirectCall.call(que.poll(), LLVMLoadingPhase.BUILD_SCOPES, localScope, visited, que);
+                                indirectCall.call(que.poll(), LLVMLoadingPhase.BUILD_SCOPES, visited, localScope, que, resultScope);
                             }
                         }
                     }
@@ -389,7 +395,7 @@ final class Runner {
                         visited.set(bitcodeID);
                         for (DirectCallNode d : dependencies) {
                             if (d != null) {
-                                d.call(LLVMLoadingPhase.INIT_SYMBOLS, localScope, visited);
+                                d.call(LLVMLoadingPhase.INIT_SYMBOLS, visited);
                             }
                         }
                         initSymbols.initializeSymbolTable(context);
@@ -406,7 +412,7 @@ final class Runner {
                         visited.set(bitcodeID);
                         for (DirectCallNode d : dependencies) {
                             if (d != null) {
-                                d.call(LLVMLoadingPhase.INIT_EXTERNALS, localScope, visited);
+                                d.call(LLVMLoadingPhase.INIT_EXTERNALS, visited);
                             }
                         }
                         initExternals.execute(context, bitcodeID);
@@ -421,7 +427,7 @@ final class Runner {
                         visited.set(bitcodeID);
                         for (DirectCallNode d : dependencies) {
                             if (d != null) {
-                                d.call(LLVMLoadingPhase.INIT_GLOBALS, localScope, visited);
+                                d.call(LLVMLoadingPhase.INIT_GLOBALS, visited);
                             }
                         }
                         initGlobals.execute(frame, context.getReadOnlyGlobals(bitcodeID));
@@ -436,7 +442,7 @@ final class Runner {
                         visited.set(bitcodeID);
                         for (DirectCallNode d : dependencies) {
                             if (d != null) {
-                                d.call(LLVMLoadingPhase.INIT_OVERWRITE, localScope, visited);
+                                d.call(LLVMLoadingPhase.INIT_OVERWRITE, visited);
                             }
                         }
                     }
@@ -451,7 +457,7 @@ final class Runner {
                         visited.set(bitcodeID);
                         for (DirectCallNode d : dependencies) {
                             if (d != null) {
-                                d.call(LLVMLoadingPhase.INIT_CONTEXT, localScope, visited);
+                                d.call(LLVMLoadingPhase.INIT_CONTEXT, visited);
                             }
                         }
                         initContext.execute(frame);
@@ -466,12 +472,28 @@ final class Runner {
                         visited.set(bitcodeID);
                         for (DirectCallNode d : dependencies) {
                             if (d != null) {
-                                d.call(LLVMLoadingPhase.INIT_MODULE, localScope, visited);
+                                d.call(LLVMLoadingPhase.INIT_MODULE, visited);
                             }
                         }
                         initModules.execute(frame, context);
                     }
                 }
+
+                // this should just be parsing order, right?
+                /*if (LLVMLoadingPhase.BUILD_RETURN_SCOPES.isActive(phase)) {
+                    if (LLVMLoadingPhase.ALL == phase) {
+                        visited.clear();
+                    }
+                    if (!visited.get(bitcodeID)) {
+                        visited.set(bitcodeID);
+                        for (DirectCallNode d : dependencies) {
+                            if (d != null) {
+                                d.call(LLVMLoadingPhase.BUILD_RETURN_SCOPES, visited, resultScope);
+                            }
+                        }
+                        resultScope.addMissingEntries(parserResult.getRuntime().getFileScope());
+                    }
+                }*/
 
                 if (LLVMLoadingPhase.INIT_DONE.isActive(phase)) {
                     if (LLVMLoadingPhase.ALL == phase) {
@@ -481,7 +503,7 @@ final class Runner {
                         visited.set(bitcodeID);
                         for (DirectCallNode d : dependencies) {
                             if (d != null) {
-                                d.call(LLVMLoadingPhase.INIT_DONE, localScope, visited);
+                                d.call(LLVMLoadingPhase.INIT_DONE, visited);
                             }
                         }
                         context.markLibraryLoaded(bitcodeID);
@@ -489,7 +511,7 @@ final class Runner {
                 }
 
                 if (LLVMLoadingPhase.ALL == phase) {
-                    return localScope;
+                    return resultScope;
                 }
 
                 return null;

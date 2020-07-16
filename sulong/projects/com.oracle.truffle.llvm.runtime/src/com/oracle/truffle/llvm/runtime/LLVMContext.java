@@ -302,14 +302,14 @@ public final class LLVMContext {
             /*
              * The default internal libraries are parsed, but not initialised, in reverse dependency order.
              * (For C: libsulong / For C++: libsulong, libsulong++)
-             *
+             */
 
             String[] sulongLibraryNames = language.getCapability(PlatformCapability.class).getSulongDefaultLibraries();
             for (int i = sulongLibraryNames.length - 1; i >= 0 ; i--) {
                 ExternalLibrary library = addInternalLibrary(sulongLibraryNames[i], "<default bitcode library>");
                 TruffleFile file = library.hasFile() ? library.getFile() : env.getInternalTruffleFile(library.getPath().toUri());
                 env.parseInternal(Source.newBuilder("llvm", file).internal(library.isInternal()).build());
-            }*/
+            }
 
             CallTarget libpolyglotMock = env.parseInternal(Source.newBuilder("llvm",
                             env.getInternalTruffleFile(internalLibraryPath.resolve(language.getCapability(PlatformCapability.class).getPolyglotMockLibrary()).toUri())).internal(true).build());
