@@ -30,6 +30,8 @@ import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.c.struct.OffsetOf;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -48,12 +50,12 @@ final class ImageHeapChunkWriter {
 
     // Cached offsets in aligned/unaligned chunks
     private final int alignedChunkCardTableOffset;
-    private final int alignedChunkCardTableSize;
+    private final UnsignedWord alignedChunkCardTableSize;
     private final int alignedChunkFirstObjectTableOffset;
-    private final int alignedChunkFirstObjectTableSize;
-    private final int alignedChunkObjectsStartOffset;
+    private final UnsignedWord alignedChunkFirstObjectTableSize;
+    private final UnsignedWord alignedChunkObjectsStartOffset;
     private final int unalignedChunkCardTableOffset;
-    private final int unalignedChunkCardTableSize;
+    private final UnsignedWord unalignedChunkCardTableSize;
 
     ImageHeapChunkWriter() {
         headerSize = SizeOf.get(HeapChunk.Header.class);
@@ -64,12 +66,12 @@ final class ImageHeapChunkWriter {
         offsetToNextChunkAt = OffsetOf.get(HeapChunk.Header.class, "OffsetToNextChunk");
 
         alignedChunkCardTableOffset = UnsignedUtils.safeToInt(AlignedHeapChunk.getCardTableStartOffset());
-        alignedChunkCardTableSize = UnsignedUtils.safeToInt(AlignedHeapChunk.getCardTableSize());
+        alignedChunkCardTableSize = AlignedHeapChunk.getCardTableSize();
         alignedChunkFirstObjectTableOffset = UnsignedUtils.safeToInt(AlignedHeapChunk.getFirstObjectTableStartOffset());
-        alignedChunkFirstObjectTableSize = UnsignedUtils.safeToInt(AlignedHeapChunk.getFirstObjectTableSize());
-        alignedChunkObjectsStartOffset = UnsignedUtils.safeToInt(AlignedHeapChunk.getObjectsStartOffset());
+        alignedChunkFirstObjectTableSize = AlignedHeapChunk.getFirstObjectTableSize();
+        alignedChunkObjectsStartOffset = AlignedHeapChunk.getObjectsStartOffset();
         unalignedChunkCardTableOffset = UnsignedUtils.safeToInt(UnalignedHeapChunk.getCardTableStartOffset());
-        unalignedChunkCardTableSize = UnsignedUtils.safeToInt(UnalignedHeapChunk.getCardTableSize());
+        unalignedChunkCardTableSize = UnalignedHeapChunk.getCardTableSize();
     }
 
     public void initializeAlignedChunk(ByteBuffer buffer, int chunkPosition, long topOffset, long endOffset, long offsetToPreviousChunk, long offsetToNextChunk) {
@@ -97,8 +99,8 @@ final class ImageHeapChunkWriter {
     public void insertIntoAlignedChunkFirstObjectTable(ByteBuffer buffer, int chunkPosition, long objectOffsetInChunk, long objectEndOffsetInChunk) {
         assert chunkPosition >= 0 && objectOffsetInChunk >= 0 && objectEndOffsetInChunk > objectOffsetInChunk;
         int bufferTableOffset = chunkPosition + alignedChunkFirstObjectTableOffset;
-        int offsetInObjects = NumUtil.safeToInt(objectOffsetInChunk - alignedChunkObjectsStartOffset);
-        int endOffsetInObjects = NumUtil.safeToInt(objectEndOffsetInChunk - alignedChunkObjectsStartOffset);
+        UnsignedWord offsetInObjects = WordFactory.unsigned(objectOffsetInChunk).subtract(alignedChunkObjectsStartOffset);
+        UnsignedWord endOffsetInObjects = WordFactory.unsigned(objectEndOffsetInChunk).subtract(alignedChunkObjectsStartOffset);
         FirstObjectTable.setTableInBufferForObject(buffer, bufferTableOffset, offsetInObjects, endOffsetInObjects);
     }
 

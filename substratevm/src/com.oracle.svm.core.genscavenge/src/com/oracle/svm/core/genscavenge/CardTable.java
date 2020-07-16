@@ -27,6 +27,8 @@ package com.oracle.svm.core.genscavenge;
 import java.nio.ByteBuffer;
 
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
@@ -40,6 +42,7 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.util.HostedByteBufferPointer;
 import com.oracle.svm.core.util.PointerUtils;
 import com.oracle.svm.core.util.UnsignedUtils;
 
@@ -117,10 +120,9 @@ public final class CardTable {
         return table;
     }
 
-    static void cleanTableInBuffer(ByteBuffer buffer, int bufferTableOffset, int tableSize) {
-        for (int i = 0; i < tableSize; i++) {
-            buffer.put(bufferTableOffset + i, (byte) CLEAN_ENTRY);
-        }
+    @Platforms(Platform.HOSTED_ONLY.class)
+    static void cleanTableInBuffer(ByteBuffer buffer, int bufferTableOffset, UnsignedWord tableSize) {
+        cleanTableToIndex(new HostedByteBufferPointer(buffer, bufferTableOffset), tableSize);
     }
 
     static void cleanEntryAtIndex(Pointer table, UnsignedWord index) {

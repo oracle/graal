@@ -36,6 +36,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.util.HostedByteBufferPointer;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 /**
@@ -196,6 +197,10 @@ public final class FirstObjectTable {
         UnsignedWord startOffset = start.subtract(memory);
         /* The argument "end" is just past the real end of the object, so back it up one byte. */
         UnsignedWord endOffset = end.subtract(1).subtract(memory);
+        setTableForObjectAtLocation(table, startOffset, endOffset);
+    }
+
+    private static void setTableForObjectAtLocation(Pointer table, UnsignedWord startOffset, UnsignedWord endOffset) {
         UnsignedWord startIndex = memoryOffsetToIndex(startOffset);
         UnsignedWord endIndex = memoryOffsetToIndex(endOffset);
         UnsignedWord startMemoryOffset = indexToMemoryOffset(startIndex);
@@ -246,80 +251,15 @@ public final class FirstObjectTable {
         }
     }
 
-    /**
-     * Hosted variant of {@link #setTableForObjectUnchecked} for image heap chunks that operates on
-     * a {@link ByteBuffer} and avoids most boxing/unboxing of word types.
-     */
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void setTableInBufferForObject(ByteBuffer buffer, int bufferTableOffset, int startOffset, int endOffset) {
-        assert bufferTableOffset >= 0 && startOffset >= 0 && endOffset > startOffset;
-        int actualEndOffset = endOffset - 1; // method wants last byte's offset
-        int startIndex = startOffset / BYTES_COVERED_BY_ENTRY;
-        int endIndex = actualEndOffset / BYTES_COVERED_BY_ENTRY;
-        int startMemoryOffset = startIndex * BYTES_COVERED_BY_ENTRY;
-        if (startIndex == endIndex && startOffset % BYTES_COVERED_BY_ENTRY != 0) {
-            /* The object does not cross, or start on, a card boundary: nothing to do. */
-            return;
-        }
-        int memoryOffsetIndex;
-        if (startOffset == startMemoryOffset) {
-            memoryOffsetIndex = startIndex;
-            setBufferEntryAtIndex(buffer, bufferTableOffset, memoryOffsetIndex, 0);
-        } else {
-            /*
-             * The startOffset is in the middle of the memory for startIndex. That is, before the
-             * memory for startIndex+1.
-             */
-            memoryOffsetIndex = startIndex + 1;
-            UnsignedWord memoryIndexOffset = indexToMemoryOffset(WordFactory.unsigned(memoryOffsetIndex));
-            int entry = memoryOffsetToEntry(memoryIndexOffset.subtract(startOffset));
-            setBufferEntryAtIndex(buffer, bufferTableOffset, memoryOffsetIndex, entry);
-        }
-        /*
-         * Fill from memoryOffsetIndex towards endIndex with offset entries referring back to
-         * memoryOffsetIndex.
-         */
-        /* First, as many linear offsets as are needed, or as I can have. */
-        int linearIndexMax = Math.min(endIndex, memoryOffsetIndex + LINEAR_OFFSET_MAX);
-        int entryIndex = memoryOffsetIndex + 1;
-        int entry = LINEAR_OFFSET_MIN;
-        while (entryIndex <= linearIndexMax) {
-            setBufferEntryAtIndex(buffer, bufferTableOffset, entryIndex, entry);
-            entryIndex++;
-            entry++;
-        }
-        /* Next, as many exponential offsets as are needed. */
-        int unbiasedExponent = EXPONENT_MIN;
-        while (entryIndex <= endIndex) {
-            /* There are 2^N entries with the exponent N. */
-            for (int count = 0; count < (1 << unbiasedExponent); count += 1) {
-                int biasedEntry = biasExponent(unbiasedExponent);
-                setBufferEntryAtIndex(buffer, bufferTableOffset, entryIndex, biasedEntry);
-                entryIndex++;
-                if (entryIndex > endIndex) {
-                    break;
-                }
-            }
-            unbiasedExponent += 1;
-        }
+    static void setTableInBufferForObject(ByteBuffer buffer, int bufferTableOffset, UnsignedWord startOffset, UnsignedWord endOffset) {
+        UnsignedWord actualEndOffset = endOffset.subtract(1); // methods wants offset of last byte
+        setTableForObjectAtLocation(new HostedByteBufferPointer(buffer, bufferTableOffset), startOffset, actualEndOffset);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private static void setBufferEntryAtIndex(ByteBuffer table, int bufferTableOffset, int index, int value) {
-        assert bufferTableOffset >= 0 && index >= 0;
-        assert isValidEntry(value) : "Invalid entry";
-        int bufferIndex = bufferTableOffset + index;
-        byte entry = table.get(bufferIndex);
-        assert isUninitializedEntry(entry) || entry == value : "Overwriting!";
-        table.put(bufferIndex, (byte) value);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    static void initializeTableInBuffer(ByteBuffer buffer, int bufferTableOffset, int tableSize) {
-        assert bufferTableOffset >= 0 && tableSize >= 0;
-        for (int i = 0; i < tableSize; i++) {
-            buffer.put(bufferTableOffset + i, (byte) UNINITIALIZED_ENTRY);
-        }
+    static void initializeTableInBuffer(ByteBuffer buffer, int bufferTableOffset, UnsignedWord tableSize) {
+        doInitializeTableToLimit(new HostedByteBufferPointer(buffer, bufferTableOffset), tableSize);
     }
 
     /**
@@ -476,16 +416,16 @@ public final class FirstObjectTable {
          * The table doesn't really need to be initialized, but if I'm making assertions, then I
          * should initialize the entries to the uninitialized value.
          */
-        assert initializeTableToIndexForAsserts(table, indexLimit);
+        assert doInitializeTableToLimit(table, indexLimit);
         return table;
     }
 
-    private static void initializeTableToLimitForAsserts(Pointer table, Pointer tableLimit) {
+    private static void doInitializeTableToLimit(Pointer table, Pointer tableLimit) {
         UnsignedWord indexLimit = FirstObjectTable.tableOffsetToIndex(tableLimit.subtract(table));
-        initializeTableToIndexForAsserts(table, indexLimit);
+        doInitializeTableToLimit(table, indexLimit);
     }
 
-    private static boolean initializeTableToIndexForAsserts(Pointer table, UnsignedWord indexLimit) {
+    private static boolean doInitializeTableToLimit(Pointer table, UnsignedWord indexLimit) {
         for (UnsignedWord index = WordFactory.unsigned(0); index.belowThan(indexLimit); index = index.add(1)) {
             initializeEntryAtIndex(table, index);
         }
@@ -620,11 +560,11 @@ public final class FirstObjectTable {
         }
 
         public static void initializeTableToLimitForAsserts(Pointer table, Pointer tableLimit) {
-            FirstObjectTable.initializeTableToLimitForAsserts(table, tableLimit);
+            FirstObjectTable.doInitializeTableToLimit(table, tableLimit);
         }
 
         public static void initializeTableToIndexForAsserts(Pointer table, UnsignedWord indexLimit) {
-            FirstObjectTable.initializeTableToIndexForAsserts(table, indexLimit);
+            FirstObjectTable.doInitializeTableToLimit(table, indexLimit);
         }
 
         public static void setTableForObject(Pointer table, Pointer memory, Pointer start, Pointer end) {
