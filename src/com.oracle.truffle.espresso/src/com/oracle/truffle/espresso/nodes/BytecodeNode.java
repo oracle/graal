@@ -1679,7 +1679,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         StaticObject methodType = signatureToMethodType(parsedInvokeSignature, accessingKlass, getMeta());
         StaticObject appendix = StaticObject.createArray(meta.java_lang_Object_array, new StaticObject[1]);
         StaticObject memberName;
-        if (getContext().getJavaVersion().newPolymorphicSignatures()) {
+        if (getContext().getJavaVersion().varHandlesEnabled()) {
             memberName = (StaticObject) meta.java_lang_invoke_MethodHandleNatives_linkCallSite11.invokeDirect(
                             null,
                             accessingKlass.mirror(),

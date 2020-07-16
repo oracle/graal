@@ -2446,7 +2446,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         PackageTable packageTable = registry.packages();
         ModuleTable moduleTable = registry.modules();
         assert moduleTable != null && packageTable != null;
-        boolean loaderIsBootOrPlatform = StaticObject.isNull(loader) || getMeta().jdk_internal_ClassLoaders_PlatformClassLoader.isAssignableFrom(loader.getKlass());
+        boolean loaderIsBootOrPlatform = StaticObject.isNull(loader) || getMeta().jdk_internal_loader_ClassLoaders$PlatformClassLoader.isAssignableFrom(loader.getKlass());
 
         ArrayList<Symbol<Name>> pkgSymbols = new ArrayList<>();
         String[] packages = extractNativePackages(pkgs, num_package, profiler);

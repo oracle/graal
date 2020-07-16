@@ -403,9 +403,9 @@ public final class Meta implements ContextAccess {
         java_lang_Class_classLoader = java_lang_Class.lookupField(Name.classLoader, Type.java_lang_ClassLoader);
 
         if (getContext().getJavaVersion().java9OrLater()) {
-            jdk_internal_ClassLoaders_PlatformClassLoader = knownKlass(Type.jdk_internal_ClassLoaders$PlatformClassLoader);
+            jdk_internal_loader_ClassLoaders$PlatformClassLoader = knownKlass(Type.jdk_internal_loader_ClassLoaders$PlatformClassLoader);
         } else {
-            jdk_internal_ClassLoaders_PlatformClassLoader = null;
+            jdk_internal_loader_ClassLoaders$PlatformClassLoader = null;
         }
 
         if (getContext().getJavaVersion().modulesEnabled()) {
@@ -586,7 +586,7 @@ public final class Meta implements ContextAccess {
     public final Method java_lang_ClassLoader_getSystemClassLoader;
     public final Field HIDDEN_CLASS_LOADER_REGISTRY;
 
-    public final ObjectKlass jdk_internal_ClassLoaders_PlatformClassLoader;
+    public final ObjectKlass jdk_internal_loader_ClassLoaders$PlatformClassLoader;
 
     public final ObjectKlass java_lang_Module;
     public final Field java_lang_Module_name;
@@ -1150,7 +1150,7 @@ public final class Meta implements ContextAccess {
             return null;
         }
         Meta meta = str.getKlass().getMeta();
-        if (meta.getContext().getJavaVersion().byteArrayStrings()) {
+        if (meta.getContext().getJavaVersion().compactStringsEnabled()) {
             StaticObject wrappedChars = (StaticObject) meta.java_lang_String_toCharArray.invokeDirect(str);
             return HostJava.createString(wrappedChars.unwrap());
         }
@@ -1166,7 +1166,7 @@ public final class Meta implements ContextAccess {
         final char[] value = HostJava.getStringValue(hostString);
         final int hash = HostJava.getStringHash(hostString);
         StaticObject guestString = java_lang_String.allocateInstance();
-        if (getContext().getJavaVersion().byteArrayStrings()) {
+        if (getContext().getJavaVersion().compactStringsEnabled()) {
             // TODO(garcia): avoid expensive array copies
             byte[] bytes = null;
             byte coder = LATIN1;
