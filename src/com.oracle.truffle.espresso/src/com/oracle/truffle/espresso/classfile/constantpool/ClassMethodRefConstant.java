@@ -182,7 +182,7 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
 
             Method method = holderKlass.lookupMethod(name, signature, accessingKlass);
             if (method == null) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError, meta.toGuestString(getName(pool)));
+                throw Meta.throwExceptionWithMessage(meta.java_lang_NoSuchMethodError, meta.toGuestString(holderKlass.getNameAsString() + "." + getName(pool) + signature));
             }
 
             if (!MemberRefConstant.checkAccess(accessingKlass, holderKlass, method)) {
@@ -192,7 +192,7 @@ public interface ClassMethodRefConstant extends MethodRefConstant {
                 throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalAccessError, meta.toGuestString(getName(pool)));
             }
 
-            if (!method.isMethodHandleIntrinsic()) {
+            if (!method.isPolySignatureIntrinsic()) {
                 method.checkLoadingConstraints(accessingKlass.getDefiningClassLoader(), method.getDeclaringKlass().getDefiningClassLoader());
             }
 

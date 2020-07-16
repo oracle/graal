@@ -26,6 +26,7 @@ package com.oracle.truffle.espresso.nodes.methodhandle;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.object.DebugCounter;
 
@@ -59,4 +60,19 @@ public abstract class MethodHandleIntrinsicNode extends Node implements ContextA
     }
 
     public abstract Object call(Object[] args);
+
+    public Object processReturnValue(Object obj, JavaKind kind) {
+        switch (kind) {
+            case Boolean:
+                return ((int) obj != 0);
+            case Byte:
+                return ((byte) (int) obj);
+            case Char:
+                return ((char) (int) obj);
+            case Short:
+                return ((short) (int) obj);
+            default:
+                return obj;
+        }
+    }
 }

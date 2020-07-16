@@ -83,6 +83,9 @@ public final class EspressoException extends RuntimeException implements Truffle
 
     @SuppressWarnings("unused")
     private boolean match(String exceptionClass, String message) {
+        if (exceptionClass == null) {
+            return getMessage() != null && getMessage().contains(message);
+        }
         if (getExceptionObject().getKlass().getType().toString().contains(exceptionClass)) {
             if (message == null) {
                 return true;
