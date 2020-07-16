@@ -37,6 +37,7 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
@@ -96,6 +97,13 @@ public final class ObjectEqualsNode extends PointerEqualsNode implements Virtual
         ValueNode value = OP.canonical(tool.getConstantReflection(), tool.getMetaAccess(), tool.getOptions(), tool.smallestCompareWidth(), CanonicalCondition.EQ, false, forX, forY, view);
         if (value != null) {
             return value;
+        }
+        // A new object can never equal a parameter. Similar to the constant case in
+        // canonicalizeSymmetricConstant below.
+        if ((forX instanceof ParameterNode && (forY instanceof AbstractNewObjectNode || forY instanceof AllocatedObjectNode)) ||
+                        (forY instanceof ParameterNode && (forX instanceof AbstractNewObjectNode || forX instanceof AllocatedObjectNode))) {
+            assert !(forX instanceof BoxNode) && !(forY instanceof BoxNode);
+            return LogicConstantNode.forBoolean(false);
         }
         return this;
     }
