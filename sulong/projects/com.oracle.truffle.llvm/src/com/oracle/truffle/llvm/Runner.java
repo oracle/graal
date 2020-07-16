@@ -347,7 +347,7 @@ final class Runner {
                     }*/
                 } else if (frame.getArguments().length == 0 || !(frame.getArguments()[0] instanceof LLVMLoadingPhase)) {
                     phase = LLVMLoadingPhase.ALL;
-                    resultScope = new LLVMScope();
+                    resultScope = createLLVMScope();
                     localScope = createLocalScope();
                     context.addLocalScope(localScope);
                     visited = createBitset();
@@ -583,6 +583,11 @@ final class Runner {
         @TruffleBoundary
         private static LLVMLocalScope createLocalScope() {
             return new LLVMLocalScope();
+        }
+
+        @TruffleBoundary
+        private static LLVMScope createLLVMScope() {
+            return new LLVMScope();
         }
 
         // A library is a sulong internal library if it contains the path of the internal llvm
