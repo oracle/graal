@@ -61,6 +61,12 @@ public class BackgroundCompileQueue {
         this.idCounter = new AtomicLong();
     }
 
+    // Largest i such that 2^i <= n.
+    private static int log2(int n) {
+        assert n > 0;
+        return 31 - Integer.numberOfLeadingZeros(n);
+    }
+
     private ExecutorService getExecutorService(OptimizedCallTarget callTarget) {
         if (compilationExecutorService != null) {
             return compilationExecutorService;
@@ -79,11 +85,34 @@ public class BackgroundCompileQueue {
             // NOTE: the value from the first Engine compiling wins for now
             int threads = callTarget.getOptionValue(PolyglotCompilerOptions.CompilerThreads);
             if (threads == 0) {
-                // No manual selection made, check how many processors are available.
+                // Old behavior, use either 1 or 2 compiler threads.
                 int availableProcessors = Runtime.getRuntime().availableProcessors();
                 if (availableProcessors >= 4) {
                     threads = 2;
                 }
+            } else if (threads < 0) {
+                // Scale compiler threads depending on how many processors are available.
+                int availableProcessors = Runtime.getRuntime().availableProcessors();
+
+                // @formatter:off
+                // compilerThreads = Math.min(availableProcessors / 4 + loglogCPU)
+                // Produces reasonable values for common core/thread counts (with HotSpot numbers for reference):
+                // cores=2  threads=4  compilerThreads=2  (HotSpot=3:  C1=1 C2=2)
+                // cores=4  threads=8  compilerThreads=3  (HotSpot=4:  C1=1 C2=3)
+                // cores=6  threads=12 compilerThreads=4  (HotSpot=4:  C1=1 C2=3)
+                // cores=8  threads=16 compilerThreads=6  (HotSpot=12: C1=4 C2=8)
+                // cores=10 threads=20 compilerThreads=7  (HotSpot=12: C1=4 C2=8)
+                // cores=12 threads=24 compilerThreads=8  (HotSpot=12: C1=4 C2=8)
+                // cores=16 threads=32 compilerThreads=10 (HotSpot=15: C1=5 C2=10)
+                // cores=18 threads=36 compilerThreads=11 (HotSpot=15: C1=5 C2=10)
+                // cores=24 threads=48 compilerThreads=14 (HotSpot=15: C1=5 C2=10)
+                // cores=28 threads=56 compilerThreads=16 (HotSpot=15: C1=5 C2=10)
+                // cores=32 threads=64 compilerThreads=18 (HotSpot=18: C1=6 C2=12)
+                // cores=36 threads=72 compilerThreads=20 (HotSpot=18: C1=6 C2=12)
+                // @formatter:on
+                int logCPU = log2(availableProcessors);
+                int loglogCPU = log2(Math.max(logCPU, 1));
+                threads = Math.min(availableProcessors / 4 + loglogCPU, 16); // capped at 16
             }
             threads = Math.max(1, threads);
 
