@@ -112,13 +112,13 @@ final class Target_org_jline_terminal_impl_jna_JnaSupportImpl_open {
     @SuppressWarnings({"unused", "static-method"})
     @Substitute
     public Target_org_jline_terminal_spi_Pty open(Target_org_jline_terminal_Attributes attributes, Target_org_jline_terminal_Size size) {
-        throw new RuntimeException();
+        throw new UnsupportedOperationException();
     }
 
     @Substitute
     @SuppressWarnings("static-method")
     public Target_org_jline_terminal_spi_Pty current() {
-        throw new RuntimeException();
+        throw new UnsupportedOperationException();
     }
 }
 
@@ -129,8 +129,8 @@ final class Target_org_jline_builtins_Nano_Buffer {
     @Alias private Charset charset;
 
     /**
-     * This is a slightly modified version of the original {@linkplain Nano#read
-     * https://github.com/jline/jline3/blob/804236549a36e46a5d262feafab26a4c9805bdbb/builtins/src/main/java/org/jline/builtins/Nano.java#L257}
+     * This is a slightly modified version of the original Nano#read
+     * (https://github.com/jline/jline3/blob/804236549a36e46a5d262feafab26a4c9805bdbb/builtins/src/main/java/org/jline/builtins/Nano.java#L257)
      * method. The modification is the removal of the attempt to detect the charset using an
      * optional dependency (UniversalDetector) which, when not on the classpath would break the
      * native-image build. The original source code is provided under the BSD licence.
