@@ -481,7 +481,10 @@ public final class PolyglotNativeAPI {
             String jCode = CTypeConversion.toJavaString(source_utf8);
 
             Source sourceCode = Source.newBuilder(languageName, jCode, jName).build();
-            result.write(createHandle(c.eval(sourceCode)));
+            Value evalResult = c.eval(sourceCode);
+            if (result.isNonNull()) {
+                result.write(createHandle(evalResult));
+            }
         });
     }
 
@@ -587,7 +590,9 @@ public final class PolyglotNativeAPI {
             }
 
             Value resultValue = function.execute(jArgs);
-            result.write(createHandle(resultValue));
+            if (result.isNonNull()) {
+                result.write(createHandle(resultValue));
+            }
         });
     }
 
