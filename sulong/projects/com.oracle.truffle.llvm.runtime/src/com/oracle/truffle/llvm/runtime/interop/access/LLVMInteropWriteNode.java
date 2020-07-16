@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,8 +29,12 @@
  */
 package com.oracle.truffle.llvm.runtime.interop.access;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -95,8 +99,8 @@ public abstract class LLVMInteropWriteNode extends LLVMNode {
             }
         }
 
-        @Specialization(limit = "3")
-        void writeArrayElement(long identifier, AccessLocation location, Object value, ForeignToLLVMType writeType,
+        @Specialization(guards = "isLocationTypeNullOrSameSize(location, writeType)", limit = "3")
+        void writeArrayElementTypeMatch(long identifier, AccessLocation location, Object value, ForeignToLLVMType writeType,
                         @CachedLibrary("location.base") InteropLibrary interop,
                         @Cached ConvertOutgoingNode convertOutgoing,
                         @Cached BranchProfile exception) {
@@ -115,6 +119,76 @@ public abstract class LLVMInteropWriteNode extends LLVMNode {
                 throw new LLVMPolyglotException(this, "Wrong type writing to array element %d.", idx);
             }
         }
+
+        @Specialization(guards = {"!isLocationTypeNullOrSameSize(location, writeType)", "locationType.isI8()", "writeTypeSizeInBytes > 1"}, limit = "3")
+        void writeArrayElementToI8(long identifier, AccessLocation location, Object value, ForeignToLLVMType writeType,
+                        @CachedLibrary("location.base") InteropLibrary interop,
+                        @Cached ReinterpretLLVMAsLong toLong,
+                        @Cached BranchProfile exception,
+                        @Bind("location.type.getKind().foreignToLLVMType") @SuppressWarnings("unused") ForeignToLLVMType locationType,
+                        @Bind("writeType.getSizeInBytes()") int writeTypeSizeInBytes) {
+            assert identifier == (Long) location.identifier;
+            long idx = identifier;
+            try {
+                long longValue = toLong.executeWithWriteType(value, writeType);
+                // TODO (je) this currently assumes little endian (GR-24919)
+                for (int i = 0; i < writeTypeSizeInBytes; i++, idx++) {
+                    interop.writeArrayElement(location.base, idx, (byte) longValue);
+                    longValue >>= 8;
+                }
+            } catch (InvalidArrayIndexException ex) {
+                exception.enter();
+                throw new LLVMPolyglotException(this, "Invalid array index %d.", idx);
+            } catch (UnsupportedMessageException ex) {
+                exception.enter();
+                throw new LLVMPolyglotException(this, "Can not write array element %d.", idx);
+            } catch (UnsupportedTypeException ex) {
+                exception.enter();
+                throw new LLVMPolyglotException(this, "Wrong type writing to array element %d.", idx);
+            }
+        }
+
+        @Fallback
+        void fallback(@SuppressWarnings("unused") Object identifier, AccessLocation location, Object value, ForeignToLLVMType writeType) {
+            assert location.type != null;
+            throw new LLVMPolyglotException(this, "Cannot write object '%s' of size %d byte(s) to foreign object of element size %d", value, writeType.getSizeInBytes(),
+                            location.type.getKind().foreignToLLVMType.getSizeInBytes());
+        }
+
+        static boolean isLocationTypeNullOrSameSize(AccessLocation location, ForeignToLLVMType accessType) {
+            return location.type == null || location.type.getKind().foreignToLLVMType.getSizeInBytes() == accessType.getSizeInBytes();
+        }
+    }
+
+    @ImportStatic(ForeignToLLVMType.class)
+    @GenerateUncached
+    abstract static class ReinterpretLLVMAsLong extends LLVMNode {
+        abstract long executeWithWriteType(Object value, ForeignToLLVMType writeType);
+
+        @Specialization(guards = "writeType.getSizeInBytes() == 2")
+        long doI16(Object value, @SuppressWarnings("unused") ForeignToLLVMType writeType,
+                        @Cached(parameters = "I16") LLVMDataEscapeNode dataEscape) {
+            return (Short) dataEscape.executeWithTarget(value);
+        }
+
+        @Specialization(guards = "writeType.getSizeInBytes() == 4")
+        long doI32(Object value, @SuppressWarnings("unused") ForeignToLLVMType writeType,
+                        @Cached(parameters = "I32") LLVMDataEscapeNode dataEscape) {
+            return (Integer) dataEscape.executeWithTarget(value);
+        }
+
+        @Specialization(guards = "writeType.getSizeInBytes() == 8")
+        long doI64(Object value, @SuppressWarnings("unused") ForeignToLLVMType writeType,
+                        @Cached(parameters = "I64") LLVMDataEscapeNode dataEscape) {
+            return (Long) dataEscape.executeWithTarget(value);
+        }
+
+        @Fallback
+        long fallback(@SuppressWarnings("unused") Object value, ForeignToLLVMType writeType) {
+            CompilerDirectives.transferToInterpreter();
+            throw new LLVMPolyglotException(this, "Unexpected access type %s", writeType);
+        }
+
     }
 
     @GenerateUncached
