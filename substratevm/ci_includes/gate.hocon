@@ -41,7 +41,7 @@ builds += [
     }
     run: [
       ["$MUSL_LIBS/fix_paths.sh"]
-      ${svm-cmd-gate} ["build,helloworld,test,relocations,maven,nativeimagehelp,muslcbuild"]
+      ${svm-cmd-gate} ["build,helloworld,test,maven,nativeimagehelp,muslcbuild"]
     ]
   }
   ${oraclejdk8} ${svm-common-linux-gate} ${eclipse} ${jdt} ${linux-deploy} {
