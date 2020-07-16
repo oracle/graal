@@ -53,7 +53,6 @@ import mx_substratevm_benchmark  # pylint: disable=unused-import
 from mx_compiler import GraalArchiveParticipant
 from mx_gate import Task
 from mx_unittest import _run_tests, _VMLauncher
-from mx_urlrewrites import rewriteurl
 
 import sys
 
@@ -285,7 +284,10 @@ def vm_executable_path(executable, config):
 
 def run_musl_basic_tests():
     if is_musl_supported():
-        helloworld(['--output-path', svmbuild_dir(), '--static', '--libc=musl'])
+        if is_musl_gcc_wrapper_on_path():
+            helloworld(['--output-path', svmbuild_dir(), '--static', '--libc=musl'])
+        else:
+            mx.abort('Attempted to run musl tests without a musl-gcc wrapper.')
 
 
 @contextmanager
