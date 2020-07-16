@@ -1,5 +1,6 @@
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86;
 
+import java.util.Arrays;
 import java.util.function.Supplier;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -35,6 +36,8 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNodeGe
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 
 @ExportLibrary(LLVMManagedReadLibrary.class)
@@ -53,6 +56,7 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
     private int gpOffset;
     private int initFPOffset;
     private int fpOffset;
+    private RegSaveArea regSaveArea;
     private LLVMPointer regSaveAreaPtr;
     private OverflowArgArea overflowArgArea;
 
@@ -185,7 +189,7 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
         static LLVMPointer readManagedPointer(LLVMX86_64VaListStorage vaList, long offset) {
             switch ((int) offset) {
                 case X86_64BitVarArgs.OVERFLOW_ARG_AREA:
-                    return (LLVMPointer) vaList.overflowArgArea.getCurrentArg();
+                    return (LLVMPointer) vaList.overflowArgArea.getCurrentArgPtr();
                 case X86_64BitVarArgs.REG_SAVE_AREA:
                     return vaList.regSaveAreaPtr;
                 default:
@@ -345,9 +349,14 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
 
         int overflowArea = 0;
         int[] gpIdx = new int[realArguments.length];
+        Arrays.fill(gpIdx, -1);
         int[] fpIdx = new int[realArguments.length];
+        Arrays.fill(fpIdx, -1);
+
         Object[] overflowArgs = new Object[realArguments.length];
         long[] overflowAreaArgOffsets = new long[realArguments.length];
+        Arrays.fill(overflowAreaArgOffsets, -1);
+
         int oi = 0;
         for (int i = numberOfExplicitArguments; i < realArguments.length; i++) {
             final Object arg = realArguments[i];
@@ -377,7 +386,8 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
             }
         }
 
-        this.regSaveAreaPtr = LLVMManagedPointer.create(new RegSaveArea(realArguments, gpIdx, fpIdx));
+        this.regSaveArea = new RegSaveArea(realArguments, gpIdx, fpIdx);
+        this.regSaveAreaPtr = LLVMManagedPointer.create(this.regSaveArea);
         this.overflowArgArea = new OverflowArgArea(overflowArgs, overflowAreaArgOffsets, overflowArea);
     }
 
@@ -414,13 +424,67 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
 
             dest.fpOffset = srcReadLib.readI32(source, X86_64BitVarArgs.FP_OFFSET);
             dest.gpOffset = srcReadLib.readI32(source, X86_64BitVarArgs.GP_OFFSET);
+            dest.overflowArgArea.current = getNativeShiftCount(source, srcReadLib);
+        }
+    }
 
-            // Calculate the number of argument shifts in the overflow area
-            LLVMNativePointer overflowAreaPtr = LLVMNativePointer.cast(srcReadLib.readPointer(source, X86_64BitVarArgs.OVERFLOW_ARG_AREA));
-            long curAddr = overflowAreaPtr.asNative();
-            long baseAddr = source.overflowArgAreaBaseNativePtr.asNative();
-            long shiftCnt = (curAddr - baseAddr) / 8;
-            dest.overflowArgArea.current = (int) shiftCnt;
+    /**
+     * Calculate the number of argument shifts in the overflow area.
+     *
+     * @param vaList
+     * @param readLib
+     */
+    private static int getNativeShiftCount(LLVMX86_64VaListStorage vaList, LLVMManagedReadLibrary readLib) {
+        LLVMNativePointer overflowAreaPtr = LLVMNativePointer.cast(readLib.readPointer(vaList, X86_64BitVarArgs.OVERFLOW_ARG_AREA));
+        long curAddr = overflowAreaPtr.asNative();
+        long baseAddr = vaList.overflowArgAreaBaseNativePtr.asNative();
+        long shiftCnt = (curAddr - baseAddr) / 8;
+        return (int) shiftCnt;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    Object shift(Type type,
+                    @CachedLibrary("this") LLVMManagedReadLibrary readLib,
+                    @CachedLibrary("this") LLVMManagedWriteLibrary writeLib) {
+        try {
+            int regSaveOffs;
+            int regSaveStep;
+            int regSaveLimit;
+
+            if (type.getBitSize() < 64) {
+                regSaveOffs = X86_64BitVarArgs.GP_OFFSET;
+                regSaveStep = X86_64BitVarArgs.GP_STEP;
+                regSaveLimit = X86_64BitVarArgs.GP_LIMIT;
+            } else {
+                regSaveOffs = X86_64BitVarArgs.FP_OFFSET;
+                regSaveStep = X86_64BitVarArgs.FP_STEP;
+                regSaveLimit = X86_64BitVarArgs.FP_LIMIT;
+            }
+
+            int offs = readLib.readI32(this, regSaveOffs);
+            if (offs < regSaveLimit) {
+                // regsave area
+                writeLib.writeI32(this, regSaveOffs, offs + regSaveStep);
+                int i = this.regSaveArea.offsetToIndex(offs);
+                return this.regSaveArea.args[i];
+            } else {
+                // overflow area
+                if (isNativized()) {
+                    int shiftCnt = getNativeShiftCount(this, readLib);
+                    long shiftOffs = this.overflowArgArea.offsets[shiftCnt + 1];
+                    LLVMNativePointer shiftedOverflowAreaPtr = overflowArgAreaBaseNativePtr.increment(shiftOffs);
+                    writeLib.writePointer(this, X86_64BitVarArgs.OVERFLOW_ARG_AREA, shiftedOverflowAreaPtr);
+
+                    return this.overflowArgArea.args[shiftCnt];
+                } else {
+                    Object currentArg = this.overflowArgArea.getCurrentArg();
+                    this.overflowArgArea.shift();
+                    return currentArg;
+                }
+            }
+        } catch (TypeOverflowException e) {
+            throw new UnsupportedOperationException(e);
         }
     }
 
@@ -477,7 +541,7 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
 
         final int vaLength = this.realArguments.length - numberOfExplicitArguments;
 
-        LLVMPointer regSaveArea = stackAllocationNode.executeWithTarget(frame,
+        LLVMPointer regSaveAreaNativePtr = stackAllocationNode.executeWithTarget(frame,
                         X86_64BitVarArgs.FP_LIMIT);
         this.overflowArgAreaBaseNativePtr = LLVMNativePointer.cast(stackAllocationNode.executeWithTarget(frame, overflowArgArea.overflowAreaSize));
 
@@ -491,7 +555,7 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
         overflowArgAreaStore.executeWithTarget(p, overflowArgAreaBaseNativePtr.increment(8 * overflowArgArea.current));
 
         p = nativized.increment(X86_64BitVarArgs.REG_SAVE_AREA);
-        regSaveAreaStore.executeWithTarget(p, regSaveArea);
+        regSaveAreaStore.executeWithTarget(p, regSaveAreaNativePtr);
 
         // reconstruct register_save_area and overflow_arg_area according to AMD64 ABI
 
@@ -508,11 +572,11 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
                 final VarArgArea area = getVarArgArea(object);
 
                 if (area == VarArgArea.GP_AREA && gp < X86_64BitVarArgs.GP_LIMIT) {
-                    storeArgument(regSaveArea, gp, memMove, i64RegSaveAreaStore, i32RegSaveAreaStore,
+                    storeArgument(regSaveAreaNativePtr, gp, memMove, i64RegSaveAreaStore, i32RegSaveAreaStore,
                                     fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, object);
                     gp += X86_64BitVarArgs.GP_STEP;
                 } else if (area == VarArgArea.FP_AREA && fp < X86_64BitVarArgs.FP_LIMIT) {
-                    storeArgument(regSaveArea, fp, memMove, i64RegSaveAreaStore, i32RegSaveAreaStore,
+                    storeArgument(regSaveAreaNativePtr, fp, memMove, i64RegSaveAreaStore, i32RegSaveAreaStore,
                                     fp80bitRegSaveAreaStore, pointerRegSaveAreaStore, object);
                     fp += X86_64BitVarArgs.FP_STEP;
                 } else {
@@ -608,17 +672,20 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
 
         @ExportMessage
         byte readI8(long offset) {
-            return (Byte) args[offsetToIndex(offset)];
+            int i = offsetToIndex(offset);
+            return i < 0 ? 0 : (Byte) args[offsetToIndex(offset)];
         }
 
         @ExportMessage
         short readI16(long offset) {
-            return (Short) args[offsetToIndex(offset)];
+            int i = offsetToIndex(offset);
+            return i < 0 ? 0 : (Short) args[offsetToIndex(offset)];
         }
 
         @ExportMessage
         int readI32(long offset) {
-            return (Integer) args[offsetToIndex(offset)];
+            int i = offsetToIndex(offset);
+            return i < 0 ? 0 : (Integer) args[offsetToIndex(offset)];
         }
 
         @ExportMessage
@@ -628,12 +695,13 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
 
         @ExportMessage
         Object readGenericI64(long offset) {
-            return args[offsetToIndex(offset)];
+            int i = offsetToIndex(offset);
+            return i < 0 ? Double.doubleToLongBits(0d) : args[i];
         }
     }
 
     @ExportLibrary(LLVMManagedReadLibrary.class)
-    final class RegSaveArea extends ArgsArea {
+    final static class RegSaveArea extends ArgsArea {
 
         private final int[] gpIdx;
         private final int[] fpIdx;
@@ -673,6 +741,9 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
         @Override
         protected int offsetToIndex(long offset) {
             for (int i = 0; i < offsets.length; i++) {
+                if (offsets[i] < 0) {
+                    return -1;
+                }
                 if (offsets[i] == offset) {
                     return i;
                 }
@@ -685,6 +756,10 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
         }
 
         Object getCurrentArg() {
+            return args[current];
+        }
+
+        Object getCurrentArgPtr() {
             Object curArg = args[current];
             if (curArg instanceof LLVMVarArgCompoundValue) {
                 return ((LLVMVarArgCompoundValue) curArg).getAddr();

@@ -21,10 +21,21 @@ double callVAHandlers(vahandler vaHandler1, vahandler vaHandler2, int count, ...
 	return res1 + res2;
 }
 
+double sumIntsLLVM(int count, va_list* args) {
+    int sum = 0;
+    for (int i = 0; i < count; ++i) {
+        int num = va_arg(*args, int);
+        printf("arg[%d]=%d\n", i, num);
+        sum += num;
+    }
+    return sum;
+}
+
 double sumDoublesLLVM(int count, va_list* args) {
     double sum = 0;
     for (int i = 0; i < count; ++i) {
         double num = va_arg(*args, double);
+        printf("arg[%d]=%f\n", i, num);
         sum += num;
     }
     return sum;
@@ -75,22 +86,24 @@ double testDelayedVACopy(vahandler vaHandler1, vahandler vaHandler2, int count, 
  
 int main(void) 
 {
-	printf("VACopy test (LLVM, LLVM)     : %f\n", testVACopy(sumDoublesLLVM, sumDoublesLLVM, 6, 1., 2., 3., 4., 5., 6.));
-	printf("VACopy test (native, LLVM)   : %f\n", testVACopy(sumDoublesNative, sumDoublesLLVM, 6, 1., 2., 3., 4., 5., 6.));
-	printf("VACopy test (LLVM, native)   : %f\n", testVACopy(sumDoublesLLVM, sumDoublesNative, 6, 1., 2., 3., 4., 5., 6.));
-	printf("VACopy test (native, native) : %f\n", testVACopy(sumDoublesNative, sumDoublesNative, 6, 1., 2., 3., 4., 5., 6.));
+	printf("Sum of doubles (LLVM)           : %f\n", callVAHandler(sumDoublesLLVM, 8, 1., 2, 3., 4, 5., 6, 7., 8, 9., 10, 11., 12, 13., 14, 15., 16));
+	printf("Sum of ints (LLVM)              : %f\n", callVAHandler(sumIntsLLVM, 8, 1., 2, 3., 4, 5., 6, 7., 8, 9., 10, 11., 12, 13., 14, 15., 16));
+	exit(0);
+	printf("Sum of doubles (native)         : %f\n", callVAHandler(sumDoublesNative, 16, 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
+	printf("Sum of doubles (LLVM, native)   : %f\n", callVAHandlers(sumDoublesLLVM, sumDoublesNative, 16, 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
+	printf("Sum of doubles (native, LLVM)   : %f\n", callVAHandlers(sumDoublesNative, sumDoublesLLVM, 16, 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
+	printf("Sum of doubles (native, native) : %f\n", callVAHandlers(sumDoublesNative, sumDoublesNative, 16, 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
+	printf("Sum of doubles (LLVM, LLVM)     : %f\n", callVAHandlers(sumDoublesLLVM, sumDoublesLLVM, 16, 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
 
-	printf("Delayed VACopy test (LLVM, LLVM)     : %f\n", testDelayedVACopy(sumDoublesLLVM, sumDoublesLLVM, 6, 1., 2., 3., 4., 5., 6.));
-	printf("Delayed VACopy test (native, LLVM)   : %f\n", testDelayedVACopy(sumDoublesNative, sumDoublesLLVM, 6, 1., 2., 3., 4., 5., 6.));
-	printf("Delayed VACopy test (LLVM, native)   : %f\n", testDelayedVACopy(sumDoublesLLVM, sumDoublesNative, 6, 1., 2., 3., 4., 5., 6.));
-	printf("Delayed VACopy test (native, native) : %f\n", testDelayedVACopy(sumDoublesNative, sumDoublesNative, 6, 1., 2., 3., 4., 5., 6.));
+	printf("VACopy test (LLVM, LLVM)     : %f\n", testVACopy(sumDoublesLLVM, sumDoublesLLVM, 16, 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
+	printf("VACopy test (native, LLVM)   : %f\n", testVACopy(sumDoublesNative, sumDoublesLLVM, 16, 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
+	printf("VACopy test (LLVM, native)   : %f\n", testVACopy(sumDoublesLLVM, sumDoublesNative, 16, 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
+	printf("VACopy test (native, native) : %f\n", testVACopy(sumDoublesNative, sumDoublesNative, 16, 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
 
-	printf("Sum of doubles (LLVM)           : %f\n", callVAHandler(sumDoublesLLVM, 6, 1., 2., 3., 4., 5., 6.));
-	printf("Sum of doubles (native)         : %f\n", callVAHandler(sumDoublesNative, 6, 1., 2., 3., 4., 5., 6.));
-	printf("Sum of doubles (LLVM, native)   : %f\n", callVAHandlers(sumDoublesLLVM, sumDoublesNative, 6, 1., 2., 3., 4., 5., 6.));
-	printf("Sum of doubles (native, LLVM)   : %f\n", callVAHandlers(sumDoublesNative, sumDoublesLLVM, 6, 1., 2., 3., 4., 5., 6.));
-	printf("Sum of doubles (native, native) : %f\n", callVAHandlers(sumDoublesNative, sumDoublesNative, 6, 1., 2., 3., 4., 5., 6.));
-	printf("Sum of doubles (LLVM, LLVM)     : %f\n", callVAHandlers(sumDoublesLLVM, sumDoublesLLVM, 6, 1., 2., 3., 4., 5., 6.));
+	printf("Delayed VACopy test (LLVM, LLVM)     : %f\n", testDelayedVACopy(sumDoublesLLVM, sumDoublesLLVM, 16, 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
+	printf("Delayed VACopy test (native, LLVM)   : %f\n", testDelayedVACopy(sumDoublesNative, sumDoublesLLVM, 16, 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
+	printf("Delayed VACopy test (LLVM, native)   : %f\n", testDelayedVACopy(sumDoublesLLVM, sumDoublesNative, 16, 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
+	printf("Delayed VACopy test (native, native) : %f\n", testDelayedVACopy(sumDoublesNative, sumDoublesNative, 16, 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16.));
 
     struct A a;
     a.x = 10;
