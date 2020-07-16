@@ -132,8 +132,8 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
 
     /**
      * Installs a class loader hierarchy that resolves classes and resources available in
-     * {@code classpath}. The parent for the installed {@link NativeImageClassLoaderSupport} is the default
-     * system class loader (jdk.internal.loader.ClassLoaders.AppClassLoader and
+     * {@code classpath}. The parent for the installed {@link NativeImageClassLoaderSupport} is the
+     * default system class loader (jdk.internal.loader.ClassLoaders.AppClassLoader and
      * sun.misc.Launcher.AppClassLoader for JDK8,11 respectively)
      *
      * In the presence of the custom system class loader {@link NativeImageSystemClassLoader} the
