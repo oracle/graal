@@ -38,15 +38,15 @@ public final class Polyglot {
     }
 
     /**
-     * Tests if an object is an interop object, i.e. originates from a different Truffle language.
+     * Tests if an object is a foreign object, i.e. originates from a different Truffle language.
      */
     @SuppressWarnings("unused")
-    public static boolean isInteropObject(Object object) {
+    public static boolean isForeignObject(Object object) {
         return false;
     }
 
     /**
-     * If {@code value} is an interop object, changes its type to {@code targetClass}. The existence
+     * If {@code value} is a foreign object, changes its type to {@code targetClass}. The existence
      * of methods, defined in {@code targetClass}, is not verified and if a method does not exist,
      * an exception will be thrown only when this method is invoked.
      * <p>
@@ -64,7 +64,7 @@ public final class Polyglot {
      * Evaluates the given code in the given language.
      *
      * @return the result of the evaluation wrapped as {@link Object}. To access members of the
-     *         underlying interop object, write a corresponding class or interface stub in Java and
+     *         underlying foreign object, write a corresponding class or interface stub in Java and
      *         cast the eval result to it using {@link #cast Polyglot.cast}.
      */
     @SuppressWarnings("unused")
@@ -76,8 +76,8 @@ public final class Polyglot {
      * Imports {@code name} from global Polyglot scope. If {@code name} does not exist in the scope,
      * returns {@code null}.
      *
-     * The returned interop value is wrapped as {@link Object}. To access members of the underlying
-     * interop object, write a corresponding class or interface stub in Java and cast the eval
+     * The returned foreign value is wrapped as {@link Object}. To access members of the underlying
+     * foreign object, write a corresponding class or interface stub in Java and cast the eval
      * result to it using {@link #cast Polyglot.cast}.
      */
     @SuppressWarnings("unused")

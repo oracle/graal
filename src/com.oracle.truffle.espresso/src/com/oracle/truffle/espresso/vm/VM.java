@@ -399,7 +399,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                     @GuestCall(target = "java_lang_ref_Finalizer_register") DirectCallNode finalizerRegister,
                     @InjectMeta Meta meta, @InjectProfile SubstitutionProfiler profiler) {
         assert StaticObject.notNull(self);
-        if (self.isInteropObject()) {
+        if (self.isForeignObject()) {
             throw Meta.throwExceptionWithMessage(meta.java_lang_CloneNotSupportedException, "Clone not supported for interop objects");
         }
         if (self.isArray()) {
