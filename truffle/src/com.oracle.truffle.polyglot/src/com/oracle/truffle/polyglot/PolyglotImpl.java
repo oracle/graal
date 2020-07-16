@@ -325,7 +325,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             if (hostValue instanceof TruffleObject) {
                 guestValue = hostValue;
             } else if (hostValue instanceof Proxy) {
-                guestValue = PolyglotProxy.toProxyGuestObject(null, (Proxy) hostValue);
+                guestValue = PolyglotProxy.toProxyGuestObject((Proxy) hostValue);
             } else if (hostValue instanceof Class) {
                 guestValue = HostObject.forClass((Class<?>) hostValue, null);
             } else {
