@@ -42,6 +42,7 @@ public final class CallTree extends Graph {
     private final PartialEvaluator.Request request;
     int expanded = 1;
     int inlined = 1;
+    int frontierSize;
     private int nextId = 0;
 
     CallTree(PartialEvaluator partialEvaluator, PartialEvaluator.Request request, InliningPolicy policy) {
@@ -119,8 +120,9 @@ public final class CallTree extends Graph {
         root.collectTargetsToDequeue(provider);
     }
 
-    public void updateTracingInfo(TruffleInliningPlan inliningPlan) {
-        inliningPlan.setCallCount(root.callCount());
-        inliningPlan.setInlinedCallCount(root.inlinedCallCount());
+    public void updateTracingInfo(TruffleMetaAccessProvider inliningPlan) {
+        final int inlinedWithoutRoot = inlined - 1;
+        inliningPlan.setCallCount(inlinedWithoutRoot + frontierSize);
+        inliningPlan.setInlinedCallCount(inlinedWithoutRoot);
     }
 }

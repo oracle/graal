@@ -44,7 +44,6 @@ import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
-import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.common.TruffleMetaAccessProvider;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 
@@ -102,6 +101,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         addChildren(root, invokeToTruffleCallNode);
         root.state = State.Inlined;
         callTree.getPolicy().afterExpand(root);
+        callTree.frontierSize = root.children.size();
         return root;
     }
 
@@ -251,6 +251,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         updateChildInvokes(replacements);
         state = State.Inlined;
         getCallTree().inlined++;
+        getCallTree().frontierSize += children.size() - 1;
     }
 
     private void updateChildInvokes(UnmodifiableEconomicMap<Node, Node> replacements) {
@@ -377,27 +378,6 @@ public final class CallNode extends Node implements Comparable<CallNode> {
                 child.collectTargetsToDequeue(provider);
             }
         }
-    }
-
-    public int callCount() {
-        int sum = 0;
-        for (CallNode child : children) {
-            sum += 1;
-            if (child.state == State.Inlined) {
-                sum += child.callCount();
-            }
-        }
-        return sum;
-    }
-
-    public int inlinedCallCount() {
-        int sum = 0;
-        for (CallNode child : children) {
-            if (child.state == State.Inlined) {
-                sum += child.inlinedCallCount() + 1;
-            }
-        }
-        return sum;
     }
 
     public enum State {
