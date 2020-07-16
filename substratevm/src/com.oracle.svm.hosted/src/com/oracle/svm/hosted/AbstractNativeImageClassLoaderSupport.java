@@ -79,10 +79,6 @@ public abstract class AbstractNativeImageClassLoaderSupport {
 
     protected AbstractNativeImageClassLoaderSupport(NativeImageSystemClassLoader nativeImageSystemClassLoader, String[] classpath) {
 
-        /*
-         * Make system class loader delegate to NativeImageClassLoader, enabling resolution of
-         * classes and resources during image build-time present in the image classpath.
-         */
         this.nativeImageSystemClassLoader = nativeImageSystemClassLoader;
         defaultSystemClassLoader = nativeImageSystemClassLoader.getDefaultSystemClassLoader();
         classPathClassLoader = new URLClassLoader(Util.verifyClassPathAndConvertToURLs(classpath), defaultSystemClassLoader);

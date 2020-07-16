@@ -132,22 +132,27 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
 
     /**
      * Installs a class loader hierarchy that resolves classes and resources available in
-     * {@code classpath}. The parent for the installed {@link NativeImageClassLoaderSupport} is the
-     * default system class loader (jdk.internal.loader.ClassLoaders.AppClassLoader and
-     * sun.misc.Launcher.AppClassLoader for JDK8,11 respectively)
+     * {@code classpath} and {@code modulepath}. The parent for the installed {@code ClassLoader} is
+     * the default system class loader (jdk.internal.loader.ClassLoaders.AppClassLoader and
+     * sun.misc.Launcher.AppClassLoader for JDK11, 8 respectively).
      *
-     * In the presence of the custom system class loader {@link NativeImageSystemClassLoader} the
-     * delegate is to {@link NativeImageClassLoaderSupport} allowing the resolution of classes in
-     * {@code classpath} via the system class loader. Note that any custom system class loader has
-     * the default system class loader as its parent
+     * We use a custom system class loader {@link NativeImageSystemClassLoader} that delegates to
+     * the {@code ClassLoader} that {@link NativeImageClassLoaderSupport} creates, thus allowing the
+     * resolution of classes in {@code classpath} and {@code modulepath} via system class loader.
      *
-     * @param classpath
-     * @return the native image class loader
+     * @param classpath for the application and image should be built for.
+     * @param modulepath for the application and image should be built for (only for Java >= 11).
+     * @return NativeImageClassLoaderSupport that exposes the {@code ClassLoader} for image building
+     *         via {@link NativeImageClassLoaderSupport#getClassLoader()}.
      */
     public static NativeImageClassLoaderSupport installNativeImageClassLoader(String[] classpath, String[] modulepath) {
         NativeImageSystemClassLoader nativeImageSystemClassLoader = nativeImageSystemClassLoader();
         NativeImageClassLoaderSupport nativeImageClassLoaderSupport = new NativeImageClassLoaderSupport(nativeImageSystemClassLoader, classpath, modulepath);
         Thread.currentThread().setContextClassLoader(nativeImageClassLoaderSupport.getClassLoader());
+        /*
+         * Make system class loader delegate to NativeImageClassLoader, enabling resolution of
+         * classes and resources during image build-time present in the image classpath.
+         */
         nativeImageSystemClassLoader.setDelegate(nativeImageClassLoaderSupport);
 
         if (JavaVersionUtil.JAVA_SPEC >= 11 && !nativeImageClassLoaderSupport.imagecp.isEmpty()) {
