@@ -49,8 +49,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 
 /**
  * Generates a default wrapper subclass of an annotated {@link InstrumentableNode} subclass. The
- * generated subclass has the same class name as the original class name plus the 'Wrapper'
- * suffix. The generated class has default package visibility. All non-final and non-private methods
+ * generated subclass has the same class name as the original class name plus the 'Wrapper' suffix.
+ * The generated class has default package visibility. All non-final and non-private methods
  * starting with execute are overridden by the generated wrapper. The generated overrides notifies
  * execution events as required by {@link ProbeNode probes}. Other abstract methods are directly
  * delegated to the wrapped node. No other methods are overridden by the generated wrapper. At least
