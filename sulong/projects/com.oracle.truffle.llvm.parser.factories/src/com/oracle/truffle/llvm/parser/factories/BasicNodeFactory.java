@@ -59,6 +59,7 @@ import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReason;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
+import com.oracle.truffle.llvm.runtime.PlatformCapability;
 import com.oracle.truffle.llvm.runtime.UnaryOperation;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
@@ -168,7 +169,6 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountTrailingZe
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.bit.CountTrailingZeroesNodeFactory.CountTrailingZeroesI8NodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVACopyNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAEndNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAListNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAListNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVAStartNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_ComparisonNodeFactory.LLVMX86_CmpssNodeGen;
@@ -346,9 +346,13 @@ public class BasicNodeFactory implements NodeFactory {
     protected final LLVMContext context;
     protected DataLayout dataLayout;
 
+    private final Type vaListType;
+
     public BasicNodeFactory(LLVMContext context, DataLayout dataLayout) {
         this.context = context;
         this.dataLayout = dataLayout;
+
+        this.vaListType = this.context.getLanguage().getActiveConfiguration().getCapability(PlatformCapability.class).getVAListType();
     }
 
     @Override
@@ -951,10 +955,14 @@ public class BasicNodeFactory implements NodeFactory {
         }
     }
 
+    protected boolean isVAListType(Type type) {
+        return type != null && vaListType.equals(type) && type != vaListType;
+    }
+
     @Override
     public LLVMExpressionNode createAlloca(Type type, int alignment) {
-        if (LLVMVAListNode.isVAListType(type)) {
-            return LLVMVAListNodeGen.create(() -> createAllocaNative(type, alignment));
+        if (isVAListType(type)) {
+            return LLVMVAListNodeGen.create();
         } else {
             return createAllocaNative(type, alignment);
         }

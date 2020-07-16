@@ -30,13 +30,11 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
-import java.util.function.Supplier;
-
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMSyscallExitNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMNativeSyscallNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.linux.aarch64.LinuxAArch64Syscall;
+import com.oracle.truffle.llvm.runtime.types.Type;
 
 final class LinuxAArch64PlatformCapability extends BasicPlatformCapability<LinuxAArch64Syscall> {
 
@@ -56,7 +54,12 @@ final class LinuxAArch64PlatformCapability extends BasicPlatformCapability<Linux
     }
 
     @Override
-    public Object createVAListStorage(Supplier<LLVMExpressionNode> allocaNodeFactory) {
+    public Object createVAListStorage() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Type getVAListType() {
         throw new UnsupportedOperationException();
     }
 

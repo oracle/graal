@@ -1,11 +1,12 @@
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86;
 
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.function.Supplier;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -18,7 +19,10 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMVarArgCompoundValue;
+import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
@@ -36,8 +40,13 @@ import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNodeGe
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import com.oracle.truffle.llvm.runtime.types.ArrayType;
+import com.oracle.truffle.llvm.runtime.types.PointerType;
+import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
+import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
+import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 
 @ExportLibrary(LLVMManagedReadLibrary.class)
@@ -46,9 +55,12 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 @ExportLibrary(InteropLibrary.class)
 public final class LLVMX86_64VaListStorage implements TruffleObject {
 
-    private static final String GET_MEMBER = "get";
+    private static final DataLayout DEFAULT_LAYOUT = new DataLayout("e-i64:64-f80:128-n8:16:32:64-S128");
 
-    private final Supplier<LLVMExpressionNode> allocaNodeFactory;
+    public static final ArrayType VA_LIST_TYPE = new ArrayType(StructureType.createNamedFromList("struct.__va_list_tag", false,
+                    new ArrayList<>(Arrays.asList(PrimitiveType.I32, PrimitiveType.I32, PointerType.I8, PointerType.I8))), 1);
+
+    private static final String GET_MEMBER = "get";
 
     private Object[] realArguments;
     private int numberOfExplicitArguments;
@@ -63,8 +75,7 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
     LLVMNativePointer nativized;
     private LLVMNativePointer overflowArgAreaBaseNativePtr;
 
-    public LLVMX86_64VaListStorage(Supplier<LLVMExpressionNode> allocaNodeFactory) {
-        this.allocaNodeFactory = allocaNodeFactory;
+    public LLVMX86_64VaListStorage() {
     }
 
     public boolean isNativized() {
@@ -309,6 +320,32 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
         }
     }
 
+    private static VarArgArea getVarArgArea(Type type) {
+        if (type == PrimitiveType.I1) {
+            return VarArgArea.GP_AREA;
+        } else if (type == PrimitiveType.I8) {
+            return VarArgArea.GP_AREA;
+        } else if (type == PrimitiveType.I16) {
+            return VarArgArea.GP_AREA;
+        } else if (type == PrimitiveType.I32) {
+            return VarArgArea.GP_AREA;
+        } else if (type == PrimitiveType.I64) {
+            return VarArgArea.GP_AREA;
+        } else if (type == PrimitiveType.FLOAT) {
+            return VarArgArea.FP_AREA;
+        } else if (type == PrimitiveType.DOUBLE) {
+            return VarArgArea.FP_AREA;
+        } else if (type == PrimitiveType.X86_FP80) {
+            return VarArgArea.OVERFLOW_AREA;
+        } else if (type instanceof VectorType && ((VectorType) type).getElementType() == PrimitiveType.FLOAT && ((VectorType) type).getNumberOfElements() <= 2) {
+            return VarArgArea.FP_AREA;
+        } else if (type instanceof PointerType) {
+            return VarArgArea.GP_AREA;
+        } else {
+            return VarArgArea.OVERFLOW_AREA;
+        }
+    }
+
     private int calculateUsedFpArea() {
         assert numberOfExplicitArguments <= realArguments.length;
 
@@ -447,49 +484,57 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
     Object shift(Type type,
                     @CachedLibrary("this") LLVMManagedReadLibrary readLib,
                     @CachedLibrary("this") LLVMManagedWriteLibrary writeLib) {
-        try {
-            int regSaveOffs;
-            int regSaveStep;
-            int regSaveLimit;
+        int regSaveOffs = 0;
+        int regSaveStep = 0;
+        int regSaveLimit = 0;
+        boolean lookIntoRegSaveArea = true;
 
-            if (type.getBitSize() < 64) {
+        VarArgArea varArgArea = getVarArgArea(type);
+        switch (varArgArea) {
+            case GP_AREA:
                 regSaveOffs = X86_64BitVarArgs.GP_OFFSET;
                 regSaveStep = X86_64BitVarArgs.GP_STEP;
                 regSaveLimit = X86_64BitVarArgs.GP_LIMIT;
-            } else {
+                break;
+
+            case FP_AREA:
                 regSaveOffs = X86_64BitVarArgs.FP_OFFSET;
                 regSaveStep = X86_64BitVarArgs.FP_STEP;
                 regSaveLimit = X86_64BitVarArgs.FP_LIMIT;
-            }
+                break;
 
+            case OVERFLOW_AREA:
+                lookIntoRegSaveArea = false;
+                break;
+        }
+
+        if (lookIntoRegSaveArea) {
             int offs = readLib.readI32(this, regSaveOffs);
             if (offs < regSaveLimit) {
-                // regsave area
                 writeLib.writeI32(this, regSaveOffs, offs + regSaveStep);
                 int i = this.regSaveArea.offsetToIndex(offs);
                 return this.regSaveArea.args[i];
-            } else {
-                // overflow area
-                if (isNativized()) {
-                    int shiftCnt = getNativeShiftCount(this, readLib);
-                    long shiftOffs = this.overflowArgArea.offsets[shiftCnt + 1];
-                    LLVMNativePointer shiftedOverflowAreaPtr = overflowArgAreaBaseNativePtr.increment(shiftOffs);
-                    writeLib.writePointer(this, X86_64BitVarArgs.OVERFLOW_ARG_AREA, shiftedOverflowAreaPtr);
-
-                    return this.overflowArgArea.args[shiftCnt];
-                } else {
-                    Object currentArg = this.overflowArgArea.getCurrentArg();
-                    this.overflowArgArea.shift();
-                    return currentArg;
-                }
             }
-        } catch (TypeOverflowException e) {
-            throw new UnsupportedOperationException(e);
+        }
+
+        // overflow area
+        if (isNativized()) {
+            int shiftCnt = getNativeShiftCount(this, readLib);
+            long shiftOffs = this.overflowArgArea.offsets[shiftCnt + 1];
+            LLVMNativePointer shiftedOverflowAreaPtr = overflowArgAreaBaseNativePtr.increment(shiftOffs);
+            writeLib.writePointer(this, X86_64BitVarArgs.OVERFLOW_ARG_AREA, shiftedOverflowAreaPtr);
+
+            return this.overflowArgArea.args[shiftCnt];
+        } else {
+            Object currentArg = this.overflowArgArea.getCurrentArg();
+            this.overflowArgArea.shift();
+            return currentArg;
         }
     }
 
-    LLVMExpressionNode createAllocaNode() {
-        return allocaNodeFactory.get();
+    @SuppressWarnings("static-method")
+    LLVMExpressionNode createAllocaNode(LLVMContext llvmCtx) {
+        return llvmCtx.getLanguage().getActiveConfiguration().createNodeFactory(llvmCtx, DEFAULT_LAYOUT).createAlloca(VA_LIST_TYPE, 16);
     }
 
     static LLVMStoreNode createI64StoreNode() {
@@ -514,7 +559,8 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
 
     @SuppressWarnings("static-method")
     @ExportMessage
-    void toNative(@Cached(value = "this.createAllocaNode()", uncached = "this.createAllocaNode()") LLVMExpressionNode allocaNode,
+    void toNative(@SuppressWarnings("unused") @CachedContext(LLVMLanguage.class) LLVMContext llvmCtx,
+                    @Cached(value = "this.createAllocaNode(llvmCtx)", uncached = "this.createAllocaNode(llvmCtx)") LLVMExpressionNode allocaNode,
                     @Cached(value = "create()", uncached = "create()") LLVMNativeVarargsAreaStackAllocationNode stackAllocationNode,
                     @Cached(value = "createI64StoreNode()", uncached = "createI64StoreNode()") LLVMStoreNode i64RegSaveAreaStore,
                     @Cached(value = "createI32StoreNode()", uncached = "createI32StoreNode()") LLVMStoreNode i32RegSaveAreaStore,
