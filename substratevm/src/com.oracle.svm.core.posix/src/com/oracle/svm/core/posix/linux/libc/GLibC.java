@@ -41,7 +41,7 @@ public class GLibC implements LibCBase {
     @Override
     public List<String> getAdditionalQueryCodeCompilerOptions() {
         return Collections.emptyList();
-}
+    }
 
     @Override
     public String getTargetCompiler() {
