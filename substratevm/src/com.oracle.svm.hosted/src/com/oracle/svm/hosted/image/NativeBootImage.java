@@ -423,7 +423,7 @@ public abstract class NativeBootImage extends AbstractBootImage {
             final NativeTextSectionImpl textImpl = NativeTextSectionImpl.factory(textBuffer, objectFile, codeCache);
             textSection = objectFile.newProgbitsSection(SectionName.TEXT.getFormatDependentName(objectFile.getFormat()), objectFile.getPageSize(), false, true, textImpl);
 
-            boolean writable = SubstrateOptions.UseOnlyWritableBootImageHeap.getValue();
+            boolean writable = SubstrateOptions.ForceNoROSectionRelocations.getValue();
 
             // Read-only data section
             final RelocatableBuffer roDataBuffer = new RelocatableBuffer(roSectionSize, objectFile.getByteOrder());
