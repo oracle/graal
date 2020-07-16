@@ -225,7 +225,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> MultiThreaded = new HostedOptionKey<>(true);
 
     @Option(help = "Use only a writable native image heap (requires ld.gold linker)")//
-    public static final HostedOptionKey<Boolean> UseOnlyWritableBootImageHeap = new HostedOptionKey<>(false);
+    public static final HostedOptionKey<Boolean> ForceNoROSectionRelocations = new HostedOptionKey<>(false);
 
     @Option(help = "Support multiple isolates.") //
     public static final HostedOptionKey<Boolean> SpawnIsolates = new HostedOptionKey<Boolean>(null) {
