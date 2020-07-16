@@ -613,7 +613,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         Symbol<Type>[] signature = getParsedSignature();
         if (!(Signatures.parameterCount(signature, false) == 1 &&
                         Signatures.parameterType(signature, 0) == Type.java_lang_Object_array &&
-                        (getContext().getJavaVersion() >= 9 || Signatures.returnType(signature) == Type.java_lang_Object))) {
+                        (getContext().getJavaVersion().newPolymorphicSignatures() || Signatures.returnType(signature) == Type.java_lang_Object))) {
             return false;
         }
         int required = ACC_NATIVE | ACC_VARARGS;

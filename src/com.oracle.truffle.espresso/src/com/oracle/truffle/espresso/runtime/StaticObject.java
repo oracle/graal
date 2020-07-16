@@ -912,7 +912,7 @@ public final class StaticObject implements TruffleObject {
         this.fields = lgk.getObjectFieldsCount() > 0 ? new Object[lgk.getObjectFieldsCount()] : null;
         this.primitiveFields = primitiveFieldCount > 0 ? new byte[primitiveFieldCount] : null;
         initInstanceFields(guestClass);
-        if (klass.getContext().modulesEnabled()) {
+        if (klass.getContext().getJavaVersion().modulesEnabled()) {
             setField(klass.getMeta().java_lang_Class_classLoader, klass.getDefiningClassLoader());
             setModule(klass);
         }
