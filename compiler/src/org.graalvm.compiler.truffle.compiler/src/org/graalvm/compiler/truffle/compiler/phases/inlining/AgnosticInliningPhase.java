@@ -35,7 +35,6 @@ import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
-import org.graalvm.options.OptionValues;
 
 public final class AgnosticInliningPhase extends BasePhase<CoreProviders> {
 
