@@ -235,7 +235,7 @@ Changes:
 * Removed support for implicit polyglot types for local variables
   as the availability of type information is not guaranteed.
   Explicit polyglot casts are now strictly required (`polyglot_as_typed`).
-  See [docs/INTEROP.md](docs/INTEROP.md) and [polyglot.h](projects/com.oracle.truffle.llvm.libraries.bitcode/include/polyglot.h)
+  See [docs/contributor/INTEROP.md](docs/contributor/INTEROP.md) and [polyglot.h](projects/com.oracle.truffle.llvm.libraries.bitcode/include/polyglot.h)
   for more details.
 * Support for IR-level tracing.
 * Preliminary support for LLVM 7.

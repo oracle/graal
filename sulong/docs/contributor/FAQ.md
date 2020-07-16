@@ -60,31 +60,38 @@ You can clean your workspace with `mx clean`. If you only want to clean
 Java or native projects you can use `mx clean` with the options
 `--no-native` or `--no-java`.
 
-## Eclipse
+## IDEs
 
-### How can I use Sulong with Eclipse?
+### How can I develop Sulong with Eclipse?
 
 In order to work with Eclipse, use `mx eclipseinit` to generate the
-Eclipse project files. Import not only the Sulong project, but also the
-Truffle project from `sulong-dev/graal/truffle`. You have the choice to
-either use remote debugging and launch Sulong in mx, or launch Sulong
-within Eclipse.
+Eclipse project files. Then import all projects into your workspace
+(File>Import>General, then select "Existing Projects into Workspace",
+then browse to your repository checkout).
 
-If you use Eclipse to launch Sulong, you have to ensure that all needed
-packages are on the classpath and all necessary options set. You can
-determine them by using `-v` in the mx Sulong command to make mx
-output information on how it executed the command.
+In addition to the Sulong projects, you also have to import its
+dependencies Truffle (from `workspace/graal/truffle`) and the GraalVM
+SDK (from `workspace/graal/sdk`).
 
-### How can I debug Sulong with Eclipse?
+### How can I develop Sulong with Netbeans?
 
-To debug the execution of a bitcode file in Eclipse, first start an mx
+For generating Netbeans project files, use `mx netbeansinit`. Then
+open the projects you are interested in (File>Open Project).
+
+### How can I develop Sulong with IntelliJ?
+
+IntelliJ project files can be generated with `mx intellijinit`.
+
+### How can I debug Sulong with my IDE?
+
+To debug the execution of a bitcode file in an IDE, first start an mx
 command with the `-d` flag, e.g.:
 
-    $ mx -d lli test.ll
-    Listening for transport dt_socket at address: 8000
+```
+$ mx -d lli test.ll
+Listening for transport dt_socket at address: 8000
+```
 
-In Eclipse, set a breakpoint, navigate to
-`Run->Debug->Remote Java Application` and select one
-of the debug configurations, e.g.,`truffle-attach-localhost-8000`.
-After clicking `Debug`, execution starts and the program should stop at
-the specified breakpoint.
+Then you can attach your IDE to the running Java process on port 8000.
+
+See also [Debugging the GraalVM Runtime](DEBUGGING.md).
