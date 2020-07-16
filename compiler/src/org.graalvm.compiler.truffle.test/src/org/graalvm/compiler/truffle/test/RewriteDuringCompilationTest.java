@@ -26,6 +26,7 @@ package org.graalvm.compiler.truffle.test;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -37,15 +38,16 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.ReplaceObserver;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
@@ -60,14 +62,11 @@ import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 public class RewriteDuringCompilationTest extends AbstractPolyglotTest {
-    private static volatile UpdateStaticFieldNode updateStaticFieldNode;
-    private static volatile LoopNode loopNode;
-
     abstract static class BaseNode extends Node {
         abstract Object execute(VirtualFrame frame);
     }
 
-    static final class UpdateStaticFieldNode extends BaseNode {
+    static final class DetectInvalidCodeNode extends BaseNode {
         private volatile boolean valid = true;
         private boolean invalidTwice = false;
 
@@ -99,7 +98,6 @@ public class RewriteDuringCompilationTest extends AbstractPolyglotTest {
 
         WhileLoopNode(Object loopCount, BaseNode child) {
             this.loop = Truffle.getRuntime().createLoopNode(new LoopConditionNode(loopCount, child));
-            loopNode = this.loop;
         }
 
         FrameSlot getLoopIndex() {
@@ -193,25 +191,23 @@ public class RewriteDuringCompilationTest extends AbstractPolyglotTest {
         }
     }
 
-    @Before
-    public void setUp() {
-        loopNode = null;
-        updateStaticFieldNode = null;
-    }
-
     @Test
     public void testRootCompilation() throws IOException, InterruptedException, ExecutionException {
-        testCompilation(updateStaticFieldNode = new UpdateStaticFieldNode(), 1000, 20);
+        DetectInvalidCodeNode detectInvalidCodeNode = new DetectInvalidCodeNode();
+        testCompilation(detectInvalidCodeNode, null, detectInvalidCodeNode, 1000, 20);
     }
 
     @Test
     public void testLoopCompilation() throws IOException, InterruptedException, ExecutionException {
-        testCompilation(new WhileLoopNode(10000000, updateStaticFieldNode = new UpdateStaticFieldNode()), 1000, 40);
+        DetectInvalidCodeNode detectInvalidCodeNode = new DetectInvalidCodeNode();
+        WhileLoopNode testedCode = new WhileLoopNode(10000000, detectInvalidCodeNode);
+        testCompilation(testedCode, testedCode.loop, detectInvalidCodeNode, 1000, 40);
     }
 
     private volatile boolean rewriting = false;
 
-    private void testCompilation(BaseNode testedCode, int rewriteCount, int maxDelayBeforeRewrite) throws IOException, InterruptedException, ExecutionException {
+    private void testCompilation(BaseNode testedCode, LoopNode loopNode, DetectInvalidCodeNode nodeToRewrite, int rewriteCount, int maxDelayBeforeRewrite)
+                    throws IOException, InterruptedException, ExecutionException {
         setupEnv(Context.create(), new ProxyLanguage() {
             private final List<CallTarget> targets = new LinkedList<>(); // To prevent from GC
 
@@ -238,6 +234,7 @@ public class RewriteDuringCompilationTest extends AbstractPolyglotTest {
             }
         });
 
+        AtomicReference<DetectInvalidCodeNode> nodeToRewriteReference = new AtomicReference<>(nodeToRewrite);
         Random rnd = new Random();
         CountDownLatch nodeRewritingLatch = new CountDownLatch(1);
         List<Object> callTargetsToCheck = new ArrayList<>();
@@ -251,12 +248,14 @@ public class RewriteDuringCompilationTest extends AbstractPolyglotTest {
                         nodeRewritingLatch.await();
                     } catch (InterruptedException ie) {
                     }
-                    Object loopNodeCallTarget = getLoopNodeCallTarget();
+                    Object loopNodeCallTarget = getLoopNodeCallTarget(loopNode);
                     if (loopNodeCallTarget != null) {
                         callTargetsToCheck.add(loopNodeCallTarget);
                     }
-                    UpdateStaticFieldNode previousNode = updateStaticFieldNode;
-                    updateStaticFieldNode.replace(updateStaticFieldNode = new UpdateStaticFieldNode());
+                    DetectInvalidCodeNode previousNode = nodeToRewriteReference.get();
+                    DetectInvalidCodeNode newNode = new DetectInvalidCodeNode();
+                    nodeToRewriteReference.set(newNode);
+                    previousNode.replace(newNode);
                     previousNode.valid = false;
                 }
             } finally {
@@ -283,14 +282,15 @@ public class RewriteDuringCompilationTest extends AbstractPolyglotTest {
         }
     }
 
-    private static Object getLoopNodeCallTarget() {
+    private static Object getLoopNodeCallTarget(LoopNode loopNode) {
         Object toRet = null;
-        if (loopNode != null && loopNode.getClass().getSuperclass() != null) {
+        if (loopNode instanceof ReplaceObserver) {
             try {
                 Field callTargetField = loopNode.getClass().getSuperclass().getDeclaredField("compiledOSRLoop");
                 callTargetField.setAccessible(true);
                 toRet = callTargetField.get(loopNode);
-            } catch (Exception e) {
+            } catch (NoSuchFieldException | IllegalAccessException e) {
+                throw new AssertionError("Unable to obtain OSR call target of a loop node!", e);
             }
         }
         return toRet;
@@ -302,7 +302,8 @@ public class RewriteDuringCompilationTest extends AbstractPolyglotTest {
             try {
                 Method isValidMethod = callTarget.getClass().getMethod("isValid");
                 toRet = (Boolean) isValidMethod.invoke(callTarget);
-            } catch (Exception e) {
+            } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+                throw new AssertionError("Unable to call isValid on OSR call target of a loop node!", e);
             }
         }
         return toRet;

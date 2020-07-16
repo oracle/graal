@@ -346,6 +346,17 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
     }
 
     /**
+     * @deprecated Use
+     *             {@link OptimizedOSRLoopNode#createOSRLoop(RepeatingNode, int, FrameSlot[], FrameSlot[])}
+     *             instead.
+     */
+    @SuppressWarnings("unused")
+    @Deprecated
+    public static OptimizedOSRLoopNode createOSRLoop(RepeatingNode repeating, int osrThreshold, int invalidationBackoff, FrameSlot[] readFrameSlots, FrameSlot[] writtenFrameSlots) {
+        return createOSRLoop(repeating, osrThreshold, readFrameSlots, writtenFrameSlots);
+    }
+
+    /**
      * Used by default in guest languages.
      */
     private static final class OptimizedDefaultOSRLoopNode extends OptimizedOSRLoopNode {
