@@ -94,6 +94,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         private Path fullFilePath;
         private final Path cachePath;
 
+        @SuppressWarnings("try")
         NativeImageDebugCodeInfo(HostedMethod method, CompilationResult compilation) {
             this.method = method;
             HostedType declaringClass = method.getDeclaringClass();
@@ -102,7 +103,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             this.compilation = compilation;
             SourceManager sourceManager = ImageSingletons.lookup(SourceManager.class);
             try (DebugContext.Scope s = debugContext.scope("DebugCodeInfo", declaringClass)) {
-                fullFilePath = ImageSingletons.lookup(SourceManager.class).findAndCacheSource(javaType, clazz, debugContext);
+                fullFilePath = sourceManager.findAndCacheSource(javaType, clazz, debugContext);
                 this.cachePath = sourceManager.getCachePathForSource(javaType);
             } catch (Throwable e) {
                 throw debugContext.handle(e);
@@ -300,6 +301,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             return -1;
         }
 
+        @SuppressWarnings("try")
         private void computeFullFilePathAndCachePath() {
             ResolvedJavaType declaringClass = method.getDeclaringClass();
             Class<?> clazz = null;
@@ -316,9 +318,10 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             if (declaringClass instanceof AnalysisType) {
                 declaringClass = ((AnalysisType) declaringClass).getWrapped();
             }
+            SourceManager sourceManager = ImageSingletons.lookup(SourceManager.class);
             try (DebugContext.Scope s = debugContext.scope("DebugCodeInfo", declaringClass)) {
-                fullFilePath = ImageSingletons.lookup(SourceManager.class).findAndCacheSource(declaringClass, clazz, debugContext);
-                cachePath = ImageSingletons.lookup(SourceManager.class).getCachePathForSource(declaringClass);
+                fullFilePath = sourceManager.findAndCacheSource(declaringClass, clazz, debugContext);
+                cachePath = sourceManager.getCachePathForSource(declaringClass);
             } catch (Throwable e) {
                 throw debugContext.handle(e);
             }
