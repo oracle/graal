@@ -97,12 +97,12 @@ public abstract class LLVMInteropReadNode extends LLVMNode {
         }
 
         @Specialization(guards = "isLocationTypeNullOrSameSize(location, accessType)", limit = "3")
-        Object readArrayElementTypeMatch(Object identifier, AccessLocation location, ForeignToLLVMType accessType,
+        Object readArrayElementTypeMatch(long identifier, AccessLocation location, ForeignToLLVMType accessType,
                         @CachedLibrary("location.base") InteropLibrary interop,
                         @Cached ToLLVM toLLVM,
                         @Cached BranchProfile exception) {
-            assert identifier == location.identifier;
-            long idx = (Long) location.identifier;
+            assert identifier == (Long) location.identifier;
+            long idx = identifier;
             try {
                 Object ret = interop.readArrayElement(location.base, idx);
                 return toLLVM.executeWithType(ret, location.type, accessType);
@@ -116,13 +116,14 @@ public abstract class LLVMInteropReadNode extends LLVMNode {
         }
 
         @Specialization(guards = {"!isLocationTypeNullOrSameSize(location, accessType)", "locationType.isI8()", "accessTypeSizeInBytes > 1"}, limit = "3")
-        Object readArrayElement(long identifier, AccessLocation location, ForeignToLLVMType accessType,
+        Object readArrayElementFromI8(long identifier, AccessLocation location, ForeignToLLVMType accessType,
                         @CachedLibrary("location.base") InteropLibrary interop,
                         @Cached ToLLVM toLLVM,
                         @Cached ReinterpretLongNode toLLVMNoConv,
                         @Cached BranchProfile exception,
                         @Bind("location.type.getKind().foreignToLLVMType") ForeignToLLVMType locationType,
                         @Bind("accessType.getSizeInBytes()") int accessTypeSizeInBytes) {
+            assert identifier == (Long) location.identifier;
             long idx = identifier;
             try {
                 assert locationType == ForeignToLLVMType.I8;
