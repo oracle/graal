@@ -29,10 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
-import java.util.function.Supplier;
-
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallArchPrctlNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallBrkNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallFutexNodeGen;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,7 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86;
 
-public class X86_64BitVarArgs {
+class X86_64BitVarArgs {
 
     // see http://www.x86-64.org/documentation/abi.pdf
 

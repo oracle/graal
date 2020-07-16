@@ -29,11 +29,8 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
-import java.util.function.Supplier;
-
 import com.oracle.truffle.llvm.runtime.LLVMSyscallEntry;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMUnsupportedSyscallNode;
 import com.oracle.truffle.llvm.runtime.types.Type;
 

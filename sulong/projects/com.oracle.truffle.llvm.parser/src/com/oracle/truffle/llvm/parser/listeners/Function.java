@@ -725,7 +725,7 @@ public final class Function implements ParserListener {
     }
 
     private void createVaArg(RecordBuffer buffer) {
-        Type vaListType = readType(buffer);
+        readType(buffer);
         int source = readIndex(buffer);
         Type type = readType(buffer);
         emit(VaArgInstruction.fromSymbols(scope.getSymbols(), type, source));

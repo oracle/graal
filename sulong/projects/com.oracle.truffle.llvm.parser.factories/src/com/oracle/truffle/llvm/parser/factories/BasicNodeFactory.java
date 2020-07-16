@@ -956,12 +956,17 @@ public class BasicNodeFactory implements NodeFactory {
     }
 
     protected boolean isVAListType(Type type) {
+        // If type == vaListType, it is an indication that createAlloca is called from the toNative
+        // message implementation to obtain the stack allocation node. The condition type !=
+        // vaListType prevents from obtaining another managed va_list factory node. See
+        // LLVMX86_64VaListStorage.
         return type != null && vaListType.equals(type) && type != vaListType;
     }
 
     @Override
     public LLVMExpressionNode createAlloca(Type type, int alignment) {
         if (isVAListType(type)) {
+            // Create a factory node for a managed va_list instead of the stack allocation node.
             return LLVMVAListNodeGen.create();
         } else {
             return createAllocaNative(type, alignment);
@@ -972,8 +977,7 @@ public class BasicNodeFactory implements NodeFactory {
         try {
             long byteSize = getByteSize(type);
             LLVMGetStackForConstInstruction alloc = LLVMAllocaConstInstructionNodeGen.create(byteSize, alignment, type);
-            LLVMExpressionNode allocaNode = createGetStackSpace(type, alloc, byteSize);
-            return allocaNode;
+            return createGetStackSpace(type, alloc, byteSize);
         } catch (TypeOverflowException e) {
             return Type.handleOverflowExpression(e);
         }

@@ -1,3 +1,32 @@
+/*
+ * Copyright (c) 2020, Oracle and/or its affiliates.
+ *
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without modification, are
+ * permitted provided that the following conditions are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright notice, this list of
+ * conditions and the following disclaimer.
+ *
+ * 2. Redistributions in binary form must reproduce the above copyright notice, this list of
+ * conditions and the following disclaimer in the documentation and/or other materials provided
+ * with the distribution.
+ *
+ * 3. Neither the name of the copyright holder nor the names of its contributors may be used to
+ * endorse or promote products derived from this software without specific prior written
+ * permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ * COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+ * GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+ * OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86;
 
 import java.util.ArrayList;
@@ -45,7 +74,6 @@ import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
 import com.oracle.truffle.llvm.runtime.types.StructureType;
 import com.oracle.truffle.llvm.runtime.types.Type;
-import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 
@@ -72,15 +100,25 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
     private LLVMPointer regSaveAreaPtr;
     private OverflowArgArea overflowArgArea;
 
-    LLVMNativePointer nativized;
+    private LLVMNativePointer nativized;
     private LLVMNativePointer overflowArgAreaBaseNativePtr;
-
-    public LLVMX86_64VaListStorage() {
-    }
 
     public boolean isNativized() {
         return nativized != null;
     }
+
+    // InteropLibrary implementation
+
+    /*
+     * The managed va_list can be accessed as an array, where the array elements correspond to the
+     * varargs, i.e. the explicit arguments are excluded.
+     *
+     * Further, the managed va_list exposes one invokable member 'get(index, type)'. The index
+     * argument identifies the argument in the va_list, while the type specifies the required type
+     * of the returned argument. In the case of a pointer argument, the pointer is just exported
+     * with the given type. For other argument types the appropriate conversion should be done
+     * (TODO).
+     */
 
     @SuppressWarnings("static-method")
     @ExportMessage
@@ -113,7 +151,9 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
                 }
                 Object arg = realArguments[numberOfExplicitArguments + i];
                 if (!(arg instanceof LLVMPointer)) {
-                    throw new IllegalArgumentException("The i-th argument must be a pointer");
+                    // TODO: Do some conversion if the type in the 2nd argument does not match the
+                    // arg's types
+                    return arg;
                 }
                 LLVMPointer ptrArg = (LLVMPointer) arg;
 
@@ -151,14 +191,20 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
         return realArguments[(int) index + numberOfExplicitArguments];
     }
 
+    // LLVMManagedReadLibrary implementation
+
+    /*
+     * The algorithm specified in https://refspecs.linuxbase.org/elf/x86_64-abi-0.99.pdf allows us
+     * to implement both LLVMManagedReadLibrary and LLVMManagedWriteLibrary quite sparsely, as only
+     * certain types and offsets are used.
+     */
+
     @ExportMessage(name = "isReadable")
     @ExportMessage(name = "isWritable")
     @SuppressWarnings("static-method")
     boolean isAccessible() {
         return true;
     }
-
-    // LLVMManagedReadLibrary implementation
 
     @SuppressWarnings("static-method")
     @ExportMessage
@@ -271,7 +317,7 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
             switch ((int) offset) {
                 case X86_64BitVarArgs.OVERFLOW_ARG_AREA:
                     // Assume that updating the overflowArea pointer means shifting the current
-                    // argument
+                    // argument, according to abi
                     vaList.overflowArgArea.shift();
                     break;
                 default:
@@ -437,7 +483,7 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
     static class Copy {
 
         @Specialization(guards = {"!source.isNativized()"})
-        static void copyManaged(LLVMX86_64VaListStorage source, LLVMX86_64VaListStorage dest) {
+        static void copyManaged(LLVMX86_64VaListStorage source, LLVMX86_64VaListStorage dest, @SuppressWarnings("unused") int numberOfExplicitArguments) {
             dest.realArguments = source.realArguments;
             dest.numberOfExplicitArguments = source.numberOfExplicitArguments;
             dest.initFPOffset = source.initFPOffset;
@@ -452,12 +498,12 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
         }
 
         @Specialization(guards = {"source.isNativized()"})
-        static void copyNative(LLVMX86_64VaListStorage source, LLVMX86_64VaListStorage dest, @CachedLibrary("source") LLVMManagedReadLibrary srcReadLib) {
+        static void copyNative(LLVMX86_64VaListStorage source, LLVMX86_64VaListStorage dest, int numberOfExplicitArguments, @CachedLibrary("source") LLVMManagedReadLibrary srcReadLib) {
 
             // The destination va_list will be in the managed state, even if the source has been
             // nativized. We need to read some state from the native memory, though.
 
-            copyManaged(source, dest);
+            copyManaged(source, dest, numberOfExplicitArguments);
 
             dest.fpOffset = srcReadLib.readI32(source, X86_64BitVarArgs.FP_OFFSET);
             dest.gpOffset = srcReadLib.readI32(source, X86_64BitVarArgs.GP_OFFSET);
@@ -479,6 +525,9 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
         return (int) shiftCnt;
     }
 
+    /**
+     * This is the implementation of the {@code va_arg} instruction.
+     */
     @SuppressWarnings("static-method")
     @ExportMessage
     Object shift(Type type,
@@ -700,6 +749,9 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
         return nativized == null ? 0L : nativized.asNative();
     }
 
+    /**
+     * An abstraction for the two special areas in the va_list structure.
+     */
     @ExportLibrary(LLVMManagedReadLibrary.class)
     static abstract class ArgsArea {
         final Object[] args;
