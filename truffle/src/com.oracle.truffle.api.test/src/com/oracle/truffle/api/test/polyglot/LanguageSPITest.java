@@ -527,6 +527,12 @@ public class LanguageSPITest {
                         try {
                             // execute Truffle code in a fresh thread fails
                             env.parsePublic(source).call();
+                        } catch (AssertionError ae) {
+                            if ("invalid sharing".equals(ae.getMessage())) {
+                                parsingFailed = true;
+                            } else {
+                                throw ae;
+                            }
                         } catch (IllegalStateException e) {
                             // No current context available.
                             parsingFailed = true;

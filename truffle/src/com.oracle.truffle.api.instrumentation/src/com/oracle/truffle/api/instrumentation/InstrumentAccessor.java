@@ -160,6 +160,8 @@ final class InstrumentAccessor extends Accessor {
 
         @Override
         public void onFirstExecution(RootNode rootNode) {
+            assert InstrumentAccessor.engineAccess().isHostToGuestRootNode(rootNode) ||
+                            InstrumentAccessor.engineAccess().getCurrentPolyglotEngine() == InstrumentAccessor.nodesAccess().getPolyglotEngine(rootNode) : "invalid sharing";
             InstrumentationHandler handler = getHandler(rootNode);
             if (handler != null) {
                 handler.onFirstExecution(rootNode);
