@@ -367,6 +367,11 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             potentialCauses.add("Native Image is using a linker that appears to be incompatible with the tool chain used to build the JDK static libraries. " +
                             "The latter is typically shown in the output of `java -Xinternalversion`.");
         }
+        if (SubstrateOptions.UseOnlyWritableBootImageHeap.getValue() && (linkerOutput.contains("fatal error: cannot find ") ||
+                        linkerOutput.contains("error: invalid linker name in argument"))) {
+            potentialCauses.add("`UseOnlyWritableBootImageHeap` option cannot be used if ld.gold linker is missing from the host system");
+        }
+
         Pattern p = Pattern.compile(".*cannot find -l([^\\s]+)\\s.*", Pattern.DOTALL);
         Matcher m = p.matcher(linkerOutput);
         if (m.matches()) {
@@ -449,7 +454,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
         }
         buf.format("Linker command executed:%n%s", commandLine);
         if (output != null) {
-            buf.format("%n%nLinker command ouput:%n%s", output);
+            buf.format("%n%nLinker command output:%n%s", output);
         }
         throw new RuntimeException(buf.toString());
     }
