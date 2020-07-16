@@ -2595,5 +2595,14 @@ public final class VM extends NativeEnv implements ContextAccess {
         return getContext().hasReferencePendingList();
     }
 
+    @VmImpl
+    @JniImpl
+    public void JVM_InitializeFromArchive(@Host(Class.class) StaticObject cls) {
+        /*
+         * Used to reduce boot time of certain initializations through CDS (/ex: module
+         * initialization). Currently unsupported.
+         */
+    }
+
     // Checkstyle: resume method name check
 }

@@ -1373,7 +1373,8 @@ JNIEXPORT jstring JNICALL JVM_InitClassName(JNIEnv *env, jclass cls) {
 }
 
 JNIEXPORT void JNICALL JVM_InitializeFromArchive(JNIEnv* env, jclass cls) {
-  UNIMPLEMENTED(JVM_InitializeFromArchive);
+  IMPLEMENTED(JVM_InitializeFromArchive);
+  (*getEnv())->JVM_InitializeFromArchive(env, cls);
   return;
 }
 
