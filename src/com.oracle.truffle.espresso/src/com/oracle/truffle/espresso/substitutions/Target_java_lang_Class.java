@@ -732,7 +732,7 @@ public final class Target_java_lang_Class {
     }
 
     @Substitution(hasReceiver = true, methodName = "getConstantPool")
-    public static @Host(typeName = "Ljdk/internal/reflect/ConstantPool;") StaticObject getConstantPool_11(@Host(Class.class) StaticObject self,
+    public static @Host(typeName = "Ljdk/internal/reflect/ConstantPool;") StaticObject getConstantPool11(@Host(Class.class) StaticObject self,
                     @InjectMeta Meta meta) {
         return getConstantPool(self, meta);
     }
