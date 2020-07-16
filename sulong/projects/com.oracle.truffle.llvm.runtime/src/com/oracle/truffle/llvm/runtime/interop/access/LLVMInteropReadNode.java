@@ -144,57 +144,58 @@ public abstract class LLVMInteropReadNode extends LLVMNode {
             }
         }
 
-        @GenerateUncached
-        abstract static class ReinterpretLongAsLLVM extends LLVMNode {
-            abstract Object executeWithAccessType(long value, ForeignToLLVMType accessType);
-
-            @Specialization(guards = "accessType.isI16()")
-            short toI16(long value, @SuppressWarnings("unused") ForeignToLLVMType accessType) {
-                return (short) value;
-            }
-
-            @Specialization(guards = "accessType.isI32()")
-            int toI32(long value, @SuppressWarnings("unused") ForeignToLLVMType accessType) {
-                return (int) value;
-            }
-
-            @Specialization(guards = "accessType.isI64()")
-            long toI64(long value, @SuppressWarnings("unused") ForeignToLLVMType accessType) {
-                return value;
-            }
-
-            @Specialization(guards = "accessType.isFloat()")
-            float toFloat(long value, @SuppressWarnings("unused") ForeignToLLVMType accessType) {
-                return Float.intBitsToFloat((int) value);
-            }
-
-            @Specialization(guards = "accessType.isDouble()")
-            double toDouble(long value, @SuppressWarnings("unused") ForeignToLLVMType accessType) {
-                return Double.longBitsToDouble(value);
-            }
-
-            @Specialization(guards = "accessType.isPointer()")
-            Object toPointer(long value, @SuppressWarnings("unused") ForeignToLLVMType accessType) {
-                return LLVMNativePointer.create(value);
-            }
-
-            @Fallback
-            Object fallback(@SuppressWarnings("unused") long value, ForeignToLLVMType accessType) {
-                CompilerDirectives.transferToInterpreter();
-                throw new LLVMPolyglotException(this, "Unexpected access type %s", accessType);
-            }
-
-        }
-
         static boolean isLocationTypeNullOrSameSize(AccessLocation location, ForeignToLLVMType accessType) {
             return location.type == null || location.type.getKind().foreignToLLVMType.getSizeInBytes() == accessType.getSizeInBytes();
         }
 
         @Fallback
-        Object fallback(@SuppressWarnings("unused") Object identifier, @SuppressWarnings("unused") AccessLocation location, @SuppressWarnings("unused") ForeignToLLVMType accessType) {
-            CompilerDirectives.transferToInterpreter();
+        Object fallback(@SuppressWarnings("unused") Object identifier, AccessLocation location, ForeignToLLVMType accessType) {
             assert location.type != null;
-            throw new LLVMPolyglotException(this, "Cannot read " + accessType.getSizeInBytes() + " byte(s) from foreign object of size " + location.type.getKind().foreignToLLVMType.getSizeInBytes());
+            throw new LLVMPolyglotException(this, "Cannot read %d byte(s) from foreign object of element size %d", accessType.getSizeInBytes(),
+                            location.type.getKind().foreignToLLVMType.getSizeInBytes());
         }
     }
+
+    @GenerateUncached
+    abstract static class ReinterpretLongAsLLVM extends LLVMNode {
+        abstract Object executeWithAccessType(long value, ForeignToLLVMType accessType);
+
+        @Specialization(guards = "accessType.isI16()")
+        short toI16(long value, @SuppressWarnings("unused") ForeignToLLVMType accessType) {
+            return (short) value;
+        }
+
+        @Specialization(guards = "accessType.isI32()")
+        int toI32(long value, @SuppressWarnings("unused") ForeignToLLVMType accessType) {
+            return (int) value;
+        }
+
+        @Specialization(guards = "accessType.isI64()")
+        long toI64(long value, @SuppressWarnings("unused") ForeignToLLVMType accessType) {
+            return value;
+        }
+
+        @Specialization(guards = "accessType.isFloat()")
+        float toFloat(long value, @SuppressWarnings("unused") ForeignToLLVMType accessType) {
+            return Float.intBitsToFloat((int) value);
+        }
+
+        @Specialization(guards = "accessType.isDouble()")
+        double toDouble(long value, @SuppressWarnings("unused") ForeignToLLVMType accessType) {
+            return Double.longBitsToDouble(value);
+        }
+
+        @Specialization(guards = "accessType.isPointer()")
+        Object toPointer(long value, @SuppressWarnings("unused") ForeignToLLVMType accessType) {
+            return LLVMNativePointer.create(value);
+        }
+
+        @Fallback
+        Object fallback(@SuppressWarnings("unused") long value, ForeignToLLVMType accessType) {
+            CompilerDirectives.transferToInterpreter();
+            throw new LLVMPolyglotException(this, "Unexpected access type %s", accessType);
+        }
+
+    }
+
 }
