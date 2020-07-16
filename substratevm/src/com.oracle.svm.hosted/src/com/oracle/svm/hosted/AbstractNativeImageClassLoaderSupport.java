@@ -77,26 +77,13 @@ public abstract class AbstractNativeImageClassLoaderSupport {
     protected final URLClassLoader classPathClassLoader;
     protected final ClassLoader defaultSystemClassLoader;
 
-    private static NativeImageSystemClassLoader nativeImageSystemClassLoader() {
-        if (!(ClassLoader.getSystemClassLoader() instanceof NativeImageSystemClassLoader)) {
-            String badCustomClassLoaderError = "SystemClassLoader is the default system class loader. This might create problems when using reflection " +
-                            "during class initialization at build-time. " +
-                            "To fix this error add -Djava.system.class.loader=" + NativeImageSystemClassLoader.class.getCanonicalName();
-            UserError.abort(badCustomClassLoaderError);
-        }
-
-        return (NativeImageSystemClassLoader) ClassLoader.getSystemClassLoader();
-    }
-
-    protected AbstractNativeImageClassLoaderSupport(String[] classpath) {
+    protected AbstractNativeImageClassLoaderSupport(NativeImageSystemClassLoader nativeImageSystemClassLoader, String[] classpath) {
 
         /*
          * Make system class loader delegate to NativeImageClassLoader, enabling resolution of
          * classes and resources during image build-time present in the image classpath.
          */
-        nativeImageSystemClassLoader = nativeImageSystemClassLoader();
-        nativeImageSystemClassLoader.setDelegate(this);
-
+        this.nativeImageSystemClassLoader = nativeImageSystemClassLoader;
         defaultSystemClassLoader = nativeImageSystemClassLoader.getDefaultSystemClassLoader();
         classPathClassLoader = new URLClassLoader(Util.verifyClassPathAndConvertToURLs(classpath), defaultSystemClassLoader);
 
