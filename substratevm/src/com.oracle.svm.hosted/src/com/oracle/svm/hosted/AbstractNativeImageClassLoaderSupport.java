@@ -43,6 +43,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.security.SecureClassLoader;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
@@ -115,7 +116,7 @@ public abstract class AbstractNativeImageClassLoaderSupport {
         return Class.forName(className, false, classPathClassLoader);
     }
 
-    public ClassLoader getClassLoader() {
+    public SecureClassLoader getClassLoader() {
         return classPathClassLoader;
     }
 

@@ -29,6 +29,7 @@ import java.lang.module.Configuration;
 import java.lang.module.ModuleFinder;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.SecureClassLoader;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -46,7 +47,7 @@ public class NativeImageClassLoaderSupport extends AbstractNativeImageClassLoade
     private final List<Path> imagemp;
     private final List<Path> buildmp;
 
-    private final ClassLoader classLoader;
+    private final SecureClassLoader classLoader;
     private final Function<String, Optional<Module>> moduleFinder;
     private final ModuleLayer.Controller moduleController;
 
@@ -62,7 +63,11 @@ public class NativeImageClassLoaderSupport extends AbstractNativeImageClassLoade
             classLoader = classPathClassLoader;
             moduleFinder = null;
         } else {
-            classLoader = moduleLayer.modules().iterator().next().getClassLoader();
+            /*
+             * java.lang.ModuleLayer.defineModulesWithOneLoader creates a jdk.internal.loader.Loader
+             * which is a SecureClassLoader.
+             */
+            classLoader = (SecureClassLoader) moduleLayer.modules().iterator().next().getClassLoader();
             moduleFinder = moduleLayer::findModule;
         }
     }
@@ -104,7 +109,7 @@ public class NativeImageClassLoaderSupport extends AbstractNativeImageClassLoade
         return clazz;
     }
 
-    public ClassLoader getClassLoader() {
+    public SecureClassLoader getClassLoader() {
         return classLoader;
     }
 
