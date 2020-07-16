@@ -378,7 +378,7 @@ final class Runner {
                 }
 
                 if (context.isLibraryAlreadyLoaded(bitcodeID)) {
-                    return null;
+                    return resultScope;
                 }
 
                 /*
@@ -558,6 +558,7 @@ final class Runner {
             LLVMScope scope = loadModule(frame, context);
 
             if (frame.getArguments().length == 0 || !(frame.getArguments()[0] instanceof LLVMLoadingPhase)) {
+                assert scope != null;
                 return new SulongLibrary(sourceName, scope, mainFunctionCallTarget, context);
             }
 
