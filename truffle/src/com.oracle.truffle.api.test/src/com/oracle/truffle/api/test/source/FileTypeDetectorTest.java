@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -259,6 +259,7 @@ public class FileTypeDetectorTest extends AbstractPolyglotTest {
         File seconda = createTmpFile("test", "." + SecondLanguage.EXT_A, "");
         File secondb = createTmpFile("test", "." + SecondLanguage.EXT_B, "");
 
+        AbstractFileTypeDetector.active = true;
         FirstFileTypeDetector.events.clear();
         SecondFileTypeDetector.events.clear();
         com.oracle.truffle.api.source.Source.newBuilder(FirstLanguage.LANG_ID, languageEnv.getPublicTruffleFile(firsta.getAbsolutePath())).build();
@@ -282,6 +283,7 @@ public class FileTypeDetectorTest extends AbstractPolyglotTest {
         Assert.assertEquals(1, SecondFileTypeDetector.events.stream().filter((e) -> e.getType() == AbstractFileTypeDetector.Event.Type.MIME).count());
         Assert.assertEquals(1, SecondFileTypeDetector.events.stream().filter((e) -> e.getType() == AbstractFileTypeDetector.Event.Type.ENCODING).count());
         SecondFileTypeDetector.events.clear();
+        AbstractFileTypeDetector.active = false;
     }
 
     private static File createTmpFile(String name, String ext, String... content) throws IOException {
@@ -299,6 +301,7 @@ public class FileTypeDetectorTest extends AbstractPolyglotTest {
 
     public static class AbstractFileTypeDetector implements TruffleFile.FileTypeDetector {
 
+        static volatile boolean active = false;
         private final List<? super Event> sink;
         private final Map<String, String> mimeTypes;
 
@@ -309,7 +312,9 @@ public class FileTypeDetectorTest extends AbstractPolyglotTest {
 
         @Override
         public String findMimeType(TruffleFile file) throws IOException {
-            sink.add(new Event(Event.Type.MIME, file));
+            if (active) {
+                sink.add(new Event(Event.Type.MIME, file));
+            }
             String name = file.getName();
             if (name != null) {
                 for (Map.Entry<String, String> e : mimeTypes.entrySet()) {
@@ -323,7 +328,9 @@ public class FileTypeDetectorTest extends AbstractPolyglotTest {
 
         @Override
         public Charset findEncoding(TruffleFile file) throws IOException {
-            sink.add(new Event(Event.Type.ENCODING, file));
+            if (active) {
+                sink.add(new Event(Event.Type.ENCODING, file));
+            }
             return null;
         }
 
