@@ -30,6 +30,7 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 import java.util.EnumSet;
 import java.util.Set;
+import jdk.vm.ci.services.Services;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.serviceprovider.IsolateUtil;
 import org.graalvm.libgraal.jni.JNI.JArray;
@@ -317,6 +318,7 @@ public final class JNIUtil {
         if (classLoader.isNull()) {
             throw new IllegalArgumentException("ClassLoader must be non null.");
         }
+        trace(1, "LIBGRAAL->HS: findClass");
         JNI.JMethodID findClassId = findMethod(env, JNIUtil.GetObjectClass(env, classLoader), false, false, METHOD_LOAD_CLASS);
         JNI.JValue params = StackValue.get(1, JNI.JValue.class);
         params.addressOf(0).setJObject(JNIUtil.createHSString(env, binaryName.replace('/', '.')));
@@ -369,32 +371,19 @@ public final class JNIUtil {
 
     private static Integer traceLevel;
 
-    private static final String JNI_LIBGRAAL_TRACE_LEVEL_ENV_VAR_NAME = "JNI_LIBGRAAL_TRACE_LEVEL";
+    private static final String JNI_LIBGRAAL_TRACE_LEVEL_PROPERTY_NAME = "JNI_LIBGRAAL_TRACE_LEVEL";
 
     /**
      * Checks if JNI calls are verbose.
      */
     private static int traceLevel() {
         if (traceLevel == null) {
-            String var;
-            try {
-                var = System.getenv(JNI_LIBGRAAL_TRACE_LEVEL_ENV_VAR_NAME);
-            } catch (LinkageError le) {
-                // The LinkageError caused by a NullPointerException in the
-                // ProcessEnvironment.<clinit>
-                // can be thrown when the call to the native ProcessEnvironment.environ returns null
-                // variable name.
-                // When this happens set the traceLevel to 0.
-                var = null;
-            } catch (Throwable t) {
-                TTY.printf("Unexpected exception %s while reading environment variable %s%n", t, JNI_LIBGRAAL_TRACE_LEVEL_ENV_VAR_NAME);
-                var = null;
-            }
+            String var = Services.getSavedProperties().get(JNI_LIBGRAAL_TRACE_LEVEL_PROPERTY_NAME);
             if (var != null) {
                 try {
                     traceLevel = Integer.parseInt(var);
                 } catch (NumberFormatException e) {
-                    TTY.printf("Invalid value for %s: %s%n", JNI_LIBGRAAL_TRACE_LEVEL_ENV_VAR_NAME, e);
+                    TTY.printf("Invalid value for %s: %s%n", JNI_LIBGRAAL_TRACE_LEVEL_PROPERTY_NAME, e);
                     traceLevel = 0;
                 }
             } else {
