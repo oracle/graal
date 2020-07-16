@@ -28,10 +28,20 @@ package com.oracle.truffle.espresso.polyglot;
  * Allows Espresso to interact with other Truffle languages by {@link #eval evaluating} code in a
  * different language, {@link #importObject importing} symbols, exported by other languages and
  * making Espresso objects available to other languages by {@link #exportObject exporting} them.
- * </p>
- *
- * NB: At runtime, the method implementations are substituted, only the definitions of this class
- * are used.
+ * <p>
+ * Foreign objects are returned wrapped in {@link Object}. There are two options to make their
+ * members accessible from Espresso:
+ * <ul>
+ * <li>{@link Polyglot#cast Polyglot.cast} the object to a Java interface. In this case, the method
+ * calls will be forwarded to the underlying foreign object.
+ * <li>{@link Polyglot#cast Polyglot.cast} the object to a Java class. In this case, the Java
+ * implementations of the methods will be used, and field accesses will be forwarded to the
+ * underlying foreign object.
+ * </ul>
+ * Casting to abstract classes is not supported.
+ * <p>
+ * NB: if Espresso is running on GraalVM, the method implementations of this class are substituted.
+ * Otherwise multi-language environment is not available.
  */
 public final class Polyglot {
     private Polyglot() {
@@ -46,14 +56,30 @@ public final class Polyglot {
     }
 
     /**
-     * If {@code value} is a foreign object, changes its type to {@code targetClass}. The existence
-     * of methods, defined in {@code targetClass}, is not verified and if a method does not exist,
-     * an exception will be thrown only when this method is invoked.
+     * If {@code value} is a {@link Polyglot#isForeignObject foreign} object:
+     * <ul>
+     * <li>if {@code targetClass} is a primitive class, performs the conversion and returns the
+     * result as a boxed type.
+     * <li>if {@code targetClass} is a (non-abstract) class, checks that all the fields, defined in
+     * the class, exist in the foreign object. Returns the foreign object, wrapped in
+     * {@code targetClass}.
+     * <li>if {@code targetClass} is an interface, changes its type to {@code targetClass}. The
+     * existence of methods, defined in {@code targetClass}, is not verified and if a method does
+     * not exist, an exception will be thrown only when this method is invoked. Returns the foreign
+     * object, wrapped in {@code targetClass}.
+     * </ul>
      * <p>
      * If {@code value} is a regular Espresso object, performs {@link Class#cast checkcast}.
      *
-     * @throws ClassCastException if {@code value} is a regular Espresso object and cannot be cast
-     *             to {@code targetClass}.
+     * @throws ClassCastException
+     *             <ul>
+     *             <li>if {@code value} is a a foreign object, {@code targetClass} is a primitive
+     *             type but {@code value} does not represent an object of this primitive type
+     *             <li>if {@code value} is a a foreign object, {@code targetClass} is a class and a
+     *             field of {@code targetClass} does not exist in the object
+     *             <li>if {@code value} is a regular Espresso object and cannot be cast to
+     *             {@code targetClass}
+     *             </ul>
      */
     public static <T> T cast(Class<? extends T> targetClass, Object value) throws ClassCastException {
         return targetClass.cast(value);
