@@ -119,7 +119,7 @@ public abstract class LLVMInteropReadNode extends LLVMNode {
         Object readArrayElementFromI8(long identifier, AccessLocation location, ForeignToLLVMType accessType,
                         @CachedLibrary("location.base") InteropLibrary interop,
                         @Cached ToLLVM toLLVM,
-                        @Cached ReinterpretLongNode toLLVMNoConv,
+                        @Cached ReinterpretLongAsLLVM fromLongToLLVM,
                         @Cached BranchProfile exception,
                         @Bind("location.type.getKind().foreignToLLVMType") ForeignToLLVMType locationType,
                         @Bind("accessType.getSizeInBytes()") int accessTypeSizeInBytes) {
@@ -134,7 +134,7 @@ public abstract class LLVMInteropReadNode extends LLVMNode {
                     Object toLLVMValue = toLLVM.executeWithType(ret, LLVMInteropType.ValueKind.I8.type, LLVMInteropType.ValueKind.I8.foreignToLLVMType);
                     res |= Byte.toUnsignedLong((byte) toLLVMValue) << (8 * i);
                 }
-                return toLLVMNoConv.executeWithAccessType(res, accessType);
+                return fromLongToLLVM.executeWithAccessType(res, accessType);
             } catch (InvalidArrayIndexException ex) {
                 exception.enter();
                 throw new LLVMPolyglotException(this, "Invalid array index %d", idx);
@@ -145,7 +145,7 @@ public abstract class LLVMInteropReadNode extends LLVMNode {
         }
 
         @GenerateUncached
-        abstract static class ReinterpretLongNode extends LLVMNode {
+        abstract static class ReinterpretLongAsLLVM extends LLVMNode {
             abstract Object executeWithAccessType(long value, ForeignToLLVMType accessType);
 
             @Specialization(guards = "accessType.isI16()")
