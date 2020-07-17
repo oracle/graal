@@ -373,7 +373,7 @@ suite = {
           "file:../sulong/patches/*",
         ],
         "./patches/native-image/" : [
-          # "file:../substratevm/patches/*"
+          "file:../substratevm/patches/*"
         ],
       },
       "platformDependent" : True,

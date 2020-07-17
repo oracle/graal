@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,12 +29,9 @@
  */
 package com.oracle.truffle.llvm.tests.interop.values;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
@@ -42,12 +39,12 @@ import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
 @ExportLibrary(NativeTypeLibrary.class)
 @ExportLibrary(InteropLibrary.class)
 @SuppressWarnings("static-method")
-public final class DoubleArrayObject implements TruffleObject {
+public final class TypedArrayObject implements TruffleObject {
 
-    final double[] array;
+    final Object[] array;
     final Object type;
 
-    public DoubleArrayObject(Object type, double... array) {
+    public TypedArrayObject(Object type, Object... array) {
         this.array = array;
         this.type = type;
     }
@@ -67,15 +64,11 @@ public final class DoubleArrayObject implements TruffleObject {
         return true;
     }
 
-    @ExportMessage
-    long getArraySize() {
-        return array.length;
-    }
-
     @ExportMessage(name = "isArrayElementReadable")
     @ExportMessage(name = "isArrayElementModifiable")
-    boolean hasArrayElement(long idx) {
-        return Long.compareUnsigned(idx, array.length) < 0;
+    @ExportMessage(name = "isArrayElementRemovable")
+    boolean inBounds(long idx) {
+        return 0 <= idx && idx < array.length;
     }
 
     @ExportMessage
@@ -83,19 +76,32 @@ public final class DoubleArrayObject implements TruffleObject {
         return false;
     }
 
-    @ExportMessage
-    double readArrayElement(long idx) {
-        return array[(int) idx];
+    @ExportMessage(name = "readArrayElement")
+    public Object get(long i) throws InvalidArrayIndexException {
+        if (!inBounds(i)) {
+            throw InvalidArrayIndexException.create(i);
+        }
+        return array[(int) i];
     }
 
-    @ExportMessage(limit = "3")
-    void writeArrayElement(long idx, Object value,
-                    @CachedLibrary("value") InteropLibrary interop) throws UnsupportedTypeException {
-        try {
-            array[(int) idx] = interop.asDouble(value);
-        } catch (UnsupportedMessageException ex) {
-            CompilerDirectives.transferToInterpreter();
-            throw UnsupportedTypeException.create(new Object[]{value});
+    @ExportMessage
+    void writeArrayElement(long idx, Object value) throws InvalidArrayIndexException {
+        if (!inBounds(idx)) {
+            throw InvalidArrayIndexException.create(idx);
         }
+        array[(int) idx] = value;
+    }
+
+    @ExportMessage
+    void removeArrayElement(long idx) throws InvalidArrayIndexException {
+        if (!inBounds(idx)) {
+            throw InvalidArrayIndexException.create(idx);
+        }
+        array[(int) idx] = "<removed>";
+    }
+
+    @ExportMessage
+    long getArraySize() {
+        return array.length;
     }
 }

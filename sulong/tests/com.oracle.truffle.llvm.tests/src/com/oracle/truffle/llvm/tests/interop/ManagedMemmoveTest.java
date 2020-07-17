@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -70,8 +70,8 @@ public final class ManagedMemmoveTest extends ManagedMemAccessTestBase {
 
     @Test
     public void memmove(@Inject(DoMemmoveNode.class) CallTarget doMemmove) {
-        Object srcType = types[srcTestType.ordinal()];
-        Object dstType = types[dstTestType.ordinal()];
+        Object srcType = getTypeID(srcTestType);
+        Object dstType = getTypeID(dstTestType);
 
         final int arrayLength = 8;
         int size = arrayLength * srcTestType.elementSize;
@@ -85,7 +85,7 @@ public final class ManagedMemmoveTest extends ManagedMemAccessTestBase {
                 src[i] = i;
             }
             srcArray = src;
-            srcObject = new DoubleArrayObject(src, srcType);
+            srcObject = new DoubleArrayObject(srcType, src);
         } else {
             // integer
             long[] src = new long[arrayLength];
@@ -93,7 +93,7 @@ public final class ManagedMemmoveTest extends ManagedMemAccessTestBase {
                 src[i] = i;
             }
             srcArray = src;
-            srcObject = new LongArrayObject(src, srcType);
+            srcObject = new LongArrayObject(srcType, src);
         }
 
         byte[] srcBytes = serialize(srcTestType, srcArray);
@@ -104,12 +104,12 @@ public final class ManagedMemmoveTest extends ManagedMemAccessTestBase {
             // float or double
             double[] dst = new double[size / dstTestType.elementSize];
             dstArray = dst;
-            dstObject = new DoubleArrayObject(dst, dstType);
+            dstObject = new DoubleArrayObject(dstType, dst);
         } else {
             // integer
             long[] dst = new long[size / dstTestType.elementSize];
             dstArray = dst;
-            dstObject = new LongArrayObject(dst, dstType);
+            dstObject = new LongArrayObject(dstType, dst);
         }
 
         doMemmove.call(dstObject, srcObject, size);
