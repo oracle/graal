@@ -288,17 +288,32 @@ public class LanguageSPITest {
     static class Interrupted extends TruffleException {
 
         @ExportMessage
+        public boolean isException() {
+            return true;
+        }
+
+        @ExportMessage
+        public boolean isExceptionCatchable() {
+            return true;
+        }
+
+        @ExportMessage
         public ExceptionType getExceptionType() {
             return ExceptionType.CANCEL;
         }
 
-        @Override
-        public Node getLocation() {
-            return null;
+        @ExportMessage
+        public int getExceptionExitStatus() {
+            return 0;
+        }
+
+        @ExportMessage
+        public RuntimeException throwException() {
+            throw this;
         }
     }
 
-    @SuppressWarnings({"serial", "deprecation"})
+    @SuppressWarnings({"serial"})
     @ExportLibrary(InteropLibrary.class)
     static final class ParseException extends TruffleException {
         private final Source source;
@@ -313,18 +328,40 @@ public class LanguageSPITest {
         }
 
         @ExportMessage
+        public boolean isException() {
+            return true;
+        }
+
+        @ExportMessage
+        public boolean isExceptionCatchable() {
+            return true;
+        }
+
+        @ExportMessage
         public ExceptionType getExceptionType() {
             return ExceptionType.SYNTAX_ERROR;
         }
 
-        @Override
-        public Node getLocation() {
-            return null;
+        @ExportMessage
+        public int getExceptionExitStatus() {
+            return 0;
         }
 
-        @Override
-        @ExportMessage.Ignore
-        public SourceSection getSourceLocation() {
+        @ExportMessage
+        public RuntimeException throwException() {
+            throw this;
+        }
+
+        @ExportMessage
+        public boolean hasSourceLocation() {
+            return source != null;
+        }
+
+        @ExportMessage(name = "getSourceLocation")
+        public SourceSection sourceLocation() throws UnsupportedMessageException {
+            if (source == null) {
+                throw UnsupportedMessageException.create();
+            }
             return source.createSection(start, length);
         }
     }

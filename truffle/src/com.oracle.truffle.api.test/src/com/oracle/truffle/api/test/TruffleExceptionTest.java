@@ -290,15 +290,16 @@ public class TruffleExceptionTest extends AbstractPolyglotTest {
 
         @ExportMessage
         public boolean hasSourceLocation() {
-            return location != null;
+            return location != null && location.getEncapsulatingSourceSection() != null;
         }
 
         @ExportMessage(name = "getSourceLocation")
         public SourceSection sourceLocation() throws UnsupportedMessageException {
-            if (location == null) {
+            SourceSection res;
+            if (location == null || ((res = location.getEncapsulatingSourceSection()) == null)) {
                 throw UnsupportedMessageException.create();
             }
-            return location.getEncapsulatingSourceSection();
+            return res;
         }
     }
 

@@ -177,10 +177,6 @@ public class RootNodeTest {
         TestException(VirtualFrame frame) {
             this.frame = frame.materialize();
         }
-
-        public Node getLocation() {
-            return null;
-        }
     }
 
     class TestRootNode3 extends RootNode {

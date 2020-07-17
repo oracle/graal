@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.debug;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -52,6 +53,8 @@ import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.debug.SuspendedEvent.DebugAsyncStackFrameLists;
 import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -305,12 +308,13 @@ public final class DebugException extends RuntimeException {
      * @return the thrown location, or <code>null</code> when the thrown location is not known.
      * @since 19.0
      */
-    @SuppressWarnings("deprecation")
     public SourceSection getThrowLocation() {
-        if (isTruffleException(exception)) {
-            SourceSection location = ((com.oracle.truffle.api.TruffleException) exception).getSourceLocation();
-            if (location != null) {
-                return location;
+        InteropLibrary interop = InteropLibrary.getUncached();
+        if (interop.isException(exception) && interop.hasSourceLocation(exception)) {
+            try {
+                return interop.getSourceLocation(exception);
+            } catch (UnsupportedMessageException ume) {
+                CompilerDirectives.shouldNotReachHere(ume);
             }
         }
         if (throwLocation != null) {

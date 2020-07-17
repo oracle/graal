@@ -101,7 +101,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.GCUtils;
@@ -166,16 +165,40 @@ public class ContextAPITest extends AbstractPolyglotTest {
         }
 
         @ExportMessage
+        public boolean isException() {
+            return true;
+        }
+
+        @ExportMessage
+        public boolean isExceptionCatchable() {
+            return true;
+        }
+
+        @ExportMessage
         public ExceptionType getExceptionType() {
             return ExceptionType.SYNTAX_ERROR;
         }
 
-        public Node getLocation() {
-            return null;
+        @ExportMessage
+        public int getExceptionExitStatus() {
+            return 0;
         }
 
-        @ExportMessage.Ignore
-        public SourceSection getSourceLocation() {
+        @ExportMessage
+        public RuntimeException throwException() {
+            throw this;
+        }
+
+        @ExportMessage
+        public boolean hasSourceLocation() {
+            return location != null;
+        }
+
+        @ExportMessage(name = "getSourceLocation")
+        public SourceSection sourceLocation() throws UnsupportedMessageException {
+            if (location == null) {
+                throw UnsupportedMessageException.create();
+            }
             return location;
         }
     }

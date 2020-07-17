@@ -65,7 +65,6 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.polyglot.HostLanguage.HostContext;
 
@@ -203,11 +202,6 @@ final class HostLanguage extends TruffleLanguage<HostContext> {
 
         HostLanguageException(String message) {
             super(message);
-        }
-
-        @Override
-        public Node getLocation() {
-            return null;
         }
     }
 

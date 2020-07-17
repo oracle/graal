@@ -45,7 +45,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.Node;
 
 /**
  * Exception wrapper for an error occurred in the host language.
@@ -75,10 +74,5 @@ final class HostException extends TruffleException {
     @ExportMessage
     public ExceptionType getExceptionType() {
         return getOriginal() instanceof InterruptedException ? ExceptionType.CANCEL : ExceptionType.GUEST_LANGUAGE_ERROR;
-    }
-
-    @Override
-    public Node getLocation() {
-        return null;
     }
 }

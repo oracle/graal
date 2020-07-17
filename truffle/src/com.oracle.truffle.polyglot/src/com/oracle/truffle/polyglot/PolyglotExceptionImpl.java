@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.polyglot;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.util.ArrayList;
@@ -63,6 +64,9 @@ import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.polyglot.PolyglotEngineImpl.CancelExecution;
 
 final class PolyglotExceptionImpl extends AbstractExceptionImpl {
@@ -118,45 +122,49 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
         this.guestFrames = TruffleStackTrace.getStackTrace(original);
         this.showInternalStackFrames = engine == null ? false : engine.engineOptionValues.get(PolyglotEngineOptions.ShowInternalStackFrames);
         this.resourceExhausted = isResourceLimit(exception);
+        InteropLibrary interop = InteropLibrary.getUncached();
+        if (interop.isException(exception)) {
+            try {
+                ExceptionType exceptionType = interop.getExceptionType(exception);
+                this.internal = exceptionType == ExceptionType.INTERNAL_ERROR;
+                this.cancelled = exceptionType == ExceptionType.CANCEL;
+                this.syntaxError = exceptionType == ExceptionType.SYNTAX_ERROR;
+                this.incompleteSource = exceptionType == ExceptionType.INCOMPLETE_SOURCE;
+                this.exit = exceptionType == ExceptionType.EXIT;
+                this.exitStatus = this.exit ? interop.getExceptionExitStatus(exception) : 0;
 
-        if (exception instanceof com.oracle.truffle.api.TruffleException) {
-            com.oracle.truffle.api.TruffleException truffleException = (com.oracle.truffle.api.TruffleException) exception;
-            this.internal = truffleException.isInternalError();
-            this.cancelled = truffleException.isCancelled();
-            this.syntaxError = truffleException.isSyntaxError();
-            this.incompleteSource = truffleException.isIncompleteSource();
-            this.exit = truffleException.isExit();
-            this.exitStatus = this.exit ? truffleException.getExitStatus() : 0;
-
-            com.oracle.truffle.api.source.SourceSection section = truffleException.getSourceLocation();
-            if (section != null) {
-                com.oracle.truffle.api.source.Source truffleSource = section.getSource();
-                String language = truffleSource.getLanguage();
-                if (language == null) {
-                    Objects.requireNonNull(engine, "Source location can not be accepted without language context.");
-                    PolyglotLanguage foundLanguage = engine.findLanguage(null, language, truffleSource.getMimeType(), false, true);
-                    if (foundLanguage != null) {
-                        language = foundLanguage.getId();
+                if (interop.hasSourceLocation(exception)) {
+                    com.oracle.truffle.api.source.SourceSection section = interop.getSourceLocation(exception);
+                    com.oracle.truffle.api.source.Source truffleSource = section.getSource();
+                    String language = truffleSource.getLanguage();
+                    if (language == null) {
+                        Objects.requireNonNull(engine, "Source location can not be accepted without language context.");
+                        PolyglotLanguage foundLanguage = engine.findLanguage(null, language, truffleSource.getMimeType(), false, true);
+                        if (foundLanguage != null) {
+                            language = foundLanguage.getId();
+                        }
                     }
+                    Source source = polyglot.getAPIAccess().newSource(language, truffleSource);
+                    this.sourceLocation = polyglot.getAPIAccess().newSourceSection(source, section);
+                } else {
+                    this.sourceLocation = null;
                 }
-                Source source = polyglot.getAPIAccess().newSource(language, truffleSource);
-                this.sourceLocation = polyglot.getAPIAccess().newSourceSection(source, section);
-            } else {
-                this.sourceLocation = null;
-            }
-            Object exceptionObject;
-            if (languageContext != null && !(exception instanceof HostException) && (exceptionObject = ((com.oracle.truffle.api.TruffleException) exception).getExceptionObject()) != null) {
-                /*
-                 * Allow proxies in guest language objects. This is for legacy support. Ideally we
-                 * should get rid of this if it is no longer relied upon.
-                 */
-                Object receiver = exceptionObject;
-                if (receiver instanceof Proxy) {
-                    receiver = languageContext.toGuestValue(receiver);
+                Object exceptionObject;
+                if (languageContext != null && !(exception instanceof HostException) && (exceptionObject = ((com.oracle.truffle.api.TruffleException) exception).getExceptionObject()) != null) {
+                    /*
+                     * Allow proxies in guest language objects. This is for legacy support. Ideally
+                     * we should get rid of this if it is no longer relied upon.
+                     */
+                    Object receiver = exceptionObject;
+                    if (receiver instanceof Proxy) {
+                        receiver = languageContext.toGuestValue(receiver);
+                    }
+                    this.guestObject = languageContext.asValue(receiver);
+                } else {
+                    this.guestObject = null;
                 }
-                this.guestObject = languageContext.asValue(receiver);
-            } else {
-                this.guestObject = null;
+            } catch (UnsupportedMessageException ume) {
+                throw CompilerDirectives.shouldNotReachHere(ume);
             }
         } else {
             this.cancelled = false;

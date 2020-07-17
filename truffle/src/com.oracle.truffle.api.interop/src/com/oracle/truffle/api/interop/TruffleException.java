@@ -144,7 +144,9 @@ public abstract class TruffleException extends RuntimeException implements Truff
      * may return <code>null</code> to indicate that the location is not available.
      *
      */
-    public abstract Node getLocation();
+    public Node getLocation() {
+        return null;
+    }
 
     /**
      * Returns a location where this exception occurred in the AST. This method may return

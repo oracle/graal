@@ -73,7 +73,6 @@ import com.oracle.truffle.api.interop.TruffleException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
 public class PolyglotExceptionTest extends AbstractPolyglotTest {
@@ -84,11 +83,6 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
         TestGuestError() {
             super("MyError");
         }
-
-        public Node getLocation() {
-            return null;
-        }
-
     }
 
     @Test

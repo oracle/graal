@@ -41,11 +41,16 @@
 
 package com.oracle.truffle.sl.parser;
 
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleException;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
+@ExportLibrary(InteropLibrary.class)
 public class SLParseError extends TruffleException {
 
     public static final long serialVersionUID = 1L;
@@ -62,19 +67,41 @@ public class SLParseError extends TruffleException {
         this.length = length;
     }
 
-    @Override
-    public SourceSection getSourceLocation() {
+    @ExportMessage
+    public boolean isException() {
+        return true;
+    }
+
+    @ExportMessage
+    public boolean isExceptionCatchable() {
+        return true;
+    }
+
+    @ExportMessage
+    public ExceptionType getExceptionType() {
+        return ExceptionType.SYNTAX_ERROR;
+    }
+
+    @ExportMessage
+    public int getExceptionExitStatus() {
+        return 0;
+    }
+
+    @ExportMessage
+    public RuntimeException throwException() {
+        throw this;
+    }
+
+    @ExportMessage
+    public boolean hasSourceLocation() {
+        return source != null;
+    }
+
+    @ExportMessage(name = "getSourceLocation")
+    public SourceSection sourceLocation() throws UnsupportedMessageException {
+        if (source == null) {
+            throw UnsupportedMessageException.create();
+        }
         return source.createSection(line, column, length);
     }
-
-    @Override
-    public Node getLocation() {
-        return null;
-    }
-
-// TODO:
-// @Override
-// public boolean isSyntaxError() {
-// return true;
-// }
 }
