@@ -350,6 +350,97 @@ public final class EspressoContext {
         protected abstract StaticObject getAndSetReferencePendingList(@Host(Reference.class) StaticObject ref);
     }
 
+    private volatile StaticObject referencePendingList = StaticObject.NULL;
+    private final Object pendingLock = new Object() {
+    };
+
+    public StaticObject getAndClearReferencePendingList() {
+        // Should be under guest lock
+        assert Target_java_lang_Thread.holdsLock((StaticObject) getMeta().java_lang_ref_Reference_lock.get(meta.java_lang_ref_Reference.tryInitializeAndGetStatics()), getMeta());
+        synchronized (pendingLock) {
+            StaticObject res = referencePendingList;
+            referencePendingList = StaticObject.NULL;
+            return res;
+        }
+    }
+
+    public boolean hasReferencePendingList() {
+        return !StaticObject.isNull(referencePendingList);
+    }
+
+    public void waitForReferencePendingList() {
+        if (hasReferencePendingList()) {
+            return;
+        }
+        try {
+            synchronized (pendingLock) {
+                while (!hasReferencePendingList()) {
+                    pendingLockWait();
+                }
+            }
+        } catch (InterruptedException e) {
+            /* nop */
+        }
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    public void pendingLockWait() throws InterruptedException {
+        pendingLock.wait();
+    }
+
+    private abstract class ReferenceDrain implements Runnable {
+        SubstitutionProfiler profiler = new SubstitutionProfiler();
+
+        @SuppressWarnings("rawtypes")
+        @Override
+        public void run() {
+            final StaticObject lock = (StaticObject) meta.java_lang_ref_Reference_lock.get(meta.java_lang_ref_Reference.tryInitializeAndGetStatics());
+            while (!Thread.currentThread().isInterrupted()) {
+                try {
+                    // Based on HotSpot's ReferenceProcessor::enqueue_discovered_reflist.
+                    // HotSpot's "new behavior": Walk down the list, self-looping the next field
+                    // so that the References are not considered active.
+                    EspressoReference head;
+                    do {
+                        head = (EspressoReference) referenceQueue.remove();
+                        assert head != null;
+                    } while (StaticObject.notNull((StaticObject) meta.java_lang_ref_Reference_next.get(head.getGuestReference())));
+
+                    lock.getLock().lock();
+                    try {
+                        assert Target_java_lang_Thread.holdsLock(lock, meta) : "must hold Reference.lock at the guest level";
+                        casNextIfNullAndMaybeClear(head);
+
+                        EspressoReference prev = head;
+                        EspressoReference ref;
+                        while ((ref = (EspressoReference) referenceQueue.poll()) != null) {
+                            if (StaticObject.notNull((StaticObject) meta.java_lang_ref_Reference_next.get(ref.getGuestReference()))) {
+                                continue;
+                            }
+                            meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), ref.getGuestReference());
+                            casNextIfNullAndMaybeClear(ref);
+                            prev = ref;
+                        }
+
+                        meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), prev.getGuestReference());
+                        StaticObject obj = getAndSetReferencePendingList(head.getGuestReference());
+
+                        meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), obj);
+
+                        getVM().JVM_MonitorNotify(lock, profiler);
+                    } finally {
+                        lock.getLock().unlock();
+                    }
+                } catch (InterruptedException e) {
+                    // ignore
+                    return;
+                }
+            }
+        }
+
+        protected abstract StaticObject getAndSetReferencePendingList(@Host(Reference.class) StaticObject ref);
+    }
+
     private void spawnVM() {
 
         long ticks = System.currentTimeMillis();

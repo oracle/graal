@@ -221,19 +221,93 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     /**
      * A class or interface C is accessible to a class or interface D if and only if either of the
      * following is true:
+     * <h3>Java 8
      * <ul>
      * <li>C is public.
      * <li>C and D are members of the same run-time package (&sect;5.3).
+     * </ul>
+     * <h3>Java 11
+     * <ul>
+     * <li>C is public, and a member of the same run-time module as D (§5.3.6).
+     * <li>C is public, and a member of a different run-time module than D, and C's run-time module
+     * is read by D's run-time module, and C's run-time module exports C's run-time package to D's
+     * run-time module.
+     * <li>C is not public, and C and D are members of the same run-time package.
      * </ul>
      */
     public static boolean checkAccess(Klass klass, Klass accessingKlass) {
         if (accessingKlass == null) {
             return true;
         }
-        if (klass.isPublic() || klass.sameRuntimePackage(accessingKlass)) {
+        if (klass == accessingKlass) {
             return true;
         }
-        return (klass.getMeta().sun_reflect_MagicAccessorImpl.isAssignableFrom(accessingKlass));
+        if (klass.isPrimitive()) {
+            return true;
+        }
+        EspressoContext context = accessingKlass.getContext();
+        if (context.getJavaVersion() >= 9) {
+            if (klass.sameRuntimePackage(accessingKlass)) {
+                return true;
+            }
+            if (klass.isPublic()) {
+                if (doModuleAccessChecks(klass, accessingKlass, context)) {
+                    return true;
+                }
+            }
+        } else {
+            if (klass.isPublic() || klass.sameRuntimePackage(accessingKlass)) {
+                return true;
+            }
+        }
+        return (context.getMeta().sun_reflect_MagicAccessorImpl.isAssignableFrom(accessingKlass));
+
+    }
+
+    public static boolean doModuleAccessChecks(Klass klass, Klass accessingKlass, EspressoContext context) {
+        ModuleEntry moduleFrom = accessingKlass.module();
+        ModuleEntry moduleTo = klass.module();
+        if (moduleFrom == moduleTo) {
+            return true;
+        }
+        /*
+         * Acceptable access to a type in an unnamed module. Note that since unnamed modules can
+         * read all unnamed modules, this also handles the case where module_from is also unnamed
+         * but in a different class loader.
+         */
+        if (!moduleTo.isNamed() && (moduleFrom.canReadAllUnnamed() || moduleFrom.canRead(moduleTo, context))) {
+            return true;
+        }
+        // Establish readability, check if moduleFrom is allowed to read moduleTo.
+        if (!moduleFrom.canRead(moduleTo, context)) {
+            return false;
+        }
+        // Access is allowed if moduleTo is open, i.e. all its packages are unqualifiedly
+        // exported
+        if (moduleTo.isOpen()) {
+            return true;
+        }
+
+        PackageEntry packageTo = klass.packageEntry();
+        // TODO: obtain packageTo table read lock.
+        /*
+         * Once readability is established, if module_to exports T unqualifiedly, (to all modules),
+         * than whether module_from is in the unnamed module or not does not matter, access is
+         * allowed.
+         */
+        if (packageTo.isUnqualifiedExported()) {
+            return true;
+        }
+        /*-
+         * Access is allowed if both 1 & 2 hold:
+         *   1. Readability, module_from can read module_to (established above).
+         *   2. Either module_to exports T to module_from qualifiedly.
+         *      or
+         *      module_to exports T to all unnamed modules and module_from is unnamed.
+         *      or
+         *      module_to exports T unqualifiedly to all modules (checked above).
+         */
+        return packageTo.isQualifiedExportTo(moduleFrom);
     }
 
     public final ObjectKlass[] getSuperInterfaces() {
