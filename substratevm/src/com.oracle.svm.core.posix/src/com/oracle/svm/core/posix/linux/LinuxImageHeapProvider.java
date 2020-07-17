@@ -36,14 +36,12 @@ import static com.oracle.svm.core.posix.linux.ProcFSSupport.findMapping;
 import static com.oracle.svm.core.util.PointerUtils.roundUp;
 import static com.oracle.svm.core.util.UnsignedUtils.isAMultiple;
 import static org.graalvm.word.WordFactory.signed;
-import static org.graalvm.word.WordFactory.unsigned;
 
 import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.ComparableWord;
@@ -169,9 +167,9 @@ public class LinuxImageHeapProvider implements ImageHeapProvider {
             if (mapfd == -1) {
                 return CEntryPointErrors.LOCATE_IMAGE_FAILED;
             }
-            final CCharPointer buffer = StackValue.get(MAX_PATHLEN);
-            final CLongPointer startAddr = StackValue.get(CLongPointer.class);
-            final CLongPointer offset = StackValue.get(CLongPointer.class);
+            CCharPointer buffer = StackValue.get(MAX_PATHLEN);
+            WordPointer startAddr = StackValue.get(WordPointer.class);
+            WordPointer offset = StackValue.get(WordPointer.class);
             boolean found = findMapping(mapfd, buffer, MAX_PATHLEN, IMAGE_HEAP_RELOCATABLE_BEGIN.get(), IMAGE_HEAP_RELOCATABLE_END.get(), startAddr, offset, true);
             Unistd.NoTransitions.close(mapfd);
             if (!found) {
@@ -182,9 +180,9 @@ public class LinuxImageHeapProvider implements ImageHeapProvider {
                 return CEntryPointErrors.OPEN_IMAGE_FAILED;
             }
             Word imageHeapRelocsOffset = IMAGE_HEAP_RELOCATABLE_BEGIN.get().subtract(IMAGE_HEAP_BEGIN.get());
-            Word imageHeapOffset = IMAGE_HEAP_RELOCATABLE_BEGIN.get().subtract(unsigned(startAddr.read())).subtract(imageHeapRelocsOffset);
-            long fileOffset = offset.read() + imageHeapOffset.rawValue();
-            CACHED_IMAGE_HEAP_OFFSET.get().write(signed(fileOffset));
+            Word imageHeapOffset = IMAGE_HEAP_RELOCATABLE_BEGIN.get().subtract(startAddr.read()).subtract(imageHeapRelocsOffset);
+            UnsignedWord fileOffset = imageHeapOffset.add(offset.read());
+            CACHED_IMAGE_HEAP_OFFSET.get().write(fileOffset);
             MembarNode.memoryBarrier(MemoryBarriers.STORE_STORE);
             SignedWord previous = ((Pointer) CACHED_IMAGE_FD.get()).compareAndSwapWord(0, fd, signed(opened), LocationIdentity.ANY_LOCATION);
             if (previous.equal(fd)) {
