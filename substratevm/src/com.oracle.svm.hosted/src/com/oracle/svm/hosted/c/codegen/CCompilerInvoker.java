@@ -39,6 +39,7 @@ import java.util.Optional;
 import java.util.Scanner;
 import java.util.function.Consumer;
 
+import com.oracle.svm.core.c.libc.LibCBase;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -47,7 +48,6 @@ import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
@@ -203,7 +203,7 @@ public abstract class CCompilerInvoker {
 
         @Override
         protected String getDefaultCompiler() {
-            return "gcc";
+            return LibCBase.singleton().getTargetCompiler();
         }
 
         @Override
@@ -495,8 +495,6 @@ public abstract class CCompilerInvoker {
             command.add(elem.toString());
         }
 
-        LibCBase currentLibc = ImageSingletons.lookup(LibCBase.class);
-        command.addAll(currentLibc.getCCompilerOptions());
         return command;
     }
 
