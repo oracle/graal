@@ -735,7 +735,11 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             Constant inputConstant = asConstantValue(getInput()).getConstant();
             if (masm.target.inlineObjects) {
                 crb.recordInlineDataInCode(inputConstant);
-                masm.mov(resultReg, 0xDEADDEADDEADDEADL, true);
+                if (referenceSize == 4) {
+                    masm.mov(resultReg, 0xDEADDEADL, true);
+                } else {
+                    masm.mov(resultReg, 0xDEADDEADDEADDEADL, true);
+                }
             } else {
                 crb.recordDataReferenceInCode(inputConstant, referenceSize);
                 int srcSize = referenceSize * 8;
