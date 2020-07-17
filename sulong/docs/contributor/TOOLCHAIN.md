@@ -147,7 +147,7 @@ Note that they expect a toolchain name as the first argument. See for example th
 On the implementation side, _the toolchain_ consists of multiple ingredients:
 
 * The **LLVM.org component** is similar to a regular [LLVM release](https://llvm.org) (clang, lld, llvm-* tools)
-  but includes [a few patches](../patches) that are not yet [upstream](https://github.com/llvm/llvm-project).
+  but includes [a few patches](../../patches) that are not yet [upstream](https://github.com/llvm/llvm-project).
   Those patches are general feature improvements that are not specific to GraalVM.
   In GraalVM, the LLVM.org component is located in `$GRAALVM/lib/llvm/` (or `$GRAALVM/jre/lib/llvm/` in the Java 8 version).
   This component is considered as internal and should not be directly used.

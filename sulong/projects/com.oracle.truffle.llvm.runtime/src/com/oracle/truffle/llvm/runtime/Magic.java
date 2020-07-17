@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,41 +29,37 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.TruffleLanguage.Registration;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.charset.Charset;
-import java.nio.file.StandardOpenOption;
-
 /**
- * Used by Truffle to determine the mime-type of input files. Registered by
- * {@link Registration#fileTypeDetectors()}.
+ * All file types that can be parsed by the GraalVM LLVM runtime, with their magic value for
+ * filetype detection and their mime-type.
  */
-public class LLVMFileDetector implements TruffleFile.FileTypeDetector {
+public enum Magic {
+    BC_MAGIC_WORD(0xdec04342L /* 'BC' c0de */, LLVMLanguage.LLVM_BITCODE_MIME_TYPE),
+    WRAPPER_MAGIC_WORD(0x0B17C0DEL /* "bitcode" */, LLVMLanguage.LLVM_BITCODE_MIME_TYPE),
+    ELF_MAGIC_WORD(0x464C457FL /* '.ELF' */, LLVMLanguage.LLVM_ELF_SHARED_MIME_TYPE),
+    MH_MAGIC(0xFEEDFACEL, LLVMLanguage.LLVM_MACHO_MIME_TYPE),
+    MH_CIGAM(0xCEFAEDFEL, LLVMLanguage.LLVM_MACHO_MIME_TYPE),
+    MH_MAGIC_64(0xFEEDFACFL, LLVMLanguage.LLVM_MACHO_MIME_TYPE),
+    MH_CIGAM_64(0xCFFAEDFEL, LLVMLanguage.LLVM_MACHO_MIME_TYPE),
+    XAR_MAGIC(0x21726178L, null),
+    UNKNOWN(0, null);
 
-    @Override
-    public String findMimeType(TruffleFile file) throws IOException {
-        long magicWord = readMagicWord(file);
-        return Magic.get(magicWord).mimeType;
+    public final long magic;
+    public final String mimeType;
+
+    Magic(long magic, String mimeType) {
+        this.magic = magic;
+        this.mimeType = mimeType;
     }
 
-    @Override
-    public Charset findEncoding(TruffleFile file) throws IOException {
-        return null;
-    }
+    private static final Magic[] VALUES = Magic.values();
 
-    private static long readMagicWord(TruffleFile file) {
-        try (InputStream is = file.newInputStream(StandardOpenOption.READ)) {
-            byte[] buffer = new byte[4];
-            if (is.read(buffer) != buffer.length) {
-                return 0;
+    public static Magic get(long magic) {
+        for (Magic m : VALUES) {
+            if (m.magic == magic) {
+                return m;
             }
-            return Integer.toUnsignedLong(ByteBuffer.wrap(buffer).order(ByteOrder.nativeOrder()).getInt());
-        } catch (IOException | SecurityException e) {
-            return 0;
         }
+        return UNKNOWN;
     }
 }
