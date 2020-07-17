@@ -73,17 +73,17 @@ final class JLine3Feature implements Feature {
     private static final String JNA_SUPPORT_IMPL = "org.jline.terminal.impl.jna.JnaSupportImpl";
 
     @Override
+    public boolean isInConfiguration(IsInConfigurationAccess access) {
+        return access.findClassByName(JNA_SUPPORT_IMPL) != null;
+    }
+
+    @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         for (String resource : RESOURCES) {
             String resourcePath = RESOURCE_PATH + resource;
             final InputStream resourceAsStream = ClassLoader.getSystemResourceAsStream(resourcePath);
             Resources.registerResource(resourcePath, resourceAsStream);
         }
-    }
-
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return access.findClassByName(JNA_SUPPORT_IMPL) != null;
     }
 
     static final class IsEnabled implements BooleanSupplier {
@@ -106,6 +106,12 @@ final class Target_org_jline_terminal_Attributes {
 final class Target_org_jline_terminal_Size {
 }
 
+/**
+ * JLINE3 has an approach to optional dependencies which relies on a trying to use them and catching
+ * any {@link Throwable}, and moving on to the next dependency. Substituting these methods ensures
+ * that the native-image build does not require an incomplete classpath and ensures that the JNA
+ * optional dependency is not used.
+ */
 @TargetClass(className = "org.jline.terminal.impl.jna.JnaSupportImpl", onlyWith = com.oracle.svm.thirdparty.jline.JLine3Feature.IsEnabled.class)
 final class Target_org_jline_terminal_impl_jna_JnaSupportImpl_open {
 
@@ -134,6 +140,8 @@ final class Target_org_jline_builtins_Nano_Buffer {
      * method. The modification is the removal of the attempt to detect the charset using an
      * optional dependency (UniversalDetector) which, when not on the classpath would break the
      * native-image build. The original source code is provided under the BSD licence.
+     *
+     * The substitution is needed to avoid an optional dependency during native-image building.
      */
     @Substitute
     void read(InputStream fis) throws IOException {
