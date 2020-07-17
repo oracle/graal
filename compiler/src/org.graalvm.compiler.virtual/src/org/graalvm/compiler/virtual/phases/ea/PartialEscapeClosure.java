@@ -39,6 +39,7 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.graph.Position;
@@ -243,6 +244,23 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
 
     private boolean processVirtualizable(ValueNode node, FixedNode insertBefore, BlockT state, GraphEffectList effects) {
         tool.reset(state, node, insertBefore, effects);
+        switch (currentMode) {
+            case REGULAR_VIRTUALIZATION:
+                break;
+            case STOP_NEW_VIRTUALIZATIONS_LOOP_NEST:
+                if (node instanceof VirtualizableAllocation) {
+                    /*
+                     * Do not try to do new devirtualizations of allocations after we reached a
+                     * certain loop nest.
+                     */
+                    return false;
+                }
+                break;
+            case LOOP_NEST_OVERFLOW:
+                throw GraalError.shouldNotReachHere("If the loop nest overflow mode is reached, execution should re-do the outer most loop with mode STOP_NEW_DEVIRTUALIZATIONS");
+            default:
+                throw GraalError.shouldNotReachHere("Unknown effects closure mode " + currentMode);
+        }
         return virtualize(node, tool);
     }
 
@@ -421,6 +439,18 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
      */
     protected boolean ensureMaterialized(PartialEscapeBlockState<?> state, int object, FixedNode materializeBefore, GraphEffectList effects, CounterKey counter) {
         if (state.getObjectState(object).isVirtual()) {
+            if (currentMode == EffectsClosureMode.STOP_NEW_VIRTUALIZATIONS_LOOP_NEST) {
+                /*
+                 * If we ever enter a state where we do not allow new virtualizations to occur, we
+                 * can never materialize something since no new virtualizations happened in the
+                 * first place, thus if we see a materialization after we reached the depth cut off
+                 * it means we try to materialize an allocation from an outer loop, this causes
+                 * multiple iterations of the PEA algorithm for iterative loop processing and the
+                 * algorithm becomes exponential over the loop depth, thus we leave this loop and do
+                 * not virtualize anything
+                 */
+                throw new EffectsClosure.EffecsClosureOverflowException();
+            }
             counter.increment(debug);
             VirtualObjectNode virtual = virtualObjects.get(object);
             state.materializeBefore(materializeBefore, virtual, effects);
@@ -492,13 +522,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                     }
                 }
             } while (change);
-
-            for (int i = 0; i < length; i++) {
-                ObjectState state = initialState.getObjectStateOptional(i);
-                if (state != null && state.isVirtual() && !ensureVirtualized.get(i)) {
-                    initialState.materializeBefore(end, virtualObjects.get(i), blockEffects.get(loopPredecessor));
-                }
-            }
+            currentMode = EffectsClosureMode.STOP_NEW_VIRTUALIZATIONS_LOOP_NEST;
         }
         return initialState;
     }
