@@ -49,6 +49,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -80,8 +81,12 @@ final class FunctionsObject implements TruffleObject {
 
     @ExportMessage
     @TruffleBoundary
-    Object readMember(String member) {
-        return functions.get(member);
+    Object readMember(String member) throws UnknownIdentifierException {
+        Object value = functions.get(member);
+        if (value != null) {
+            return value;
+        }
+        throw UnknownIdentifierException.create(member);
     }
 
     @ExportMessage

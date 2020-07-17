@@ -10,7 +10,7 @@ This page is intended to keep track of the growing number of Truffle language im
 * [TruffleSOM](https://github.com/SOM-st/TruffleSOM), a SOM Smalltalk implementation.
 * [SOMns](https://github.com/smarr/SOMns), a Newspeak implementation for Concurrency Research.
 * [SimpleLanguage](https://github.com/graalvm/simplelanguage), a toy language implementation to demonstrate Truffle features.
-* [TruffleSqueak](https://github.com/hpi-swa/trufflesqueak/), a Squeak/Smalltalk bytecode interpreter with support for the Smalltalk programming environment.
+* [TruffleSqueak](https://github.com/hpi-swa/trufflesqueak/), a Squeak/Smalltalk VM implementation and polyglot programming environment.
 * [TRegex](https://github.com/oracle/graal/tree/master/regex), a generic regular expression engine (internal, for use by other languages only). * 
 * [Yatta](https://yatta-lang.org/), the reference implementation of a minimalistic, strongly dynamically typed, parallel and non-blocking, polyglot, strict, functional programming language.
 
@@ -19,7 +19,6 @@ This page is intended to keep track of the growing number of Truffle language im
 ## Experiments
 
 * [ZipPy](https://github.com/securesystemslab/zippy), a Python implementation.
-* [TruffleSqueak](https://github.com/timfel/trufflesqueak), an experimental Squeak interpreter.
 * [Mumbler](https://github.com/cesquivias/mumbler), an experimental Lisp programming language.
 * [LuaTruffle](https://github.com/lucasallan/LuaTruffle), an implementation of the Lua language.
 * [hextruffe](https://bitbucket.org/hexafraction/truffles), an implementation of Hex.
