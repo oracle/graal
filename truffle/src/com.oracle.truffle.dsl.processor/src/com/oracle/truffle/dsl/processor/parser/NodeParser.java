@@ -2020,6 +2020,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     String weakName = "weak" + ElementUtils.firstLetterUpperCase(parameter.getLocalName()) + "Gen_";
                     TypeMirror weakType = new CodeTypeMirror.DeclaredCodeTypeMirror(context.getTypeElement(types.TruffleWeakReference), Arrays.asList(cache.getParameter().getType()));
                     CodeVariableElement weakVariable = new CodeVariableElement(weakType, weakName);
+                    weakVariable.setEnclosingElement(specialization.getMethod());
                     Parameter weakParameter = new Parameter(parameter, weakVariable);
 
                     DSLExpression newWeakReference = new DSLExpression.Call(null, "new", Arrays.asList(sourceExpression));

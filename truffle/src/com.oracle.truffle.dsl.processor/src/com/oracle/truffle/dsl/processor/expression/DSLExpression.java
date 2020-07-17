@@ -167,7 +167,7 @@ public abstract class DSLExpression {
             public void visitCall(Call binary) {
                 if (binary.getReceiver() == null) {
                     ExecutableElement method = binary.getResolvedMethod();
-                    if (method != null && !method.getModifiers().contains(Modifier.STATIC)) {
+                    if (method != null && method.getKind() != ElementKind.CONSTRUCTOR && !method.getModifiers().contains(Modifier.STATIC)) {
                         bindsReceiver.set(true);
                     }
                 }
