@@ -22,34 +22,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.genscavenge;
+package com.oracle.svm.core.c.struct;
 
-import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.word.Pointer;
+import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.nativeimage.c.struct.RawStructure;
+import org.graalvm.word.PointerBase;
+import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.MemoryWalker;
-import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.heap.ObjectVisitor;
-
-public interface AuxiliaryImageHeap {
-    @Fold
-    static boolean isPresent() {
-        return ImageSingletons.contains(AuxiliaryImageHeap.class);
+/**
+ * Supplies static methods that provide access to the offset of fields of {@link CStruct} and
+ * {@link RawStructure} structures.
+ */
+public final class OffsetOf {
+    public interface Support {
+        int offsetOf(Class<? extends PointerBase> clazz, String fieldName);
     }
 
-    @Fold
-    static AuxiliaryImageHeap singleton() {
-        return ImageSingletons.lookup(AuxiliaryImageHeap.class);
+    private OffsetOf() {
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    boolean containsObject(Pointer address);
+    public static int get(Class<? extends PointerBase> clazz, String fieldName) {
+        return ImageSingletons.lookup(Support.class).offsetOf(clazz, fieldName);
+    }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    boolean containsObjectSlow(Pointer address);
-
-    boolean walkObjects(ObjectVisitor visitor);
-
-    boolean walkRegions(MemoryWalker.ImageHeapRegionVisitor visitor);
+    public static UnsignedWord unsigned(Class<? extends PointerBase> clazz, String fieldName) {
+        return WordFactory.unsigned(get(clazz, fieldName));
+    }
 }

@@ -57,6 +57,10 @@ public class ChunkedImageHeapPartition extends AbstractImageHeapPartition {
         this.hugeObjects = hugeObjects;
     }
 
+    boolean usesUnalignedObjects() {
+        return hugeObjects;
+    }
+
     void layout(ChunkedImageHeapAllocator allocator) {
         if (hugeObjects) {
             layoutInUnalignedChunks(allocator);
@@ -71,7 +75,7 @@ public class ChunkedImageHeapPartition extends AbstractImageHeapPartition {
         startOffset = allocator.getPosition();
 
         for (ImageHeapObject info : getObjects()) { // No need to sort by size
-            appendAllocatedObject(info, allocator.allocateUnalignedChunkForObject(info.getSize()));
+            appendAllocatedObject(info, allocator.allocateUnalignedChunkForObject(info, isWritable()));
         }
 
         allocator.alignBetweenChunks(getEndAlignment());
@@ -96,7 +100,7 @@ public class ChunkedImageHeapPartition extends AbstractImageHeapPartition {
             if (info == null) {
                 allocator.startNewAlignedChunk();
             } else {
-                appendAllocatedObject(info, allocator.allocateObjectInAlignedChunk(info.getSize()));
+                appendAllocatedObject(info, allocator.allocateObjectInAlignedChunk(info, isWritable()));
             }
         }
     }

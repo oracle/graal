@@ -126,9 +126,9 @@ public final class UnalignedHeapChunk {
         UnsignedWord available = HeapChunk.availableObjectMemory(that);
         Pointer result = WordFactory.nullPointer();
         if (size.belowOrEqual(available)) {
-            result = that.getTop();
+            result = HeapChunk.getTopPointer(that);
             Pointer newTop = result.add(size);
-            HeapChunk.setTopCarefully(that, newTop);
+            HeapChunk.setTopPointerCarefully(that, newTop);
         }
         return result;
     }
@@ -247,7 +247,7 @@ public final class UnalignedHeapChunk {
     }
 
     public static UnsignedWord getCommittedObjectMemory(UnalignedHeader that) {
-        return that.getEnd().subtract(getObjectStart(that));
+        return HeapChunk.getEndOffset(that).subtract(getObjectStartOffset());
     }
 
     static boolean verify(UnalignedHeader that) {
@@ -257,29 +257,29 @@ public final class UnalignedHeapChunk {
     private static boolean verify(UnalignedHeader that, Pointer start) {
         VMOperation.guaranteeInProgress("Should only be called as a VMOperation.");
         Log trace = HeapVerifier.getTraceLog().string("[UnalignedHeapChunk.verify");
-        trace.string("  that: ").hex(that).string("  start: ").hex(start).string("  top: ").hex(that.getTop()).string("  end: ").hex(that.getEnd()).newline();
+        trace.string("  that: ").hex(that).string("  start: ").hex(start).string("  top: ").hex(HeapChunk.getTopPointer(that)).string("  end: ").hex(HeapChunk.getEndPointer(that)).newline();
         UnsignedWord objHeader = ObjectHeaderImpl.readHeaderFromPointer(start);
         if (ObjectHeaderImpl.isForwardedHeader(objHeader)) {
             Log witness = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[UnalignedHeapChunk.verify:");
-            witness.string("  that: ").hex(that).string("  start: ").hex(start).string("  top: ").hex(that.getTop()).string("  end: ").hex(that.getEnd());
-            witness.string("  space: ").string(that.getSpace().getName());
+            witness.string("  that: ").hex(that).string("  start: ").hex(start).string("  top: ").hex(HeapChunk.getTopPointer(that)).string("  end: ").hex(HeapChunk.getEndPointer(that));
+            witness.string("  space: ").string(HeapChunk.getSpace(that).getName());
             witness.string("  should not be forwarded").string("]").newline();
             return false;
         }
         if (!ObjectHeaderImpl.isUnalignedHeader(start, objHeader)) {
             Log witness = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[UnalignedHeapChunk.verify:");
-            witness.string("  that: ").hex(that).string("  start: ").hex(start).string("  end: ").hex(that.getEnd());
-            witness.string("  space: ").string(that.getSpace().getName());
+            witness.string("  that: ").hex(that).string("  start: ").hex(start).string("  end: ").hex(HeapChunk.getEndPointer(that));
+            witness.string("  space: ").string(HeapChunk.getSpace(that).getName());
             witness.string("  obj: ").hex(start).string("  objHeader: ").hex(objHeader);
             witness.string("  does not have an unaligned header").string("]").newline();
             return false;
         }
         Object obj = start.toObject();
         Pointer objEnd = LayoutEncoding.getObjectEnd(obj);
-        if (objEnd.notEqual(that.getTop())) {
+        if (objEnd.notEqual(HeapChunk.getTopPointer(that))) {
             Log witness = HeapImpl.getHeapImpl().getHeapVerifier().getWitnessLog().string("[UnalignedHeapChunk.verify:");
-            witness.string("  that: ").hex(that).string("  start: ").hex(start).string("  end: ").hex(that.getEnd());
-            witness.string("  space: ").string(that.getSpace().getName());
+            witness.string("  that: ").hex(that).string("  start: ").hex(start).string("  end: ").hex(HeapChunk.getEndPointer(that));
+            witness.string("  space: ").string(HeapChunk.getSpace(that).getName());
             witness.string("  obj: ").object(obj).string("  objEnd: ").hex(objEnd);
             witness.string("  should be the only object in the chunk").string("]").newline();
             return false;
@@ -296,7 +296,7 @@ public final class UnalignedHeapChunk {
     private static boolean verifyRememberedSet(UnalignedHeader that) {
         // Only chunks in the old from space have a remembered set.
         OldGeneration oldGen = HeapImpl.getHeapImpl().getOldGeneration();
-        if (that.getSpace() == oldGen.getFromSpace()) {
+        if (HeapChunk.getSpace(that) == oldGen.getFromSpace()) {
             // Check if there are cross-generational pointers ...
             Pointer objStart = getObjectStart(that);
             Object obj = objStart.toObject();

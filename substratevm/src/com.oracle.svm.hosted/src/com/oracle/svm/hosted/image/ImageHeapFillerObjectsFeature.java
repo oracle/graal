@@ -22,34 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.genscavenge;
+package com.oracle.svm.hosted.image;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.word.Pointer;
+import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.MemoryWalker;
-import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.heap.ObjectVisitor;
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.heap.FillerObject;
+import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
+import com.oracle.svm.util.ReflectionUtil;
 
-public interface AuxiliaryImageHeap {
-    @Fold
-    static boolean isPresent() {
-        return ImageSingletons.contains(AuxiliaryImageHeap.class);
+@AutomaticFeature
+class ImageHeapFillerObjectsFeature implements Feature {
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess arg) {
+        BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) arg;
+        access.registerAsAccessed(ReflectionUtil.lookupField(FillerObject.class, "CLASS_OBJECT"));
+        access.registerAsInHeap(FillerObject.class);
+        access.registerAsInHeap(int[].class);
     }
-
-    @Fold
-    static AuxiliaryImageHeap singleton() {
-        return ImageSingletons.lookup(AuxiliaryImageHeap.class);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    boolean containsObject(Pointer address);
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    boolean containsObjectSlow(Pointer address);
-
-    boolean walkObjects(ObjectVisitor visitor);
-
-    boolean walkRegions(MemoryWalker.ImageHeapRegionVisitor visitor);
 }

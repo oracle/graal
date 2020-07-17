@@ -43,7 +43,6 @@ import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 import org.graalvm.word.Pointer;
-import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -75,6 +74,7 @@ import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalk;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.ThreadStackPrinter;
@@ -566,7 +566,7 @@ public final class GCImpl implements GC {
              * Native image Objects are grey at the beginning of a collection, so I need to blacken
              * them.
              */
-            blackenImageHeapRoots();
+            blackenDirtyImageHeapRoots();
 
             /* Visit all the Objects promoted since the snapshot, transitively. */
             scanGreyObjects(true);
@@ -724,41 +724,55 @@ public final class GCImpl implements GC {
         trace.string("]").newline();
     }
 
-    private void blackenImageHeapRoots() {
-        Log trace = Log.noopLog().string("[blackenImageHeapRoots:").newline();
-        HeapImpl.getHeapImpl().walkNativeImageHeapRegions(blackenImageHeapRootsVisitor);
+    @SuppressWarnings("try")
+    private void blackenDirtyImageHeapRoots() {
+        if (!HeapImpl.usesImageHeapRememberedSets()) {
+            blackenImageHeapRoots();
+            return;
+        }
+
+        Log trace = Log.noopLog().string("[blackenDirtyImageHeapRoots:").newline();
+        try (Timer timer = timers.blackenImageHeapRoots.open()) {
+            ImageHeapInfo info = HeapImpl.getImageHeapInfo();
+            AlignedHeapChunk.AlignedHeader aligned = asImageHeapChunk(info.offsetOfFirstAlignedChunkWithRememberedSet);
+            while (aligned.isNonNull()) {
+                AlignedHeapChunk.walkDirtyObjects(aligned, greyToBlackObjectVisitor, true);
+                aligned = HeapChunk.getNext(aligned);
+            }
+            UnalignedHeapChunk.UnalignedHeader unaligned = asImageHeapChunk(info.offsetOfFirstUnalignedChunkWithRememberedSet);
+            while (unaligned.isNonNull()) {
+                UnalignedHeapChunk.walkDirtyObjects(unaligned, greyToBlackObjectVisitor, true);
+                unaligned = HeapChunk.getNext(unaligned);
+            }
+        }
         trace.string("]").newline();
     }
 
-    private class BlackenImageHeapRootsVisitor implements MemoryWalker.Visitor {
+    @SuppressWarnings("unchecked")
+    private static <T extends HeapChunk.Header<T>> T asImageHeapChunk(long offsetInImageHeap) {
+        if (offsetInImageHeap < 0) {
+            return (T) WordFactory.nullPointer();
+        }
+        UnsignedWord offset = WordFactory.unsigned(offsetInImageHeap);
+        return (T) KnownIntrinsics.heapBase().add(offset);
+    }
+
+    @SuppressWarnings("try")
+    private void blackenImageHeapRoots() {
+        Log trace = Log.noopLog().string("[blackenImageHeapRoots:").newline();
+        try (Timer timer = timers.blackenImageHeapRoots.open()) {
+            HeapImpl.getHeapImpl().walkNativeImageHeapRegions(blackenImageHeapRootsVisitor);
+        }
+        trace.string("]").newline();
+    }
+
+    private class BlackenImageHeapRootsVisitor implements MemoryWalker.ImageHeapRegionVisitor {
         @Override
-        @SuppressWarnings("try")
         public <T> boolean visitNativeImageHeapRegion(T region, MemoryWalker.NativeImageHeapRegionAccess<T> access) {
             if (access.containsReferences(region) && access.isWritable(region)) {
-                boolean alignedChunks = !access.hasHugeObjects(region);
-                try (Timer timer = timers.blackenImageHeapRoots.open()) {
-                    Pointer cur = (Pointer) access.getStart(region);
-                    Pointer endOfLastObject = cur.add(access.getSize(region));
-                    while (cur.belowThan(endOfLastObject)) {
-                        Object obj = cur.toObject();
-                        if (obj != null) {
-                            greyToBlackObjectVisitor.visitObjectInline(obj);
-                        }
-                        cur = HeapImpl.getNextObjectInImageHeapPartition(obj, alignedChunks);
-                    }
-                }
+                access.visitObjects(region, greyToBlackObjectVisitor);
             }
             return true;
-        }
-
-        @Override
-        public <T extends PointerBase> boolean visitHeapChunk(T heapChunk, MemoryWalker.HeapChunkAccess<T> access) {
-            throw VMError.shouldNotReachHere();
-        }
-
-        @Override
-        public <T extends CodeInfo> boolean visitCode(T codeInfo, MemoryWalker.CodeAccess<T> access) {
-            throw VMError.shouldNotReachHere();
         }
     }
 

@@ -32,7 +32,6 @@ import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.nodes.gc.CardTableBarrierSet;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.IsolateThread;
@@ -41,14 +40,13 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -61,7 +59,6 @@ import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.ReferenceInternals;
-import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
@@ -382,67 +379,36 @@ public final class HeapImpl extends Heap {
         /* Two threads might race to set classList, but they compute the same result. */
         if (classList == null) {
             List<Class<?>> list = new ArrayList<>(1024);
-            boolean alignedChunks = true; // always in read-only partitions with aligned chunks
-            addClassObjectsInPartition(list, imageHeapInfo.firstReadOnlyReferenceObject, imageHeapInfo.lastReadOnlyReferenceObject, alignedChunks);
-            addClassObjectsInPartition(list, imageHeapInfo.firstReadOnlyRelocatableObject, imageHeapInfo.lastReadOnlyRelocatableObject, alignedChunks);
+            ImageHeapWalker.walkRegions(imageHeapInfo, new ClassListBuilderVisitor(list));
             classList = Collections.unmodifiableList(list);
         }
         return classList;
     }
 
-    private static void addClassObjectsInPartition(List<Class<?>> list, Object firstObject, Object lastObject, boolean alignedChunks) {
-        if (firstObject == null) {
-            return;
-        }
-        Pointer currentPointer = Word.objectToUntrackedPointer(firstObject);
-        Pointer lastPointer = Word.objectToUntrackedPointer(lastObject);
-        while (currentPointer.belowOrEqual(lastPointer)) {
-            Object currentObject = KnownIntrinsics.convertUnknownValue(currentPointer.toObject(), Object.class);
-            if (currentObject instanceof Class<?>) {
-                Class<?> asClass = (Class<?>) currentObject;
-                list.add(asClass);
-            }
-            currentPointer = getNextObjectInImageHeapPartition(currentObject, alignedChunks);
-        }
-    }
+    private static class ClassListBuilderVisitor implements MemoryWalker.ImageHeapRegionVisitor, ObjectVisitor {
+        private final List<Class<?>> list;
 
-    /**
-     * Computes a pointer to the start of the next object in the same image heap partition as the
-     * passed object. If the passed object is the last object in its partition, the behavior is
-     * undefined.
-     */
-    static Pointer getNextObjectInImageHeapPartition(Object obj, boolean inAlignedChunk) {
-        Pointer end = LayoutEncoding.getObjectEnd(obj);
-        if (HeapOptions.ChunkedImageHeapLayout.getValue()) {
-            if (inAlignedChunk) {
-                /*
-                 * TODO: Image heap walks should use chunk headers to detect boundaries and advance
-                 * to the next chunk. Since we haven't implemented writing headers yet, we detect
-                 * chunk boundaries with simple address arithmetic and by checking if a zero word is
-                 * where the next object's header should be. Utilizing heap address space alignment
-                 * to make the arithmetic a bit simpler probably does not have a significant
-                 * advantage right now, but it should make barriers for card marking more efficient.
-                 */
-                Pointer alignmentBase = WordFactory.zero();
-                if (!CommittedMemoryProvider.get().guaranteesHeapPreferredAddressSpaceAlignment()) {
-                    alignmentBase = SubstrateOptions.SpawnIsolates.getValue() ? KnownIntrinsics.heapBase() : Isolates.IMAGE_HEAP_BEGIN.get();
-                }
-                UnsignedWord endOffset = end.subtract(alignmentBase);
-                UnsignedWord nextChunkOffset = UnsignedUtils.roundUp(endOffset, HeapPolicy.getAlignedHeapChunkAlignment());
-                if (endOffset.add(getMinimumObjectSize()).aboveThan(nextChunkOffset) || ObjectHeaderImpl.readHeaderFromPointer(end).equal(0)) {
-                    Pointer nextChunk = alignmentBase.add(nextChunkOffset);
-                    return AlignedHeapChunk.getObjectsStart((AlignedHeapChunk.AlignedHeader) nextChunk);
-                }
-            } else {
-                return UnalignedHeapChunk.getObjectStart((UnalignedHeapChunk.UnalignedHeader) end);
-            }
+        ClassListBuilderVisitor(List<Class<?>> list) {
+            this.list = list;
         }
-        return end;
-    }
 
-    @Fold
-    static UnsignedWord getMinimumObjectSize() {
-        return WordFactory.unsigned(ConfigurationValues.getObjectLayout().getMinimumObjectSize());
+        @Override
+        public <T> boolean visitNativeImageHeapRegion(T region, MemoryWalker.NativeImageHeapRegionAccess<T> access) {
+            if (!access.isWritable(region) && access.containsReferences(region)) {
+                access.visitObjects(region, this);
+            }
+            return true;
+        }
+
+        @Override
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true, //
+                        reason = "Allocation is fine: this method traverses only the image heap.")
+        public boolean visitObject(Object o) {
+            if (o instanceof Class<?>) {
+                list.add(KnownIntrinsics.convertUnknownValue(o, Class.class));
+            }
+            return true;
+        }
     }
 
     /*
@@ -508,7 +474,6 @@ public final class HeapImpl extends Heap {
         }
         if (getVerifyDirtyCardBeforeGC()) {
             assert heapVerifier != null : "No heap verifier!";
-            Log.log().string("[Verify dirtyCard before GC: ");
             HeapVerifier.verifyDirtyCard(false);
         }
         trace.string("]").newline();
@@ -532,7 +497,6 @@ public final class HeapImpl extends Heap {
         }
         if (getVerifyDirtyCardAfterGC()) {
             assert heapVerifier != null : "No heap verifier!";
-            Log.log().string("[Verify dirtyCard after GC: ");
             HeapVerifier.verifyDirtyCard(true);
         }
     }
@@ -595,10 +559,17 @@ public final class HeapImpl extends Heap {
     }
 
     @Fold
+    public static boolean usesImageHeapRememberedSets() {
+        return HeapOptions.ChunkedImageHeapLayout.getValue() &&
+                        CommittedMemoryProvider.get().guaranteesHeapPreferredAddressSpaceAlignment() &&
+                        HeapPolicyOptions.MaxSurvivorSpaces.getValue() != 0; // unsupported/untested
+    }
+
+    @Fold
     @Override
     public int getPreferredAddressSpaceAlignment() {
         if (HeapOptions.ChunkedImageHeapLayout.getValue()) {
-            return NumUtil.safeToInt(HeapPolicy.getAlignedHeapChunkAlignment().rawValue());
+            return UnsignedUtils.safeToInt(HeapPolicy.getAlignedHeapChunkAlignment());
         }
         return ConfigurationValues.getObjectLayout().getAlignment();
     }
@@ -625,7 +596,7 @@ public final class HeapImpl extends Heap {
         return getYoungGeneration().walkObjects(visitor) && getOldGeneration().walkObjects(visitor);
     }
 
-    boolean walkNativeImageHeapRegions(MemoryWalker.Visitor visitor) {
+    boolean walkNativeImageHeapRegions(MemoryWalker.ImageHeapRegionVisitor visitor) {
         return ImageHeapWalker.walkRegions(imageHeapInfo, visitor) &&
                         (!AuxiliaryImageHeap.isPresent() || AuxiliaryImageHeap.singleton().walkRegions(visitor));
     }

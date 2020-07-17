@@ -63,7 +63,7 @@ final class GreyObjectsWalker {
         AlignedHeapChunk.AlignedHeader aChunk = s.getLastAlignedHeapChunk();
         alignedHeapChunk = aChunk;
         trace.string("  alignedHeapChunk: ").hex(alignedHeapChunk).string("  isNull: ").bool(aChunk.isNull());
-        alignedTop = (aChunk.isNonNull() ? aChunk.getTop() : WordFactory.nullPointer());
+        alignedTop = (aChunk.isNonNull() ? HeapChunk.getTopPointer(aChunk) : WordFactory.nullPointer());
         trace.string("  alignedTop: ").hex(alignedTop);
         unalignedHeapChunk = s.getLastUnalignedHeapChunk();
         trace.string("  unalignedChunkPointer: ").hex(unalignedHeapChunk).string("]").newline();
@@ -72,7 +72,7 @@ final class GreyObjectsWalker {
     /** Compare the snapshot to the current state of the Space to see if there are grey Objects. */
     @AlwaysInline("GC performance")
     boolean haveGreyObjects() {
-        return alignedHeapChunk.notEqual(space.getLastAlignedHeapChunk()) || alignedHeapChunk.isNonNull() && alignedTop.notEqual(alignedHeapChunk.getTop()) ||
+        return alignedHeapChunk.notEqual(space.getLastAlignedHeapChunk()) || alignedHeapChunk.isNonNull() && alignedTop.notEqual(HeapChunk.getTopPointer(alignedHeapChunk)) ||
                         unalignedHeapChunk.notEqual(space.getLastUnalignedHeapChunk());
     }
 
@@ -103,12 +103,12 @@ final class GreyObjectsWalker {
                 if (!AlignedHeapChunk.walkObjectsInline(aChunk, visitor)) {
                     throw VMError.shouldNotReachHere();
                 }
-                aChunk = aChunk.getNext();
+                aChunk = HeapChunk.getNext(aChunk);
             } while (aChunk.isNonNull());
 
             /* Move the scan point. */
             alignedHeapChunk = lastChunk;
-            alignedTop = lastChunk.getTop();
+            alignedTop = HeapChunk.getTopPointer(lastChunk);
         }
     }
 
@@ -119,7 +119,7 @@ final class GreyObjectsWalker {
         if (unalignedHeapChunk.isNull()) {
             uChunk = space.getFirstUnalignedHeapChunk();
         } else {
-            uChunk = unalignedHeapChunk.getNext();
+            uChunk = HeapChunk.getNext(unalignedHeapChunk);
         }
         GreyToBlackObjectVisitor visitor = GCImpl.getGCImpl().getGreyToBlackObjectVisitor();
         if (uChunk.isNonNull()) {
@@ -129,7 +129,7 @@ final class GreyObjectsWalker {
                 if (!UnalignedHeapChunk.walkObjectsInline(uChunk, visitor)) {
                     throw VMError.shouldNotReachHere();
                 }
-                uChunk = uChunk.getNext();
+                uChunk = HeapChunk.getNext(uChunk);
             } while (uChunk.isNonNull());
 
             /* Move the scan point. */
