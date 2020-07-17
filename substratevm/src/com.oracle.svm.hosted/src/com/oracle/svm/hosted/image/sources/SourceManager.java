@@ -30,10 +30,12 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.util.ModuleSupport;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
+import java.util.stream.Stream;
 
 /**
  * A singleton class responsible for locating source files for classes included in a native image
@@ -178,24 +180,7 @@ public class SourceManager {
     }
 
     /**
-     * An accept list of packages prefixes used to pre-filter JDK11+ runtime class lookups.
-     */
-    public static final String[] JDK_SRC_PACKAGE_PREFIXES = {
-                    "java.",
-                    "jdk.",
-                    "javax.",
-                    "sun.",
-                    "com.sun.",
-                    "org.ietf.",
-                    "org.jcp.",
-                    "org.omg.",
-                    "org.w3c.",
-                    "org.xml",
-                    "org.graalvm.compiler",
-    };
-
-    /**
-     * A variant accept list of packages prefixes used to pre-filter JDK8 runtime class lookups.
+     * An accept list of packages prefixes used to pre-filter JDK8 runtime class lookups.
      */
     public static final String[] JDK8_SRC_PACKAGE_PREFIXES = {
                     "java.",
@@ -209,6 +194,14 @@ public class SourceManager {
                     "org.w3c.",
                     "org.xml",
     };
+
+    /**
+     * A variant accept list of packages prefixes used to pre-filter JDK11+ runtime class lookups.
+     */
+    public static final String[] JDK_SRC_PACKAGE_PREFIXES = Stream.concat(Stream.of(JDK8_SRC_PACKAGE_PREFIXES),
+                    Stream.of("org.graalvm.compiler"))
+                    .toArray(String[]::new);
+
     /**
      * An accept list of packages prefixes used to pre-filter GraalVM class lookups.
      */
@@ -245,7 +238,7 @@ public class SourceManager {
      * @return the corresponding source cache type
      */
     private static SourceCacheType sourceCacheType(String packageName) {
-        if (acceptList(packageName, (SourceCache.isJDK8() ? JDK8_SRC_PACKAGE_PREFIXES : JDK_SRC_PACKAGE_PREFIXES))) {
+        if (acceptList(packageName, (JavaVersionUtil.JAVA_SPEC >= 11 ? JDK_SRC_PACKAGE_PREFIXES : JDK8_SRC_PACKAGE_PREFIXES))) {
             return SourceCacheType.JDK;
         }
         if (acceptList(packageName, GRAALVM_SRC_PACKAGE_PREFIXES)) {

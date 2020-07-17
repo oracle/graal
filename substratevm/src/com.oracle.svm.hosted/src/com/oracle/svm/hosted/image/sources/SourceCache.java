@@ -70,18 +70,6 @@ public abstract class SourceCache {
      */
     protected List<Path> srcRoots;
 
-    private static final String JAVA_SPEC_VERSION_PROP = "java.specification.version";
-
-    /**
-     *
-     * The java spec version for the current JDK.
-     */
-    private static String javaSpecVersion = System.getProperty(JAVA_SPEC_VERSION_PROP);
-
-    public static boolean isJDK8() {
-        return javaSpecVersion.equals("1.8");
-    }
-
     /**
      * Create some flavour of source cache.
      */
