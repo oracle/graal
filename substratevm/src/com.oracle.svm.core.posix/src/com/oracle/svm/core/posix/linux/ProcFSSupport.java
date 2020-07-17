@@ -57,14 +57,13 @@ class ProcFSSupport {
      * @param endAddress the end address of the address range to find within a mapping
      * @param startAddrPtr the start address range for a found mapping
      * @param fileOffsetPtr the file offset of the found mapping in its backing file
-     * @param inodePtr the inode of the matching mapping's backing file
      * @param needName whether the matching path name is required and should be returned in buffer
      * @return true if a mapping is found and no errors occurred, false otherwise.
      */
     @Uninterruptible(reason = "Called during isolate initialization.")
     @SuppressWarnings("fallthrough")
-    static boolean findMapping(int fd, CCharPointer buffer, int bufferLen, WordBase beginAddress, WordBase endAddress, CLongPointer startAddrPtr,
-                    CLongPointer fileOffsetPtr, CLongPointer inodePtr, boolean needName) {
+    static boolean findMapping(int fd, CCharPointer buffer, int bufferLen, WordBase beginAddress, WordBase endAddress,
+                    CLongPointer startAddrPtr, CLongPointer fileOffsetPtr, boolean needName) {
         int readOffset = 0;
         int endOffset = 0;
         int position = 0;
@@ -74,7 +73,6 @@ class ProcFSSupport {
         long start = 0;
         long end = 0;
         long fileOffset = 0;
-        long inode = 0;
         OUT: for (;;) {
             while (position == endOffset) { // fill buffer
                 int readBytes = PosixUtils.readBytes(fd, buffer, bufferLen, readOffset);
@@ -131,7 +129,6 @@ class ProcFSSupport {
                 }
                 case ST_DEV: {
                     if (b == ' ') {
-                        inode = 0;
                         state = ST_INODE;
                     } // ignore anything else
                     break;
@@ -144,11 +141,7 @@ class ProcFSSupport {
                             break OUT;
                         }
                         state = ST_SPACE;
-                    } else if ('0' <= b && b <= '9') {
-                        inode = (inode << 3) + (inode << 1) + (b - '0');
-                    } else {
-                        return false; // garbage == not matched
-                    }
+                    } // ignore anything else
                     break;
                 }
                 case ST_SPACE: {
@@ -187,9 +180,6 @@ class ProcFSSupport {
         }
         if (fileOffsetPtr.isNonNull()) {
             fileOffsetPtr.write(fileOffset);
-        }
-        if (inodePtr.isNonNull()) {
-            inodePtr.write(inode);
         }
         return true;
     }

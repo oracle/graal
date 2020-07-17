@@ -63,11 +63,8 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.os.ImageHeapProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
-import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Fcntl;
-import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Unistd;
-import com.oracle.svm.core.posix.headers.linux.LinuxStat;
 import com.oracle.svm.core.util.PointerUtils;
 
 import jdk.vm.ci.code.MemoryBarriers;
@@ -98,8 +95,6 @@ class LinuxImageHeapProviderFeature implements Feature {
  */
 public class LinuxImageHeapProvider implements ImageHeapProvider {
     private static final CGlobalData<CCharPointer> PROC_SELF_MAPS = CGlobalDataFactory.createCString("/proc/self/maps");
-    private static final CGlobalData<CCharPointer> PROC_VERSION = CGlobalDataFactory.createCString("/proc/version");
-    private static final CGlobalData<CCharPointer> PROC_VERSION_WSL_SUBSTRING = CGlobalDataFactory.createCString("Microsoft");
 
     private static final SignedWord FIRST_ISOLATE_FD = signed(-2);
     private static final SignedWord UNASSIGNED_FD = signed(-1);
@@ -177,39 +172,14 @@ public class LinuxImageHeapProvider implements ImageHeapProvider {
             final CCharPointer buffer = StackValue.get(MAX_PATHLEN);
             final CLongPointer startAddr = StackValue.get(CLongPointer.class);
             final CLongPointer offset = StackValue.get(CLongPointer.class);
-            final CLongPointer inode = StackValue.get(CLongPointer.class);
-            boolean found = findMapping(mapfd, buffer, MAX_PATHLEN, IMAGE_HEAP_RELOCATABLE_BEGIN.get(), IMAGE_HEAP_RELOCATABLE_END.get(), startAddr, offset, inode, true);
+            boolean found = findMapping(mapfd, buffer, MAX_PATHLEN, IMAGE_HEAP_RELOCATABLE_BEGIN.get(), IMAGE_HEAP_RELOCATABLE_END.get(), startAddr, offset, true);
             Unistd.NoTransitions.close(mapfd);
             if (!found) {
                 return CEntryPointErrors.LOCATE_IMAGE_FAILED;
             }
-            LinuxStat.stat64 stat = StackValue.get(LinuxStat.stat64.class);
             int opened = Fcntl.NoTransitions.open(buffer, Fcntl.O_RDONLY(), 0);
             if (opened < 0) {
                 return CEntryPointErrors.OPEN_IMAGE_FAILED;
-            }
-            if (LinuxStat.NoTransitions.fstat64(opened, stat) != 0) {
-                Unistd.NoTransitions.close(opened);
-                return CEntryPointErrors.LOCATE_IMAGE_FAILED;
-            }
-            if (stat.st_ino() != inode.read()) {
-                boolean ignore = false;
-                int versionfd = Fcntl.NoTransitions.open(PROC_VERSION.get(), Fcntl.O_RDONLY(), 0);
-                if (versionfd != -1) {
-                    if (PosixUtils.readEntirely(versionfd, buffer, MAX_PATHLEN)) {
-                        /*
-                         * The Windows Subsystem for Linux (WSL) reports incorrect inodes via /proc
-                         * that don't match those returned by fstat. If we are running under WSL,
-                         * ignore when the comparison fails.
-                         */
-                        ignore = LibC.strstr(buffer, PROC_VERSION_WSL_SUBSTRING.get()).isNonNull();
-                    }
-                    Unistd.NoTransitions.close(versionfd);
-                }
-                if (!ignore) {
-                    Unistd.NoTransitions.close(opened);
-                    return CEntryPointErrors.LOCATE_IMAGE_IDENTITY_MISMATCH;
-                }
             }
             Word imageHeapRelocsOffset = IMAGE_HEAP_RELOCATABLE_BEGIN.get().subtract(IMAGE_HEAP_BEGIN.get());
             Word imageHeapOffset = IMAGE_HEAP_RELOCATABLE_BEGIN.get().subtract(unsigned(startAddr.read())).subtract(imageHeapRelocsOffset);
