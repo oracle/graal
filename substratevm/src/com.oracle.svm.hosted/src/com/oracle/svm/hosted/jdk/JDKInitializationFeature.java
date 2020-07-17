@@ -70,6 +70,7 @@ public class JDKInitializationFeature implements Feature {
         RuntimeClassInitialization.initializeAtBuildTime("sun.net", "Core JDK classes are initialized at build time");
         RuntimeClassInitialization.initializeAtBuildTime("sun.nio", "Core JDK classes are initialized at build time");
         RuntimeClassInitialization.initializeAtBuildTime("sun.reflect", "Core JDK classes are initialized at build time");
+        RuntimeClassInitialization.initializeAtBuildTime("sun.security.mscapi", "Core JDK classes are initialized at build time");
         RuntimeClassInitialization.initializeAtBuildTime("sun.text", "Core JDK classes are initialized at build time");
         RuntimeClassInitialization.initializeAtBuildTime("sun.util", "Core JDK classes are initialized at build time");
 
