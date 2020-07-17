@@ -912,7 +912,15 @@ abstract class DynamicObjectLibraryImpl {
             return new SpecificKey.MissingKey(key, next);
         }
 
-        protected final boolean assertCachedKeyAndShape(DynamicObject object, Shape cachedShape, Object key) {
+        protected final boolean assertCachedKeyAndShapeForRead(DynamicObject object, Shape cachedShape, Object key) {
+            // The object's Shape might differ from cachedShape if cachedShape is shared,
+            // this is fine for reads.
+            assert object.getShape() == cachedShape || cachedShape.isShared();
+            assert keyEquals(this.cachedKey, key);
+            return true;
+        }
+
+        protected final boolean assertCachedKeyAndShapeForWrite(DynamicObject object, Shape cachedShape, Object key) {
             assert object.getShape() == cachedShape;
             assert keyEquals(this.cachedKey, key);
             return true;
@@ -938,91 +946,91 @@ abstract class DynamicObjectLibraryImpl {
             @Override
             public Object getOrDefault(DynamicObject object, Shape cachedShape, Object key, Object defaultValue) {
                 CompilerAsserts.partialEvaluationConstant(cachedShape);
-                assert assertCachedKeyAndShape(object, cachedShape, key);
+                assert assertCachedKeyAndShapeForRead(object, cachedShape, key);
                 return getLocation(cachedProperty).get(object, guard(object, cachedShape));
             }
 
             @Override
             public int getIntOrDefault(DynamicObject object, Shape cachedShape, Object key, Object defaultValue) throws UnexpectedResultException {
                 CompilerAsserts.partialEvaluationConstant(cachedShape);
-                assert assertCachedKeyAndShape(object, cachedShape, key);
+                assert assertCachedKeyAndShapeForRead(object, cachedShape, key);
                 return getLocation(cachedProperty).getInt(object, guard(object, cachedShape));
             }
 
             @Override
             public long getLongOrDefault(DynamicObject object, Shape cachedShape, Object key, Object defaultValue) throws UnexpectedResultException {
                 CompilerAsserts.partialEvaluationConstant(cachedShape);
-                assert assertCachedKeyAndShape(object, cachedShape, key);
+                assert assertCachedKeyAndShapeForRead(object, cachedShape, key);
                 return getLocation(cachedProperty).getLong(object, guard(object, cachedShape));
             }
 
             @Override
             public double getDoubleOrDefault(DynamicObject object, Shape cachedShape, Object key, Object defaultValue) throws UnexpectedResultException {
                 CompilerAsserts.partialEvaluationConstant(cachedShape);
-                assert assertCachedKeyAndShape(object, cachedShape, key);
+                assert assertCachedKeyAndShapeForRead(object, cachedShape, key);
                 return getLocation(cachedProperty).getDouble(object, guard(object, cachedShape));
             }
 
             @Override
             public boolean getBooleanOrDefault(DynamicObject object, Shape cachedShape, Object key, Object defaultValue) throws UnexpectedResultException {
                 CompilerAsserts.partialEvaluationConstant(cachedShape);
-                assert assertCachedKeyAndShape(object, cachedShape, key);
+                assert assertCachedKeyAndShapeForRead(object, cachedShape, key);
                 return getLocation(cachedProperty).getBoolean(object, guard(object, cachedShape));
             }
 
             @Override
             public boolean put(DynamicObject object, Shape cachedShape, Object key, Object value, long putFlags) {
                 CompilerAsserts.partialEvaluationConstant(cachedShape);
-                assert assertCachedKeyAndShape(object, cachedShape, key);
+                assert assertCachedKeyAndShapeForWrite(object, cachedShape, key);
                 return putImpl(object, cachedShape, key, value, putFlags, cachedProperty);
             }
 
             @Override
             public boolean putInt(DynamicObject object, Shape cachedShape, Object key, int value, long putFlags) {
                 CompilerAsserts.partialEvaluationConstant(cachedShape);
-                assert assertCachedKeyAndShape(object, cachedShape, key);
+                assert assertCachedKeyAndShapeForWrite(object, cachedShape, key);
                 return putIntImpl(object, cachedShape, key, value, putFlags, cachedProperty);
             }
 
             @Override
             public boolean putLong(DynamicObject object, Shape cachedShape, Object key, long value, long putFlags) {
                 CompilerAsserts.partialEvaluationConstant(cachedShape);
-                assert assertCachedKeyAndShape(object, cachedShape, key);
+                assert assertCachedKeyAndShapeForWrite(object, cachedShape, key);
                 return putLongImpl(object, cachedShape, key, value, putFlags, cachedProperty);
             }
 
             @Override
             public boolean putDouble(DynamicObject object, Shape cachedShape, Object key, double value, long putFlags) {
                 CompilerAsserts.partialEvaluationConstant(cachedShape);
-                assert assertCachedKeyAndShape(object, cachedShape, key);
+                assert assertCachedKeyAndShapeForWrite(object, cachedShape, key);
                 return putDoubleImpl(object, cachedShape, key, value, putFlags, cachedProperty);
             }
 
             @Override
             public boolean putBoolean(DynamicObject object, Shape cachedShape, Object key, boolean value, long putFlags) {
                 CompilerAsserts.partialEvaluationConstant(cachedShape);
-                assert assertCachedKeyAndShape(object, cachedShape, key);
+                assert assertCachedKeyAndShapeForWrite(object, cachedShape, key);
                 return putBooleanImpl(object, cachedShape, key, value, putFlags, cachedProperty);
             }
 
             @Override
             public boolean containsKey(DynamicObject object, Shape cachedShape, Object key) {
                 CompilerAsserts.partialEvaluationConstant(cachedShape);
-                assert assertCachedKeyAndShape(object, cachedShape, key);
+                assert assertCachedKeyAndShapeForRead(object, cachedShape, key);
                 return true;
             }
 
             @Override
             public Property getProperty(DynamicObject object, Shape cachedShape, Object key) {
                 CompilerAsserts.partialEvaluationConstant(cachedShape);
-                assert assertCachedKeyAndShape(object, cachedShape, key);
+                assert assertCachedKeyAndShapeForRead(object, cachedShape, key);
                 return cachedProperty;
             }
 
             @Override
             public boolean setPropertyFlags(DynamicObject object, Shape cachedShape, Object key, int propertyFlags) {
                 CompilerAsserts.partialEvaluationConstant(cachedShape);
-                assert assertCachedKeyAndShape(object, cachedShape, key);
+                assert assertCachedKeyAndShapeForWrite(object, cachedShape, key);
                 if (cachedProperty.getFlags() != propertyFlags) {
                     ShapeImpl oldShape = (ShapeImpl) cachedShape;
                     ShapeImpl newShape = changePropertyFlags(oldShape, (PropertyImpl) cachedProperty, propertyFlags);
@@ -1047,56 +1055,56 @@ abstract class DynamicObjectLibraryImpl {
             @Override
             public Object getOrDefault(DynamicObject object, Shape cachedShape, Object key, Object defaultValue) {
                 CompilerAsserts.partialEvaluationConstant(cachedShape);
-                assert assertCachedKeyAndShape(object, cachedShape, key);
+                assert assertCachedKeyAndShapeForRead(object, cachedShape, key);
                 return defaultValue;
             }
 
             @Override
             public boolean put(DynamicObject object, Shape cachedShape, Object key, Object value, long putFlags) {
                 CompilerAsserts.partialEvaluationConstant(cachedShape);
-                assert assertCachedKeyAndShape(object, cachedShape, key);
+                assert assertCachedKeyAndShapeForWrite(object, cachedShape, key);
                 return putImpl(object, cachedShape, key, value, putFlags, null);
             }
 
             @Override
             public boolean putInt(DynamicObject object, Shape cachedShape, Object key, int value, long putFlags) {
                 CompilerAsserts.partialEvaluationConstant(cachedShape);
-                assert assertCachedKeyAndShape(object, cachedShape, key);
+                assert assertCachedKeyAndShapeForWrite(object, cachedShape, key);
                 return putIntImpl(object, cachedShape, key, value, putFlags, null);
             }
 
             @Override
             public boolean putLong(DynamicObject object, Shape cachedShape, Object key, long value, long putFlags) {
                 CompilerAsserts.partialEvaluationConstant(cachedShape);
-                assert assertCachedKeyAndShape(object, cachedShape, key);
+                assert assertCachedKeyAndShapeForWrite(object, cachedShape, key);
                 return putLongImpl(object, cachedShape, key, value, putFlags, null);
             }
 
             @Override
             public boolean putDouble(DynamicObject object, Shape cachedShape, Object key, double value, long putFlags) {
                 CompilerAsserts.partialEvaluationConstant(cachedShape);
-                assert assertCachedKeyAndShape(object, cachedShape, key);
+                assert assertCachedKeyAndShapeForWrite(object, cachedShape, key);
                 return putDoubleImpl(object, cachedShape, key, value, putFlags, null);
             }
 
             @Override
             public boolean putBoolean(DynamicObject object, Shape cachedShape, Object key, boolean value, long putFlags) {
                 CompilerAsserts.partialEvaluationConstant(cachedShape);
-                assert assertCachedKeyAndShape(object, cachedShape, key);
+                assert assertCachedKeyAndShapeForWrite(object, cachedShape, key);
                 return putBooleanImpl(object, cachedShape, key, value, putFlags, null);
             }
 
             @Override
             public boolean containsKey(DynamicObject object, Shape cachedShape, Object key) {
                 CompilerAsserts.partialEvaluationConstant(cachedShape);
-                assert assertCachedKeyAndShape(object, cachedShape, key);
+                assert assertCachedKeyAndShapeForRead(object, cachedShape, key);
                 return false;
             }
 
             @Override
             public Property getProperty(DynamicObject object, Shape cachedShape, Object key) {
                 CompilerAsserts.partialEvaluationConstant(cachedShape);
-                assert assertCachedKeyAndShape(object, cachedShape, key);
+                assert assertCachedKeyAndShapeForRead(object, cachedShape, key);
                 return null;
             }
 
@@ -1123,7 +1131,7 @@ abstract class DynamicObjectLibraryImpl {
             @Override
             public boolean setPropertyFlags(DynamicObject object, Shape cachedShape, Object key, int propertyFlags) {
                 CompilerAsserts.partialEvaluationConstant(cachedShape);
-                assert assertCachedKeyAndShape(object, cachedShape, key);
+                assert assertCachedKeyAndShapeForWrite(object, cachedShape, key);
                 return false;
             }
         }
