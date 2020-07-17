@@ -24,28 +24,23 @@
  */
 package com.oracle.svm.hosted;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
+
+import com.oracle.svm.core.annotate.AutomaticFeature;
 
 @AutomaticFeature
 public class ClassLoaderFeature implements Feature {
 
-    private NativeImageClassLoaderSupport classLoaderSupport;
+    private static final NativeImageSystemClassLoader nativeImageSystemClassLoader = NativeImageSystemClassLoader.singleton();
 
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        classLoaderSupport = ((FeatureImpl.AfterRegistrationAccessImpl) access).getImageClassLoader().classLoaderSupport;
-    }
-
-    public boolean isNativeImageClassLoader(ClassLoader loader) {
-        return classLoaderSupport.isNativeImageClassLoader(loader);
+    private boolean needsReplacement(ClassLoader loader) {
+        return loader == nativeImageSystemClassLoader || nativeImageSystemClassLoader.isNativeImageClassLoader(loader);
     }
 
     private Object runtimeClassLoaderObjectReplacer(Object replaceCandidate) {
         if (replaceCandidate instanceof ClassLoader) {
-            if (isNativeImageClassLoader(((ClassLoader) replaceCandidate))) {
-                return classLoaderSupport.defaultSystemClassLoader;
+            if (needsReplacement(((ClassLoader) replaceCandidate))) {
+                return nativeImageSystemClassLoader.defaultSystemClassLoader;
             }
         }
         return replaceCandidate;
@@ -54,9 +49,5 @@ public class ClassLoaderFeature implements Feature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         access.registerObjectReplacer(this::runtimeClassLoaderObjectReplacer);
-    }
-
-    public static ClassLoaderFeature singleton() {
-        return ImageSingletons.lookup(ClassLoaderFeature.class);
     }
 }

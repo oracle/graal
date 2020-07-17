@@ -126,7 +126,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
         if (loader instanceof NativeImageSystemClassLoader) {
             NativeImageSystemClassLoader customSystemClassLoader = (NativeImageSystemClassLoader) ClassLoader.getSystemClassLoader();
             customSystemClassLoader.setDelegate(null);
-            Thread.currentThread().setContextClassLoader(customSystemClassLoader.getDefaultSystemClassLoader());
+            Thread.currentThread().setContextClassLoader(customSystemClassLoader.defaultSystemClassLoader);
         }
     }
 
@@ -146,31 +146,21 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
      *         via {@link NativeImageClassLoaderSupport#getClassLoader()}.
      */
     public static NativeImageClassLoaderSupport installNativeImageClassLoader(String[] classpath, String[] modulepath) {
-        NativeImageSystemClassLoader nativeImageSystemClassLoader = nativeImageSystemClassLoader();
-        NativeImageClassLoaderSupport nativeImageClassLoaderSupport = new NativeImageClassLoaderSupport(nativeImageSystemClassLoader, classpath, modulepath);
+        NativeImageSystemClassLoader nativeImageSystemClassLoader = NativeImageSystemClassLoader.singleton();
+        NativeImageClassLoaderSupport nativeImageClassLoaderSupport = new NativeImageClassLoaderSupport(nativeImageSystemClassLoader.defaultSystemClassLoader, classpath, modulepath);
         Thread.currentThread().setContextClassLoader(nativeImageClassLoaderSupport.getClassLoader());
         /*
-         * Make system class loader delegate to NativeImageClassLoader, enabling resolution of
-         * classes and resources during image build-time present in the image classpath.
+         * Make NativeImageSystemClassLoader delegate to the classLoader provided by
+         * NativeImageClassLoaderSupport, enabling resolution of classes and resources during image
+         * build-time present on the image classpath and modulepath.
          */
-        nativeImageSystemClassLoader.setDelegate(nativeImageClassLoaderSupport);
+        nativeImageSystemClassLoader.setDelegate(nativeImageClassLoaderSupport.getClassLoader());
 
         if (JavaVersionUtil.JAVA_SPEC >= 11 && !nativeImageClassLoaderSupport.imagecp.isEmpty()) {
             ModuleSupport.openModule(JavaVersionUtil.class, null);
         }
 
         return nativeImageClassLoaderSupport;
-    }
-
-    private static NativeImageSystemClassLoader nativeImageSystemClassLoader() {
-        if (!(ClassLoader.getSystemClassLoader() instanceof NativeImageSystemClassLoader)) {
-            String badCustomClassLoaderError = "SystemClassLoader is the default system class loader. This might create problems when using reflection " +
-                            "during class initialization at build-time. " +
-                            "To fix this error add -Djava.system.class.loader=" + NativeImageSystemClassLoader.class.getCanonicalName();
-            UserError.abort(badCustomClassLoaderError);
-        }
-
-        return (NativeImageSystemClassLoader) ClassLoader.getSystemClassLoader();
     }
 
     public static String[] extractImagePathEntries(List<String> arguments, String pathPrefix) {

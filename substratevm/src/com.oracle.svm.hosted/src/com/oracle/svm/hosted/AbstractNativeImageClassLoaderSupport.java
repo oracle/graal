@@ -43,7 +43,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.security.SecureClassLoader;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
@@ -72,15 +71,11 @@ public abstract class AbstractNativeImageClassLoaderSupport {
 
     final List<Path> imagecp;
     private final List<Path> buildcp;
-    private final NativeImageSystemClassLoader nativeImageSystemClassLoader;
 
     protected final URLClassLoader classPathClassLoader;
-    protected final ClassLoader defaultSystemClassLoader;
 
-    protected AbstractNativeImageClassLoaderSupport(NativeImageSystemClassLoader nativeImageSystemClassLoader, String[] classpath) {
+    protected AbstractNativeImageClassLoaderSupport(ClassLoader defaultSystemClassLoader, String[] classpath) {
 
-        this.nativeImageSystemClassLoader = nativeImageSystemClassLoader;
-        defaultSystemClassLoader = nativeImageSystemClassLoader.getDefaultSystemClassLoader();
         classPathClassLoader = new URLClassLoader(Util.verifyClassPathAndConvertToURLs(classpath), defaultSystemClassLoader);
 
         imagecp = Collections.unmodifiableList(Arrays.stream(classPathClassLoader.getURLs()).map(Util::urlToPath).collect(Collectors.toList()));
@@ -99,17 +94,8 @@ public abstract class AbstractNativeImageClassLoaderSupport {
         return Class.forName(className, false, classPathClassLoader);
     }
 
-    public SecureClassLoader getClassLoader() {
+    public ClassLoader getClassLoader() {
         return classPathClassLoader;
-    }
-
-    boolean isNativeImageClassLoader(ClassLoader c) {
-        if (c == nativeImageSystemClassLoader) {
-            return true;
-        } else if (c == classPathClassLoader) {
-            return true;
-        }
-        return false;
     }
 
     public abstract List<Path> modulepath();

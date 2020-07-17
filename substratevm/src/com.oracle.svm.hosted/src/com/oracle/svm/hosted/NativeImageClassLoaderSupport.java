@@ -32,8 +32,8 @@ import java.util.concurrent.ForkJoinPool;
 
 public class NativeImageClassLoaderSupport extends AbstractNativeImageClassLoaderSupport {
 
-    NativeImageClassLoaderSupport(NativeImageSystemClassLoader nativeImageSystemClassLoader, String[] classpath, @SuppressWarnings("unused") String[] modulePath) {
-        super(nativeImageSystemClassLoader, classpath);
+    NativeImageClassLoaderSupport(ClassLoader defaultSystemClassLoader, String[] classpath, @SuppressWarnings("unused") String[] modulePath) {
+        super(defaultSystemClassLoader, classpath);
     }
 
     @Override
