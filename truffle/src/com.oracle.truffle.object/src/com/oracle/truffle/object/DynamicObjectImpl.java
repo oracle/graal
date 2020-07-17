@@ -42,31 +42,34 @@ package com.oracle.truffle.object;
 
 import java.util.Iterator;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.library.DynamicDispatchLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.LocationFactory;
+import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 
 /** @since 0.17 or earlier */
 @SuppressWarnings("deprecation")
+@ExportLibrary(DynamicDispatchLibrary.class)
 public abstract class DynamicObjectImpl extends DynamicObject implements Cloneable {
 
     /** @since 0.17 or earlier */
     protected DynamicObjectImpl(Shape shape) {
-        super(shape.getRoot());
+        super(shape.getRoot(), LayoutImpl.ACCESS);
         initialize(shape);
         setShapeImpl(shape);
 
         if (ObjectStorageOptions.Profile) {
             Debug.trackObject(this);
         }
-    }
-
-    /** @since 0.17 or earlier */
-    @Deprecated
-    public Object getTypeIdentifier() {
-        return getShape();
     }
 
     final ShapeImpl getShapeImpl() {
@@ -171,11 +174,7 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
     /** @since 0.17 or earlier */
     @Override
     protected final DynamicObject clone() {
-        try {
-            return (DynamicObject) super.clone();
-        } catch (CloneNotSupportedException e) {
-            throw new IllegalStateException();
-        }
+        return LayoutImpl.ACCESS.objectClone(this);
     }
 
     /** @since 0.17 or earlier */
@@ -322,4 +321,40 @@ public abstract class DynamicObjectImpl extends DynamicObject implements Cloneab
         return cloneWithShape(currentShape);
     }
 
+    @ExportMessage
+    static class Accepts {
+
+        @Specialization(limit = "1", guards = "cachedShape == receiver.getShape()")
+        @SuppressWarnings("unused")
+        static boolean doCachedShape(DynamicObjectImpl receiver,
+                        @Shared("cachedShape") @Cached("receiver.getShape()") Shape cachedShape,
+                        @Shared("cachedTypeClass") @Cached(value = "receiver.getShape().getObjectType().getClass()", allowUncached = true) Class<? extends ObjectType> typeClass) {
+            return true;
+        }
+
+        @Specialization(replaces = "doCachedShape")
+        static boolean doCachedTypeClass(DynamicObjectImpl receiver,
+                        @Shared("cachedTypeClass") @Cached(value = "receiver.getShape().getObjectType().getClass()", allowUncached = true) Class<? extends ObjectType> typeClass) {
+            return typeClass == receiver.getShape().getObjectType().getClass();
+        }
+    }
+
+    @ExportMessage
+    static class Dispatch {
+
+        @Specialization(limit = "1", guards = "cachedShape == receiver.getShape()")
+        @SuppressWarnings("unused")
+        static Class<?> doCachedShape(DynamicObjectImpl receiver,
+                        @Shared("cachedShape") @Cached("receiver.getShape()") Shape cachedShape,
+                        @Shared("cachedTypeClass") @Cached(value = "receiver.getShape().getObjectType().getClass()", allowUncached = true) Class<? extends ObjectType> typeClass) {
+            return cachedShape.getObjectType().dispatch();
+        }
+
+        @Specialization(replaces = "doCachedShape")
+        static Class<?> doCachedTypeClass(DynamicObjectImpl receiver,
+                        @Shared("cachedTypeClass") @Cached(value = "receiver.getShape().getObjectType().getClass()", allowUncached = true) Class<? extends ObjectType> typeClass) {
+            ObjectType objectType = CompilerDirectives.castExact(receiver.getShape().getObjectType(), typeClass);
+            return objectType.dispatch();
+        }
+    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -94,25 +94,40 @@ public final class InspectorTester {
         exec.err.delegate = err;
     }
 
+    public void finishNoGC() throws InterruptedException {
+        finish(false, false);
+    }
+
     public void finish() throws InterruptedException {
-        finish(false);
+        finish(false, true);
     }
 
-    public Throwable finishErr() throws InterruptedException {
-        return finish(true);
+    public String finishErr() throws InterruptedException {
+        return finish(true, true);
     }
 
-    private Throwable finish(boolean expectError) throws InterruptedException {
+    private String finish(boolean expectError, boolean gcCheck) throws InterruptedException {
         synchronized (exec.lock) {
             exec.done = true;
-            exec.catchError = expectError;
             exec.lock.notifyAll();
         }
         exec.join();
         RemoteObject.resetIDs();
         ExceptionDetails.resetIDs();
         InspectorExecutionContext.resetIDs();
-        return exec.error;
+        String error = null;
+        if (exec.error != null) {
+            if (expectError) {
+                error = exec.error.getMessage();
+            } else {
+                throw new AssertionError(error, exec.error);
+            }
+            exec.error = null;
+        }
+        if (gcCheck) {
+            exec.gcCheck.checkCollected();
+        }
+        return error;
     }
 
     public boolean shouldWaitForClose() {
@@ -243,7 +258,6 @@ public final class InspectorTester {
         private final boolean inspectInternal;
         private final boolean inspectInitialization;
         private final List<URI> sourcePath;
-        private Context context;
         private InspectServerSession inspect;
         private ConnectionWatcher connectionWatcher;
         private long contextId;
@@ -253,10 +267,10 @@ public final class InspectorTester {
         private boolean done = false;
         private final StringBuilder receivedMessages = new StringBuilder();
         private final Semaphore initialized = new Semaphore(0);
-        private boolean catchError;
         private Throwable error;
         final Object lock = new Object();
         final ProxyOutputStream err = new ProxyOutputStream(System.err);
+        private final EnginesGCedTest.GCCheck gcCheck;
 
         InspectExecThread(boolean suspend, final boolean inspectInternal, final boolean inspectInitialization, List<URI> sourcePath) {
             super("Inspector Executor");
@@ -264,11 +278,13 @@ public final class InspectorTester {
             this.inspectInternal = inspectInternal;
             this.inspectInitialization = inspectInitialization;
             this.sourcePath = sourcePath;
+            this.gcCheck = new EnginesGCedTest.GCCheck();
         }
 
         @Override
         public void run() {
             Engine engine = Engine.newBuilder().err(err).build();
+            gcCheck.addEngineReference(engine);
             Instrument testInstrument = engine.getInstruments().get(InspectorTestInstrument.ID);
             InspectSessionInfoProvider sessionInfoProvider = testInstrument.lookup(InspectSessionInfoProvider.class);
             InspectSessionInfo sessionInfo = sessionInfoProvider.getSessionInfo(suspend, inspectInternal, inspectInitialization, sourcePath);
@@ -278,7 +294,7 @@ public final class InspectorTester {
                 contextId = sessionInfo.getId();
                 inspectorContext = sessionInfo.getInspectorContext();
                 inspect.setMessageListener(this);
-                context = Context.newBuilder().engine(engine).allowAllAccess(true).build();
+                Context context = Context.newBuilder().engine(engine).allowAllAccess(true).build();
                 initialized.release();
                 Source source = null;
                 CompletableFuture<Value> valueFuture = null;
@@ -308,13 +324,12 @@ public final class InspectorTester {
             } catch (ThreadDeath td) {
                 throw td;
             } catch (Throwable t) {
-                if (catchError) {
-                    error = t;
-                } else {
-                    throw t;
-                }
+                error = t;
             } finally {
                 inspect.sendClose();
+                inspect = null;
+                inspectorContext = null;
+                evalValue = null;
             }
         }
 

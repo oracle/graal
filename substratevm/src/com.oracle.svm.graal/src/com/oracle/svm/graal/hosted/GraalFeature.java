@@ -98,6 +98,7 @@ import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionValues;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.GraalSupport;
 import com.oracle.svm.graal.SubstrateGraalRuntime;
@@ -151,7 +152,7 @@ public final class GraalFeature implements Feature {
         public static final HostedOptionKey<Boolean> PrintStaticTruffleBoundaries = new HostedOptionKey<>(false);
 
         @Option(help = "Maximum number of methods allowed for runtime compilation.")//
-        public static final HostedOptionKey<Integer[]> MaxRuntimeCompileMethods = new HostedOptionKey<>(new Integer[]{});
+        public static final HostedOptionKey<String[]> MaxRuntimeCompileMethods = new HostedOptionKey<>(new String[]{});
 
         @Option(help = "Enforce checking of maximum number of methods allowed for runtime compilation. Useful for checking in the gate that the number of methods does not go up without a good reason.")//
         public static final HostedOptionKey<Boolean> EnforceMaxRuntimeCompileMethods = new HostedOptionKey<>(false);
@@ -628,8 +629,15 @@ public final class GraalFeature implements Feature {
         }
 
         int maxMethods = 0;
-        for (Integer value : Options.MaxRuntimeCompileMethods.getValue()) {
-            maxMethods += value;
+        for (String value : Options.MaxRuntimeCompileMethods.getValue()) {
+            String numberStr = null;
+            try {
+                /* Strip optional comment string from MaxRuntimeCompileMethods value */
+                numberStr = value.split("#")[0];
+                maxMethods += Long.parseLong(numberStr);
+            } catch (NumberFormatException ex) {
+                throw UserError.abort("Invalid value for option 'MaxRuntimeCompileMethods': '%s' is not a valid number", numberStr);
+            }
         }
         if (Options.EnforceMaxRuntimeCompileMethods.getValue() && maxMethods != 0 && methods.size() > maxMethods) {
             printDeepestLevelPath();

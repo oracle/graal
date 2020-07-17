@@ -40,14 +40,21 @@
  */
 package com.oracle.truffle.object.basic.test;
 
+import static org.junit.Assert.assertTrue;
+
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.Iterator;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.junit.Assert;
+import org.junit.Assume;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Location;
+import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.object.LocationImpl;
 import com.oracle.truffle.object.ShapeImpl;
@@ -55,7 +62,7 @@ import com.oracle.truffle.object.ShapeImpl;
 public abstract class DOTestAsserts {
 
     public static void assertLocationFields(Location location, int prims, int objects) {
-        LocationImpl locationImpl = (LocationImpl) location;
+        LocationImpl locationImpl = (LocationImpl) assumeCoreLocation(location);
         Assert.assertEquals(prims, locationImpl.primitiveFieldCount());
         Assert.assertEquals(objects, locationImpl.objectFieldCount());
     }
@@ -77,23 +84,53 @@ public abstract class DOTestAsserts {
     }
 
     private static Location getInternalLocation(Location location) {
+        assumeCoreLocation(location);
         try {
-            Class<?> locations = Class.forName("com.oracle.truffle.object.CoreLocations");
+            Class<?> locations = Class.forName("com.oracle.truffle.object.LocationImpl");
             Method getInternalLocationMethod = Arrays.stream(locations.getDeclaredMethods()).filter(
                             m -> m.getName().equals("getInternalLocation")).findFirst().get();
             getInternalLocationMethod.setAccessible(true);
-            return (Location) getInternalLocationMethod.invoke(null, location);
+            return (Location) getInternalLocationMethod.invoke(location);
         } catch (ClassNotFoundException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
-            Assert.fail(e.toString());
-            return location;
+            throw new AssertionError(e);
         }
     }
 
-    public static void assertShape(String fields, Shape shape) {
-        Assert.assertEquals(shapeId(shape) + fields, shape.toString());
+    private static Location assumeCoreLocation(Location location) {
+        try {
+            Class<?> locationBaseClass = Class.forName("com.oracle.truffle.object.CoreLocation");
+            Assume.assumeTrue(locationBaseClass.isInstance(location));
+        } catch (ClassNotFoundException | IllegalArgumentException e) {
+            throw new AssertionError(e);
+        }
+        return location;
     }
 
-    private static String shapeId(Shape shape) {
-        return "@" + Integer.toHexString(shape.hashCode());
+    public static void assertShape(String[] fields, Shape shape) {
+        String shapeString = shapeLocationsToString(shape);
+        // ignore trailing extra info in location strings.
+        String regex = Arrays.asList(fields).stream().map(Pattern::quote).collect(Collectors.joining("[^\"]*?", "\\{", "[^\"]*?\\}"));
+        assertTrue("expected " + Arrays.stream(fields).collect(Collectors.joining(", ", "{", "}")) + ", actual: " + shapeString, Pattern.matches(regex, shapeString));
+    }
+
+    private static String shapeLocationsToString(Shape shape) {
+        StringBuilder sb = new StringBuilder();
+        if (!shape.isValid()) {
+            sb.append('!');
+        }
+
+        sb.append("{");
+        for (Iterator<Property> iterator = shape.getPropertyListInternal(false).iterator(); iterator.hasNext();) {
+            Property p = iterator.next();
+            assumeCoreLocation(p.getLocation());
+            sb.append("\"").append(p.getKey()).append("\":").append(p.getLocation());
+            if (iterator.hasNext()) {
+                sb.append(",");
+            }
+            sb.append("\n");
+        }
+        sb.append("}");
+
+        return sb.toString();
     }
 }

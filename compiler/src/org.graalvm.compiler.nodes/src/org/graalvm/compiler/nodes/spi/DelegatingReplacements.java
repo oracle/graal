@@ -131,8 +131,8 @@ public class DelegatingReplacements implements Replacements {
     }
 
     @Override
-    public boolean hasSubstitution(ResolvedJavaMethod method, int invokeBci) {
-        return delegate.hasSubstitution(method, invokeBci);
+    public boolean hasSubstitution(ResolvedJavaMethod method) {
+        return delegate.hasSubstitution(method);
     }
 
     @Override

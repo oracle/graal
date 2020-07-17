@@ -49,9 +49,9 @@ import mx_unittest
 import mx_sdk_vm
 import mx_javamodules
 import mx_subst
+import mx_substratevm_benchmark  # pylint: disable=unused-import
 from mx_compiler import GraalArchiveParticipant
 from mx_gate import Task
-from mx_substratevm_benchmark import run_js, host_vm_tuple, output_processors, rule_snippets  # pylint: disable=unused-import
 from mx_unittest import _run_tests, _VMLauncher
 from mx_urlrewrites import rewriteurl
 
@@ -130,7 +130,8 @@ def is_musl_supported():
 
 
 class GraalVMConfig(object):
-    def __init__(self, dynamicimports=None, disable_libpolyglot=False, force_bash_launchers=None, skip_libraries=None, exclude_components=None):
+    def __init__(self, primary_suite_dir, dynamicimports=None, disable_libpolyglot=False, force_bash_launchers=None, skip_libraries=None, exclude_components=None):
+        self._primary_suite_dir = primary_suite_dir
         self.dynamicimports = dynamicimports or []
         self.disable_libpolyglot = disable_libpolyglot
         self.force_bash_launchers = force_bash_launchers or []
@@ -138,8 +139,9 @@ class GraalVMConfig(object):
         self.exclude_components = exclude_components or []
         for x, _ in mx.get_dynamic_imports():
             self.dynamicimports.append(x)
-        if '/substratevm' not in self.dynamicimports:
-            self.dynamicimports.append('/substratevm')
+
+    def primary_suite_dir(self):
+        return self._primary_suite_dir
 
     def mx_args(self):
         args = ['--disable-installables=true']
@@ -178,12 +180,8 @@ class GraalVMConfig(object):
         return "GraalVMConfig[{}]".format(self._tuple())
 
 
-def _vm_suite_dir():
-    return join(dirname(suite.dir), 'vm')
-
-
-def _mx_vm(args, config, nonZeroIsFatal=True, out=None, err=None, timeout=None, env=None, quiet=False):
-    return mx.run_mx(config.mx_args() + args, suite=_vm_suite_dir(), nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, timeout=timeout, env=env, quiet=quiet)
+def _run_graalvm_cmd(args, config, nonZeroIsFatal=True, out=None, err=None, timeout=None, env=None, quiet=False):
+    return mx.run_mx(config.mx_args() + args, suite=config.primary_suite_dir(), nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, timeout=timeout, env=env, quiet=quiet)
 
 
 _vm_homes = {}
@@ -192,9 +190,9 @@ _vm_homes = {}
 def _vm_home(config):
     if config not in _vm_homes:
         # get things initialized (e.g., cloning)
-        _mx_vm(['graalvm-home'], config, out=mx.OutputCapture())
+        _run_graalvm_cmd(['graalvm-home'], config, out=mx.OutputCapture())
         capture = mx.OutputCapture()
-        _mx_vm(['graalvm-home'], config, out=capture, quiet=True)
+        _run_graalvm_cmd(['graalvm-home'], config, out=capture, quiet=True)
         _vm_homes[config] = capture.data.strip()
     return _vm_homes[config]
 
@@ -204,19 +202,22 @@ _graalvm_skip_libraries = ['native-image-agent']
 _graalvm_exclude_components = ['gu'] if mx.is_windows() else []  # gu does not work on Windows atm
 
 def _graalvm_config():
-    return GraalVMConfig(disable_libpolyglot=True,
+    return GraalVMConfig(primary_suite_dir=svm_suite().dir,
+                         disable_libpolyglot=True,
                          force_bash_launchers=_graalvm_force_bash_launchers,
                          skip_libraries=_graalvm_skip_libraries,
                          exclude_components=_graalvm_exclude_components)
 
 def _graalvm_jvm_config():
-    return GraalVMConfig(disable_libpolyglot=True,
+    return GraalVMConfig(primary_suite_dir=svm_suite().dir,
+                         disable_libpolyglot=True,
                          force_bash_launchers=True,
                          skip_libraries=True,
                          exclude_components=_graalvm_exclude_components)
 
 def _graalvm_js_config():
-    return GraalVMConfig(dynamicimports=['/graal-js'],
+    return GraalVMConfig(primary_suite_dir=join(suite.vc_dir, 'vm'),  # Run from `vm` to clone the right revision of `graal-js` if needed
+                         dynamicimports=['/' + svm_suite().name, '/graal-js'],
                          disable_libpolyglot=True,
                          force_bash_launchers=_graalvm_force_bash_launchers + ['js'],
                          skip_libraries=_graalvm_skip_libraries,
@@ -238,7 +239,7 @@ def build_native_image_image(config=None, args=None):
             env['LINKY_LAYOUT'] = '*.jar'
         elif '*.jar' not in env['LINKY_LAYOUT']:
             mx.warn("LINKY_LAYOUT already set")
-    _mx_vm(['build'] + (args or []), config, env=env)
+    _run_graalvm_cmd(['build'] + (args or []), config, env=env)
 
 
 def locale_US_args():
@@ -449,7 +450,7 @@ def svm_gate_body(args, tasks):
             if t:
                 testlib = mx_subst.path_substitutions.substitute('-Dnative.test.lib=<path:truffle:TRUFFLE_TEST_NATIVE>/<lib:nativetest>')
                 native_unittest_args = ['com.oracle.truffle.nfi.test', '--build-args', '--language:nfi',
-                                        '-H:MaxRuntimeCompileMethods=1700',
+                                        '-H:MaxRuntimeCompileMethods=2000',
                                         '-H:+RemoveSaturatedTypeFlows', '-H:+TruffleCheckBlackListedMethods',
                                         '--run-args', testlib, '--very-verbose', '--enable-timing']
                 native_unittest(native_unittest_args)
@@ -1635,6 +1636,8 @@ def maven_plugin_install(args):
         new_env = os.environ.copy()
         if 'DYNAMIC_IMPORTS' in new_env:
             del new_env['DYNAMIC_IMPORTS']
+        if 'MX_ENV_PATH' in new_env:
+            del new_env['MX_ENV_PATH']
         mx.run_mx(['--suite=' + s for s in suites] + ['maven-deploy'] + deploy_args, suite, env=new_env)
 
     deploy_native_image_maven_plugin(svm_version, repo, parsed.gpg, parsed.gpg_keyid)

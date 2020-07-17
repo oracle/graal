@@ -58,9 +58,6 @@ import org.graalvm.compiler.hotspot.replacements.AESCryptSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.BigIntegerSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.CipherBlockChainingSubstitutions;
 import org.graalvm.compiler.hotspot.replacements.DigestBaseSubstitutions;
-import org.graalvm.compiler.hotspot.replacements.SHA2Substitutions;
-import org.graalvm.compiler.hotspot.replacements.SHA5Substitutions;
-import org.graalvm.compiler.hotspot.replacements.SHASubstitutions;
 import org.graalvm.compiler.hotspot.stubs.ExceptionHandlerStub;
 import org.graalvm.compiler.hotspot.stubs.Stub;
 import org.graalvm.compiler.hotspot.stubs.UnwindExceptionToCallerStub;
@@ -89,6 +86,7 @@ import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.WordBase;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CompilationRequest;
@@ -204,99 +202,29 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     @NodeIntrinsic(ForeignCallNode.class)
     private static native void multiplyToLenStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word xIn, int xLen, Word yIn, int yLen, Word zIn, int zLen);
 
-    /**
-     * @see BigIntegerSubstitutions#mulAdd
-     */
     public static final HotSpotForeignCallDescriptor MUL_ADD = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Int), "mulAdd",
                     int.class,
                     Word.class, Word.class, int.class, int.class, int.class);
 
-    public static int mulAddStub(Word inAddr, Word outAddr, int newOffset, int len, int k) {
-        return mulAddStub(HotSpotBackend.MUL_ADD, inAddr, outAddr, newOffset, len, k);
-    }
-
-    @NodeIntrinsic(ForeignCallNode.class)
-    private static native int mulAddStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word inAddr, Word outAddr, int newOffset, int len, int k);
-
-    /**
-     * @see BigIntegerSubstitutions#implMontgomeryMultiply
-     */
     public static final HotSpotForeignCallDescriptor MONTGOMERY_MULTIPLY = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Int),
                     "implMontgomeryMultiply", void.class, Word.class, Word.class, Word.class, int.class, long.class,
                     Word.class);
 
-    public static void implMontgomeryMultiply(Word aAddr, Word bAddr, Word nAddr, int len, long inv, Word productAddr) {
-        implMontgomeryMultiply(HotSpotBackend.MONTGOMERY_MULTIPLY, aAddr, bAddr, nAddr, len, inv, productAddr);
-    }
-
-    @NodeIntrinsic(ForeignCallNode.class)
-    private static native void implMontgomeryMultiply(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word aAddr, Word bAddr, Word nAddr, int len, long inv, Word productAddr);
-
-    /**
-     * @see BigIntegerSubstitutions#implMontgomerySquare
-     */
     public static final HotSpotForeignCallDescriptor MONTGOMERY_SQUARE = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Int),
                     "implMontgomerySquare", void.class, Word.class, Word.class, int.class, long.class, Word.class);
 
-    public static void implMontgomerySquare(Word aAddr, Word nAddr, int len, long inv, Word productAddr) {
-        implMontgomerySquare(HotSpotBackend.MONTGOMERY_SQUARE, aAddr, nAddr, len, inv, productAddr);
-    }
-
-    @NodeIntrinsic(ForeignCallNode.class)
-    private static native void implMontgomerySquare(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word aAddr, Word nAddr, int len, long inv, Word productAddr);
-
-    /**
-     * @see BigIntegerSubstitutions#implSquareToLen
-     */
     public static final HotSpotForeignCallDescriptor SQUARE_TO_LEN = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Int),
                     "implSquareToLen",
                     void.class, Word.class, int.class, Word.class, int.class);
 
-    public static void implSquareToLen(Word xAddr, int len, Word zAddr, int zLen) {
-        implSquareToLen(SQUARE_TO_LEN, xAddr, len, zAddr, zLen);
-    }
-
-    @NodeIntrinsic(ForeignCallNode.class)
-    private static native void implSquareToLen(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word xAddr, int len, Word zAddr, int zLen);
-
-    /**
-     * @see SHASubstitutions#implCompress0
-     */
     public static final HotSpotForeignCallDescriptor SHA_IMPL_COMPRESS = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "shaImplCompress", void.class, Word.class,
                     Object.class);
 
-    public static void shaImplCompressStub(Word bufAddr, Object state) {
-        shaImplCompressStub(HotSpotBackend.SHA_IMPL_COMPRESS, bufAddr, state);
-    }
-
-    @NodeIntrinsic(ForeignCallNode.class)
-    private static native void shaImplCompressStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word bufAddr, Object state);
-
-    /**
-     * @see SHA2Substitutions#implCompress0
-     */
     public static final HotSpotForeignCallDescriptor SHA2_IMPL_COMPRESS = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "sha2ImplCompress", void.class, Word.class,
                     Object.class);
 
-    public static void sha2ImplCompressStub(Word bufAddr, Object state) {
-        sha2ImplCompressStub(HotSpotBackend.SHA2_IMPL_COMPRESS, bufAddr, state);
-    }
-
-    @NodeIntrinsic(ForeignCallNode.class)
-    private static native void sha2ImplCompressStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word bufAddr, Object state);
-
-    /**
-     * @see SHA5Substitutions#implCompress0
-     */
     public static final HotSpotForeignCallDescriptor SHA5_IMPL_COMPRESS = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "sha5ImplCompress", void.class, Word.class,
                     Object.class);
-
-    public static void sha5ImplCompressStub(Word bufAddr, Object state) {
-        sha5ImplCompressStub(HotSpotBackend.SHA5_IMPL_COMPRESS, bufAddr, state);
-    }
-
-    @NodeIntrinsic(ForeignCallNode.class)
-    private static native void sha5ImplCompressStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word bufAddr, Object state);
 
     /**
      * @see DigestBaseSubstitutions#implCompressMultiBlock0
@@ -368,15 +296,18 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     /**
      * Descriptor for {@code StubRoutines::_vectorizedMismatch}.
      */
-    public static final HotSpotForeignCallDescriptor VECTORIZED_MISMATCHED = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "vectorizedMismatch", int.class, Word.class,
+    public static final HotSpotForeignCallDescriptor VECTORIZED_MISMATCH = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "vectorizedMismatch", int.class, Word.class,
                     Word.class, int.class, int.class);
 
-    public static int vectorizedMismatch(Word aAddr, Word bAddr, int length, int log2ArrayIndexScale) {
-        return vectorizedMismatchStub(VECTORIZED_MISMATCHED, aAddr, bAddr, length, log2ArrayIndexScale);
-    }
+    public static final LocationIdentity CRC_TABLE_LOCATION = NamedLocationIdentity.immutable("crc32_table");
 
-    @NodeIntrinsic(ForeignCallNode.class)
-    private static native int vectorizedMismatchStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word aAddr, Word bAddr, int length, int log2ArrayIndexScale);
+    public static final HotSpotForeignCallDescriptor UPDATE_BYTES_CRC32 = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, any(), "updateBytesCRC32", int.class, int.class,
+                    WordBase.class, int.class);
+
+    public static final HotSpotForeignCallDescriptor UPDATE_BYTES_CRC32C = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, any(), "updateBytesCRC32C", int.class, int.class,
+                    WordBase.class, int.class);
+
+    public static String copyMemoryName = JavaVersionUtil.JAVA_SPEC <= 8 ? "copyMemory" : "copyMemory0";
 
     /**
      * @see VMErrorNode

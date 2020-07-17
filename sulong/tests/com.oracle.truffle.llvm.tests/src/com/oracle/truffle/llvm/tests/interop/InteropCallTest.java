@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,21 +27,40 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.asm.syscall;
+package com.oracle.truffle.llvm.tests.interop;
 
-import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
+import com.oracle.truffle.tck.TruffleRunner;
+import org.graalvm.polyglot.Value;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 
-public class LLVMAMD64SyscallGettidNode extends LLVMSyscallOperationNode {
-    @Override
-    public final String getName() {
-        return "gettid";
+@RunWith(TruffleRunner.class)
+public class InteropCallTest extends InteropTestBase {
+
+    private static Value testLibrary;
+
+    @BeforeClass
+    public static void loadTestBitcode() {
+        testLibrary = loadTestBitcodeValue("fitsIn.c");
     }
 
-    @Override
-    public long execute(Object rdi, Object rsi, Object rdx, Object r10, Object r8, Object r9) {
-        // TODO: once multithreading is supported, this must return the TID
-        // instead of the PID. Returning the PID means that the process is
-        // single-threaded.
-        return LLVMInfo.getpid();
+    @Test(expected = IllegalArgumentException.class)
+    public void testNoArgsCall() {
+        Value func = testLibrary.getMember("test_fits_in");
+        assert func.canExecute();
+        func.execute();
+    }
+
+    /**
+     * This test succeeds because we have decided that it shouldn't be a problem to receive more
+     * arguments than the defined parameters: - This follows the behavior on Linux. - Many Ruby gems
+     * with native code depend on this behavior.
+     */
+    @Test
+    public void testTooManyArgsCall() {
+        Value func = testLibrary.getMember("test_fits_in_nativeptr");
+        assert func.canExecute();
+        func.execute(5);
     }
 }

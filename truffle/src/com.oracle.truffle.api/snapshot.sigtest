@@ -1114,9 +1114,7 @@ fld public final static java.lang.Object BREAK_LOOP_STATUS
 fld public final static java.lang.Object CONTINUE_LOOP_STATUS
 intf com.oracle.truffle.api.nodes.NodeInterface
 meth public abstract boolean executeRepeating(com.oracle.truffle.api.frame.VirtualFrame)
-meth public boolean shouldContinue(java.lang.Object)
 meth public java.lang.Object executeRepeatingWithValue(com.oracle.truffle.api.frame.VirtualFrame)
-meth public java.lang.Object initialLoopStatus()
 
 CLSS public abstract com.oracle.truffle.api.nodes.RootNode
 cons protected init(com.oracle.truffle.api.TruffleLanguage<?>)

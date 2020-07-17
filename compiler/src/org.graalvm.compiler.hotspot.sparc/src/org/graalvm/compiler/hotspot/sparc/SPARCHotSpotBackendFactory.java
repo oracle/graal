@@ -128,7 +128,7 @@ public class SPARCHotSpotBackendFactory extends HotSpotBackendFactory {
                     GraalHotSpotVMConfig config,
                     HotSpotMetaAccessProvider metaAccess,
                     HotSpotConstantReflectionProvider constantReflection,
-                    HotSpotForeignCallsProvider foreignCalls,
+                    HotSpotHostForeignCallsProvider foreignCalls,
                     HotSpotSnippetReflectionProvider snippetReflection,
                     HotSpotReplacementsImpl replacements,
                     HotSpotWordTypes wordTypes,

@@ -84,20 +84,10 @@ public final class EventContext {
     }
 
     @SuppressWarnings("unchecked")
-    boolean validEventContext() {
+    boolean validEventContextOnWrapperInsert() {
         Node node = getInstrumentedNode();
         if (node instanceof RootNode) {
             throw new IllegalStateException("Instrumentable node must not be a root node.");
-        }
-        Object object = null;
-        if (node instanceof InstrumentableNode) {
-            object = ((InstrumentableNode) node).getNodeObject();
-        } else {
-            // legacy support
-            return true;
-        }
-        if (object != null) {
-            assert isValidNodeObject(object);
         }
         boolean foundStandardTag = false;
         for (Class<?> clazz : StandardTags.ALL_TAGS) {
@@ -112,7 +102,18 @@ public final class EventContext {
                 assert sourceSection != null : "All nodes tagged with a standard tag and with a root node that has a source section must also have a source section.";
             }
         }
+        return true;
+    }
 
+    boolean validEventContextOnLazyUpdate() {
+        Node node = getInstrumentedNode();
+        /*
+         * The node object can only be accessed at runtime when the context is entered.
+         */
+        Object object = ((InstrumentableNode) node).getNodeObject();
+        if (object != null) {
+            assert isValidNodeObject(object);
+        }
         return true;
     }
 

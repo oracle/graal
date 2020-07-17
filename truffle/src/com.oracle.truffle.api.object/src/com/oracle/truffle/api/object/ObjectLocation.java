@@ -40,7 +40,12 @@
  */
 package com.oracle.truffle.api.object;
 
-/** @since 0.8 or earlier */
+/**
+ * Planned to be deprecated.
+ *
+ * @since 0.8 or earlier
+ */
+@SuppressWarnings("deprecation")
 public interface ObjectLocation extends TypedLocation {
     /** @since 0.8 or earlier */
     Class<? extends Object> getType();

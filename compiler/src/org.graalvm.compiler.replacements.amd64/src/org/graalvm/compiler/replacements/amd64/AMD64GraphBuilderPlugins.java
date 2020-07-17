@@ -36,16 +36,23 @@ import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.Una
 import java.util.Arrays;
 
 import org.graalvm.compiler.lir.amd64.AMD64ArithmeticLIRGeneratorTool.RoundingMode;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.PauseNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.LeftShiftNode;
+import org.graalvm.compiler.nodes.extended.JavaReadNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.nodes.java.AtomicReadAndAddNode;
 import org.graalvm.compiler.nodes.java.AtomicReadAndWriteNode;
+import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess;
+import org.graalvm.compiler.nodes.memory.address.IndexAddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.replacements.ArraysSubstitutions;
@@ -53,6 +60,7 @@ import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.UnsafeAcces
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.UnsafeGetPlugin;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.UnsafePutPlugin;
 import org.graalvm.compiler.replacements.TargetGraphBuilderPlugins;
+import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
 import org.graalvm.compiler.replacements.nodes.BitCountNode;
@@ -228,11 +236,43 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         }
     }
 
+    private static final class ArrayCompareToPlugin implements InvocationPlugin {
+        private final JavaKind valueKind;
+        private final JavaKind otherKind;
+        private final boolean swapped;
+
+        private ArrayCompareToPlugin(JavaKind valueKind, JavaKind otherKind, boolean swapped) {
+            this.valueKind = valueKind;
+            this.otherKind = otherKind;
+            this.swapped = swapped;
+        }
+
+        private ArrayCompareToPlugin(JavaKind valueKind, JavaKind otherKind) {
+            this(valueKind, otherKind, false);
+        }
+
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode other) {
+            ValueNode valueLength = b.add(new ArrayLengthNode(value));
+            ValueNode otherLength = b.add(new ArrayLengthNode(other));
+            if (swapped) {
+                /*
+                 * Swapping array arguments because intrinsic expects order to be byte[]/char[] but
+                 * kind arguments stay in original order.
+                 */
+                b.addPush(JavaKind.Int, new ArrayCompareToNode(other, value, otherLength, valueLength, valueKind, otherKind));
+            } else {
+                b.addPush(JavaKind.Int, new ArrayCompareToNode(value, other, valueLength, otherLength, valueKind, otherKind));
+            }
+            return true;
+        }
+    }
+
     private static void registerStringLatin1Plugins(InvocationPlugins plugins, Replacements replacements) {
         Registration r = new Registration(plugins, "java.lang.StringLatin1", replacements);
         r.setAllowOverwrite(true);
-        r.registerMethodSubstitution(AMD64StringLatin1Substitutions.class, "compareTo", byte[].class, byte[].class);
-        r.registerMethodSubstitution(AMD64StringLatin1Substitutions.class, "compareToUTF16", byte[].class, byte[].class);
+        r.register2("compareTo", byte[].class, byte[].class, new ArrayCompareToPlugin(JavaKind.Byte, JavaKind.Byte));
+        r.register2("compareToUTF16", byte[].class, byte[].class, new ArrayCompareToPlugin(JavaKind.Byte, JavaKind.Char));
         r.registerMethodSubstitution(AMD64StringLatin1Substitutions.class, "inflate", byte[].class, int.class, char[].class, int.class, int.class);
         r.registerMethodSubstitution(AMD64StringLatin1Substitutions.class, "inflate", byte[].class, int.class, byte[].class, int.class, int.class);
         r.registerMethodSubstitution(AMD64StringLatin1Substitutions.class, "indexOf", byte[].class, int.class, int.class);
@@ -242,13 +282,23 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
     private static void registerStringUTF16Plugins(InvocationPlugins plugins, Replacements replacements) {
         Registration r = new Registration(plugins, "java.lang.StringUTF16", replacements);
         r.setAllowOverwrite(true);
-        r.registerMethodSubstitution(AMD64StringUTF16Substitutions.class, "compareTo", byte[].class, byte[].class);
-        r.registerMethodSubstitution(AMD64StringUTF16Substitutions.class, "compareToLatin1", byte[].class, byte[].class);
+        r.register2("compareTo", byte[].class, byte[].class, new ArrayCompareToPlugin(JavaKind.Char, JavaKind.Char));
+        r.register2("compareToLatin1", byte[].class, byte[].class, new ArrayCompareToPlugin(JavaKind.Char, JavaKind.Byte, true));
         r.registerMethodSubstitution(AMD64StringUTF16Substitutions.class, "compress", char[].class, int.class, byte[].class, int.class, int.class);
         r.registerMethodSubstitution(AMD64StringUTF16Substitutions.class, "compress", byte[].class, int.class, byte[].class, int.class, int.class);
         r.registerMethodSubstitution(AMD64StringUTF16Substitutions.class, "indexOfCharUnsafe", byte[].class, int.class, int.class, int.class);
         r.registerMethodSubstitution(AMD64StringUTF16Substitutions.class, "indexOfUnsafe", byte[].class, int.class, byte[].class, int.class, int.class);
         r.registerMethodSubstitution(AMD64StringUTF16Substitutions.class, "indexOfLatin1Unsafe", byte[].class, int.class, byte[].class, int.class, int.class);
+        Registration r2 = new Registration(plugins, AMD64StringUTF16Substitutions.class, replacements);
+        r2.register2("getChar", byte[].class, int.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode arg2) {
+                b.addPush(JavaKind.Char, new JavaReadNode(JavaKind.Char,
+                                new IndexAddressNode(arg1, new LeftShiftNode(arg2, ConstantNode.forInt(1)), JavaKind.Byte),
+                                NamedLocationIdentity.getArrayLocation(JavaKind.Byte), OnHeapMemoryAccess.BarrierType.NONE, false));
+                return true;
+            }
+        });
     }
 
     private static void registerUnsafePlugins(InvocationPlugins plugins, Replacements replacements, boolean explicitUnsafeNullChecks) {
@@ -298,4 +348,5 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         r.registerMethodSubstitution(ArraysSubstitutions.class, "equals", float[].class, float[].class);
         r.registerMethodSubstitution(ArraysSubstitutions.class, "equals", double[].class, double[].class);
     }
+
 }

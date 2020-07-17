@@ -42,10 +42,13 @@ package com.oracle.truffle.api.object;
 
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 
+import java.lang.annotation.Annotation;
 import java.util.EnumSet;
 import java.util.ServiceLoader;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.object.Shape.Allocator;
 
@@ -53,6 +56,10 @@ import com.oracle.truffle.api.object.Shape.Allocator;
  * Describes layout and behavior of a {@link DynamicObject} subclass and is used to create shapes.
  *
  * An object may change its shape but only to shapes of the same layout.
+ *
+ * NB: Instances of this class should be created only in static initializers.
+ *
+ * Planned to be deprecated.
  *
  * @since 0.8 or earlier
  */
@@ -76,15 +83,24 @@ public abstract class Layout {
      * @since 0.8 or earlier
      */
     public enum ImplicitCast {
-        /** @since 0.8 or earlier */
+        /**
+         * Enables values be implicitly cast from int to double.
+         *
+         * @since 0.8 or earlier
+         */
         IntToDouble,
-        /** @since 0.8 or earlier */
+        /**
+         * Enables values be implicitly cast from int to long.
+         *
+         * @since 0.8 or earlier
+         */
         IntToLong
     }
 
     /**
      * Creates a new {@link Builder}.
      *
+     * @see Layout.Builder
      * @since 0.8 or earlier
      */
     public static Builder newLayout() {
@@ -95,13 +111,18 @@ public abstract class Layout {
     /**
      * Equivalent to {@code Layout.newLayout().build()}.
      *
+     * @see Layout.Builder#build()
      * @since 0.8 or earlier
      */
     public static Layout createLayout() {
         return newLayout().build();
     }
 
-    /** @since 0.8 or earlier */
+    /**
+     * @since 0.8 or earlier
+     * @deprecated use {@link Shape#newInstance()} instead
+     */
+    @Deprecated
     public abstract DynamicObject newInstance(Shape shape);
 
     /** @since 0.8 or earlier */
@@ -134,6 +155,16 @@ public abstract class Layout {
      * @since 0.8 or earlier
      */
     public abstract Shape createShape(ObjectType objectType, Object sharedData, int flags);
+
+    /**
+     * Create a root shape.
+     *
+     * @since 20.2.0
+     */
+    @SuppressWarnings("unused")
+    protected Shape buildShape(Object dynamicType, Object sharedData, int flags, Assumption singleContextAssumption) {
+        throw new UnsupportedOperationException();
+    }
 
     /**
      * Create an allocator for static property creation. Reserves all array extension slots.
@@ -188,6 +219,7 @@ public abstract class Layout {
     public static final class Builder {
         private EnumSet<ImplicitCast> allowedImplicitCasts;
         private boolean polymorphicUnboxing;
+        private Class<? extends DynamicObject> dynamicObjectClass;
 
         /**
          * Create a new layout builder.
@@ -199,6 +231,8 @@ public abstract class Layout {
         /**
          * Build {@link Layout} from the configuration in this builder.
          *
+         * @throws IllegalArgumentException if the {@link #type(Class) layout class} declares
+         *             invalid {@link DynamicObject.DynamicField @DynamicField}-annotated fields.
          * @since 0.8 or earlier
          */
         public Layout build() {
@@ -212,7 +246,7 @@ public abstract class Layout {
          * @since 0.8 or earlier
          */
         public Builder setAllowedImplicitCasts(EnumSet<ImplicitCast> allowedImplicitCasts) {
-            this.allowedImplicitCasts = allowedImplicitCasts;
+            this.allowedImplicitCasts = allowedImplicitCasts.clone();
             return this;
         }
 
@@ -231,9 +265,28 @@ public abstract class Layout {
          * If {@code true}, try to keep properties with polymorphic primitive types unboxed.
          *
          * @since 0.8 or earlier
+         * @deprecated unsupported, has no effect
          */
+        @Deprecated
         public Builder setPolymorphicUnboxing(boolean polymorphicUnboxing) {
             this.polymorphicUnboxing = polymorphicUnboxing;
+            return this;
+        }
+
+        /**
+         * Set the {@link DynamicObject} layout class to use.
+         *
+         * Must be {@link DynamicObject} or a subclass thereof.
+         *
+         * @see Shape.Builder#layout(Class)
+         * @since 20.2.0
+         */
+        public Builder type(Class<? extends DynamicObject> layoutClass) {
+            if (DynamicObject.class.isAssignableFrom(layoutClass)) {
+                this.dynamicObjectClass = layoutClass;
+            } else {
+                throw new IllegalArgumentException("Unsupported DynamicObject layout class: " + layoutClass.getName());
+            }
             return this;
         }
     }
@@ -246,6 +299,11 @@ public abstract class Layout {
     /** @since 0.8 or earlier */
     protected static boolean getPolymorphicUnboxing(Builder builder) {
         return builder.polymorphicUnboxing;
+    }
+
+    /** @since 20.2.0 */
+    protected static Class<? extends DynamicObject> getType(Builder builder) {
+        return builder.dynamicObjectClass;
     }
 
     /**
@@ -265,6 +323,45 @@ public abstract class Layout {
         /** @since 19.0 */
         public final void setShape(DynamicObject object, Shape shape) {
             object.setShape(shape);
+        }
+
+        /** @since 20.2.0 */
+        public final void setObjectArray(DynamicObject object, Object[] value) {
+            object.setObjectStore(value);
+        }
+
+        /** @since 20.2.0 */
+        public final Object[] getObjectArray(DynamicObject object) {
+            return object.getObjectStore();
+        }
+
+        /** @since 20.2.0 */
+        public final void setPrimitiveArray(DynamicObject object, int[] value) {
+            object.setPrimitiveStore(value);
+        }
+
+        /** @since 20.2.0 */
+        public final int[] getPrimitiveArray(DynamicObject object) {
+            return object.getPrimitiveStore();
+        }
+
+        /** @since 20.2.0 */
+        public final Shape getShape(DynamicObject object) {
+            return object.getShape();
+        }
+
+        /** @since 20.2.0 */
+        public final DynamicObject objectClone(DynamicObject object) {
+            try {
+                return object.objectClone();
+            } catch (CloneNotSupportedException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+        }
+
+        /** @since 20.2.0 */
+        public final Class<? extends Annotation> getDynamicFieldAnnotation() {
+            return DynamicObject.getDynamicFieldAnnotation();
         }
     }
 }

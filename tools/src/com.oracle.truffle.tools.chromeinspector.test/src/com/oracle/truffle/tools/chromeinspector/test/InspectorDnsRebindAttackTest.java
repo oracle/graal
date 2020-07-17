@@ -120,35 +120,35 @@ public class InspectorDnsRebindAttackTest {
         testDnsRebindForValidAddress("[2001:0db8:85a3::0370:7334]");
     }
 
-    private static void testDnsRebindForValidAddress(String address) throws IOException {
+    private void testDnsRebindForValidAddress(String address) throws IOException {
         testDnsRebindForValidHost(address);
         testDnsRebindForValidHost(address + ":9229");
         testDnsRebindForValidHost(address + ":9228");
     }
 
-    private static void testDnsRebindForInvalidHost(String host) throws IOException {
+    private void testDnsRebindForInvalidHost(String host) throws IOException {
         testDnsRebindForHost(host, false);
     }
 
-    private static void testDnsRebindForValidHost(String host) throws IOException {
+    private void testDnsRebindForValidHost(String host) throws IOException {
         testDnsRebindForHost(host, true);
     }
 
-    private static void testDnsRebindForHost(String host, boolean valid) throws IOException {
+    private void testDnsRebindForHost(String host, boolean valid) throws IOException {
         testDnsRebind(host, "/", valid);
         testDnsRebind(host, "/json", valid);
         testDnsRebind(host, "/json/version", valid);
         testDnsRebind(host, "/some-nonsense", valid);
     }
 
-    private static void testDnsRebind(String host, String path, boolean valid) throws IOException {
+    private void testDnsRebind(String host, String path, boolean valid) throws IOException {
         testDnsRebindForHostCapitalization("host", host, path, valid);
         testDnsRebindForHostCapitalization("Host", host, path, valid);
         testDnsRebindForHostCapitalization("HoSt", host, path, valid);
         testDnsRebindForHostCapitalization("HOST", host, path, valid);
     }
 
-    private static void testDnsRebindForHostCapitalization(String hostCapitalization, String host, String path, boolean valid) throws IOException {
+    private void testDnsRebindForHostCapitalization(String hostCapitalization, String host, String path, boolean valid) throws IOException {
         // We try to connect localhost with various Host headers. If the DNS rebind protection works
         // properly, foreign domains are rejected.
         try (
@@ -179,12 +179,15 @@ public class InspectorDnsRebindAttackTest {
             assertNotEquals(-1, length);
             final byte[] rawBody = readBytes(in, length);
             final String body = new String(rawBody, StandardCharsets.UTF_8);
+            String badHost = host != null ? "Bad host " + host + ". Please use IP address." : "Missing host header. Use an up-to-date client.";
+            String errorMessage = badHost + " This request cannot be served because it looks like DNS rebind attack.";
             if (valid) {
                 assertNotEquals("HTTP/1.1 400 Bad Request ", httpStatus);
-                assertNotEquals("Bad host. Please use IP address. This request cannot be served because it looks like DNS rebind attack.", body);
+                assertNotEquals(errorMessage, body);
             } else {
                 assertEquals("HTTP/1.1 400 Bad Request ", httpStatus);
-                assertEquals("Bad host. Please use IP address. This request cannot be served because it looks like DNS rebind attack.", body);
+                assertEquals(errorMessage, body);
+                errorOutput.toString().endsWith(errorMessage);
             }
         }
     }

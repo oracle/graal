@@ -42,12 +42,14 @@ suite = {
             "sha1" : "0bef46df4699d896034005d6f3f0422a7075482b",
             "packedResource": True,
         },
-
         "DACAPO_SVM" : {
             "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/dacapo-9.12-native-image.jar"],
             "sha1" : "5d534f0b7aa9124d9797a180688468d2f126039a",
         },
-
+        "SPARK_BREEZE_PATCHED" : {
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/breeze_2.11-0.11.2-patched.jar"],
+            "sha1" : "e3327f5d890b5af0f7363a8b3cd95b6ce24bc1ea",
+        },
         "XERCES_IMPL" : {
             "sha1" : "006898f2bdfeca5ac996cfff1b76ef98af5aa6f2",
             "maven" : {

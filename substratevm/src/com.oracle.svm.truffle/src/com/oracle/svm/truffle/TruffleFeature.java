@@ -29,6 +29,7 @@ package com.oracle.svm.truffle;
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsingMaxDepth;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -143,6 +144,8 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.profiles.Profile;
 
 import jdk.vm.ci.code.Architecture;
@@ -444,6 +447,8 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         config.registerHierarchyForReflectiveInstantiation(DefaultExportProvider.class);
         config.registerHierarchyForReflectiveInstantiation(TruffleInstrument.class);
 
+        registerDynamicObjectFields(config);
+
         if (useTruffleCompiler()) {
             SubstrateTruffleRuntime truffleRuntime = (SubstrateTruffleRuntime) Truffle.getRuntime();
             GraalFeature graalFeature = ImageSingletons.lookup(GraalFeature.class);
@@ -572,7 +577,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
                  * loops of the inlined callee are exploded too.
                  */
                 return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
-            } else if (replacements.hasSubstitution(original, builder.bci())) {
+            } else if (replacements.hasSubstitution(original)) {
                 return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
             }
 
@@ -619,6 +624,24 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
                 }
             }
         }
+
+        initializeDynamicObjectLayouts(access);
+    }
+
+    private final Set<Class<?>> dynamicObjectClasses = new HashSet<>();
+
+    private void initializeDynamicObjectLayouts(DuringAnalysisAccess access) {
+        DuringAnalysisAccessImpl config = (DuringAnalysisAccessImpl) access;
+        for (AnalysisType type : config.getUniverse().getTypes()) {
+            if (!type.isInstantiated()) {
+                continue;
+            }
+            Class<?> javaClass = type.getJavaClass();
+            if (DynamicObject.class.isAssignableFrom(javaClass) && dynamicObjectClasses.add(javaClass)) {
+                // Force layout initialization.
+                Layout.newLayout().type(javaClass.asSubclass(DynamicObject.class)).build();
+            }
+        }
     }
 
     private static void registerKnownTruffleFields(BeforeAnalysisAccessImpl config, KnownTruffleTypes knownTruffleFields) {
@@ -635,6 +658,16 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
                     }
                 }
             }
+        }
+    }
+
+    private static void registerDynamicObjectFields(BeforeAnalysisAccessImpl config) {
+        Class<?> dynamicFieldClass = config.findClassByName(DynamicObject.class.getName().concat("$DynamicField"));
+        if (dynamicFieldClass == null) {
+            throw VMError.shouldNotReachHere("DynamicObject.DynamicField annotation not found.");
+        }
+        for (Field field : config.findAnnotatedFields(dynamicFieldClass.asSubclass(Annotation.class))) {
+            config.registerAsUnsafeAccessed(field);
         }
     }
 
@@ -994,4 +1027,16 @@ final class Target_com_oracle_truffle_polyglot_HostObject {
         }
         return KnownIntrinsics.readArrayLength(array);
     }
+}
+
+@TargetClass(className = "com.oracle.truffle.object.CoreLocations$DynamicObjectFieldLocation", onlyWith = TruffleFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_object_CoreLocations_DynamicObjectFieldLocation {
+    @Alias @RecomputeFieldValue(kind = Kind.AtomicFieldUpdaterOffset)//
+    private long offset;
+}
+
+@TargetClass(className = "com.oracle.truffle.object.CoreLocations$DynamicLongFieldLocation", onlyWith = TruffleFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_object_CoreLocations_DynamicLongFieldLocation {
+    @Alias @RecomputeFieldValue(kind = Kind.AtomicFieldUpdaterOffset)//
+    private long offset;
 }

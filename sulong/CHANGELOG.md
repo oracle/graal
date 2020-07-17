@@ -4,6 +4,10 @@ Changes:
 
 New features:
 
+* Support reading multi-byte values from polyglot arrays explicitly typed as i8 arrays.
+
+* Fail when a function is called over interop with fewer arguments than it expects.
+
 * Support `InteropLibrary.isIdentical` and related messages.
 
 * Added the `--print-toolchain-api-identifier`,  `--print-toolchain-api-tool <tool-name>`

@@ -93,6 +93,10 @@ public class ManagedMemAccessTestBase extends InteropTestBase {
 
     protected static Object[] types;
 
+    protected static Object getTypeID(TestType type) {
+        return types[type.ordinal()];
+    }
+
     @BeforeClass
     public static void loadTestBitcode() {
         testLibrary = loadTestBitcodeInternal("managedMemmove.c");
@@ -100,7 +104,7 @@ public class ManagedMemAccessTestBase extends InteropTestBase {
         Value lib = runWithPolyglot.getPolyglotContext().asValue(testLibrary);
         Value getTypes = lib.getMember("get_types");
 
-        types = new Object[6];
+        types = new Object[TestType.values().length];
         getTypes.execute(new TestCallback(1, new Function() {
 
             int idx = 0;
