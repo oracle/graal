@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
+import java.util.NoSuchElementException;
+
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.source.Source;
@@ -31,8 +33,6 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
-
-import java.util.NoSuchElementException;
 
 @EspressoSubstitutions
 public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
@@ -125,7 +125,17 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
 
     @Substitution
     public static @Host(Object.class) StaticObject eval(@Host(String.class) StaticObject language, @Host(String.class) StaticObject code, @InjectMeta Meta meta) {
-        Source source = Source.newBuilder(language.toString(), code.toString(), "(eval)").build();
+        String languageString = Meta.toHostString(language);
+        if (!isPublicLanguage(languageString, meta)) {
+            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException,
+                            "No language for id " + languageString + " found. Supported languages are: " + meta.getContext().getEnv().getPublicLanguages().keySet());
+        }
+        Source source = null;
+        try {
+            source = Source.newBuilder(language.toString(), code.toString(), "(eval)").build();
+        } catch (Exception e) {
+            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Error when parsing the source: " + e.getMessage());
+        }
         Object evalResult = meta.getContext().getEnv().parsePublic(source).call();
         if (evalResult instanceof StaticObject) {
             return (StaticObject) evalResult;
@@ -161,6 +171,10 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
         } else {
             meta.getContext().getEnv().exportSymbol(bindingName, value);
         }
+    }
+
+    protected static boolean isPublicLanguage(String language, Meta meta) {
+        return meta.getContext().getEnv().getPublicLanguages().containsKey(language);
     }
 
     protected static StaticObject createForeignObject(Object object, Meta meta) {
