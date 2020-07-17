@@ -40,6 +40,7 @@ import java.util.HashMap;
 import java.util.List;
 
 import com.oracle.svm.core.util.VMError;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 public class JDKSourceCache extends SourceCache {
 
@@ -72,7 +73,7 @@ public class JDKSourceCache extends SourceCache {
         assert javaHome != null;
         Path javaHomePath = Paths.get("", javaHome);
         Path srcZipPath;
-        if (isJDK8()) {
+        if (JavaVersionUtil.JAVA_SPEC < 11) {
             Path srcZipDir = javaHomePath.getParent();
             if (srcZipDir == null) {
                 VMError.shouldNotReachHere("Cannot resolve parent directory of " + javaHome);
@@ -88,7 +89,7 @@ public class JDKSourceCache extends SourceCache {
                     srcRoots.add(root);
                 }
                 specialSrcRoots = new HashMap<>();
-                if (!isJDK8()) {
+                if (JavaVersionUtil.JAVA_SPEC >= 11) {
                     for (Path root : srcFileSystem.getRootDirectories()) {
                         // add dirs named "src" as extra roots for special modules
                         for (String specialRootModule : specialRootModules) {
@@ -107,7 +108,7 @@ public class JDKSourceCache extends SourceCache {
 
     @Override
     public Path checkCacheFile(Path filePath) {
-        if (!isJDK8()) {
+        if (JavaVersionUtil.JAVA_SPEC >= 11) {
             for (String specialRootModule : specialRootModules) {
                 if (filePath.startsWith(specialRootModule)) {
                     // handle this module specially as it has intermediate dirs
@@ -138,7 +139,7 @@ public class JDKSourceCache extends SourceCache {
 
     @Override
     public Path tryCacheFile(Path filePath) {
-        if (!isJDK8()) {
+        if (JavaVersionUtil.JAVA_SPEC >= 11) {
             for (String specialRootModule : specialRootModules) {
                 if (filePath.startsWith(specialRootModule)) {
                     // handle this module specially as it has intermediate dirs
