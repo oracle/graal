@@ -190,7 +190,6 @@ public final class NativeImageHeap implements ImageHeap {
         addObjectsPhase.allow();
         internStringsPhase.allow();
 
-        addObject(StaticFieldsSupport.getStaticPrimitiveFields(), false, "primitive static fields");
         addStaticFields();
     }
 

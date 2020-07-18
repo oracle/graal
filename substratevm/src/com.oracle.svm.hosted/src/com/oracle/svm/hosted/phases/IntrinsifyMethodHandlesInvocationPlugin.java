@@ -133,7 +133,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * not possible in the Substrate VM, for the same reasons that we cannot support arbitrary
  * reflection.
  * <p>
- * Design decisions for this phase: So support static analysis, the method handle invocation needs
+ * Design decisions for this phase: To support static analysis, the method handle invocation needs
  * to be replaced with a regular invocation before static analysis runs. This requires inlining of
  * all method that are involved in the method handle dispatch. We introduce the restriction that one
  * method handle invocation can be reduced by exactly one regular invocation, so that we can inherit
@@ -273,7 +273,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
          * handling anyway.
          */
         if (method.getDeclaringClass().toJavaName(true).equals("java.lang.invoke.VarHandleGuards")) {
-            if (args.length < 1 || !args[0].isJavaConstant() || !varHandleType.isAssignableFrom(universeProviders.getMetaAccess().lookupJavaType(args[0].asJavaConstant()))) {
+            if (args.length < 1 || !args[0].isJavaConstant() || !isVarHandle(args[0])) {
                 throw new UnsupportedFeatureException("VarHandle object must be a compile time constant");
             }
 
@@ -295,6 +295,10 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         } else {
             return false;
         }
+    }
+
+    private boolean isVarHandle(ValueNode arg) {
+        return varHandleType.isAssignableFrom(universeProviders.getMetaAccess().lookupJavaType(arg.asJavaConstant()));
     }
 
     class MethodHandlesParameterPlugin implements ParameterPlugin {

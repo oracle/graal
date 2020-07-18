@@ -343,7 +343,7 @@ public class FeatureImpl {
             if (!aField.isUnsafeAccessed()) {
                 /* Register the field as unsafe accessed. */
                 aField.registerAsAccessed();
-                aField.registerAsUnsafeAccessed();
+                aField.registerAsUnsafeAccessed(bb.getUniverse());
                 /* Force the update of registered unsafe loads and stores. */
                 bb.forceUnsafeUpdate(aField);
                 return true;
@@ -368,7 +368,7 @@ public class FeatureImpl {
             if (!aField.isUnsafeAccessed()) {
                 /* Register the field as unsafe accessed. */
                 aField.registerAsAccessed();
-                aField.registerAsUnsafeAccessed(partitionKind);
+                aField.registerAsUnsafeAccessed(bb.getUniverse(), partitionKind);
                 /* Force the update of registered unsafe loads and stores. */
                 bb.forceUnsafeUpdate(aField);
             }
