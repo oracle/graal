@@ -73,7 +73,6 @@ public final class GraalFrameInstance implements FrameInstance {
         this.callNodeFrame = callNodeFrame;
     }
 
-    @SuppressWarnings("deprecation")
     @Override
     @TruffleBoundary
     public Frame getFrame(FrameAccess access) {
