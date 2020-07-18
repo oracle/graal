@@ -50,6 +50,7 @@ import java.util.ServiceLoader;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -322,8 +323,9 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
                     return localFrame;
                 case MATERIALIZE:
                     return localFrame.materialize();
+                default:
+                    throw CompilerDirectives.shouldNotReachHere();
             }
-            throw new AssertionError();
         }
 
         public boolean isVirtualFrame() {
