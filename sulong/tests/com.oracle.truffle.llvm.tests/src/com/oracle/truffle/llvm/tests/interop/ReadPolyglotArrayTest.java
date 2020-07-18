@@ -61,7 +61,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.function.Supplier;
 
-import com.oracle.truffle.llvm.tests.interop.values.TestCallback;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -72,15 +71,18 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropReadNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.tests.interop.values.ArrayObject;
 import com.oracle.truffle.llvm.tests.interop.values.DoubleArrayObject;
 import com.oracle.truffle.llvm.tests.interop.values.LongArrayObject;
+import com.oracle.truffle.llvm.tests.interop.values.TestCallback;
 import com.oracle.truffle.llvm.tests.interop.values.TypedArrayObject;
 import com.oracle.truffle.tck.TruffleRunner;
 
 /**
- * Test and document which values can be read from polyglot arrays.
+ * Test and document which values can be read from polyglot arrays. This mainly tests
+ * {@link LLVMInteropReadNode}.
  */
 @RunWith(Parameterized.class)
 @Parameterized.UseParametersRunnerFactory(TruffleRunner.ParametersFactory.class)
@@ -198,7 +200,6 @@ public class ReadPolyglotArrayTest extends ReadPolyglotArrayTestBase {
         ReadPointer.fromI16(c);
         ReadPointer.fromI32(c);
         ReadPointer.fromI64(c);
-        ReadPointer.fromPointer(c);
         ReadPointer.fromFloatingPoint(c);
         ReadPointer.fromPointer(c);
         return c;
@@ -245,7 +246,7 @@ public class ReadPolyglotArrayTest extends ReadPolyglotArrayTestBase {
         }
 
         /**
-         * These calls all fails since we to not issue multiple reads unless the receiver is a i8
+         * These calls all fail since we to not issue multiple reads unless the receiver is a i8
          * array.
          */
         private static void fromI16(ArrayList<Object[]> c) {
@@ -255,7 +256,7 @@ public class ReadPolyglotArrayTest extends ReadPolyglotArrayTestBase {
         }
 
         /**
-         * These calls all fails since we to not issue multiple reads unless the receiver is a i8
+         * These calls all fail since we to not issue multiple reads unless the receiver is a i8
          * array.
          */
         private static void fromI32(ArrayList<Object[]> c) {
@@ -265,7 +266,7 @@ public class ReadPolyglotArrayTest extends ReadPolyglotArrayTestBase {
         }
 
         /**
-         * These calls all fails since we to not issue multiple reads unless the receiver is a i8
+         * These calls all fail since we to not issue multiple reads unless the receiver is a i8
          * array.
          */
         private static void fromI64(ArrayList<Object[]> c) {
@@ -385,7 +386,7 @@ public class ReadPolyglotArrayTest extends ReadPolyglotArrayTestBase {
         }
 
         /**
-         * These calls all fails since we to not issue multiple reads unless the receiver is a i8
+         * These calls all fail since we to not issue multiple reads unless the receiver is a i8
          * array.
          */
         private static void fromI32(ArrayList<Object[]> c) {
@@ -395,7 +396,7 @@ public class ReadPolyglotArrayTest extends ReadPolyglotArrayTestBase {
         }
 
         /**
-         * These calls all fails since we to not issue multiple reads unless the receiver is a i8
+         * These calls all fail since we to not issue multiple reads unless the receiver is a i8
          * array.
          */
         private static void fromI64(ArrayList<Object[]> c) {
@@ -509,7 +510,7 @@ public class ReadPolyglotArrayTest extends ReadPolyglotArrayTestBase {
         }
 
         /**
-         * These calls all fails since we to not issue multiple reads unless the receiver is a i8
+         * These calls all fail since we to not issue multiple reads unless the receiver is a i8
          * array.
          */
         private static void fromI16(ArrayList<Object[]> c) {
@@ -531,7 +532,7 @@ public class ReadPolyglotArrayTest extends ReadPolyglotArrayTestBase {
         }
 
         /**
-         * These calls all fails since we to not issue multiple reads unless the receiver is a i8
+         * These calls all fail since we to not issue multiple reads unless the receiver is a i8
          * array.
          */
         private static void fromI64(ArrayList<Object[]> c) {
@@ -656,7 +657,7 @@ public class ReadPolyglotArrayTest extends ReadPolyglotArrayTestBase {
         }
 
         /**
-         * These calls all fails since we to not issue multiple reads unless the receiver is a i8
+         * These calls all fail since we to not issue multiple reads unless the receiver is a i8
          * array.
          */
         private static void fromI16(ArrayList<Object[]> c) {
@@ -669,7 +670,7 @@ public class ReadPolyglotArrayTest extends ReadPolyglotArrayTestBase {
         }
 
         /**
-         * These calls all fails since we to not issue multiple reads unless the receiver is a i8
+         * These calls all fail since we to not issue multiple reads unless the receiver is a i8
          * array.
          */
         private static void fromI32(ArrayList<Object[]> c) {
@@ -746,7 +747,7 @@ public class ReadPolyglotArrayTest extends ReadPolyglotArrayTestBase {
         }
 
         /**
-         * These calls all fails since we to not issue multiple reads unless the receiver is a i8
+         * These calls all fail since we to not issue multiple reads unless the receiver is a i8
          * array.
          */
         private static void fromI16(ArrayList<Object[]> c) {
@@ -768,7 +769,7 @@ public class ReadPolyglotArrayTest extends ReadPolyglotArrayTestBase {
         }
 
         /**
-         * These calls all fails since we to not issue multiple reads unless the receiver is a i8
+         * These calls all fail since we to not issue multiple reads unless the receiver is a i8
          * array.
          */
         private static void fromI64(ArrayList<Object[]> c) {
@@ -881,7 +882,7 @@ public class ReadPolyglotArrayTest extends ReadPolyglotArrayTestBase {
         }
 
         /**
-         * These calls all fails since we to not issue multiple reads unless the receiver is a i8
+         * These calls all fail since we to not issue multiple reads unless the receiver is a i8
          * array.
          */
         private static void fromI16(ArrayList<Object[]> c) {
@@ -894,7 +895,7 @@ public class ReadPolyglotArrayTest extends ReadPolyglotArrayTestBase {
         }
 
         /**
-         * These calls all fails since we to not issue multiple reads unless the receiver is a i8
+         * These calls all fail since we to not issue multiple reads unless the receiver is a i8
          * array.
          */
         private static void fromI32(ArrayList<Object[]> c) {
@@ -1038,7 +1039,7 @@ public class ReadPolyglotArrayTest extends ReadPolyglotArrayTestBase {
         }
 
         /**
-         * These calls all fails since we to not issue multiple reads unless the receiver is a i8
+         * These calls all fail since we to not issue multiple reads unless the receiver is a i8
          * array.
          */
         private static void fromI16(ArrayList<Object[]> c) {
@@ -1051,7 +1052,7 @@ public class ReadPolyglotArrayTest extends ReadPolyglotArrayTestBase {
         }
 
         /**
-         * These calls all fails since we to not issue multiple reads unless the receiver is a i8
+         * These calls all fail since we to not issue multiple reads unless the receiver is a i8
          * array.
          */
         private static void fromI32(ArrayList<Object[]> c) {
