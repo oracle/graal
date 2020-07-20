@@ -24,6 +24,8 @@ package com.oracle.truffle.espresso.substitutions;
 
 import java.util.NoSuchElementException;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.source.Source;
@@ -130,13 +132,25 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
             throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException,
                             "No language for id " + languageString + " found. Supported languages are: " + meta.getContext().getEnv().getPublicLanguages().keySet());
         }
-        Source source = null;
+
+        Source source = Source.newBuilder(language.toString(), code.toString(), "(eval)").build();
+        CallTarget callTarget;
         try {
-            source = Source.newBuilder(language.toString(), code.toString(), "(eval)").build();
+            callTarget = meta.getContext().getEnv().parsePublic(source);
         } catch (Exception e) {
             throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Error when parsing the source: " + e.getMessage());
         }
-        Object evalResult = meta.getContext().getEnv().parsePublic(source).call();
+
+        Object evalResult;
+        try {
+            evalResult = callTarget.call();
+        } catch (Exception e) {
+            if (e instanceof TruffleException) {
+                throw Meta.throwExceptionWithMessage(meta.java_lang_RuntimeException, "Exception during evaluation: " + e.getMessage());
+            } else {
+                throw e;
+            }
+        }
         if (evalResult instanceof StaticObject) {
             return (StaticObject) evalResult;
         }
