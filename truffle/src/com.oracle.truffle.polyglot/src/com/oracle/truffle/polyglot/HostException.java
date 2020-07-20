@@ -40,11 +40,9 @@
  */
 package com.oracle.truffle.polyglot;
 
-import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleException;
 import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
 
 /**
  * Exception wrapper for an error occurred in the host language.
@@ -69,10 +67,5 @@ final class HostException extends TruffleException {
     @Override
     public String getMessage() {
         return getOriginal().getMessage();
-    }
-
-    @ExportMessage
-    public ExceptionType getExceptionType() {
-        return getOriginal() instanceof InterruptedException ? ExceptionType.CANCEL : ExceptionType.GUEST_LANGUAGE_ERROR;
     }
 }

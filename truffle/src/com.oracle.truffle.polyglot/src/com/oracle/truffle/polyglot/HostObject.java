@@ -62,6 +62,7 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -1018,6 +1019,22 @@ final class HostObject implements TruffleObject {
     @ExportMessage
     boolean isException() {
         return obj instanceof Throwable;
+    }
+
+    @ExportMessage
+    boolean isExceptionCatchable() throws UnsupportedMessageException {
+        if (isException()) {
+            return !(obj instanceof ThreadDeath);
+        }
+        throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    public ExceptionType getExceptionType() throws UnsupportedMessageException {
+        if (isException()) {
+            return obj instanceof InterruptedException ? ExceptionType.CANCEL : ExceptionType.GUEST_LANGUAGE_ERROR;
+        }
+        throw UnsupportedMessageException.create();
     }
 
     @ExportMessage

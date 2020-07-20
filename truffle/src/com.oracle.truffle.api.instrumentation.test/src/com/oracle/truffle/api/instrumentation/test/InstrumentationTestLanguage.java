@@ -1129,14 +1129,16 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             try {
                 return tryNode.execute(frame);
             } catch (Exception ex) {
-                if (interop.isException(ex)) {
-                    Object exceptionObject = interop.toDisplayString(ex);
-                    if (exceptionObject != null) {
-                        String type = InstrumentationTestLanguage.toString(exceptionObject);
-                        for (CatchNode cn : catchNodes) {
-                            if (type.startsWith(cn.getExceptionName())) {
-                                return cn.execute(frame);
-                            }
+                if (interop.isException(ex) && interop.isString(ex)) {
+                    String type;
+                    try {
+                        type = interop.asString(ex);
+                    } catch (UnsupportedMessageException ume) {
+                        throw CompilerDirectives.shouldNotReachHere(ume);
+                    }
+                    for (CatchNode cn : catchNodes) {
+                        if (type.startsWith(cn.getExceptionName())) {
+                            return cn.execute(frame);
                         }
                     }
                 }
@@ -1198,10 +1200,18 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             @TruffleBoundary
             final Object invokeMember(String member, Object[] arguments) throws UnknownIdentifierException {
                 if ("catches".equals(member)) {
-                    String type = arguments[0].toString();
-                    for (CatchNode c : catches) {
-                        if (type.startsWith(c.getExceptionName())) {
-                            return true;
+                    InteropLibrary interop = InteropLibrary.getUncached();
+                    if (interop.isString(arguments[0])) {
+                        String type;
+                        try {
+                            type = interop.asString(arguments[0]);
+                        } catch (UnsupportedMessageException ume) {
+                            throw CompilerDirectives.shouldNotReachHere(ume);
+                        }
+                        for (CatchNode c : catches) {
+                            if (type.startsWith(c.getExceptionName())) {
+                                return true;
+                            }
                         }
                     }
                     return false;
@@ -1332,16 +1342,69 @@ public class InstrumentationTestLanguage extends TruffleLanguage<InstrumentConte
             }
 
             @ExportMessage
+            public boolean hasLanguage() {
+                return true;
+            }
+
+            @ExportMessage
+            public Class<? extends TruffleLanguage<?>> getLanguage() throws UnsupportedMessageException {
+                return InstrumentationTestLanguage.class;
+            }
+
+            @ExportMessage
+            public boolean isException() {
+                return true;
+            }
+
+            @ExportMessage
+            public boolean isExceptionCatchable() {
+                return true;
+            }
+
+            @ExportMessage
             public ExceptionType getExceptionType() {
                 return type.equals("internal") ? ExceptionType.INTERNAL_ERROR : ExceptionType.GUEST_LANGUAGE_ERROR;
             }
 
             @ExportMessage
-            @TruffleBoundary
-            public String toDisplayString(boolean allowSideEffects) {
-                return type + ": " + getMessage();
+            public int getExceptionExitStatus() {
+                return 0;
             }
 
+            @ExportMessage
+            public RuntimeException throwException() {
+                throw this;
+            }
+
+            @ExportMessage
+            public boolean hasSourceLocation() {
+                return throwNode != null && throwNode.getEncapsulatingSourceSection() != null;
+            }
+
+            @ExportMessage(name = "getSourceLocation")
+            public SourceSection sourceLocation() throws UnsupportedMessageException {
+                SourceSection res;
+                if (throwNode == null || ((res = throwNode.getEncapsulatingSourceSection()) == null)) {
+                    throw UnsupportedMessageException.create();
+                }
+                return res;
+            }
+
+            @ExportMessage
+            public Object toDisplayString(boolean allowSideEffects) {
+                return asString();
+            }
+
+            @ExportMessage
+            public boolean isString() {
+                return true;
+            }
+
+            @ExportMessage
+            @TruffleBoundary
+            public String asString() {
+                return type + ": " + getMessage();
+            }
         }
 
         @Override
