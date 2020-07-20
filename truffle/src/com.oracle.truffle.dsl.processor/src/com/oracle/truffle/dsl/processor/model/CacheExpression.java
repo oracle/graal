@@ -200,6 +200,24 @@ public final class CacheExpression extends MessageContainer {
         return isType(types.CachedLibrary);
     }
 
+    public boolean isCachedLibraryManuallyDispatched() {
+        return isType(types.CachedLibrary);
+    }
+
+    public String getCachedLibraryExpression() {
+        if (!isCachedLibrary()) {
+            return null;
+        }
+        return ElementUtils.getAnnotationValue(String.class, getMessageAnnotation(), "value", false);
+    }
+
+    public String getCachedLibraryLimit() {
+        if (!isCachedLibrary()) {
+            return null;
+        }
+        return ElementUtils.getAnnotationValue(String.class, getMessageAnnotation(), "limit", false);
+    }
+
     public boolean isCachedContext() {
         return isType(types.CachedContext);
     }

@@ -2048,10 +2048,8 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 }
 
             } else if (cache.isCachedLibrary()) {
-                AnnotationMirror cachedLibrary = cache.getMessageAnnotation();
-                String expression = getCachedLibraryExpressions(cachedLibrary);
-
-                String limit = ElementUtils.getAnnotationValue(String.class, cachedLibrary, "limit", false);
+                String expression = cache.getCachedLibraryExpression();
+                String limit = cache.getCachedLibraryLimit();
                 if (expression == null) {
                     // its cached dispatch version treat it as normal cached
                     if (limit == null) {
@@ -2226,10 +2224,6 @@ public final class NodeParser extends AbstractParser<NodeData> {
         return uncachedSpecialization;
     }
 
-    private static String getCachedLibraryExpressions(AnnotationMirror cachedLibrary) {
-        return ElementUtils.getAnnotationValue(String.class, cachedLibrary, "value", false);
-    }
-
     private static TypeMirror getFirstTypeArgument(TypeMirror languageType) {
         for (TypeMirror currentTypeArgument : ((DeclaredType) languageType).getTypeArguments()) {
             return currentTypeArgument;
@@ -2260,17 +2254,20 @@ public final class NodeParser extends AbstractParser<NodeData> {
             uncachedLibraries = new ArrayList<>();
             uncachedSpecialization.getReplaces().add(specialization);
 
-            for (int i = 0; i < uncachedSpecialization.getCaches().size(); i++) {
-                CacheExpression expression = uncachedSpecialization.getCaches().get(i);
-                if (expression.isCachedLibrary()) {
+            List<CacheExpression> caches = uncachedSpecialization.getCaches();
+            for (int i = 0; i < caches.size(); i++) {
+                CacheExpression expression = caches.get(i);
+                if (expression.getCachedLibraryExpression() != null) {
                     expression = expression.copy();
-                    uncachedSpecialization.getCaches().set(i, expression);
+                    caches.set(i, expression);
                     uncachedLibraries.add(expression);
                 }
             }
             specialization.setUncachedSpecialization(uncachedSpecialization);
         }
-
+        if (uncachedLibraries != null && uncachedLibraries.size() != libraries.size()) {
+            throw new AssertionError("Unexpected number of uncached libraries.");
+        }
         boolean seenDynamicParameterBound = false;
 
         for (int i = 0; i < libraries.size(); i++) {
@@ -2299,7 +2296,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                 cachedLibrary.addError("Library '%s' has errors. Please resolve them first.", getSimpleName(parameterType));
                 continue;
             }
-            String expression = getCachedLibraryExpressions(cachedLibrary.getMessageAnnotation());
+            String expression = cachedLibrary.getCachedLibraryExpression();
             DSLExpression receiverExpression = parseCachedExpression(resolver, cachedLibrary, parsedLibrary.getSignatureReceiverType(), expression);
             if (receiverExpression == null) {
                 continue;
