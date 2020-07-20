@@ -1136,6 +1136,11 @@ final class EngineAccessor extends Accessor {
         public boolean isHostToGuestRootNode(RootNode rootNode) {
             return rootNode instanceof HostToGuestRootNode;
         }
+
+        @Override
+        public AssertionError invalidSharingError(Object polyglotEngine) throws AssertionError {
+            return PolyglotReferences.invalidSharingError((PolyglotEngineImpl) polyglotEngine);
+        }
     }
 
     abstract static class AbstractClassLoaderSupplier implements Supplier<ClassLoader> {

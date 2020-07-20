@@ -467,6 +467,8 @@ public abstract class Accessor {
 
         public abstract boolean isHostToGuestRootNode(RootNode rootNode);
 
+        public abstract AssertionError invalidSharingError(Object polyglotEngine) throws AssertionError;
+
     }
 
     public abstract static class LanguageSupport extends Support {
