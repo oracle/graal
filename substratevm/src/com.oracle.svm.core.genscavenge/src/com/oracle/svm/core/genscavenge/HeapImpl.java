@@ -50,6 +50,7 @@ import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.GC;
 import com.oracle.svm.core.heap.GCCause;
@@ -745,6 +746,30 @@ public final class HeapImpl extends Heap {
         } finally {
             REF_MUTEX.unlock();
         }
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called when installing code.", callerMustBe = true)
+    public void registerRuntimeCodeInfo(CodeInfo codeInfo) {
+        // nothing to do (all runtime compiled code gets processed at every GC)
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called when installing code.", callerMustBe = true)
+    public void registerCodeConstants(CodeInfo codeInfo) {
+        // nothing to do, see above
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called when freeing code.", callerMustBe = true)
+    public void unregisterCodeConstants(CodeInfo info) {
+        // nothing to do, see above
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called when freeing code.", callerMustBe = true)
+    public void unregisterRuntimeCodeInfo(CodeInfo codeInfo) {
+        // nothing to do, see above
     }
 }
 

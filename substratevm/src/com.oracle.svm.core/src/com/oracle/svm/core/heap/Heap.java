@@ -36,6 +36,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -164,4 +165,30 @@ public abstract class Heap {
      * May return {@code null}.
      */
     public abstract Reference<?> getAndClearReferencePendingList();
+
+    /**
+     * Notify the GC that a code metadata object references Java heap objects from native-memory.
+     */
+    @Uninterruptible(reason = "Called when installing code.", callerMustBe = true)
+    public abstract void registerRuntimeCodeInfo(CodeInfo codeInfo);
+
+    /**
+     * Notify the GC that run-time compiled code has embedded references to Java heap objects.
+     */
+    @Uninterruptible(reason = "Called when installing code.", callerMustBe = true)
+    public abstract void registerCodeConstants(CodeInfo codeInfo);
+
+    /**
+     * Notify the GC that run-time compiled code will be freed that has embedded references to Java
+     * heap objects.
+     */
+    @Uninterruptible(reason = "Called when freeing code.", callerMustBe = true)
+    public abstract void unregisterCodeConstants(CodeInfo info);
+
+    /**
+     * Notify the GC that a code metadata object will be freed that references Java heap objects
+     * from native-memory.
+     */
+    @Uninterruptible(reason = "Called when freeing code.", callerMustBe = true)
+    public abstract void unregisterRuntimeCodeInfo(CodeInfo codeInfo);
 }
