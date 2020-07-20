@@ -186,7 +186,7 @@ final class Runner {
     }
 
     /**
-     * Parse bitcode data and do first initializations to prepare bitcode execution.
+     * Prepare the source for parsing, by creating the external library from the source and retrieving the bytes from the source.
      */
     private CallTarget parseWithDependencies(Source source) {
         ByteSequence bytes;
@@ -247,7 +247,7 @@ final class Runner {
         @Child InitializeModuleNode initModules;
         @Child IndirectCallNode indirectCall;
 
-        @Children DirectCallNode[] dependencies; // pointing to the CallTargets of our dependencies
+        @Children DirectCallNode[] dependencies;
         final CallTarget[] callTargets;
         final List<Source> sources;
         final LLVMParserResult parserResult;
@@ -263,8 +263,7 @@ final class Runner {
             INIT_MODULE,
             INIT_CONTEXT,
             INIT_OVERWRITE,
-            INIT_DONE,
-            BUILD_RETURN_SCOPES;
+            INIT_DONE;
 
             boolean isActive(LLVMLoadingPhase phase) {
                 return phase == this || phase == ALL;
@@ -333,8 +332,6 @@ final class Runner {
                 BitSet visited;
                 ArrayDeque<CallTarget> que = null;
                 LLVMScope resultScope = null;
-                // if no argument or first argument is not an enum of ours then it is a root, and we
-                // will need to create a fresh global scope, what do we do for local scope?
                 if (frame.getArguments().length > 0 && (frame.getArguments()[0] instanceof LLVMLoadingPhase)) {
                     phase = (LLVMLoadingPhase) frame.getArguments()[0];
                     visited = (BitSet) frame.getArguments()[1];
@@ -342,9 +339,7 @@ final class Runner {
                         localScope = (LLVMLocalScope) frame.getArguments()[2];
                         que = (ArrayDeque<CallTarget>) frame.getArguments()[3];
                         resultScope = (LLVMScope) frame.getArguments()[4];
-                    } /*else if (phase == LLVMLoadingPhase.BUILD_RETURN_SCOPES) {
-                        resultScope = (LLVMScope) frame.getArguments()[2];
-                    }*/
+                    }
                 } else if (frame.getArguments().length == 0 || !(frame.getArguments()[0] instanceof LLVMLoadingPhase)) {
                     phase = LLVMLoadingPhase.ALL;
                     resultScope = createLLVMScope();
@@ -365,11 +360,11 @@ final class Runner {
                         resultScope.addMissingEntries(parserResult.getRuntime().getFileScope());
                         for (CallTarget callTarget : callTargets) {
                             if (callTarget != null) {
-                               queAdd(que, callTarget);
+                                queAdd(que, callTarget);
                             }
                         }
 
-                        if(LLVMLoadingPhase.ALL.isActive(phase)) {
+                        if (LLVMLoadingPhase.ALL.isActive(phase)) {
                             while (!que.isEmpty()) {
                                 indirectCall.call(que.poll(), LLVMLoadingPhase.BUILD_SCOPES, visited, localScope, que, resultScope);
                             }
@@ -479,22 +474,6 @@ final class Runner {
                     }
                 }
 
-                // this should just be parsing order, right?
-                /*if (LLVMLoadingPhase.BUILD_RETURN_SCOPES.isActive(phase)) {
-                    if (LLVMLoadingPhase.ALL == phase) {
-                        visited.clear();
-                    }
-                    if (!visited.get(bitcodeID)) {
-                        visited.set(bitcodeID);
-                        for (DirectCallNode d : dependencies) {
-                            if (d != null) {
-                                d.call(LLVMLoadingPhase.BUILD_RETURN_SCOPES, visited, resultScope);
-                            }
-                        }
-                        resultScope.addMissingEntries(parserResult.getRuntime().getFileScope());
-                    }
-                }*/
-
                 if (LLVMLoadingPhase.INIT_DONE.isActive(phase)) {
                     if (LLVMLoadingPhase.ALL == phase) {
                         visited.clear();
@@ -540,7 +519,7 @@ final class Runner {
                 }
 
                 if (frame.getArguments().length == 0) {
-                    //This is only performed for the root node of the top level call target.
+                    // This is only performed for the root node of the top level call target.
                     LLVMFunctionDescriptor startFunctionDescriptor = findAndSetSulongSpecificFunctions(language, context);
                     LLVMFunction mainFunction = findMainFunction(parserResult);
                     if (mainFunction != null) {
@@ -636,7 +615,6 @@ final class Runner {
                 context.addLibsulongDataLayout(result.getDataLayout());
             }
         }
-
 
         // Need to do the renaming here, it is only for internal libraries.
         if (isInternalLibrary) {
@@ -1338,8 +1316,9 @@ final class Runner {
                     if (scope == null) {
                         try {
                             /*
-                             * If the library that contains the function is not in the language, and therefore has not
-                             * been parsed, then we will try to lazily parse the library now.
+                             * If the library that contains the function is not in the language, and
+                             * therefore has not been parsed, then we will try to lazily parse the
+                             * library now.
                              */
                             String libName = lib + "." + NFIContextExtension.getNativeLibrarySuffix();
                             ExternalLibrary library = context.addInternalLibrary(libName, "<default bitcode library>");
@@ -1363,8 +1342,9 @@ final class Runner {
                 if (scope == null) {
                     try {
                         /*
-                         * If the library that contains the function is not in the language, and therefore has not
-                         * been parsed, then we will try to lazily parse the library now.
+                         * If the library that contains the function is not in the language, and
+                         * therefore has not been parsed, then we will try to lazily parse the
+                         * library now.
                          */
                         String libName = lib + "." + NFIContextExtension.getNativeLibrarySuffix();
                         ExternalLibrary library = context.addInternalLibrary(libName, "<default bitcode library>");
@@ -1386,10 +1366,10 @@ final class Runner {
                 LLVMFunction originalSymbol = scope.getFunction(originalName);
                 if (originalSymbol == null) {
                     throw new LLVMLinkerException(
-                            String.format("The symbol %s could not be imported because the symbol %s was not found in library %s", external.getName(), originalName, lib));
+                                    String.format("The symbol %s could not be imported because the symbol %s was not found in library %s", external.getName(), originalName, lib));
                 }
                 LLVMFunction newFunction = LLVMFunction.create(name, originalSymbol.getLibrary(), originalSymbol.getFunction(), originalSymbol.getType(),
-                        parserResult.getRuntime().getBitcodeID(), external.getIndex(), external.isExported());
+                                parserResult.getRuntime().getBitcodeID(), external.getIndex(), external.isExported());
                 LLVMScope fileScope = parserResult.getRuntime().getFileScope();
                 fileScope.register(newFunction);
                 functions.add(newFunction);

@@ -300,12 +300,13 @@ public final class LLVMContext {
         }
         try {
             /*
-             * The default internal libraries are parsed, but not initialised, in reverse dependency order.
-             * (For C: libsulong / For C++: libsulong, libsulong++)
+             * During context initialization the default internal libraries are parsed in reverse
+             * dependency order, but not initialised. (For C: libsulong / For C++: libsulong,
+             * libsulong++) The truffle cache in parse internal will catch future parsing of the
+             * default internal.
              */
-
             String[] sulongLibraryNames = language.getCapability(PlatformCapability.class).getSulongDefaultLibraries();
-            for (int i = sulongLibraryNames.length - 1; i >= 0 ; i--) {
+            for (int i = sulongLibraryNames.length - 1; i >= 0; i--) {
                 ExternalLibrary library = addInternalLibrary(sulongLibraryNames[i], "<default bitcode library>");
                 TruffleFile file = library.hasFile() ? library.getFile() : env.getInternalTruffleFile(library.getPath().toUri());
                 env.parseInternal(Source.newBuilder("llvm", file).internal(library.isInternal()).build());

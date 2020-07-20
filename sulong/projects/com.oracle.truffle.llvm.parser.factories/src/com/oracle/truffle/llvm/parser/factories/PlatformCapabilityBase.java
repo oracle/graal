@@ -62,7 +62,6 @@ public abstract class PlatformCapabilityBase<S extends Enum<S> & LLVMSyscallEntr
 
     public abstract String getLibsulongFilename();
 
-
     @Override
     public List<String> preprocessDependencies(LLVMContext ctx, ExternalLibrary library, List<String> dependencies) {
         List<String> newDeps = null;

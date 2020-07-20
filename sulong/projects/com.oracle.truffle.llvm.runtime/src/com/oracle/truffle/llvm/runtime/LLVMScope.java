@@ -166,11 +166,10 @@ public class LLVMScope implements TruffleObject {
             linkageNames.putIfAbsent(entry.getKey(), entry.getValue());
         }
 
-        /*for (String key : other.functionKeys) {
-            if (!(functionKeys.contains(key))) {
-                functionKeys.add(key);
-            }
-        }*/
+        /*
+         * for (String key : other.functionKeys) { if (!(functionKeys.contains(key))) {
+         * functionKeys.add(key); } }
+         */
     }
 
     @TruffleBoundary
