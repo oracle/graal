@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
@@ -48,6 +49,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMVarArgCompoundValue;
@@ -58,6 +60,7 @@ import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemMoveNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMHasDatalayoutNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStoreNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va.LLVMVaListLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.memory.LLVMNativeVarargsAreaStackAllocationNode;
@@ -82,8 +85,6 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMFloatVector;
 @ExportLibrary(LLVMVaListLibrary.class)
 @ExportLibrary(InteropLibrary.class)
 public final class LLVMX86_64VaListStorage implements TruffleObject {
-
-    private static final DataLayout DEFAULT_LAYOUT = new DataLayout("e-i64:64-f80:128-n8:16:32:64-S128");
 
     public static final ArrayType VA_LIST_TYPE = new ArrayType(StructureType.createNamedFromList("struct.__va_list_tag", false,
                     new ArrayList<>(Arrays.asList(PrimitiveType.I32, PrimitiveType.I32, PointerType.I8, PointerType.I8))), 1);
@@ -532,7 +533,9 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
     @ExportMessage
     Object shift(Type type,
                     @CachedLibrary("this") LLVMManagedReadLibrary readLib,
-                    @CachedLibrary("this") LLVMManagedWriteLibrary writeLib) {
+                    @CachedLibrary("this") LLVMManagedWriteLibrary writeLib,
+                    @Cached BranchProfile regAreaProfile,
+                    @Cached("createBinaryProfile()") ConditionProfile isNativizedProfile) {
         int regSaveOffs = 0;
         int regSaveStep = 0;
         int regSaveLimit = 0;
@@ -558,6 +561,8 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
         }
 
         if (lookIntoRegSaveArea) {
+            regAreaProfile.enter();
+
             int offs = readLib.readI32(this, regSaveOffs);
             if (offs < regSaveLimit) {
                 writeLib.writeI32(this, regSaveOffs, offs + regSaveStep);
@@ -567,7 +572,7 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
         }
 
         // overflow area
-        if (isNativized()) {
+        if (isNativizedProfile.profile(isNativized())) {
             int shiftCnt = getNativeShiftCount(this, readLib);
             long shiftOffs = this.overflowArgArea.offsets[shiftCnt + 1];
             LLVMNativePointer shiftedOverflowAreaPtr = overflowArgAreaBaseNativePtr.increment(shiftOffs);
@@ -583,7 +588,9 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
 
     @SuppressWarnings("static-method")
     LLVMExpressionNode createAllocaNode(LLVMContext llvmCtx) {
-        return llvmCtx.getLanguage().getActiveConfiguration().createNodeFactory(llvmCtx, DEFAULT_LAYOUT).createAlloca(VA_LIST_TYPE, 16);
+        RootCallTarget rootCallTarget = (RootCallTarget) Truffle.getRuntime().getCurrentFrame().getCallTarget();
+        DataLayout dataLayout = (((LLVMHasDatalayoutNode) rootCallTarget.getRootNode())).getDatalayout();
+        return llvmCtx.getLanguage().getActiveConfiguration().createNodeFactory(llvmCtx, dataLayout).createAlloca(VA_LIST_TYPE, 16);
     }
 
     static LLVMStoreNode createI64StoreNode() {
