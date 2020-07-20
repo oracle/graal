@@ -266,8 +266,6 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                     }
                 }
                 break;
-            case LOOP_NEST_OVERFLOW:
-                throw GraalError.shouldNotReachHere("If the loop nest overflow mode is reached, execution should re-do the outer most loop with mode STOP_NEW_DEVIRTUALIZATIONS");
             default:
                 throw GraalError.shouldNotReachHere("Unknown effects closure mode " + currentMode);
         }

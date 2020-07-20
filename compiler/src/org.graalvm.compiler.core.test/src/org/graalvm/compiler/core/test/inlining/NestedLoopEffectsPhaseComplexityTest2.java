@@ -85,8 +85,7 @@ public class NestedLoopEffectsPhaseComplexityTest2 extends GraalCompilerTest {
 
     /**
      * Very deep loop nests, once {@linkplain GraalOptions#EscapeAnalysisLoopCutoff} is reached, no
-     * new virtualizations are performed. We check this by ensuring that the allocations of B >
-     * level remain
+     * new virtualizations are performed except the one that has ensure virtualized set/used.
      */
     public static int method20LevelNoNewAllocationsEnsureVirtualized(int a) {
         if (a == 0) {

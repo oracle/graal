@@ -116,6 +116,10 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
 
     protected boolean changed;
     protected final DebugContext debug;
+    /**
+     * The current execution mode: once we reach a maximum loop nest we stop further effects and
+     * only perform the minimal necessary operations.
+     */
     protected EffectsClosureMode currentMode;
 
     public EffectsClosure(ScheduleResult schedule, ControlFlowGraph cfg) {
@@ -282,13 +286,9 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
          */
         REGULAR_VIRTUALIZATION,
         /**
-         * Stop trying to virtualize allocations since the loop nesting level is reached.
+         * Stop trying to virtualize allocations since the maximum loop nesting level is reached.
          */
-        STOP_NEW_VIRTUALIZATIONS_LOOP_NEST,
-        /**
-         * Stop escape analysis for the given loop altogether.
-         */
-        LOOP_NEST_OVERFLOW
+        STOP_NEW_VIRTUALIZATIONS_LOOP_NEST
     }
 
     /**
@@ -418,13 +418,6 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
 
                             processKilledLoopLocations(loop, initialStateRemovedKilledLocations, mergeProcessor.newState);
 
-                            if (currentMode == EffectsClosureMode.LOOP_NEST_OVERFLOW) {
-                                /*
-                                 * We are done processing the deep loop nest, reset to regular
-                                 * processing.
-                                 */
-                                currentMode = EffectsClosureMode.REGULAR_VIRTUALIZATION;
-                            }
                             if (currentMode == EffectsClosureMode.STOP_NEW_VIRTUALIZATIONS_LOOP_NEST && loop.getDepth() == 1) {
                                 /*
                                  * We are done processing the loop nest with limited EA for nested
@@ -449,14 +442,19 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
                     }
                 }
             } catch (EffecsClosureOverflowException e) {
-                /*
-                 * We are not yet at the outermost loop, we rethrow the error to actually exit ALL
-                 * cases
-                 */
                 if (loop.getDepth() != 1) {
+                    /*
+                     * We are not yet at the outermost loop, we rethrow the error to actually exit
+                     * ALL cases
+                     */
                     throw e;
                 }
-
+                /*
+                 * We reached the outermost loop after having seen a loop nest operation that would
+                 * cause exponential processing. Thus, we reset everything to before the loop and
+                 * process the loop without future virtualizations (we only look at ensure
+                 * virtualized nodes).
+                 */
                 aliases = aliasesCopy;
                 hasScalarReplacedInputs = hasScalarReplacedInputsCopy;
                 blockEffects = blockEffectsCopy;
