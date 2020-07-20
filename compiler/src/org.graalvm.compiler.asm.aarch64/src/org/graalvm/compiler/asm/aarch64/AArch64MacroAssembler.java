@@ -2328,46 +2328,15 @@ public class AArch64MacroAssembler extends AArch64Assembler {
 
         @Override
         public void patch(int codePos, int relative, byte[] code) {
-            int shiftSize = 0;
-            switch (srcSize) {
-                case 64:
-                    shiftSize = 3;
-                    break;
-                case 32:
-                    shiftSize = 2;
-                    break;
-                case 16:
-                    shiftSize = 1;
-                    break;
-                case 8:
-                    shiftSize = 0;
-                    break;
-                default:
-                    assert false : "srcSize must be either 8, 16, 32, or 64";
-            }
-
             int pos = instructionPosition;
-
-            int targetAddress = pos + relative;
-            assert shiftSize == 0 || (targetAddress & ((1 << shiftSize) - 1)) == 0 : "shift bits must be zero";
-
+            long targetAddress = ((long) pos) + relative;
             int relativePageDifference = PatcherUtil.computeRelativePageDifference(targetAddress, pos, 1 << 12);
-
-            // adrp imm_hi bits
-            int curValue = (relativePageDifference >> 2) & 0x7FFFF;
-            int[] adrHiBits = {3, 8, 8};
-            int[] adrHiOffsets = {5, 0, 0};
-            PatcherUtil.writeBitSequence(code, pos, curValue, adrHiBits, adrHiOffsets);
-            // adrp imm_lo bits
-            curValue = relativePageDifference & 0x3;
-            int[] adrLoBits = {2};
-            int[] adrLoOffsets = {5};
-            PatcherUtil.writeBitSequence(code, pos + 3, curValue, adrLoBits, adrLoOffsets);
-            // ldr bits
-            curValue = (targetAddress & 0xFFF) >> shiftSize;
-            int[] ldrBits = {6, 6};
-            int[] ldrOffsets = {2, 0};
-            PatcherUtil.writeBitSequence(code, pos + 5, curValue, ldrBits, ldrOffsets);
+            int originalInst = PatcherUtil.readInstruction(code, pos);
+            int newInst = PatcherUtil.patchAdrpHi21(originalInst, relativePageDifference & 0x1FFFFF);
+            PatcherUtil.writeInstruction(code, pos, newInst);
+            originalInst = PatcherUtil.readInstruction(code, pos + 4);
+            newInst = PatcherUtil.patchLdrLo12(originalInst, (int) targetAddress & 0xFFF, srcSize);
+            PatcherUtil.writeInstruction(code, pos + 4, newInst);
         }
     }
 
@@ -2384,23 +2353,14 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         @Override
         public void patch(int codePos, int relative, byte[] code) {
             int pos = instructionPosition;
-            int targetAddress = pos + relative;
+            long targetAddress = ((long) pos) + relative;
             int relativePageDifference = PatcherUtil.computeRelativePageDifference(targetAddress, pos, 1 << 12);
-            // adrp imm_hi bits
-            int curValue = (relativePageDifference >> 2) & 0x7FFFF;
-            int[] adrHiBits = {3, 8, 8};
-            int[] adrHiOffsets = {5, 0, 0};
-            PatcherUtil.writeBitSequence(code, pos, curValue, adrHiBits, adrHiOffsets);
-            // adrp imm_lo bits
-            curValue = relativePageDifference & 0x3;
-            int[] adrLoBits = {2};
-            int[] adrLoOffsets = {5};
-            PatcherUtil.writeBitSequence(code, pos + 3, curValue, adrLoBits, adrLoOffsets);
-            // add bits
-            curValue = targetAddress & 0xFFF;
-            int[] addBits = {6, 6};
-            int[] addOffsets = {2, 0};
-            PatcherUtil.writeBitSequence(code, pos + 5, curValue, addBits, addOffsets);
+            int originalInst = PatcherUtil.readInstruction(code, pos);
+            int newInst = PatcherUtil.patchAdrpHi21(originalInst, relativePageDifference & 0x1FFFFF);
+            PatcherUtil.writeInstruction(code, pos, newInst);
+            originalInst = PatcherUtil.readInstruction(code, pos + 4);
+            newInst = PatcherUtil.patchAddLo12(originalInst, (int) targetAddress & 0xFFF);
+            PatcherUtil.writeInstruction(code, pos + 4, newInst);
         }
     }
 
@@ -2443,9 +2403,8 @@ public class AArch64MacroAssembler extends AArch64Assembler {
              * Each move has a 16 bit immediate operand. We use a series of shifted moves to
              * represent immediate values larger than 16 bits.
              */
-            int curValue = relative;
-            int[] bitsUsed = {3, 8, 5};
-            int[] offsets = {5, 0, 0};
+            // first retrieving the target address
+            long curValue = ((long) instructionPosition) + relative;
             int siteOffset = 0;
             boolean containsNegatedMov = false;
             for (MovAction include : includeSet) {
@@ -2455,7 +2414,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
                 }
             }
             for (int i = 0; i < includeSet.length; i++) {
-                int value = curValue & 0xFFFF;
+                int value = (int) curValue & 0xFFFF;
                 curValue = curValue >> 16;
                 switch (includeSet[i]) {
                     case USED:
@@ -2467,8 +2426,10 @@ public class AArch64MacroAssembler extends AArch64Assembler {
                         value = value ^ 0xFFFF;
                         break;
                 }
-                int bytePosition = instructionPosition + siteOffset;
-                PatcherUtil.writeBitSequence(code, bytePosition, value, bitsUsed, offsets);
+                int instOffset = instructionPosition + siteOffset;
+                int originalInst = PatcherUtil.readInstruction(code, instOffset);
+                int newInst = PatcherUtil.patchMov(originalInst, value);
+                PatcherUtil.writeInstruction(code, instOffset, newInst);
                 siteOffset += 4;
             }
         }
