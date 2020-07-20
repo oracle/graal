@@ -53,11 +53,6 @@ public class WatSuite extends WasmSuiteBase {
     }
 
     @Override
-    protected String includedExternalModules() {
-        return super.includedExternalModules() + ",memory,env:emscripten";
-    }
-
-    @Override
     @Test
     public void test() throws IOException {
         // This is here just to make mx aware of the test suite class.

@@ -29,6 +29,9 @@ import org.graalvm.compiler.nodes.ValueNode;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.graal.pointsto.util.AnalysisError;
+
+import jdk.vm.ci.code.BytecodePosition;
 
 /**
  * The all-instantiated type state is defined as the maximum state that is allowed. If our type was
@@ -53,7 +56,7 @@ import com.oracle.graal.pointsto.typestate.TypeState;
  * case that type can never be returned by this flow (and the only possible value is null, which is
  * set regardless of the type update).
  */
-public abstract class SourceTypeFlowBase extends TypeFlow<ValueNode> {
+public abstract class SourceTypeFlowBase extends TypeFlow<BytecodePosition> {
 
     /**
      * The source state is a temporary buffer for this flow's type state. The source state is added
@@ -67,7 +70,7 @@ public abstract class SourceTypeFlowBase extends TypeFlow<ValueNode> {
     }
 
     public SourceTypeFlowBase(ValueNode node, AnalysisType declaredType, TypeState state) {
-        super(node, declaredType);
+        super(node.getNodeSourcePosition(), declaredType);
         this.sourceState = state;
     }
 
@@ -106,6 +109,26 @@ public abstract class SourceTypeFlowBase extends TypeFlow<ValueNode> {
             /* Update the state and propagate it to uses. */
             addState(bb, sourceState);
         }
+    }
+
+    @Override
+    public void onObservedSaturated(BigBang bb, TypeFlow<?> observed) {
+        AnalysisError.shouldNotReachHere("NewInstanceTypeFlow cannot saturate.");
+    }
+
+    @Override
+    protected void onInputSaturated(BigBang bb, TypeFlow<?> input) {
+        AnalysisError.shouldNotReachHere("NewInstanceTypeFlow cannot saturate.");
+    }
+
+    @Override
+    protected void onSaturated(BigBang bb) {
+        AnalysisError.shouldNotReachHere("NewInstanceTypeFlow cannot saturate.");
+    }
+
+    @Override
+    public boolean canSaturate() {
+        return false;
     }
 
     @Override

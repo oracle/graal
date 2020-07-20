@@ -174,6 +174,10 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
         return this.isAllocationContextSensitiveObject() || this.isConstantContextSensitiveObject();
     }
 
+    public ArrayElementsTypeStore getArrayElementsTypeStore() {
+        return arrayElementsTypeStore;
+    }
+
     /** Returns the array elements type flow corresponding to an analysis object of array type. */
     public ArrayElementsTypeFlow getArrayElementsFlow(BigBang bb, boolean isStore) {
         assert this.isObjectArray();
@@ -189,7 +193,7 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
         assert !Modifier.isStatic(field.getModifiers()) && field.isUnsafeAccessed();
 
         FieldTypeStore fieldTypeStore = getInstanceFieldTypeStore(bb, context, field);
-        return fieldTypeStore.filterFlow(bb);
+        return fieldTypeStore.writeFlow().filterFlow(bb);
     }
 
     public UnsafeWriteSinkTypeFlow getUnsafeWriteSinkFrozenFilterFlow(BigBang bb, AnalysisMethod context, AnalysisField field) {

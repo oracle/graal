@@ -253,6 +253,17 @@ public interface InstrumentableNode extends NodeInterface {
      * relies on the stability of materialized nodes. Use {@link Node#notifyInserted(Node)} when you
      * need to change the structure of instrumentable nodes.
      * <p>
+     * Node must return itself from this method when it has already seen all the materializedTags
+     * specified as an argument, i.e., not only if the set of tags is exactly the same as before,
+     * but also if the current set of tags is completely contained in the union of all the sets of
+     * tags specified in all the calls of this method that led to creation of this materialized
+     * node.
+     * <p>
+     * If the node returns a new node from this method, the subtree rooted at the new node must be
+     * completely unadopted, i.e., all nodes it contains must not have existed in the original AST.
+     * Also, the new subtree must be completely materialized, so that no new materializations occur
+     * when the instrumentation framework instruments the new subtree during the current traversal.
+     * <p>
      * The AST lock is acquired while this method is invoked. Therefore it is not allowed to run
      * guest language code while this method is invoked. This method might be called in parallel
      * from multiple threads even if the language is single threaded. The method may be invoked
@@ -527,6 +538,20 @@ class InstrumentableNodeSnippets {
     }
 
     @SuppressWarnings("unused")
+    static class HaltNodeWrapper implements WrapperNode {
+        HaltNodeWrapper(Node node, ProbeNode probe) {
+        }
+
+        public Node getDelegateNode() {
+            return null;
+        }
+
+        public ProbeNode getProbeNode() {
+            return null;
+        }
+    }
+
+    @SuppressWarnings("unused")
     // BEGIN: com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.HaltNode
     @GenerateWrapper
     static class HaltNode extends Node implements InstrumentableNode {
@@ -557,7 +582,21 @@ class InstrumentableNodeSnippets {
         }
 
     }
+
     // END: com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.HaltNode
+    @SuppressWarnings("unused")
+    static class ExpressionNodeWrapper implements WrapperNode {
+        ExpressionNodeWrapper(Node node, ProbeNode probe) {
+        }
+
+        public Node getDelegateNode() {
+            return null;
+        }
+
+        public ProbeNode getProbeNode() {
+            return null;
+        }
+    }
 
     // BEGIN: com.oracle.truffle.api.instrumentation.InstrumentableNodeSnippets.ExpressionNode
     @GenerateWrapper

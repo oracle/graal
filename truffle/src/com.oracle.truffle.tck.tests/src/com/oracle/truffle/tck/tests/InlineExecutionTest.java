@@ -44,8 +44,8 @@ import com.oracle.truffle.tck.common.inline.InlineVerifier;
 import java.io.IOException;
 import java.util.AbstractMap;
 import java.util.Collection;
-import java.util.LinkedHashSet;
 import java.util.Objects;
+import java.util.TreeSet;
 
 import org.junit.AfterClass;
 import org.junit.Assume;
@@ -66,7 +66,7 @@ public class InlineExecutionTest {
     @Parameterized.Parameters(name = "{0}")
     public static Collection<InlineTestRun> createScriptTests() {
         context = new TestContext(InlineExecutionTest.class);
-        final Collection<InlineTestRun> res = new LinkedHashSet<>();
+        final Collection<InlineTestRun> res = new TreeSet<>((a, b) -> a.toString().compareTo(b.toString()));
         for (String lang : TestUtil.getRequiredLanguages(context)) {
             for (InlineSnippet snippet : context.getInlineScripts(lang)) {
                 res.add(new InlineTestRun(new AbstractMap.SimpleImmutableEntry<>(lang, snippet.getScript()), snippet));
@@ -102,10 +102,10 @@ public class InlineExecutionTest {
         try {
             try {
                 final Value result = testRun.getSnippet().getExecutableValue().execute(testRun.getActualParameters().toArray());
-                TestUtil.validateResult(testRun, result, null);
+                TestUtil.validateResult(testRun, result, null, true);
                 success = true;
             } catch (PolyglotException pe) {
-                TestUtil.validateResult(testRun, null, pe);
+                TestUtil.validateResult(testRun, null, pe, true);
                 success = true;
             }
             if (verifier != null && verifier.exception != null) {
@@ -133,14 +133,14 @@ public class InlineExecutionTest {
         public void verify(Object ret) {
             Value result = context.getValue(ret);
             InlineSnippet inlineSnippet = testRun.getInlineSnippet();
-            TestUtil.validateResult(inlineSnippet.getResultVerifier(), testRun, result, null);
+            TestUtil.validateResult(inlineSnippet.getResultVerifier(), testRun, result, null, true);
         }
 
         @Override
         public void verify(PolyglotException pe) {
             InlineSnippet inlineSnippet = testRun.getInlineSnippet();
             try {
-                TestUtil.validateResult(inlineSnippet.getResultVerifier(), testRun, null, pe);
+                TestUtil.validateResult(inlineSnippet.getResultVerifier(), testRun, null, pe, true);
             } catch (Exception exc) {
                 exception = exc;
             }

@@ -50,12 +50,14 @@ import java.util.List;
 import org.junit.Test;
 
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Layout;
 import com.oracle.truffle.api.object.ObjectType;
 import com.oracle.truffle.api.object.Shape;
 
 public class LeakCheckTest {
-    static final Layout LAYOUT = Layout.createLayout();
+    private static final Layout LAYOUT = Layout.createLayout();
+    private static final DynamicObjectLibrary LIBRARY = DynamicObjectLibrary.getUncached();
 
     @Test
     public void leakCheck() {
@@ -65,9 +67,9 @@ public class LeakCheckTest {
         for (int i = 0; i < 100; i++) {
             DynamicObject obj = emptyShape.newInstance();
             for (int j = 0; j < 1000; j++) {
-                obj.define("a" + Math.random(), Math.random());
-                obj.define("b" + Math.random(), Math.random());
-                obj.define("c" + Math.random(), Math.random());
+                LIBRARY.put(obj, "a" + Math.random(), Math.random());
+                LIBRARY.put(obj, "b" + Math.random(), Math.random());
+                LIBRARY.put(obj, "c" + Math.random(), Math.random());
             }
             fullShapeRefs.add(new WeakReference<>(obj.getShape()));
         }

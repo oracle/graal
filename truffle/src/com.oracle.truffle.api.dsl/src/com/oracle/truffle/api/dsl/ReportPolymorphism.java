@@ -71,7 +71,7 @@ public @interface ReportPolymorphism {
      * excluded from consideration when {@link Node#reportPolymorphicSpecialize() reporting
      * polymorphic specializations}.
      *
-     * Individual specializations can be excluded from this consideration buy using the
+     * Individual specializations can be excluded from this consideration by using the
      * {@link ReportPolymorphism.Exclude} Polymorphic specializations are never reported on the
      * first specialization.
      *

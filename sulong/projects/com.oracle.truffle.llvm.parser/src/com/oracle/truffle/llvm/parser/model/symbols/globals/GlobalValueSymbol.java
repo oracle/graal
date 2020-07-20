@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -120,7 +120,7 @@ public abstract class GlobalValueSymbol extends GlobalSymbol implements ValueSym
 
     @Override
     public boolean isExported() {
-        return Linkage.isExported(getLinkage(), visibility);
+        return !isIntrinsicGlobalVariable() && Linkage.isExported(getLinkage(), visibility);
     }
 
     @Override

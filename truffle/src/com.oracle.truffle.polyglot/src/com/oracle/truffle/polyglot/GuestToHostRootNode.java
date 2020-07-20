@@ -43,10 +43,9 @@ package com.oracle.truffle.polyglot;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.impl.Accessor.CallInlined;
 import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 
 abstract class GuestToHostRootNode extends RootNode {
@@ -54,8 +53,6 @@ abstract class GuestToHostRootNode extends RootNode {
     protected static final int ARGUMENT_OFFSET = 2;
 
     private final String boundaryName;
-
-    static final CallInlined CALL_INLINED = EngineAccessor.ACCESSOR.getCallInlined();
 
     protected GuestToHostRootNode(Class<?> targetType, String methodName) {
         super(null);
@@ -88,12 +85,12 @@ abstract class GuestToHostRootNode extends RootNode {
         } catch (InteropException e) {
             throw silenceException(RuntimeException.class, e);
         } catch (Throwable e) {
-            throw PolyglotImpl.wrapHostException((PolyglotLanguageContext) arguments[0], e);
+            throw PolyglotImpl.hostToGuestException((PolyglotLanguageContext) arguments[0], e);
         }
     }
 
     @SuppressWarnings({"unchecked", "unused"})
-    static <E extends Exception> RuntimeException silenceException(Class<E> type, Exception ex) throws E {
+    static <E extends Throwable> RuntimeException silenceException(Class<E> type, Throwable ex) throws E {
         throw (E) ex;
     }
 
@@ -108,9 +105,9 @@ abstract class GuestToHostRootNode extends RootNode {
         if (node.isAdoptable()) {
             encapsulatingNode = node;
         } else {
-            encapsulatingNode = NodeUtil.getCurrentEncapsulatingNode();
+            encapsulatingNode = EncapsulatingNodeReference.getCurrent().get();
         }
-        return CALL_INLINED.call(encapsulatingNode, target, arguments);
+        return EngineAccessor.RUNTIME.callInlined(encapsulatingNode, target, arguments);
     }
 
 }

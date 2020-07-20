@@ -1,14 +1,22 @@
 Non-standard options help:
 
     --expert-options      lists image build options for experts
-    --expert-options-all  lists all image build options for experts (use at your own risk)
+    --expert-options-all  lists all image build options for experts (use at your own risk).
+                          Options marked with [Extra help available] contain help that can be
+                          shown with --expert-options-detail
+    --expert-options-detail
+                          displays all available help for a comma-separated list of option names.
+                          Pass * to show extra help for all options that contain it.
 
     --configurations-path <search path of option-configuration directories>
                           A %pathsep% separated list of directories to be treated as
                           option-configuration directories.
-    --debug-attach[=<port>]
+    --debug-attach[=<port or host:port (* can be used as host meaning bind to all interfaces)>]
                           attach to debugger during image building (default port is 8000)
     --dry-run             output the command line that would be used for building
 
     -V<key>=<value>       provide values for placeholders in native-image.properties files
+
+    --help-experimental-build-server
+                          displays help for experimental image-build server use
 

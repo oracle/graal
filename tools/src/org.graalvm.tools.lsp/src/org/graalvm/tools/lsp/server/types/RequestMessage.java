@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,22 +25,97 @@
 package org.graalvm.tools.lsp.server.types;
 
 import com.oracle.truffle.tools.utils.json.JSONObject;
+import java.util.Objects;
 
+/**
+ * Request message.
+ */
 public class RequestMessage extends Message {
 
-    RequestMessage(JSONObject json) {
-        super(json);
+    RequestMessage(JSONObject jsonData) {
+        super(jsonData);
     }
 
+    /**
+     * The request id.
+     */
     public Object getId() {
-        return json.get("id");
+        return jsonData.get("id");
     }
 
+    public RequestMessage setId(Object id) {
+        jsonData.put("id", id);
+        return this;
+    }
+
+    /**
+     * The method to be invoked.
+     */
     public String getMethod() {
-        return json.getString("method");
+        return jsonData.getString("method");
     }
 
-    public JSONObject getJSONParams() {
-        return json.optJSONObject("params");
+    public RequestMessage setMethod(String method) {
+        jsonData.put("method", method);
+        return this;
+    }
+
+    /**
+     * The method's params.
+     */
+    public Object getParams() {
+        return jsonData.opt("params");
+    }
+
+    public RequestMessage setParams(Object params) {
+        jsonData.putOpt("params", params);
+        return this;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (this.getClass() != obj.getClass()) {
+            return false;
+        }
+        RequestMessage other = (RequestMessage) obj;
+        if (!Objects.equals(this.getId(), other.getId())) {
+            return false;
+        }
+        if (!Objects.equals(this.getMethod(), other.getMethod())) {
+            return false;
+        }
+        if (!Objects.equals(this.getParams(), other.getParams())) {
+            return false;
+        }
+        if (!Objects.equals(this.getJsonrpc(), other.getJsonrpc())) {
+            return false;
+        }
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 7;
+        hash = 79 * hash + Objects.hashCode(this.getId());
+        hash = 79 * hash + Objects.hashCode(this.getMethod());
+        if (this.getParams() != null) {
+            hash = 79 * hash + Objects.hashCode(this.getParams());
+        }
+        hash = 79 * hash + Objects.hashCode(this.getJsonrpc());
+        return hash;
+    }
+
+    public static RequestMessage create(Object id, String method, String jsonrpc) {
+        final JSONObject json = new JSONObject();
+        json.put("id", id);
+        json.put("method", method);
+        json.put("jsonrpc", jsonrpc);
+        return new RequestMessage(json);
     }
 }

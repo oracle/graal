@@ -248,7 +248,9 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
                 returnValue = kit.boxObjectInLocalHandle(returnValue);
             }
         }
-        kit.append(new CEntryPointLeaveNode(LeaveAction.Leave));
+        kit.appendStateSplitProxy(state);
+        CEntryPointLeaveNode leave = new CEntryPointLeaveNode(LeaveAction.Leave);
+        kit.append(leave);
         kit.createReturn(returnValue, returnKind);
 
         return kit.finalizeGraph();
@@ -257,8 +259,7 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
     private static ValueNode createInvoke(JNIGraphKit kit, ResolvedJavaMethod invokeMethod, InvokeKind kind, FrameStateBuilder state, int bci, ValueNode... args) {
         ValueNode formerPendingException = kit.getAndClearPendingException();
 
-        int exceptionEdgeBci = kit.bci();
-        InvokeWithExceptionNode invoke = kit.startInvokeWithException(invokeMethod, kind, state, bci, exceptionEdgeBci, args);
+        InvokeWithExceptionNode invoke = kit.startInvokeWithException(invokeMethod, kind, state, bci, args);
 
         kit.noExceptionPart(); // no new exception was thrown, restore the formerly pending one
         kit.setPendingException(formerPendingException);
@@ -338,7 +339,7 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
             for (int i = 0; i < count; i++) {
                 ResolvedJavaType type = (ResolvedJavaType) invokeSignature.getParameterType(i, null);
                 JavaKind readKind = type.getJavaKind();
-                if (callVariant == CallVariant.VARARGS && readKind == JavaKind.Float) {
+                if (readKind == JavaKind.Float && (callVariant == CallVariant.VARARGS || callVariant == CallVariant.VA_LIST)) {
                     readKind = JavaKind.Double;
                 }
                 StructFieldInfo fieldInfo = getJNIValueOffsetOf(elementType, readKind);
@@ -352,7 +353,7 @@ public final class JNIJavaCallWrapperMethod extends JNIGeneratedMethod {
                 Stamp readStamp = getNarrowStamp(providers, readKind);
                 ValueNode value = kit.append(new CInterfaceReadNode(address, locationIdentity, readStamp, BarrierType.NONE, "args[" + i + "]"));
                 JavaKind stackKind = readKind.getStackKind();
-                if (callVariant == CallVariant.VARARGS && type.getJavaKind() == JavaKind.Float) {
+                if (type.getJavaKind() == JavaKind.Float && (callVariant == CallVariant.VARARGS || callVariant == CallVariant.VA_LIST)) {
                     value = kit.unique(new FloatConvertNode(FloatConvert.D2F, value));
                 } else if (readKind != stackKind) {
                     assert stackKind.getBitCount() > readKind.getBitCount() : "read kind must be narrower than stack kind";

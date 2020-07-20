@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,7 +36,6 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 
 /**
@@ -52,11 +51,20 @@ import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 public class BackgroundCompileQueue {
 
     private final AtomicLong idCounter;
-    private volatile ExecutorService compilationExecutorService;
+    private volatile ThreadPoolExecutor compilationExecutorService;
     private boolean shutdown = false;
+    protected final GraalTruffleRuntime runtime;
+    private long delayMillis;
 
-    public BackgroundCompileQueue() {
+    public BackgroundCompileQueue(GraalTruffleRuntime runtime) {
+        this.runtime = runtime;
         this.idCounter = new AtomicLong();
+    }
+
+    // Largest i such that 2^i <= n.
+    private static int log2(int n) {
+        assert n > 0;
+        return 31 - Integer.numberOfLeadingZeros(n);
     }
 
     private ExecutorService getExecutorService(OptimizedCallTarget callTarget) {
@@ -71,37 +79,77 @@ public class BackgroundCompileQueue {
                 throw new RejectedExecutionException("The BackgroundCompileQueue is shutdown");
             }
 
+            // NOTE: The value from the first Engine compiling wins for now
+            this.delayMillis = callTarget.getOptionValue(PolyglotCompilerOptions.EncodedGraphCachePurgeDelay);
+
             // NOTE: the value from the first Engine compiling wins for now
             int threads = callTarget.getOptionValue(PolyglotCompilerOptions.CompilerThreads);
             if (threads == 0) {
-                // No manual selection made, check how many processors are available.
+                // Old behavior, use either 1 or 2 compiler threads.
                 int availableProcessors = Runtime.getRuntime().availableProcessors();
                 if (availableProcessors >= 4) {
                     threads = 2;
                 }
+            } else if (threads < 0) {
+                // Scale compiler threads depending on how many processors are available.
+                int availableProcessors = Runtime.getRuntime().availableProcessors();
+
+                // @formatter:off
+                // compilerThreads = Math.min(availableProcessors / 4 + loglogCPU)
+                // Produces reasonable values for common core/thread counts (with HotSpot numbers for reference):
+                // cores=2  threads=4  compilerThreads=2  (HotSpot=3:  C1=1 C2=2)
+                // cores=4  threads=8  compilerThreads=3  (HotSpot=4:  C1=1 C2=3)
+                // cores=6  threads=12 compilerThreads=4  (HotSpot=4:  C1=1 C2=3)
+                // cores=8  threads=16 compilerThreads=6  (HotSpot=12: C1=4 C2=8)
+                // cores=10 threads=20 compilerThreads=7  (HotSpot=12: C1=4 C2=8)
+                // cores=12 threads=24 compilerThreads=8  (HotSpot=12: C1=4 C2=8)
+                // cores=16 threads=32 compilerThreads=10 (HotSpot=15: C1=5 C2=10)
+                // cores=18 threads=36 compilerThreads=11 (HotSpot=15: C1=5 C2=10)
+                // cores=24 threads=48 compilerThreads=14 (HotSpot=15: C1=5 C2=10)
+                // cores=28 threads=56 compilerThreads=16 (HotSpot=15: C1=5 C2=10)
+                // cores=32 threads=64 compilerThreads=18 (HotSpot=18: C1=6 C2=12)
+                // cores=36 threads=72 compilerThreads=20 (HotSpot=18: C1=6 C2=12)
+                // @formatter:on
+                int logCPU = log2(availableProcessors);
+                int loglogCPU = log2(Math.max(logCPU, 1));
+                threads = Math.min(availableProcessors / 4 + loglogCPU, 16); // capped at 16
             }
             threads = Math.max(1, threads);
 
             ThreadFactory factory = newThreadFactory("TruffleCompilerThread", callTarget);
 
-            return compilationExecutorService = new ThreadPoolExecutor(threads, threads, 0, TimeUnit.MILLISECONDS,
-                            new PriorityBlockingQueue<>(), factory) {
+            long compilerIdleDelay = runtime.getCompilerIdleDelay(callTarget);
+            long keepAliveTime = compilerIdleDelay >= 0 ? compilerIdleDelay : 0;
+
+            ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(threads, threads,
+                            keepAliveTime, TimeUnit.MILLISECONDS,
+                            new IdlingPriorityBlockingQueue<>(), factory) {
                 @Override
                 protected <T> RunnableFuture<T> newTaskFor(Callable<T> callable) {
                     return new RequestFutureTask<>((RequestImpl<T>) callable);
                 }
             };
+
+            if (compilerIdleDelay > 0) {
+                // There are two mechanisms to signal idleness: if core threads can timeout, then
+                // the notification is triggered by TruffleCompilerThreadFactory,
+                // otherwise, via IdlingBlockingQueue.take.
+                threadPoolExecutor.allowCoreThreadTimeOut(true);
+            }
+
+            return compilationExecutorService = threadPoolExecutor;
         }
     }
 
     @SuppressWarnings("unused")
     protected ThreadFactory newThreadFactory(String threadNamePrefix, OptimizedCallTarget callTarget) {
-        return new TruffleCompilerThreadFactory(threadNamePrefix);
+        return new TruffleCompilerThreadFactory(threadNamePrefix, runtime);
     }
 
     public CancellableCompileTask submitTask(Priority priority, OptimizedCallTarget target, Request request) {
-        CancellableCompileTask cancellable = new CancellableCompileTask(priority == Priority.LAST_TIER);
-        RequestImpl<Void> requestImpl = new RequestImpl<>(nextId(), priority, target, cancellable, request);
+        final WeakReference<OptimizedCallTarget> targetReference = new WeakReference<>(target);
+        CancellableCompileTask cancellable = new CancellableCompileTask(targetReference, priority == Priority.LAST_TIER);
+        RequestImpl<Void> requestImpl = new RequestImpl<>(nextId(), priority, targetReference, cancellable, request);
         cancellable.setFuture(getExecutorService(target).submit(requestImpl));
         return cancellable;
     }
@@ -153,7 +201,7 @@ public class BackgroundCompileQueue {
 
     public abstract static class Request {
 
-        protected abstract void execute(TruffleCompilationTask task, WeakReference<OptimizedCallTarget> targetRef);
+        protected abstract void execute(CancellableCompileTask task, WeakReference<OptimizedCallTarget> targetRef);
 
     }
 
@@ -161,14 +209,14 @@ public class BackgroundCompileQueue {
 
         private final long id;
         private final Priority priority;
-        private final TruffleCompilationTask task;
+        private final CancellableCompileTask task;
         private final WeakReference<OptimizedCallTarget> targetRef;
         private final Request request;
 
-        RequestImpl(long id, Priority priority, OptimizedCallTarget callTarget, TruffleCompilationTask task, Request request) {
+        RequestImpl(long id, Priority priority, WeakReference<OptimizedCallTarget> targetRef, CancellableCompileTask task, Request request) {
             this.id = id;
             this.priority = priority;
-            this.targetRef = new WeakReference<>(callTarget);
+            this.targetRef = targetRef;
             this.task = task;
             this.request = request;
         }
@@ -214,20 +262,32 @@ public class BackgroundCompileQueue {
         }
     }
 
-    private static final class TruffleCompilerThreadFactory implements ThreadFactory {
+    private final class TruffleCompilerThreadFactory implements ThreadFactory {
         private final String namePrefix;
+        private final GraalTruffleRuntime runtime;
 
-        TruffleCompilerThreadFactory(final String namePrefix) {
+        TruffleCompilerThreadFactory(final String namePrefix, GraalTruffleRuntime runtime) {
             this.namePrefix = namePrefix;
+            this.runtime = runtime;
         }
 
         @Override
         public Thread newThread(Runnable r) {
             final Thread t = new Thread(r) {
+                @SuppressWarnings("try")
                 @Override
                 public void run() {
                     setContextClassLoader(getClass().getClassLoader());
-                    super.run();
+                    try (AutoCloseable scope = runtime.openCompilerThreadScope()) {
+                        super.run();
+                        if (compilationExecutorService.allowsCoreThreadTimeOut()) {
+                            // If core threads are always kept alive (no timeout), the
+                            // IdlingPriorityBlockingQueue.take mechanism is used instead.
+                            compilerThreadIdled();
+                        }
+                    } catch (Exception e) {
+                        throw new InternalError(e);
+                    }
                 }
             };
             t.setName(namePrefix + "-" + t.getId());
@@ -237,4 +297,38 @@ public class BackgroundCompileQueue {
         }
     }
 
+    /**
+     * {@link PriorityBlockingQueue} with idling notification.
+     *
+     * <p>
+     * The idling notification is triggered when a compiler thread remains idle more than
+     * {@code delayMillis}.
+     *
+     * There are no guarantees on which thread will run the {@code onIdleDelayed} hook. Note that,
+     * starved threads can also trigger the notification, even if the compile queue is not idle
+     * during the delay period, the idling criteria is thread-based, not queue-based.
+     */
+    @SuppressWarnings("serial")
+    private final class IdlingPriorityBlockingQueue<E> extends PriorityBlockingQueue<E> {
+        @Override
+        public E take() throws InterruptedException {
+            while (!compilationExecutorService.allowsCoreThreadTimeOut()) {
+                E elem = poll(delayMillis, TimeUnit.MILLISECONDS);
+                if (elem == null) {
+                    compilerThreadIdled();
+                } else {
+                    return elem;
+                }
+            }
+            // Fallback to blocking version.
+            return super.take();
+        }
+    }
+
+    /**
+     * Called when a compiler thread becomes idle for more than {@code delayMillis}.
+     */
+    protected void compilerThreadIdled() {
+        // nop
+    }
 }

@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.tools.chromeinspector;
 
+import java.io.File;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -134,9 +135,13 @@ public final class ScriptsHandler implements LoadSourceListener {
         String path = source.getPath();
         if (path != null) {
             if (source.getURI().isAbsolute()) {
-                return "file://" + path;
+                return new File(path).toPath().toUri().toString();
             } else {
-                return path;
+                if (File.separatorChar == '/') {
+                    return path;
+                } else {
+                    return path.replace(File.separatorChar, '/');
+                }
             }
         }
         String name = source.getName();

@@ -36,7 +36,6 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 
 import jdk.vm.ci.meta.JavaKind;
 
@@ -73,11 +72,6 @@ public final class UnpackEndianHalfNode extends UnaryNode implements Lowerable {
             return ConstantNode.defaultForKind(stamp.getStackKind());
         }
         return this;
-    }
-
-    @Override
-    public void lower(LoweringTool tool) {
-        tool.getLowerer().lower(this, tool);
     }
 
     public void lower(ByteOrder byteOrder) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,6 +53,7 @@ import org.graalvm.options.OptionDescriptors;
 public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     private static final int MIN_DEFAULT_STACK_SIZE = 1_000_000;
     private static final int MAX_DEFAULT_ASYNC_STACK_SIZE = 10_000_000;
+    private boolean isFirst = true;
 
     @Override
     protected WasmContext createContext(Env env) {
@@ -62,7 +63,8 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     @Override
     protected CallTarget parse(ParsingRequest request) {
         final WasmContext context = getCurrentContext();
-        final String moduleName = request.getSource().getName();
+        final String moduleName = isFirst ? "main" : request.getSource().getName();
+        isFirst = false;
         final byte[] data = request.getSource().getBytes().toByteArray();
         final WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy = WasmOptions.StoreConstantsPolicy.getValue(context.environment().getOptions());
         final WasmModule module = new WasmModule(moduleName, data, storeConstantsPolicy);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,7 +31,7 @@
 #include <stdlib.h>
 
 int main() {
-  printf("PATH: %s\n", getenv("PATH"));
-  printf("HOME: %s\n", getenv("HOME"));
-  printf("ROOT: %s\n", getenv("ROOT"));
+    printf("PATH: %s\n", getenv("PATH"));
+    printf("HOME: %s\n", getenv("HOME"));
+    printf("ROOT: %s\n", getenv("ROOT"));
 }

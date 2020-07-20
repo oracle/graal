@@ -87,15 +87,19 @@ public abstract class Property {
      *
      * @return a Property with the new location (or {@code this} if the location is unchanged).
      * @since 0.8 or earlier
+     * @deprecated no replacement
      */
+    @Deprecated
     public abstract Property relocate(Location newLocation);
 
     /**
      * Gets the value of this property of the object.
      *
+     * Planned to be deprecated.
+     *
      * @param store the store that this property resides in
      * @param shape the current shape of the object, which must contain this location
-     * @see DynamicObject#get(Object, Object)
+     * @see DynamicObjectLibrary#getOrDefault(DynamicObject, Object, Object)
      * @since 0.8 or earlier
      */
     public abstract Object get(DynamicObject store, Shape shape);
@@ -103,9 +107,11 @@ public abstract class Property {
     /**
      * Gets the value of this property of the object.
      *
+     * Planned to be deprecated.
+     *
      * @param store the store that this property resides in
      * @param condition the result of a shape check or {@code false}
-     * @see DynamicObject#get(Object, Object)
+     * @see DynamicObjectLibrary#getOrDefault(DynamicObject, Object, Object)
      * @see #get(DynamicObject, Shape)
      * @since 0.8 or earlier
      */
@@ -116,12 +122,14 @@ public abstract class Property {
      *
      * Throws an exception if the value cannot be assigned to the property's current location.
      *
+     * Planned to be deprecated.
+     *
      * @param store the store that this property resides in
      * @param value the value to assign
      * @param shape the current shape of the object or {@code null}
      * @throws IncompatibleLocationException if the value is incompatible with the property location
      * @throws FinalLocationException if the location is final and values differ
-     * @see DynamicObject#set(Object, Object)
+     * @see DynamicObjectLibrary#put(DynamicObject, Object, Object)
      * @since 0.8 or earlier
      */
     public abstract void set(DynamicObject store, Object value, Shape shape) throws IncompatibleLocationException, FinalLocationException;
@@ -131,6 +139,8 @@ public abstract class Property {
      *
      * Automatically relocates the property if the value cannot be assigned to its current location.
      *
+     * Planned to be deprecated.
+     *
      * @param shape the current shape of the object or {@code null}
      * @since 0.8 or earlier
      */
@@ -139,6 +149,8 @@ public abstract class Property {
     /**
      * Like {@link #set(DynamicObject, Object, Shape)}, but throws an {@link IllegalStateException}
      * instead.
+     *
+     * Planned to be deprecated.
      *
      * @since 0.8 or earlier
      */
@@ -150,14 +162,16 @@ public abstract class Property {
      * @param store the store that this property resides in
      * @param value the value to assign
      * @since 0.8 or earlier
+     * @deprecated Properties can be set using {@link DynamicObjectLibrary#put}.
      */
+    @Deprecated
     public abstract void setInternal(DynamicObject store, Object value);
 
     /**
      * Assigns value to this property of the object, changing the object's shape.
      *
-     * Combines {@link DynamicObject#setShapeAndGrow(Shape, Shape)} and
-     * {@link #set(DynamicObject, Object, Shape)} to an atomic operation.
+     * Combines {@code setShapeAndGrow} and {@link #set(DynamicObject, Object, Shape)} to an atomic
+     * operation.
      *
      * @param store the store that this property resides in
      * @param value the value to assign
@@ -165,28 +179,36 @@ public abstract class Property {
      * @param newShape the shape after the transition
      * @throws IncompatibleLocationException if the value is incompatible with the property location
      * @since 0.8 or earlier
+     * @deprecated Properties can be added, set, and changed using {@link DynamicObjectLibrary#put}
+     *             and {@link DynamicObjectLibrary#putWithFlags}.
      */
+    @Deprecated
     public abstract void set(DynamicObject store, Object value, Shape oldShape, Shape newShape) throws IncompatibleLocationException;
 
     /**
      * Assigns value to this property of the object, changing the object's shape.
      *
-     * Combines {@link DynamicObject#setShapeAndGrow(Shape, Shape)} and
-     * {@link #setGeneric(DynamicObject, Object, Shape)} to an atomic operation.
+     * Combines {@code setShapeAndGrow} and {@link #setGeneric(DynamicObject, Object, Shape)} to an
+     * atomic operation.
      *
      * @param store the store that this property resides in
      * @param value the value to assign
      * @param oldShape the shape before the transition
      * @param newShape the shape after the transition
      * @since 0.8 or earlier
+     * @deprecated Properties can be added, set, and changed using {@link DynamicObjectLibrary#put}
+     *             and {@link DynamicObjectLibrary#putWithFlags}.
      */
+    @Deprecated
     public abstract void setGeneric(DynamicObject store, Object value, Shape oldShape, Shape newShape);
 
     /**
      * Assigns value to this property of the object, changing the object's shape.
      *
-     * Combines {@link DynamicObject#setShapeAndGrow(Shape, Shape)} and
-     * {@link #setSafe(DynamicObject, Object, Shape)} to an atomic operation.
+     * Combines {@code setShapeAndGrow} and {@link #setSafe(DynamicObject, Object, Shape)} to an
+     * atomic operation.
+     *
+     * Planned to be deprecated.
      *
      * @param store the store that this property resides in
      * @param value the value to assign
@@ -200,11 +222,15 @@ public abstract class Property {
      * Returns {@code true} if this property and some other property have the same key and flags.
      *
      * @since 0.8 or earlier
+     * @deprecated Equivalent to comparing the property's key and flags.
      */
+    @Deprecated
     public abstract boolean isSame(Property other);
 
     /**
      * Get the property location.
+     *
+     * Planned to be deprecated.
      *
      * @since 0.8 or earlier
      */
@@ -222,9 +248,16 @@ public abstract class Property {
      * Create a copy of the property with the given flags.
      *
      * @since 0.8 or earlier
+     * @deprecated Property flags can be changed using
+     *             {@link DynamicObjectLibrary#setPropertyFlags(DynamicObject, Object, int)}.
      */
+    @Deprecated
     public abstract Property copyWithFlags(int newFlags);
 
-    /** @since 0.8 or earlier */
+    /**
+     * @since 0.8 or earlier
+     * @deprecated no replacement
+     */
+    @Deprecated
     public abstract Property copyWithRelocatable(boolean newRelocatable);
 }

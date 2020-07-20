@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -48,8 +48,6 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.test.polyglot.EngineAPITest;
-
-import jdk.vm.ci.sparc.SPARC;
 
 public class ResourceLimitsCompilationTest extends PartialEvaluationTest {
 
@@ -190,7 +188,7 @@ public class ResourceLimitsCompilationTest extends PartialEvaluationTest {
     @Test
     @SuppressWarnings("try")
     public void testStatementLimitContextMultiThread() throws InterruptedException {
-        assumeFalse("skipping SPARC unsupported test", getBackend().getTarget().arch instanceof SPARC);
+        assumeFalse("skipping SPARC unsupported test", isSPARC(getBackend().getTarget().arch));
 
         ResourceLimits limits = ResourceLimits.newBuilder().//
                         statementLimit(5000, null).//

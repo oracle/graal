@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.polyglot;
 
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
+
 import java.io.IOException;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
@@ -106,7 +108,9 @@ class HostLanguage extends TruffleLanguage<HostContext> {
 
         private HostClassLoader getClassloader() {
             if (classloader == null) {
-                classloader = new HostClassLoader(this, internalContext.getEngine().contextClassLoader);
+                ClassLoader parentClassLoader = internalContext.context.config.hostClassLoader != null ? internalContext.context.config.hostClassLoader
+                                : internalContext.getEngine().contextClassLoader;
+                classloader = new HostClassLoader(this, parentClassLoader);
             }
             return classloader;
         }
@@ -201,8 +205,7 @@ class HostLanguage extends TruffleLanguage<HostContext> {
             try {
                 assert !lib.hasLanguage(value) || lib.getLanguage(value) != HostLanguage.class;
             } catch (UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new AssertionError(e);
+                throw shouldNotReachHere(e);
             }
             wrapped = ToHostNode.convertToObject(value, context.internalContext, lib);
         } else {

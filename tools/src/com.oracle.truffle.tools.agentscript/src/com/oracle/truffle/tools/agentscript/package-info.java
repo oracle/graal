@@ -30,7 +30,7 @@
  */
 
 /**
- * Write instruments in dynamic languages via
- * {@link com.oracle.truffle.tools.agentscript.AgentScript}.
+ * Write instruments in dynamic languages with <b>GraalVM</b>
+ * {@link org.graalvm.tools.insight.Insight}.
  */
 package com.oracle.truffle.tools.agentscript;

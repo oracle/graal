@@ -25,6 +25,7 @@
 package com.oracle.truffle.tools.agentscript.impl;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
@@ -45,66 +46,27 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.tools.agentscript.AgentScript;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.WeakHashMap;
+import org.graalvm.tools.insight.Insight;
 
 @SuppressWarnings({"unused", "static-method"})
 @ExportLibrary(InteropLibrary.class)
 final class AgentObject implements TruffleObject {
     private final TruffleInstrument.Env env;
-    private final ExcludeAgentScriptsFilter excludeSources = new ExcludeAgentScriptsFilter();
-    private final Map<AgentType, Map<Object, EventBinding<?>>> listeners = new EnumMap<>(AgentType.class);
-    private Object closeFn;
+    private final IgnoreSources excludeSources;
+    private final Data data;
+    @CompilerDirectives.CompilationFinal(dimensions = 1) private byte[] msg;
 
-    AgentObject(TruffleInstrument.Env env) {
+    AgentObject(String msg, TruffleInstrument.Env env, IgnoreSources excludeSources, Data data) {
+        this.msg = msg == null ? null : msg.getBytes();
         this.env = env;
-    }
-
-    private void registerHandle(AgentType at, EventBinding<?> handle, Object arg) {
-        synchronized (listeners) {
-            Map<Object, EventBinding<?>> listenersForType = listeners.get(at);
-            if (listenersForType == null) {
-                listenersForType = new LinkedHashMap<>();
-                listeners.put(at, listenersForType);
-            }
-            listenersForType.put(arg, handle);
-        }
-    }
-
-    private void removeHandle(AgentType type, Object arg) {
-        EventBinding<?> remove;
-        synchronized (listeners) {
-            Map<Object, EventBinding<?>> listenersForType = listeners.get(type);
-            remove = listenersForType == null ? null : listenersForType.get(arg);
-        }
-        if (remove != null) {
-            remove.dispose();
-        }
-    }
-
-    void ignoreSource(Source script) {
-        excludeSources.ignoreSource(script);
-    }
-
-    private static final class ExcludeAgentScriptsFilter implements SourceSectionFilter.SourcePredicate {
-        private final Map<Source, Boolean> ignore = new WeakHashMap<>();
-
-        ExcludeAgentScriptsFilter() {
-        }
-
-        @Override
-        public boolean test(Source source) {
-            return !Boolean.TRUE.equals(ignore.get(source));
-        }
-
-        void ignoreSource(Source source) {
-            ignore.put(source, Boolean.TRUE);
-        }
+        this.excludeSources = excludeSources;
+        this.data = data;
     }
 
     @ExportMessage
@@ -124,11 +86,12 @@ final class AgentObject implements TruffleObject {
 
     @ExportMessage
     Object readMember(String name) throws UnknownIdentifierException {
+        warnMsg();
         switch (name) {
             case "id":
-                return AgentScript.ID;
+                return Insight.ID;
             case "version":
-                return AgentScript.VERSION;
+                return Insight.VERSION;
         }
         throw UnknownIdentifierException.create(name);
     }
@@ -137,6 +100,7 @@ final class AgentObject implements TruffleObject {
     @ExportMessage
     static Object invokeMember(AgentObject obj, String member, Object[] args,
                     @CachedLibrary(limit = "0") InteropLibrary interop) throws UnknownIdentifierException, UnsupportedMessageException {
+        obj.warnMsg();
         Instrumenter instrumenter = obj.env.getInstrumenter();
         switch (member) {
             case "on": {
@@ -147,32 +111,39 @@ final class AgentObject implements TruffleObject {
                         EventBinding<LoadSourceListener> handle = instrumenter.attachLoadSourceListener(filter, new LoadSourceListener() {
                             @Override
                             public void onLoad(LoadSourceEvent event) {
+                                final Source source = event.getSource();
                                 try {
-                                    interop.execute(args[1], new SourceEventObject(event.getSource()));
+                                    interop.execute(args[1], new SourceEventObject(source));
+                                } catch (RuntimeException ex) {
+                                    if (ex instanceof TruffleException) {
+                                        InsightException.throwWhenExecuted(instrumenter, source, ex);
+                                    } else {
+                                        throw ex;
+                                    }
                                 } catch (InteropException ex) {
-                                    throw AgentException.raise(ex);
+                                    InsightException.throwWhenExecuted(instrumenter, source, ex);
                                 }
                             }
                         }, false);
-                        obj.registerHandle(type, handle, args[1]);
+                        obj.data.registerHandle(type, handle, args[1]);
                         break;
                     }
                     case ENTER: {
                         CompilerDirectives.transferToInterpreter();
                         SourceSectionFilter filter = createFilter(obj, args);
                         EventBinding<ExecutionEventNodeFactory> handle = instrumenter.attachExecutionEventFactory(filter, AgentExecutionNode.factory(obj.env, args[1], null));
-                        obj.registerHandle(type, handle, args[1]);
+                        obj.data.registerHandle(type, handle, args[1]);
                         break;
                     }
                     case RETURN: {
                         CompilerDirectives.transferToInterpreter();
                         SourceSectionFilter filter = createFilter(obj, args);
                         EventBinding<ExecutionEventNodeFactory> handle = instrumenter.attachExecutionEventFactory(filter, AgentExecutionNode.factory(obj.env, null, args[1]));
-                        obj.registerHandle(type, handle, args[1]);
+                        obj.data.registerHandle(type, handle, args[1]);
                         break;
                     }
                     case CLOSE: {
-                        obj.registerOnClose(args[1]);
+                        obj.data.registerOnClose(args[1]);
                         break;
                     }
 
@@ -184,13 +155,26 @@ final class AgentObject implements TruffleObject {
             case "off": {
                 CompilerDirectives.transferToInterpreter();
                 AgentType type = AgentType.find(convertToString(interop, args[0]));
-                obj.removeHandle(type, args[1]);
+                obj.data.removeHandle(type, args[1]);
                 break;
             }
             default:
                 throw UnknownIdentifierException.create(member);
         }
         return obj;
+    }
+
+    private void warnMsg() {
+        byte[] arr = msg;
+        if (arr != null) {
+            try {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                env.err().write(arr);
+                msg = null;
+            } catch (IOException ex) {
+                // go on
+            }
+        }
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -234,10 +218,14 @@ final class AgentObject implements TruffleObject {
                         try {
                             Object fn = iop.readMember(config, "rootNameFilter");
                             if (fn != null && !iop.isNull(fn)) {
-                                if (!iop.isExecutable(fn)) {
-                                    throw new IllegalArgumentException("rootNameFilter has to be a function!");
+                                if (iop.isString(fn)) {
+                                    builder.rootNameIs(new RegexNameFilter(iop.asString(fn)));
+                                } else {
+                                    if (!iop.isExecutable(fn)) {
+                                        throw new IllegalArgumentException("rootNameFilter should be a string, a regular expression!");
+                                    }
+                                    builder.rootNameIs(new RootNameFilter(fn));
                                 }
-                                builder.rootNameIs(new RootNameFilter(fn));
                             }
                         } catch (UnknownIdentifierException ex) {
                             // OK
@@ -258,7 +246,7 @@ final class AgentObject implements TruffleObject {
                         }
                         break;
                     default:
-                        throw AgentException.unknownAttribute(type);
+                        throw InsightException.unknownAttribute(type);
                 }
             }
 
@@ -277,33 +265,6 @@ final class AgentObject implements TruffleObject {
         return false;
     }
 
-    @CompilerDirectives.TruffleBoundary
-    void onClosed() {
-        synchronized (listeners) {
-            for (Map.Entry<AgentType, Map<Object, EventBinding<?>>> entry : listeners.entrySet()) {
-                Map<Object, EventBinding<?>> val = entry.getValue();
-                for (EventBinding<?> binding : val.values()) {
-                    binding.dispose();
-                }
-            }
-        }
-        if (closeFn == null) {
-            return;
-        }
-        final InteropLibrary iop = InteropLibrary.getFactory().getUncached();
-        try {
-            iop.execute(closeFn);
-        } catch (InteropException ex) {
-            throw AgentException.raise(ex);
-        } finally {
-            closeFn = null;
-        }
-    }
-
-    void registerOnClose(Object fn) {
-        closeFn = fn;
-    }
-
     private static boolean isSet(InteropLibrary iop, Object obj, String property) {
         try {
             Object value = iop.readMember(obj, property);
@@ -311,7 +272,65 @@ final class AgentObject implements TruffleObject {
         } catch (UnknownIdentifierException ex) {
             return false;
         } catch (InteropException ex) {
-            throw AgentException.raise(ex);
+            throw InsightException.raise(ex);
+        }
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    void onClosed() {
+        data.onClosed();
+    }
+
+    static class Data {
+
+        final Map<AgentType, Map<Object, EventBinding<?>>> listeners = new EnumMap<>(AgentType.class);
+        Object closeFn;
+
+        synchronized void registerHandle(AgentType at, EventBinding<?> handle, Object arg) {
+            Map<Object, EventBinding<?>> listenersForType = listeners.get(at);
+            if (listenersForType == null) {
+                listenersForType = new LinkedHashMap<>();
+                listeners.put(at, listenersForType);
+            }
+            listenersForType.put(arg, handle);
+        }
+
+        void removeHandle(AgentType type, Object arg) {
+            EventBinding<?> remove;
+            synchronized (this) {
+                Map<Object, EventBinding<?>> listenersForType = listeners.get(type);
+                remove = listenersForType == null ? null : listenersForType.get(arg);
+            }
+            if (remove != null) {
+                remove.dispose();
+            }
+        }
+
+        @CompilerDirectives.TruffleBoundary
+        void onClosed() {
+            synchronized (this) {
+                for (Map.Entry<AgentType, Map<Object, EventBinding<?>>> entry : listeners.entrySet()) {
+                    Map<Object, EventBinding<?>> val = entry.getValue();
+                    for (EventBinding<?> binding : val.values()) {
+                        binding.dispose();
+                    }
+                }
+            }
+            if (closeFn == null) {
+                return;
+            }
+            final InteropLibrary iop = InteropLibrary.getFactory().getUncached();
+            try {
+                iop.execute(closeFn);
+            } catch (InteropException ex) {
+                throw InsightException.raise(ex);
+            } finally {
+                closeFn = null;
+            }
+        }
+
+        void registerOnClose(Object fn) {
+            closeFn = fn;
         }
     }
 }

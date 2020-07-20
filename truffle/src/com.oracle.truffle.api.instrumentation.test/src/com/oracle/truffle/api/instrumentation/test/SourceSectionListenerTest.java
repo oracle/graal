@@ -43,22 +43,36 @@ package com.oracle.truffle.api.instrumentation.test;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 
-import org.junit.Assert;
-import org.junit.Test;
-
-import com.oracle.truffle.api.instrumentation.Instrumenter;
-import com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent;
-import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
-import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
-import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
-
+import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Instrument;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.SourceSection;
+import org.junit.Assert;
+import org.junit.Test;
+
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.EventContext;
+import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
+import com.oracle.truffle.api.instrumentation.GenerateWrapper;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.Instrumenter;
+import com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent;
+import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.api.instrumentation.SourceFilter;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 public class SourceSectionListenerTest extends AbstractInstrumentationTest {
 
@@ -266,6 +280,96 @@ public class SourceSectionListenerTest extends AbstractInstrumentationTest {
         }
     }
 
+    @Test
+    public void testNoDeadlock() throws InterruptedException {
+        setupEnv(Context.create(), new SingleSourceSectionLanguage());
+        String code1 = "one";
+        String code2 = "two";
+        StringBuilder sourceSectionNotifications = new StringBuilder();
+        context.eval(Source.create(ProxyLanguage.ID, code1));
+        context.eval(Source.create(ProxyLanguage.ID, code2));
+        CountDownLatch mainThreadLatch = new CountDownLatch(1);
+        CountDownLatch secondThreadLatch = new CountDownLatch(1);
+        Thread secondInstrumentationThread = new Thread(() -> instrumentEnv.getInstrumenter().attachLoadSourceSectionListener(SourceSectionFilter.ANY, sse -> {
+            if (code2.contentEquals(sse.getSourceSection().getCharacters())) {
+                mainThreadLatch.countDown();
+                try {
+                    secondThreadLatch.await();
+                } catch (InterruptedException ie) {
+                }
+                instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, EMPTY_EXECUTION_EVENT_LISTENER);
+            }
+        }, true));
+        secondInstrumentationThread.start();
+        mainThreadLatch.await();
+        instrumentEnv.getInstrumenter().attachLoadSourceSectionListener(SourceSectionFilter.ANY, sse -> {
+            if (code1.contentEquals(sse.getSourceSection().getCharacters())) {
+                secondThreadLatch.countDown();
+                instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, EMPTY_EXECUTION_EVENT_LISTENER);
+            }
+            sourceSectionNotifications.append(sse.getSourceSection().getCharacters());
+        }, true);
+        secondInstrumentationThread.join();
+        Assert.assertEquals(code1 + code2, sourceSectionNotifications.toString());
+    }
+
+    @Test
+    public void testNoDeadlock2() throws InterruptedException {
+        setupEnv(Context.create(), new SingleSourceSectionLanguage());
+        String code = "one";
+        StringBuilder loadedCode = new StringBuilder();
+        context.eval(Source.create(ProxyLanguage.ID, code));
+        CountDownLatch mainThreadLatch = new CountDownLatch(1);
+        CountDownLatch secondThreadLatch = new CountDownLatch(1);
+        Thread secondInstrumentationThread = new Thread(() -> instrumentEnv.getInstrumenter().attachLoadSourceSectionListener(SourceSectionFilter.ANY, sse -> {
+            mainThreadLatch.countDown();
+            try {
+                secondThreadLatch.await();
+            } catch (InterruptedException ie) {
+            }
+            instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, EMPTY_EXECUTION_EVENT_LISTENER);
+        }, true));
+        secondInstrumentationThread.start();
+        mainThreadLatch.await();
+        CountDownLatch mainThreadLatch2 = new CountDownLatch(1);
+        Thread thirdInstrumentationThread = new Thread(() -> {
+            mainThreadLatch2.countDown();
+            instrumentEnv.getInstrumenter().attachLoadSourceListener(SourceFilter.ANY, se -> {
+                secondThreadLatch.countDown();
+                loadedCode.append(se.getSource().getCharacters());
+            }, true);
+        });
+        thirdInstrumentationThread.start();
+        mainThreadLatch2.await();
+        /*
+         * Wait for the third thread to stop on trying to acquire the AST lock. This should be
+         * fairly reliable because mainThreadLatch2 guarantees the the third thread is already
+         * running.
+         */
+        Thread.sleep(1000);
+        secondThreadLatch.countDown();
+        secondInstrumentationThread.join();
+        thirdInstrumentationThread.join();
+        Assert.assertEquals(code, loadedCode.toString());
+    }
+
+    static final ExecutionEventListener EMPTY_EXECUTION_EVENT_LISTENER = new ExecutionEventListener() {
+        @Override
+        public void onEnter(EventContext c, VirtualFrame frame) {
+
+        }
+
+        @Override
+        public void onReturnValue(EventContext c, VirtualFrame frame, Object result) {
+
+        }
+
+        @Override
+        public void onReturnExceptional(EventContext c, VirtualFrame frame, Throwable exception) {
+
+        }
+    };
+
     private static class TestLoadSourceSectionExceptionClass extends RuntimeException {
 
         private static final long serialVersionUID = 1L;
@@ -284,6 +388,68 @@ public class SourceSectionListenerTest extends AbstractInstrumentationTest {
             }, true);
         }
 
+    }
+
+    static class SingleSourceSectionLanguage extends ProxyLanguage {
+        @Override
+        protected CallTarget parse(ParsingRequest request) throws Exception {
+            com.oracle.truffle.api.source.Source source = request.getSource();
+            return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+                @Node.Child private SingleSourceSectionNode onlyChild = new SingleSourceSectionNode(source);
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return onlyChild.execute(frame);
+                }
+
+                @Override
+                public com.oracle.truffle.api.source.SourceSection getSourceSection() {
+                    return source.createSection(1);
+                }
+            });
+        }
+
+        @GenerateWrapper
+        static class SingleSourceSectionNode extends Node implements InstrumentableNode {
+            @Node.Child private SingleSourceSectionNode noChild = null;
+            com.oracle.truffle.api.source.Source source;
+
+            SingleSourceSectionNode(com.oracle.truffle.api.source.Source source) {
+                this.source = source;
+            }
+
+            SingleSourceSectionNode(SingleSourceSectionNode copy) {
+                this.source = copy.source;
+                this.noChild = copy.noChild;
+            }
+
+            @Override
+            public boolean isInstrumentable() {
+                return true;
+            }
+
+            @Override
+            public boolean hasTag(Class<? extends Tag> tag) {
+                return StandardTags.StatementTag.class.equals(tag);
+            }
+
+            @Override
+            public WrapperNode createWrapper(ProbeNode probe) {
+                return new SingleSourceSectionNodeWrapper(this, this, probe);
+            }
+
+            @Override
+            public com.oracle.truffle.api.source.SourceSection getSourceSection() {
+                return source.createSection(1);
+            }
+
+            public Object execute(VirtualFrame frame) {
+                if (noChild != null) {
+                    return noChild.execute(frame);
+                }
+                return true;
+            }
+        }
     }
 
 }

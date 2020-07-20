@@ -55,6 +55,8 @@ import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMSectionIteratorRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMSymbolIteratorRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM;
 
+import jdk.vm.ci.code.DebugInfo;
+import jdk.vm.ci.code.ReferenceMap;
 import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.code.site.InfopointReason;
@@ -176,10 +178,8 @@ public class LLVMObjectFileReader {
                 for (int actualPcOffset : info.getPatchpointOffsets(call.pcOffset)) {
                     SubstrateReferenceMap referenceMap = new SubstrateReferenceMap();
                     info.forEachStatepointOffset(call.pcOffset, actualPcOffset, referenceMap::markReferenceAtOffset);
-                    call.debugInfo.setReferenceMap(referenceMap);
                     stackMapDumper.dumpCallSite(call, actualPcOffset, referenceMap);
-
-                    newInfopoints.add(new Call(call.target, actualPcOffset, call.size, call.direct, call.debugInfo));
+                    newInfopoints.add(new Call(call.target, actualPcOffset, call.size, call.direct, copyWithReferenceMap(call.debugInfo, referenceMap)));
                 }
             }
         }
@@ -187,6 +187,13 @@ public class LLVMObjectFileReader {
 
         compilation.clearInfopoints();
         newInfopoints.forEach(compilation::addInfopoint);
+    }
+
+    private static DebugInfo copyWithReferenceMap(DebugInfo debugInfo, ReferenceMap referenceMap) {
+        DebugInfo newInfo = new DebugInfo(debugInfo.getBytecodePosition(), debugInfo.getVirtualObjectMapping());
+        newInfo.setCalleeSaveInfo(debugInfo.getCalleeSaveInfo());
+        newInfo.setReferenceMap(referenceMap);
+        return newInfo;
     }
 
     public static final class LLVMTextSectionInfo {

@@ -43,6 +43,7 @@ from __future__ import print_function
 from abc import ABCMeta
 
 import mx
+import mx_javamodules
 import mx_subst
 import os
 import shutil
@@ -82,8 +83,10 @@ _vm_configs = []
 _graalvm_hostvm_configs = [
     ('jvm', [], ['--jvm'], 50),
     ('jvm-la-inline', [], ['--jvm', '--experimental-options', '--engine.LanguageAgnosticInlining'], 30),
+    ('jvm-no-truffle-compilation', [], ['--jvm', '--experimental-options', '--engine.Compilation=false'], 29),
     ('native', [], ['--native'], 100),
-    ('native-la-inline', [], ['--native', '--experimental-options', '--engine.LanguageAgnosticInlining'], 40)
+    ('native-la-inline', [], ['--native', '--experimental-options', '--engine.LanguageAgnosticInlining'], 40),
+    ('native-no-truffle-compilation', [], ['--native', '--experimental-options', '--engine.Compilation=false'], 39)
 ]
 
 
@@ -112,10 +115,27 @@ class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
     def __repr__(self):
         return str(self)
 
+    @staticmethod
+    def get_add_exports_list(required_exports, custom_target_module_str=None):
+        add_exports = []
+        for required in required_exports:
+            target_modules = required_exports[required]
+            target_modules_str = custom_target_module_str or ','.join(sorted(target_module.name for target_module in target_modules))
+            required_module_name, required_package_name = required
+            add_exports.append('--add-exports=' + required_module_name + '/' + required_package_name + "=" + target_modules_str)
+        return sorted(add_exports)
+
+    def get_add_exports(self):
+        distributions = self.jar_distributions
+        distributions_transitive = mx.classpath_entries(distributions)
+        required_exports = mx_javamodules.requiredExports(distributions_transitive, base_jdk())
+        return ' '.join(AbstractNativeImageConfig.get_add_exports_list(required_exports))
+
 
 class LauncherConfig(AbstractNativeImageConfig):
     def __init__(self, destination, jar_distributions, main_class, build_args, is_main_launcher=True,
-                 default_symlinks=True, is_sdk_launcher=False, custom_launcher_script=None, extra_jvm_args=None, **kwargs):
+                 default_symlinks=True, is_sdk_launcher=False, custom_launcher_script=None, extra_jvm_args=None,
+                 option_vars=None, **kwargs):
         """
         :param str main_class
         :param bool is_main_launcher
@@ -130,6 +150,7 @@ class LauncherConfig(AbstractNativeImageConfig):
         self.is_sdk_launcher = is_sdk_launcher
         self.custom_launcher_script = custom_launcher_script
         self.extra_jvm_args = [] if extra_jvm_args is None else extra_jvm_args
+        self.option_vars = [] if option_vars is None else option_vars
 
         self.relative_home_paths = {}
 
@@ -198,9 +219,11 @@ class GraalVmComponent(object):
         :param installable: Produce a distribution installable via `gu`
         :param post_install_msg: Post-installation message to be printed
         :param list[str] dependencies: a list of component names
+        :param list[str | (str, str)] provided_executables: executables to be placed in the appropriate `bin` directory.
+            In the list, strings represent a path inside the component (e.g., inside a support distribution).
+            Tuples `(dist, exec)` represent an executable to be copied found in `dist`, at path `exec` (the same basename will be used).
         :type license_files: list[str]
         :type third_party_license_files: list[str]
-        :type provided_executables: list[str]
         :type polyglot_lib_build_args: list[str]
         :type polyglot_lib_jar_dependencies: list[str]
         :type polyglot_lib_build_dependencies: list[str]
@@ -309,8 +332,6 @@ class GraalVmTool(GraalVmTruffleComponent):
 class GraalVMSvmMacro(GraalVmComponent):
     pass
 
-class GraalVMSvmStaticLib(GraalVmComponent):
-    pass
 
 class GraalVmJdkComponent(GraalVmComponent):
     pass
@@ -452,6 +473,18 @@ def jdk_has_new_jlink_options(jdk):
         mx.run([jlink_exe, '--list-plugins'], out=output)
         setattr(jdk, '.supports_new_jlink_options', '--add-options=' in output.data)
     return getattr(jdk, '.supports_new_jlink_options')
+
+def jdk_supports_enablejvmciproduct(jdk):
+    """
+    Determines if the jdk supports flag -XX:+EnableJVMCIProduct which isn't the case
+    for some OpenJDK 11u distros.
+    """
+    if not hasattr(jdk, '.supports_enablejvmciproduct'):
+        out = mx.LinesOutputCapture()
+        sink = lambda x: x
+        mx.run([jdk.java, '-XX:+UnlockExperimentalVMOptions', '-XX:+PrintFlagsFinal', '-version'], out=out, err=sink)
+        setattr(jdk, '.supports_enablejvmciproduct', any('EnableJVMCIProduct' in line for line in out.lines))
+    return getattr(jdk, '.supports_enablejvmciproduct')
 
 def jdk_omits_warning_for_jlink_set_ThreadPriorityPolicy(jdk): # pylint: disable=invalid-name
     """
@@ -655,13 +688,18 @@ grant codeBase "jrt:/com.oracle.graal.graal_enterprise" {
                 mx.logv('[Creating JDK without -XX:ThreadPriorityPolicy=1]')
                 thread_priority_policy_option = ''
 
-            if any((m.name == 'jdk.internal.vm.compiler' for m in modules)):
-                jlink.append('--add-options=-XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCIProduct -XX:-UnlockExperimentalVMOptions' + thread_priority_policy_option)
+            if jdk_supports_enablejvmciproduct(jdk):
+                if any((m.name == 'jdk.internal.vm.compiler' for m in modules)):
+                    jlink.append('--add-options=-XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCIProduct -XX:-UnlockExperimentalVMOptions' + thread_priority_policy_option)
+                else:
+                    # Don't default to using JVMCI as JIT unless Graal is being updated in the image.
+                    # This avoids unexpected issues with using the out-of-date Graal compiler in
+                    # the JDK itself.
+                    jlink.append('--add-options=-XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCIProduct -XX:-UseJVMCICompiler -XX:-UnlockExperimentalVMOptions' + thread_priority_policy_option)
             else:
-                # Don't default to using JVMCI as JIT unless Graal is being updated in the image.
-                # This avoids unexpected issues with using the out-of-date Graal compiler in
-                # the JDK itself.
-                jlink.append('--add-options=-XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCIProduct -XX:-UseJVMCICompiler -XX:-UnlockExperimentalVMOptions' + thread_priority_policy_option)
+                mx.logv('[Creating JDK without -XX:+EnableJVMCIProduct]')
+                if thread_priority_policy_option:
+                    jlink.append('--add-options=' + thread_priority_policy_option.strip())
             if vendor_info is not None:
                 for name, value in vendor_info.items():
                     jlink.append('--' + name + '=' + value)
@@ -682,23 +720,42 @@ grant codeBase "jrt:/com.oracle.graal.graal_enterprise" {
                 zf.writestr(name, contents)
 
         mx.logv('[Copying static libraries]')
-        lib_prefix = mx.add_lib_prefix('')
-        lib_suffix = '.lib' if mx.is_windows() else '.a'
-        lib_directory = join(jdk.home, 'lib')
-        dst_lib_directory = join(dst_jdk_dir, 'lib')
-        for f in os.listdir(lib_directory):
-            if f.startswith(lib_prefix) and f.endswith(lib_suffix):
-                lib_path = join(lib_directory, f)
-                if isfile(lib_path):
-                    shutil.copy2(lib_path, dst_lib_directory)
-
-        # Build the list of modules whose classes might have annotations
-        # to be processed by native-image (GR-15192).
-        with open(join(dst_jdk_dir, 'lib', 'native-image-modules.list'), 'w') as fp:
-            print('# Modules whose classes might have annotations processed by native-image', file=fp)
-            for m in modules:
-                print(m.name, file=fp)
-
+        lib_directory = join(jdk.home, 'lib', 'static')
+        if exists(lib_directory):
+            dst_lib_directory = join(dst_jdk_dir, 'lib', 'static')
+            try:
+                mx.copytree(lib_directory, dst_lib_directory)
+            except shutil.Error as e:
+                # On AArch64, there can be a problem in the copystat part
+                # of copytree which occurs after file and directory copying
+                # has successfully completed. Since the metadata doesn't
+                # matter in this case, just ensure that the content was copied.
+                for root, _, lib_files in os.walk(lib_directory):
+                    relative_root = os.path.relpath(root, dst_lib_directory)
+                    for lib in lib_files:
+                        src_lib_path = join(root, lib)
+                        dst_lib_path = join(dst_lib_directory, relative_root, lib)
+                        if not exists(dst_lib_path):
+                            mx.abort('Error copying static libraries: {} missing in {}{}Original copytree error: {}'.format(
+                                join(relative_root, lib), dst_lib_directory, os.linesep, e))
+                        src_lib_hash = mx.sha1OfFile(src_lib_path)
+                        dst_lib_hash = mx.sha1OfFile(dst_lib_path)
+                        if src_lib_hash != dst_lib_hash:
+                            mx.abort('Error copying static libraries: {} (hash={}) and {} (hash={}) differ{}Original copytree error: {}'.format(
+                                src_lib_path, src_lib_hash,
+                                dst_lib_path, dst_lib_hash,
+                                os.linesep, e))
+        # Allow older JDK versions to work
+        else:
+            lib_prefix = mx.add_lib_prefix('')
+            lib_suffix = '.lib' if mx.is_windows() else '.a'
+            lib_directory = join(jdk.home, 'lib')
+            dst_lib_directory = join(dst_jdk_dir, 'lib')
+            for f in os.listdir(lib_directory):
+                if f.startswith(lib_prefix) and f.endswith(lib_suffix):
+                    lib_path = join(lib_directory, f)
+                    if isfile(lib_path):
+                        shutil.copy2(lib_path, dst_lib_directory)
     finally:
         if not mx.get_opts().verbose:
             # Preserve build directory so that javac command can be re-executed

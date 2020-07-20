@@ -51,4 +51,6 @@ public interface Compiler {
 
     List<? extends Element> getEnclosedElementsInDeclarationOrder(TypeElement type);
 
+    void emitDeprecationWarning(ProcessingEnvironment environment, Element element);
+
 }

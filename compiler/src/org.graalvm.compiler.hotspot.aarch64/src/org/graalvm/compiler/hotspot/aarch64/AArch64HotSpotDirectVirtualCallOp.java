@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import static jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig.inlineCache
 
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.hotspot.HotSpotMarkId;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
@@ -35,6 +36,7 @@ import org.graalvm.compiler.lir.aarch64.AArch64Call.DirectCallOp;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
 
@@ -58,14 +60,20 @@ final class AArch64HotSpotDirectVirtualCallOp extends DirectCallOp {
     }
 
     @Override
+    @SuppressWarnings("try")
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-        // The mark for an invocation that uses an inline cache must be placed at the
-        // instruction that loads the Klass from the inline cache.
-        // For the first invocation this is set to a bitpattern that is guaranteed to never be a
-        // valid object which causes the called function to call a handler that installs the
-        // correct inline cache value here.
-        crb.recordMark(invokeKind == InvokeKind.Virtual ? config.MARKID_INVOKEVIRTUAL : config.MARKID_INVOKEINTERFACE);
-        masm.movNativeAddress(inlineCacheRegister, config.nonOopBits);
-        super.emitCode(crb, masm);
+        try (CompilationResultBuilder.CallContext callContext = crb.openCallContext(invokeKind.isDirect())) {
+            // The mark for an invocation that uses an inline cache must be placed at the
+            // instruction that loads the Klass from the inline cache.
+            // For the first invocation this is set to a bitpattern that is guaranteed to never be a
+            // valid object which causes the called function to call a handler that installs the
+            // correct inline cache value here.
+            crb.recordMark(invokeKind == InvokeKind.Virtual ? HotSpotMarkId.INVOKEVIRTUAL : HotSpotMarkId.INVOKEINTERFACE);
+            masm.movNativeAddress(inlineCacheRegister, config.nonOopBits);
+            if (config.supportsMethodHandleDeoptimizationEntry() && config.isMethodHandleCall((HotSpotResolvedJavaMethod) callTarget)) {
+                crb.setNeedsMHDeoptHandler();
+            }
+            super.emitCode(crb, masm);
+        }
     }
 }

@@ -45,6 +45,7 @@ package com.oracle.truffle.api.object;
  *
  * @since 0.8 or earlier
  */
+@Deprecated
 public interface TypedLocation {
     /**
      * Get object value as object at this location in store.

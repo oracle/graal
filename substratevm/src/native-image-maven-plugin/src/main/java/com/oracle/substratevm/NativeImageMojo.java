@@ -36,12 +36,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.Scanner;
 import java.util.ServiceLoader;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.maven.artifact.Artifact;
+import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.ConfigurationContainer;
 import org.apache.maven.model.Plugin;
 import org.apache.maven.model.PluginExecution;
@@ -49,9 +51,12 @@ import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.descriptor.PluginDescriptor;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
+import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
+import org.apache.maven.toolchain.ToolchainManager;
+import org.apache.maven.toolchain.java.DefaultJavaToolChain;
 import org.codehaus.plexus.archiver.tar.TarGZipUnArchiver;
 import org.codehaus.plexus.logging.AbstractLogger;
 import org.codehaus.plexus.logging.Logger;
@@ -87,6 +92,12 @@ public class NativeImageMojo extends AbstractMojo {
 
     @Parameter(property = "skip", defaultValue = "false")//
     private boolean skip;
+
+    @Parameter(defaultValue = "${session}", readonly = true)//
+    private MavenSession session;
+
+    @Component
+    private ToolchainManager toolchainManager;
 
     private Logger tarGzLogger = new AbstractLogger(Logger.LEVEL_WARN, "NativeImageMojo.tarGzLogger") {
         @Override
@@ -164,7 +175,7 @@ public class NativeImageMojo extends AbstractMojo {
         addClasspath(project.getArtifact());
         String classpathStr = classpath.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator));
 
-        Path nativeImageExecutable = getMojoJavaHome().resolve("bin").resolve(withExeSuffix("native-image"));
+        Path nativeImageExecutable = getMojoJavaHome().resolve("bin").resolve("native-image" + (OS.WINDOWS.isCurrent() ? ".cmd" : ""));
         if (Files.isExecutable(nativeImageExecutable)) {
             String nativeImageExecutableVersion = "Unknown";
             Process versionCheckProcess = null;
@@ -252,16 +263,9 @@ public class NativeImageMojo extends AbstractMojo {
             } catch (NativeImage.NativeImageError e) {
                 throw new MojoExecutionException("Error creating native image:", e);
             } catch (IllegalAccessError e) {
-                throw new MojoExecutionException("Image building on Java 11+ without native-image requires MAVEN_OPTS='--add-exports=java.base/jdk.internal.module=ALL-UNNAMED'");
+                throw new MojoExecutionException("Image building on Java 11+ without native-image requires MAVEN_OPTS='--add-exports=java.base/jdk.internal.module=ALL-UNNAMED'", e);
             }
         }
-    }
-
-    private String withExeSuffix(String basename) {
-        if (OS.getCurrent() == OS.WINDOWS) {
-            return basename + ".exe";
-        }
-        return basename;
     }
 
     private void addClasspath(Artifact artifact) throws MojoExecutionException {
@@ -302,8 +306,12 @@ public class NativeImageMojo extends AbstractMojo {
         classpath.add(jarFilePath);
     }
 
-    private static Path getMojoJavaHome() {
-        return Paths.get(System.getProperty("java.home"));
+    private Path getMojoJavaHome() {
+        return Paths.get(Optional.ofNullable(toolchainManager)
+            .map(tm -> tm.getToolchainFromBuildContext("jdk", session))
+            .filter(DefaultJavaToolChain.class::isInstance).map(DefaultJavaToolChain.class::cast)
+            .map(DefaultJavaToolChain::getJavaHome)
+            .orElse(System.getProperty("java.home")));
     }
 
     private Path getWorkingDirectory() {
@@ -406,7 +414,7 @@ public class NativeImageMojo extends AbstractMojo {
 
         @Override
         public Path getJavaExecutable() {
-            return getJavaHome().resolve("bin").resolve(withExeSuffix("java"));
+            return getJavaHome().resolve("bin").resolve("java" + (OS.WINDOWS.isCurrent() ? ".exe" : ""));
         }
 
         private List<Path> getSelectedArtifactPaths(String groupId, String... artifactIds) {

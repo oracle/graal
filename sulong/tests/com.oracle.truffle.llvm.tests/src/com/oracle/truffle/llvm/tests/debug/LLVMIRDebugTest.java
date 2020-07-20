@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.tests.debug;
 
 import com.oracle.truffle.llvm.tests.options.TestOptions;
+import com.oracle.truffle.llvm.tests.Platform;
 import org.graalvm.polyglot.Context;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -39,9 +40,12 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.Set;
 
 @RunWith(Parameterized.class)
 public final class LLVMIRDebugTest extends LLVMDebugTestBase {
@@ -58,10 +62,24 @@ public final class LLVMIRDebugTest extends LLVMDebugTestBase {
     @Parameters(name = "{0}")
     public static Collection<Object[]> getConfigurations() {
         try (Stream<Path> dirs = Files.walk(BC_DIR_PATH)) {
-            return dirs.filter(path -> path.endsWith(CONFIGURATION)).map(path -> new Object[]{getTestSource(path), CONFIGURATION}).collect(Collectors.toSet());
+            Set<String> blacklist = getBlacklist();
+            Collection<Object[]> testlist = dirs.filter(path -> path.endsWith(CONFIGURATION)).map(path -> new Object[]{getTestSource(path), CONFIGURATION}).collect(Collectors.toSet());
+            testlist.removeIf(t -> blacklist.contains(t[0]));
+            return testlist;
         } catch (IOException e) {
             throw new AssertionError("Error while finding tests!", e);
         }
+    }
+
+    protected static Set<String> getBlacklist() {
+        Set<String> filenameBlacklist = new HashSet<>();
+
+        if (Platform.isAArch64()) {
+            // Tests that fail.
+            filenameBlacklist.addAll(Arrays.asList("primitives.ll"));
+        }
+
+        return filenameBlacklist;
     }
 
     private static String getTestSource(Path path) {

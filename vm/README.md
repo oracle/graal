@@ -41,7 +41,7 @@ In our CI, we build it using:
 - `gcc`: `4.9.2`
 - `make`: `3.83`
 - `binutils`: `2.23.2`
-- `llvm`: `6.0.1` on linux; `4.0.1` on darwin
+- `cmake`: `3.6.1`
 
 Newer versions might also work. For more details, please check the README file of each component.
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,16 +25,54 @@
 package org.graalvm.tools.lsp.server.types;
 
 import com.oracle.truffle.tools.utils.json.JSONObject;
+import java.util.Objects;
 
-public class Message {
+/**
+ * A language server message.
+ */
+public class Message extends JSONBase {
 
-    final JSONObject json;
-
-    Message(JSONObject json) {
-        this.json = json;
+    Message(JSONObject jsonData) {
+        super(jsonData);
     }
 
-    public String getJsonRpc() {
-        return json.getString("jsonrpc");
+    public String getJsonrpc() {
+        return jsonData.getString("jsonrpc");
+    }
+
+    public Message setJsonrpc(String jsonrpc) {
+        jsonData.put("jsonrpc", jsonrpc);
+        return this;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (this.getClass() != obj.getClass()) {
+            return false;
+        }
+        Message other = (Message) obj;
+        if (!Objects.equals(this.getJsonrpc(), other.getJsonrpc())) {
+            return false;
+        }
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 7;
+        hash = 97 * hash + Objects.hashCode(this.getJsonrpc());
+        return hash;
+    }
+
+    public static Message create(String jsonrpc) {
+        final JSONObject json = new JSONObject();
+        json.put("jsonrpc", jsonrpc);
+        return new Message(json);
     }
 }

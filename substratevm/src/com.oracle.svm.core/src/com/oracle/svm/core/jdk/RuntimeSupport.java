@@ -32,34 +32,34 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.impl.VMRuntimeSupport;
 
 public final class RuntimeSupport implements VMRuntimeSupport {
 
-    /** A list of startup hooks. */
-    private AtomicReference<Runnable[]> startupHooks;
+    /** Hooks that run before calling Java {@code main} or in {@link VMRuntime#initialize()}. */
+    private AtomicReference<Runnable[]> startupHooks = new AtomicReference<>();
 
-    /** A list of shutdown hooks. */
-    private AtomicReference<Runnable[]> shutdownHooks;
+    /**
+     * Hooks that run after the Java {@code main} method or when calling {@link Runtime#exit} (or
+     * {@link System#exit}).
+     */
+    private AtomicReference<Runnable[]> shutdownHooks = new AtomicReference<>();
 
-    /** A list of tear down hooks. */
-    private AtomicReference<Runnable[]> tearDownHooks;
+    /** Hooks that run during isolate initialization. */
+    private AtomicReference<Runnable[]> initializationHooks = new AtomicReference<>();
 
-    /** A constructor for the singleton instance. */
+    /** Hooks that run during isolate tear-down. */
+    private AtomicReference<Runnable[]> tearDownHooks = new AtomicReference<>();
+
     private RuntimeSupport() {
-        super();
-        startupHooks = new AtomicReference<>();
-        shutdownHooks = new AtomicReference<>();
-        tearDownHooks = new AtomicReference<>();
     }
 
-    /** Construct and register the singleton instance, if necessary. */
     public static void initializeRuntimeSupport() {
         assert ImageSingletons.contains(RuntimeSupport.class) == false : "Initializing RuntimeSupport again.";
         ImageSingletons.add(RuntimeSupport.class, new RuntimeSupport());
     }
 
-    /** Get the singleton instance. */
     @Fold
     public static RuntimeSupport getRuntimeSupport() {
         return ImageSingletons.lookup(RuntimeSupport.class);
@@ -80,29 +80,24 @@ public final class RuntimeSupport implements VMRuntimeSupport {
         addHook(shutdownHooks, hook);
     }
 
-    /**
-     * Called only internally as part of the JDK shutdown process, use {@link #shutdown()} to
-     * trigger the whoke JDK shutdown process.
-     */
     static void executeShutdownHooks() {
         executeHooks(getRuntimeSupport().shutdownHooks);
     }
 
-    /**
-     * Adds a tear down hook that is executed before the isolate torn down.
-     *
-     * @param tearDownHook hook to executed on isolate tear down.
-     */
+    public void addInitializationHook(Runnable initHook) {
+        addHook(initializationHooks, initHook);
+    }
+
+    /** Runs isolate initialization hooks. Although public, this method should not be public API. */
+    public static void executeInitializationHooks() {
+        executeHooks(getRuntimeSupport().initializationHooks);
+    }
+
     public void addTearDownHook(Runnable tearDownHook) {
         addHook(tearDownHooks, tearDownHook);
     }
 
-    /**
-     * Called only internally as part of the isolate tear down process. These hooks clean up all
-     * running threads to allow proper isolate tear down.
-     *
-     * Although public, this method should not go to the public API.
-     */
+    /** Runs isolate tear-down hooks. Although public, this method should not be public API. */
     public static void executeTearDownHooks() {
         executeHooks(getRuntimeSupport().tearDownHooks);
     }

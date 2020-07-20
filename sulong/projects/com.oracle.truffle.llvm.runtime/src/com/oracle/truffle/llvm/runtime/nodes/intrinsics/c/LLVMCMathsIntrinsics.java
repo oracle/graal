@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -249,6 +249,26 @@ public abstract class LLVMCMathsIntrinsics {
     }
 
     @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMRound extends LLVMBuiltin {
+
+        @Specialization
+        protected float doIntrinsic(float value) {
+            return Math.round(value);
+        }
+
+        @Specialization
+        protected double doIntrinsic(double value) {
+            return Math.round(value);
+        }
+
+        @Specialization
+        protected LLVM80BitFloat doIntrinsic(LLVM80BitFloat value) {
+            double result = doIntrinsic(value.getDoubleValue());
+            return LLVM80BitFloat.fromDouble(result);
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMAbs extends LLVMIntrinsic {
 
         @Specialization
@@ -268,7 +288,7 @@ public abstract class LLVMCMathsIntrinsics {
 
         @Specialization
         protected LLVMManagedPointer doManaged(LLVMManagedPointer value,
-                        @Cached("createBinaryProfile()") ConditionProfile negated) {
+                        @Cached ConditionProfile negated) {
             if (negated.profile(value.getObject() instanceof LLVMNegatedForeignObject)) {
                 LLVMNegatedForeignObject obj = (LLVMNegatedForeignObject) value.getObject();
                 assert !(obj.getForeign() instanceof LLVMNegatedForeignObject);

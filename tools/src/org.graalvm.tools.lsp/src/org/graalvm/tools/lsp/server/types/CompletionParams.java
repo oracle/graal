@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,8 +37,8 @@ public class CompletionParams extends TextDocumentPositionParams {
     }
 
     /**
-     * The completion context. This is only available it the client specifies to send this using
-     * `ClientCapabilities.textDocument.completion.contextSupport === true`
+     * The completion context. This is only available it the client specifies to send this using the
+     * client capability `textDocument.completion.contextSupport === true`
      */
     public CompletionContext getContext() {
         return jsonData.has("context") ? new CompletionContext(jsonData.optJSONObject("context")) : null;
@@ -46,6 +46,31 @@ public class CompletionParams extends TextDocumentPositionParams {
 
     public CompletionParams setContext(CompletionContext context) {
         jsonData.putOpt("context", context != null ? context.jsonData : null);
+        return this;
+    }
+
+    /**
+     * An optional token that a server can use to report work done progress.
+     */
+    public Object getWorkDoneToken() {
+        return jsonData.opt("workDoneToken");
+    }
+
+    public CompletionParams setWorkDoneToken(Object workDoneToken) {
+        jsonData.putOpt("workDoneToken", workDoneToken);
+        return this;
+    }
+
+    /**
+     * An optional token that a server can use to report partial results (e.g. streaming) to the
+     * client.
+     */
+    public Object getPartialResultToken() {
+        return jsonData.opt("partialResultToken");
+    }
+
+    public CompletionParams setPartialResultToken(Object partialResultToken) {
+        jsonData.putOpt("partialResultToken", partialResultToken);
         return this;
     }
 
@@ -64,6 +89,12 @@ public class CompletionParams extends TextDocumentPositionParams {
         if (!Objects.equals(this.getContext(), other.getContext())) {
             return false;
         }
+        if (!Objects.equals(this.getWorkDoneToken(), other.getWorkDoneToken())) {
+            return false;
+        }
+        if (!Objects.equals(this.getPartialResultToken(), other.getPartialResultToken())) {
+            return false;
+        }
         if (!Objects.equals(this.getTextDocument(), other.getTextDocument())) {
             return false;
         }
@@ -77,10 +108,16 @@ public class CompletionParams extends TextDocumentPositionParams {
     public int hashCode() {
         int hash = 7;
         if (this.getContext() != null) {
-            hash = 17 * hash + Objects.hashCode(this.getContext());
+            hash = 29 * hash + Objects.hashCode(this.getContext());
         }
-        hash = 17 * hash + Objects.hashCode(this.getTextDocument());
-        hash = 17 * hash + Objects.hashCode(this.getPosition());
+        if (this.getWorkDoneToken() != null) {
+            hash = 29 * hash + Objects.hashCode(this.getWorkDoneToken());
+        }
+        if (this.getPartialResultToken() != null) {
+            hash = 29 * hash + Objects.hashCode(this.getPartialResultToken());
+        }
+        hash = 29 * hash + Objects.hashCode(this.getTextDocument());
+        hash = 29 * hash + Objects.hashCode(this.getPosition());
         return hash;
     }
 

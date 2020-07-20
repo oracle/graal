@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,12 +30,10 @@ import java.util.Objects;
 /**
  * The parameters send in a open text document notification.
  */
-public class DidOpenTextDocumentParams {
-
-    final JSONObject jsonData;
+public class DidOpenTextDocumentParams extends JSONBase {
 
     DidOpenTextDocumentParams(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -70,8 +68,8 @@ public class DidOpenTextDocumentParams {
 
     @Override
     public int hashCode() {
-        int hash = 3;
-        hash = 67 * hash + Objects.hashCode(this.getTextDocument());
+        int hash = 7;
+        hash = 29 * hash + Objects.hashCode(this.getTextDocument());
         return hash;
     }
 

@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.heap;
 
-import java.lang.management.MemoryMXBean;
+import java.lang.ref.Reference;
 import java.util.List;
 
 import org.graalvm.compiler.api.replacements.Fold;
@@ -36,6 +36,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.os.CommittedMemoryProvider;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 
@@ -106,9 +107,6 @@ public abstract class Heap {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract ObjectHeader getObjectHeader();
 
-    /** Get the MemoryMXBean for this heap. */
-    public abstract MemoryMXBean getMemoryMXBean();
-
     /** Tear down the heap and free all allocated virtual memory chunks. */
     @Uninterruptible(reason = "Tear-down in progress.")
     public abstract boolean tearDown();
@@ -123,6 +121,14 @@ public abstract class Heap {
      * Returns a suitable {@link BarrierSet} for the garbage collector that is used for this heap.
      */
     public abstract BarrierSet createBarrierSet(MetaAccessProvider metaAccess);
+
+    /**
+     * Returns a multiple to which the heap address space should be aligned to at runtime.
+     *
+     * @see CommittedMemoryProvider#guaranteesHeapPreferredAddressSpaceAlignment()
+     */
+    @Fold
+    public abstract int getPreferredAddressSpaceAlignment();
 
     /**
      * Returns the offset that the image heap should have when mapping the native image file to the
@@ -140,4 +146,22 @@ public abstract class Heap {
     /** Returns true if the object at the given address is located in the image heap. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract boolean isInImageHeap(Pointer objectPtr);
+
+    /**
+     * Determines if the heap currently has {@link Reference} objects that are pending to be
+     * {@linkplain java.lang.ref.ReferenceQueue enqueued}.
+     */
+    public abstract boolean hasReferencePendingList();
+
+    /** Blocks until the heap has pending {@linkplain Reference references}. */
+    public abstract void waitForReferencePendingList() throws InterruptedException;
+
+    /** Unblocks any threads in {@link #waitForReferencePendingList()}. */
+    public abstract void wakeUpReferencePendingListWaiters();
+
+    /**
+     * Atomically get the list of pending {@linkplain Reference references} and clears (resets) it.
+     * May return {@code null}.
+     */
+    public abstract Reference<?> getAndClearReferencePendingList();
 }

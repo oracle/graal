@@ -57,6 +57,7 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Env;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -152,13 +153,14 @@ final class DebugSourcesResolver {
                     // fallback to a general Source
                 }
             }
+            if (builder == null) {
+                String name = uri.getPath() != null ? uri.getPath() : uri.getSchemeSpecificPart();
+                builder = Source.newBuilder(source.getLanguage(), new InputStreamReader(stream), name).uri(uri);
+            }
             try {
-                if (builder == null) {
-                    String name = uri.getPath() != null ? uri.getPath() : uri.getSchemeSpecificPart();
-                    builder = Source.newBuilder(source.getLanguage(), new InputStreamReader(stream), name).uri(uri).mimeType(source.getMimeType());
-                }
-                return builder.cached(false).interactive(source.isInteractive()).internal(source.isInternal()).build();
-            } catch (IOException ex) {
+                return builder.cached(false).interactive(source.isInteractive()).internal(source.isInternal()).mimeType(source.getMimeType()).build();
+            } catch (IOException | SecurityException e) {
+                env.getLogger("").warning(String.format("Failed to resolve %s: %s%s", source.getURI(), e.getLocalizedMessage(), System.lineSeparator()));
                 return null;
             }
         } finally {
@@ -253,6 +255,7 @@ final class DebugSourcesResolver {
             }
             n = n.getParent();
         }
-        return node.getRootNode().getSourceSection();
+        final RootNode rootNode = node.getRootNode();
+        return rootNode != null ? rootNode.getSourceSection() : null;
     }
 }

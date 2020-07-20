@@ -68,7 +68,6 @@ import org.graalvm.compiler.phases.common.inlining.info.elem.Inlineable;
 import org.graalvm.compiler.phases.common.inlining.info.elem.InlineableGraph;
 import org.graalvm.compiler.phases.common.inlining.policy.InliningPolicy;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
-import org.graalvm.compiler.phases.util.Providers;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
@@ -146,7 +145,7 @@ public class InliningData {
         if (method == null) {
             return "the method is not resolved";
         } else if (method.isNative() && !(Intrinsify.getValue(options) &&
-                        context.getReplacements().getSubstitution(method, invokeBci, rootGraph.trackNodeSourcePosition(), null, options) != null)) {
+                        context.getReplacements().getSubstitution(method, invokeBci, rootGraph.trackNodeSourcePosition(), null, rootGraph.allowAssumptions(), options) != null)) {
             // We have conditional intrinsic, e.g., String.intern, which may not have inlineable
             // graph depending on the context. The getSubstitution test ensures the inlineable
             // graph is present.
@@ -235,17 +234,19 @@ public class InliningData {
             }
         }
 
-        AssumptionResult<ResolvedJavaType> leafConcreteSubtype = holder.findLeafConcreteSubtype();
-        if (leafConcreteSubtype != null) {
-            ResolvedJavaMethod resolvedMethod = leafConcreteSubtype.getResult().resolveConcreteMethod(targetMethod, contextType);
-            if (resolvedMethod != null && leafConcreteSubtype.canRecordTo(callTarget.graph().getAssumptions())) {
-                return getAssumptionInlineInfo(invoke, resolvedMethod, leafConcreteSubtype);
+        if (invokeKind != InvokeKind.Interface) {
+            AssumptionResult<ResolvedJavaType> leafConcreteSubtype = holder.findLeafConcreteSubtype();
+            if (leafConcreteSubtype != null) {
+                ResolvedJavaMethod resolvedMethod = leafConcreteSubtype.getResult().resolveConcreteMethod(targetMethod, contextType);
+                if (resolvedMethod != null && leafConcreteSubtype.canRecordTo(callTarget.graph().getAssumptions())) {
+                    return getAssumptionInlineInfo(invoke, resolvedMethod, leafConcreteSubtype);
+                }
             }
-        }
 
-        AssumptionResult<ResolvedJavaMethod> concrete = holder.findUniqueConcreteMethod(targetMethod);
-        if (concrete != null && concrete.canRecordTo(callTarget.graph().getAssumptions())) {
-            return getAssumptionInlineInfo(invoke, concrete.getResult(), concrete);
+            AssumptionResult<ResolvedJavaMethod> concrete = holder.findUniqueConcreteMethod(targetMethod);
+            if (concrete != null && concrete.canRecordTo(callTarget.graph().getAssumptions())) {
+                return getAssumptionInlineInfo(invoke, concrete.getResult(), concrete);
+            }
         }
 
         // type check based inlining
@@ -412,7 +413,7 @@ public class InliningData {
             try (DebugContext.Scope scope = debug.scope("doInline", callerGraph)) {
                 EconomicSet<Node> canonicalizedNodes = EconomicSet.create(Equivalence.IDENTITY);
                 canonicalizedNodes.addAll(calleeInfo.invoke().asNode().usages());
-                EconomicSet<Node> parameterUsages = calleeInfo.inline(new Providers(context), reason);
+                EconomicSet<Node> parameterUsages = calleeInfo.inline(context.getProviders(), reason);
                 canonicalizedNodes.addAll(parameterUsages);
                 counterInliningRuns.increment(debug);
                 debug.dump(DebugContext.DETAILED_LEVEL, callerGraph, "after %s", calleeInfo);
@@ -468,7 +469,7 @@ public class InliningData {
         }
 
         if (context.getOptimisticOptimizations().devirtualizeInvokes(calleeInfo.graph().getOptions())) {
-            calleeInfo.tryToDevirtualizeInvoke(new Providers(context));
+            calleeInfo.tryToDevirtualizeInvoke(context.getProviders());
         }
 
         return false;
@@ -496,7 +497,7 @@ public class InliningData {
      * <p>
      * The {@link InlineInfo} used to get things rolling is kept around in the
      * {@link MethodInvocation}, it will be needed in case of inlining, see
-     * {@link InlineInfo#inline(Providers, String)}
+     * {@link InlineInfo#inline(org.graalvm.compiler.nodes.spi.CoreProviders, String)}
      * </p>
      */
     private void processNextInvoke() {

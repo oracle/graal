@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+# Copyright (c) 2017, 2020, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -40,8 +40,8 @@ LLVM_LINK?=llvm-link
 C_SOURCE_FILES=$(wildcard ${VPATH}/src/*.c)
 C_BC_FILES=${C_SOURCE_FILES:${VPATH}/src/%.c=bin/%.bc}
 
-CXX_SOURCE_FILES=$(wildcard ${VPATH}/libcxxabi/*.cpp)
-CXX_BC_FILES=${CXX_SOURCE_FILES:${VPATH}/libcxxabi/%.cpp=bin/%.bc}
+CXX_SOURCE_FILES=$(wildcard ${VPATH}/libsulongxx/*.cpp)
+CXX_BC_FILES=${CXX_SOURCE_FILES:${VPATH}/libsulongxx/%.cpp=bin/%.bc}
 
 OPT_FLAGS=-mem2reg -globalopt -simplifycfg -constprop -instcombine -dse -loop-simplify -reassociate -licm -gvn
 
@@ -74,7 +74,7 @@ bin/$(LIBSULONG): bin/libsulong.bc
 	$(QUIETLY) $(CLANG_PREFIX) $(CLANG) -o $@ -fPIC -nostdlib -shared -rpath $(ORIGIN_TOKEN) $(LD_FLAGS) $+
 
 bin/$(LIBSULONGXX): bin/libsulong++.bc
-	$(QUIETLY) $(CLANG_PREFIX) $(CLANG) -o $@ -fPIC -nostdlib -shared -rpath $(ORIGIN_TOKEN) -stdlib=libc++ -lc++abi -L$(LLVM_TOOLCHAIN_LIB) $(LD_FLAGS) $+
+	$(QUIETLY) $(CLANG_PREFIX) $(CLANGXX) -o $@ -fPIC -shared -rpath $(ORIGIN_TOKEN) -stdlib=libc++ $(LD_FLAGS) -Wno-undefined-internal $+
 
 bin/%.bc: bin/%.noopt.bc
 	$(QUIETLY) $(OPT) -o $@ $+ ${OPT_FLAGS}
@@ -83,8 +83,8 @@ bin/%.noopt.bc: src/%.c deps/%.d
 	$(QUIETLY) $(CLANG_PREFIX) $(CLANG) -c -emit-llvm -o $@ -I${VPATH}/include ${CFLAGS} ${DEPFLAGS} $<
 	${POSTCOMPILE}
 
-bin/%.noopt.bc: libcxxabi/%.cpp deps/%.d
-	$(QUIETLY) $(CLANG_PREFIX) $(CLANGXX) -c -emit-llvm -I${VPATH}/include -I${VPATH}/libcxxabi/include -I${VPATH}/libcxxabi -o $@ ${CFLAGS} ${CXXFLAGS} ${DEPFLAGS} $<
+bin/%.noopt.bc: libsulongxx/%.cpp deps/%.d
+	$(QUIETLY) $(CLANG_PREFIX) $(CLANGXX) -c -emit-llvm -Wno-undefined-internal -I${LIBCXX_SRC}/libcxx/src -I${LIBCXX_SRC}/libcxxabi/src -o $@ ${CFLAGS} ${CXXFLAGS} ${DEPFLAGS} $<
 	${POSTCOMPILE}
 
 deps/%.d: ;

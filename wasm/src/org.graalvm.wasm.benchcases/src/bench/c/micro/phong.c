@@ -191,6 +191,9 @@ void m_vmultiply(matrix *a, vec4 *v, vec4 *result) {
 
 matrix m_identity() {
   matrix m;
+  for (int i = 0; i < MATRIX_N * MATRIX_N; i++) {
+    m.v[i] = 0.0;
+  }
   for (int i = 0; i < MATRIX_N; i++) {
     m.v[i * MATRIX_N + i] = 1.0;
   }
@@ -356,7 +359,7 @@ matrix m_rotate(vec3* axis, double angle) {
 
 vec4 to_vec4(vec3* v) {
   vec4 result = {
-    v->x, v->y, v->z, 1.0
+    { v->x, v->y, v->z, 1.0 }
   };
   return result;
 }
@@ -902,7 +905,7 @@ int render() {
   return hash;
 }
 
-int benchmarkWarmupCount() {
+int benchmarkIterationsCount() {
   return 40;
 }
 
@@ -914,9 +917,20 @@ void benchmarkSetupEach() {
   initializeBitmap(&outputBitmap);
 }
 
-void benchmarkTeardownEach() {
-  // Flush the image into the bitmap.
-  __testutil_save_binary_file("scene.bmp", (unsigned char*) &outputBitmap, sizeof(Bitmap));
+void benchmarkTeardownEach(char* outputFile) {
+  if(outputFile == NULL) {
+    return;
+  }
+
+  FILE *filePointer = fopen(outputFile, "wb+");
+
+  if (filePointer == NULL){
+    printf("Error! opening file\n");
+    exit(1);
+  }
+
+  fwrite(&outputBitmap, sizeof(Bitmap), 1, filePointer);
+  printf("Wrote result bitmap to %s.\n", outputFile);
 }
 
 int benchmarkRun() {

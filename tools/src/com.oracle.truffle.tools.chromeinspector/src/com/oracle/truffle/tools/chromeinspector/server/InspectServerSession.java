@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -68,7 +68,7 @@ public final class InspectServerSession implements MessageEndpoint {
     private volatile MessageEndpoint messageEndpoint;
     private volatile JSONMessageListener jsonMessageListener;
     private volatile CommandProcessThread processThread;
-    private Runnable onClose;
+    private volatile Runnable onClose;
 
     private InspectServerSession(RuntimeDomain runtime, DebuggerDomain debugger, ProfilerDomain profiler,
                     InspectorExecutionContext context, ReadWriteLock domainLock) {
@@ -93,7 +93,20 @@ public final class InspectServerSession implements MessageEndpoint {
 
     @Override
     public void sendClose() {
-        Runnable onCloseRunnable = null;
+        dispose();
+        Runnable onCloseRunnable = onClose;
+        onClose = null;
+        if (onCloseRunnable != null) {
+            onCloseRunnable.run();
+        }
+    }
+
+    // For tests only
+    public DebuggerDomain getDebugger() {
+        return debugger;
+    }
+
+    public void dispose() {
         Lock lock = domainLock.writeLock();
         lock.lock();
         try {
@@ -104,20 +117,21 @@ public final class InspectServerSession implements MessageEndpoint {
             lock.unlock();
         }
         context.reset();
+        CommandProcessThread cmdProcessThread;
         synchronized (this) {
-            messageEndpoint = null;
-            processThread.dispose();
-            processThread = null;
-            onCloseRunnable = onClose;
+            this.messageEndpoint = null;
+            cmdProcessThread = processThread;
+            if (cmdProcessThread != null) {
+                cmdProcessThread.dispose();
+                processThread = null;
+            }
         }
-        if (onCloseRunnable != null) {
-            onCloseRunnable.run();
+        if (cmdProcessThread != null) {
+            try {
+                cmdProcessThread.join();
+            } catch (InterruptedException e) {
+            }
         }
-    }
-
-    // For tests only
-    public DebuggerDomain getDebugger() {
-        return debugger;
     }
 
     public synchronized void setMessageListener(MessageEndpoint messageListener) {

@@ -1896,7 +1896,9 @@ public final class MachOObjectFile extends ObjectFile {
             // our constituent loadable sections.
             Map<Element, LayoutDecisionMap> decidedAboutOurElements = new HashMap<>();
             for (Element e : elementsInSegment) {
-                decidedAboutOurElements.put(e, alreadyDecided.get(e));
+                if (e instanceof MachOSection) {
+                    decidedAboutOurElements.put(e, alreadyDecided.get(e));
+                }
             }
             List<LayoutDecision> minVaddrDecisions = ObjectFile.minimalDecisionValues(decidedAboutOurElements, LayoutDecision.Kind.VADDR, new IntegerDecisionComparator(true));
             int minVaddr = (minVaddrDecisions == null || minVaddrDecisions.size() == 0) ? 0 : (int) minVaddrDecisions.get(0).getValue();

@@ -1,7 +1,4 @@
 bench-llvm-common: {
-  packages: {
-    llvm: "==6.0.1"
-  }
   downloads: {
     LIBGMP: {name: libgmp, version: "6.1.0", platformspecific: true}
   }
@@ -16,9 +13,6 @@ bench-llvm-common: {
 }
 
 bench-llvm-sulong-common: ${bench-llvm-common} {
-  packages: {
-    "pip:wllvm": "==1.2.2"
-  }
 }
 
 sulong_logs: [
@@ -29,7 +23,7 @@ sulong_logs_bc: ${sulong_logs} [
     "../sulong-benchmarks/*/*/*.bc"
 ]
 
-bench-llvm-linux: ${x52.default} ${oraclejdk8} {
+bench-llvm-linux: ${sulong_linux}  ${x52.default} ${oraclejdk8} {
   capabilities: ${x52.default.capabilities} [tmpfs25g]
   environment: {
     RESULTS_FILE_PREFIX: results-
@@ -87,9 +81,10 @@ bench-llvm-sulong-graalvm-ce: ${bench_vm_ce_linux_base} ${bench-llvm-sulong-comm
 }
 
 bench-llvm-native: ${bench-llvm-common} ${bench-llvm-linux} ${sulong-weekly-notifications} {
-  targets: [daily, bench]
+  targets: [weekly, bench]
   run: [
     [cd, ${compiler-suite-root}]
+    [mx, --dynamicimport, "/sdk", build, --dep, LLVM_TOOLCHAIN]
     ${bench-llvm-linux.cmd} [--, --native-vm, clang, --native-vm-config, O3]
   ]
 }
@@ -101,7 +96,7 @@ builds += [
   ${bench-llvm-sulong-graalvm-ce} {targets: [daily, bench], name: "daily-bench-sulong-graalvm-ce-native-la-inline-csuite", environment: { JVM_CONFIG: native-la-inline } }
   ${bench-llvm-sulong-core} {name: daily-bench-sulong-graal-core-csuite}
   # sulong reference benchmark
-  ${bench-llvm-native} {name: "daily-bench-clangO3-csuite"}
+  ${bench-llvm-native} {name: "weekly-bench-clangO3-csuite"}
 
   # upload bitcode files
   ${bench-llvm-sulong-graalvm-ce} {

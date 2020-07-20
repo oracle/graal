@@ -52,6 +52,10 @@ public enum OS {
         return name().toLowerCase();
     }
 
+    public boolean isCurrent() {
+        return getCurrent() == this;
+    }
+
     private static OS findCurrent() {
         final String name = System.getProperty("os.name");
         if (name.equals("Linux")) {

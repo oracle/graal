@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.regex.charset;
 
+import com.oracle.truffle.api.CompilerDirectives;
+
 public class UnicodeProperties {
 
     public static CodePointSet getProperty(String propertySpec) {
@@ -72,6 +74,7 @@ public class UnicodeProperties {
                     propertyValue = normalizeScriptName(propertyValue);
                     break;
                 default:
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw new IllegalArgumentException(String.format("Binary property %s cannot appear to the left of '=' in a Unicode property escape", propertySpec.substring(0, equals)));
             }
             return propertyName + "=" + propertyValue;
@@ -88,6 +91,7 @@ public class UnicodeProperties {
 
     private static String normalizePropertyName(String propertyName) {
         if (!UnicodePropertyData.PROPERTY_ALIASES.containsKey(propertyName)) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new IllegalArgumentException(String.format("Unsupported Unicode character property '%s'", propertyName));
         }
         return UnicodePropertyData.PROPERTY_ALIASES.get(propertyName);
@@ -95,6 +99,7 @@ public class UnicodeProperties {
 
     private static String normalizeGeneralCategoryName(String generalCategoryName) {
         if (!UnicodePropertyData.GENERAL_CATEGORY_ALIASES.containsKey(generalCategoryName)) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new IllegalArgumentException(String.format("Unknown Unicode character general category '%s'", generalCategoryName));
         }
         return UnicodePropertyData.GENERAL_CATEGORY_ALIASES.get(generalCategoryName);
@@ -102,6 +107,7 @@ public class UnicodeProperties {
 
     private static String normalizeScriptName(String scriptName) {
         if (!UnicodePropertyData.SCRIPT_ALIASES.containsKey(scriptName)) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new IllegalArgumentException(String.format("Unkown Unicode script name '%s'", scriptName));
         }
         return UnicodePropertyData.SCRIPT_ALIASES.get(scriptName);

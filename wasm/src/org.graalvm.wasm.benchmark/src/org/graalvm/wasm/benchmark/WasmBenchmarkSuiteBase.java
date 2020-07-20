@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -80,7 +80,7 @@ public abstract class WasmBenchmarkSuiteBase {
         @Setup(Level.Trial)
         public void setup() throws IOException, InterruptedException {
             final Context.Builder contextBuilder = Context.newBuilder("wasm");
-            contextBuilder.option("wasm.Builtins", "testutil,env:emscripten,memory");
+            contextBuilder.option("wasm.Builtins", "testutil,env:emscripten,wasi_snapshot_preview1");
             if (!Objects.isNull(DISABLE_COMPILATION_FLAG)) {
                 contextBuilder.allowExperimentalOptions(true);
                 contextBuilder.option("engine.Compilation", "false");
@@ -90,20 +90,11 @@ public abstract class WasmBenchmarkSuiteBase {
             benchmarkCase.getSources().forEach(context::eval);
 
             Value wasmBindings = context.getBindings("wasm");
-            Value benchmarkSetupOnce = wasmBindings.getMember("_benchmarkSetupOnce");
-            benchmarkSetupEach = wasmBindings.getMember("_benchmarkSetupEach");
-            benchmarkTeardownEach = wasmBindings.getMember("_benchmarkTeardownEach");
-            benchmarkRun = wasmBindings.getMember("_benchmarkRun");
+            Value benchmarkSetupOnce = wasmBindings.getMember("benchmarkSetupOnce");
+            benchmarkSetupEach = wasmBindings.getMember("benchmarkSetupEach");
+            benchmarkTeardownEach = wasmBindings.getMember("benchmarkTeardownEach");
+            benchmarkRun = wasmBindings.getMember("benchmarkRun");
             Assert.assertNotNull(String.format("No benchmarkRun method in %s.", benchmarkCase.name()), benchmarkRun);
-
-            // Initialization is done only once, and before the module starts.
-            // It is the benchmark's job to ensure that it executes meaningful workloads
-            // that run correctly despite the fact that the VM state changed.
-            // I.e. benchmark workloads must assume that they are run multiple times.
-            if (benchmarkCase.initialization() != null) {
-                Value customInitializer = wasmBindings.getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
-                customInitializer.execute(benchmarkCase.initialization());
-            }
 
             if (benchmarkSetupOnce != null) {
                 benchmarkSetupOnce.execute();
@@ -139,7 +130,7 @@ public abstract class WasmBenchmarkSuiteBase {
 
         @TearDown(Level.Invocation)
         public void teardownInvocation() {
-            benchmarkTeardownEach.execute();
+            benchmarkTeardownEach.execute(0);
         }
 
         public void run() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,13 +32,13 @@ int counter = 0;
 int main();
 
 int test() {
-  return main();
+    return main();
 }
 
 int main() {
-  counter++;
-  if (counter == 1) {
-    return 5;
-  }
-  return test();
+    counter++;
+    if (counter == 1) {
+        return 5;
+    }
+    return test();
 }

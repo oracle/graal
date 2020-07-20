@@ -125,30 +125,37 @@ public final class TypeDescriptor {
     /**
      * Type descriptor for date.
      *
-     * @since 20.0.0 beta 2
+     * @since 20.0
      */
     public static final TypeDescriptor DATE = new TypeDescriptor(new PrimitiveImpl(PrimitiveKind.DATE));
 
     /**
      * Type descriptor for time.
      *
-     * @since 20.0.0 beta 2
+     * @since 20.0
      */
     public static final TypeDescriptor TIME = new TypeDescriptor(new PrimitiveImpl(PrimitiveKind.TIME));
 
     /**
      * Type descriptor for time zone.
      *
-     * @since 20.0.0 beta 2
+     * @since 20.0
      */
     public static final TypeDescriptor TIME_ZONE = new TypeDescriptor(new PrimitiveImpl(PrimitiveKind.TIME_ZONE));
 
     /**
      * Type descriptor for duration.
      *
-     * @since 20.0.0 beta 2
+     * @since 20.0
      */
     public static final TypeDescriptor DURATION = new TypeDescriptor(new PrimitiveImpl(PrimitiveKind.DURATION));
+
+    /**
+     * Type descriptor for metaobjects.
+     *
+     * @since 20.0
+     */
+    public static final TypeDescriptor META_OBJECT = new TypeDescriptor(new PrimitiveImpl(PrimitiveKind.META_OBJECT));
 
     /**
      * Type descriptor for duration.
@@ -226,10 +233,11 @@ public final class TypeDescriptor {
      */
     public static final TypeDescriptor ANY = new TypeDescriptor(new UnionImpl(new HashSet<>(Arrays.asList(
                     NOTYPE.impl, NULL.impl, BOOLEAN.impl, NUMBER.impl, STRING.impl, HOST_OBJECT.impl, NATIVE_POINTER.impl, OBJECT.impl, ARRAY.impl, EXECUTABLE_ANY.impl, INSTANTIABLE_ANY.impl,
-                    DATE.impl, TIME.impl, TIME_ZONE.impl, DURATION.impl, EXCEPTION.impl))));
+                    DATE.impl, TIME.impl, TIME_ZONE.impl, DURATION.impl, META_OBJECT.impl, EXCEPTION.impl))));
 
     private static final TypeDescriptor[] PREDEFINED_TYPES = new TypeDescriptor[]{
-                    NOTYPE, NULL, BOOLEAN, NUMBER, STRING, HOST_OBJECT, DATE, TIME, TIME_ZONE, DURATION, EXCEPTION, NATIVE_POINTER, OBJECT, ARRAY, EXECUTABLE, EXECUTABLE_ANY, INSTANTIABLE,
+                    NOTYPE, NULL, BOOLEAN, NUMBER, STRING, HOST_OBJECT, DATE, TIME, TIME_ZONE, DURATION, META_OBJECT, EXCEPTION, NATIVE_POINTER, OBJECT, ARRAY, EXECUTABLE, EXECUTABLE_ANY,
+                    INSTANTIABLE,
                     INSTANTIABLE_ANY, ANY
     };
 
@@ -633,6 +641,9 @@ public final class TypeDescriptor {
         if (value.isDuration()) {
             descs.add(DURATION);
         }
+        if (value.isMetaObject()) {
+            descs.add(META_OBJECT);
+        }
         if (value.isException()) {
             descs.add(EXCEPTION);
         }
@@ -697,6 +708,7 @@ public final class TypeDescriptor {
         TIME("time"),
         TIME_ZONE("timeZone"),
         DURATION("duration"),
+        META_OBJECT("metaObject"),
         OBJECT("object"),
         EXCEPTION("exception");
 

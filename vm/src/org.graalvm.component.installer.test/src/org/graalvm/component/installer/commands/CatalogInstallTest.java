@@ -98,6 +98,13 @@ public class CatalogInstallTest extends CommandTestBase {
         this.registry = new CatalogContents(this, downloader.getStorage(), getLocalRegistry());
     }
 
+    private void setupCatalog2(String rel) throws IOException {
+        Path p = dataFile(rel);
+        URL u = p.toUri().toURL();
+        downloader = new RemoteCatalogDownloader(this, this, u);
+        this.registry = new CatalogContents(this, downloader.getStorage(), getLocalRegistry());
+    }
+
     /**
      * Checks that mismatched catalog is rejected entirely.
      * 
@@ -285,12 +292,16 @@ public class CatalogInstallTest extends CommandTestBase {
      */
     @Test
     public void testInstallDepsWithDependecnyInstalled() throws Exception {
+        setupVersion("19.3-dev");
+        setupCatalog(null);
+        testInstallDepsWithDependecnyInstalledCommon();
+    }
+
+    private void testInstallDepsWithDependecnyInstalledCommon() throws Exception {
         ComponentInfo fakeInfo = new ComponentInfo("org.graalvm.llvm-toolchain", "Fake Toolchain", "19.3-dev");
         fakeInfo.setInfoPath("");
         storage.installed.add(fakeInfo);
 
-        setupVersion("19.3-dev");
-        setupCatalog(null);
         paramIterable = new CatalogIterable(this, this);
         textParams.add("r");
 
@@ -309,7 +320,11 @@ public class CatalogInstallTest extends CommandTestBase {
     @Test
     public void testInstallDepsOnCommandLine() throws Exception {
         setupVersion("19.3-dev");
-        setupCatalog(null);
+        setupCatalog2("cataloginstallDeps.properties");
+        testInstallDepsOnCommandLineCommon();
+    }
+
+    private void testInstallDepsOnCommandLineCommon() throws Exception {
         paramIterable = new CatalogIterable(this, this);
         textParams.add("r");
         textParams.add("llvm-toolchain");
@@ -319,6 +334,7 @@ public class CatalogInstallTest extends CommandTestBase {
         cmd.executionInit();
 
         cmd.executeStep(cmd::prepareInstallation, false);
+        cmd.executeStep(cmd::completeInstallers, false);
 
         List<Installer> instSequence = cmd.getInstallers();
         assertEquals(2, instSequence.size());
@@ -329,13 +345,42 @@ public class CatalogInstallTest extends CommandTestBase {
     }
 
     /**
+     * Checks that if a dependency is specified also on the commandline, the component is actually
+     * installed just once. In this case, the catalog does NOT specify dependencies, they are
+     * discovered only when the component's archive is loaded.
+     */
+    @Test
+    public void testInstallDepsOnCommandLine2() throws Exception {
+        setupVersion("19.3-dev");
+        setupCatalog2("cataloginstallDeps2.properties");
+        testInstallDepsOnCommandLineCommon();
+    }
+
+    /**
      * Checks that dependencies precede the component that uses them. In this case ruby >
      * native-image > llvm-toolchain, so they should be installed in the opposite order.
      */
     @Test
     public void testDepsBeforeUsage() throws Exception {
         setupVersion("19.3-dev");
-        setupCatalog(null);
+        setupCatalog2("cataloginstallDeps.properties");
+        testDepsBeforeUsageCommon();
+    }
+
+    /**
+     * The same as {@link #testDepsBeforeUsage()} except that dependency info is incomplete in the
+     * catalog.
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testDepsBeforeUsage2() throws Exception {
+        setupVersion("19.3-dev");
+        setupCatalog2("cataloginstallDeps2.properties");
+        testDepsBeforeUsageCommon();
+    }
+
+    private void testDepsBeforeUsageCommon() throws Exception {
         paramIterable = new CatalogIterable(this, this);
         textParams.add("ruby");
 
@@ -344,6 +389,7 @@ public class CatalogInstallTest extends CommandTestBase {
         cmd.executionInit();
 
         cmd.executeStep(cmd::prepareInstallation, false);
+        cmd.executeStep(cmd::completeInstallers, false);
 
         List<Installer> instSequence = cmd.getInstallers();
         assertEquals(3, instSequence.size());
@@ -361,7 +407,21 @@ public class CatalogInstallTest extends CommandTestBase {
     @Test
     public void testTwoSameComponentsCommandLineDeps() throws Exception {
         setupVersion("19.3-dev");
-        setupCatalog(null);
+        setupCatalog2("cataloginstallDeps.properties");
+        testTwoSameComponentsCommandLineDepsCommon();
+    }
+
+    /**
+     * Checks that two same components on the commandline are merged, including their dependencies.
+     */
+    @Test
+    public void testTwoSameComponentsCommandLineDeps2() throws Exception {
+        setupVersion("19.3-dev");
+        setupCatalog2("cataloginstallDeps2.properties");
+        testTwoSameComponentsCommandLineDepsCommon();
+    }
+
+    private void testTwoSameComponentsCommandLineDepsCommon() throws Exception {
         paramIterable = new CatalogIterable(this, this);
         textParams.add("r");
         textParams.add("r");
@@ -371,6 +431,7 @@ public class CatalogInstallTest extends CommandTestBase {
         cmd.executionInit();
 
         cmd.executeStep(cmd::prepareInstallation, false);
+        cmd.executeStep(cmd::completeInstallers, false);
 
         List<Installer> instSequence = cmd.getInstallers();
         assertEquals(2, instSequence.size());

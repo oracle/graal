@@ -84,7 +84,7 @@ public abstract class BasicState<S extends BasicState<S, T>, T extends AbstractT
     }
 
     @Override
-    public int getId() {
+    public final int getId() {
         return id;
     }
 

@@ -44,10 +44,9 @@ import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.charset.CodePointSet;
-import com.oracle.truffle.regex.charset.RangesAccumulator;
+import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.tregex.automaton.BasicState;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
-import com.oracle.truffle.regex.tregex.buffer.IntRangesBuffer;
 import com.oracle.truffle.regex.tregex.parser.Token.Quantifier;
 import com.oracle.truffle.regex.tregex.parser.ast.BackReference;
 import com.oracle.truffle.regex.tregex.parser.ast.CharacterClass;
@@ -56,6 +55,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTNode;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
+import com.oracle.truffle.regex.tregex.util.Exceptions;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonObject;
 
@@ -65,7 +65,7 @@ import com.oracle.truffle.regex.tregex.util.json.JsonObject;
  * to the NFA helper nodes contained in {@link RegexASTSubtreeRootNode}. All other states correspond
  * to either {@link CharacterClass}es or {@link BackReference}s.
  */
-public class PureNFAState extends BasicState<PureNFAState, PureNFATransition> {
+public final class PureNFAState extends BasicState<PureNFAState, PureNFATransition> {
 
     private static final PureNFATransition[] EMPTY_TRANSITIONS = {};
 
@@ -198,7 +198,7 @@ public class PureNFAState extends BasicState<PureNFAState, PureNFATransition> {
         if (!successors[0].getTarget(forward).isCharacterClass()) {
             return false;
         }
-        RangesAccumulator<IntRangesBuffer> acc = compilationBuffer.getIntRangesAccumulator();
+        CodePointSetAccumulator acc = compilationBuffer.getCodePointSetAccumulator1();
         if (successors.length > 8) {
             acc.addSet(successors[0].getTarget(forward).getCharSet());
         }
@@ -270,7 +270,7 @@ public class PureNFAState extends BasicState<PureNFAState, PureNFATransition> {
                 return KIND_EMPTY_MATCH;
             }
         }
-        throw new IllegalArgumentException();
+        throw Exceptions.shouldNotReachHere();
     }
 
     public boolean canMatchZeroWidth() {
@@ -307,7 +307,7 @@ public class PureNFAState extends BasicState<PureNFAState, PureNFATransition> {
             case KIND_EMPTY_MATCH:
                 return "EMPTY";
             default:
-                throw new IllegalStateException();
+                throw Exceptions.shouldNotReachHere();
         }
     }
 

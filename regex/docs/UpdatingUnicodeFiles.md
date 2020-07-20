@@ -23,3 +23,5 @@ In order to update the Unicode data files, follow these steps:
 4. Run `src/com.oracle.truffle.regex/tools/generate_unicode_properties.py > src/com.oracle.truffle.regex/src/com/oracle/truffle/regex/charset/UnicodePropertyData.java`. This rewrites `UnicodePropertyData.java` to contain the new definitions of Unicode properties.
 5. Run the `main` method of `com.oracle.truffle.regex.charset.UnicodeGeneralCategoriesGenerator` and replace `src/com.oracle.truffle.regex/src/com/oracle/truffle/regex/charset/UnicodeGeneralCategories.java` with its output.
 6. Run `mx eclipseformat` to fix any code formatting issues.
+
+Steps 1-4 are automated by `run_scripts.sh`. This script assumes you have the following things installed: `clojure`, `python3`, `wget`, and `unzip`.

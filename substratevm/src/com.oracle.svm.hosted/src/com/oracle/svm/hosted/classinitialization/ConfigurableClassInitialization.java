@@ -39,7 +39,6 @@ import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
-import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
@@ -50,7 +49,6 @@ import com.oracle.svm.core.WeakIdentityHashMap;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ImageClassLoader;
-import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.c.GraalAccess;
 
@@ -100,6 +98,8 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
     private UnsupportedFeatures unsupportedFeatures;
     protected MetaAccessProvider metaAccess;
 
+    static EarlyClassInitializerAnalysis earlyClassInitializerAnalysis = new EarlyClassInitializerAnalysis();
+
     public ConfigurableClassInitialization(MetaAccessProvider metaAccess, ImageClassLoader loader) {
         this.metaAccess = metaAccess;
         this.loader = loader;
@@ -132,7 +132,17 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
 
     @Override
     public InitKind specifiedInitKindFor(Class<?> clazz) {
-        return classInitializationConfiguration.lookupKind(clazz.getTypeName());
+        return classInitializationConfiguration.lookupKind(clazz.getTypeName()).getLeft();
+    }
+
+    @Override
+    public boolean canBeProvenSafe(Class<?> clazz) {
+        InitKind initKind = specifiedInitKindFor(clazz);
+        return initKind == null || (initKind.isDelayed() && !isStrictlyDefined(clazz));
+    }
+
+    private Boolean isStrictlyDefined(Class<?> clazz) {
+        return classInitializationConfiguration.lookupKind(clazz.getTypeName()).getRight();
     }
 
     @Override
@@ -216,37 +226,44 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
     @Override
     public void initializeAtRunTime(String name, String reason) {
         UserError.guarantee(!configurationSealed, "The class initialization configuration can be changed only before the phase analysis.");
-        classInitializationConfiguration.insert(name, InitKind.RUN_TIME, reason);
         Class<?> clazz = loader.findClassByName(name, false);
         if (clazz != null) {
+            classInitializationConfiguration.insert(name, InitKind.RUN_TIME, reason, true);
             initializeAtRunTime(clazz, reason);
+        } else {
+            classInitializationConfiguration.insert(name, InitKind.RUN_TIME, reason, false);
         }
     }
 
     @Override
     public void initializeAtBuildTime(String name, String reason) {
         UserError.guarantee(!configurationSealed, "The class initialization configuration can be changed only before the phase analysis.");
-        classInitializationConfiguration.insert(name, InitKind.BUILD_TIME, reason);
+
         Class<?> clazz = loader.findClassByName(name, false);
         if (clazz != null) {
+            classInitializationConfiguration.insert(name, InitKind.BUILD_TIME, reason, true);
             initializeAtBuildTime(clazz, reason);
+        } else {
+            classInitializationConfiguration.insert(name, InitKind.BUILD_TIME, reason, false);
         }
     }
 
     @Override
     public void rerunInitialization(String name, String reason) {
         UserError.guarantee(!configurationSealed, "The class initialization configuration can be changed only before the phase analysis.");
-        classInitializationConfiguration.insert(name, InitKind.RERUN, reason);
         Class<?> clazz = loader.findClassByName(name, false);
         if (clazz != null) {
+            classInitializationConfiguration.insert(name, InitKind.RERUN, reason, true);
             rerunInitialization(clazz, reason);
+        } else {
+            classInitializationConfiguration.insert(name, InitKind.RERUN, reason, false);
         }
     }
 
     @Override
     public void initializeAtRunTime(Class<?> clazz, String reason) {
         UserError.guarantee(!configurationSealed, "The class initialization configuration can be changed only before the phase analysis.");
-        classInitializationConfiguration.insert(clazz.getTypeName(), InitKind.RUN_TIME, reason);
+        classInitializationConfiguration.insert(clazz.getTypeName(), InitKind.RUN_TIME, reason, true);
         setSubclassesAsRunTime(clazz);
         checkEagerInitialization(clazz);
 
@@ -270,7 +287,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         }
     }
 
-    private String classInitializationErrorMessage(Class<?> clazz, String action) {
+    private static String classInitializationErrorMessage(Class<?> clazz, String action) {
         if (!TraceClassInitialization.getValue()) {
             return "To see why " + clazz.getTypeName() + " got initialized use " + SubstrateOptionsParser.commandArgument(SubstrateOptions.TraceClassInitialization, "+");
         } else if (initializedClasses.containsKey(clazz)) {
@@ -292,7 +309,6 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
                                                 ClassInitializationFeature.Options.ClassInitialization, clazz.getTypeName(), "initialize-at-build-time") +
                                 ".";
             } else if (culprit != null) {
-                assert classInitializationConfiguration.lookupKind(culprit) != InitKind.BUILD_TIME;
                 return culprit + " caused initialization of this class with the following trace: \n" + classInitializationTrace(clazz);
             } else {
                 return clazz.getTypeName() + " has been initialized through the following trace:\n" + classInitializationTrace(clazz);
@@ -351,7 +367,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
     @Override
     public void rerunInitialization(Class<?> clazz, String reason) {
         UserError.guarantee(!configurationSealed, "The class initialization configuration can be changed only before the phase analysis.");
-        classInitializationConfiguration.insert(clazz.getTypeName(), InitKind.RERUN, reason);
+        classInitializationConfiguration.insert(clazz.getTypeName(), InitKind.RERUN, reason, true);
         checkEagerInitialization(clazz);
 
         try {
@@ -381,12 +397,12 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
     @Override
     public void initializeAtBuildTime(Class<?> aClass, String reason) {
         UserError.guarantee(!configurationSealed, "The class initialization configuration can be changed only before the phase analysis.");
-        classInitializationConfiguration.insert(aClass.getTypeName(), InitKind.BUILD_TIME, reason);
+        classInitializationConfiguration.insert(aClass.getTypeName(), InitKind.BUILD_TIME, reason, true);
         forceInitializeHosted(aClass, reason, false);
     }
 
     private void setSubclassesAsRunTime(Class<?> clazz) {
-        if (clazz.isInterface() && !ClassInitializationFeature.declaresDefaultMethods(metaAccess.lookupJavaType(clazz))) {
+        if (clazz.isInterface() && !metaAccess.lookupJavaType(clazz).declaresDefaultMethods()) {
             /*
              * An interface that does not declare a default method is independent from a class
              * initialization point of view, i.e., it is not initialized when a class implementing
@@ -396,8 +412,8 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         }
         loader.findSubclasses(clazz, false).stream()
                         .filter(c -> !c.equals(clazz))
-                        .filter(c -> !(c.isInterface() && !ClassInitializationFeature.declaresDefaultMethods(metaAccess.lookupJavaType(c))))
-                        .forEach(c -> classInitializationConfiguration.insert(c.getTypeName(), InitKind.RUN_TIME, "subtype of " + clazz.getTypeName()));
+                        .filter(c -> !(c.isInterface() && !metaAccess.lookupJavaType(c).declaresDefaultMethods()))
+                        .forEach(c -> classInitializationConfiguration.insert(c.getTypeName(), InitKind.RUN_TIME, "subtype of " + clazz.getTypeName(), true));
     }
 
     @Override
@@ -453,7 +469,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         if (clazz == null) {
             return;
         }
-        classInitializationConfiguration.insert(clazz.getTypeName(), InitKind.BUILD_TIME, reason);
+        classInitializationConfiguration.insert(clazz.getTypeName(), InitKind.BUILD_TIME, reason, true);
         InitKind initKind = ensureClassInitialized(clazz, allowInitializationErrors);
         classInitKinds.put(clazz, initKind);
 
@@ -463,8 +479,8 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
 
     private void forceInitializeInterfaces(Class<?>[] interfaces, String reason) {
         for (Class<?> iface : interfaces) {
-            if (ClassInitializationFeature.declaresDefaultMethods(metaAccess.lookupJavaType(iface))) {
-                classInitializationConfiguration.insert(iface.getTypeName(), InitKind.BUILD_TIME, reason);
+            if (metaAccess.lookupJavaType(iface).declaresDefaultMethods()) {
+                classInitializationConfiguration.insert(iface.getTypeName(), InitKind.BUILD_TIME, reason, true);
 
                 ensureClassInitialized(iface, false);
                 classInitKinds.put(iface, InitKind.BUILD_TIME);
@@ -499,9 +515,9 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
                                                     c.getTypeName(), "initialize-at-build-time")))
                                     .append("\n");
                 } else {
-                    assert specifiedKind.isDelayed() : "Specified kind must be the same as actual kind";
+                    assert specifiedKind.isDelayed() : "Specified kind must be the same as actual kind for type " + c.getTypeName();
                     String reason = classInitializationConfiguration.lookupReason(c.getTypeName());
-                    detailedMessage.append(c.getTypeName()).append(" the class was requested to be initialized at build time (").append(reason).append("). ")
+                    detailedMessage.append(c.getTypeName()).append(" the class was requested to be initialized at run time (").append(reason).append("). ")
                                     .append(classInitializationErrorMessage(c, "Try avoiding to initialize the class that caused initialization of " + c.getTypeName()))
                                     .append("\n");
                 }
@@ -548,12 +564,30 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
             return InitKind.BUILD_TIME;
         }
 
-        InitKind result = computeInitKindForClass(clazz);
+        InitKind clazzResult = computeInitKindForClass(clazz);
 
+        InitKind superResult = InitKind.BUILD_TIME;
         if (clazz.getSuperclass() != null) {
-            result = result.max(computeInitKindAndMaybeInitializeClass(clazz.getSuperclass(), memoize));
+            superResult = superResult.max(computeInitKindAndMaybeInitializeClass(clazz.getSuperclass(), memoize));
         }
-        result = result.max(processInterfaces(clazz, memoize));
+        superResult = superResult.max(processInterfaces(clazz, memoize));
+
+        if (memoize && superResult == InitKind.BUILD_TIME && clazzResult == InitKind.RUN_TIME && canBeProvenSafe(clazz)) {
+            /*
+             * Check if the class initializer is side-effect free using a simple intraprocedural
+             * analysis.
+             */
+            if (earlyClassInitializerAnalysis.canInitializeWithoutSideEffects(clazz)) {
+                /*
+                 * Note that even if the class initializer is side-effect free, running it can still
+                 * fail with an exception. In that case we ignore the exception and initialize the
+                 * class at run time (at which time the same exception is probably thrown again).
+                 */
+                clazzResult = ensureClassInitialized(clazz, true);
+            }
+        }
+
+        InitKind result = superResult.max(clazzResult);
 
         if (memoize) {
             if (!result.isDelayed()) {
@@ -577,7 +611,7 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
         InitKind result = InitKind.BUILD_TIME;
 
         for (Class<?> iface : clazz.getInterfaces()) {
-            if (ClassInitializationFeature.declaresDefaultMethods(metaAccess.lookupJavaType(iface))) {
+            if (metaAccess.lookupJavaType(iface).declaresDefaultMethods()) {
                 /*
                  * An interface that declares default methods is initialized when a class
                  * implementing it is initialized. So we need to inherit the InitKind from such an
@@ -601,25 +635,24 @@ public class ConfigurableClassInitialization implements ClassInitializationSuppo
             return InitKind.BUILD_TIME;
         } else if (clazz.isAnnotation()) {
             return InitKind.BUILD_TIME;
-        } else if (Proxy.isProxyClass(clazz)) {
-            /* Proxy classes end up as constants in heap. */
+        } else if (Proxy.isProxyClass(clazz) && isProxyFromAnnotation(clazz)) {
             return InitKind.BUILD_TIME;
         } else if (clazz.getTypeName().contains("$$StringConcat")) {
             return InitKind.BUILD_TIME;
         } else if (specifiedInitKindFor(clazz) != null) {
             return specifiedInitKindFor(clazz);
         } else {
-            ClassLoader typeClassLoader = clazz.getClassLoader();
-            if (typeClassLoader == null ||
-                            typeClassLoader == NativeImageGenerator.class.getClassLoader() ||
-                            typeClassLoader == com.sun.crypto.provider.SunJCE.class.getClassLoader() ||
-                            /* JDK 11 */
-                            typeClassLoader == OptionKey.class.getClassLoader()) {
-                return InitKind.BUILD_TIME;
-            }
+            /* The default value. */
+            return InitKind.RUN_TIME;
         }
-
-        return InitKind.RUN_TIME;
     }
 
+    private static boolean isProxyFromAnnotation(Class<?> clazz) {
+        for (Class<?> interfaces : clazz.getInterfaces()) {
+            if (interfaces.isAnnotation()) {
+                return true;
+            }
+        }
+        return false;
+    }
 }

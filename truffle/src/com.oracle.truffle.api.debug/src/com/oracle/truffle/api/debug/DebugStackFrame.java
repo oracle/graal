@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.debug;
 
 import java.util.Iterator;
+import java.util.Objects;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
@@ -54,7 +55,6 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
-import java.util.Objects;
 
 /**
  * Represents a frame in the guest language stack. A guest language stack frame consists of a
@@ -371,15 +371,16 @@ public final class DebugStackFrame {
         if (currentFrame == null) {
             return context.getInstrumentedNode().getRootNode();
         } else {
-            Node callNode = currentFrame.getCallNode();
-            if (callNode != null) {
-                return callNode.getRootNode();
-            }
-            CallTarget target = currentFrame.getCallTarget();
-            if (target instanceof RootCallTarget) {
-                return ((RootCallTarget) target).getRootNode();
-            }
-            return null;
+            return ((RootCallTarget) currentFrame.getCallTarget()).getRootNode();
+        }
+    }
+
+    RootCallTarget getCallTarget() {
+        SuspendedContext context = getContext();
+        if (currentFrame == null) {
+            return context.getInstrumentedNode().getRootNode().getCallTarget();
+        } else {
+            return (RootCallTarget) currentFrame.getCallTarget();
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,17 +49,19 @@ import java.util.ArrayList;
 public class ExecutionState {
     private int stackSize;
     private int maxStackSize;
-    private ByteArrayList byteConstants;
-    private IntArrayList intConstants;
-    private LongArrayList longConstants;
-    private IntArrayList stackStates;
-    private IntArrayList continuationReturnLength;
-    private ArrayList<int[]> branchTables;
+    private int profileCount;
+    private final ByteArrayList byteConstants;
+    private final IntArrayList intConstants;
+    private final LongArrayList longConstants;
+    private final IntArrayList stackStates;
+    private final IntArrayList continuationReturnLength;
+    private final ArrayList<int[]> branchTables;
     private boolean reachable;
 
     public ExecutionState() {
         this.stackSize = 0;
         this.maxStackSize = 0;
+        this.profileCount = 0;
         this.byteConstants = new ByteArrayList();
         this.intConstants = new IntArrayList();
         this.longConstants = new LongArrayList();
@@ -188,5 +190,13 @@ public class ExecutionState {
 
     public int[][] branchTables() {
         return branchTables.toArray(new int[0][]);
+    }
+
+    public void incrementProfileCount() {
+        ++profileCount;
+    }
+
+    public int profileCount() {
+        return profileCount;
     }
 }

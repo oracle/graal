@@ -70,14 +70,14 @@ import com.oracle.truffle.regex.util.CompilationFinalBitSet;
  * matches both the 'a' in the lookahead assertion as well as following 'a' in the expression, and
  * therefore will have a state set containing two AST nodes.
  */
-public class NFAState extends BasicState<NFAState, NFAStateTransition> implements JsonConvertible {
+public final class NFAState extends BasicState<NFAState, NFAStateTransition> implements JsonConvertible {
 
     private static final byte FLAGS_NONE = 0;
     private static final byte FLAG_HAS_PREFIX_STATES = 1 << N_FLAGS;
 
     private static final NFAStateTransition[] EMPTY_TRANSITIONS = new NFAStateTransition[0];
 
-    private final StateSet<? extends RegexASTNode> stateSet;
+    private final StateSet<RegexAST, ? extends RegexASTNode> stateSet;
     @CompilationFinal private short transitionToAnchoredFinalState = -1;
     @CompilationFinal private short transitionToUnAnchoredFinalState = -1;
     @CompilationFinal private short revTransitionToAnchoredFinalState = -1;
@@ -87,7 +87,7 @@ public class NFAState extends BasicState<NFAState, NFAStateTransition> implement
     private final Set<LookBehindAssertion> finishedLookBehinds;
 
     public NFAState(short id,
-                    StateSet<? extends RegexASTNode> stateSet,
+                    StateSet<RegexAST, ? extends RegexASTNode> stateSet,
                     CodePointSet matcherBuilder,
                     Set<LookBehindAssertion> finishedLookBehinds,
                     boolean hasPrefixStates) {
@@ -95,7 +95,7 @@ public class NFAState extends BasicState<NFAState, NFAStateTransition> implement
     }
 
     private NFAState(short id,
-                    StateSet<? extends RegexASTNode> stateSet,
+                    StateSet<RegexAST, ? extends RegexASTNode> stateSet,
                     byte flags,
                     CodePointSet matcherBuilder,
                     Set<LookBehindAssertion> finishedLookBehinds) {
@@ -103,7 +103,7 @@ public class NFAState extends BasicState<NFAState, NFAStateTransition> implement
     }
 
     private NFAState(short id,
-                    StateSet<? extends RegexASTNode> stateSet,
+                    StateSet<RegexAST, ? extends RegexASTNode> stateSet,
                     byte flags,
                     CompilationFinalBitSet possibleResults,
                     CodePointSet matcherBuilder,
@@ -128,7 +128,7 @@ public class NFAState extends BasicState<NFAState, NFAStateTransition> implement
         return finishedLookBehinds;
     }
 
-    public StateSet<? extends RegexASTNode> getStateSet() {
+    public StateSet<RegexAST, ? extends RegexASTNode> getStateSet() {
         return stateSet;
     }
 
@@ -313,7 +313,7 @@ public class NFAState extends BasicState<NFAState, NFAStateTransition> implement
 
     @TruffleBoundary
     private JsonArray sourceSectionsToJson() {
-        return RegexAST.sourceSectionsToJson(getStateSet().stream().map(x -> ((RegexAST) getStateSet().getStateIndex()).getSourceSections(x)).filter(Objects::nonNull).flatMap(Collection::stream));
+        return RegexAST.sourceSectionsToJson(getStateSet().stream().map(x -> getStateSet().getStateIndex().getSourceSections(x)).filter(Objects::nonNull).flatMap(Collection::stream));
     }
 
     @TruffleBoundary

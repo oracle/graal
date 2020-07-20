@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,9 +42,6 @@ public interface Invoke extends StateSplit, Lowerable, SingleMemoryKill, Deoptim
 
     CallTargetNode callTarget();
 
-    @Override
-    int bci();
-
     Node predecessor();
 
     ValueNode classInit();
@@ -67,13 +64,7 @@ public interface Invoke extends StateSplit, Lowerable, SingleMemoryKill, Deoptim
         return callTarget() != null ? callTarget().targetMethod() : null;
     }
 
-    /**
-     * Returns the {@linkplain ResolvedJavaMethod method} from which this invoke is executed. This
-     * is the caller method and in the case of inlining may be different from the method of the
-     * graph this node is in.
-     *
-     * @return the method from which this invoke is executed.
-     */
+    @Override
     default ResolvedJavaMethod getContextMethod() {
         FrameState state = stateAfter();
         if (state == null) {
@@ -119,5 +110,4 @@ public interface Invoke extends StateSplit, Lowerable, SingleMemoryKill, Deoptim
         return callTarget().invokeKind();
     }
 
-    void replaceBci(int newBci);
 }

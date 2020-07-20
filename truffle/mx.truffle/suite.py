@@ -39,9 +39,9 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion" : "5.247.0",
+  "mxversion" : "5.265.8",
   "name" : "truffle",
-  "version" : "20.1.0",
+  "version" : "20.3.0",
   "release" : False,
   "groupId" : "org.graalvm.truffle",
   "sourceinprojectwhitelist" : [],
@@ -174,6 +174,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "TRUFFLE_TCK_TESTS",
         "TRUFFLE_API",
         "TRUFFLE_SL",
         "mx:JUNIT",
@@ -194,8 +195,8 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "com.oracle.truffle.api.instrumentation.test",
         "TRUFFLE_API",
-        "TRUFFLE_INSTRUMENT_TEST",
         "mx:JMH_1_21",
       ],
       "requiresConcealed" : {
@@ -430,6 +431,7 @@ suite = {
       "dependencies" : ["com.oracle.truffle.api.object"],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "8+",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle",
     },
 
@@ -438,10 +440,12 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.object",
+        "com.oracle.truffle.api.test",
         "mx:JUNIT"
       ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
       "javaCompliance" : "8+",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle",
       "testProject" : True,
     },
@@ -1025,25 +1029,6 @@ suite = {
       "maven" : False
     },
 
-    "TRUFFLE_INSTRUMENT_TEST" : {
-      "subDir" : "src",
-      "javaCompliance" : "8+",
-      "dependencies" : [
-        "com.oracle.truffle.api.instrumentation.test",
-      ],
-      "exclude" : ["mx:HAMCREST", "mx:JUNIT", "mx:JMH_1_21"],
-      "distDependencies" : [
-        "TRUFFLE_API",
-        "TRUFFLE_SL",
-        "TRUFFLE_TCK",
-        "sdk:POLYGLOT_TCK",
-        "TRUFFLE_DSL_PROCESSOR",
-      ],
-      "description" : "Instrumentation tests including InstrumentationTestLanguage.",
-      "allowsJavadocWarnings": True,
-      "maven" : False,
-    },
-
      "TRUFFLE_TEST" : {
        "subDir" : "src",
        "javaCompliance" : "8+",
@@ -1061,9 +1046,11 @@ suite = {
        "exclude" : ["mx:HAMCREST", "mx:JUNIT", "mx:JMH_1_21"],
        "distDependencies" : [
          "TRUFFLE_API",
+         "TRUFFLE_SL",
+         "TRUFFLE_TCK_COMMON",
+         "TRUFFLE_TCK_TESTS",
          "TRUFFLE_NFI",
          "TRUFFLE_DSL_PROCESSOR",
-         "TRUFFLE_INSTRUMENT_TEST",
          "TRUFFLE_TEST_NATIVE",
          "TRUFFLE_TCK",
       ],

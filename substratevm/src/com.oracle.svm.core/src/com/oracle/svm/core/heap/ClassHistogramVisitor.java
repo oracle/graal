@@ -26,60 +26,30 @@ package com.oracle.svm.core.heap;
 
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.List;
 
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.log.Log;
 
-/**
- * Build a histogram of class counts.
- *
- * This is designed to be called from a CollectionWatcher.afterCollection() method. It is allowed to
- * allocate storage. If you want to write something similar to be called from a
- * CollectionWatcher.beforeCollection() method, you have to be careful not to allocate anything.
- */
+/** Builds per-class instance count and space usage histograms. */
 public class ClassHistogramVisitor implements ObjectVisitor {
+    private final HistogramEntry[] entries;
 
-    /*
-     * State.
-     */
-
-    protected final List<Class<?>> classList;
-    protected final HistogramEntry[] entryArray;
-
-    /** Factory method. */
-    public static ClassHistogramVisitor factory() {
-        return new ClassHistogramVisitor();
+    public ClassHistogramVisitor() {
+        // NOTE: we cannot use a map because lookups in the visitor must be allocation-free
+        entries = Heap.getHeap().getClassList().stream().map(Class::getName).sorted()
+                        .map(HistogramEntry::new).toArray(HistogramEntry[]::new);
     }
-
-    /** Constructor. */
-    protected ClassHistogramVisitor() {
-        classList = Heap.getHeap().getClassList();
-        entryArray = new HistogramEntry[classList.size()];
-        initializeFromClassList();
-    }
-
-    /*
-     * ObjectVisitor methods.
-     */
 
     @Override
-    /** Accumulate information about this instance. */
     public boolean visitObject(Object o) {
-        final HistogramEntry entry = findEntry(o.getClass().getName());
+        HistogramEntry entry = findEntry(o.getClass().getName());
         if (entry == null) {
             return false;
         }
-        /* Count the number of instances. */
-        entry.instanceCount += 1;
-        /* Accumulate the space for the instances. */
+        entry.instanceCount++;
         entry.instanceSpace += LayoutEncoding.getSizeFromObject(o).rawValue();
         return true;
     }
-
-    /*
-     * Additional methods.
-     */
 
     public void prologue() {
         reset();
@@ -89,164 +59,83 @@ public class ClassHistogramVisitor implements ObjectVisitor {
     }
 
     private HistogramEntry findEntry(String s) {
-        for (int index = 0; index < entryArray.length; index += 1) {
-            if (entryArray[index].getClassName().equals(s)) {
-                return entryArray[index];
+        // No allocations: binary search inlined so analysis doesn't see problematic virtual calls
+        int lo = 0;
+        int hi = entries.length - 1;
+        while (lo <= hi) {
+            int mid = (lo + hi) >>> 1;
+            HistogramEntry entry = entries[mid];
+            int cmp = entry.className.compareTo(s);
+            if (cmp < 0) {
+                lo = mid + 1;
+            } else if (cmp > 0) {
+                hi = mid - 1;
+            } else {
+                return entry; // key found
             }
         }
         return null;
     }
 
-    /** Reset all the counters. */
+    /** Reset the counters of all classes. */
     public void reset() {
-        for (int index = 0; index < entryArray.length; index += 1) {
-            entryArray[index].reset();
+        for (HistogramEntry entry : entries) {
+            entry.reset();
         }
     }
 
     /** Log all the entries, sorted by class name. */
-    public void toLogByName(final Log log, final long minimum) {
-        final HistogramEntry[] filteredArray = filterEntries(minimum);
-        Arrays.sort(filteredArray, HistogramEntry.byName);
-        toLog(log, filteredArray);
+    public void toLogByName(Log log, long minimum) {
+        toLogWithComparator(log, minimum, true, Comparator.comparing(e -> e.className));
     }
 
     /** Log all the entries, sorted by instance count. */
     public void toLogByCount(Log log, long minimum) {
-        toLogByCount(log, minimum, true);
+        toLogWithComparator(log, minimum, true, Comparator.comparingLong(e -> e.instanceCount));
     }
 
-    /** Log all the entries, by increasing or decreasing instance count. */
-    public void toLogByCount(final Log log, final long minimum, boolean increasing) {
-        final HistogramEntry[] filteredArray = filterEntries(minimum);
-        Arrays.sort(filteredArray, (increasing ? HistogramEntry.byIncreasingCount : HistogramEntry.byDecreasingCount));
-        toLog(log, filteredArray);
-    }
-
-    /** Log all the entries, sorted by occupied space. */
-    public void toLogBySpace(Log log, long minimum) {
-        toLogBySpace(log, minimum, true);
-    }
-
-    /** Log all the entries, by increasing or decreasing occupied space. */
+    /** Log all the entries, sorted by increasing or decreasing occupied space. */
     public void toLogBySpace(Log log, long minimum, boolean increasing) {
-        final HistogramEntry[] filteredArray = filterEntries(minimum);
-        Arrays.sort(filteredArray, (increasing ? HistogramEntry.byIncreasingSpace : HistogramEntry.byDecreasingSpace));
+        toLogWithComparator(log, minimum, increasing, Comparator.comparingLong(e -> e.instanceSpace));
+    }
+
+    private void toLogWithComparator(Log log, long minimum, boolean increasing, Comparator<HistogramEntry> comparator) {
+        Comparator<HistogramEntry> cmp = increasing ? comparator : comparator.reversed();
+        HistogramEntry[] filteredArray = Arrays.stream(entries).filter(e -> e.instanceCount >= minimum)
+                        .sorted(cmp).toArray(HistogramEntry[]::new);
         toLog(log, filteredArray);
     }
 
-    /* TODO: This method knows too much about formatting. */
-    protected void toLog(Log log, HistogramEntry[] entry) {
-        if (entry.length != 0) {
+    protected static void toLog(Log log, HistogramEntry[] entries) {
+        if (entries.length != 0) {
             log.string("  Count\tSize\tName").newline();
         }
-        for (HistogramEntry e : entry) {
+        for (HistogramEntry e : entries) {
             toLog(log, e);
         }
     }
 
-    /* TODO: This method knows too much about formatting. */
-    protected void toLog(Log log, HistogramEntry entry) {
-        log.string("  ");
-        log.signed(entry.getInstanceCount());
-        log.character('\t');
-        log.signed(entry.getInstanceSpace());
-        log.character('\t');
-        log.string(entry.getClassName());
-        log.newline();
+    private static void toLog(Log log, HistogramEntry entry) {
+        log.string("  ").signed(entry.instanceCount).character('\t').signed(entry.instanceSpace).character('\t').string(entry.className).newline();
     }
 
-    /*
-     * TODO: Should this method be available to clients? Among the problems is the lifetime of the
-     * result.
-     */
-    protected HistogramEntry[] filterEntries(long minimumInstanceCount) {
-        /* Count how many elements are above the minimum. */
-        int count = 0;
-        for (HistogramEntry entry : entryArray) {
-            if (minimumInstanceCount <= entry.getInstanceCount()) {
-                count += 1;
-            }
-        }
-        /* entryArray is only valid as long as classMap remains unmodified. */
-        HistogramEntry[] filteredArray = new HistogramEntry[count];
-        int index = 0;
-        for (HistogramEntry entry : entryArray) {
-            if (minimumInstanceCount <= entry.getInstanceCount()) {
-                filteredArray[index] = entry;
-                index += 1;
-            }
-        }
-        return filteredArray;
-    }
+    /** Information about the instances of a class. */
+    private static class HistogramEntry {
+        final String className;
 
-    private void initializeFromClassList() {
-        int index = 0;
-        for (Class<?> c : classList) {
-            entryArray[index] = new HistogramEntry(c.getName());
-            index += 1;
-        }
-    }
+        long instanceCount;
 
-    /** An entry for maps from class names to information about instances of those classes. */
-    protected static class HistogramEntry {
+        /** The space taken up by all the instances. */
+        long instanceSpace;
 
-        public static HistogramEntry factory(String className) {
-            return new HistogramEntry(className);
-        }
-
-        /*
-         * Access methods.
-         */
-
-        public String getClassName() {
-            return className;
-        }
-
-        public long getInstanceCount() {
-            return instanceCount;
-        }
-
-        public long getInstanceSpace() {
-            return instanceSpace;
-        }
-
-        public void reset() {
-            instanceCount = 0L;
-            instanceSpace = 0L;
-        }
-
-        /** Constructor. */
-        protected HistogramEntry(String className) {
+        HistogramEntry(String className) {
             this.className = className;
             reset();
         }
 
-        /*
-         * State.
-         */
-
-        /** The name of the class. */
-        protected final String className;
-        /** The count of all the instances. */
-        protected long instanceCount;
-        /** The space taken up by all the instances. */
-        protected long instanceSpace;
-
-        /*
-         * Static state.
-         */
-
-        /** Sort by name. */
-        protected static Comparator<HistogramEntry> byName = (x, y) -> x.getClassName().compareTo(y.getClassName());
-
-        /** Sort by count. */
-        protected static Comparator<HistogramEntry> byIncreasingCount = (x, y) -> Long.signum(x.getInstanceCount() - y.getInstanceCount());
-        protected static Comparator<HistogramEntry> byDecreasingCount = (x, y) -> Long.signum(y.getInstanceCount() - x.getInstanceCount());
-
-        /** Sort by space. */
-        protected static Comparator<HistogramEntry> byIncreasingSpace = (x, y) -> Long.signum(x.getInstanceSpace() - y.getInstanceSpace());
-        protected static Comparator<HistogramEntry> byDecreasingSpace = (x, y) -> Long.signum(y.getInstanceSpace() - x.getInstanceSpace());
-
+        void reset() {
+            instanceCount = 0L;
+            instanceSpace = 0L;
+        }
     }
 }

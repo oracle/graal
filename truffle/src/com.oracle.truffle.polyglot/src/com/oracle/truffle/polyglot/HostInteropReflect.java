@@ -69,6 +69,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.polyglot.PolyglotLanguageContext.ToGuestValuesNode;
 
@@ -447,6 +448,20 @@ final class FunctionProxyHandler implements InvocationHandler, HostWrapper {
     }
 
     @Override
+    public int hashCode() {
+        return HostWrapper.hashCode(languageContext, functionObj);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o instanceof FunctionProxyHandler) {
+            return HostWrapper.equals(languageContext, functionObj, ((FunctionProxyHandler) o).functionObj);
+        } else {
+            return false;
+        }
+    }
+
+    @Override
     public Object invoke(Object proxy, Method method, Object[] arguments) throws Throwable {
         CompilerAsserts.neverPartOfCompilation();
         Object[] resolvedArguments = arguments == null ? HostInteropReflect.EMPTY : arguments;
@@ -479,7 +494,7 @@ final class FunctionProxyHandler implements InvocationHandler, HostWrapper {
                 case "equals":
                     return HostWrapper.equalsProxy(host, arguments[0]);
                 case "hashCode":
-                    return HostWrapper.hashCode(host);
+                    return HostWrapper.hashCode(host.getLanguageContext(), host.getGuestObject());
                 case "toString":
                     return HostWrapper.toString(host);
                 default:
@@ -587,9 +602,10 @@ abstract class ProxyInvokeNode extends Node {
                     @Cached("getMethodGenericReturnType(method)") Type returnType,
                     @CachedLibrary("receiver") InteropLibrary receivers,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary members,
-                    @Cached("createBinaryProfile()") ConditionProfile branchProfile,
-                    @Cached("create()") ToHostNode toHost) {
-        Object result = invokeOrExecute(languageContext, receiver, arguments, name, receivers, members, branchProfile);
+                    @Cached ConditionProfile branchProfile,
+                    @Cached("create()") ToHostNode toHost,
+                    @Cached BranchProfile error) {
+        Object result = invokeOrExecute(languageContext, receiver, arguments, name, receivers, members, branchProfile, error);
         return toHost.execute(result, returnClass, returnType, languageContext, true);
     }
 
@@ -600,7 +616,7 @@ abstract class ProxyInvokeNode extends Node {
 
     private Object invokeOrExecute(PolyglotLanguageContext polyglotContext, Object receiver, Object[] arguments, String member, InteropLibrary receivers,
                     InteropLibrary members,
-                    ConditionProfile invokeProfile) {
+                    ConditionProfile invokeProfile, BranchProfile error) {
         try {
             boolean localInvokeFailed = this.invokeFailed;
             if (!localInvokeFailed) {
@@ -624,19 +640,19 @@ abstract class ProxyInvokeNode extends Node {
                     }
                 }
             }
-            CompilerDirectives.transferToInterpreter();
+            error.enter();
             throw HostInteropErrors.invokeUnsupported(polyglotContext, receiver, member);
         } catch (UnknownIdentifierException e) {
-            CompilerDirectives.transferToInterpreter();
+            error.enter();
             throw HostInteropErrors.invokeUnsupported(polyglotContext, receiver, member);
         } catch (UnsupportedTypeException e) {
-            CompilerDirectives.transferToInterpreter();
+            error.enter();
             throw HostInteropErrors.invalidExecuteArgumentType(polyglotContext, receiver, e.getSuppliedValues());
         } catch (ArityException e) {
-            CompilerDirectives.transferToInterpreter();
+            error.enter();
             throw HostInteropErrors.invalidExecuteArity(polyglotContext, receiver, arguments, e.getExpectedArity(), e.getActualArity());
         } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
+            error.enter();
             throw HostInteropErrors.invokeUnsupported(polyglotContext, receiver, member);
         }
     }

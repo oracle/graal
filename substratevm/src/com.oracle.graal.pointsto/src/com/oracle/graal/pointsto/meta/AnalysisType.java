@@ -132,7 +132,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
      * Map ResolvedJavaMethod to Object and not AnalysisMethod because when the type doesn't
      * implement the method the value stored is {@link AnalysisType#NULL_METHOD}.
      */
-    private final ConcurrentHashMap<ResolvedJavaMethod, Object> resolvedMethods = new ConcurrentHashMap<>(AnalysisUniverse.ESTIMATED_METHODS_PER_TYPE);
+    private final ConcurrentHashMap<ResolvedJavaMethod, Object> resolvedMethods = new ConcurrentHashMap<>();
 
     /**
      * Marker used in the {@link AnalysisType#resolvedMethods} map to signal that the type doesn't
@@ -504,25 +504,44 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     }
 
     public void registerAsInHeap() {
-        assert isArray() || (isInstanceClass() && !Modifier.isAbstract(getModifiers()));
-        isInHeap = true;
-        universe.hostVM.checkForbidden(this, UsageKind.InHeap);
+        if (!isInHeap) {
+            /* Races are not a problem because every thread is going to do the same steps. */
+            isInHeap = true;
+
+            assert isArray() || (isInstanceClass() && !Modifier.isAbstract(getModifiers())) : this;
+            universe.hostVM.checkForbidden(this, UsageKind.InHeap);
+        }
     }
 
     /**
      * @param node For future use and debugging
      */
     public void registerAsAllocated(Node node) {
-        assert isArray() || (isInstanceClass() && !Modifier.isAbstract(getModifiers())) : this;
         if (!isAllocated) {
+            /* Races are not a problem because every thread is going to do the same steps. */
             isAllocated = true;
+
+            assert isArray() || (isInstanceClass() && !Modifier.isAbstract(getModifiers())) : this;
+            universe.hostVM.checkForbidden(this, UsageKind.Allocated);
         }
-        universe.hostVM.checkForbidden(this, UsageKind.Allocated);
     }
 
     public void registerAsInTypeCheck() {
-        isInTypeCheck = true;
-        universe.hostVM.checkForbidden(this, UsageKind.InTypeCheck);
+        if (!isInTypeCheck) {
+            /* Races are not a problem because every thread is going to do the same steps. */
+            isInTypeCheck = true;
+
+            universe.hostVM.checkForbidden(this, UsageKind.InTypeCheck);
+            if (isArray()) {
+                /*
+                 * For array types, distinguishing between "used" and "instantiated" does not
+                 * provide any benefits since array types do not implement new methods. Marking all
+                 * used array types as instantiated too allows more usages of Arrays.newInstance
+                 * without the need of explicit registration of types for reflection.
+                 */
+                registerAsAllocated(null);
+            }
+        }
     }
 
     public boolean getReachabilityListenerNotified() {
@@ -829,6 +848,16 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         return resolvedMethod == NULL_METHOD ? null : (AnalysisMethod) resolvedMethod;
     }
 
+    /**
+     * Wrapper for resolveConcreteMethod() that ignores the callerType parameter. The method that
+     * does the resolution, resolveMethod() above, ignores the callerType parameter and uses
+     * substMethod.getDeclaringClass() instead since we don't want any access checks in the
+     * analysis.
+     */
+    public AnalysisMethod resolveConcreteMethod(ResolvedJavaMethod method) {
+        return (AnalysisMethod) WrappedJavaType.super.resolveConcreteMethod(method, null);
+    }
+
     @Override
     public AnalysisMethod resolveConcreteMethod(ResolvedJavaMethod method, ResolvedJavaType callerType) {
         return (AnalysisMethod) WrappedJavaType.super.resolveConcreteMethod(method, callerType);
@@ -980,6 +1009,21 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
          * will not be linked.
          */
         return wrapped.isLinked();
+    }
+
+    @Override
+    public void link() {
+        wrapped.link();
+    }
+
+    @Override
+    public boolean hasDefaultMethods() {
+        return wrapped.hasDefaultMethods();
+    }
+
+    @Override
+    public boolean declaresDefaultMethods() {
+        return wrapped.declaresDefaultMethods();
     }
 
     @Override

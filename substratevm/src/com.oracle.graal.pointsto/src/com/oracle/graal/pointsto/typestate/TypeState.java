@@ -32,8 +32,6 @@ import java.util.Iterator;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import org.graalvm.compiler.nodes.ValueNode;
-
 import com.oracle.graal.pointsto.AnalysisPolicy;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.PointstoOptions;
@@ -47,7 +45,6 @@ import com.oracle.graal.pointsto.util.BitArrayUtils;
 
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
 
 public abstract class TypeState {
 
@@ -314,17 +311,16 @@ public abstract class TypeState {
     }
 
     /** Wraps the analysis object corresponding to an allocation site into a non-null type state. */
-    public static TypeState forAllocation(BigBang bb, ValueNode allocation, BytecodeLocation allocationLabel, AnalysisType exactType) {
-        return forAllocation(bb, allocation, allocationLabel, exactType, bb.contextPolicy().emptyContext());
+    public static TypeState forAllocation(BigBang bb, BytecodeLocation allocationLabel, AnalysisType exactType) {
+        return forAllocation(bb, allocationLabel, exactType, bb.contextPolicy().emptyContext());
     }
 
     /**
      * Wraps the analysis object corresponding to an allocation site for a given context into a
      * non-null type state.
      */
-    public static TypeState forAllocation(BigBang bb, ValueNode allocation, BytecodeLocation allocationSite, AnalysisType objectType, AnalysisContext allocationContext) {
+    public static TypeState forAllocation(BigBang bb, BytecodeLocation allocationSite, AnalysisType objectType, AnalysisContext allocationContext) {
         assert objectType.isArray() || (objectType.isInstanceClass() && !Modifier.isAbstract(objectType.getModifiers())) : objectType;
-        assert allocation.getStackKind() == JavaKind.Object;
 
         AnalysisObject allocationObject = bb.analysisPolicy().createHeapObject(bb, objectType, allocationSite, allocationContext);
         return forNonNullObject(bb, allocationObject);
@@ -334,9 +330,8 @@ public abstract class TypeState {
      * Wraps the analysis object corresponding to a clone site for a given context into a non-null
      * type state.
      */
-    public static TypeState forClone(BigBang bb, ValueNode cloneSource, BytecodeLocation cloneSite, AnalysisType type, AnalysisContext allocationContext) {
-        assert cloneSource.getStackKind() == JavaKind.Object;
-        return forAllocation(bb, cloneSource, cloneSite, type, allocationContext);
+    public static TypeState forClone(BigBang bb, BytecodeLocation cloneSite, AnalysisType type, AnalysisContext allocationContext) {
+        return forAllocation(bb, cloneSite, type, allocationContext);
     }
 
     public static TypeState forExactType(BigBang bb, AnalysisType exactType, boolean canBeNull) {

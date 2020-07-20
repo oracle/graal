@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,10 +40,10 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.InitIDVisitor;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
-
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * Root node of every AST.
@@ -54,13 +54,22 @@ public class RegexASTRootNode extends RegexASTSubtreeRootNode {
         setId(InitIDVisitor.REGEX_AST_ROOT_PARENT_ID);
     }
 
-    private RegexASTRootNode(RegexASTRootNode copy, RegexAST ast, boolean recursive) {
-        super(copy, ast, recursive);
+    private RegexASTRootNode(RegexASTRootNode copy, RegexAST ast) {
+        super(copy, ast);
+    }
+
+    private RegexASTRootNode(RegexASTRootNode copy, RegexAST ast, CompilationBuffer compilationBuffer) {
+        super(copy, ast, compilationBuffer);
     }
 
     @Override
-    public RegexASTSubtreeRootNode copy(RegexAST ast, boolean recursive) {
-        return new RegexASTRootNode(this, ast, recursive);
+    public RegexASTSubtreeRootNode copy(RegexAST ast) {
+        return new RegexASTRootNode(this, ast);
+    }
+
+    @Override
+    public RegexASTSubtreeRootNode copyRecursive(RegexAST ast, CompilationBuffer compilationBuffer) {
+        return new RegexASTRootNode(this, ast, compilationBuffer);
     }
 
     @Override

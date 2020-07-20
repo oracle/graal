@@ -107,12 +107,11 @@ public class IdentityFunctionTest {
         boolean success = false;
         try {
             try {
-
                 final Value result = testRun.getSnippet().getExecutableValue().execute(testRun.getActualParameters().toArray());
-                TestUtil.validateResult(testRun, result, null);
+                TestUtil.validateResult(testRun, result, null, false);
                 success = true;
             } catch (PolyglotException pe) {
-                TestUtil.validateResult(testRun, null, pe);
+                TestUtil.validateResult(testRun, null, pe, false);
                 success = true;
             }
         } catch (PolyglotException | AssertionError e) {

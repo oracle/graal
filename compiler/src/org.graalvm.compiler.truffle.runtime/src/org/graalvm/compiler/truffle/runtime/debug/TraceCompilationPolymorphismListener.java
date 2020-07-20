@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -59,7 +59,7 @@ public final class TraceCompilationPolymorphismListener extends AbstractGraalTru
                     props.put("simpleName", node.getClass().getSimpleName());
                     props.put("subtree", "\n" + NodeUtil.printCompactTreeToString(node));
                     String msg = cost == NodeCost.MEGAMORPHIC ? "megamorphic" : "polymorphic";
-                    runtime.logEvent(0, msg, node.toString(), props);
+                    runtime.logEvent(target, 0, msg, node.toString(), props, null);
                 }
             }
         }

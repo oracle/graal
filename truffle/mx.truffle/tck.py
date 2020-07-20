@@ -85,8 +85,9 @@ class Mode:
     def compile():
         if not Mode._compile:
             Mode._compile = Mode('compile', [
-                '-Dgraal.TruffleCompileImmediately=true',
-                '-Dgraal.TruffleBackgroundCompilation=false',
+                '-Dpolyglot.engine.AllowExperimentalOptions=true',
+                '-Dpolyglot.engine.CompileImmediately=true',
+                '-Dpolyglot.engine.BackgroundCompilation=false',
                 '-Dtck.inlineVerifierInstrument=false'])
         return Mode._compile
 
@@ -259,6 +260,7 @@ def _find_unit_tests(cp, pkgs=None):
                         name = name[:len(name) - 6].replace('/', '.')
                         if includes(name):
                             tests.append(name)
+    tests.sort(reverse=True)
     return tests
 
 def _execute_tck_impl(graalvm_home, mode, language_filter, values_filter, tests_filter, cp, truffle_cp, boot_cp, vm_args, debug_port):

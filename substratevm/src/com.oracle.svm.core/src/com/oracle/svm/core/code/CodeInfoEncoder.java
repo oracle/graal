@@ -67,6 +67,7 @@ import com.oracle.svm.core.util.VMError;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.code.StackLockValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.code.VirtualObject;
@@ -463,7 +464,18 @@ class CodeInfoVerifier {
         }
     }
 
-    private static void verifyValue(CompilationResult compilation, JavaValue expectedValue, ValueInfo actualValue, FrameInfoQueryResult actualFrame, BitSet visitedVirtualObjects) {
+    private static void verifyValue(CompilationResult compilation, JavaValue e, ValueInfo actualValue, FrameInfoQueryResult actualFrame, BitSet visitedVirtualObjects) {
+        JavaValue expectedValue = e;
+
+        if (expectedValue instanceof StackLockValue) {
+            StackLockValue lock = (StackLockValue) expectedValue;
+            assert ValueUtil.isIllegal(lock.getSlot());
+            assert lock.isEliminated() == actualValue.isEliminatedMonitor();
+            expectedValue = lock.getOwner();
+        } else {
+            assert actualValue.isEliminatedMonitor() == false;
+        }
+
         if (ValueUtil.isIllegalJavaValue(expectedValue)) {
             assert actualValue.getType() == ValueType.Illegal;
 

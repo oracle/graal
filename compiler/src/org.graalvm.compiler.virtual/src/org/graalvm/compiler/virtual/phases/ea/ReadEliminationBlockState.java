@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -53,7 +53,9 @@ public class ReadEliminationBlockState extends EffectsBlockState<ReadElimination
         @Override
         public int hashCode() {
             int result = 31 + ((identity == null) ? 0 : identity.hashCode());
-            return 31 * result + ((object == null) ? 0 : object.hashCode());
+            // we need to use the identity hash code for the object since the node may not yet have
+            // a valid id and thus not have a stable hash code
+            return 31 * result + ((object == null) ? 0 : System.identityHashCode(object));
         }
 
         @Override

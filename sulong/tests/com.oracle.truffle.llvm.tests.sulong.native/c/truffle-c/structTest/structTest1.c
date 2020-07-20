@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,18 +28,18 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 struct myStruct {
-  int a;
-  int b;
+    int a;
+    int b;
 };
 
 void foo(struct myStruct *s) {
-  s->b = 123;
+    s->b = 123;
 }
 
 int main() {
-  struct myStruct s;
-  s.a = 77;
-  s.b = 66;
-  foo(&s);
-  return s.b;
+    struct myStruct s;
+    s.a = 77;
+    s.b = 66;
+    foo(&s);
+    return s.b;
 }

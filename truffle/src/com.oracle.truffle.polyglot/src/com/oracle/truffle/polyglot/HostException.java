@@ -78,7 +78,7 @@ final class HostException extends RuntimeException implements TruffleException {
     @Override
     public Object getExceptionObject() {
         Throwable exception = getOriginal();
-        return HostObject.forException(exception, PolyglotContextImpl.requireContext().getHostContext(), this);
+        return HostObject.forException(exception, PolyglotContextImpl.currentNotEntered().getHostContext(), this);
     }
 
     public Node getLocation() {

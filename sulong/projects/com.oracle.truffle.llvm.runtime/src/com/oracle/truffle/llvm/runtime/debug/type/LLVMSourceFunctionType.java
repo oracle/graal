@@ -29,12 +29,13 @@
  */
 package com.oracle.truffle.llvm.runtime.debug.type;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import java.util.Objects;
 
 public final class LLVMSourceFunctionType extends LLVMSourceType {
 
@@ -82,6 +83,11 @@ public final class LLVMSourceFunctionType extends LLVMSourceType {
     }
 
     @TruffleBoundary
+    public int getNumberOfParameters() {
+        return Math.max(0, types.size() - 1);
+    }
+
+    @TruffleBoundary
     public List<LLVMSourceType> getParameterTypes() {
         if (types.size() <= 1) {
             return Collections.emptyList();
@@ -110,11 +116,13 @@ public final class LLVMSourceFunctionType extends LLVMSourceType {
      * void func (struct Point p); -> void func(double px, double py);
      * </pre>
      */
-    public final class SourceArgumentInformation {
+    public static final class SourceArgumentInformation {
         private final int bitcodeArgIndex;
         private final int sourceArgIndex;
         private final int offset;
         private final int size;
+
+        private static final SourceArgumentInformation INVALID = new SourceArgumentInformation(-1, -1, -1, -1);
 
         /**
          * @param bitcodeArgIndex Argument location in bitcode.
@@ -128,6 +136,36 @@ public final class LLVMSourceFunctionType extends LLVMSourceType {
             this.sourceArgIndex = sourceArgIndex;
             this.offset = offset;
             this.size = size;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            SourceArgumentInformation that = (SourceArgumentInformation) o;
+            return bitcodeArgIndex == that.bitcodeArgIndex &&
+                            sourceArgIndex == that.sourceArgIndex &&
+                            offset == that.offset &&
+                            size == that.size;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(bitcodeArgIndex, sourceArgIndex, offset, size);
+        }
+
+        @Override
+        public String toString() {
+            return "SourceArgumentInformation(" +
+                            "bcArgIdx=" + bitcodeArgIndex +
+                            ", srcArgIdx=" + sourceArgIndex +
+                            ", offset=" + offset +
+                            ", size=" + size +
+                            ')';
         }
 
         public long getBitcodeArgIndex() {
@@ -172,21 +210,29 @@ public final class LLVMSourceFunctionType extends LLVMSourceType {
         if (sourceArgumentInformationList == null) {
             sourceArgumentInformationList = new ArrayList<>();
         }
-
-        int diff = bitcodeArgIndex + 1 - sourceArgumentInformationList.size();
-        assert diff >= 0 || sourceArgumentInformationList.get(bitcodeArgIndex) == null : String.format("sourceArgumentInformation for bitcodeArgIndex %d is already set", bitcodeArgIndex);
-        for (; diff > 0; diff--) {
-            sourceArgumentInformationList.add(null);
+        ensureCapacity(sourceArgumentInformationList, bitcodeArgIndex + 1);
+        if (sourceArgumentInformationList.get(bitcodeArgIndex) == null) {
+            sourceArgumentInformationList.set(bitcodeArgIndex, new SourceArgumentInformation(bitcodeArgIndex, sourceArgIndex, offset, size));
+        } else {
+            // do not override existing info
+            sourceArgumentInformationList.set(bitcodeArgIndex, SourceArgumentInformation.INVALID);
         }
+    }
 
-        sourceArgumentInformationList.set(bitcodeArgIndex, new SourceArgumentInformation(bitcodeArgIndex, sourceArgIndex, offset, size));
+    private static void ensureCapacity(ArrayList<?> list, int capacity) {
+        for (int diff = capacity - list.size(); diff > 0; diff--) {
+            list.add(null);
+        }
     }
 
     public SourceArgumentInformation getSourceArgumentInformation(int index) {
         if (sourceArgumentInformationList == null || index >= sourceArgumentInformationList.size()) {
             return null;
         }
-
-        return sourceArgumentInformationList.get(index);
+        SourceArgumentInformation info = sourceArgumentInformationList.get(index);
+        if (SourceArgumentInformation.INVALID.equals(info)) {
+            return null;
+        }
+        return info;
     }
 }

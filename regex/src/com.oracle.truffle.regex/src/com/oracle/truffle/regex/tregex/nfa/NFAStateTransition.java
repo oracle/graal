@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,9 +42,9 @@ package com.oracle.truffle.regex.tregex.nfa;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.tregex.automaton.AbstractTransition;
 import com.oracle.truffle.regex.tregex.parser.ast.GroupBoundaries;
-import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
@@ -52,17 +52,19 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 /**
  * Provides information about a transition from one NFAState to another state.
  */
-public class NFAStateTransition implements AbstractTransition<NFAState, NFAStateTransition>, JsonConvertible {
+public final class NFAStateTransition implements AbstractTransition<NFAState, NFAStateTransition>, JsonConvertible {
 
     private final short id;
     @CompilationFinal private NFAState source;
     private final NFAState target;
+    private final CodePointSet codePointSet;
     private final GroupBoundaries groupBoundaries;
 
-    public NFAStateTransition(short id, NFAState source, NFAState target, GroupBoundaries groupBoundaries) {
+    public NFAStateTransition(short id, NFAState source, NFAState target, CodePointSet codePointSet, GroupBoundaries groupBoundaries) {
         this.id = id;
         this.source = source;
         this.target = target;
+        this.codePointSet = codePointSet;
         this.groupBoundaries = groupBoundaries;
     }
 
@@ -89,6 +91,10 @@ public class NFAStateTransition implements AbstractTransition<NFAState, NFAState
         return forward ? source : target;
     }
 
+    public CodePointSet getCodePointSet() {
+        return codePointSet;
+    }
+
     /**
      * groups entered and exited by this transition.
      */
@@ -102,8 +108,9 @@ public class NFAStateTransition implements AbstractTransition<NFAState, NFAState
         return Json.obj(Json.prop("id", id),
                         Json.prop("source", source.getId()),
                         Json.prop("target", target.getId()),
+                        Json.prop("matcherBuilder", codePointSet.toString()),
                         Json.prop("groupBoundaries", groupBoundaries),
-                        Json.prop("sourceSections", groupBoundaries.indexUpdateSourceSectionsToJson((RegexAST) source.getStateSet().getStateIndex())));
+                        Json.prop("sourceSections", groupBoundaries.indexUpdateSourceSectionsToJson(source.getStateSet().getStateIndex())));
     }
 
     @TruffleBoundary
@@ -111,7 +118,8 @@ public class NFAStateTransition implements AbstractTransition<NFAState, NFAState
         return Json.obj(Json.prop("id", id),
                         Json.prop("source", getSource(forward).getId()),
                         Json.prop("target", getTarget(forward).getId()),
+                        Json.prop("matcherBuilder", codePointSet.toString()),
                         Json.prop("groupBoundaries", groupBoundaries),
-                        Json.prop("sourceSections", groupBoundaries.indexUpdateSourceSectionsToJson((RegexAST) source.getStateSet().getStateIndex())));
+                        Json.prop("sourceSections", groupBoundaries.indexUpdateSourceSectionsToJson(source.getStateSet().getStateIndex())));
     }
 }

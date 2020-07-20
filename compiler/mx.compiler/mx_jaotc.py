@@ -60,56 +60,143 @@ def run_jaotc(args, classpath=None, cwd=None):
 
 def jaotc_gate_runner(tasks):
     with Task('jaotc', tasks, tags=['jaotc', 'fulltest']) as t:
-        if t: jaotc_test([])
+        group = mx.get_env('JAOTC_TEST_GROUP', 'gate')
+        if t: jaotc_test(['--group', group])
 
 
-def jaotc_test(args):
-    """run (acceptance) tests for the AOT compiler (jaotc)"""
-    _check_jaotc_support()
-    all_tests = ['HelloWorld', 'java.base', 'javac']
-    parser = ArgumentParser(prog='mx jaotc-test')
-    parser.add_argument("--list", default=None, action="store_true", help="Print the list of available jaotc tests.")
-    parser.add_argument('tests', help='tests to run (omit to run all tests)', nargs=ZERO_OR_MORE)
-    args = parser.parse_args(args)
-
-    if args.list:
-        print("The following jaotc tests are available:\n")
-        for name in all_tests:
-            print("  " + name)
-        return
-
-    tests = args.tests or all_tests
+def jaotc_run(tests, group):
     for test in tests:
         mx.log('Testing `{}`'.format(test))
-        if test == 'HelloWorld':
+
+        group_config = jaotc_group_config[group]
+        test_info = jaotc_test_info[test]
+
+        test_type = jaotc_test_info[test]['type']
+        if test_type == 'app':
             test_class(
+                opts_set=group_config['class'],
                 classpath=mx.classpath('JAOTC_TEST'),
-                main_class='jdk.tools.jaotc.test.HelloWorld'
+                main_class=test_info['main']
             )
-        elif test == 'javac':
-            test_javac('jdk.tools.jaotc')
-        elif test == 'java.base':
+        elif test_type == 'javac':
+            test_javac('jdk.tools.jaotc', group_config['javac'])
+        elif test_type == 'modules':
+            cp = jaotc_test_info[test].get('cp')
+            cp = cp() if cp else None
             test_modules(
-                classpath=mx.project('jdk.tools.jaotc.test').output_dir(),
-                main_class='jdk.tools.jaotc.test.HelloWorld',
-                modules=['java.base']
+                opts_set=group_config['modules'],
+                classpath=cp,
+                main_class=test_info['main'],
+                modules=test_info['modules'],
+                vm_args=test_info.get('vm_args'),
+                program_args=test_info.get('program_args'),
+                commands=test_info.get('commands'),
             )
         else:
             mx.abort('Unknown jaotc test: {}'.format(test))
 
 
+def jaotc_test(args):
+    """run (acceptance) tests for the AOT compiler (jaotc)"""
+    _check_jaotc_support()
+    parser = ArgumentParser(prog='mx jaotc-test')
+    parser.add_argument("--list", default=None, action="store_true", help="Print the list of available jaotc tests.")
+    parser.add_argument("--group", default='default', action="store", help="Test group {}.".format(jaotc_group_config.keys()))
+    parser.add_argument('tests', help='tests to run (omit to run all tests)', nargs=ZERO_OR_MORE)
+    args = parser.parse_args(args)
+
+    group = args.group
+    if args.list:
+        print("The following jaotc tests are available:\n")
+        for name in jaotc_group_config[group]['tests']:
+            print("  " + name)
+        return
+
+    group_tests = jaotc_group_config[group]['tests']
+    tests = args.tests or group_tests
+
+    if tests == args.tests:
+        for test in tests:
+            if not test in group_tests:
+                mx.abort('Test {} not on list: {}'.format(test, [name for name in group_tests]))
+
+    jaotc_run(tests, group)
+
 def mktemp_libfile():
     return tempfile.NamedTemporaryFile(prefix=mx.add_lib_prefix(''), suffix=mx.add_lib_suffix(''))
 
+def jaotc_classpath():
+    return mx.project('jdk.tools.jaotc.test').output_dir()
 
-common_opts_variants = [
-    [gc, ops, '-ea', '-esa']
+jaotc_test_info = {
+    'HelloWorld' : {
+        'type' : 'app',
+        'main' : 'jdk.tools.jaotc.test.HelloWorld'
+    },
+    'java.base' : {
+        'type'    : 'modules',
+        'modules' : ['java.base'],
+        'cp'      : jaotc_classpath,
+        'main'    : 'jdk.tools.jaotc.test.HelloWorld'
+    },
+    'graal-jlink' : {
+        'type'         : 'modules',
+        'main'         : 'jdk.tools.jlink.internal.Main',
+        'modules'      : ['jdk.internal.vm.ci', 'jdk.internal.vm.compiler', 'jdk.internal.vm.compiler.management'],
+        'commands'     : '\n'.join([
+            '# exclude troublesome methods',
+            r'exclude org\.graalvm\.compiler\.replacements\..*',
+            r'exclude org\.graalvm\.compiler\.hotspot\.replacements\..*',
+            r'exclude org\.graalvm\.compiler\.nodes\.java\.DynamicNewArrayNode\.new.*',
+            r'exclude org\.graalvm\.compiler\.nodes\.PiNode\..*',
+            r'exclude org\.graalvm\.compiler\.hotspot\.stubs\.Plugin.*',
+            r'exclude org\.graalvm\.compiler\.hotspot\.stubs\.StubUtil\..*',
+            r'exclude org\.graalvm\.compiler\.hotspot\.nodes\.GraalHotSpotVMConfigNode\..*',
+            r'exclude org\.graalvm\.compiler\..*\.substitutions\..*',
+            'exclude org.graalvm.compiler.nodes.java.NewArrayNode.newUninitializedArray(Ljava/lang/Class;I)Ljava/lang/Object;',
+            'exclude org.graalvm.compiler.nodes.PiNode.piCastNonNull(Ljava/lang/Object;Ljava/lang/Class;)Ljava/lang/Object;',
+            ''
+        ]),
+        'vm_args'      : ['-XX:+UnlockExperimentalVMOptions', '-XX:+UseJVMCICompiler', '-Xcomp'],
+        'program_args' : ['--list-plugins'],
+    },
+    'javac'     : {'type' : 'javac'},
+}
+
+jaotc_common_opts = ['-ea:org.graalvm...']
+
+jaotc_common_gc_compressed = [
+    jaotc_common_opts + [gc, ops]
     for gc in ['-XX:+UseParallelGC', '-XX:+UseG1GC']
     for ops in ['-XX:-UseCompressedOops', '-XX:+UseCompressedOops']
 ]
 
+jaotc_group_config = {
+    'default': {
+        'tests': ['HelloWorld', 'javac', 'graal-jlink', 'java.base'],
+        'class':   jaotc_common_gc_compressed,
+        'javac':   [jaotc_common_opts],
+        'modules': [jaotc_common_opts],
+    },
+    'gate': {
+        'tests': ['HelloWorld', 'javac', 'java.base'],
+        'class':   jaotc_common_gc_compressed,
+        'javac':   [jaotc_common_opts],
+        'modules': [jaotc_common_opts],
+    },
+    'daily': {
+        'tests': ['graal-jlink', 'java.base'],
+        'modules': jaotc_common_gc_compressed,
+    },
+    'stress': {
+        'tests': ['HelloWorld', 'javac', 'graal-jlink', 'java.base'],
+        'class':   jaotc_common_gc_compressed,
+        'javac':   jaotc_common_gc_compressed,
+        'modules': jaotc_common_gc_compressed,
+    },
+}
 
-def test_class(classpath, main_class, program_args=None):
+def test_class(opts_set, classpath, main_class, program_args=None):
     """(jaotc-)Compiles simple HelloWorld program.
     Compares the output vs. standard JVM.
     """
@@ -119,35 +206,44 @@ def test_class(classpath, main_class, program_args=None):
     mx_compiler.run_vm((['-cp', classpath] if classpath else []) +
                        [main_class] + program_args, out=expected_out)
 
-    for common_opts in common_opts_variants:
+    for common_opts in opts_set:
         mx.log('Running {} with {}'.format(main_class, ' '.join(common_opts)))
 
         with mktemp_libfile() as lib_module:
+            lib_module.file.close()
             run_jaotc(['-J' + opt for opt in common_opts] +
                       ['--exit-on-error', '--info', '--output', lib_module.name, main_class],
                       classpath=classpath)
             check_aot(classpath, main_class, common_opts, expected_out.data, lib_module, program_args)
 
-def test_modules(classpath, main_class, modules, program_args=None):
+def test_modules(opts_set, classpath, main_class, modules, vm_args, program_args, commands):
     """(jaotc-)Compiles `modules` and runs `main_class` + AOT library.
     Compares the output vs. standard JVM.
     """
     # Run on vanilla JVM.
     program_args = program_args or []
+    vm_args = vm_args or []
+    commands = commands or ''
     expected_out = mx.OutputCapture()
 
     mx_compiler.run_vm((['-cp', classpath] if classpath else []) +
+                       vm_args +
                        [main_class] + program_args, out=expected_out)
 
     # jaotc uses ':' as separator.
     module_list = ':'.join(modules)
 
-    for common_opts in common_opts_variants:
+    for common_opts in opts_set:
         mx.log('(jaotc) Compiling module(s) {} with {}'.format(module_list, ' '.join(common_opts)))
         with mktemp_libfile() as lib_module:
-            run_jaotc(['-J' + opt for opt in common_opts] +
-                      ['--module', module_list] +
-                      ['--exit-on-error', '--info', '--output', lib_module.name])
+            lib_module.file.close()
+            with tempfile.NamedTemporaryFile(mode='w', prefix='cmds_', suffix='.txt') as cmd_file:
+                cmd_file.write(commands)
+                cmd_file.file.close()
+                run_jaotc(['-J' + opt for opt in common_opts] +
+                          ['--module', module_list] +
+                          ['--compile-commands', cmd_file.name] +
+                          ['--exit-on-error', '--info', '--output', lib_module.name])
 
             check_aot(classpath, main_class, common_opts, expected_out.data, lib_module, program_args)
 
@@ -161,15 +257,16 @@ def collect_java_sources(source_dirs):
     return javafilelist
 
 
-def test_javac(project_name):
+def test_javac(project_name, opts_set):
     """(jaotc-)Compiles the `jdk.compiler` module and compiles (mx) project_name using `javac` (+ AOT module)."""
     # jaotc uses ':' as separator.
     modules = ':'.join(['jdk.compiler'])
-    for common_opts in common_opts_variants:
+    for common_opts in opts_set:
         out_dir = tempfile.mkdtemp()
         try:
             mx.log('(jaotc) Compiling module(s) {} with {}'.format(modules, ' '.join(common_opts)))
             with mktemp_libfile() as lib_module:
+                lib_module.file.close()
                 run_jaotc(['-J' + opt for opt in common_opts] +
                           ['--exit-on-error', '--info', '--module', modules, '--output', lib_module.name])
 
@@ -218,7 +315,7 @@ def check_aot(classpath, main_class, common_opts, expected_output, lib_module, p
 
     # Run main_class+AOT modules and check output.
     aot_out = mx.OutputCapture()
-    mx_compiler.run_vm(common_opts + aot_opts + ['-cp', classpath, main_class] + program_args, out=aot_out)
+    mx_compiler.run_vm(common_opts + aot_opts + (['-cp', classpath] if classpath else []) + [main_class] + program_args, out=aot_out)
 
     if expected_output != aot_out.data:
         mx.abort('Outputs differ, expected `{}` != `{}`'.format(expected_output, aot_out.data))

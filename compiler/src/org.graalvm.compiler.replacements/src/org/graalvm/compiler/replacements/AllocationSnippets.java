@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -71,13 +71,19 @@ public abstract class AllocationSnippets implements Snippets {
         return verifyOop(result);
     }
 
+    /**
+     * In arrays all non-element content is now part of the object header. Previously in Substrate
+     * the object hashcode identity was not part of the header. Instead, the object was filled
+     * starting at an "arrayZeroingOffset". Unfortunately, this was not compatible with other
+     * optimization passes which separate allocation and zeroing, and expect the zeroing to start at
+     * the beginning of the elements.
+     */
     protected Object allocateArrayImpl(Word hub,
                     Word prototypeMarkWord,
                     int length,
-                    int headerSize,
+                    int arrayBaseOffset,
                     int log2ElementSize,
                     boolean fillContents,
-                    int fillStartOffset,
                     boolean emitMemoryBarrier,
                     boolean maybeUnroll,
                     boolean supportsBulkZeroing,
@@ -85,18 +91,18 @@ public abstract class AllocationSnippets implements Snippets {
         Word thread = getTLABInfo();
         Word top = readTlabTop(thread);
         Word end = readTlabEnd(thread);
-        ReplacementsUtil.runtimeAssert(end.subtract(top).belowOrEqual(Integer.MAX_VALUE), "TLAB is too large");
+        ReplacementsUtil.dynamicAssert(end.subtract(top).belowOrEqual(Integer.MAX_VALUE), "TLAB is too large");
 
         // A negative array length will result in an array size larger than the largest possible
         // TLAB. Therefore, this case will always end up in the stub call.
-        UnsignedWord allocationSize = arrayAllocationSize(length, headerSize, log2ElementSize);
+        UnsignedWord allocationSize = arrayAllocationSize(length, arrayBaseOffset, log2ElementSize);
         Word newTop = top.add(allocationSize);
 
         Object result;
         if (useTLAB() && probability(FAST_PATH_PROBABILITY, shouldAllocateInTLAB(allocationSize, true)) && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
             writeTlabTop(thread, newTop);
             emitPrefetchAllocate(newTop, true);
-            result = formatArray(hub, prototypeMarkWord, allocationSize, length, top, fillContents, fillStartOffset, emitMemoryBarrier, maybeUnroll, supportsBulkZeroing,
+            result = formatArray(hub, prototypeMarkWord, allocationSize, length, top, fillContents, arrayBaseOffset, emitMemoryBarrier, maybeUnroll, supportsBulkZeroing,
                             profilingData.snippetCounters);
         } else {
             profilingData.snippetCounters.stub.inc();
@@ -115,17 +121,17 @@ public abstract class AllocationSnippets implements Snippets {
         return callNewMultiArrayStub(hub, rank, dims);
     }
 
-    private UnsignedWord arrayAllocationSize(int length, int headerSize, int log2ElementSize) {
+    private UnsignedWord arrayAllocationSize(int length, int arrayBaseOffset, int log2ElementSize) {
         int alignment = objectAlignment();
-        return WordFactory.unsigned(arrayAllocationSize(length, headerSize, log2ElementSize, alignment));
+        return WordFactory.unsigned(arrayAllocationSize(length, arrayBaseOffset, log2ElementSize, alignment));
     }
 
     /**
      * We do an unsigned multiplication so that a negative array length will result in an array size
      * greater than Integer.MAX_VALUE.
      */
-    public static long arrayAllocationSize(int length, int headerSize, int log2ElementSize, int alignment) {
-        long size = ((length & 0xFFFFFFFFL) << log2ElementSize) + headerSize + (alignment - 1);
+    public static long arrayAllocationSize(int length, int arrayBaseOffset, int log2ElementSize, int alignment) {
+        long size = ((length & 0xFFFFFFFFL) << log2ElementSize) + arrayBaseOffset + (alignment - 1);
         long mask = ~(alignment - 1);
         long result = size & mask;
         return result;
@@ -166,13 +172,13 @@ public abstract class AllocationSnippets implements Snippets {
                     boolean manualUnroll,
                     boolean supportsBulkZeroing,
                     AllocationSnippetCounters snippetCounters) {
-        ReplacementsUtil.runtimeAssert(endOffset.and(0x7).equal(0), "unaligned object size");
+        ReplacementsUtil.dynamicAssert(endOffset.and(0x7).equal(0), "unaligned object size");
         UnsignedWord offset = WordFactory.unsigned(startOffset);
         if (offset.and(0x7).notEqual(0)) {
             memory.writeInt(offset, (int) value, LocationIdentity.init());
             offset = offset.add(4);
         }
-        ReplacementsUtil.runtimeAssert(offset.and(0x7).equal(0), "unaligned offset");
+        ReplacementsUtil.dynamicAssert(offset.and(0x7).equal(0), "unaligned offset");
         UnsignedWord remainingSize = endOffset.subtract(offset);
         if (manualUnroll && remainingSize.unsignedDivide(8).belowOrEqual(MAX_UNROLLED_OBJECT_ZEROING_STORES)) {
             ReplacementsUtil.staticAssert(!isEndOffsetConstant, "size shouldn't be constant at instantiation time");
@@ -259,7 +265,7 @@ public abstract class AllocationSnippets implements Snippets {
                     int length,
                     Word memory,
                     boolean fillContents,
-                    int fillStartOffset,
+                    int arrayBaseOffset,
                     boolean emitMemoryBarrier,
                     boolean maybeUnroll,
                     boolean supportsBulkZeroing,
@@ -269,9 +275,9 @@ public abstract class AllocationSnippets implements Snippets {
         // is not null.
         initializeObjectHeader(memory, hub, prototypeMarkWord, true);
         if (fillContents) {
-            zeroMemory(memory, fillStartOffset, allocationSize, false, maybeUnroll, supportsBulkZeroing, snippetCounters);
+            zeroMemory(memory, arrayBaseOffset, allocationSize, false, maybeUnroll, supportsBulkZeroing, snippetCounters);
         } else if (REPLACEMENTS_ASSERTIONS_ENABLED) {
-            fillWithGarbage(memory, fillStartOffset, allocationSize, false, maybeUnroll, snippetCounters);
+            fillWithGarbage(memory, arrayBaseOffset, allocationSize, false, maybeUnroll, snippetCounters);
         }
         if (emitMemoryBarrier) {
             MembarNode.memoryBarrier(MemoryBarriers.STORE_STORE, LocationIdentity.init());

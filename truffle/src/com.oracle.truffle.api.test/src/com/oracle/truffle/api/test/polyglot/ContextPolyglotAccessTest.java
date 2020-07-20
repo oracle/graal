@@ -97,6 +97,36 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
     }
 
     @Test
+    public void testEmbedderAccessDependent() {
+        setupEnv(Context.newBuilder(ProxyLanguage.ID, DEPENDENT, LANGUAGE1).allowPolyglotAccess(PolyglotAccess.ALL).build());
+        context.initialize(LANGUAGE1);
+
+        Env language1 = Language1.getContext(Language1.class);
+        language1.initializeLanguage(language1.getInternalLanguages().get(DEPENDENT));
+
+        Env dependent = Dependent.getContext(Dependent.class);
+        assertPublicEvalDenied(language1, INTERNAL);
+        assertPublicEvalAllowed(language1, DEPENDENT);
+        assertPublicEvalAllowed(language1, LANGUAGE1);
+        assertPublicEvalDenied(language1, LANGUAGE2);
+
+        assertInternalEvalAllowed(language1, INTERNAL);
+        assertInternalEvalAllowed(language1, DEPENDENT);
+        assertInternalEvalAllowed(language1, LANGUAGE1);
+        assertInternalEvalDenied(language1, LANGUAGE2);
+
+        assertPublicEvalDenied(dependent, INTERNAL);
+        assertPublicEvalAllowed(dependent, DEPENDENT);
+        assertPublicEvalAllowed(dependent, LANGUAGE1);
+        assertPublicEvalDenied(dependent, LANGUAGE2);
+
+        assertInternalEvalAllowed(dependent, INTERNAL);
+        assertInternalEvalAllowed(dependent, DEPENDENT);
+        assertInternalEvalAllowed(dependent, LANGUAGE1);
+        assertInternalEvalDenied(dependent, LANGUAGE2);
+    }
+
+    @Test
     public void testNotExistingEmbedder() {
         setupEnv(Context.newBuilder(ProxyLanguage.ID, LANGUAGE1, NOT_EXISTING_LANGUAGE).allowPolyglotAccess(PolyglotAccess.ALL).build());
         context.initialize(LANGUAGE1);
@@ -586,22 +616,22 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
     public void testCustomPolyglotEvalErrors() {
         PolyglotAccess.Builder builder = PolyglotAccess.newBuilder();
 
-        ValueAssert.assertFails(() -> builder.allowEval(null, ""), NullPointerException.class);
-        ValueAssert.assertFails(() -> builder.allowEval("", null), NullPointerException.class);
-        ValueAssert.assertFails(() -> builder.denyEval(null, ""), NullPointerException.class);
-        ValueAssert.assertFails(() -> builder.denyEval("", null), NullPointerException.class);
-        ValueAssert.assertFails(() -> builder.allowEvalBetween((String[]) null), NullPointerException.class);
-        ValueAssert.assertFails(() -> builder.denyEvalBetween((String[]) null), NullPointerException.class);
-        ValueAssert.assertFails(() -> builder.allowEvalBetween((String) null), NullPointerException.class);
-        ValueAssert.assertFails(() -> builder.denyEvalBetween((String) null), NullPointerException.class);
+        assertFails(() -> builder.allowEval(null, ""), NullPointerException.class);
+        assertFails(() -> builder.allowEval("", null), NullPointerException.class);
+        assertFails(() -> builder.denyEval(null, ""), NullPointerException.class);
+        assertFails(() -> builder.denyEval("", null), NullPointerException.class);
+        assertFails(() -> builder.allowEvalBetween((String[]) null), NullPointerException.class);
+        assertFails(() -> builder.denyEvalBetween((String[]) null), NullPointerException.class);
+        assertFails(() -> builder.allowEvalBetween((String) null), NullPointerException.class);
+        assertFails(() -> builder.denyEvalBetween((String) null), NullPointerException.class);
 
         PolyglotAccess access = PolyglotAccess.newBuilder().allowEval(NOT_EXISTING_LANGUAGE, LANGUAGE1).build();
         Context.Builder cBuilder = Context.newBuilder().allowPolyglotAccess(access);
-        ValueAssert.assertFails(() -> cBuilder.build(), IllegalArgumentException.class);
+        assertFails(() -> cBuilder.build(), IllegalArgumentException.class);
 
         access = PolyglotAccess.newBuilder().allowEval(LANGUAGE1, LANGUAGE2).build();
         Context.Builder cBuilder2 = Context.newBuilder(LANGUAGE2).allowPolyglotAccess(access);
-        ValueAssert.assertFails(() -> cBuilder2.build(), IllegalArgumentException.class,
+        AbstractPolyglotTest.assertFails(() -> cBuilder2.build(), IllegalArgumentException.class,
                         (e) -> assertEquals("Language '" + LANGUAGE1 + "' configured in polyglot evaluation rule " + LANGUAGE1 + " -> " + LANGUAGE2 + " is not installed or available.",
                                         e.getMessage()));
     }
@@ -610,11 +640,11 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
     public void testCustomPolyglotBindingsErrors() {
         PolyglotAccess.Builder builder = PolyglotAccess.newBuilder();
 
-        ValueAssert.assertFails(() -> builder.allowBindingsAccess(null), NullPointerException.class);
+        assertFails(() -> builder.allowBindingsAccess(null), NullPointerException.class);
 
         PolyglotAccess access = PolyglotAccess.newBuilder().allowBindingsAccess(NOT_EXISTING_LANGUAGE).build();
         Context.Builder cBuilder = Context.newBuilder().allowPolyglotAccess(access);
-        ValueAssert.assertFails(() -> cBuilder.build(), IllegalArgumentException.class,
+        AbstractPolyglotTest.assertFails(() -> cBuilder.build(), IllegalArgumentException.class,
                         (e) -> assertEquals("Language '" + NOT_EXISTING_LANGUAGE + "' configured in polyglot bindings access rule is not installed or available.", e.getMessage()));
     }
 

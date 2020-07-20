@@ -32,10 +32,15 @@ import java.io.InputStream;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.jar.JarEntry;
@@ -207,17 +212,40 @@ public final class ResourcesFeature implements Feature {
     private static void scanJar(DebugContext debugContext, File element, Pattern... patterns) throws IOException {
         JarFile jf = new JarFile(element);
         Enumeration<JarEntry> en = jf.entries();
+
+        Map<String, List<String>> matchedDirectoryResources = new HashMap<>();
+        Set<String> allEntries = new HashSet<>();
         while (en.hasMoreElements()) {
             JarEntry e = en.nextElement();
-            if (e.getName().endsWith("/")) {
+            if (e.isDirectory()) {
+                String dirName = e.getName().substring(0, e.getName().length() - 1);
+                allEntries.add(dirName);
+                if (matches(patterns, dirName)) {
+                    matchedDirectoryResources.put(dirName, new ArrayList<>());
+                }
                 continue;
             }
+            allEntries.add(e.getName());
             if (matches(patterns, e.getName())) {
                 try (InputStream is = jf.getInputStream(e)) {
                     registerResource(debugContext, e.getName(), is);
                 }
             }
         }
+
+        for (String entry : allEntries) {
+            int last = entry.lastIndexOf('/');
+            String key = last == -1 ? "" : entry.substring(0, last);
+            List<String> dirContent = matchedDirectoryResources.get(key);
+            if (dirContent != null && !dirContent.contains(entry)) {
+                dirContent.add(entry.substring(last + 1, entry.length()));
+            }
+        }
+
+        matchedDirectoryResources.forEach((dir, content) -> {
+            content.sort(Comparator.naturalOrder());
+            registerDirectoryResource(debugContext, dir, String.join(System.lineSeparator(), content));
+        });
     }
 
     private static boolean matches(Pattern[] patterns, String relativePath) {
@@ -234,6 +262,14 @@ public final class ResourcesFeature implements Feature {
         try (DebugContext.Scope s = debugContext.scope("registerResource")) {
             debugContext.log(DebugContext.VERBOSE_LEVEL, "ResourcesFeature: registerResource: " + resourceName);
             Resources.registerResource(resourceName, resourceStream);
+        }
+    }
+
+    @SuppressWarnings("try")
+    private static void registerDirectoryResource(DebugContext debugContext, String dir, String content) {
+        try (DebugContext.Scope s = debugContext.scope("registerResource")) {
+            debugContext.log(DebugContext.VERBOSE_LEVEL, "ResourcesFeature: registerResource: " + dir);
+            Resources.registerDirectoryResource(dir, content);
         }
     }
 }

@@ -24,14 +24,48 @@
  */
 package com.oracle.svm.core.posix;
 
-import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.posix.headers.Signal.ucontext_t;
 import org.graalvm.word.PointerBase;
 
-public interface UContextRegisterDumper {
+import com.oracle.svm.core.RegisterDumper;
+import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.posix.headers.Signal.ucontext_t;
+
+public interface UContextRegisterDumper extends RegisterDumper {
     void dumpRegisters(Log log, ucontext_t uContext);
 
     PointerBase getHeapBase(ucontext_t uContext);
 
     PointerBase getThreadPointer(ucontext_t uContext);
+
+    PointerBase getSP(ucontext_t uContext);
+
+    PointerBase getIP(ucontext_t uContext);
+
+    @Override
+    default void dumpRegisters(Log log, Context context) {
+        dumpRegisters(log, (ucontext_t) context);
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    default PointerBase getHeapBase(Context context) {
+        return getHeapBase((ucontext_t) context);
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    default PointerBase getThreadPointer(Context context) {
+        return getThreadPointer((ucontext_t) context);
+    }
+
+    @Override
+    default PointerBase getSP(Context context) {
+        return getSP((ucontext_t) context);
+    }
+
+    @Override
+    default PointerBase getIP(Context context) {
+        return getIP((ucontext_t) context);
+    }
 }

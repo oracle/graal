@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,11 +25,13 @@
 
 package jdk.tools.jaotc;
 
+import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.hotspot.HotSpotMarkId;
+
 import jdk.tools.jaotc.binformat.BinaryContainer;
 import jdk.tools.jaotc.binformat.Relocation;
 import jdk.tools.jaotc.binformat.Relocation.RelocType;
 import jdk.tools.jaotc.binformat.Symbol;
-
 import jdk.vm.ci.code.site.Mark;
 
 final class MarkProcessor {
@@ -48,8 +50,8 @@ final class MarkProcessor {
      * @param mark mark being processed
      */
     @SuppressWarnings("fallthrough")
-    void process(CompiledMethodInfo methodInfo, Mark mark) {
-        MarkId markId = MarkId.getEnum((int) mark.id);
+    void process(CompiledMethodInfo methodInfo, CompilationResult.CodeMark mark) {
+        HotSpotMarkId markId = (HotSpotMarkId) mark.id;
         switch (markId) {
             case EXCEPTION_HANDLER_ENTRY:
             case DEOPT_HANDLER_ENTRY:
@@ -62,13 +64,10 @@ final class MarkProcessor {
                 }
                 // fallthrough
             case CARD_TABLE_ADDRESS:
-            case HEAP_TOP_ADDRESS:
-            case HEAP_END_ADDRESS:
             case NARROW_KLASS_BASE_ADDRESS:
             case NARROW_OOP_BASE_ADDRESS:
             case CRC_TABLE_ADDRESS:
             case LOG_OF_HEAP_REGION_GRAIN_BYTES:
-            case INLINE_CONTIGUOUS_ALLOCATION_SUPPORTED:
                 String vmSymbolName;
                 switch (markId) {
                     case POLL_FAR:
@@ -77,12 +76,6 @@ final class MarkProcessor {
                         break;
                     case CARD_TABLE_ADDRESS:
                         vmSymbolName = BinaryContainer.getCardTableAddressSymbolName();
-                        break;
-                    case HEAP_TOP_ADDRESS:
-                        vmSymbolName = BinaryContainer.getHeapTopAddressSymbolName();
-                        break;
-                    case HEAP_END_ADDRESS:
-                        vmSymbolName = BinaryContainer.getHeapEndAddressSymbolName();
                         break;
                     case NARROW_KLASS_BASE_ADDRESS:
                         vmSymbolName = BinaryContainer.getNarrowKlassBaseAddressSymbolName();
@@ -95,9 +88,6 @@ final class MarkProcessor {
                         break;
                     case LOG_OF_HEAP_REGION_GRAIN_BYTES:
                         vmSymbolName = BinaryContainer.getLogOfHeapRegionGrainBytesSymbolName();
-                        break;
-                    case INLINE_CONTIGUOUS_ALLOCATION_SUPPORTED:
-                        vmSymbolName = BinaryContainer.getInlineContiguousAllocationSupportedSymbolName();
                         break;
                     default:
                         throw new InternalError("Unhandled mark: " + mark);
@@ -113,6 +103,7 @@ final class MarkProcessor {
             case VERIFIED_ENTRY:
             case UNVERIFIED_ENTRY:
             case OSR_ENTRY:
+            case FRAME_COMPLETE:
             case INVOKEINTERFACE:
             case INVOKEVIRTUAL:
             case INVOKESTATIC:

@@ -285,9 +285,6 @@ public final class RuleNode {
                 inheritedInclusion = current.descendantsInclusion;
             }
             String part = tokenizer.nextToken();
-            if (part.indexOf('*') != -1) {
-                throw new IllegalArgumentException("Patterns are not allowed for querying");
-            }
             RuleNode child = (current.children != null) ? current.children.get(part) : null;
             if (child == null) {
                 boolean isDirectChild = !tokenizer.hasMoreTokens();

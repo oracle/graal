@@ -59,6 +59,7 @@ import com.oracle.svm.core.util.VMError;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.code.StackLockValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.code.VirtualObject;
@@ -321,9 +322,24 @@ public class FrameInfoEncoder {
         }
     }
 
-    private ValueInfo makeValueInfo(FrameData data, JavaKind kind, JavaValue value, boolean isDeoptEntry) {
+    private ValueInfo makeValueInfo(FrameData data, JavaKind kind, JavaValue v, boolean isDeoptEntry) {
+        JavaValue value = v;
+
         ValueInfo result = new ValueInfo();
         result.kind = kind;
+
+        if (value instanceof StackLockValue) {
+            StackLockValue lock = (StackLockValue) value;
+            assert ValueUtil.isIllegal(lock.getSlot());
+            if (isDeoptEntry && lock.isEliminated()) {
+                throw VMError.shouldNotReachHere("Cannot have an eliminated monitor in a deoptimization entry point: value " + value + " in method " +
+                                data.debugInfo.getBytecodePosition().getMethod().format("%H.%n(%p)"));
+            }
+
+            result.isEliminatedMonitor = lock.isEliminated();
+            value = lock.getOwner();
+        }
+
         if (ValueUtil.isIllegalJavaValue(value)) {
             result.type = ValueType.Illegal;
             assert result.kind == JavaKind.Illegal;
@@ -616,7 +632,7 @@ public class FrameInfoEncoder {
                 }
             }
 
-            encodingBuffer.putU1(encodeFlags(valueInfo.type, valueInfo.kind, valueInfo.isCompressedReference));
+            encodingBuffer.putU1(encodeFlags(valueInfo.type, valueInfo.kind, valueInfo.isCompressedReference, valueInfo.isEliminatedMonitor));
             if (valueInfo.type.hasData) {
                 encodingBuffer.putSV(valueInfo.data);
             }
@@ -634,8 +650,13 @@ public class FrameInfoEncoder {
         }
     }
 
-    private static int encodeFlags(ValueType type, JavaKind kind, boolean isCompressedReference) {
-        return (type.ordinal() << FrameInfoDecoder.TYPE_SHIFT) | (kind.ordinal() << FrameInfoDecoder.KIND_SHIFT) | ((isCompressedReference ? 1 : 0) << FrameInfoDecoder.IS_COMPRESSED_REFERENCE_SHIFT);
+    private static int encodeFlags(ValueType type, JavaKind kind, boolean isCompressedReference, boolean isEliminatedMonitor) {
+        int kindIndex = isEliminatedMonitor ? FrameInfoDecoder.IS_ELIMINATED_MONITOR_KIND_VALUE : kind.ordinal();
+        assert FrameInfoDecoder.KIND_VALUES[kindIndex] == kind;
+
+        return (type.ordinal() << FrameInfoDecoder.TYPE_SHIFT) |
+                        (kindIndex << FrameInfoDecoder.KIND_SHIFT) |
+                        ((isCompressedReference ? 1 : 0) << FrameInfoDecoder.IS_COMPRESSED_REFERENCE_SHIFT);
     }
 
     /**
@@ -706,6 +727,7 @@ class FrameInfoVerifier {
             assert expectedValue.type == actualValue.type;
             assert expectedValue.kind.equals(actualValue.kind);
             assert expectedValue.isCompressedReference == actualValue.isCompressedReference;
+            assert expectedValue.isEliminatedMonitor == actualValue.isEliminatedMonitor;
             assert expectedValue.data == actualValue.data;
             verifyConstant(expectedValue.value, actualValue.value);
             assert Objects.equals(expectedValue.name, actualValue.name);

@@ -1,4 +1,4 @@
-import_export_memory/main;man-in-the-middle
+import_export_memory/main;man-in-the-middle;memory
 import_export_functions/main;friend;man-in-the-middle
 import_export_table/main;man-in-the-middle;table-registry
 import_export_globals/main;man-in-the-middle;runtime

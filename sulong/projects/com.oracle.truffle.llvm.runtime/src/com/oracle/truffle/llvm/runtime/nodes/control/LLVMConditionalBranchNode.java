@@ -112,5 +112,10 @@ public abstract class LLVMConditionalBranchNode extends LLVMControlFlowNode {
         public boolean doCondition(boolean condition) {
             return condition;
         }
+
+        @Override
+        public int[] getSuccessors() {
+            return new int[]{getTrueSuccessor(), getFalseSuccessor()};
+        }
     }
 }

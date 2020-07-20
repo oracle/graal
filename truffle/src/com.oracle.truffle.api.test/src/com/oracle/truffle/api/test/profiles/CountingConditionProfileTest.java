@@ -64,7 +64,7 @@ public class CountingConditionProfileTest {
 
     @Before
     public void create() {
-        profile = (ConditionProfile) invokeStatic(loadRelative(CountingConditionProfileTest.class, "ConditionProfile$Counting"), "create");
+        profile = (ConditionProfile) invokeStatic(loadRelative(CountingConditionProfileTest.class, "ConditionProfile$Counting"), "createLazyLoadClass");
     }
 
     private static int getTrueCount(ConditionProfile profile) {

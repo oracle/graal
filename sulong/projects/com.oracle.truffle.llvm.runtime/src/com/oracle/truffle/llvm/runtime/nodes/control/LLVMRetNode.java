@@ -72,6 +72,11 @@ public abstract class LLVMRetNode extends LLVMControlFlowNode {
         return 1;
     }
 
+    @Override
+    public final int[] getSuccessors() {
+        return new int[]{LLVMBasicBlockNode.RETURN_FROM_FUNCTION};
+    }
+
     public int getSuccessor() {
         return LLVMBasicBlockNode.RETURN_FROM_FUNCTION;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,6 +33,6 @@
 __attribute__((visibility("hidden"))) int globalA = 13;
 
 __attribute__((visibility("hidden"))) int methodA(int a, int b) {
-  printf("HiddenA\n");
-  return a * b + globalA;
+    printf("HiddenA\n");
+    return a * b + globalA;
 }

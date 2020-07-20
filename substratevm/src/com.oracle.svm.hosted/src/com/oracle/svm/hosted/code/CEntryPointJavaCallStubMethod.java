@@ -27,8 +27,10 @@ package com.oracle.svm.hosted.code;
 import java.lang.annotation.Annotation;
 import java.util.List;
 
+import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
@@ -83,7 +85,7 @@ public class CEntryPointJavaCallStubMethod extends CCallStubMethod {
             BoxedRelocatedPointer box = new BoxedRelocatedPointer(target);
             ConstantNode boxNode = kit.createObject(box);
             ResolvedJavaField field = providers.getMetaAccess().lookupJavaField(BoxedRelocatedPointer.class.getDeclaredField("pointer"));
-            return kit.createLoadField(boxNode, field);
+            return kit.append(LoadFieldNode.createOverrideStamp(StampPair.createSingle(kit.wordStamp((ResolvedJavaType) field.getType())), boxNode, field));
         } catch (NoSuchFieldException e) {
             throw VMError.shouldNotReachHere(e);
         }

@@ -42,7 +42,10 @@ package com.oracle.truffle.object.dsl.processor;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.VariableElement;
@@ -743,7 +746,7 @@ public class LayoutGenerator {
             }
 
             if (property.hasGetter()) {
-                addUncheckedCastWarning(stream, property);
+                addSuppressWarningsUncheckedCast(stream, property);
                 stream.println("    @Override");
                 stream.printf("    public %s %s(DynamicObject object) {%n", property.getType(), NameUtils.asGetter(property.getName()));
                 stream.printf("        assert is%s(object);%n", layout.getName());
@@ -773,6 +776,7 @@ public class LayoutGenerator {
             }
 
             if (property.hasShapeSetter()) {
+                addSuppressWarnings(stream, Collections.singleton("deprecation"));
                 stream.println("    @TruffleBoundary");
                 stream.println("    @Override");
                 stream.printf("    public DynamicObjectFactory %s(DynamicObjectFactory factory, %s value) {%n", NameUtils.asSetter(property.getName()), property.getType());
@@ -784,7 +788,7 @@ public class LayoutGenerator {
             }
 
             if (property.hasSetter() || property.hasUnsafeSetter()) {
-                addUncheckedCastWarning(stream, property);
+                addSuppressWarningsForSetter(stream, property);
                 if (property.isShapeProperty()) {
                     stream.println("    @TruffleBoundary");
                 }
@@ -840,7 +844,7 @@ public class LayoutGenerator {
             }
 
             if (property.hasCompareAndSet()) {
-                addUncheckedCastWarning(stream, property);
+                addSuppressWarningsUncheckedCast(stream, property);
 
                 stream.println("    @Override");
                 stream.printf("    public boolean %s(DynamicObject object, %s expected_value, %s value) {%n",
@@ -875,7 +879,7 @@ public class LayoutGenerator {
             }
 
             if (property.hasGetAndSet()) {
-                addUncheckedCastWarning(stream, property);
+                addSuppressWarningsUncheckedCast(stream, property);
 
                 stream.println("    @Override");
                 stream.printf("    public %s %s(DynamicObject object, %s value) {%n",
@@ -925,10 +929,30 @@ public class LayoutGenerator {
         }
     }
 
-    private static void addUncheckedCastWarning(final PrintStream stream, PropertyModel property) {
-        if (property.getType().toString().indexOf('<') != -1 ||
-                        (property.isVolatile() && !property.getType().getKind().isPrimitive())) {
-            stream.println("    @SuppressWarnings(\"unchecked\")");
+    private static boolean needsUncheckedCast(PropertyModel property) {
+        return property.getType().toString().indexOf('<') != -1 || (property.isVolatile() && !property.getType().getKind().isPrimitive());
+    }
+
+    private static void addSuppressWarningsUncheckedCast(final PrintStream stream, PropertyModel property) {
+        if (needsUncheckedCast(property)) {
+            addSuppressWarnings(stream, Collections.singleton("unchecked"));
+        }
+    }
+
+    private static void addSuppressWarningsForSetter(final PrintStream stream, PropertyModel property) {
+        Collection<String> warnings = new ArrayList<>(2);
+        if (needsUncheckedCast(property)) {
+            warnings.add("unchecked");
+        }
+        if (property.hasUnsafeSetter() || property.isShapeProperty()) {
+            warnings.add("deprecation");
+        }
+        addSuppressWarnings(stream, warnings);
+    }
+
+    private static void addSuppressWarnings(final PrintStream stream, Collection<String> warnings) {
+        if (!warnings.isEmpty()) {
+            stream.printf("    @SuppressWarnings({%s})\n", warnings.stream().map(s -> '\"' + s + '\"').collect(Collectors.joining(", ")));
         }
     }
 

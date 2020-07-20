@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,12 +30,10 @@ import java.util.Objects;
 /**
  * A literal to identify a text document in the client.
  */
-public class TextDocumentIdentifier {
-
-    final JSONObject jsonData;
+public class TextDocumentIdentifier extends JSONBase {
 
     TextDocumentIdentifier(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -71,7 +69,7 @@ public class TextDocumentIdentifier {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 59 * hash + Objects.hashCode(this.getUri());
+        hash = 79 * hash + Objects.hashCode(this.getUri());
         return hash;
     }
 

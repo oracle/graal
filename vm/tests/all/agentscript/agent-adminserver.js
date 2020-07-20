@@ -1,6 +1,6 @@
 /* global agent */
 
-function initializeAgent(agent, require) {
+function initializeInsight(insight, require) {
     const http = require("http");
     const srv = http.createServer((req, res) => {
         let method = req.method;
@@ -10,10 +10,10 @@ function initializeAgent(agent, require) {
                 data += chunk.toString();
             });
             req.on('end', () => {
-                const fn = new Function('agent', data);
+                const fn = new Function('insight', data);
                 try {
-                    fn(agent);
-                    res.write('T-Trace hook activated\n');
+                    fn(insight);
+                    res.write('GraalVM Insight hook activated\n');
                 } finally {
                     res.end();
                 }
@@ -26,10 +26,10 @@ function initializeAgent(agent, require) {
 
 let waitForRequire = function (event) {
   if (typeof process === 'object' && process.mainModule && process.mainModule.require) {
-    agent.off('source', waitForRequire);
-    initializeAgent(agent, process.mainModule.require.bind(process.mainModule));
+    insight.off('source', waitForRequire);
+    initializeInsight(insight, process.mainModule.require.bind(process.mainModule));
   }
 };
 
-agent.on('source', waitForRequire, { roots: true });
+insight.on('source', waitForRequire, { roots: true });
 

@@ -29,17 +29,21 @@ import static com.oracle.svm.hosted.classinitialization.InitKind.RERUN;
 import static com.oracle.svm.hosted.classinitialization.InitKind.RUN_TIME;
 import static com.oracle.svm.hosted.classinitialization.InitKind.SEPARATOR;
 
-import java.lang.reflect.Modifier;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
 import org.graalvm.collections.Pair;
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.debug.DebugHandlersFactory;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.util.Providers;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -50,27 +54,28 @@ import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.hub.ClassInitializationInfo;
+import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
+import com.oracle.svm.core.classinitialization.EnsureClassInitializedSnippets;
+import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
+import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
+import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.meta.MethodPointer;
-import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
-
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 @AutomaticFeature
-public class ClassInitializationFeature implements Feature {
+public class ClassInitializationFeature implements GraalFeature {
 
     private ClassInitializationSupport classInitializationSupport;
-    private AnalysisMethod ensureInitializedMethod;
     private AnalysisUniverse universe;
     private AnalysisMetaAccess metaAccess;
 
@@ -132,6 +137,7 @@ public class ClassInitializationFeature implements Feature {
     }
 
     public static void processClassInitializationOptions(ClassInitializationSupport initializationSupport) {
+        initializeNativeImagePackagesAtBuildTime(initializationSupport);
         String[] initializationInfo = Options.ClassInitialization.getValue();
         for (String infos : initializationInfo) {
             for (String info : infos.split(",")) {
@@ -145,6 +151,20 @@ public class ClassInitializationFeature implements Feature {
                 elementType.getRight().stringConsumer(initializationSupport).accept(elementType.getLeft());
             }
         }
+    }
+
+    private static void initializeNativeImagePackagesAtBuildTime(ClassInitializationSupport initializationSupport) {
+        initializationSupport.initializeAtBuildTime("com.oracle.svm", "Native Image classes are always initialized at build time");
+        initializationSupport.initializeAtBuildTime("com.oracle.graal", "Native Image classes are always initialized at build time");
+
+        initializationSupport.initializeAtBuildTime("org.graalvm.collections", "Native Image classes are always initialized at build time");
+        initializationSupport.initializeAtBuildTime("org.graalvm.compiler", "Native Image classes are always initialized at build time");
+        initializationSupport.initializeAtBuildTime("org.graalvm.word", "Native Image classes are always initialized at build time");
+        initializationSupport.initializeAtBuildTime("org.graalvm.nativeimage", "Native Image classes are always initialized at build time");
+        initializationSupport.initializeAtBuildTime("org.graalvm.util", "Native Image classes are always initialized at build time");
+        initializationSupport.initializeAtBuildTime("org.graalvm.home", "Native Image classes are always initialized at build time");
+        initializationSupport.initializeAtBuildTime("org.graalvm.polyglot", "Native Image classes are always initialized at build time");
+        initializationSupport.initializeAtBuildTime("org.graalvm.options", "Native Image classes are always initialized at build time");
     }
 
     @Override
@@ -176,6 +196,26 @@ public class ClassInitializationFeature implements Feature {
     }
 
     @Override
+    public void beforeAnalysis(BeforeAnalysisAccess a) {
+        BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
+        for (SnippetRuntime.SubstrateForeignCallDescriptor descriptor : EnsureClassInitializedSnippets.FOREIGN_CALLS) {
+            access.getBigBang().addRootMethod((AnalysisMethod) descriptor.findMethod(access.getMetaAccess()));
+        }
+    }
+
+    @Override
+    public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection, SubstrateForeignCallsProvider foreignCalls, boolean hosted) {
+        foreignCalls.register(providers, EnsureClassInitializedSnippets.FOREIGN_CALLS);
+    }
+
+    @Override
+    @SuppressWarnings("unused")
+    public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
+                    SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
+        EnsureClassInitializedSnippets.registerLowerings(options, factories, providers, snippetReflection, lowerings);
+    }
+
+    @Override
     public void duringAnalysis(DuringAnalysisAccess a) {
         FeatureImpl.DuringAnalysisAccessImpl access = (FeatureImpl.DuringAnalysisAccessImpl) a;
 
@@ -197,11 +237,6 @@ public class ClassInitializationFeature implements Feature {
         }
     }
 
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        ensureInitializedMethod = ((FeatureImpl.BeforeAnalysisAccessImpl) access).getBigBang().getMetaAccess().lookupJavaMethod(SubstrateClassInitializationPlugin.ENSURE_INITIALIZED_METHOD);
-    }
-
     /**
      * Initializes classes that can be proven safe and prints class initialization statistics.
      */
@@ -213,10 +248,9 @@ public class ClassInitializationFeature implements Feature {
             classInitializationSupport.setUnsupportedFeatures(null);
 
             String path = Paths.get(Paths.get(SubstrateOptions.Path.getValue()).toString(), "reports").toAbsolutePath().toString();
-            assert ensureInitializedMethod != null;
             assert classInitializationSupport.checkDelayedInitialization();
 
-            TypeInitializerGraph initGraph = new TypeInitializerGraph(universe, ensureInitializedMethod);
+            TypeInitializerGraph initGraph = new TypeInitializerGraph(universe);
             initGraph.computeInitializerSafety();
 
             Set<AnalysisType> provenSafe = initializeSafeDelayedClasses(initGraph);
@@ -278,7 +312,7 @@ public class ClassInitializationFeature implements Feature {
         classInitializationSupport.classesWithKind(RUN_TIME).stream()
                         .filter(t -> metaAccess.optionalLookupJavaType(t).isPresent())
                         .filter(t -> metaAccess.lookupJavaType(t).isInTypeCheck())
-                        .filter(t -> classInitializationSupport.specifiedInitKindFor(t) == null)
+                        .filter(t -> classInitializationSupport.canBeProvenSafe(t))
                         .forEach(c -> {
                             AnalysisType type = metaAccess.lookupJavaType(c);
                             if (!initGraph.isUnsafe(type)) {
@@ -306,79 +340,48 @@ public class ClassInitializationFeature implements Feature {
     }
 
     private void buildClassInitializationInfo(FeatureImpl.DuringAnalysisAccessImpl access, AnalysisType type, DynamicHub hub) {
-        ClassInitializationInfo info = null;
+        ClassInitializationInfo info;
         if (classInitializationSupport.shouldInitializeAtRuntime(type)) {
-            assert !type.isInitialized();
-            AnalysisMethod classInitializer = type.getClassInitializer();
-            if (type.isLinked()) {
-                if (classInitializer != null) {
-                    assert classInitializer.getCode() != null;
-                    access.registerAsCompiled(classInitializer);
-                }
-                info = new ClassInitializationInfo(MethodPointer.factory(classInitializer));
-            } else {
-                try {
-                    /*
-                     * Workaround to force linking the type which is not provided by the JVMCI API.
-                     * This throws verification errors even if linking was attempted and had failed
-                     * beforehand
-                     */
-                    type.getDeclaredConstructors();
-                    type.getDeclaredMethods();
-                } catch (VerifyError e) {
-                    /* Synthesize a VerifyError to be thrown at run time. */
-                    AnalysisMethod throwVerifyError = access.getMetaAccess().lookupJavaMethod(ExceptionSynthesizer.throwVerifyErrorMethod);
-                    access.registerAsCompiled(throwVerifyError);
-                    info = new ClassInitializationInfo(MethodPointer.factory(throwVerifyError));
-                } catch (Throwable t) {
-                    // silently ignore other errors
-                }
-
-                if (info == null) {
-                    /*
-                     * The type failed to link due to verification issues triggered by missing
-                     * types.
-                     */
-                    assert classInitializer == null || classInitializer.getCode() == null;
-                    info = ClassInitializationInfo.FAILED_INFO_SINGLETON;
-                }
-            }
+            info = buildRuntimeInitializationInfo(access, type);
         } else {
             assert type.isInitialized();
             info = ClassInitializationInfo.INITIALIZED_INFO_SINGLETON;
         }
-
-        hub.setClassInitializationInfo(info, hasDefaultMethods(type), declaresDefaultMethods(type));
+        hub.setClassInitializationInfo(info, type.hasDefaultMethods(), type.declaresDefaultMethods());
     }
 
-    private static boolean hasDefaultMethods(ResolvedJavaType type) {
-        if (!type.isInterface() && type.getSuperclass() != null && hasDefaultMethods(type.getSuperclass())) {
-            return true;
-        }
-        for (ResolvedJavaType iface : type.getInterfaces()) {
-            if (hasDefaultMethods(iface)) {
-                return true;
-            }
-        }
-        return declaresDefaultMethods(type);
-    }
+    private static ClassInitializationInfo buildRuntimeInitializationInfo(FeatureImpl.DuringAnalysisAccessImpl access, AnalysisType type) {
+        assert !type.isInitialized();
+        try {
+            /*
+             * Check if there are any linking errors. This method throws an error even if linking
+             * already failed in a previous attempt.
+             */
+            type.link();
 
-    static boolean declaresDefaultMethods(ResolvedJavaType type) {
-        if (!type.isInterface()) {
-            /* Only interfaces can declare default methods. */
-            return false;
+        } catch (VerifyError e) {
+            /* Synthesize a VerifyError to be thrown at run time. */
+            AnalysisMethod throwVerifyError = access.getMetaAccess().lookupJavaMethod(ExceptionSynthesizer.throwVerifyErrorMethod);
+            access.registerAsCompiled(throwVerifyError);
+            return new ClassInitializationInfo(MethodPointer.factory(throwVerifyError));
+        } catch (Throwable t) {
+            /*
+             * All other linking errors will be reported as NoClassDefFoundError when initialization
+             * is attempted at run time.
+             */
+            return ClassInitializationInfo.FAILED_INFO_SINGLETON;
         }
+
         /*
-         * We call getDeclaredMethods() directly on the wrapped type. We avoid calling it on the
-         * AnalysisType because it resolves all the methods in the AnalysisUniverse.
+         * Now we now that there are no linking errors, we can register the class initialization
+         * information.
          */
-        for (ResolvedJavaMethod method : Inflation.toWrappedType(type).getDeclaredMethods()) {
-            if (method.isDefault()) {
-                assert !Modifier.isStatic(method.getModifiers()) : "Default method that is static?";
-                return true;
-            }
+        assert type.isLinked();
+        AnalysisMethod classInitializer = type.getClassInitializer();
+        if (classInitializer != null) {
+            assert classInitializer.getCode() != null;
+            access.registerAsCompiled(classInitializer);
         }
-        return false;
+        return new ClassInitializationInfo(MethodPointer.factory(classInitializer));
     }
-
 }

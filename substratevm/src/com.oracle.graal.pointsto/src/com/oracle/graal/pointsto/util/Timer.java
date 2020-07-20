@@ -32,8 +32,12 @@ public class Timer {
 
     private final String name;
     private final boolean autoPrint;
+    /** Timer start time in nanoseconds. */
     private long startTime;
+    /** Timer total time in nanoseconds. */
     private long totalTime;
+    /** Total VM memory in bytes recorded when the timer is printed. */
+    private long totalMemory;
 
     public Timer(String name) {
         this(null, name, true);
@@ -83,12 +87,23 @@ public class Timer {
         } else {
             concurrentPrefix = "";
         }
-        final double heap = Runtime.getRuntime().totalMemory() / 1024.0 / 1024.0 / 1024.0;
-        System.out.format("%s%12s: %,10.2f ms, %,5.2f GB%n", concurrentPrefix, name, time / 1000000d, heap);
+        totalMemory = Runtime.getRuntime().totalMemory();
+        double totalMemoryGB = totalMemory / 1024.0 / 1024.0 / 1024.0;
+        System.out.format("%s%12s: %,10.2f ms, %,5.2f GB%n", concurrentPrefix, name, time / 1000000d, totalMemoryGB);
     }
 
     public void print() {
         print(totalTime);
+    }
+
+    /** Get timer total time in milliseconds. */
+    public double getTotalTime() {
+        return totalTime / 1000000d;
+    }
+
+    /** Get total VM memory in bytes. */
+    public long getTotalMemory() {
+        return totalMemory;
     }
 
     public class StopTimer implements AutoCloseable {

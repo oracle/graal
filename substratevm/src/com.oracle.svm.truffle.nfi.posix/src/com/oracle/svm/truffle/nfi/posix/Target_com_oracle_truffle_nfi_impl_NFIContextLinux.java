@@ -43,7 +43,7 @@ final class Target_com_oracle_truffle_nfi_impl_NFIContextLinux {
 
     static class IsolatedAccessor {
         static int getISOLATED_NAMESPACE(@SuppressWarnings("unused") Target_com_oracle_truffle_nfi_impl_NFIContextLinux ctx) {
-            return PosixTruffleNFISupport.ISOLATED_NAMESPACE_FLAG;
+            return PosixTruffleNFISupport.isolatedNamespaceFlag;
         }
     }
     // Checkstyle: resume

@@ -62,13 +62,13 @@ final class InteropAccessor extends Accessor {
         if (AssertUtils.isInteropValue(obj)) {
             return true;
         }
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         Class<?> clazz = obj != null ? obj.getClass() : null;
         return yieldAnError(clazz);
     }
 
+    @TruffleBoundary
     private static boolean yieldAnError(Class<?> clazz) {
-        CompilerDirectives.transferToInterpreter();
         StringBuilder sb = new StringBuilder();
         sb.append(clazz == null ? "null" : clazz.getName());
         sb.append(" isn't allowed Truffle interop type!\n");
@@ -117,63 +117,6 @@ final class InteropAccessor extends Accessor {
             return receiver;
         }
 
-        @Override
-        @TruffleBoundary
-        public boolean isValidNodeObject(Object obj) {
-            InteropLibrary interop = InteropLibrary.getFactory().getUncached(obj);
-
-            if (!interop.hasMembers(obj)) {
-                throw new AssertionError("Invalid node object: must return true for the hasMembers message.");
-            }
-            Object members;
-            try {
-                members = interop.getMembers(obj);
-            } catch (UnsupportedMessageException e) {
-                throw new AssertionError("Invalid node object: must support the getMembers message.", e);
-            }
-            InteropLibrary membersInterop = InteropLibrary.getFactory().getUncached(members);
-            if (!membersInterop.hasArrayElements(members)) {
-                throw new AssertionError("Invalid node object: the returned members object must support hasArrayElements.");
-            }
-            long size;
-            try {
-                size = membersInterop.getArraySize(members);
-            } catch (UnsupportedMessageException e) {
-                throw new AssertionError("Invalid node object: the returned members object must have a size.");
-            }
-            for (long i = 0; i < size; i++) {
-                Object key;
-                try {
-                    key = membersInterop.readArrayElement(members, i);
-                } catch (InvalidArrayIndexException | UnsupportedMessageException e) {
-                    throw new AssertionError("Invalid node object: the returned members object must be readable at number index " + i);
-                }
-                InteropLibrary keyInterop = InteropLibrary.getFactory().getUncached(key);
-                if (!keyInterop.isString(key)) {
-                    throw new AssertionError("Invalid node object: the returned member must return a string at index " + i + ". But was " + key.getClass().getName() + ".");
-                }
-                String member;
-                try {
-                    member = keyInterop.asString(key);
-                } catch (UnsupportedMessageException e1) {
-                    throw new AssertionError("Invalid node object: the returned member must return a string  ");
-                }
-                try {
-                    interop.readMember(obj, member);
-                } catch (UnknownIdentifierException | UnsupportedMessageException e) {
-                    throw new AssertionError("Invalid node object: the returned member must be readable with identifier " + member);
-                }
-
-                if (interop.isMemberWritable(obj, member)) {
-                    throw new AssertionError("Invalid node object: The member " + member + " is marked as writable but node objects must not be writable.");
-                }
-            }
-            if (interop.hasArrayElements(obj)) {
-                throw new AssertionError("Invalid node object: the node object must not return true for hasArrayElements.");
-            }
-
-            return true;
-        }
     }
 
     static final class EmptyTruffleObject implements TruffleObject {

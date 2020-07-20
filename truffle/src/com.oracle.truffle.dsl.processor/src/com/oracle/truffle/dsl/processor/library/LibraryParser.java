@@ -154,8 +154,8 @@ public class LibraryParser extends AbstractParser<LibraryData> {
                 continue;
             }
 
-            if (visibility == Modifier.PROTECTED || visibility == null) {
-                message.addError("Library messages must be public.");
+            if (visibility == null) {
+                message.addError("Library messages must be public or protected. Annotate with @GenerateLibrary.Ignore to ignore this method for generation. ");
             }
 
             if (executable.getParameters().isEmpty()) {

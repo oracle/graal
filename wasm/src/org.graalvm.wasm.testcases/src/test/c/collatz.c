@@ -39,6 +39,8 @@
  * SOFTWARE.
  */
 
+#include <stdio.h>
+
 int collatz(int n) {
   int length = 0;
   while (n != 1) {
@@ -55,6 +57,7 @@ int collatz(int n) {
 int number = 127;
 
 int main() {
-  return collatz(number);
+  printf("%d\n", collatz(number));
+  return 0;
 }
 

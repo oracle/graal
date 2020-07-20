@@ -210,31 +210,41 @@ public final class DebugInfoFunctionProcessor {
          * The call target is actually an LLVM bitcode debugging metadata call, so we should attach
          * argument information to the corresponding function.
          */
-        try {
-            if (LLVM_DBG_VALUE_NAME.equals(((FunctionDeclaration) callTarget).getName())) {
-                FunctionParameter p = (FunctionParameter) ((MDValue) ((MetadataSymbol) call.getArguments()[LLVM_DBG_INTRINSICS_VALUE_ARGINDEX]).getNode()).getValue();
-                MDLocalVariable v = (MDLocalVariable) ((MetadataSymbol) call.getArguments()[mdLocalArgIndex]).getNode();
-                MDExpression e = (MDExpression) ((MetadataSymbol) call.getArguments()[mdExprArgIndex]).getNode();
-                ValueFragment f = ValueFragment.parse(e);
-                if (!f.isComplete()) {
-                    long sourceArgIndex = v.getArg();
-
-                    if (Long.compareUnsigned(sourceArgIndex, Integer.MAX_VALUE) > 0) {
-                        throw new IndexOutOfBoundsException(String.format("Source argument index (%s) is out of integer range", Long.toUnsignedString(sourceArgIndex)));
-                    }
-
-                    /*
-                     * Attach the argument info to the source function type: sourceArgIndex needs to
-                     * be decremented by 1 because the 0th index belongs to the return type.
-                     */
-                    function.getSourceFunction().getSourceType().attachSourceArgumentInformation(p.getArgIndex(), (int) sourceArgIndex - 1, f.getOffset(), f.getLength());
-                }
+        if (LLVM_DBG_VALUE_NAME.equals(((FunctionDeclaration) callTarget).getName())) {
+            SymbolImpl intrinsicValueArg = call.getArguments()[LLVM_DBG_INTRINSICS_VALUE_ARGINDEX];
+            SymbolImpl localArg = call.getArguments()[mdLocalArgIndex];
+            SymbolImpl exprArg = call.getArguments()[mdExprArgIndex];
+            if (!(intrinsicValueArg instanceof MetadataSymbol && localArg instanceof MetadataSymbol && exprArg instanceof MetadataSymbol)) {
+                return;
             }
-        } catch (ClassCastException ignored) {
-            /*
-             * Ignore class cast exceptions since we're looking for that particular exact sequence
-             * of types.
-             */
+            MDBaseNode intrinsicValueNode = ((MetadataSymbol) intrinsicValueArg).getNode();
+            MDBaseNode localNode = ((MetadataSymbol) localArg).getNode();
+            MDBaseNode exprNode = ((MetadataSymbol) exprArg).getNode();
+            if (!(intrinsicValueNode instanceof MDValue && localNode instanceof MDLocalVariable && exprNode instanceof MDExpression)) {
+                return;
+            }
+            SymbolImpl intrinsicValue = ((MDValue) intrinsicValueNode).getValue();
+            MDLocalVariable local = (MDLocalVariable) localNode;
+            MDExpression expr = (MDExpression) exprNode;
+            if (!(intrinsicValue instanceof FunctionParameter)) {
+                return;
+            }
+            FunctionParameter parameter = (FunctionParameter) intrinsicValue;
+
+            ValueFragment fragment = ValueFragment.parse(expr);
+            if (!fragment.isComplete()) {
+                long sourceArgIndex = local.getArg();
+
+                if (Long.compareUnsigned(sourceArgIndex, Integer.MAX_VALUE) > 0) {
+                    throw new IndexOutOfBoundsException(String.format("Source argument index (%s) is out of integer range", Long.toUnsignedString(sourceArgIndex)));
+                }
+
+                /*
+                 * Attach the argument info to the source function type: sourceArgIndex needs to be
+                 * decremented by 1 because the 0th index belongs to the return type.
+                 */
+                function.getSourceFunction().getSourceType().attachSourceArgumentInformation(parameter.getArgIndex(), (int) sourceArgIndex - 1, fragment.getOffset(), fragment.getLength());
+            }
         }
     }
 
@@ -297,9 +307,7 @@ public final class DebugInfoFunctionProcessor {
         }
 
         if (isDeclaration) {
-            final DbgDeclareInstruction dbgDeclare = new DbgDeclareInstruction(value, variable, expression);
-            variable.addDeclaration(dbgDeclare);
-            return dbgDeclare;
+            return new DbgDeclareInstruction(value, variable, expression);
 
         } else {
             long index = 0;
@@ -310,9 +318,7 @@ public final class DebugInfoFunctionProcessor {
                     index = l;
                 }
             }
-            final DbgValueInstruction dbgValue = new DbgValueInstruction(value, variable, index, expression);
-            variable.addValue(dbgValue);
-            return dbgValue;
+            return new DbgValueInstruction(value, variable, index, expression);
         }
     }
 

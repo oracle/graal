@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -96,7 +96,7 @@ public class Integer64Suite extends WasmSuiteBase {
                                     "(module (func (export \"_main\") (result i32) i64.const 0xdedababa i64.const 0xdedababa i64.gt_u))"),
                     WasmCase.create("GT_U_FALSE", WasmCase.expected(0),
                                     "(module (func (export \"_main\") (result i32) i64.const 0xcafebabe i64.const 0xdedababa i64.gt_u))"),
-                    WasmCase.create("LE_S_TRUE", WasmCase.expected(1),
+                    WasmCase.create("LE_S_TRUE", WasmCase.expected(0),
                                     "(module (func (export \"_main\") (result i32) i64.const 0xdedababa i64.const 0xbaba i64.le_s))"),
                     WasmCase.create("LE_S_TRUE_EQUAL", WasmCase.expected(1),
                                     "(module (func (export \"_main\") (result i32) i64.const 0xbaba i64.const 0xbaba i64.le_s))"),

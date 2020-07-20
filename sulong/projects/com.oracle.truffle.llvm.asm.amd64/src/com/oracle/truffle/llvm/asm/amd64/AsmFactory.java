@@ -248,6 +248,8 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VectorType;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 
+import static com.oracle.truffle.llvm.runtime.types.Type.TypeArrayBuilder;
+
 class AsmFactory {
     private static final int REG_START_INDEX = 1;
     private static final String TEMP_REGISTER_PREFIX = "__$$tmp_r_";
@@ -263,7 +265,7 @@ class AsmFactory {
     private LLVMExpressionNode result;
     private List<Argument> argInfo;
     private final String asmFlags;
-    private final Type[] argTypes;
+    private final TypeArrayBuilder argTypes;
     private final Type retType;
     private final Type[] retTypes;
     private final long[] retOffsets;
@@ -272,7 +274,7 @@ class AsmFactory {
 
     private final LLVMLanguage language;
 
-    AsmFactory(LLVMLanguage language, Type[] argTypes, String asmFlags, Type retType, Type[] retTypes, long[] retOffsets) {
+    AsmFactory(LLVMLanguage language, TypeArrayBuilder argTypes, String asmFlags, Type retType, Type[] retTypes, long[] retOffsets) {
         this.language = language;
         this.argTypes = argTypes;
         this.asmFlags = asmFlags;
@@ -370,10 +372,10 @@ class AsmFactory {
             int idOut = outIndex;
             Type type;
             if (isInput) {
-                type = argTypes[index++];
+                type = argTypes.get(index++);
             } else if (retType instanceof StructureType) {
                 if (isMemory) {
-                    type = argTypes[index];
+                    type = argTypes.get(index);
                     idOut = index++;
                 } else {
                     type = retTypes[outIndex++];
@@ -382,7 +384,7 @@ class AsmFactory {
                 type = retType;
                 if (isMemory) {
                     if (type instanceof VoidType) {
-                        type = argTypes[index];
+                        type = argTypes.get(index);
                     }
                     idOut = index++;
                 }
@@ -395,7 +397,7 @@ class AsmFactory {
             }
             argInfo.add(new Argument(isInput, isOutput, isMemory, isAnonymous, type, argInfo.size(), idIn, idOut, source, registerName));
         }
-        assert index == argTypes.length;
+        assert index == argTypes.size();
         assert retType instanceof StructureType ? outIndex == retOffsets.length : outIndex == 0;
     }
 
@@ -1705,7 +1707,7 @@ class AsmFactory {
                     }
                 } else {
                     assert arg.isMemory();
-                    slot = getArgumentSlot(arg.getIndex(), argTypes[arg.getOutIndex()]);
+                    slot = getArgumentSlot(arg.getIndex(), argTypes.get(arg.getOutIndex()));
                     LLVMExpressionNode argnode = LLVMArgNodeGen.create(arg.getOutIndex());
                     arguments.add(LLVMWritePointerNodeGen.create(slot, argnode));
                 }
@@ -1719,16 +1721,16 @@ class AsmFactory {
                     slot = getRegisterSlot(reg);
                     todoRegisters.remove(reg);
                     LLVMExpressionNode argnode = LLVMArgNodeGen.create(arg.getInIndex());
-                    if (argTypes[arg.getInIndex()] instanceof PointerType) {
+                    if (argTypes.get(arg.getInIndex()) instanceof PointerType) {
                         arguments.add(LLVMWritePointerNodeGen.create(slot, argnode));
-                    } else if (argTypes[arg.getInIndex()] instanceof VectorType) {
+                    } else if (argTypes.get(arg.getInIndex()) instanceof VectorType) {
                         arguments.add(LLVMWriteNodeFactory.LLVMWriteVectorNodeGen.create(slot, argnode));
                     } else {
                         LLVMExpressionNode node = CommonNodeFactory.createSignedCast(argnode, PrimitiveType.I64);
                         arguments.add(LLVMWriteI64NodeGen.create(slot, node));
                     }
                 }
-                slot = getArgumentSlot(arg.getIndex(), argTypes[arg.getInIndex()]);
+                slot = getArgumentSlot(arg.getIndex(), argTypes.get(arg.getInIndex()));
                 LLVMExpressionNode argnode = LLVMArgNodeGen.create(arg.getInIndex());
                 if (arg.getType() instanceof PrimitiveType) {
                     LLVMExpressionNode node = CommonNodeFactory.createSignedCast(argnode, PrimitiveType.I64);

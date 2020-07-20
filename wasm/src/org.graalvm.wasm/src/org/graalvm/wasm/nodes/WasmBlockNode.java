@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -274,11 +274,14 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     @CompilationFinal private final int initialIntConstantOffset;
     @CompilationFinal private final int initialLongConstantOffset;
     @CompilationFinal private final int initialBranchTableOffset;
+    @CompilationFinal private final int initialProfileOffset;
+    @CompilationFinal private int profileCount;
     @CompilationFinal private ContextReference<WasmContext> rawContextReference;
     @Children private Node[] children;
 
     public WasmBlockNode(WasmModule wasmModule, WasmCodeEntry codeEntry, int startOffset, byte returnTypeId, byte continuationTypeId, int initialStackPointer,
-                    int initialByteConstantOffset, int initialIntConstantOffset, int initialLongConstantOffset, int initialBranchTableOffset) {
+                    int initialByteConstantOffset, int initialIntConstantOffset, int initialLongConstantOffset, int initialBranchTableOffset,
+                    int initialProfileOffset) {
         super(wasmModule, codeEntry, -1);
         this.startOffset = startOffset;
         this.returnTypeId = returnTypeId;
@@ -288,6 +291,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         this.initialIntConstantOffset = initialIntConstantOffset;
         this.initialLongConstantOffset = initialLongConstantOffset;
         this.initialBranchTableOffset = initialBranchTableOffset;
+        this.initialProfileOffset = initialProfileOffset;
     }
 
     private ContextReference<WasmContext> contextReference() {
@@ -300,12 +304,13 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
 
     @SuppressWarnings("hiding")
     public void initialize(Node[] children, int byteLength, int byteConstantLength,
-                    int intConstantLength, int longConstantLength, int branchTableLength) {
+                    int intConstantLength, int longConstantLength, int branchTableLength, int brIfProfilesLength) {
         initialize(byteLength);
         this.byteConstantLength = byteConstantLength;
         this.intConstantLength = intConstantLength;
         this.longConstantLength = longConstantLength;
         this.branchTableLength = branchTableLength;
+        this.profileCount = brIfProfilesLength;
         this.children = children;
     }
 
@@ -329,6 +334,11 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         return branchTableLength;
     }
 
+    @Override
+    int profileCount() {
+        return profileCount;
+    }
+
     public int startOfset() {
         return startOffset;
     }
@@ -342,6 +352,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         int longConstantOffset = initialLongConstantOffset;
         int branchTableOffset = initialBranchTableOffset;
         int stackPointer = initialStackPointer;
+        int profileOffset = initialProfileOffset;
         int offset = startOffset;
         trace("block/if/loop EXECUTE");
         while (offset < startOffset + byteLength()) {
@@ -479,7 +490,11 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     int targetBlockReturnLength = codeEntry().intConstant(intConstantOffset);
                     intConstantOffset++;
                     // endregion
-                    if (popCondition(frame, stackPointer)) {
+
+                    boolean condition = codeEntry().profileCondition(profileOffset, popCondition(frame, stackPointer));
+                    ++profileOffset;
+
+                    if (condition) {
                         TargetOffset unwindCounter = TargetOffset.createOrCached(unwindCounterValue);
 
                         trace("br_if, target = %d", unwindCounterValue);
@@ -1389,9 +1404,9 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                 }
                 case I64_LE_S: {
                     stackPointer--;
-                    int x = popInt(frame, stackPointer);
+                    long x = pop(frame, stackPointer);
                     stackPointer--;
-                    int y = popInt(frame, stackPointer);
+                    long y = pop(frame, stackPointer);
                     pushInt(frame, stackPointer, y <= x ? 1 : 0);
                     stackPointer++;
                     trace("0x%016X <= 0x%016X ? [i64]", y, x);
@@ -2424,18 +2439,17 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     @ExplodeLoop
-    private void unwindStack(VirtualFrame frame, int initStackPointer, int initialContinuationStackPointer, int targetBlockReturnLength) {
-        // TODO: If the targetBlockReturnLength could ever be > 1, this would invert the stack
-        // values.
-        // The spec seems to imply that the operand stack should not be inverted.
-        CompilerAsserts.partialEvaluationConstant(targetBlockReturnLength);
-        int stackPointer = initStackPointer;
-        int continuationStackPointer = initialContinuationStackPointer;
-        for (int i = 0; i != targetBlockReturnLength; i++) {
-            stackPointer--;
-            long value = pop(frame, stackPointer);
-            push(frame, continuationStackPointer, value);
-            continuationStackPointer++;
+    private void unwindStack(VirtualFrame frame, int stackPointer, int continuationStackPointer, int returnLength) {
+        CompilerAsserts.partialEvaluationConstant(stackPointer);
+        CompilerAsserts.partialEvaluationConstant(returnLength);
+        for (int i = 0; i < returnLength; ++i) {
+            long value = pop(frame, stackPointer + i - 1);
+            push(frame, continuationStackPointer + i, value);
+        }
+        if (CompilerDirectives.isPartialEvaluationConstant(continuationStackPointer)) {
+            for (int i = continuationStackPointer + returnLength; i < stackPointer; ++i) {
+                pop(frame, i);
+            }
         }
     }
 

@@ -112,7 +112,7 @@ public abstract class AbstractPolyglotImpl {
 
     public abstract static class IOAccess {
         protected IOAccess() {
-            if (!getClass().getCanonicalName().equals("org.graalvm.polyglot.io.ProcessHandler.ProcessCommand.IOAccessImpl")) {
+            if (!getClass().getCanonicalName().equals("org.graalvm.polyglot.io.IOHelper.IOAccessImpl")) {
                 throw new AssertionError("Only one implementation of IOAccess allowed. " + getClass().getCanonicalName());
             }
         }
@@ -187,7 +187,7 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract UnmodifiableEconomicSet<String> getBindingsAccess(PolyglotAccess access);
 
-        public abstract void validatePolyglotAccess(PolyglotAccess access, UnmodifiableEconomicSet<String> language);
+        public abstract String validatePolyglotAccess(PolyglotAccess access, UnmodifiableEconomicSet<String> language);
 
         public abstract Object getImpl(ResourceLimits value);
 
@@ -224,7 +224,7 @@ public abstract class AbstractPolyglotImpl {
     public final IOAccess getIO() {
         if (io == null) {
             try {
-                Class.forName(ProcessHandler.ProcessCommand.class.getName(), true, getClass().getClassLoader());
+                Class.forName("org.graalvm.polyglot.io.IOHelper", true, getClass().getClassLoader());
             } catch (ClassNotFoundException e) {
                 throw new IllegalStateException(e);
             }
@@ -311,9 +311,9 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract int getLength(Object impl);
 
-        public abstract CharSequence getCode(Object impl);
+        public abstract CharSequence getCharacters(Object impl);
 
-        public abstract CharSequence getCode(Object impl, int lineNumber);
+        public abstract CharSequence getCharacters(Object impl, int lineNumber);
 
         public abstract int getLineCount(Object impl);
 
@@ -403,6 +403,8 @@ public abstract class AbstractPolyglotImpl {
 
         public abstract Value eval(String language, Object sourceImpl);
 
+        public abstract Value parse(String language, Object sourceImpl);
+
         public abstract Engine getEngineImpl(Context sourceContext);
 
         public abstract void close(Context sourceContext, boolean interuptExecution);
@@ -418,6 +420,7 @@ public abstract class AbstractPolyglotImpl {
         public abstract Value getPolyglotBindings();
 
         public abstract void resetLimits();
+
     }
 
     public abstract static class AbstractEngineImpl {
@@ -446,7 +449,7 @@ public abstract class AbstractPolyglotImpl {
                         boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter,
                         Map<String, String> options,
                         Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess, ProcessHandler processHandler,
-                        EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory);
+                        EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory, ClassLoader hostClassLoader);
 
         public abstract String getImplementationName();
 
@@ -489,6 +492,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract Throwable asHostException();
 
         public abstract SourceSection getSourceLocation();
+
+        public abstract boolean isResourceExhausted();
 
     }
 
@@ -744,13 +749,15 @@ public abstract class AbstractPolyglotImpl {
         public abstract String getMetaSimpleName(Object receiver);
 
         public abstract boolean isMetaInstance(Object receiver, Object instance);
+
+        public abstract boolean equalsImpl(Object receiver, Object obj);
+
+        public abstract int hashCodeImpl(Object receiver);
     }
 
     public abstract Class<?> loadLanguageClass(String className);
 
-    public Context getCurrentContext() {
-        throw new IllegalStateException("No current context is available. Make sure the Java method is invoked by a Graal guest language or a context is entered using Context.enter().");
-    }
+    public abstract Context getCurrentContext();
 
     public abstract Collection<Engine> findActiveEngines();
 
@@ -761,5 +768,7 @@ public abstract class AbstractPolyglotImpl {
     public abstract Object buildLimits(long statementLimit, Predicate<Source> statementLimitSourceFilter, Duration timeLimit, Duration timeLimitAccuracy, Consumer<ResourceLimitEvent> onLimit);
 
     public abstract Context getLimitEventContext(Object impl);
+
+    public abstract FileSystem newDefaultFileSystem();
 
 }

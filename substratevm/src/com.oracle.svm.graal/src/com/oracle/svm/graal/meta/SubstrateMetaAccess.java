@@ -39,7 +39,6 @@ import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.deopt.SubstrateSpeculationLog.SubstrateSpeculation;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.util.Replaced;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -54,7 +53,7 @@ import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.SpeculationLog.Speculation;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 
-public class SubstrateMetaAccess implements MetaAccessProvider, Replaced {
+public class SubstrateMetaAccess implements MetaAccessProvider {
 
     public static SubstrateMetaAccess singleton() {
         return ImageSingletons.lookup(SubstrateMetaAccess.class);

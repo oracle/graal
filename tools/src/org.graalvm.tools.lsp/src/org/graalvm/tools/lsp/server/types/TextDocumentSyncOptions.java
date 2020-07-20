@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,16 +27,15 @@ package org.graalvm.tools.lsp.server.types;
 import com.oracle.truffle.tools.utils.json.JSONObject;
 import java.util.Objects;
 
-public class TextDocumentSyncOptions {
-
-    final JSONObject jsonData;
+public class TextDocumentSyncOptions extends JSONBase {
 
     TextDocumentSyncOptions(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
-     * Open and close notifications are sent to the server.
+     * Open and close notifications are sent to the server. If omitted open close notification
+     * should not be sent.
      */
     @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
     public Boolean getOpenClose() {
@@ -50,7 +49,8 @@ public class TextDocumentSyncOptions {
 
     /**
      * Change notifications are sent to the server. See TextDocumentSyncKind.None,
-     * TextDocumentSyncKind.Full and TextDocumentSyncKind.Incremental.
+     * TextDocumentSyncKind.Full and TextDocumentSyncKind.Incremental. If omitted it defaults to
+     * TextDocumentSyncKind.None.
      */
     public TextDocumentSyncKind getChange() {
         return TextDocumentSyncKind.get(jsonData.has("change") ? jsonData.getInt("change") : null);
@@ -62,7 +62,8 @@ public class TextDocumentSyncOptions {
     }
 
     /**
-     * Will save notifications are sent to the server.
+     * If present will save notifications are sent to the server. If omitted the notification should
+     * not be sent.
      */
     @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
     public Boolean getWillSave() {
@@ -75,7 +76,8 @@ public class TextDocumentSyncOptions {
     }
 
     /**
-     * Will save wait until requests are sent to the server.
+     * If present will save wait until requests are sent to the server. If omitted the request
+     * should not be sent.
      */
     @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
     public Boolean getWillSaveWaitUntil() {
@@ -88,7 +90,8 @@ public class TextDocumentSyncOptions {
     }
 
     /**
-     * Save notifications are sent to the server.
+     * If present save notifications are sent to the server. If omitted the notification should not
+     * be sent.
      */
     public SaveOptions getSave() {
         return jsonData.has("save") ? new SaveOptions(jsonData.optJSONObject("save")) : null;
@@ -133,19 +136,19 @@ public class TextDocumentSyncOptions {
     public int hashCode() {
         int hash = 7;
         if (this.getOpenClose() != null) {
-            hash = 13 * hash + Boolean.hashCode(this.getOpenClose());
+            hash = 89 * hash + Boolean.hashCode(this.getOpenClose());
         }
         if (this.getChange() != null) {
-            hash = 13 * hash + Objects.hashCode(this.getChange());
+            hash = 89 * hash + Objects.hashCode(this.getChange());
         }
         if (this.getWillSave() != null) {
-            hash = 13 * hash + Boolean.hashCode(this.getWillSave());
+            hash = 89 * hash + Boolean.hashCode(this.getWillSave());
         }
         if (this.getWillSaveWaitUntil() != null) {
-            hash = 13 * hash + Boolean.hashCode(this.getWillSaveWaitUntil());
+            hash = 89 * hash + Boolean.hashCode(this.getWillSaveWaitUntil());
         }
         if (this.getSave() != null) {
-            hash = 13 * hash + Objects.hashCode(this.getSave());
+            hash = 89 * hash + Objects.hashCode(this.getSave());
         }
         return hash;
     }

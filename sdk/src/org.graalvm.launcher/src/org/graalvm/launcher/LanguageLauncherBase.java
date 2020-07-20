@@ -191,7 +191,10 @@ public abstract class LanguageLauncherBase extends Launcher {
      */
     protected void printPolyglotVersions() {
         Engine engine = getTempEngine();
-        println("GraalVM Polyglot Engine Version " + engine.getVersion());
+        String mode = isAOT() ? "Native" : "JVM";
+        println(engine.getImplementationName() + " " + mode + " Polyglot Engine Version " + engine.getVersion());
+        println("Java Version " + System.getProperty("java.version"));
+        println("Java VM Version " + System.getProperty("java.vm.version"));
         Path graalVMHome = Engine.findHome();
         if (graalVMHome != null) {
             println("GraalVM Home " + graalVMHome);

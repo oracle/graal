@@ -57,4 +57,5 @@ int main() {
 
   printf("1st: %s\n", staticMemory);
   printf("2nd: %s\n", dynamicMemory);
+  return 0;
 }

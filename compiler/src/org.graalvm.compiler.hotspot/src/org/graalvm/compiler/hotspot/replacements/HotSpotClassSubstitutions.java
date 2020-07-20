@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_MODIFIER_FLAGS_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.KLASS_SUPER_KLASS_LOCATION;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.arrayKlassComponentMirrorOffset;
+import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.jvmAccIsHiddenClass;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.klassAccessFlagsOffset;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.klassIsArray;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.klassModifierFlagsOffset;
@@ -80,6 +81,18 @@ public class HotSpotClassSubstitutions {
         }
     }
 
+    @MethodSubstitution(isStatic = false, optional = true)
+    public static boolean isHidden(final Class<?> thisObj) {
+        KlassPointer klass = ClassGetHubNode.readClass(thisObj);
+        if (klass.isNull()) {
+            // Class for primitive type
+            return false;
+        } else {
+            int accessFlags = klass.readInt(klassAccessFlagsOffset(INJECTED_VMCONFIG), KLASS_ACCESS_FLAGS_LOCATION);
+            return (accessFlags & (jvmAccIsHiddenClass(INJECTED_VMCONFIG))) != 0;
+        }
+    }
+
     @MethodSubstitution(isStatic = false)
     public static boolean isArray(final Class<?> thisObj) {
         KlassPointer klass = ClassGetHubNode.readClass(thisObj);
@@ -90,12 +103,6 @@ public class HotSpotClassSubstitutions {
             KlassPointer klassNonNull = ClassGetHubNode.piCastNonNull(klass, SnippetAnchorNode.anchor());
             return klassIsArray(klassNonNull);
         }
-    }
-
-    @MethodSubstitution(isStatic = false)
-    public static boolean isPrimitive(final Class<?> thisObj) {
-        KlassPointer klass = ClassGetHubNode.readClass(thisObj);
-        return klass.isNull();
     }
 
     @Fold

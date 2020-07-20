@@ -207,9 +207,9 @@ public class LLIRTestGen {
         String format(Type inputType, String inputId, Type outputType);
     }
 
-    static UnaryOpFormatter CONV = (inputType, inputId, outputType) -> String.format("%s %s to %s", inputType, inputId,
+    static final UnaryOpFormatter CONV = (inputType, inputId, outputType) -> String.format("%s %s to %s", inputType, inputId,
                     outputType);
-    static UnaryOpFormatter SIMPLE = (inputType, inputId, outputType) -> String.format("%s %s", inputType, inputId);
+    static final UnaryOpFormatter SIMPLE = (inputType, inputId, outputType) -> String.format("%s %s", inputType, inputId);
 
     public enum UnaryOp {
         zext(CONV) {
@@ -297,7 +297,7 @@ public class LLIRTestGen {
         String format(Type inputType, String inputId0, String inputId1);
     }
 
-    static BinaryOpFormatter SimpleBin = (inputType, inputId0, inputId1) -> inputType + " " + inputId0 + ", " + inputId1;
+    static final BinaryOpFormatter SimpleBin = (inputType, inputId0, inputId1) -> inputType + " " + inputId0 + ", " + inputId1;
 
     public enum BinaryOp {
         add(SimpleBin) {

@@ -199,10 +199,41 @@ public class InstallerCommandlineTest extends CommandTestBase {
         exception.expect(MainErrorException.class);
 
         try {
-            main.interpretOptions(main.createOptions(args));
+            main.processOptions(args);
         } finally {
             assertMsg("ERROR_MissingCommand", false);
         }
+    }
+
+    /**
+     * Checks that --version option prints version and terminates with 0 exit code.
+     */
+    @Test
+    public void testVersionSucceeds() {
+        args = new LinkedList<>();
+        args.add("--version");
+
+        delegateFeedback(capture);
+        int excode = main.processOptions(args);
+        assertTrue(capture.err.isEmpty());
+        assertMsg("MSG_InstallerVersion", true);
+        assertEquals("Must complete succesfully", 0, excode);
+    }
+
+    /**
+     * Checks that --show-version option prints version and performs the command.
+     */
+    @Test
+    public void testShowVersionSucceeds() {
+        args = new LinkedList<>();
+        args.add("--show-version");
+        args.add("list");
+
+        delegateFeedback(capture);
+        int excode = main.processOptions(args);
+        assertTrue(capture.err.isEmpty());
+        assertMsg("MSG_InstallerVersion", true);
+        assertEquals("Should continue execution", -1, excode);
     }
 
     /**
@@ -284,7 +315,7 @@ public class InstallerCommandlineTest extends CommandTestBase {
 
     void setupReleaseCatalog() {
         this.storage.graalInfo.put(BundleConstants.GRAAL_VERSION, "0.33-dev");
-        this.storage.graalInfo.put(CommonConstants.RELEASE_CATALOG_KEY, releaseURL);
+        this.storage.graalInfo.put("component_catalog", releaseURL);
     }
 
     /**
@@ -305,7 +336,7 @@ public class InstallerCommandlineTest extends CommandTestBase {
     String envURL = "test://graalvm.org/environment/catalog";
 
     void setupEnvCatalog() {
-        envParameters.put(CommonConstants.ENV_CATALOG_URL, envURL);
+        envParameters.put("GRAALVM_CATALOG", envURL);
     }
 
     /**
@@ -327,7 +358,7 @@ public class InstallerCommandlineTest extends CommandTestBase {
     String syspropURL = "test://graalvm.org/sysprop/catalog";
 
     void setupSyspropCatalog() {
-        propParameters.put(CommonConstants.SYSPROP_CATALOG_URL, syspropURL);
+        propParameters.put("org.graalvm.component.catalog", syspropURL);
     }
 
     /**
@@ -607,5 +638,38 @@ public class InstallerCommandlineTest extends CommandTestBase {
         assertTrue(Handler.isVisited(releaseURL));
         assertTrue(Handler.isVisited(urlString));
         assertEquals(releaseURL, fb.warningLine);
+    }
+
+    /**
+     * Checks that catalog entries in environment win over release file ones.
+     * 
+     * @throws Exception
+     */
+    @Test
+    public void testExplicitCatalogWinsOverItems() throws Exception {
+        storage.graalInfo.put(CommonConstants.CAP_GRAALVM_VERSION, "1.0.1.0");
+        storage.graalInfo.put("component_catalog", releaseURL);
+
+        // override with env variables catalog entries:
+        String url1 = "test://graalv.org/test/explicit.properties";
+        String url2 = "test://graalv.org/test/envcatalog.properties";
+        envParameters.put("GRAALVM_CATALOG", url1);
+        envParameters.put("GRAALVM_COMPONENT_CATALOG_1_URL", url2);
+        envParameters.put("GRAALVM_COMPONENT_CATALOG_1_LABEL", "First env");
+
+        args.add("avail");
+
+        main.processOptions(args);
+        main.doProcessCommand();
+
+        URL u = getClass().getResource("remote/catalog");
+        Handler.bind(releaseURL, u);
+        Handler.bind(url1, u);
+        Handler.bind(url2, u);
+
+        assertFalse(Handler.isVisited(releaseURL));
+        assertFalse(Handler.isVisited(url2));
+
+        assertTrue(Handler.isVisited(url1));
     }
 }

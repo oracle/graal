@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,12 +30,10 @@ import java.util.Objects;
 /**
  * The parameters of a change configuration notification.
  */
-public class DidChangeConfigurationParams {
-
-    final JSONObject jsonData;
+public class DidChangeConfigurationParams extends JSONBase {
 
     DidChangeConfigurationParams(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -70,8 +68,8 @@ public class DidChangeConfigurationParams {
 
     @Override
     public int hashCode() {
-        int hash = 2;
-        hash = 23 * hash + Objects.hashCode(this.getSettings());
+        int hash = 7;
+        hash = 53 * hash + Objects.hashCode(this.getSettings());
         return hash;
     }
 

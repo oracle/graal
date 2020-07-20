@@ -26,6 +26,7 @@ package org.graalvm.compiler.nodes.spi;
 
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -39,9 +40,11 @@ public class CoreProvidersImpl implements CoreProviders {
     protected final StampProvider stampProvider;
     protected final ForeignCallsProvider foreignCalls;
     protected final PlatformConfigurationProvider platformConfigurationProvider;
+    protected final MetaAccessExtensionProvider metaAccessExtensionProvider;
 
     protected CoreProvidersImpl(MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider, LoweringProvider lowerer,
-                    Replacements replacements, StampProvider stampProvider, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfigurationProvider) {
+                    Replacements replacements, StampProvider stampProvider, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfigurationProvider,
+                    MetaAccessExtensionProvider metaAccessExtensionProvider) {
         this.metaAccess = metaAccess;
         this.constantReflection = constantReflection;
         this.constantFieldProvider = constantFieldProvider;
@@ -50,6 +53,7 @@ public class CoreProvidersImpl implements CoreProviders {
         this.stampProvider = stampProvider;
         this.foreignCalls = foreignCalls;
         this.platformConfigurationProvider = platformConfigurationProvider;
+        this.metaAccessExtensionProvider = metaAccessExtensionProvider;
     }
 
     @Override
@@ -90,5 +94,26 @@ public class CoreProvidersImpl implements CoreProviders {
     @Override
     public PlatformConfigurationProvider getPlatformConfigurationProvider() {
         return platformConfigurationProvider;
+    }
+
+    @Override
+    public MetaAccessExtensionProvider getMetaAccessExtensionProvider() {
+        return metaAccessExtensionProvider;
+    }
+
+    public CoreProvidersImpl copyWith(ConstantReflectionProvider substitution) {
+        assert this.getClass() == CoreProvidersImpl.class : "must override in " + getClass();
+        return new CoreProvidersImpl(metaAccess, substitution, constantFieldProvider, lowerer, replacements, stampProvider, foreignCalls, platformConfigurationProvider, metaAccessExtensionProvider);
+    }
+
+    public CoreProvidersImpl copyWith(ConstantFieldProvider substitution) {
+        assert this.getClass() == CoreProvidersImpl.class : "must override in " + getClass();
+        return new CoreProvidersImpl(metaAccess, constantReflection, substitution, lowerer, replacements, stampProvider, foreignCalls, platformConfigurationProvider, metaAccessExtensionProvider);
+    }
+
+    public CoreProvidersImpl copyWith(Replacements substitution) {
+        assert this.getClass() == CoreProvidersImpl.class : "must override in " + getClass();
+        return new CoreProvidersImpl(metaAccess, constantReflection, constantFieldProvider, lowerer, substitution, stampProvider, foreignCalls, platformConfigurationProvider,
+                        metaAccessExtensionProvider);
     }
 }

@@ -26,6 +26,7 @@ package com.oracle.svm.truffle.api;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
+import java.io.OutputStream;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -85,6 +86,9 @@ class SubstateTruffleOptions {
     @Option(help = "Enable support for Truffle background compilation")//
     static final HostedOptionKey<Boolean> TruffleMultiThreaded = new HostedOptionKey<>(true);
 
+    @Option(help = "Propagate Truffle compilation errors")//
+    static final HostedOptionKey<Boolean> TrufflePropagateCompilationErrors = new HostedOptionKey<>(false);
+
     @Fold
     static boolean isMultiThreaded() {
         /*
@@ -126,7 +130,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     private void initializeAtRuntime(OptimizedCallTarget callTarget) {
-        truffleCompiler.initialize(TruffleRuntimeOptions.getOptionsForCompiler(callTarget));
+        truffleCompiler.initialize(TruffleRuntimeOptions.getOptionsForCompiler(callTarget), callTarget, true);
         if (SubstateTruffleOptions.isMultiThreaded()) {
             compileQueue = TruffleFeature.getSupport().createBackgroundCompileQueue(this);
             RuntimeSupport.getRuntimeSupport().addTearDownHook(this::tearDown);
@@ -290,6 +294,9 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
             if (TruffleRuntimeOptions.getPolyglotOptionValue(optimizedCallTarget.getOptionValues(), PolyglotCompilerOptions.CompilationExceptionsArePrinted)) {
                 Log.log().string(printStackTraceToString(e));
             }
+            if (SubstateTruffleOptions.TrufflePropagateCompilationErrors.getValue()) {
+                throw e;
+            }
         }
 
         return null;
@@ -303,15 +310,6 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
-    public boolean cancelInstalledTask(OptimizedCallTarget optimizedCallTarget, Object source, CharSequence reason) {
-        if (SubstateTruffleOptions.isMultiThreaded()) {
-            return super.cancelInstalledTask(optimizedCallTarget, source, reason);
-        }
-
-        return false;
-    }
-
-    @Override
     public void waitForCompilation(OptimizedCallTarget optimizedCallTarget, long timeout) throws ExecutionException, TimeoutException {
         if (SubstateTruffleOptions.isMultiThreaded()) {
             super.waitForCompilation(optimizedCallTarget, timeout);
@@ -319,15 +317,6 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         }
 
         /* We have no background compilation, so nothing to do. */
-    }
-
-    @Override
-    public boolean isCompiling(OptimizedCallTarget optimizedCallTarget) {
-        if (SubstateTruffleOptions.isMultiThreaded()) {
-            return super.isCompiling(optimizedCallTarget);
-        }
-
-        return false;
     }
 
     @Override
@@ -396,11 +385,6 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
-    public void log(String message) {
-        TTY.println(message);
-    }
-
-    @Override
     public Consumer<OptimizedAssumptionDependency> registerOptimizedAssumptionDependency(JavaConstant optimizedAssumptionConstant) {
         return TruffleFeature.getSupport().registerOptimizedAssumptionDependency(optimizedAssumptionConstant);
     }
@@ -408,5 +392,22 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     @Override
     public JavaConstant getCallTargetForCallNode(JavaConstant callNodeConstant) {
         return TruffleFeature.getSupport().getCallTargetForCallNode(callNodeConstant);
+    }
+
+    @Override
+    public CompilableTruffleAST asCompilableTruffleAST(JavaConstant constant) {
+        return TruffleFeature.getSupport().asCompilableTruffleAST(constant);
+    }
+
+    @Override
+    public void log(CompilableTruffleAST compilable, String message) {
+        if (!TruffleFeature.getSupport().tryLog(this, compilable, message)) {
+            super.log(compilable, message);
+        }
+    }
+
+    @Override
+    protected OutputStream getDefaultLogStream() {
+        return TTY.out;
     }
 }

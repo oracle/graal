@@ -46,6 +46,16 @@ public final class ModuleSupport {
     }
 
     /**
+     * Checks if the Java run-time image contains a module with the given name.
+     */
+    @SuppressWarnings("unused")
+    public static boolean hasSystemModule(String moduleName) {
+        /* Nothing to do in JDK 8 version. JDK 11 version provides a proper implementation. */
+        assert JavaVersionUtil.JAVA_SPEC <= 8;
+        return false;
+    }
+
+    /**
      * Gets all resources in the modules named by {@code modules} from the Java runtime image.
      */
     @SuppressWarnings("unused")

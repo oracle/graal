@@ -121,7 +121,7 @@ final class NFISymbol implements TruffleObject {
     Object invokeMember(String member, Object[] args,
                     @Cached BindSignatureNode bind,
                     @CachedLibrary("this.nativeSymbol") NativeSymbolLibrary symbolLibrary,
-                    @Cached("createBinaryProfile()") ConditionProfile isCallable,
+                    @Cached ConditionProfile isCallable,
                     @Exclusive @Cached BranchProfile exception) throws ArityException, UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException {
         if (!"bind".equals(member)) {
             exception.enter();

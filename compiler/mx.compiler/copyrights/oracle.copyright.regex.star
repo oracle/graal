@@ -3,7 +3,7 @@
 (?: \* Copyright \(c\) \d\d\d\d, Red Hat Inc\. All rights reserved\.
 | \* Copyright \(c\) \d\d\d\d, Intel Corporation\. All rights reserved\.
  \* Intel Math Library \(LIBM\) Source Code
-| \* Copyright \(c\) \d\d\d\d, Arm Limited(?: and affiliates)?\. All rights reserved\.
+| \* Copyright \(c\) \d\d\d\d(?:, \d\d\d\d)?, Arm Limited(?: and affiliates)?\. All rights reserved\.
 )? \* DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER\.
  \*
  \* This code is free software; you can redistribute it and\/or modify it

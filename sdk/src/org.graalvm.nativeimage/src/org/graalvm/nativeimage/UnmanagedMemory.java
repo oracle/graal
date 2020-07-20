@@ -62,45 +62,61 @@ public final class UnmanagedMemory {
     /**
      * Allocates {@code size} bytes of unmanaged memory. The content of the memory is undefined.
      * <p>
-     * If {@code size} is 0, the method is allowed but not required to return the null pointer.
+     * If {@code size} is 0, the method is allowed but not required to return the null pointer. This
+     * method never returns a the null pointer, but instead throws a {@link OutOfMemoryError} when
+     * allocation fails.
      *
      * @since 19.0
      */
     public static <T extends PointerBase> T malloc(UnsignedWord size) {
-        return ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(size);
+        T result = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(size);
+        if (result.isNull()) {
+            throw new OutOfMemoryError("malloc of unmanaged memory");
+        }
+        return result;
     }
 
     /**
      * Allocates {@code size} bytes of unmanaged memory. The content of the memory is undefined.
      * <p>
-     * If {@code size} is 0, the method is allowed but not required to return the null pointer.
+     * If {@code size} is 0, the method is allowed but not required to return the null pointer. This
+     * method never returns a the null pointer, but instead throws a {@link OutOfMemoryError} when
+     * allocation fails.
      *
      * @since 19.0
      */
     public static <T extends PointerBase> T malloc(int size) {
-        return ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(WordFactory.unsigned(size));
+        return malloc(WordFactory.unsigned(size));
     }
 
     /**
      * Allocates {@code size} bytes of unmanaged memory. The content of the memory is set to 0.
      * <p>
-     * If {@code size} is 0, the method is allowed but not required to return the null pointer.
+     * If {@code size} is 0, the method is allowed but not required to return the null pointer. This
+     * method never returns a the null pointer, but instead throws a {@link OutOfMemoryError} when
+     * allocation fails.
      *
      * @since 19.0
      */
     public static <T extends PointerBase> T calloc(UnsignedWord size) {
-        return ImageSingletons.lookup(UnmanagedMemorySupport.class).calloc(size);
+        T result = ImageSingletons.lookup(UnmanagedMemorySupport.class).calloc(size);
+        if (result.isNull()) {
+            throw new OutOfMemoryError("calloc of unmanaged memory");
+        }
+        return result;
     }
 
     /**
      * Allocates {@code size} bytes of unmanaged memory. The content of the memory is set to 0.
      * <p>
-     * If {@code size} is 0, the method is allowed but not required to return the null pointer.
+     * If {@code size} is 0, the method is allowed but not required to return the null pointer. This
+     * method never returns a the null pointer, but instead throws a {@link OutOfMemoryError} when
+     * allocation fails.
      *
      * @since 19.0
      */
     public static <T extends PointerBase> T calloc(int size) {
-        return ImageSingletons.lookup(UnmanagedMemorySupport.class).calloc(WordFactory.unsigned(size));
+        return calloc(WordFactory.unsigned(size));
     }
 
     /**
@@ -108,12 +124,18 @@ public final class UnmanagedMemory {
      * If the new size is larger than the old size, the content of the additional memory is
      * undefined.
      * <p>
-     * If {@code size} is 0, the method is allowed but not required to return the null pointer.
+     * If {@code size} is 0, the method is allowed but not required to return the null pointer. This
+     * method never returns a the null pointer, but instead throws a {@link OutOfMemoryError} when
+     * allocation fails.
      *
      * @since 19.0
      */
     public static <T extends PointerBase> T realloc(T ptr, UnsignedWord size) {
-        return ImageSingletons.lookup(UnmanagedMemorySupport.class).realloc(ptr, size);
+        T result = ImageSingletons.lookup(UnmanagedMemorySupport.class).realloc(ptr, size);
+        if (result.isNull()) {
+            throw new OutOfMemoryError("realloc of unmanaged memory");
+        }
+        return result;
     }
 
     /**

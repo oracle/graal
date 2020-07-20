@@ -1,13 +1,21 @@
 #Signature file v4.1
 #Version 
 
+CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.Bind
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[PARAMETER])
+intf java.lang.annotation.Annotation
+meth public abstract java.lang.String value()
+
 CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.Cached
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[PARAMETER])
 innr public abstract interface static !annotation Exclusive
 innr public abstract interface static !annotation Shared
 intf java.lang.annotation.Annotation
+meth public abstract !hasdefault boolean adopt()
 meth public abstract !hasdefault boolean allowUncached()
+meth public abstract !hasdefault boolean weak()
 meth public abstract !hasdefault int dimensions()
 meth public abstract !hasdefault java.lang.String uncached()
 meth public abstract !hasdefault java.lang.String value()

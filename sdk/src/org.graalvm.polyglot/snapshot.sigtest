@@ -106,6 +106,8 @@ meth public org.graalvm.polyglot.Engine getEngine()
 meth public org.graalvm.polyglot.Value asValue(java.lang.Object)
 meth public org.graalvm.polyglot.Value eval(java.lang.String,java.lang.CharSequence)
 meth public org.graalvm.polyglot.Value eval(org.graalvm.polyglot.Source)
+meth public org.graalvm.polyglot.Value parse(java.lang.String,java.lang.CharSequence)
+meth public org.graalvm.polyglot.Value parse(org.graalvm.polyglot.Source)
 meth public org.graalvm.polyglot.Value getBindings(java.lang.String)
 meth public org.graalvm.polyglot.Value getPolyglotBindings()
 meth public static org.graalvm.polyglot.Context getCurrent()
@@ -142,6 +144,7 @@ meth public org.graalvm.polyglot.Context$Builder err(java.io.OutputStream)
 meth public org.graalvm.polyglot.Context$Builder fileSystem(org.graalvm.polyglot.io.FileSystem)
 meth public org.graalvm.polyglot.Context$Builder hostClassFilter(java.util.function.Predicate<java.lang.String>)
  anno 0 java.lang.Deprecated()
+meth public org.graalvm.polyglot.Context$Builder hostClassLoader(java.lang.ClassLoader)
 meth public org.graalvm.polyglot.Context$Builder in(java.io.InputStream)
 meth public org.graalvm.polyglot.Context$Builder logHandler(java.io.OutputStream)
 meth public org.graalvm.polyglot.Context$Builder logHandler(java.util.logging.Handler)
@@ -153,7 +156,7 @@ meth public org.graalvm.polyglot.Context$Builder resourceLimits(org.graalvm.poly
 meth public org.graalvm.polyglot.Context$Builder serverTransport(org.graalvm.polyglot.io.MessageTransport)
 meth public org.graalvm.polyglot.Context$Builder timeZone(java.time.ZoneId)
 supr java.lang.Object
-hfds allowAllAccess,allowCreateProcess,allowCreateThread,allowExperimentalOptions,allowHostAccess,allowHostClassLoading,allowIO,allowNativeAccess,arguments,currentWorkingDirectory,customFileSystem,customLogHandler,environment,environmentAccess,err,hostAccess,hostClassFilter,in,messageTransport,onlyLanguages,options,out,polyglotAccess,processHandler,resourceLimits,sharedEngine,zone
+hfds allowAllAccess,allowCreateProcess,allowCreateThread,allowExperimentalOptions,allowHostAccess,allowHostClassLoading,allowIO,allowNativeAccess,arguments,currentWorkingDirectory,customFileSystem,customLogHandler,environment,environmentAccess,err,hostAccess,hostClassFilter,hostClassLoader,in,messageTransport,onlyLanguages,options,out,polyglotAccess,processHandler,resourceLimits,sharedEngine,zone
 
 CLSS public final org.graalvm.polyglot.Engine
 innr public final Builder
@@ -286,6 +289,7 @@ meth public boolean isGuestException()
 meth public boolean isHostException()
 meth public boolean isIncompleteSource()
 meth public boolean isInternalError()
+meth public boolean isResourceExhausted()
 meth public boolean isSyntaxError()
 meth public int getExitStatus()
 meth public int hashCode()
@@ -438,6 +442,7 @@ meth public boolean asBoolean()
 meth public boolean canExecute()
 meth public boolean canInstantiate()
 meth public boolean canInvokeMember(java.lang.String)
+meth public boolean equals(java.lang.Object)
 meth public boolean fitsInByte()
 meth public boolean fitsInDouble()
 meth public boolean fitsInFloat()
@@ -468,6 +473,7 @@ meth public byte asByte()
 meth public double asDouble()
 meth public float asFloat()
 meth public int asInt()
+meth public int hashCode()
 meth public java.lang.RuntimeException throwException()
 meth public java.lang.String asString()
 meth public java.lang.String getMetaQualifiedName()
@@ -503,6 +509,7 @@ meth public org.graalvm.polyglot.io.ByteSequence subSequence(int,int)
 meth public static org.graalvm.polyglot.io.ByteSequence create(byte[])
 
 CLSS public abstract interface org.graalvm.polyglot.io.FileSystem
+meth public !varargs boolean isSameFile(java.nio.file.Path,java.nio.file.Path,java.nio.file.LinkOption[]) throws java.io.IOException
 meth public !varargs void copy(java.nio.file.Path,java.nio.file.Path,java.nio.file.CopyOption[]) throws java.io.IOException
 meth public !varargs void createSymbolicLink(java.nio.file.Path,java.nio.file.Path,java.nio.file.attribute.FileAttribute<?>[]) throws java.io.IOException
 meth public !varargs void move(java.nio.file.Path,java.nio.file.Path,java.nio.file.CopyOption[]) throws java.io.IOException
@@ -523,6 +530,7 @@ meth public java.lang.String getSeparator()
 meth public java.nio.charset.Charset getEncoding(java.nio.file.Path)
 meth public java.nio.file.Path getTempDirectory()
 meth public java.nio.file.Path readSymbolicLink(java.nio.file.Path) throws java.io.IOException
+meth public static org.graalvm.polyglot.io.FileSystem newDefaultFileSystem()
 meth public void createLink(java.nio.file.Path,java.nio.file.Path) throws java.io.IOException
 meth public void setCurrentWorkingDirectory(java.nio.file.Path)
 
@@ -572,8 +580,6 @@ supr java.lang.Object
 hfds stream,type
 hcls Type
 
-CLSS abstract interface org.graalvm.polyglot.io.package-info
-
 CLSS public final org.graalvm.polyglot.management.ExecutionEvent
 meth public boolean isExpression()
 meth public boolean isRoot()
@@ -610,10 +616,6 @@ meth public org.graalvm.polyglot.management.ExecutionListener$Builder sourceFilt
 meth public org.graalvm.polyglot.management.ExecutionListener$Builder statements(boolean)
 supr java.lang.Object
 hfds collectExceptions,collectInputValues,collectReturnValues,expressions,onEnter,onReturn,rootNameFilter,roots,sourceFilter,statements
-
-CLSS abstract interface org.graalvm.polyglot.management.package-info
-
-CLSS abstract interface org.graalvm.polyglot.package-info
 
 CLSS public abstract interface org.graalvm.polyglot.proxy.Proxy
 
@@ -678,6 +680,4 @@ CLSS public abstract interface org.graalvm.polyglot.proxy.ProxyTimeZone
 intf org.graalvm.polyglot.proxy.Proxy
 meth public abstract java.time.ZoneId asTimeZone()
 meth public static org.graalvm.polyglot.proxy.ProxyTimeZone from(java.time.ZoneId)
-
-CLSS abstract interface org.graalvm.polyglot.proxy.package-info
 

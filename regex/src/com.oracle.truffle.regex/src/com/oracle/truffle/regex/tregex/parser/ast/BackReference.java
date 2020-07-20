@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,10 +40,10 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
-
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * A reference to the contents of a previously matched capturing group.
@@ -66,8 +66,13 @@ public class BackReference extends QuantifiableTerm {
     }
 
     @Override
-    public BackReference copy(RegexAST ast, boolean recursive) {
+    public BackReference copy(RegexAST ast) {
         return ast.register(new BackReference(this));
+    }
+
+    @Override
+    public BackReference copyRecursive(RegexAST ast, CompilationBuffer compilationBuffer) {
+        return copy(ast);
     }
 
     /**

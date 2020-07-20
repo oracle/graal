@@ -250,7 +250,7 @@ final class PolyglotManagement extends AbstractManagementImpl {
     }
 
     private static RuntimeException wrapException(PolyglotEngineImpl engine, Throwable t) {
-        return PolyglotImpl.wrapGuestException(engine, t);
+        return PolyglotImpl.guestToHostException(engine, t);
     }
 
     private static RuntimeException wrapException(Object impl, Throwable t) {
@@ -479,7 +479,7 @@ final class PolyglotManagement extends AbstractManagementImpl {
 
         @TruffleBoundary(allowInlining = true)
         protected final void invokeExceptionAllocate(List<Value> inputValues, Throwable e) {
-            PolyglotException ex = e != null ? PolyglotImpl.wrapGuestException(language.getCurrentLanguageContext(), e) : null;
+            PolyglotException ex = e != null ? PolyglotImpl.guestToHostException(language.getCurrentLanguageContext(), e) : null;
             config.onReturn.accept(config.management.newExecutionEvent(new DynamicEvent(this, inputValues, null, ex)));
         }
 

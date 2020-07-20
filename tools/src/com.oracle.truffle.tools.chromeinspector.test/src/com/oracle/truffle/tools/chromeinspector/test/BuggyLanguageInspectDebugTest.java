@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.Iterator;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.graalvm.polyglot.Source;
 import org.junit.After;
@@ -67,24 +68,24 @@ public class BuggyLanguageInspectDebugTest {
 
     @Test
     public void testBuggyToString() throws Exception {
-        testBuggyCalls(new TestDebugBuggyLanguage() {
+        testBuggyCalls(langRef(new TestDebugBuggyLanguage() {
             @Override
             protected String toString(ProxyLanguage.LanguageContext c, Object value) {
                 throwBug(value);
                 return Objects.toString(value);
             }
-        }, new LanguageCallsVerifier());
+        }), new LanguageCallsVerifier());
     }
 
     @Test
     public void testBuggyFindMetaObject() throws Exception {
-        testBuggyCalls(new TestDebugBuggyLanguage() {
+        testBuggyCalls(langRef(new TestDebugBuggyLanguage() {
             @Override
             protected Object findMetaObject(ProxyLanguage.LanguageContext context, Object value) {
                 throwBug(value);
                 return Objects.toString(value);
             }
-        }, new LanguageCallsVerifier());
+        }), new LanguageCallsVerifier());
     }
 
     @Test
@@ -97,7 +98,7 @@ public class BuggyLanguageInspectDebugTest {
                 this.id = id;
             }
         }
-        testBuggyCalls(new TestDebugBuggyLanguage() {
+        testBuggyCalls(langRef(new TestDebugBuggyLanguage() {
 
             @Override
             protected boolean isObjectOfLanguage(Object object) {
@@ -120,19 +121,19 @@ public class BuggyLanguageInspectDebugTest {
                 }
                 return Objects.toString(value);
             }
-        }, new LanguageCallsVerifier());
+        }), new LanguageCallsVerifier());
     }
 
     @Test
     public void testBuggyScope() throws Exception {
-        testBuggyCalls(new TestDebugBuggyLanguage() {
+        testBuggyCalls(langRef(new TestDebugBuggyLanguage() {
             @Override
             protected Iterable<Scope> findLocalScopes(ProxyLanguage.LanguageContext context, Node node, Frame frame) {
                 String text = node.getSourceSection().getCharacters().toString();
                 throwBug(Integer.parseInt(text));
                 return super.findLocalScopes(context, node, frame);
             }
-        }, "", false, new BugVerifier() {
+        }), "", false, new BugVerifier() {
             @Override
             public void verifyMessages(InspectorTester t, int errNum) throws InterruptedException {
                 // No scope, verified by haveScope = false
@@ -142,42 +143,42 @@ public class BuggyLanguageInspectDebugTest {
 
     @Test
     public void testBuggyRead() throws Exception {
-        testBuggyCalls(new TestDebugBuggyLanguage(),
+        testBuggyCalls(langRef(new TestDebugBuggyLanguage()),
                         "READ", true, new ReadErrorVerifier("READ"));
     }
 
     @Test
     @Ignore
     public void testBuggyKeyInfo() throws Exception {
-        testBuggyCalls(new TestDebugBuggyLanguage(),
+        testBuggyCalls(langRef(new TestDebugBuggyLanguage()),
                         "KEY_INFO", true, new ReadErrorVerifier("KEY_INFO"));
     }
 
     @Test
     public void testBuggyReadVar() throws Exception {
-        testBuggyCalls(new TestDebugBuggyLanguage() {
+        testBuggyCalls(langRef(new TestDebugBuggyLanguage() {
             @Override
             protected Iterable<Scope> findLocalScopes(ProxyLanguage.LanguageContext context, Node node, Frame frame) {
                 int errNum = Integer.parseInt(node.getSourceSection().getCharacters().toString());
                 return buggyProxyScopes(super.findLocalScopes(context, node, frame), () -> throwBug(errNum), "READ");
             }
-        }, new ReadVarErrorVerifier());
+        }), new ReadVarErrorVerifier());
     }
 
     @Test
     public void testBuggyWriteVar() throws Exception {
-        testBuggyCalls(new TestDebugBuggyLanguage() {
+        testBuggyCalls(langRef(new TestDebugBuggyLanguage() {
             @Override
             protected Iterable<Scope> findLocalScopes(ProxyLanguage.LanguageContext context, Node node, Frame frame) {
                 int errNum = Integer.parseInt(node.getSourceSection().getCharacters().toString());
                 return buggyProxyScopes(super.findLocalScopes(context, node, frame), () -> throwBug(errNum), "WRITE");
             }
-        }, new WriteVarErrorVerifier());
+        }), new WriteVarErrorVerifier());
     }
 
     @Test
     public void testBuggySourceLocation() throws Exception {
-        testBuggyCalls(new TestDebugBuggyLanguage() {
+        testBuggyCalls(langRef(new TestDebugBuggyLanguage() {
             private int numCalls = 0;
 
             @Override
@@ -200,16 +201,20 @@ public class BuggyLanguageInspectDebugTest {
                 }
                 return null;
             }
-        }, new SourceLocationVerifier());
+        }), new SourceLocationVerifier());
     }
 
-    private void testBuggyCalls(ProxyLanguage language, BugVerifier bugVerifier) throws Exception {
+    private static AtomicReference<ProxyLanguage> langRef(ProxyLanguage language) {
+        return new AtomicReference<>(language);
+    }
+
+    private void testBuggyCalls(AtomicReference<ProxyLanguage> language, BugVerifier bugVerifier) throws Exception {
         testBuggyCalls(language, "", true, bugVerifier);
     }
 
     // @formatter:off   The default formatting makes unnecessarily big indents and illogical line breaks
     // CheckStyle: stop line length check
-    private void testBuggyCalls(ProxyLanguage language, String prefix, boolean haveScope, BugVerifier bugVerifier) throws Exception {
+    private void testBuggyCalls(AtomicReference<ProxyLanguage> language, String prefix, boolean haveScope, BugVerifier bugVerifier) throws Exception {
         tester = InspectorTester.start(true);
         tester.setErr(errorStream);
         tester.sendMessage("{\"id\":1,\"method\":\"Runtime.enable\"}");
@@ -221,7 +226,7 @@ public class BuggyLanguageInspectDebugTest {
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":3}\n" +
                         "{\"method\":\"Runtime.executionContextCreated\",\"params\":{\"context\":{\"origin\":\"\",\"name\":\"test\",\"id\":1}}}\n"));
-        ProxyLanguage.setDelegate(language);
+        ProxyLanguage.setDelegate(language.getAndSet(null)); // Do not keep language reference
         Source source = Source.newBuilder(ProxyLanguage.ID, prefix + "1", "BuggyCall1.bug").build();
         String sourceURI = InspectorTester.getStringURI(source.getURI());
         String hash = new Script(0, null, DebuggerTester.getSourceImpl(source)).getHash();
@@ -277,6 +282,8 @@ public class BuggyLanguageInspectDebugTest {
                         "{\"result\":{},\"id\":100}\n" +
                         "{\"method\":\"Debugger.resumed\"}\n"));
 
+        // Reset the delegate so that we can GC the tested Engine
+        ProxyLanguage.setDelegate(new ProxyLanguage());
         tester.finish();
         assertTrue(errorStream.size() > 0);
     }

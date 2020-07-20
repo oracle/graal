@@ -1,4 +1,4 @@
-agent.on('enter', function() {
+insight.on('enter', function() {
 }, {
     roots: true,
     misnamedAttribute : true

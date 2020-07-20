@@ -27,6 +27,7 @@ package com.oracle.svm.core.code;
 import java.util.EnumSet;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
@@ -134,7 +135,7 @@ public final class RuntimeCodeInfoAccess {
     }
 
     public static CodeInfo allocateMethodInfo() {
-        CodeInfoImpl info = ImageSingletons.lookup(UnmanagedMemorySupport.class).calloc(SizeOf.unsigned(CodeInfoImpl.class));
+        CodeInfoImpl info = UnmanagedMemory.calloc(SizeOf.unsigned(CodeInfoImpl.class));
         NonmovableObjectArray<Object> objectFields = NonmovableArrays.createObjectArray(CodeInfoImpl.OBJFIELDS_COUNT);
         info.setObjectFields(objectFields);
 

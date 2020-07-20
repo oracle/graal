@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,12 +30,10 @@ import java.util.Objects;
 /**
  * The parameters send in a save text document notification.
  */
-public class DidSaveTextDocumentParams {
-
-    final JSONObject jsonData;
+public class DidSaveTextDocumentParams extends JSONBase {
 
     DidSaveTextDocumentParams(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -86,10 +84,10 @@ public class DidSaveTextDocumentParams {
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 97 * hash + Objects.hashCode(this.getTextDocument());
+        int hash = 3;
+        hash = 79 * hash + Objects.hashCode(this.getTextDocument());
         if (this.getText() != null) {
-            hash = 97 * hash + Objects.hashCode(this.getText());
+            hash = 79 * hash + Objects.hashCode(this.getText());
         }
         return hash;
     }

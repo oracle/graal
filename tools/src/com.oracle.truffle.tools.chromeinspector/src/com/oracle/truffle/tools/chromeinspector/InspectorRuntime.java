@@ -79,8 +79,9 @@ public final class InspectorRuntime extends RuntimeDomain {
     // for(let i=0,n=properties.length;i<n;++i)
     // result=result[properties[i]];return result;}
     private static final Pattern FUNCTION_GETTER_PATTERN1 = Pattern.compile(
-                    "function\\s+(?<invokeGetter>\\w+)\\((?<arrayStr>\\w+)\\)\\s*\\{\\s*\\w+\\s+(?<result>\\w+)=this;\\s*\\w*\\s*(?<properties>\\w+)=JSON.parse\\(\\k<arrayStr>\\);" +
-                                    "\\s*for\\(\\w+\\s+(?<i>\\w+)=.*(\\+\\+\\k<i>|\\k<i>\\+\\+|\\-\\-\\k<i>|\\k<i>\\-\\-)\\)\\s*\\{?\\s*\\k<result>=\\k<result>\\[\\k<properties>\\[\\k<i>\\]\\];\\s*\\}?\\s*return\\s+\\k<result>;\\}");
+                    "function\\s+(?<invokeGetter>\\w+)\\((?<arrayStr>\\w+)\\)\\s*\\{\\s*\\w+\\s+(?<result>\\w+)\\s*=\\s*this;\\s*\\w*\\s*(?<properties>\\w+)\\s*=\\s*JSON.parse\\(\\k<arrayStr>\\);" +
+                                    "\\s*for\\s*\\(\\w+\\s+(?<i>\\w+)\\s*=.*(\\+\\+\\k<i>|\\k<i>\\+\\+|\\-\\-\\k<i>|\\k<i>\\-\\-)\\)\\s*\\{?\\s*\\k<result>\\s*=\\s*\\k<result>\\[\\k<properties>\\[\\k<i>\\]\\];\\s*\\}?" +
+                                    "\\s*return\\s+\\k<result>;\\s*\\}");
     // Generic matcher of following function:
     // function remoteFunction(propName) { return this[propName]; }
     private static final Pattern FUNCTION_GETTER_PATTERN2 = Pattern.compile(
@@ -653,7 +654,7 @@ public final class InspectorRuntime extends RuntimeDomain {
                                             }
                                             code.append(remoteArg.getDebugValue().getName());
                                         } else {
-                                            code.append(arg.get("value"));
+                                            code.append(JSONObject.valueToString(arg.get("value")));
                                         }
                                     }
                                     code.append("]");
@@ -881,6 +882,7 @@ public final class InspectorRuntime extends RuntimeDomain {
     private class ConsoleOutputListener implements OutputHandler.Listener {
 
         private final String type;
+        private final StringBuilder output = new StringBuilder();
 
         ConsoleOutputListener(String type) {
             this.type = type;
@@ -888,7 +890,22 @@ public final class InspectorRuntime extends RuntimeDomain {
 
         @Override
         public void outputText(String str) {
-            notifyConsoleAPICalled(type, str.endsWith("\n") ? str.substring(0, str.length() - 1) : str);
+            output.append(str);
+            do {
+                int in = output.lastIndexOf("\n");
+                int ir = output.lastIndexOf("\r");
+                if (in < 0 && ir < 0) {
+                    break;
+                }
+                int end = Math.max(in, ir);
+                int endText = end;
+                if (ir >= 0 && in == ir + 1) { // \r\n
+                    endText--;
+                }
+                String text = output.substring(0, endText);
+                notifyConsoleAPICalled(type, text);
+                output.delete(0, end + 1);
+            } while (output.length() > 0);
         }
 
     }

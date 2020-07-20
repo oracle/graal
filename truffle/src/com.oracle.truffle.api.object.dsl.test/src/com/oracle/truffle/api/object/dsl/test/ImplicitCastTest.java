@@ -43,6 +43,7 @@ package com.oracle.truffle.api.object.dsl.test;
 import org.junit.Test;
 
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.FinalLocationException;
 import com.oracle.truffle.api.object.IncompatibleLocationException;
 import com.oracle.truffle.api.object.Shape;
@@ -52,6 +53,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class ImplicitCastTest {
+    private static final DynamicObjectLibrary LIBRARY = DynamicObjectLibrary.getUncached();
 
     @Layout
     public interface NoCastLayout {
@@ -108,7 +110,7 @@ public class ImplicitCastTest {
     public void testCanAssignIntToLong() {
         final DynamicObject object = CAST_LAYOUT.createCast(14, 14.2);
         final Shape shapeBefore = object.getShape();
-        assertTrue(object.set(CastLayout.LONG_VALUE_IDENTIFIER, 14));
+        assertTrue(LIBRARY.putIfPresent(object, CastLayout.LONG_VALUE_IDENTIFIER, 14));
         assertEquals(shapeBefore, object.getShape());
     }
 
@@ -116,7 +118,7 @@ public class ImplicitCastTest {
     public void testCanAssignIntToDouble() {
         final DynamicObject object = CAST_LAYOUT.createCast(14, 14.2);
         final Shape shapeBefore = object.getShape();
-        assertTrue(object.set(CastLayout.DOUBLE_VALUE_IDENTIFIER, 14));
+        assertTrue(LIBRARY.putIfPresent(object, CastLayout.DOUBLE_VALUE_IDENTIFIER, 14));
         assertEquals(shapeBefore, object.getShape());
     }
 

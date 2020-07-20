@@ -453,7 +453,7 @@ public class SLNodeFactory {
                         argumentIndex,
                         FrameSlotKind.Illegal);
         lexicalScope.locals.put(name, frameSlot);
-        final SLExpressionNode result = SLWriteLocalVariableNodeGen.create(valueNode, frameSlot);
+        final SLExpressionNode result = SLWriteLocalVariableNodeGen.create(valueNode, frameSlot, nameNode);
 
         if (valueNode.hasSource()) {
             final int start = nameNode.getSourceCharIndex();

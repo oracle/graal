@@ -28,7 +28,7 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-BREAK 53 CONTINUE "myMethod"
+BREAK 54 CONTINUE "myMethod"
     OPEN_SCOPE
         MEMBER structured "MyClass*" "this"
             MEMBER structured "MyClass" "<target>"
@@ -46,7 +46,7 @@ BREAK 53 CONTINUE "myMethod"
         END_MEMBERS
 
 
-BREAK 57 CONTINUE "myStaticMethod"
+BREAK 58 CONTINUE "myStaticMethod"
     OPEN_SCOPE
         MEMBER structured "MyClass &" "myClass"
             MEMBER int "int" "a" "16"
@@ -62,7 +62,7 @@ BREAK 57 CONTINUE "myStaticMethod"
         END_MEMBERS
 
 
-BREAK 53 CONTINUE "myMethod"
+BREAK 54 CONTINUE "myMethod"
     OPEN_SCOPE
         MEMBER structured "MyClass*" "this"
             MEMBER structured "MyClass" "<target>"
@@ -80,7 +80,7 @@ BREAK 53 CONTINUE "myMethod"
         END_MEMBERS
 
 
-BREAK 57 CONTINUE "myStaticMethod"
+BREAK 58 CONTINUE "myStaticMethod"
     OPEN_SCOPE
         MEMBER structured "MyClass &" "myClass"
             MEMBER int "int" "a" "16"
@@ -96,7 +96,7 @@ BREAK 57 CONTINUE "myStaticMethod"
         END_MEMBERS
 
 
-BREAK 53 CONTINUE "myMethod"
+BREAK 54 CONTINUE "myMethod"
     OPEN_SCOPE
         MEMBER structured "MyClass*" "this"
             MEMBER structured "MyClass" "<target>"
@@ -114,7 +114,7 @@ BREAK 53 CONTINUE "myMethod"
         END_MEMBERS
 
 
-BREAK 57 CONTINUE "myStaticMethod"
+BREAK 58 CONTINUE "myStaticMethod"
     OPEN_SCOPE
         MEMBER structured "MyClass &" "myClass"
             MEMBER int "int" "a" "16"
@@ -130,7 +130,7 @@ BREAK 57 CONTINUE "myStaticMethod"
         END_MEMBERS
 
 
-BREAK 53 CONTINUE "myMethod"
+BREAK 54 CONTINUE "myMethod"
     OPEN_SCOPE
         MEMBER structured "MyClass*" "this"
             MEMBER structured "MyClass" "<target>"
@@ -148,7 +148,7 @@ BREAK 53 CONTINUE "myMethod"
         END_MEMBERS
 
 
-BREAK 57 CONTINUE "myStaticMethod"
+BREAK 58 CONTINUE "myStaticMethod"
     OPEN_SCOPE
         MEMBER structured "MyClass &" "myClass"
             MEMBER int "int" "a" "16"
@@ -164,7 +164,7 @@ BREAK 57 CONTINUE "myStaticMethod"
         END_MEMBERS
 
 
-BREAK 79 CONTINUE "start"
+BREAK 80 CONTINUE "start"
     OPEN_SCOPE
         MEMBER structured "MyClass" "localObj"
             MEMBER int "int" "a" "16"

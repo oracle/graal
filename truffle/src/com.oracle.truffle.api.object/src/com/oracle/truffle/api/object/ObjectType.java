@@ -46,9 +46,13 @@ import com.oracle.truffle.api.library.DynamicDispatchLibrary;
 /**
  * An extensible object type descriptor for {@link DynamicObject}s.
  *
+ * Planned to be deprecated.
+ *
  * @since 0.8 or earlier
  */
 public class ObjectType {
+    static final ObjectType DEFAULT = new ObjectType();
+
     /**
      * Default constructor.
      *

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,12 +31,10 @@ import java.util.Objects;
  * An event describing a change to a text document. If range and rangeLength are omitted the new
  * text is considered to be the full content of the document.
  */
-public class TextDocumentContentChangeEvent {
-
-    final JSONObject jsonData;
+public class TextDocumentContentChangeEvent extends JSONBase {
 
     TextDocumentContentChangeEvent(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -52,8 +50,11 @@ public class TextDocumentContentChangeEvent {
     }
 
     /**
-     * The length of the range that got replaced.
+     * The optional length of the range that got replaced.
+     *
+     * @deprecated use range instead.
      */
+    @Deprecated
     public Integer getRangeLength() {
         return jsonData.has("rangeLength") ? jsonData.getInt("rangeLength") : null;
     }
@@ -64,7 +65,7 @@ public class TextDocumentContentChangeEvent {
     }
 
     /**
-     * The new text of the document.
+     * The new text for the provided range.
      */
     public String getText() {
         return jsonData.getString("text");
@@ -102,13 +103,11 @@ public class TextDocumentContentChangeEvent {
     @Override
     public int hashCode() {
         int hash = 7;
-        if (this.getRange() != null) {
-            hash = 41 * hash + Objects.hashCode(this.getRange());
-        }
+        hash = 97 * hash + Objects.hashCode(this.getRange());
         if (this.getRangeLength() != null) {
-            hash = 41 * hash + Integer.hashCode(this.getRangeLength());
+            hash = 97 * hash + Integer.hashCode(this.getRangeLength());
         }
-        hash = 41 * hash + Objects.hashCode(this.getText());
+        hash = 97 * hash + Objects.hashCode(this.getText());
         return hash;
     }
 

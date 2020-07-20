@@ -40,9 +40,8 @@
  */
 package com.oracle.truffle.api.interop;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.source.SourceSection;
@@ -98,23 +97,12 @@ final class DefaultFloatExports {
     }
 
     @ExportMessage
-    static boolean fitsInDouble(Float receiver) {
-        float f = receiver;
-        double d = f;
-        if (!Float.isFinite(f) || d == f) {
-            return true;
-        }
-        return false;
-    }
-
-    @ExportMessage
     static byte asByte(Float receiver) throws UnsupportedMessageException {
         float f = receiver;
         byte b = (byte) f;
         if (b == f && !NumberUtils.isNegativeZero(f)) {
             return b;
         }
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -125,7 +113,6 @@ final class DefaultFloatExports {
         if (s == f && !NumberUtils.isNegativeZero(f)) {
             return s;
         }
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -139,7 +126,6 @@ final class DefaultFloatExports {
                 return i;
             }
         }
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -152,18 +138,6 @@ final class DefaultFloatExports {
                 return l;
             }
         }
-        CompilerDirectives.transferToInterpreter();
-        throw UnsupportedMessageException.create();
-    }
-
-    @ExportMessage
-    static double asDouble(Float receiver) throws UnsupportedMessageException {
-        float f = receiver;
-        double d = f;
-        if (!Float.isFinite(f) || d == f) {
-            return d;
-        }
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -180,6 +154,16 @@ final class DefaultFloatExports {
 
     @ExportMessage
     static float asFloat(Float receiver) {
+        return receiver;
+    }
+
+    @ExportMessage
+    static boolean fitsInDouble(Float receiver) {
+        return true;
+    }
+
+    @ExportMessage
+    static double asDouble(Float receiver) {
         return receiver;
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,6 +39,6 @@ double half(long x) {
 }
 
 double test_decorate_function(long x, long y) {
-    double(*wrapped)(long,long) = truffle_decorate_function(add, half);
+    double (*wrapped)(long, long) = truffle_decorate_function(add, half);
     return wrapped(x, y);
 }

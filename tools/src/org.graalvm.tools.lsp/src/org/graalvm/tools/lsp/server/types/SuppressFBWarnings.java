@@ -32,6 +32,7 @@ import java.lang.annotation.RetentionPolicy;
  */
 @Retention(RetentionPolicy.CLASS)
 @interface SuppressFBWarnings {
+
     /**
      * The set of FindBugs
      * <a href="http://findbugs.sourceforge.net/bugDescriptions.html">warnings</a> that are to be

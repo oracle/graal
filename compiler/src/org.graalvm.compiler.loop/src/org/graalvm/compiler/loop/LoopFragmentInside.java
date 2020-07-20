@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,7 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph.DuplicationReplacement;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
+import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractEndNode;
@@ -62,7 +63,7 @@ import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
-import org.graalvm.compiler.nodes.VirtualState.NodeClosure;
+import org.graalvm.compiler.nodes.VirtualState.NodePositionClosure;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
@@ -266,7 +267,7 @@ public class LoopFragmentInside extends LoopFragment {
         } else {
             AbstractBeginNode newSegmentBegin = getDuplicatedNode(mainLoopBegin);
             FixedNode newSegmentFirstNode = newSegmentBegin.next();
-            EndNode newSegmentEnd = getBlockEnd(newSegmentBegin);
+            EndNode newSegmentEnd = getBlockEnd((FixedNode) getDuplicatedNode(mainLoopBegin.loopEnds().first().predecessor()));
             FixedWithNextNode newSegmentLastNode = (FixedWithNextNode) newSegmentEnd.predecessor();
             LoopEndNode loopEndNode = mainLoopBegin.getSingleLoopEnd();
             FixedWithNextNode lastCodeNode = (FixedWithNextNode) loopEndNode.predecessor();
@@ -315,11 +316,15 @@ public class LoopFragmentInside extends LoopFragment {
         FrameState loopState = stateSplit.stateAfter();
         if (loopState != null) {
             loopState.applyToVirtual(v -> {
-                if (v.usages().filter(n -> nodes.isMarked(n) && n != stateSplit).isEmpty()) {
+                /*
+                 * Frame states can reuse virtual object mappings thus n can be new
+                 */
+                if (v.usages().filter(n -> !nodes.isNew(n) && nodes.isMarked(n) && n != stateSplit).isEmpty()) {
                     nodes.clear(v);
                 }
             });
         }
+
     }
 
     public NodeIterable<LoopExitNode> exits() {
@@ -579,12 +584,11 @@ public class LoopFragmentInside extends LoopFragment {
                 ValueNode initializer = firstPhi;
                 if (duplicateState != null) {
                     // fix the merge's state after
-                    duplicateState.applyToNonVirtual(new NodeClosure<ValueNode>() {
-
+                    duplicateState.applyToNonVirtual(new NodePositionClosure<Node>() {
                         @Override
-                        public void apply(Node from, ValueNode node) {
-                            if (node == phi) {
-                                from.replaceFirstInput(phi, firstPhi);
+                        public void apply(Node from, Position p) {
+                            if (p.get(from) == phi) {
+                                p.set(from, firstPhi);
                             }
                         }
                     });

@@ -33,6 +33,8 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.java.FrameStateBuilder;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
@@ -189,18 +191,24 @@ public final class JNIPrimitiveArrayOperationMethod extends JNIGeneratedMethod {
                 ValueNode start = arguments.get(2);
                 ValueNode count = arguments.get(3);
                 ValueNode buffer = arguments.get(4);
+                FixedWithNextNode fwn;
                 if (operation == Operation.GET_REGION) {
-                    kit.getPrimitiveArrayRegionRetainException(elementKind, array, start, count, buffer);
+                    fwn = kit.getPrimitiveArrayRegionRetainException(elementKind, array, start, count, buffer);
                 } else {
-                    kit.setPrimitiveArrayRegionRetainException(elementKind, array, start, count, buffer);
+                    fwn = kit.setPrimitiveArrayRegionRetainException(elementKind, array, start, count, buffer);
+                }
+                if (fwn instanceof MergeNode) {
+                    MergeNode merge = (MergeNode) fwn;
+                    ((MergeNode) fwn).setStateAfter(state.create(kit.bci(), merge));
                 }
                 break;
             }
             default:
                 throw VMError.shouldNotReachHere();
         }
-
-        kit.append(new CEntryPointLeaveNode(LeaveAction.Leave));
+        kit.appendStateSplitProxy(state);
+        CEntryPointLeaveNode leave = new CEntryPointLeaveNode(LeaveAction.Leave);
+        kit.append(leave);
         kit.createReturn(result, (result != null) ? result.getStackKind() : JavaKind.Void);
 
         return kit.finalizeGraph();
@@ -217,6 +225,7 @@ public final class JNIPrimitiveArrayOperationMethod extends JNIGeneratedMethod {
         ValueNode array = kit.append(new NewArrayNode(elementType, length, true));
         ValueNode arrayHandle = kit.boxObjectInLocalHandle(array);
         AbstractMergeNode merge = kit.endIf();
+        merge.setStateAfter(kit.getFrameState().create(kit.bci(), merge));
         Stamp handleStamp = providers.getWordTypes().getWordStamp(providers.getMetaAccess().lookupJavaType(JNIObjectHandle.class));
         return kit.unique(new ValuePhiNode(handleStamp, merge, new ValueNode[]{nullHandle, arrayHandle}));
     }

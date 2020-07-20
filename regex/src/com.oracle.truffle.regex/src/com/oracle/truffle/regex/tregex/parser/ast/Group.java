@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import java.util.stream.Collectors;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.RegexASTVisitorIterable;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
@@ -93,21 +94,25 @@ public final class Group extends QuantifiableTerm implements RegexASTVisitorIter
         setGroupNumber(groupNumber);
     }
 
-    private Group(Group copy, RegexAST ast, boolean recursive) {
+    private Group(Group copy) {
         super(copy);
         groupNumber = copy.groupNumber;
         enclosedCaptureGroupsLow = copy.enclosedCaptureGroupsLow;
         enclosedCaptureGroupsHigh = copy.enclosedCaptureGroupsHigh;
-        if (recursive) {
-            for (Sequence s : copy.alternatives) {
-                add(s.copy(ast, true));
-            }
-        }
     }
 
     @Override
-    public Group copy(RegexAST ast, boolean recursive) {
-        return ast.register(new Group(this, ast, recursive));
+    public Group copy(RegexAST ast) {
+        return ast.register(new Group(this));
+    }
+
+    @Override
+    public Group copyRecursive(RegexAST ast, CompilationBuffer compilationBuffer) {
+        Group copy = copy(ast);
+        for (Sequence s : alternatives) {
+            copy.add(s.copyRecursive(ast, compilationBuffer));
+        }
+        return copy;
     }
 
     /**

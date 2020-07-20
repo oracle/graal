@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,11 +55,12 @@ import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.charset.CodePointSet;
-import com.oracle.truffle.regex.charset.RangesAccumulator;
-import com.oracle.truffle.regex.charset.SortedListOfRanges;
+import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
+import com.oracle.truffle.regex.charset.Range;
 import com.oracle.truffle.regex.charset.UnicodeProperties;
-import com.oracle.truffle.regex.tregex.buffer.IntRangesBuffer;
 import com.oracle.truffle.regex.tregex.parser.CaseFoldTable;
+import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.util.Exceptions;
 import com.oracle.truffle.regex.util.CompilationFinalBitSet;
 
 /**
@@ -101,6 +102,9 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
     private static final String UNICODE_WORD_BOUNDARY_SNIPPET;
     private static final String UNICODE_WORD_NON_BOUNDARY_SNIPPET;
 
+    private static final String ASCII_WHITESPACE = "\\x09-\\x0d\\x20";
+    private static final String ASCII_NON_WHITESPACE = "\\x00-\\x08\\x0e-\\x1f\\x21-\\u{10ffff}";
+
     static {
         UNICODE_CHAR_CLASS_REPLACEMENTS = new HashMap<>();
         UNICODE_CHAR_CLASS_SETS = new HashMap<>();
@@ -116,7 +120,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
 
         // \d and \D as CodePointSets (currently not needed, included for consistency)
         UNICODE_CHAR_CLASS_SETS.put('d', UnicodeProperties.getProperty("General_Category=Decimal_Number"));
-        UNICODE_CHAR_CLASS_SETS.put('D', UnicodeProperties.getProperty("General_Category=Decimal_Number").createInverse());
+        UNICODE_CHAR_CLASS_SETS.put('D', UnicodeProperties.getProperty("General_Category=Decimal_Number").createInverse(Encodings.UTF_32));
 
         // Spaces: \s
         // Python accepts characters with either the Space_Separator General Category
@@ -133,8 +137,8 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
         // the definition of the White_Space property, do the set subtraction and then list the
         // contents of the resulting set.
         CodePointSet unicodeSpaces = UnicodeProperties.getProperty("White_Space");
-        CodePointSet spaces = unicodeSpaces.union(CodePointSet.create('\u001c', '\u001f'));
-        CodePointSet nonSpaces = spaces.createInverse();
+        CodePointSet spaces = unicodeSpaces.union(CodePointSet.createNoDedup('\u001c', '\u001f'));
+        CodePointSet nonSpaces = spaces.createInverse(Encodings.UTF_32);
         UNICODE_CHAR_CLASS_SETS.put('s', spaces);
         UNICODE_CHAR_CLASS_SETS.put('S', nonSpaces);
 
@@ -161,10 +165,10 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
         // Similarly as for \S, we will not be able to produce a replacement string for \W.
         // We will need to construct the set ourselves.
         CodePointSet alpha = UnicodeProperties.getProperty("General_Category=Letter");
-        CodePointSet numericExtras = CodePointSet.create(0xf96b, 0xf973, 0xf978, 0xf9b2, 0xf9d1, 0xf9d3, 0xf9fd, 0x2f890);
+        CodePointSet numericExtras = CodePointSet.createNoDedup(0xf96b, 0xf973, 0xf978, 0xf9b2, 0xf9d1, 0xf9d3, 0xf9fd, 0x2f890);
         CodePointSet numeric = UnicodeProperties.getProperty("General_Category=Number").union(numericExtras);
-        CodePointSet wordChars = alpha.union(numeric).union(CodePointSet.create('_', '_'));
-        CodePointSet nonWordChars = wordChars.createInverse();
+        CodePointSet wordChars = alpha.union(numeric).union(CodePointSet.create('_'));
+        CodePointSet nonWordChars = wordChars.createInverse(Encodings.UTF_32);
         UNICODE_CHAR_CLASS_SETS.put('w', wordChars);
         UNICODE_CHAR_CLASS_SETS.put('W', nonWordChars);
 
@@ -237,11 +241,16 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
      * The (slightly modified) version of the XID_Start Unicode property used to check names of
      * capture groups.
      */
-    private static final CodePointSet XID_START = UnicodeProperties.getProperty("XID_Start").union(CodePointSet.create('_', '_'));
+    private static final CodePointSet XID_START = UnicodeProperties.getProperty("XID_Start").union(CodePointSet.create('_'));
     /**
      * The XID_Continue Unicode character property.
      */
     private static final CodePointSet XID_CONTINUE = UnicodeProperties.getProperty("XID_Continue");
+
+    /**
+     * The source object of the input pattern.
+     */
+    private final RegexSource inSource;
 
     /**
      * The source of the input pattern.
@@ -311,10 +320,12 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
      */
     private TermCategory lastTerm;
 
-    private final RangesAccumulator<IntRangesBuffer> curCharClass = new RangesAccumulator<>(new IntRangesBuffer());
+    private final CodePointSetAccumulator curCharClass = new CodePointSetAccumulator();
+    private final CodePointSetAccumulator charClassCaseFoldTmp = new CodePointSetAccumulator();
 
     @TruffleBoundary
     public PythonFlavorProcessor(RegexSource source, PythonREMode mode) {
+        this.inSource = source;
         this.inPattern = source.getPattern();
         this.inFlags = source.getFlags();
         this.mode = mode;
@@ -372,7 +383,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
         // actually want to match on the individual code points of the Unicode string. In 'bytes'
         // patterns, all characters are in the range 0-255 and so the Unicode flag does not
         // interfere with the matching (no surrogates).
-        return new RegexSource(outPattern.toString(), "su" + (getGlobalFlags().isSticky() ? "y" : ""));
+        return new RegexSource(outPattern.toString(), getGlobalFlags().isSticky() ? "suy" : "su", mode == PythonREMode.Bytes ? Encodings.LATIN_1 : Encodings.UTF_16);
     }
 
     private PythonFlags getLocalFlags() {
@@ -392,7 +403,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
             case Bytes:
                 return inPattern.charAt(position);
             default:
-                throw new IllegalStateException();
+                throw Exceptions.shouldNotReachHere();
         }
     }
 
@@ -527,7 +538,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
                 curCharClass.clear();
                 curCharClass.addRange(codepoint, codepoint);
                 caseFold();
-                if (curCharClass.get().matchesSingleChar()) {
+                if (curCharClass.matchesSingleChar()) {
                     emitCharNoCasing(codepoint, inCharClass);
                 } else if (inCharClass) {
                     emitCharSetNoCasing();
@@ -566,21 +577,21 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
     }
 
     private void emitCharSetNoCasing() {
-        emitCharSetNoCasing(curCharClass.get());
+        emitCharSetNoCasing(curCharClass);
     }
 
     /**
      * Like {@link #emitCharSet}, but it does not do any case-folding.
      */
-    private void emitCharSetNoCasing(SortedListOfRanges charSet) {
+    private void emitCharSetNoCasing(Iterable<Range> charSet) {
         if (!silent) {
-            for (int i = 0; i < charSet.size(); i++) {
-                if (charSet.isSingle(i)) {
-                    emitCharNoCasing(charSet.getLo(i), true);
+            for (Range r : charSet) {
+                if (r.isSingle()) {
+                    emitCharNoCasing(r.lo, true);
                 } else {
-                    emitCharNoCasing(charSet.getLo(i), true);
+                    emitCharNoCasing(r.lo, true);
                     emitSnippet("-");
-                    emitCharNoCasing(charSet.getHi(i), true);
+                    emitCharNoCasing(r.hi, true);
                 }
             }
         }
@@ -598,7 +609,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
             bailOut("locale-specific case folding is not supported");
         }
         CaseFoldTable.CaseFoldingAlgorithm caseFolding = getLocalFlags().isUnicode() ? CaseFoldTable.CaseFoldingAlgorithm.PythonUnicode : CaseFoldTable.CaseFoldingAlgorithm.PythonAscii;
-        CaseFoldTable.applyCaseFold(curCharClass, caseFolding);
+        CaseFoldTable.applyCaseFold(curCharClass, charClassCaseFoldTmp, caseFolding);
     }
 
     /// Error reporting
@@ -618,7 +629,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
     }
 
     private RegexSyntaxException syntaxError(String message, int atPosition) {
-        return new RegexSyntaxException(inPattern, inFlags, message, atPosition);
+        return new RegexSyntaxException(inSource, message, atPosition);
     }
 
     // Character predicates
@@ -895,8 +906,11 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
                             emitSnippet("]");
                         }
                     }
-                } else if (getLocalFlags().isLocale() && (curChar() == 'w' || curChar() == 'W')) {
+                } else if (getLocalFlags().isLocale() && (className == 'w' || className == 'W')) {
                     bailOut("locale-specific definitions of word characters are not supported");
+                } else if ((mode == PythonREMode.Bytes || getLocalFlags().isAscii()) && (className == 's' || className == 'S')) {
+                    String snippet = className == 's' ? ASCII_WHITESPACE : ASCII_NON_WHITESPACE;
+                    emitSnippet(inCharClass ? snippet : "[" + snippet + "]");
                 } else {
                     emitSnippet("\\" + className);
                 }
@@ -1013,7 +1027,7 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
                             escapeLength = 8;
                             break;
                         default:
-                            throw new IllegalStateException();
+                            throw Exceptions.shouldNotReachHere();
                     }
                     String code = getUpTo(escapeLength, PythonFlavorProcessor::isHexDigit);
                     if (code.length() < escapeLength) {

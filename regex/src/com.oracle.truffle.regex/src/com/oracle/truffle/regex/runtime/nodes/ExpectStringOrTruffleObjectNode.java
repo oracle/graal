@@ -64,6 +64,7 @@ public abstract class ExpectStringOrTruffleObjectNode extends Node {
         try {
             return inputs.asString(input);
         } catch (UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw UnsupportedTypeException.create(new Object[]{input});
         }
     }
@@ -74,11 +75,12 @@ public abstract class ExpectStringOrTruffleObjectNode extends Node {
         try {
             final long inputLength = inputs.getArraySize(input);
             if (inputLength > Integer.MAX_VALUE) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw UnsupportedTypeException.create(new Object[]{input});
             }
             return input;
         } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw UnsupportedTypeException.create(new Object[]{input});
         }
     }

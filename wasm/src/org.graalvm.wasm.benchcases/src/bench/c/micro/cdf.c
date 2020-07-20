@@ -90,7 +90,7 @@ int32_t integrate() {
   return (int) (checksum * 100);
 }
 
-int benchmarkWarmupCount() {
+int benchmarkIterationsCount() {
   return 16;
 }
 
@@ -100,7 +100,7 @@ void benchmarkSetupOnce() {
 void benchmarkSetupEach() {
 }
 
-void benchmarkTeardownEach() {
+void benchmarkTeardownEach(char* outputFile) {
 }
 
 int benchmarkRun() {

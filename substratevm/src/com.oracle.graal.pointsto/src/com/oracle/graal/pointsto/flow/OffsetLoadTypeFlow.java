@@ -27,7 +27,6 @@ package com.oracle.graal.pointsto.flow;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.JavaReadNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
-import org.graalvm.compiler.nodes.java.AtomicReadAndWriteNode;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.UnsafePartitionKind;
@@ -37,11 +36,13 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.nodes.AnalysisUnsafePartitionLoadNode;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
+import jdk.vm.ci.code.BytecodePosition;
+
 /**
  * The abstract class for offset load flows (i.e. indexed loads, unsafe loads at offset, java read
  * loads).
  */
-public abstract class OffsetLoadTypeFlow extends TypeFlow<ValueNode> {
+public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
 
     /*
      * The type of the receiver object of the offset load operation. Can be approximated by Object
@@ -54,7 +55,7 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<ValueNode> {
 
     @SuppressWarnings("unused")
     public OffsetLoadTypeFlow(ValueNode node, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow, MethodTypeFlow methodFlow) {
-        super(node, componentType);
+        super(node.getNodeSourcePosition(), componentType);
         this.objectType = objectType;
         this.objectFlow = objectFlow;
     }
@@ -73,7 +74,19 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<ValueNode> {
     }
 
     @Override
+    public void setObserved(TypeFlow<?> newObjectFlow) {
+        this.objectFlow = newObjectFlow;
+    }
+
+    @Override
     public abstract void onObservedUpdate(BigBang bb);
+
+    @Override
+    public void onObservedSaturated(BigBang bb, TypeFlow<?> observed) {
+        assert this.isClone();
+        /* When receiver object flow saturates start observing the flow of the the object type. */
+        replaceObservedWith(bb, objectType);
+    }
 
     @Override
     public TypeFlow<?> receiver() {
@@ -117,6 +130,10 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<ValueNode> {
             }
 
             for (AnalysisObject object : arrayState.objects()) {
+                if (bb.analysisPolicy().relaxTypeFlowConstraints() && !object.type().isArray()) {
+                    /* Ignore non-array types when type flow constraints are relaxed. */
+                    continue;
+                }
                 if (object.isPrimitiveArray() || object.isEmptyObjectArrayConstant(bb)) {
                     /* Nothing to read from a primitive array or an empty array constant. */
                     continue;
@@ -161,6 +178,18 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<ValueNode> {
         }
 
         protected abstract AbstractUnsafeLoadTypeFlow makeCopy(BigBang bb, MethodFlowsGraph methodFlows);
+
+        @Override
+        public void initClone(BigBang bb) {
+            /*
+             * Unsafe load type flow models unsafe reads from both instance and static fields. From
+             * an analysis stand point for static fields the base doesn't matter. An unsafe load can
+             * read from any of the static fields marked for unsafe access.
+             */
+            for (AnalysisField field : bb.getUniverse().getUnsafeAccessedStaticFields()) {
+                field.getStaticFieldFlow().addUse(bb, this);
+            }
+        }
 
         @Override
         public void onObservedUpdate(BigBang bb) {
@@ -302,7 +331,7 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<ValueNode> {
 
     public static class AtomicReadTypeFlow extends AbstractUnsafeLoadTypeFlow {
 
-        public AtomicReadTypeFlow(AtomicReadAndWriteNode node, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow, MethodTypeFlow methodFlow) {
+        public AtomicReadTypeFlow(ValueNode node, AnalysisType objectType, AnalysisType componentType, TypeFlow<?> objectFlow, MethodTypeFlow methodFlow) {
             super(node, objectType, componentType, objectFlow, methodFlow);
         }
 

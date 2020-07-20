@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -107,7 +107,8 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     public static class Options {
         // @formatter:off
         @Option(help = "Force branch instructions to align with 32-bytes boundary, to mitigate the jcc erratum. " +
-                "See https://www.intel.com/content/dam/support/us/en/documents/processors/mitigations-jump-conditional-code-erratum.pdf for more details.", type = OptionType.User)
+                "See https://www.intel.com/content/dam/support/us/en/documents/processors/mitigations-jump-conditional-code-erratum.pdf for more details. " +
+                "If not set explicitly, the default value will be determined according to the CPU model.", type = OptionType.User)
         public static final OptionKey<Boolean> UseBranchesWithin32ByteBoundary = new OptionKey<>(false);
         // @formatter:on
     }
@@ -120,17 +121,26 @@ public class AMD64Assembler extends AMD64BaseAssembler {
 
     protected CodePatchShifter codePatchShifter = null;
 
+    /**
+     * Constructs an assembler for the AMD64 architecture.
+     */
     public AMD64Assembler(TargetDescription target) {
         super(target);
         useBranchesWithin32ByteBoundary = false;
     }
 
-    /**
-     * Constructs an assembler for the AMD64 architecture.
-     */
     public AMD64Assembler(TargetDescription target, OptionValues optionValues) {
         super(target);
         useBranchesWithin32ByteBoundary = Options.UseBranchesWithin32ByteBoundary.getValue(optionValues);
+    }
+
+    public AMD64Assembler(TargetDescription target, OptionValues optionValues, boolean hasIntelJccErratum) {
+        super(target);
+        if (Options.UseBranchesWithin32ByteBoundary.hasBeenSet(optionValues)) {
+            useBranchesWithin32ByteBoundary = Options.UseBranchesWithin32ByteBoundary.getValue(optionValues);
+        } else {
+            useBranchesWithin32ByteBoundary = hasIntelJccErratum;
+        }
     }
 
     public void setCodePatchShifter(CodePatchShifter codePatchShifter) {
@@ -1512,6 +1522,34 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
     }
 
+    /**
+     * VEX-encoded vector gather instructions with an operand order of RMV.
+     */
+    public static final class VexGatherOp extends VexOp {
+        // @formatter:off
+        public static final VexGatherOp VPGATHERDD = new VexGatherOp("VPGATHERDD", P_66, M_0F38, W0, 0x90, VEXOpAssertion.AVX2);
+        public static final VexGatherOp VPGATHERQD = new VexGatherOp("VPGATHERQD", P_66, M_0F38, W0, 0x91, VEXOpAssertion.AVX2);
+        public static final VexGatherOp VPGATHERDQ = new VexGatherOp("VPGATHERDQ", P_66, M_0F38, W1, 0x90, VEXOpAssertion.AVX2);
+        public static final VexGatherOp VPGATHERQQ = new VexGatherOp("VPGATHERQQ", P_66, M_0F38, W1, 0x91, VEXOpAssertion.AVX2);
+        public static final VexGatherOp VGATHERDPD = new VexGatherOp("VGATHERDPD", P_66, M_0F38, W1, 0x92, VEXOpAssertion.AVX2);
+        public static final VexGatherOp VGATHERQPD = new VexGatherOp("VGATHERQPD", P_66, M_0F38, W1, 0x93, VEXOpAssertion.AVX2);
+        public static final VexGatherOp VGATHERDPS = new VexGatherOp("VGATHERDPS", P_66, M_0F38, W0, 0x92, VEXOpAssertion.AVX2);
+        public static final VexGatherOp VGATHERQPS = new VexGatherOp("VGATHERQPS", P_66, M_0F38, W0, 0x93, VEXOpAssertion.AVX2);
+        // @formatter:on
+
+        protected VexGatherOp(String opcode, int pp, int mmmmm, int w, int op, VEXOpAssertion assertion) {
+            super(opcode, pp, mmmmm, w, op, assertion, EVEXTuple.INVALID, WIG);
+        }
+
+        public void emit(AMD64Assembler asm, AVXSize size, Register dst, AMD64Address address, Register mask) {
+            assert assertion.check((AMD64) asm.target.arch, size, dst, mask, null, null);
+            assert size == AVXSize.XMM || size == AVXSize.YMM;
+            asm.vexPrefix(dst, mask, address, size, pp, mmmmm, w, wEvex, true);
+            asm.emitByte(op);
+            asm.emitOperandHelper(dst, address, 0);
+        }
+    }
+
     public static final class VexGeneralPurposeRMOp extends VexRMOp {
         // @formatter:off
         public static final VexGeneralPurposeRMOp BLSI    = new VexGeneralPurposeRMOp("BLSI",   P_,    M_0F38, WIG, 0xF3, 3, VEXOpAssertion.BMI1);
@@ -2267,6 +2305,12 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         simdPrefix(dst, Register.None, src, PS, P_0F, false);
         emitByte(0x28);
         emitModRM(dst, src);
+    }
+
+    public final void movb(Register dst, AMD64Address src) {
+        prefixb(src, dst);
+        emitByte(0x8A);
+        emitOperandHelper(dst, src, 0);
     }
 
     public final void movb(AMD64Address dst, int imm8) {

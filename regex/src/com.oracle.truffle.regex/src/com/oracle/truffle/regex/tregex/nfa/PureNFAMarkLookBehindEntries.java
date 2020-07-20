@@ -52,8 +52,8 @@ public class PureNFAMarkLookBehindEntries {
 
     private final PureNFAMap nfa;
 
-    private StateSet<PureNFAState> markLiteralStatesCur;
-    private StateSet<PureNFAState> markLiteralStatesNext;
+    private StateSet<PureNFA, PureNFAState> markLiteralStatesCur;
+    private StateSet<PureNFA, PureNFAState> markLiteralStatesNext;
 
     public PureNFAMarkLookBehindEntries(PureNFAMap nfa) {
         this.nfa = nfa;
@@ -133,7 +133,7 @@ public class PureNFAMarkLookBehindEntries {
                     }
                 }
             }
-            StateSet<PureNFAState> tmp = markLiteralStatesCur;
+            StateSet<PureNFA, PureNFAState> tmp = markLiteralStatesCur;
             markLiteralStatesCur = markLiteralStatesNext;
             markLiteralStatesNext = tmp;
         }

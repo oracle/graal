@@ -57,18 +57,22 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
     private final SourceSection sourceLocation;
     private final String rootName;
     private final boolean host;
-    private final PolyglotExceptionImpl source;
     private StackTraceElement stackTrace;
+    private final String formattedSource;
 
     private PolyglotExceptionFrame(PolyglotExceptionImpl source, PolyglotLanguage language,
                     SourceSection sourceLocation, String rootName, boolean isHost, StackTraceElement stackTrace) {
-        super(source.getImpl());
+        super(source.polyglot);
         this.language = language;
         this.sourceLocation = sourceLocation;
         this.rootName = rootName;
         this.host = isHost;
         this.stackTrace = stackTrace;
-        this.source = source;
+        if (!isHostFrame()) {
+            this.formattedSource = formatSource(sourceLocation, source.getFileSystemContext(language));
+        } else {
+            this.formattedSource = null;
+        }
     }
 
     @Override
@@ -118,7 +122,8 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
         } else {
             b.append(rootName);
             b.append("(");
-            b.append(formatSource(sourceLocation, source.getFileSystemContext()));
+            assert formattedSource != null;
+            b.append(formattedSource);
             b.append(")");
         }
         return b.toString();
@@ -129,7 +134,7 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
             return null;
         }
         RootNode targetRoot = frame.getTarget().getRootNode();
-        if (targetRoot.isInternal()) {
+        if (targetRoot.isInternal() && !exception.showInternalStackFrames) {
             return null;
         }
 
@@ -138,28 +143,31 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
             return null;
         }
 
-        PolyglotEngineImpl engine = exception.getEngine();
-        PolyglotLanguage language = engine.idToLanguage.get(info.getId());
+        PolyglotEngineImpl engine = exception.engine;
+        PolyglotLanguage language = null;
+        SourceSection location = null;
         String rootName = targetRoot.getName();
+        if (engine != null) {
+            language = engine.idToLanguage.get(info.getId());
 
-        SourceSection location;
-        Node callNode = frame.getLocation();
-        if (callNode != null) {
-            com.oracle.truffle.api.source.SourceSection section = callNode.getEncapsulatingSourceSection();
-            if (section != null) {
-                Source source = engine.getAPIAccess().newSource(language.getId(), section.getSource());
-                location = engine.getAPIAccess().newSourceSection(source, section);
+            Node callNode = frame.getLocation();
+            if (callNode != null) {
+                com.oracle.truffle.api.source.SourceSection section = callNode.getEncapsulatingSourceSection();
+                if (section != null) {
+                    Source source = engine.getAPIAccess().newSource(language.getId(), section.getSource());
+                    location = engine.getAPIAccess().newSourceSection(source, section);
+                } else {
+                    location = null;
+                }
             } else {
-                location = null;
+                location = first ? exception.getSourceLocation() : null;
             }
-        } else {
-            location = first ? exception.getSourceLocation() : null;
         }
         return new PolyglotExceptionFrame(exception, language, location, rootName, false, null);
     }
 
     static PolyglotExceptionFrame createHost(PolyglotExceptionImpl exception, StackTraceElement hostStack) {
-        PolyglotLanguage language = exception.getEngine().hostLanguage;
+        PolyglotLanguage language = exception.engine != null ? exception.engine.hostLanguage : null;
 
         // source section for the host language is currently null
         // we should potentially in the future create a source section for the host language

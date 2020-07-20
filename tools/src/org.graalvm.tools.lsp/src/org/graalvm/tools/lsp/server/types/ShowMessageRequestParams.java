@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,12 +31,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-public class ShowMessageRequestParams {
-
-    final JSONObject jsonData;
+public class ShowMessageRequestParams extends JSONBase {
 
     ShowMessageRequestParams(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -116,10 +114,10 @@ public class ShowMessageRequestParams {
     @Override
     public int hashCode() {
         int hash = 5;
-        hash = 29 * hash + Objects.hashCode(this.getType());
-        hash = 29 * hash + Objects.hashCode(this.getMessage());
+        hash = 89 * hash + Objects.hashCode(this.getType());
+        hash = 89 * hash + Objects.hashCode(this.getMessage());
         if (this.getActions() != null) {
-            hash = 29 * hash + Objects.hashCode(this.getActions());
+            hash = 89 * hash + Objects.hashCode(this.getActions());
         }
         return hash;
     }

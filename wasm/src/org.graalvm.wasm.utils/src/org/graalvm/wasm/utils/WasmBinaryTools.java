@@ -43,21 +43,48 @@ package org.graalvm.wasm.utils;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class WasmBinaryTools {
 
-    private static void runExternalToolAndVerify(String message, String[] args) throws IOException, InterruptedException {
+    private static Supplier<String> asyncReadInputStream(InputStream is) {
+        class SupplierThread extends Thread implements Supplier<String> {
+            private String result = null;
+
+            @Override
+            public String get() {
+                try {
+                    this.join();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException();
+                }
+                return result;
+            }
+
+            @Override
+            public void run() {
+                result = new BufferedReader(new InputStreamReader(is)).lines().collect(Collectors.joining(System.lineSeparator()));
+            }
+        }
+        final SupplierThread supplier = new SupplierThread();
+        supplier.start();
+        return supplier;
+    }
+
+    private static void runExternalToolAndVerify(String message, String[] commandLine) throws IOException, InterruptedException {
         Runtime runtime = Runtime.getRuntime();
-        Process process = runtime.exec(args);
+        Process process = runtime.exec(commandLine);
+        Supplier<String> stdout = asyncReadInputStream(process.getInputStream());
+        Supplier<String> stderr = asyncReadInputStream(process.getErrorStream());
         int exitCode = process.waitFor();
         if (exitCode != 0) {
-            String stderr = new BufferedReader(new InputStreamReader((process.getErrorStream()))).lines().collect(Collectors.joining(System.lineSeparator()));
-            Assert.fail(Assert.format("%s: %s", message, stderr));
+            Assert.fail(Assert.format("%s ('%s', exit code %d)\nstderr:\n%s\nstdout:\n%s", message, String.join(" ", commandLine), exitCode, stderr.get(), stdout.get()));
         }
     }
 
@@ -73,6 +100,7 @@ public class WasmBinaryTools {
                                         input.getPath(),
                                         // This option is needed so that wat2wasm agrees to generate
                                         // invalid wasm files.
+                                        "-v",
                                         "--no-check",
                                         "-o",
                                         output.getPath(),

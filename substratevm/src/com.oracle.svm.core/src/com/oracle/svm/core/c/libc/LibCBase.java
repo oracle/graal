@@ -24,18 +24,100 @@
  */
 package com.oracle.svm.core.c.libc;
 
-import java.nio.file.Path;
+// Checkstyle: stop
+
+import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.List;
+
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.util.GuardedAnnotationAccess;
+
+// Checkstyle: resume
 
 public interface LibCBase {
 
-    String PATH_DEFAULT = "<default>";
+    @Platforms(Platform.HOSTED_ONLY.class)
+    static boolean containsLibCAnnotation(AnnotatedElement element) {
+        return GuardedAnnotationAccess.getAnnotation(element, LibC.class) != null;
+    }
 
-    String getJDKStaticLibsPath();
+    @Platforms(Platform.HOSTED_ONLY.class)
+    static boolean isProvidedInCurrentLibc(AnnotatedElement element) {
+        LibCBase currentLibC = ImageSingletons.lookup(LibCBase.class);
+        LibC targetLibC = GuardedAnnotationAccess.getAnnotation(element, LibC.class);
+        return targetLibC != null && Arrays.asList(targetLibC.value()).contains(currentLibC.getClass());
+    }
 
-    void prepare(Path directory);
+    @Fold
+    static boolean targetLibCIs(Class<? extends LibCBase> libCBase) {
+        LibCBase currentLibC = ImageSingletons.lookup(LibCBase.class);
+        return currentLibC.getClass() == libCBase;
+    }
 
-    List<String> getCCompilerOptions();
+    /**
+     * Checks if the type is provided in the current libc implementation.
+     *
+     * A type is regarded a provided in the current libc implementation if it is annotated and the
+     * current libc implementation is listed in the annotation. If the type is not annotated, then
+     * the above check is successively applied to the enclosing types, if they exist. Finally, if
+     * the class is in a package, the above check is applied. If the package does not exist or is
+     * not annotated, the type is regarded as provided.
+     *
+     * @param clazz Type to check if contained in the current libc implementation.
+     * @return true if contained in the current libc implementation, false otherwise.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    static boolean isTypeProvidedInCurrentLibc(Class<?> clazz) {
+        Class<?> currentClazz = clazz;
+        while (currentClazz != null) {
+            if (containsLibCAnnotation(currentClazz)) {
+                return isProvidedInCurrentLibc(currentClazz);
+            }
+            currentClazz = currentClazz.getEnclosingClass();
+        }
+        Package clazzPackage = clazz.getPackage();
+        if (clazzPackage != null) {
+            return !containsLibCAnnotation(clazz) || isProvidedInCurrentLibc(clazzPackage);
+        }
+        return true;
+    }
 
-    List<String> getLinkerPreOptions();
+    @Platforms(Platform.HOSTED_ONLY.class)
+    static boolean isMethodProvidedInCurrentLibc(Method method) {
+        if (containsLibCAnnotation(method) && !isProvidedInCurrentLibc(method)) {
+            return false;
+        }
+        Class<?> declaringClass = method.getDeclaringClass();
+        return isTypeProvidedInCurrentLibc(declaringClass);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    String getName();
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    String getTargetCompiler();
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    List<String> getAdditionalQueryCodeCompilerOptions();
+
+    /**
+     * Checks if static JDK libraries compiled with the target libC are mandatory for building the
+     * native-image.
+     *
+     * This exists to support building native-images on older JDK versions as well as to support
+     * special cases, like Bionic libc.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    boolean requiresLibCSpecificStaticJDKLibraries();
+
+    static LibCBase singleton() {
+        return ImageSingletons.lookup(LibCBase.class);
+    }
+
+    boolean hasIsolatedNamespaces();
 }

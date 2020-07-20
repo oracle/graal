@@ -56,8 +56,6 @@ public abstract class LLVMIndirectBranchNode extends LLVMControlFlowNode {
 
     public abstract int executeCondition(VirtualFrame frame);
 
-    public abstract int[] getSuccessors();
-
     /**
      * Override to allow access from generated wrapper.
      */

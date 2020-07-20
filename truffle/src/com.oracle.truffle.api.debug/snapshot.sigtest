@@ -91,12 +91,13 @@ meth public java.lang.StackTraceElement[] getStackTrace()
 meth public java.lang.Throwable fillInStackTrace()
 meth public java.lang.Throwable getRawException(java.lang.Class<? extends com.oracle.truffle.api.TruffleLanguage<?>>)
 meth public java.util.List<com.oracle.truffle.api.debug.DebugStackTraceElement> getDebugStackTrace()
+meth public java.util.List<java.util.List<com.oracle.truffle.api.debug.DebugStackTraceElement>> getDebugAsynchronousStacks()
 meth public void printStackTrace()
 meth public void printStackTrace(java.io.PrintStream)
 meth public void printStackTrace(java.io.PrintWriter)
 meth public void setStackTrace(java.lang.StackTraceElement[])
 supr java.lang.RuntimeException
-hfds CAUSE_CAPTION,catchLocation,debugStackTrace,exception,isCatchNodeComputed,javaLikeStackTrace,preferredLanguage,serialVersionUID,session,suspendedEvent,throwLocation
+hfds CAUSE_CAPTION,catchLocation,debugAsyncStacks,debugStackTrace,exception,isCatchNodeComputed,javaLikeStackTrace,preferredLanguage,serialVersionUID,session,suspendedEvent,throwLocation
 
 CLSS public final static com.oracle.truffle.api.debug.DebugException$CatchLocation
  outer com.oracle.truffle.api.debug.DebugException
@@ -239,6 +240,7 @@ meth public java.util.Map<java.lang.String,? extends com.oracle.truffle.api.debu
 meth public void close()
 meth public void resume(java.lang.Thread)
 meth public void resumeAll()
+meth public void setAsynchronousStackDepth(int)
 meth public void setBreakpointsActive(boolean)
  anno 0 java.lang.Deprecated()
 meth public void setBreakpointsActive(com.oracle.truffle.api.debug.Breakpoint$Kind,boolean)
@@ -315,13 +317,14 @@ meth public java.lang.Iterable<com.oracle.truffle.api.debug.DebugStackFrame> get
 meth public java.lang.String toString()
 meth public java.lang.Throwable getBreakpointConditionException(com.oracle.truffle.api.debug.Breakpoint)
 meth public java.util.List<com.oracle.truffle.api.debug.Breakpoint> getBreakpoints()
+meth public java.util.List<java.util.List<com.oracle.truffle.api.debug.DebugStackTraceElement>> getAsynchronousStacks()
 meth public void prepareContinue()
 meth public void prepareKill()
 meth public void prepareUnwindFrame(com.oracle.truffle.api.debug.DebugStackFrame)
 meth public void setReturnValue(com.oracle.truffle.api.debug.DebugValue)
 supr java.lang.Object
-hfds breakpoints,cachedFrames,conditionFailures,context,disposed,exception,inputValuesProvider,insertableNode,materializedFrame,nextStrategy,returnValue,session,sourceSection,suspendAnchor,thread
-hcls DebugStackFrameIterable
+hfds breakpoints,cachedAsyncFrames,cachedFrames,conditionFailures,context,disposed,exception,inputValuesProvider,insertableNode,materializedFrame,nextStrategy,returnValue,session,sourceSection,suspendAnchor,thread
+hcls DebugAsyncStackFrameLists,DebugStackFrameIterable
 
 CLSS public final com.oracle.truffle.api.debug.SuspensionFilter
 innr public final Builder

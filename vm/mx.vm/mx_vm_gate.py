@@ -34,7 +34,7 @@ import functools
 import re
 from mx_gate import Task
 
-from os import environ, listdir, remove
+from os import environ, listdir, remove, linesep
 from os.path import join, exists, dirname, isdir, isfile, getsize
 from tempfile import NamedTemporaryFile, mkdtemp
 from contextlib import contextmanager
@@ -85,7 +85,44 @@ def gate_body(args, tasks):
             # run avrora on the GraalVM binary itself
             with Task('LibGraal Compiler:GraalVM DaCapo-avrora', tasks, tags=[VmGateTasks.libgraal]) as t:
                 if t:
-                    mx.run([join(mx_sdk_vm_impl.graalvm_home(), 'bin', 'java'), '-XX:+UseJVMCICompiler', '-XX:+UseJVMCINativeLibrary', '-jar', mx.library('DACAPO').get_path(True), 'avrora'])
+                    java_exe = join(mx_sdk_vm_impl.graalvm_home(), 'bin', 'java')
+                    mx.run([java_exe,
+                            '-XX:+UseJVMCICompiler',
+                            '-XX:+UseJVMCINativeLibrary',
+                            '-jar', mx.library('DACAPO').get_path(True), 'avrora'])
+
+                    # Ensure that fatal errors in libgraal route back to HotSpot
+                    testdir = mkdtemp()
+                    try:
+                        cmd = [java_exe,
+                                '-XX:+UseJVMCICompiler',
+                                '-XX:+UseJVMCINativeLibrary',
+                                '-Dlibgraal.CrashAt=length,hashCode',
+                                '-Dlibgraal.CrashAtIsFatal=true',
+                                '-jar', mx.library('DACAPO').get_path(True), 'avrora']
+                        out = mx.OutputCapture()
+                        exitcode = mx.run(cmd, cwd=testdir, nonZeroIsFatal=False, out=out)
+                        if exitcode == 0:
+                            if 'CrashAtIsFatal: no fatalError function pointer installed' in out.data:
+                                # Executing a VM that does not configure fatal errors handling
+                                # in libgraal to route back through the VM.
+                                pass
+                            else:
+                                mx.abort('Expected following command to result in non-zero exit code: ' + ' '.join(cmd))
+                        else:
+                            hs_err = None
+                            testdir_entries = listdir(testdir)
+                            for name in testdir_entries:
+                                if name.startswith('hs_err_pid') and name.endswith('.log'):
+                                    hs_err = join(testdir, name)
+                            if hs_err is None:
+                                mx.abort('Expected a file starting with "hs_err_pid" in test directory. Entries found=' + str(testdir_entries))
+                            with open(join(testdir, hs_err)) as fp:
+                                contents = fp.read()
+                            if 'Fatal error in JVMCI' not in contents:
+                                mx.abort('Expected "Fatal error in JVMCI" to be in contents of ' + hs_err + ':' + linesep + contents)
+                    finally:
+                        mx.rmtree(testdir)
 
             with Task('LibGraal Compiler:CTW', tasks, tags=[VmGateTasks.libgraal]) as t:
                 if t:
@@ -120,9 +157,10 @@ def gate_body(args, tasks):
                     unittest_args = unittest_args + ["--enable-timing", "--verbose"]
                     compiler_log_file = "graal-compiler.log"
                     mx_unittest.unittest(unittest_args + extra_vm_arguments + [
-                        "-Dgraal.TruffleCompileImmediately=true",
-                        "-Dgraal.TruffleBackgroundCompilation=false",
-                        "-Dgraal.TraceTruffleCompilation=true",
+                        "-Dpolyglot.engine.AllowExperimentalOptions=true",
+                        "-Dpolyglot.engine.CompileImmediately=true",
+                        "-Dpolyglot.engine.BackgroundCompilation=false",
+                        "-Dpolyglot.engine.TraceCompilation=true",
                         "-Dgraalvm.locatorDisabled=true",
                         "-Dgraal.PrintCompilation=true",
                         "-Dgraal.LogFile={0}".format(compiler_log_file),
@@ -134,7 +172,6 @@ def gate_body(args, tasks):
 
     gate_substratevm(tasks)
     gate_sulong(tasks)
-    gate_ruby(tasks)
     gate_python(tasks)
     gate_svm_sl_tck(tasks)
     gate_svm_truffle_tck_js(tasks)
@@ -159,14 +196,7 @@ def gate_substratevm(tasks):
             tests = ['ValueHostInteropTest', 'ValueHostConversionTest']
             truffle_no_compilation = ['--initialize-at-build-time', '--macro:truffle',
                                       '-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime']
-            truffle_dir = mx.suite('truffle').dir
-            args = ['--build-args'] + truffle_no_compilation + [
-                '-H:Features=com.oracle.truffle.api.test.polyglot.RegisterTestClassesForReflectionFeature',
-                '-H:ReflectionConfigurationFiles=' + truffle_dir + '/src/com.oracle.truffle.api.test/src/com/oracle/truffle/api/test/polyglot/reflection.json',
-                '-H:DynamicProxyConfigurationFiles=' + truffle_dir + '/src/com.oracle.truffle.api.test/src/com/oracle/truffle/api/test/polyglot/proxys.json',
-                '--'
-            ] + tests
-
+            args = ['--build-args'] + truffle_no_compilation + ['--'] + tests
             native_image_context, svm = graalvm_svm()
             with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
                 svm._native_unittest(native_image, args)
@@ -192,13 +222,6 @@ def gate_sulong(tasks):
                     return path_substitutions.get(dname, mx._get_dependency_path(dname))
                 mx_subst.path_substitutions.register_with_arg('path', distribution_paths)
                 sulong.extensions.runLLVMUnittests(functools.partial(svm._native_unittest, native_image))
-
-def gate_ruby(tasks):
-    with Task('Ruby', tasks, tags=[VmGateTasks.ruby]) as t:
-        if t:
-            ruby = join(mx_sdk_vm_impl.graalvm_output(), 'jre', 'languages', 'ruby', 'bin', 'truffleruby')
-            truffleruby_suite = mx.suite('truffleruby')
-            truffleruby_suite.extensions.ruby_testdownstream_aot([ruby, 'spec', 'release'])
 
 def gate_python(tasks):
     with Task('Python', tasks, tags=[VmGateTasks.python]) as t:
@@ -231,6 +254,7 @@ def _svm_truffle_tck(native_image, svm_suite, language_suite, language_id):
             '-cp',
             cp,
             '--no-server',
+            '-H:+TruffleCheckBlackListedMethods',
             '-H:-FoldSecurityManagerGetter',
             '-H:TruffleTCKPermissionsReportFile={}'.format(report_file),
             '-H:Path={}'.format(svmbuild),

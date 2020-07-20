@@ -54,7 +54,7 @@ public class CSuite extends WasmSuiteBase {
 
     @Override
     protected String includedExternalModules() {
-        return super.includedExternalModules() + ",memory,env:emscripten";
+        return super.includedExternalModules() + ",env:emscripten,wasi_snapshot_preview1";
     }
 
     @Override

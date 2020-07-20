@@ -45,7 +45,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Context.Builder;
 import org.graalvm.polyglot.Source;
 import org.junit.After;
 import org.junit.Assert;
@@ -73,18 +72,11 @@ public final class LLVMDebugExprParserTest {
     private static final Path SRC_DIR_PATH = Paths.get(TestOptions.PROJECT_ROOT, "..", "tests", "com.oracle.truffle.llvm.tests.debugexpr.native", "debugexpr");
     private static final Path TRACE_DIR_PATH = Paths.get(TestOptions.PROJECT_ROOT, "..", "tests", "com.oracle.truffle.llvm.tests.debugexpr.native", "testExpr");
 
-    private static final String OPTION_ENABLE_LVI = "llvm.enableLVI";
-
     private static final String CONFIGURATION = "O1.bc";
 
     public LLVMDebugExprParserTest(String testName, String configuration) {
         this.testName = testName;
         this.configuration = configuration;
-    }
-
-    static void setContextOptions(Builder contextBuilder) {
-        // contextBuilder.option(EXPERIMENTAL_OPTIONS, String.valueOf(true));
-        contextBuilder.option(OPTION_ENABLE_LVI, String.valueOf(true));
     }
 
     @Parameters(name = "{0}")
@@ -123,7 +115,6 @@ public final class LLVMDebugExprParserTest {
         final Context.Builder contextBuilder = Context.newBuilder(LANG_ID);
         contextBuilder.allowAllAccess(true);
         contextBuilder.option(OPTION_LAZY_PARSING, String.valueOf(false));
-        setContextOptions(contextBuilder);
         tester = new DebuggerTester(contextBuilder);
     }
 

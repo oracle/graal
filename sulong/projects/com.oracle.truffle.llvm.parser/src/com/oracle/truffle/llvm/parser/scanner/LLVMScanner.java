@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,11 +39,11 @@ import java.util.List;
 import java.util.Map;
 
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.llvm.parser.binary.BinaryParser;
 import com.oracle.truffle.llvm.parser.listeners.BCFileRoot;
 import com.oracle.truffle.llvm.parser.listeners.ParserListener;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.Magic;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import org.graalvm.polyglot.io.ByteSequence;
 
@@ -96,7 +96,7 @@ public final class LLVMScanner {
         final BCFileRoot fileParser = new BCFileRoot(model, bcSource);
         final LLVMScanner scanner = new LLVMScanner(bitstream, fileParser);
         final long actualMagicWord = scanner.read(Integer.SIZE);
-        if (actualMagicWord != BinaryParser.Magic.BC_MAGIC_WORD.magic) {
+        if (actualMagicWord != Magic.BC_MAGIC_WORD.magic) {
             throw new LLVMParserException("Not a valid Bitcode File!");
         }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,14 +40,14 @@
  */
 package com.oracle.truffle.regex.tregex.nodesplitter;
 
-import com.oracle.truffle.regex.tregex.automaton.StateIndex;
-
 import java.util.ArrayList;
+
+import com.oracle.truffle.regex.tregex.automaton.StateIndex;
 
 /**
  * An abstract graph wrapper used by {@link DFANodeSplit}.
  */
-class Graph implements StateIndex<GraphNode> {
+final class Graph implements StateIndex<GraphNode> {
 
     private GraphNode start;
     private final ArrayList<GraphNode> nodes;

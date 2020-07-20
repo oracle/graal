@@ -80,7 +80,7 @@ public abstract class LLVMSignal extends LLVMExpressionNode {
         }
     }
 
-    private static Lock globalSignalHandlerLock = new ReentrantLock();
+    private static final Lock globalSignalHandlerLock = new ReentrantLock();
 
     private static final Map<Integer, LLVMSignalHandler> registeredSignals = new HashMap<>();
 

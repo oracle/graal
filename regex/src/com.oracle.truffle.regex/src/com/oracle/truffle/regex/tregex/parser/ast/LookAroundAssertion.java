@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
+
 /**
  * An assertion that succeeds depending on whether or not text surrounding the current position
  * matches a given regular expression.
@@ -52,8 +54,12 @@ public abstract class LookAroundAssertion extends RegexASTSubtreeRootNode {
         setNegated(negated);
     }
 
-    LookAroundAssertion(LookAroundAssertion copy, RegexAST ast, boolean recursive) {
-        super(copy, ast, recursive);
+    LookAroundAssertion(LookAroundAssertion copy, RegexAST ast) {
+        super(copy, ast);
+    }
+
+    LookAroundAssertion(LookAroundAssertion copy, RegexAST ast, CompilationBuffer compilationBuffer) {
+        super(copy, ast, compilationBuffer);
     }
 
     /**

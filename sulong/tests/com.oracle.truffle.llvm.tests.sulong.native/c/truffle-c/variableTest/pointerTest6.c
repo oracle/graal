@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,5 +32,5 @@ int *ptr = &a;
 int **ptr2 = &ptr;
 
 int main() {
-  return **ptr2;
+    return **ptr2;
 }

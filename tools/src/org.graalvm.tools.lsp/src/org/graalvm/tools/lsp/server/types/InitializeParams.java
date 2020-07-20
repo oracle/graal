@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,23 +34,36 @@ import java.util.Objects;
 /**
  * The initialize parameters.
  */
-public class InitializeParams {
-
-    final JSONObject jsonData;
+public class InitializeParams extends WorkDoneProgressParams {
 
     InitializeParams(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
      * The process Id of the parent process that started the server.
      */
-    public int getProcessId() {
-        return jsonData.getInt("processId");
+    public Integer getProcessId() {
+        Object obj = jsonData.get("processId");
+        return JSONObject.NULL.equals(obj) ? null : (Integer) obj;
     }
 
-    public InitializeParams setProcessId(int processId) {
-        jsonData.put("processId", processId);
+    public InitializeParams setProcessId(Integer processId) {
+        jsonData.put("processId", processId == null ? JSONObject.NULL : processId);
+        return this;
+    }
+
+    /**
+     * Information about the client.
+     *
+     * @since 3.15.0
+     */
+    public ClientInfoParams getClientInfo() {
+        return jsonData.has("clientInfo") ? new ClientInfoParams(jsonData.optJSONObject("clientInfo")) : null;
+    }
+
+    public InitializeParams setClientInfo(ClientInfoParams clientInfo) {
+        jsonData.putOpt("clientInfo", clientInfo != null ? clientInfo.jsonData : null);
         return this;
     }
 
@@ -61,24 +74,29 @@ public class InitializeParams {
      */
     @Deprecated
     public String getRootPath() {
-        return jsonData.optString("rootPath", null);
+        Object obj = jsonData.opt("rootPath");
+        return JSONObject.NULL.equals(obj) ? null : (String) obj;
     }
 
     public InitializeParams setRootPath(String rootPath) {
-        jsonData.putOpt("rootPath", rootPath);
+        jsonData.put("rootPath", rootPath == null ? JSONObject.NULL : rootPath);
         return this;
     }
 
     /**
      * The rootUri of the workspace. Is null if no folder is open. If both `rootPath` and `rootUri`
      * are set `rootUri` wins.
+     *
+     * @deprecated in favour of workspaceFolders.
      */
+    @Deprecated
     public String getRootUri() {
-        return jsonData.getString("rootUri");
+        Object obj = jsonData.get("rootUri");
+        return JSONObject.NULL.equals(obj) ? null : (String) obj;
     }
 
     public InitializeParams setRootUri(String rootUri) {
-        jsonData.put("rootUri", rootUri);
+        jsonData.put("rootUri", rootUri == null ? JSONObject.NULL : rootUri);
         return this;
     }
 
@@ -119,9 +137,7 @@ public class InitializeParams {
     }
 
     /**
-     * The workspace folders configured in the client when the server starts. This property is only
-     * available if the client supports workspace folders. It can be `null` if the client supports
-     * workspace folders but none are configured.
+     * The actual configured workspace folders.
      */
     public List<WorkspaceFolder> getWorkspaceFolders() {
         final JSONArray json = jsonData.optJSONArray("workspaceFolders");
@@ -142,6 +158,8 @@ public class InitializeParams {
                 json.put(workspaceFolder.jsonData);
             }
             jsonData.put("workspaceFolders", json);
+        } else {
+            jsonData.put("workspaceFolders", JSONObject.NULL);
         }
         return this;
     }
@@ -158,7 +176,10 @@ public class InitializeParams {
             return false;
         }
         InitializeParams other = (InitializeParams) obj;
-        if (this.getProcessId() != other.getProcessId()) {
+        if (!Objects.equals(this.getProcessId(), other.getProcessId())) {
+            return false;
+        }
+        if (!Objects.equals(this.getClientInfo(), other.getClientInfo())) {
             return false;
         }
         if (!Objects.equals(this.getRootPath(), other.getRootPath())) {
@@ -179,35 +200,119 @@ public class InitializeParams {
         if (!Objects.equals(this.getWorkspaceFolders(), other.getWorkspaceFolders())) {
             return false;
         }
+        if (!Objects.equals(this.getWorkDoneToken(), other.getWorkDoneToken())) {
+            return false;
+        }
         return true;
     }
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 97 * hash + Integer.hashCode(this.getProcessId());
-        if (this.getRootPath() != null) {
-            hash = 97 * hash + Objects.hashCode(this.getRootPath());
+        int hash = 5;
+        if (this.getProcessId() != null) {
+            hash = 59 * hash + Integer.hashCode(this.getProcessId());
         }
-        hash = 97 * hash + Objects.hashCode(this.getRootUri());
-        hash = 97 * hash + Objects.hashCode(this.getCapabilities());
+        if (this.getClientInfo() != null) {
+            hash = 59 * hash + Objects.hashCode(this.getClientInfo());
+        }
+        if (this.getRootPath() != null) {
+            hash = 59 * hash + Objects.hashCode(this.getRootPath());
+        }
+        if (this.getRootUri() != null) {
+            hash = 59 * hash + Objects.hashCode(this.getRootUri());
+        }
+        hash = 59 * hash + Objects.hashCode(this.getCapabilities());
         if (this.getInitializationOptions() != null) {
-            hash = 97 * hash + Objects.hashCode(this.getInitializationOptions());
+            hash = 59 * hash + Objects.hashCode(this.getInitializationOptions());
         }
         if (this.getTrace() != null) {
-            hash = 97 * hash + Objects.hashCode(this.getTrace());
+            hash = 59 * hash + Objects.hashCode(this.getTrace());
         }
         if (this.getWorkspaceFolders() != null) {
-            hash = 97 * hash + Objects.hashCode(this.getWorkspaceFolders());
+            hash = 59 * hash + Objects.hashCode(this.getWorkspaceFolders());
+        }
+        if (this.getWorkDoneToken() != null) {
+            hash = 59 * hash + Objects.hashCode(this.getWorkDoneToken());
         }
         return hash;
     }
 
-    public static InitializeParams create(Integer processId, String rootUri, ClientCapabilities capabilities) {
+    public static InitializeParams create(Integer processId, String rootUri, ClientCapabilities capabilities, List<WorkspaceFolder> workspaceFolders) {
         final JSONObject json = new JSONObject();
-        json.put("processId", processId);
-        json.put("rootUri", rootUri);
+        json.put("processId", processId == null ? JSONObject.NULL : processId);
+        json.put("rootUri", rootUri == null ? JSONObject.NULL : rootUri);
         json.put("capabilities", capabilities.jsonData);
+        if (workspaceFolders != null) {
+            JSONArray workspaceFoldersJsonArr = new JSONArray();
+            for (WorkspaceFolder workspaceFolder : workspaceFolders) {
+                workspaceFoldersJsonArr.put(workspaceFolder.jsonData);
+            }
+            json.put("workspaceFolders", workspaceFoldersJsonArr);
+        } else {
+            json.put("workspaceFolders", JSONObject.NULL);
+        }
         return new InitializeParams(json);
+    }
+
+    public static class ClientInfoParams extends JSONBase {
+
+        ClientInfoParams(JSONObject jsonData) {
+            super(jsonData);
+        }
+
+        /**
+         * The name of the client as defined by the client.
+         */
+        public String getName() {
+            return jsonData.getString("name");
+        }
+
+        public ClientInfoParams setName(String name) {
+            jsonData.put("name", name);
+            return this;
+        }
+
+        /**
+         * The client's version as defined by the client.
+         */
+        public String getVersion() {
+            return jsonData.optString("version", null);
+        }
+
+        public ClientInfoParams setVersion(String version) {
+            jsonData.putOpt("version", version);
+            return this;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (this.getClass() != obj.getClass()) {
+                return false;
+            }
+            ClientInfoParams other = (ClientInfoParams) obj;
+            if (!Objects.equals(this.getName(), other.getName())) {
+                return false;
+            }
+            if (!Objects.equals(this.getVersion(), other.getVersion())) {
+                return false;
+            }
+            return true;
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = 5;
+            hash = 89 * hash + Objects.hashCode(this.getName());
+            if (this.getVersion() != null) {
+                hash = 89 * hash + Objects.hashCode(this.getVersion());
+            }
+            return hash;
+        }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,7 +63,7 @@ public class RegexSyntaxException extends RuntimeException implements TruffleExc
 
     @TruffleBoundary
     public RegexSyntaxException(String pattern, String msg) {
-        this(String.format(templateNoFlags, pattern, msg), msg, new RegexSource(pattern));
+        this(String.format(templateNoFlags, pattern, msg), msg, null);
     }
 
     @TruffleBoundary
@@ -72,21 +72,8 @@ public class RegexSyntaxException extends RuntimeException implements TruffleExc
     }
 
     @TruffleBoundary
-    public RegexSyntaxException(String pattern, String flags, String msg) {
-        this(String.format(template, pattern, flags, msg), msg, new RegexSource(pattern, flags));
-    }
-
-    @TruffleBoundary
-    public RegexSyntaxException(String pattern, String flags, String msg, int position) {
-        this(String.format(templatePosition, pattern, flags, position, msg), msg, new RegexSource(pattern, flags), position);
-    }
-
-    @TruffleBoundary
-    public RegexSyntaxException(String pattern, String flags, String msg, Throwable ex) {
-        super(String.format(template, pattern, flags, msg), ex);
-        this.reason = msg;
-        this.regexSrc = new RegexSource(pattern, flags);
-        this.position = -1;
+    public RegexSyntaxException(RegexSource source, String msg, int position) {
+        this(String.format(templatePosition, source.getPattern(), source.getFlags(), position, msg), msg, source, position);
     }
 
     private RegexSyntaxException(String exceptionMsg, String reason, RegexSource regexSrc) {

@@ -1327,6 +1327,35 @@ public final class Value {
     }
 
     /**
+     * Compares the identity of the underlying polyglot objects. This method does not do any
+     * structural comparisons.
+     *
+     * {@inheritDoc}
+     *
+     * @since 20.1
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof Value)) {
+            return false;
+        }
+        return impl.equalsImpl(receiver, ((Value) obj).receiver);
+    }
+
+    /**
+     * Returns the identity hash code of the underlying object. This method does not compute the
+     * hash code depending on the contents of the value.
+     *
+     * {@inheritDoc}
+     *
+     * @since 20.1
+     */
+    @Override
+    public int hashCode() {
+        return impl.hashCodeImpl(receiver);
+    }
+
+    /**
      * Converts a Java host value to a polyglot value. Returns a value for any host or guest value.
      * If there is a context available use {@link Context#asValue(Object)} for efficiency instead.
      * The value is bound the {@link Context#getCurrent() current} context when created. If there is

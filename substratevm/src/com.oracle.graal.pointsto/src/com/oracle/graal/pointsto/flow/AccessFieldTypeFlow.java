@@ -30,19 +30,21 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
+import jdk.vm.ci.code.BytecodePosition;
+
 /** The base class for a field store or load operation type flow. */
-public abstract class AccessFieldTypeFlow<T extends AccessFieldNode> extends TypeFlow<T> {
+public abstract class AccessFieldTypeFlow extends TypeFlow<BytecodePosition> {
 
     /** The field that this flow stores into or loads from. */
     protected final AnalysisField field;
 
-    protected AccessFieldTypeFlow(T node) {
+    protected AccessFieldTypeFlow(AccessFieldNode node) {
         /* The declared type of a field access node is the field declared type. */
-        super(node, ((AnalysisField) node.field()).getType());
+        super(node.getNodeSourcePosition(), ((AnalysisField) node.field()).getType());
         this.field = (AnalysisField) node.field();
     }
 
-    protected AccessFieldTypeFlow(AccessFieldTypeFlow<T> original, MethodFlowsGraph methodFlows) {
+    protected AccessFieldTypeFlow(AccessFieldTypeFlow original, MethodFlowsGraph methodFlows) {
         super(original, methodFlows);
         this.field = original.field;
     }
@@ -56,5 +58,16 @@ public abstract class AccessFieldTypeFlow<T extends AccessFieldNode> extends Typ
         /* Only a clone should be updated */
         assert this.isClone();
         return super.addState(bb, add);
+    }
+
+    /**
+     * When the type flow constraints are relaxed the object state can contain types that are not
+     * part of the field's declaring class hierarchy. We filter those out.
+     */
+    protected TypeState filterObjectState(BigBang bb, TypeState objectState) {
+        if (bb.analysisPolicy().relaxTypeFlowConstraints()) {
+            return TypeState.forIntersection(bb, objectState, field.getDeclaringClass().getTypeFlow(bb, true).getState());
+        }
+        return objectState;
     }
 }

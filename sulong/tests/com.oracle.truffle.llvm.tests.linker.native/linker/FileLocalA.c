@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,6 +33,6 @@
 static int globalA = 8;
 
 static int methodA(int a, int b) {
-  printf("FileLocalA\n");
-  return a * b + globalA;
+    printf("FileLocalA\n");
+    return a * b + globalA;
 }

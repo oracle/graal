@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -250,6 +250,21 @@ public class BoxingEliminationTest extends GraalCompilerTest {
     @Test
     public void materializeTest1() {
         test("materializeTest1Snippet", 1);
+    }
+
+    public static Float materializeTest2Snippet(float a) {
+        Float v = a;
+
+        if (v == a) {
+            return v;
+        } else {
+            return null;
+        }
+    }
+
+    @Test
+    public void materializeTest2() {
+        test("materializeTest2Snippet", 1f);
     }
 
     public static int intTest1Snippet() {

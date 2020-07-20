@@ -45,6 +45,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.sl.SLLanguage;
 
 /**
@@ -63,6 +64,7 @@ public final class SLNull implements TruffleObject {
      * The canonical value to represent {@code null} in SL.
      */
     public static final SLNull SINGLETON = new SLNull();
+    private static final int IDENTITY_HASH = System.identityHashCode(SINGLETON);
 
     /**
      * Disallow instantiation from outside to ensure that the {@link #SINGLETON} is the only
@@ -106,6 +108,22 @@ public final class SLNull implements TruffleObject {
     @ExportMessage
     Object getMetaObject() {
         return SLType.NULL;
+    }
+
+    @ExportMessage
+    static TriState isIdenticalOrUndefined(@SuppressWarnings("unused") SLNull receiver, Object other) {
+        /*
+         * SLNull values are identical to other SLNull values.
+         */
+        return TriState.valueOf(SLNull.SINGLETON == other);
+    }
+
+    @ExportMessage
+    static int identityHashCode(@SuppressWarnings("unused") SLNull receiver) {
+        /*
+         * We do not use 0, as we want consistency with System.identityHashCode(receiver).
+         */
+        return IDENTITY_HASH;
     }
 
     @ExportMessage

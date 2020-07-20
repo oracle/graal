@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.LLDBSupport;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugTypeConstants;
@@ -399,7 +400,7 @@ final class LLDBMemoryValue implements LLVMDebugValue {
 
         final Object pointerRead = readAddress(bitOffset);
         if (LLVMPointer.isInstance(pointerRead)) {
-            return LLVMLanguage.getLLDBSupport().createDebugDeclarationBuilder().build(pointerRead);
+            return CommonNodeFactory.createDebugDeclarationBuilder().build(pointerRead);
         }
 
         return null;

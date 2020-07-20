@@ -40,9 +40,8 @@
  */
 package com.oracle.truffle.api.interop;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.source.SourceSection;
@@ -93,7 +92,6 @@ final class DefaultDoubleExports {
         if (b == d && !NumberUtils.isNegativeZero(d)) {
             return b;
         }
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -104,7 +102,6 @@ final class DefaultDoubleExports {
         if (s == d && !NumberUtils.isNegativeZero(d)) {
             return s;
         }
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -115,7 +112,6 @@ final class DefaultDoubleExports {
         if (i == d && !NumberUtils.isNegativeZero(d)) {
             return i;
         }
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -128,7 +124,6 @@ final class DefaultDoubleExports {
                 return l;
             }
         }
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 
@@ -139,7 +134,6 @@ final class DefaultDoubleExports {
         if (!Double.isFinite(d) || f == d) {
             return f;
         }
-        CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,10 @@
  */
 package com.oracle.svm.jni.nativeapi;
 
+import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.CallIntMethodAFunctionPointer;
+import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.GetByteArrayElementsFunctionPointer;
+import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.NewByteArrayFunctionPointer;
+import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.ReleaseByteArrayElementsFunctionPointer;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.struct.CField;
@@ -361,10 +365,10 @@ public interface JNINativeInterface extends PointerBase {
     void setCallIntMethodV(CFunctionPointer p);
 
     @CField
-    CFunctionPointer getCallIntMethodA();
+    CallIntMethodAFunctionPointer getCallIntMethodA();
 
     @CField
-    void setCallIntMethodA(CFunctionPointer p);
+    void setCallIntMethodA(CallIntMethodAFunctionPointer p);
 
     @CField
     CFunctionPointer getCallLongMethod();
@@ -1111,10 +1115,10 @@ public interface JNINativeInterface extends PointerBase {
     void setNewBooleanArray(CFunctionPointer p);
 
     @CField
-    CFunctionPointer getNewByteArray();
+    NewByteArrayFunctionPointer getNewByteArray();
 
     @CField
-    void setNewByteArray(CFunctionPointer p);
+    void setNewByteArray(NewByteArrayFunctionPointer p);
 
     @CField
     CFunctionPointer getNewCharArray();
@@ -1159,10 +1163,10 @@ public interface JNINativeInterface extends PointerBase {
     void setGetBooleanArrayElements(CFunctionPointer p);
 
     @CField
-    CFunctionPointer getGetByteArrayElements();
+    GetByteArrayElementsFunctionPointer getGetByteArrayElements();
 
     @CField
-    void setGetByteArrayElements(CFunctionPointer p);
+    void setGetByteArrayElements(GetByteArrayElementsFunctionPointer p);
 
     @CField
     CFunctionPointer getGetCharArrayElements();
@@ -1207,10 +1211,10 @@ public interface JNINativeInterface extends PointerBase {
     void setReleaseBooleanArrayElements(CFunctionPointer p);
 
     @CField
-    CFunctionPointer getReleaseByteArrayElements();
+    ReleaseByteArrayElementsFunctionPointer getReleaseByteArrayElements();
 
     @CField
-    void setReleaseByteArrayElements(CFunctionPointer p);
+    void setReleaseByteArrayElements(ReleaseByteArrayElementsFunctionPointer p);
 
     @CField
     CFunctionPointer getReleaseCharArrayElements();

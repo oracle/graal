@@ -40,7 +40,8 @@
  */
 package com.oracle.truffle.sl.nodes.util;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -100,8 +101,7 @@ public abstract class SLToMemberNode extends Node {
                 throw error(value);
             }
         } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
-            throw new AssertionError();
+            throw shouldNotReachHere(e);
         }
     }
 

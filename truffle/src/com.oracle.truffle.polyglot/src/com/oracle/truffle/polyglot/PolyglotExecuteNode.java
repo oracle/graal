@@ -84,8 +84,8 @@ abstract class PolyglotExecuteNode extends Node {
                     Class<?> resultClass, Type resultType,
                     @CachedLibrary("function") InteropLibrary interop,
                     @Cached ToHostNode toHost,
-                    @Cached("createBinaryProfile()") ConditionProfile executableCondition,
-                    @Cached("createBinaryProfile()") ConditionProfile instantiableCondition,
+                    @Cached ConditionProfile executableCondition,
+                    @Cached ConditionProfile instantiableCondition,
                     @Cached BranchProfile unsupportedError,
                     @Cached BranchProfile arityError,
                     @Cached BranchProfile unsupportedArgumentError) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,12 +30,10 @@ import java.util.Objects;
 /**
  * Represents a folding range.
  */
-public class FoldingRange {
-
-    final JSONObject jsonData;
+public class FoldingRange extends JSONBase {
 
     FoldingRange(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -134,17 +132,17 @@ public class FoldingRange {
 
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 37 * hash + Integer.hashCode(this.getStartLine());
+        int hash = 7;
+        hash = 43 * hash + Integer.hashCode(this.getStartLine());
         if (this.getStartCharacter() != null) {
-            hash = 37 * hash + Integer.hashCode(this.getStartCharacter());
+            hash = 43 * hash + Integer.hashCode(this.getStartCharacter());
         }
-        hash = 37 * hash + Integer.hashCode(this.getEndLine());
+        hash = 43 * hash + Integer.hashCode(this.getEndLine());
         if (this.getEndCharacter() != null) {
-            hash = 37 * hash + Integer.hashCode(this.getEndCharacter());
+            hash = 43 * hash + Integer.hashCode(this.getEndCharacter());
         }
         if (this.getKind() != null) {
-            hash = 37 * hash + Objects.hashCode(this.getKind());
+            hash = 43 * hash + Objects.hashCode(this.getKind());
         }
         return hash;
     }

@@ -126,6 +126,10 @@ public final class JavaHostLanguageProvider implements LanguageProvider {
         primitives.put(Throwable.class,
                         Primitive.create("java.lang.Throwable", new RuntimeException(), TypeDescriptor.intersection(TypeDescriptor.HOST_OBJECT, TypeDescriptor.OBJECT, TypeDescriptor.EXCEPTION)));
 
+        primitives.put(Class.class,
+                        Primitive.create("Float.class", Float.class,
+                                        TypeDescriptor.intersection(TypeDescriptor.HOST_OBJECT, TypeDescriptor.OBJECT, TypeDescriptor.META_OBJECT)));
+
         // Java primitives
         for (Primitive primitive : primitives.values()) {
             result.add(createPrimitive(context, primitive));
@@ -140,6 +144,7 @@ public final class JavaHostLanguageProvider implements LanguageProvider {
         for (Primitive primitive : primitives.values()) {
             result.add(createProxyArray(context, primitive));
         }
+
         // Object Proxies
         result.add(Snippet.newBuilder("Proxy<java.lang.Object{}>", export(context, new ValueSupplier<>(ProxyObject.fromMap(Collections.emptyMap()))), TypeDescriptor.OBJECT).build());
         final Map<String, Object> props = new HashMap<>();
@@ -187,7 +192,7 @@ public final class JavaHostLanguageProvider implements LanguageProvider {
         result.add(Snippet.newBuilder(
                         "java.lang.Class<java.lang.Object>",
                         export(context, new ValueSupplier<>(Object.class)),
-                        TypeDescriptor.intersection(TypeDescriptor.HOST_OBJECT, TypeDescriptor.OBJECT,
+                        TypeDescriptor.intersection(TypeDescriptor.HOST_OBJECT, TypeDescriptor.META_OBJECT, TypeDescriptor.OBJECT,
                                         TypeDescriptor.instantiable(TypeDescriptor.intersection(TypeDescriptor.HOST_OBJECT, TypeDescriptor.OBJECT), false))).build());
         return Collections.unmodifiableCollection(result);
     }

@@ -1,1 +1,1 @@
-throw `Error while initializing ${agent}`;
+throw `Error while initializing ${insight}`;

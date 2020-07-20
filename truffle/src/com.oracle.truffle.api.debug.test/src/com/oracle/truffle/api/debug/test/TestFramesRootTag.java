@@ -190,7 +190,8 @@ public class TestFramesRootTag extends AbstractDebugTest {
                     ((TestTaggedRoot) child).setDescendant(descendant);
                 } else {
                     assert this.child == null;
-                    this.child = new Call(sourceSection, descendant);
+                    this.child = insert(new Call(sourceSection, descendant));
+                    notifyInserted(this.child);
                 }
             }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,26 +25,29 @@
 package com.oracle.graal.pointsto.flow;
 
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.replacements.arraycopy.ArrayCopy;
+
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
-import org.graalvm.compiler.replacements.nodes.BasicArrayCopyNode;
+
+import jdk.vm.ci.code.BytecodePosition;
 
 /**
- * Models the flow transfer of an {@link BasicArrayCopyNode} which intrinsifies calls to
+ * Models the flow transfer of an {@link ArrayCopy} node which intrinsifies calls to
  * System.arraycopy(). This flow registers itself as an observer for both the source and the
  * destination. When either the source or the destination elements change the element flows from
  * source are passed to destination.
  */
-public class ArrayCopyTypeFlow extends TypeFlow<ValueNode> {
+public class ArrayCopyTypeFlow extends TypeFlow<BytecodePosition> {
 
     TypeFlow<?> srcArrayFlow;
     TypeFlow<?> dstArrayFlow;
 
     public ArrayCopyTypeFlow(ValueNode source, AnalysisType declaredType, TypeFlow<?> srcArrayFlow, TypeFlow<?> dstArrayFlow) {
-        super(source, declaredType);
+        super(source.getNodeSourcePosition(), declaredType);
         this.srcArrayFlow = srcArrayFlow;
         this.dstArrayFlow = dstArrayFlow;
     }
@@ -56,7 +59,7 @@ public class ArrayCopyTypeFlow extends TypeFlow<ValueNode> {
     }
 
     @Override
-    public TypeFlow<ValueNode> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+    public TypeFlow<BytecodePosition> copy(BigBang bb, MethodFlowsGraph methodFlows) {
         return new ArrayCopyTypeFlow(bb, this, methodFlows);
     }
 
@@ -66,7 +69,10 @@ public class ArrayCopyTypeFlow extends TypeFlow<ValueNode> {
     @Override
     public void onObservedUpdate(BigBang bb) {
         assert this.isClone();
-
+        if (bb.analysisPolicy().aliasArrayTypeFlows()) {
+            /* All arrays are aliased, no need to model the array copy operation. */
+            return;
+        }
         /*
          * Both the source and the destination register this flow as an observer and notify it when
          * either of them is updated. When either the source or the destination elements change the

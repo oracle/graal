@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,14 +33,17 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToPointer.Dummy;
 import com.oracle.truffle.llvm.runtime.interop.convert.ToPointer.InteropTypeNode;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
 
 @NodeChild(type = Dummy.class)
 @NodeChild(type = InteropTypeNode.class)
@@ -73,67 +76,76 @@ public abstract class ToPointer extends ForeignToLLVM {
     }
 
     @Specialization
-    protected LLVMManagedPointer fromInt(int value, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+    protected LLVMManagedPointer fromInt(int value, @SuppressWarnings("unused") LLVMInteropType.Structured typeFromMethodSignature) {
         return LLVMManagedPointer.create(value);
     }
 
     @Specialization
-    protected LLVMManagedPointer fromChar(char value, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+    protected LLVMManagedPointer fromChar(char value, @SuppressWarnings("unused") LLVMInteropType.Structured typeFromMethodSignature) {
         return LLVMManagedPointer.create(value);
     }
 
     @Specialization
-    protected LLVMManagedPointer fromLong(long value, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+    protected LLVMManagedPointer fromLong(long value, @SuppressWarnings("unused") LLVMInteropType.Structured typeFromMethodSignature) {
         return LLVMManagedPointer.create(value);
     }
 
     @Specialization
-    protected LLVMManagedPointer fromByte(byte value, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+    protected LLVMManagedPointer fromByte(byte value, @SuppressWarnings("unused") LLVMInteropType.Structured typeFromMethodSignature) {
         return LLVMManagedPointer.create(value);
     }
 
     @Specialization
-    protected LLVMManagedPointer fromShort(short value, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+    protected LLVMManagedPointer fromShort(short value, @SuppressWarnings("unused") LLVMInteropType.Structured typeFromMethodSignature) {
         return LLVMManagedPointer.create(value);
     }
 
     @Specialization
-    protected LLVMManagedPointer fromFloat(float value, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+    protected LLVMManagedPointer fromFloat(float value, @SuppressWarnings("unused") LLVMInteropType.Structured typeFromMethodSignature) {
         return LLVMManagedPointer.create(value);
     }
 
     @Specialization
-    protected LLVMManagedPointer fromDouble(double value, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+    protected LLVMManagedPointer fromDouble(double value, @SuppressWarnings("unused") LLVMInteropType.Structured typeFromMethodSignature) {
         return LLVMManagedPointer.create(value);
     }
 
     @Specialization
-    protected LLVMManagedPointer fromBoolean(boolean value, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+    protected LLVMManagedPointer fromBoolean(boolean value, @SuppressWarnings("unused") LLVMInteropType.Structured typeFromMethodSignature) {
         return LLVMManagedPointer.create(value);
     }
 
     @Specialization
-    protected String fromString(String obj, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+    protected String fromString(String obj, @SuppressWarnings("unused") LLVMInteropType.Structured typeFromMethodSignature) {
         return obj;
     }
 
     @Specialization
-    protected LLVMPointer fromPointer(LLVMPointer pointer, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+    protected LLVMPointer fromPointer(LLVMPointer pointer, @SuppressWarnings("unused") LLVMInteropType.Structured typeFromMethodSignature) {
         return pointer;
     }
 
-    @Specialization(guards = {"notLLVM(obj)"})
-    protected LLVMManagedPointer fromTruffleObject(Object obj, LLVMInteropType.Structured type) {
-        return LLVMManagedPointer.create(LLVMTypedForeignObject.create(obj, type));
+    @Specialization(guards = {"foreigns.isForeign(obj)", "nativeTypes.hasNativeType(obj)"})
+    protected LLVMManagedPointer fromTypedTruffleObjectNoAttachedType(Object obj, @SuppressWarnings("unused") LLVMInteropType.Structured typeFromMethodSignature,
+                    @SuppressWarnings("unused") @CachedLibrary(limit = "3") NativeTypeLibrary nativeTypes,
+                    @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns) {
+        return LLVMManagedPointer.create(obj);
+    }
+
+    @Specialization(guards = {"foreigns.isForeign(obj)", "!nativeTypes.hasNativeType(obj)"})
+    protected LLVMManagedPointer fromNonTypedTruffleObject(Object obj, LLVMInteropType.Structured typeFromMethodSignature,
+                    @SuppressWarnings("unused") @CachedLibrary(limit = "3") NativeTypeLibrary nativeTypes,
+                    @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns) {
+        return LLVMManagedPointer.create(LLVMTypedForeignObject.create(obj, typeFromMethodSignature));
     }
 
     @Specialization
-    protected LLVMManagedPointer fromInternal(LLVMInternalTruffleObject object, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+    protected LLVMManagedPointer fromInternal(LLVMInternalTruffleObject object, @SuppressWarnings("unused") LLVMInteropType.Structured typeFromMethodSignature) {
         return LLVMManagedPointer.create(object);
     }
 
     @TruffleBoundary
-    static Object slowPathPrimitiveConvert(Object value, LLVMInteropType.Structured type) throws UnsupportedTypeException {
+    static Object slowPathPrimitiveConvert(Object value, LLVMInteropType.Structured typeFromMethodSignature) throws UnsupportedTypeException {
         if (value instanceof Number) {
             return LLVMManagedPointer.create(value);
         } else if (value instanceof Boolean) {
@@ -146,8 +158,8 @@ public abstract class ToPointer extends ForeignToLLVM {
             return value;
         } else if (value instanceof LLVMInternalTruffleObject) {
             return LLVMManagedPointer.create(value);
-        } else if (notLLVM(value)) {
-            return LLVMManagedPointer.create(LLVMTypedForeignObject.create(value, type));
+        } else if (LLVMAsForeignLibrary.getFactory().getUncached().isForeign(value)) {
+            return LLVMManagedPointer.create(LLVMTypedForeignObject.create(value, typeFromMethodSignature));
         } else {
             throw UnsupportedTypeException.create(new Object[]{value});
         }

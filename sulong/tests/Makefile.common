@@ -48,6 +48,11 @@ ifdef CLANG_LLVM_AS
 else
   LLVM_AS?=llvm-as
 endif
+ifdef CLANG_LLVM_LINK
+  LLVM_LINK=$(CLANG_LLVM_LINK)
+else
+  LLVM_LINK?=llvm-as
+endif
 ifdef CLANG_LLVM_DIS
   LLVM_DIS=$(CLANG_LLVM_DIS)
 else
@@ -65,6 +70,15 @@ ifdef CLANG_LLVM_OBJCOPY
 else
   LLVM_OBJCOPY?=llvm-objcopy
 endif
+
+ifndef TOOLCHAIN_CLANG
+  TOOLCHAIN_CLANG=/error/TOOLCHAIN_CLANG/not/set
+endif
+
+ifndef TOOLCHAIN_CLANGXX
+  TOOLCHAIN_CLANG=/error/TOOLCHAIN_CLANGXX/not/set
+endif
+
 FC?=gfortran
 
 CFLAGS+= $(SUITE_CFLAGS)
@@ -72,7 +86,13 @@ CXXFLAGS+= $(SUITE_CXXFLAGS) -std=c++11 -stdlib=libc++
 CPPFLAGS+= $(SUITE_CPPFLAGS)
 LDFLAGS+= $(SUITE_LDFLAGS)
 
+ifeq ($(OS), darwin)
+# NOTE: the darwin linker refuses bundle bitcode if any of the dependencies do not have a bundle section.
+#   However, it does include the bundle if linked with -flto, although the warning still says otherwise.
+EMBED_BC=-flto -Wl,-bitcode_bundle -Wno-everything
+else
 EMBED_BC=-fembed-bitcode
+endif
 
 ifdef CLANG_NO_OPTNONE
 SULONG_MAKE_CLANG_IMPLICIT_ARGS=
@@ -93,6 +113,7 @@ tool-info.txt:
 	@echo "  CLANG: $(CLANG)" >> $@
 	@echo "  CLANGXX: $(CLANGXX)" >> $@
 	@echo "  LLVM_AS: $(LLVM_AS)" >> $@
+	@echo "  LLVM_LINK: $(LLVM_LINK)" >> $@
 	@echo "  LLVM_DIS: $(LLVM_DIS)" >> $@
 	@echo "  LLVM_OPT: $(LLVM_OPT)" >> $@
 	@echo "  LLVM_OBJCOPY: $(LLVM_OBJCOPY)" >> $@
@@ -157,7 +178,12 @@ endif
 %_MEM2REG.bc: %.bc
 	$(QUIETLY) $(OPT) -o $@ -mem2reg $<
 
-%.ll.dir/ref.out: %.ll
+# link .ll files first so that clang gets a single file and -fembed-bitcode can work
+%.ll.linked-ref-out.ll: %.ll
+	@mkdir -p $(shell dirname $@)
+	$(QUIETLY) $(LLVM_LINK) -S -o $@ $^
+
+%.ll.dir/ref.out: %.ll.linked-ref-out.ll
 	@mkdir -p $(shell dirname $@)
 	$(QUIETLY) $(CLANG) $(EMBED_BC) -Wno-everything $(CPPFLAGS) $(CFLAGS) -g $(LDFLAGS) -o $@ $^
 
@@ -208,11 +234,40 @@ define OPT_RULES
 
 %.ll.dir/$(1).bc: %.ll
 	@mkdir -p $$(shell dirname $$@)
-	$(QUIETLY) $(LLVM_AS) -o $$@ $$<
+	$(QUIETLY) $(LLVM_LINK) -o $$@ $$^
 
 %.c.dir/gcc_$(1).ll: %.c
 	@mkdir -p $$(shell dirname $$@)
 	$(QUIETLY) $(DRAGONEGG_GCC) -w -S --std=gnu99 -fplugin=$(DRAGONEGG) -fplugin-arg-dragonegg-emit-ir -$(1) $(CPPFLAGS) $(CFLAGS) -o $$@ $$<
+
+
+%.c.dir/$(1)_OUT.bc: %.c
+	@mkdir -p $$(shell dirname $$@)
+	$(QUIETLY) $(CLANG) $(EMBED_BC) $(2) -Wno-everything $(CPPFLAGS) $(CFLAGS) -g $(LDFLAGS) -o $$@ $$<
+
+%.cpp.dir/$(1)_OUT.bc: %.cpp
+	@mkdir -p $$(shell dirname $$@)
+	$(QUIETLY) $(CLANGXX) $(EMBED_BC) $(2) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) -g $(LDFLAGS) -o $$@ $$<
+
+%.cc.dir/$(1)_OUT.bc: %.cc
+	@mkdir -p $$(shell dirname $$@)
+	$(QUIETLY) $(CLANGXX) $(EMBED_BC) $(2) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) -g $(LDFLAGS) -o $$@ $$<
+
+%.C.dir/$(1)_OUT.bc: %.C
+	@mkdir -p $$(shell dirname $$@)
+	$(QUIETLY) $(CLANGXX) $(EMBED_BC) $(2) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) -g $(LDFLAGS) -o $$@ $$<
+
+%.gcc.dir/$(1)_OUT.bc: %.gcc
+	@mkdir -p $$(shell dirname $$@)
+	$(QUIETLY) $(CLANG) $(EMBED_BC) $(2) -Wno-everything $(CPPFLAGS) $(CFLAGS) -g $(LDFLAGS) -o $$@ $$<
+
+%.cint.dir/$(1)_OUT.bc: %.cint
+	@mkdir -p $$(shell dirname $$@)
+	$(QUIETLY) $(CLANG) $(EMBED_BC) $(2) -Wno-everything $(CPPFLAGS) $(CFLAGS) -g $(LDFLAGS) -o $$@ $$<
+
+%.gpp.dir/$(1)_OUT.bc: %.gpp
+	@mkdir -p $$(shell dirname $$@)
+	$(QUIETLY) $(CLANGXX) $(EMBED_BC) $(2) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) -g $(LDFLAGS) -o $$@ $$<
 
 endef
 
@@ -220,6 +275,75 @@ $(eval $(call OPT_RULES,O0,-O0 ${SULONG_MAKE_CLANG_IMPLICIT_ARGS}))
 $(eval $(call OPT_RULES,O1,-O1))
 $(eval $(call OPT_RULES,O2,-O2))
 $(eval $(call OPT_RULES,O3,-O3))
+
+# toolchain rule
+define TOOLCHAIN_OPT_RULES
+%.c.dir/$(1)_toolchain.bc: %.c
+	@mkdir -p $$(shell dirname $$@)
+	$(QUIETLY) $(TOOLCHAIN_CLANG) $(2) -Wno-everything $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $$@ $$<
+
+%.gcc.dir/$(1)_toolchain.bc: %.gcc
+	@mkdir -p $$(shell dirname $$@)
+	$(QUIETLY) $(TOOLCHAIN_CLANG) $(2) -Wno-everything $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $$@ $$<
+
+%.cint.dir/$(1)_toolchain.bc: %.cint
+	@mkdir -p $$(shell dirname $$@)
+	$(QUIETLY) $(TOOLCHAIN_CLANG) $(2) -Wno-everything $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -o $$@ $$<
+
+%.cpp.dir/$(1)_toolchain.bc: %.cpp
+	@mkdir -p $$(shell dirname $$@)
+	$(QUIETLY) $(TOOLCHAIN_CLANGXX) $(2) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $$@ $$<
+
+%.cc.dir/$(1)_toolchain.bc: %.cc
+	@mkdir -p $$(shell dirname $$@)
+	$(QUIETLY) $(TOOLCHAIN_CLANGXX) $(2) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $$@ $$<
+
+%.C.dir/$(1)_toolchain.bc: %.C
+	@mkdir -p $$(shell dirname $$@)
+	$(QUIETLY) $(TOOLCHAIN_CLANGXX) $(2) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $$@ $$<
+
+%.gpp.dir/$(1)_toolchain.bc: %.gpp
+	@mkdir -p $$(shell dirname $$@)
+	$(QUIETLY) $(TOOLCHAIN_CLANGXX) $(2) -Wno-everything $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -o $$@ $$<
+
+endef
+
+$(eval $(call TOOLCHAIN_OPT_RULES,plain,))
+$(eval $(call TOOLCHAIN_OPT_RULES,O1,-O1))
+$(eval $(call TOOLCHAIN_OPT_RULES,O2,-O2))
+$(eval $(call TOOLCHAIN_OPT_RULES,O3,-O3))
+
+# allow linking ll tests with C sources
+
+%.c.ll: %.c
+	@mkdir -p $(shell dirname $@)
+	$(QUIETLY) $(CLANG) -S -emit-llvm -Wno-everything $(CPPFLAGS) $(CFLAGS) -g -o $@ $<
+
+define _ADD_DEP_OPT
+$(2).dir/$(1).bc:  $$(addsuffix .ll,$(3))
+endef
+
+# Add extra dependencies to a test file
+#
+# SYNOPSIS:
+#    ADD_DEPENDENCY <test file> <list of extra dependencies>
+#
+# EXAMPLE:
+#    $(eval $(call ADD_DEPENDENCY,path/to/test.ll,path/to/test-main.c path/to/test-utility.c))
+#
+# LIMITATION:
+#    Currently, only bitcode tests (.ll) and C dependencies (.c) are supported.
+#
+define ADD_DEPENDENCY
+# add dependency to ref.out
+$(1).linked-ref-out.ll: $$(addsuffix .ll,$(2))
+
+# add dependencies to Ox.bc
+$$(eval $$(call _ADD_DEP_OPT,O0,$(1),$(2)))
+$$(eval $$(call _ADD_DEP_OPT,O1,$(1),$(2)))
+$$(eval $$(call _ADD_DEP_OPT,O2,$(1),$(2)))
+$$(eval $$(call _ADD_DEP_OPT,O3,$(1),$(2)))
+endef
 
 # disable implicit rules
 .SUFFIXES:

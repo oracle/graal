@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,14 +43,13 @@ package org.graalvm.wasm.predefined.wasi;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.WasmVoidResult;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 
 public class WasiArgsSizesGetNode extends WasmBuiltinRootNode {
-    WasiArgsSizesGetNode(WasmLanguage language, WasmModule module) {
+    public WasiArgsSizesGetNode(WasmLanguage language, WasmModule module) {
         super(language, module);
     }
 
@@ -70,7 +69,7 @@ public class WasiArgsSizesGetNode extends WasmBuiltinRootNode {
         memory.store_i32(this, argcAddress, argc);
         memory.store_i32(this, argvBufSizeAddress, argvBufSize);
 
-        return WasmVoidResult.getInstance();
+        return 0;
     }
 
     @Override

@@ -24,10 +24,13 @@
  */
 package org.graalvm.compiler.replacements;
 
+import static org.graalvm.compiler.nodes.util.ConstantReflectionUtil.loadByteArrayConstant;
+import static org.graalvm.compiler.nodes.util.ConstantReflectionUtil.loadCharArrayConstant;
+import static org.graalvm.compiler.replacements.ReplacementsUtil.byteArrayBaseOffset;
+import static org.graalvm.compiler.replacements.ReplacementsUtil.charArrayBaseOffset;
 import static org.graalvm.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 import static org.graalvm.compiler.serviceprovider.GraalUnsafeAccess.getUnsafe;
 
-import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
@@ -43,6 +46,7 @@ import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.nodes.ExplodeLoopNode;
 
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import sun.misc.Unsafe;
@@ -70,7 +74,8 @@ public class ConstantStringIndexOfSnippets implements Snippets {
             args.add("targetOffset", stringIndexOf.getArgument(4));
             args.add("targetCount", stringIndexOf.getArgument(5));
             args.add("origFromIndex", stringIndexOf.getArgument(6));
-            char[] targetCharArray = snippetReflection.asObject(char[].class, stringIndexOf.getArgument(3).asJavaConstant());
+            JavaConstant targetArg = stringIndexOf.getArgument(3).asJavaConstant();
+            char[] targetCharArray = loadCharArrayConstant(providers.getConstantReflection(), targetArg, Integer.MAX_VALUE);
             args.addConst("md2", md2(targetCharArray));
             args.addConst("cache", computeCache(targetCharArray));
             template(stringIndexOf, args).instantiate(providers.getMetaAccess(), stringIndexOf, DEFAULT_REPLACER, args);
@@ -84,13 +89,15 @@ public class ConstantStringIndexOfSnippets implements Snippets {
             args.addConst("target", latin1IndexOf.getArgument(2));
             args.add("targetCount", latin1IndexOf.getArgument(3));
             args.add("origFromIndex", latin1IndexOf.getArgument(4));
-            byte[] targetByteArray = snippetReflection.asObject(byte[].class, latin1IndexOf.getArgument(2).asJavaConstant());
+            JavaConstant targetArg = latin1IndexOf.getArgument(2).asJavaConstant();
+            byte[] targetByteArray = loadByteArrayConstant(providers.getConstantReflection(), targetArg, Integer.MAX_VALUE);
             args.addConst("md2", md2(targetByteArray));
             args.addConst("cache", computeCache(targetByteArray));
             template(latin1IndexOf, args).instantiate(providers.getMetaAccess(), latin1IndexOf, DEFAULT_REPLACER, args);
         }
 
         public void lowerUTF16(SnippetLowerableMemoryNode utf16IndexOf, LoweringTool tool) {
+
             StructuredGraph graph = utf16IndexOf.graph();
             Arguments args = new Arguments(utf16IndexOfConstant, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("source", utf16IndexOf.getArgument(0));
@@ -98,7 +105,8 @@ public class ConstantStringIndexOfSnippets implements Snippets {
             args.addConst("target", utf16IndexOf.getArgument(2));
             args.add("targetCount", utf16IndexOf.getArgument(3));
             args.add("origFromIndex", utf16IndexOf.getArgument(4));
-            byte[] targetByteArray = snippetReflection.asObject(byte[].class, utf16IndexOf.getArgument(2).asJavaConstant());
+            JavaConstant targetArg = utf16IndexOf.getArgument(2).asJavaConstant();
+            byte[] targetByteArray = loadByteArrayConstant(providers.getConstantReflection(), targetArg, Integer.MAX_VALUE);
             args.addConst("md2", md2Utf16(tool.getMetaAccess(), targetByteArray));
             args.addConst("cache", computeCacheUtf16(tool.getMetaAccess(), targetByteArray));
             template(utf16IndexOf, args).instantiate(providers.getMetaAccess(), utf16IndexOf, DEFAULT_REPLACER, args);
@@ -182,16 +190,6 @@ public class ConstantStringIndexOfSnippets implements Snippets {
             cache |= (1 << (currChar & 63));
         }
         return cache;
-    }
-
-    @Fold
-    static int byteArrayBaseOffset(@InjectedParameter MetaAccessProvider metaAccess) {
-        return metaAccess.getArrayBaseOffset(JavaKind.Byte);
-    }
-
-    @Fold
-    static int charArrayBaseOffset(@InjectedParameter MetaAccessProvider metaAccess) {
-        return metaAccess.getArrayBaseOffset(JavaKind.Char);
     }
 
     /** Marker value for the {@link InjectedParameter} injected parameter. */

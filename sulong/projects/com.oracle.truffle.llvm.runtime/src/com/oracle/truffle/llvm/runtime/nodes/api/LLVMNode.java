@@ -39,6 +39,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
 import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -194,5 +195,27 @@ public abstract class LLVMNode extends Node {
             return false;
         }
         return LLVMNativeMemory.isDerefHandleMemory(addr);
+    }
+
+    /**
+     * Get the closest parent of {@code node} with the given type, or {@code null} is no node in the
+     * parent chain has the given type. This method will also look into wrapped parents, returning
+     * the delegate node if it has the given type.
+     */
+    public static <T extends Node> T getParent(Node node, Class<T> clazz) {
+        Node current = node;
+        while (current != null) {
+            if (clazz.isInstance(current)) {
+                return clazz.cast(current);
+            }
+            if (current instanceof WrapperNode) {
+                Node delegate = ((WrapperNode) current).getDelegateNode();
+                if (clazz.isInstance(delegate)) {
+                    return clazz.cast(delegate);
+                }
+            }
+            current = current.getParent();
+        }
+        return null;
     }
 }

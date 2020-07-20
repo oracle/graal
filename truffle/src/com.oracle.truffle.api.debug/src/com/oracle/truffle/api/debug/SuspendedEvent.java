@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,18 +40,24 @@
  */
 package com.oracle.truffle.api.debug;
 
+import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleStackTrace;
+import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.debug.DebuggerNode.InputValuesProvider;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -141,6 +147,7 @@ public final class SuspendedEvent {
 
     private final Map<Breakpoint, Throwable> conditionFailures;
     private DebugStackFrameIterable cachedFrames;
+    private List<List<DebugStackTraceElement>> cachedAsyncFrames;
 
     SuspendedEvent(DebuggerSession session, Thread thread, SuspendedContext context, MaterializedFrame frame, SuspendAnchor suspendAnchor,
                     InsertableNode insertableNode, InputValuesProvider inputValuesProvider, Object returnValue, DebugException exception,
@@ -430,6 +437,28 @@ public final class SuspendedEvent {
             cachedFrames = new DebugStackFrameIterable();
         }
         return cachedFrames;
+    }
+
+    /**
+     * Get a list of asynchronous stack traces that led to scheduling of the current execution.
+     * Returns an empty list if no asynchronous stack is known. The first asynchronous stack is at
+     * the first index in the list. A possible next asynchronous stack (that scheduled execution of
+     * the previous one) is at the next index in the list.
+     * <p>
+     * Languages might not provide asynchronous stack traces by default for performance reasons.
+     * Call {@link DebuggerSession#setAsynchronousStackDepth(int)} to request asynchronous stacks.
+     * Languages may provide asynchronous stacks if it's of no performance penalty, or if requested
+     * by other options.
+     *
+     * @see DebuggerSession#setAsynchronousStackDepth(int)
+     * @since 20.1.0
+     */
+    public List<List<DebugStackTraceElement>> getAsynchronousStacks() {
+        verifyValidState(false);
+        if (cachedAsyncFrames == null) {
+            cachedAsyncFrames = new DebugAsyncStackFrameLists(session, getStackFrames());
+        }
+        return cachedAsyncFrames;
     }
 
     static boolean isEvalRootStackFrame(DebuggerSession session, FrameInstance instance) {
@@ -767,4 +796,144 @@ public final class SuspendedEvent {
 
     }
 
+    static final class DebugAsyncStackFrameLists extends AbstractList<List<DebugStackTraceElement>> {
+
+        private final DebuggerSession session;
+        private final List<List<DebugStackTraceElement>> stacks = new LinkedList<>();
+        private int size = -1;
+
+        DebugAsyncStackFrameLists(DebuggerSession session, Iterable<DebugStackFrame> callStack) {
+            this.session = session;
+            for (DebugStackFrame dFrame : callStack) {
+                RootCallTarget target = dFrame.getCallTarget();
+                Frame frame = dFrame.findTruffleFrame(FrameInstance.FrameAccess.READ_ONLY);
+                List<DebugStackTraceElement> asyncStack = getAsynchronousStackFrames(session, target, frame);
+                if (asyncStack != null && !asyncStack.isEmpty()) {
+                    stacks.add(asyncStack);
+                    break;
+                }
+            }
+            if (stacks.isEmpty()) {
+                size = 0;
+            }
+        }
+
+        DebugAsyncStackFrameLists(DebuggerSession session, List<DebugStackTraceElement> stackTrace) {
+            this.session = session;
+            for (DebugStackTraceElement tElement : stackTrace) {
+                RootCallTarget target = tElement.traceElement.getTarget();
+                Frame frame = tElement.traceElement.getFrame();
+                List<DebugStackTraceElement> asyncStack = getAsynchronousStackFrames(session, target, frame);
+                if (asyncStack != null && !asyncStack.isEmpty()) {
+                    stacks.add(asyncStack);
+                    break;
+                }
+            }
+            if (stacks.isEmpty()) {
+                size = 0;
+            }
+        }
+
+        @Override
+        public List<DebugStackTraceElement> get(int index) {
+            int filledLevel = fillStacks(index);
+            if (filledLevel >= index) {
+                return stacks.get(index);
+            } else {
+                throw new IndexOutOfBoundsException("Index: " + index + ", Size: " + size);
+            }
+        }
+
+        @Override
+        public int size() {
+            if (size < 0) {
+                fillStacks(Integer.MAX_VALUE);
+            }
+            return size;
+        }
+
+        @Override
+        public Iterator<List<DebugStackTraceElement>> iterator() {
+            return new Itr();
+        }
+
+        private int fillStacks(int level) {
+            int lastLevel = stacks.size() - 1;
+            if (size > 0 && level >= size) {
+                return size - 1;
+            }
+            if (lastLevel >= level) {
+                return level;
+            } else {
+                while (lastLevel < level) {
+                    boolean added = false;
+                    for (DebugStackTraceElement tElement : stacks.get(lastLevel)) {
+                        RootCallTarget target = tElement.traceElement.getTarget();
+                        Frame frame = tElement.traceElement.getFrame();
+                        List<DebugStackTraceElement> asyncStack = getAsynchronousStackFrames(session, target, frame);
+                        if (asyncStack != null && !asyncStack.isEmpty()) {
+                            stacks.add(asyncStack);
+                            added = true;
+                            break;
+                        }
+                    }
+                    if (added) {
+                        lastLevel++;
+                    } else {
+                        size = lastLevel + 1;
+                        break;
+                    }
+                }
+                return lastLevel;
+            }
+        }
+
+        private static List<DebugStackTraceElement> getAsynchronousStackFrames(DebuggerSession session, RootCallTarget target, Frame frame) {
+            if (frame == null) {
+                return null;
+            }
+            List<TruffleStackTraceElement> stack = TruffleStackTrace.getAsynchronousStackTrace(target, frame);
+            if (stack == null) {
+                return null;
+            }
+            Iterator<TruffleStackTraceElement> stackIterator = stack.iterator();
+            if (!stackIterator.hasNext()) {
+                return Collections.emptyList();
+            }
+            List<DebugStackTraceElement> debugStack = new ArrayList<>();
+            while (stackIterator.hasNext()) {
+                TruffleStackTraceElement tframe = stackIterator.next();
+                debugStack.add(new DebugStackTraceElement(session, tframe));
+            }
+            return Collections.unmodifiableList(debugStack);
+        }
+
+        // This implementation prevents from calling size()
+        private class Itr implements Iterator<List<DebugStackTraceElement>> {
+            int cursor = 0;
+
+            @Override
+            public boolean hasNext() {
+                return fillStacks(cursor) == cursor;
+            }
+
+            @Override
+            public List<DebugStackTraceElement> next() {
+                try {
+                    int i = cursor;
+                    List<DebugStackTraceElement> next = get(i);
+                    cursor = i + 1;
+                    return next;
+                } catch (IndexOutOfBoundsException e) {
+                    throw new NoSuchElementException();
+                }
+            }
+
+            @Override
+            public void remove() {
+                throw new UnsupportedOperationException();
+            }
+        }
+
+    }
 }

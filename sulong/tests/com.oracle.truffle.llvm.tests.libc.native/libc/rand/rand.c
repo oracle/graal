@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,16 +31,16 @@
 #include <stdlib.h>
 
 int main() {
-  int arr1[50];
-  int arr2[50];
-  for (int i = 0; i < 50; i++) {
-    arr1[i] = rand();
-    arr2[i] = rand();
-  }
-  for (int i = 0; i < 50; i++) {
-    if (arr1[i] != arr2[i]) {
-      return 0;
+    int arr1[50];
+    int arr2[50];
+    for (int i = 0; i < 50; i++) {
+        arr1[i] = rand();
+        arr2[i] = rand();
     }
-  }
-  return 1;
+    for (int i = 0; i < 50; i++) {
+        if (arr1[i] != arr2[i]) {
+            return 0;
+        }
+    }
+    return 1;
 }

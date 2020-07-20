@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,14 +30,8 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.NodeS
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExcludeAssertions;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InlineAcrossTruffleBoundary;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Inlining;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningCutoffCountPenalty;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningExpandAllProximityBonus;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningExpandAllProximityFactor;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningExpansionBudget;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningExpansionCounterPressure;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningInliningBudget;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningInliningCounterPressure;
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningNodeCountPenalty;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningPolicy;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InliningRecursionDepth;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InstrumentBoundaries;
@@ -111,7 +105,6 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.options.OptionStability;
 import org.graalvm.compiler.truffle.common.SharedTruffleOptions;
 import org.graalvm.compiler.truffle.common.TruffleCompiler;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
@@ -121,6 +114,7 @@ import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 
 import jdk.vm.ci.common.NativeImageReinitialize;
+import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 
 /**
  * Options for the Truffle compiler. Options shared with the Truffle runtime are declared in
@@ -135,91 +129,91 @@ public final class TruffleCompilerOptions {
     /**
      * Deprecated by {@link PolyglotCompilerOptions#ExcludeAssertions}.
      */
-    @Option(help = "Exclude assertion code from Truffle compilations", type = OptionType.Debug)
+    @Option(help = "Exclude assertion code from Truffle compilations", type = OptionType.Debug, deprecated = true)
     static final OptionKey<Boolean> TruffleExcludeAssertions = new OptionKey<>(ExcludeAssertions.getDefaultValue());
 
     /**
      * Deprecated by {@link PolyglotCompilerOptions#InlineAcrossTruffleBoundary}.
      */
-    @Option(help = "Enable inlining across Truffle boundary", type = OptionType.Expert)
+    @Option(help = "Enable inlining across Truffle boundary", type = OptionType.Expert, deprecated = true)
     static final OptionKey<Boolean> TruffleInlineAcrossTruffleBoundary = new OptionKey<>(InlineAcrossTruffleBoundary.getDefaultValue());
 
     /**
      * Deprecated by {@link PolyglotCompilerOptions#TracePerformanceWarnings}.
      */
-    @Option(help = "Print potential performance problems", type = OptionType.Debug)
+    @Option(help = "Print potential performance problems", type = OptionType.Debug, deprecated = true)
     static final OptionKey<Boolean> TraceTrufflePerformanceWarnings = new OptionKey<>(false);
 
     /**
      * Deprecated by {@link PolyglotCompilerOptions#PrintExpansionHistogram}.
      */
-    @Option(help = "Prints a histogram of all expanded Java methods.", type = OptionType.Debug)
+    @Option(help = "Prints a histogram of all expanded Java methods.", type = OptionType.Debug, deprecated = true)
     static final OptionKey<Boolean> PrintTruffleExpansionHistogram = new OptionKey<>(PrintExpansionHistogram.getDefaultValue());
 
     /**
      * Deprecated by {@link PolyglotCompilerOptions#NodeSourcePositions}.
      */
-    @Option(help = "Enable support for simple infopoints in truffle partial evaluations.", type = OptionType.Expert)
+    @Option(help = "Enable support for simple infopoints in truffle partial evaluations.", type = OptionType.Expert, deprecated = true)
     static final OptionKey<Boolean> TruffleEnableInfopoints = new OptionKey<>(NodeSourcePositions.getDefaultValue());
 
     /**
      * Deprecated by {@link PolyglotCompilerOptions#IterativePartialEscape}.
      */
-    @Option(help = "Run the partial escape analysis iteratively in Truffle compilation.", type = OptionType.Debug)
+    @Option(help = "Run the partial escape analysis iteratively in Truffle compilation.", type = OptionType.Debug, deprecated = true)
     static final OptionKey<Boolean> TruffleIterativePartialEscape = new OptionKey<>(IterativePartialEscape.getDefaultValue());
 
     /**
      * Deprecated by {@link PolyglotCompilerOptions#InstrumentBranches}.
      */
-    @Option(help = "Instrument branches and output profiling information to the standard output.")
+    @Option(help = "Instrument branches and output profiling information to the standard output.", deprecated = true)
     static final OptionKey<Boolean> TruffleInstrumentBranches = new OptionKey<>(InstrumentBranches.getDefaultValue());
 
     /**
      * Deprecated by {@link PolyglotCompilerOptions#InstrumentBranchesPerInlineSite}.
      */
-    @Option(help = "Instrument branches by considering different inlining sites as different branches.")
+    @Option(help = "Instrument branches by considering different inlining sites as different branches.", deprecated = true)
     static final OptionKey<Boolean> TruffleInstrumentBranchesPerInlineSite = new OptionKey<>(InstrumentBranchesPerInlineSite.getDefaultValue());
 
     /**
      * Deprecated by {@link PolyglotCompilerOptions#InstrumentBoundaries}.
      */
-    @Option(help = "Instrument Truffle boundaries and output profiling information to the standard output.")
+    @Option(help = "Instrument Truffle boundaries and output profiling information to the standard output.", deprecated = true)
     static final OptionKey<Boolean> TruffleInstrumentBoundaries = new OptionKey<>(InstrumentBoundaries.getDefaultValue());
 
     /**
      * Deprecated by {@link PolyglotCompilerOptions#InstrumentBoundariesPerInlineSite}.
      */
-    @Option(help = "Instrument Truffle boundaries by considering different inlining sites as different branches.")
+    @Option(help = "Instrument Truffle boundaries by considering different inlining sites as different branches.", deprecated = true)
     static final OptionKey<Boolean> TruffleInstrumentBoundariesPerInlineSite = new OptionKey<>(InstrumentBoundariesPerInlineSite.getDefaultValue());
 
     /**
      * Deprecated by {@link PolyglotCompilerOptions#InstrumentFilter}.
      */
-    @Option(help = "Method filter for host methods in which to add instrumentation.")
+    @Option(help = "Method filter for host methods in which to add instrumentation.", deprecated = true)
     static final OptionKey<String> TruffleInstrumentFilter = new OptionKey<>(InstrumentFilter.getDefaultValue());
 
     /**
      * Deprecated by {@link PolyglotCompilerOptions#InstrumentationTableSize}.
      */
-    @Option(help = "Maximum number of instrumentation counters available.")
+    @Option(help = "Maximum number of instrumentation counters available.", deprecated = true)
     static final OptionKey<Integer> TruffleInstrumentationTableSize = new OptionKey<>(InstrumentationTableSize.getDefaultValue());
 
     /**
      * Deprecated by {@link PolyglotCompilerOptions#MaximumGraalNodeCount}.
      */
-    @Option(help = "Stop partial evaluation when the graph exceeded this many nodes.")
+    @Option(help = "Stop partial evaluation when the graph exceeded this many nodes.", deprecated = true)
     static final OptionKey<Integer> TruffleMaximumGraalNodeCount = new OptionKey<>(MaximumGraalNodeCount.getDefaultValue());
 
     /**
      * Deprecated by {@link PolyglotCompilerOptions#MaximumInlineNodeCount}.
      */
-    @Option(help = "Ignore further truffle inlining decisions when the graph exceeded this many nodes.")
+    @Option(help = "Ignore further truffle inlining decisions when the graph exceeded this many nodes.", deprecated = true)
     static final OptionKey<Integer> TruffleMaximumInlineNodeCount = new OptionKey<>(MaximumInlineNodeCount.getDefaultValue());
 
     /**
      * Deprecated with no replacement.
      */
-    @Option(help = "Intrinsify get/set/is methods of FrameWithoutBoxing to improve Truffle compilation time", type = OptionType.Debug)
+    @Option(help = "Intrinsify get/set/is methods of FrameWithoutBoxing to improve Truffle compilation time", type = OptionType.Debug, deprecated = true)
     static final OptionKey<Boolean> TruffleIntrinsifyFrameAccess = new OptionKey<>(true);
 
     // Language agnostic inlining
@@ -227,62 +221,26 @@ public final class TruffleCompilerOptions {
     /**
      * Deprecated by {@link PolyglotCompilerOptions#TraceInliningDetails}.
      */
-    @Option(help = "Print detailed information for inlining (i.e. the entire explored call tree).", type = OptionType.Expert)
+    @Option(help = "Print detailed information for inlining (i.e. the entire explored call tree).", type = OptionType.Expert, deprecated = true)
     static final OptionKey<Boolean> TraceTruffleInliningDetails = new OptionKey<>(TraceInliningDetails.getDefaultValue());
 
     /**
      * Deprecated by {@link PolyglotCompilerOptions#InliningPolicy}.
      */
-    @Option(help = "Explicitly pick a inlining policy by name. Highest priority chosen by default.", type = OptionType.Expert)
+    @Option(help = "Explicitly pick a inlining policy by name. Highest priority chosen by default.", type = OptionType.Expert, deprecated = true)
     static final OptionKey<String> TruffleInliningPolicy = new OptionKey<>(InliningPolicy.getDefaultValue());
 
     /**
      * Deprecated by {@link PolyglotCompilerOptions#InliningExpansionBudget}.
      */
-    @Option(help = "The base expansion budget for language-agnostic inlining.", type = OptionType.Expert)
+    @Option(help = "The base expansion budget for language-agnostic inlining.", type = OptionType.Expert, deprecated = true)
     static final OptionKey<Integer> TruffleInliningExpansionBudget = new OptionKey<>(InliningExpansionBudget.getDefaultValue());
 
     /**
      * Deprecated by {@link PolyglotCompilerOptions#InliningInliningBudget}.
      */
-    @Option(help = "The base inlining budget for language-agnostic inlining", type = OptionType.Expert)
+    @Option(help = "The base inlining budget for language-agnostic inlining", type = OptionType.Expert, deprecated = true)
     static final OptionKey<Integer> TruffleInliningInliningBudget = new OptionKey<>(InliningInliningBudget.getDefaultValue());
-
-    /**
-     * Deprecated by {@link PolyglotCompilerOptions#InliningCutoffCountPenalty}.
-     */
-    @Option(help = "Controls how impactful many cutoff nodes is on exploration decision in language-agnostic inlining.", type = OptionType.Expert, stability = OptionStability.EXPERIMENTAL)
-    static final OptionKey<Double> TruffleInliningCutoffCountPenalty = new OptionKey<>(InliningCutoffCountPenalty.getDefaultValue());
-
-    /**
-     * Deprecated by {@link PolyglotCompilerOptions#InliningNodeCountPenalty}.
-     */
-    @Option(help = "Controls how impactful the size of the subtree is on exploration decision in language-agnostic inlining.", type = OptionType.Expert, stability = OptionStability.EXPERIMENTAL)
-    static final OptionKey<Double> TruffleInliningNodeCountPenalty = new OptionKey<>(InliningNodeCountPenalty.getDefaultValue());
-
-    /**
-     * Deprecated by {@link PolyglotCompilerOptions#InliningExpandAllProximityFactor}.
-     */
-    @Option(help = "Controls how impactful few cutoff nodes are on exploration decisions in language-agnostic inlining.", type = OptionType.Expert, stability = OptionStability.EXPERIMENTAL)
-    static final OptionKey<Double> TruffleInliningExpandAllProximityFactor = new OptionKey<>(InliningExpandAllProximityFactor.getDefaultValue());
-
-    /**
-     * Deprecated by {@link PolyglotCompilerOptions#InliningExpandAllProximityBonus}.
-     */
-    @Option(help = "Controls at what point few cutoff nodes are impactful on exploration decisions in language-agnostic inlining.", type = OptionType.Expert, stability = OptionStability.EXPERIMENTAL)
-    static final OptionKey<Integer> TruffleInliningExpandAllProximityBonus = new OptionKey<>(InliningExpandAllProximityBonus.getDefaultValue());
-
-    /**
-     * Deprecated by {@link PolyglotCompilerOptions#InliningExpansionCounterPressure}.
-     */
-    @Option(help = "Controls how steep the exploration limit curve grows in language-agnostic inlining.", type = OptionType.Expert, stability = OptionStability.EXPERIMENTAL)
-    static final OptionKey<Integer> TruffleInliningExpansionCounterPressure = new OptionKey<>(InliningExpansionCounterPressure.getDefaultValue());
-
-    /**
-     * Deprecated by {@link PolyglotCompilerOptions#InliningInliningCounterPressure}.
-     */
-    @Option(help = "Controls how steep the inlining limit curve grows in language-agnostic inlining", type = OptionType.Expert, stability = OptionStability.EXPERIMENTAL)
-    static final OptionKey<Integer> TruffleInliningInliningCounterPressure = new OptionKey<>(InliningInliningCounterPressure.getDefaultValue());
     // @formatter:on
 
     private TruffleCompilerOptions() {
@@ -354,7 +312,7 @@ public final class TruffleCompilerOptions {
         return new OptionValuesImpl(descriptors, parsedOptions);
     }
 
-    static void checkDeprecation() {
+    static String[] checkDeprecation(CompilableTruffleAST compilable) {
         EconomicMap<OptionKey<?>, org.graalvm.options.OptionKey<?>> deprecatedToReplacement = EconomicMap.create(Equivalence.IDENTITY);
         OptionValues options = getOptions();
         MapCursor<org.graalvm.options.OptionKey<?>, Pair<? extends OptionKey<?>, Function<Object, ?>>> cursor = Lazy.POLYGLOT_TO_COMPILER.getEntries();
@@ -382,7 +340,7 @@ public final class TruffleCompilerOptions {
                 String polyglotOptionName = polyglotOptionKeyToName.get(deprecatedCursor.getValue());
                 formatter.format("WARNING: The option '%s' was deprecated. Truffle runtime options are no longer specified as Graal options (-Dgraal.*).%n", deprecatedOptionKey.getName());
                 formatter.format("Replace the Graal option usage with one of the following replacements:%n");
-                if (value instanceof Boolean) {
+                if (value instanceof Boolean && ((boolean) value) == true) {
                     formatter.format("* '--%s' if the option is passed using a guest language launcher.%n", polyglotOptionName);
                 } else {
                     formatter.format("* '--%s=%s' if the option is passed using a guest language launcher.%n", polyglotOptionName, strValue);
@@ -391,8 +349,9 @@ public final class TruffleCompilerOptions {
                 String quot = value instanceof String ? "\"" : "";
                 formatter.format("* Using polyglot API: 'org.graalvm.polyglot.Context.newBuilder().option(\"%s\", " + quot + "%s" + quot + ")'", polyglotOptionName, strValue);
             }
-            throw new Error(warning.toString());
+            TruffleCompilerRuntime.getRuntime().log(compilable, warning.toString());
         }
+        return new String[0];
     }
 
     private static final class Lazy {
@@ -414,12 +373,6 @@ public final class TruffleCompilerOptions {
             result.put(InliningPolicy, identity(TruffleInliningPolicy));
             result.put(InliningExpansionBudget, identity(TruffleInliningExpansionBudget));
             result.put(InliningInliningBudget, identity(TruffleInliningInliningBudget));
-            result.put(InliningCutoffCountPenalty, identity(TruffleInliningCutoffCountPenalty));
-            result.put(InliningNodeCountPenalty, identity(TruffleInliningNodeCountPenalty));
-            result.put(InliningExpandAllProximityFactor, identity(TruffleInliningExpandAllProximityFactor));
-            result.put(InliningExpandAllProximityBonus, identity(TruffleInliningExpandAllProximityBonus));
-            result.put(InliningExpansionCounterPressure, identity(TruffleInliningExpansionCounterPressure));
-            result.put(InliningInliningCounterPressure, identity(TruffleInliningInliningCounterPressure));
             result.put(CompilationExceptionsAreFatal, identity(SharedTruffleCompilerOptions.TruffleCompilationExceptionsAreFatal));
             result.put(PerformanceWarningsAreFatal, booleanToPerformanceWarningKind(SharedTruffleCompilerOptions.TrufflePerformanceWarningsAreFatal));
             result.put(TraceInlining, identity(SharedTruffleCompilerOptions.TraceTruffleInlining));

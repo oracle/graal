@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,7 +32,7 @@ enum E1 { B1 = 3 };
 enum E2 { B2 = 3 };
 
 int main() {
-  enum E1 e1 = B1;
-  enum E2 e2 = B2;
-  return e1 == (int)e2;
+    enum E1 e1 = B1;
+    enum E2 e2 = B2;
+    return e1 == (int) e2;
 }

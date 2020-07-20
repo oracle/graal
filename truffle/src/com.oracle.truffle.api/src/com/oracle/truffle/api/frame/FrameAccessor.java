@@ -48,12 +48,12 @@ final class FrameAccessor extends Accessor {
 
     static final class FramesImpl extends FrameSupport {
         @Override
-        protected void markMaterializeCalled(FrameDescriptor descriptor) {
+        public void markMaterializeCalled(FrameDescriptor descriptor) {
             descriptor.materializeCalled = true;
         }
 
         @Override
-        protected boolean getMaterializeCalled(FrameDescriptor descriptor) {
+        public boolean getMaterializeCalled(FrameDescriptor descriptor) {
             return descriptor.materializeCalled;
         }
     }

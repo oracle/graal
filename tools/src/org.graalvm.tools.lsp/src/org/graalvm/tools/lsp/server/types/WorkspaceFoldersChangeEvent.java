@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,12 +34,10 @@ import java.util.Objects;
 /**
  * The workspace folder change event.
  */
-public class WorkspaceFoldersChangeEvent {
-
-    final JSONObject jsonData;
+public class WorkspaceFoldersChangeEvent extends JSONBase {
 
     WorkspaceFoldersChangeEvent(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -108,8 +106,8 @@ public class WorkspaceFoldersChangeEvent {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 41 * hash + Objects.hashCode(this.getAdded());
-        hash = 41 * hash + Objects.hashCode(this.getRemoved());
+        hash = 89 * hash + Objects.hashCode(this.getAdded());
+        hash = 89 * hash + Objects.hashCode(this.getRemoved());
         return hash;
     }
 

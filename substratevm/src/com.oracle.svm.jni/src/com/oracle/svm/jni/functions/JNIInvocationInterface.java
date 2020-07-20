@@ -34,7 +34,9 @@ import java.io.CharConversionException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 
+import org.graalvm.compiler.serviceprovider.IsolateUtil;
 import org.graalvm.nativeimage.Isolate;
+import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -44,7 +46,6 @@ import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.MonitorSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointActions;
@@ -57,6 +58,8 @@ import com.oracle.svm.core.c.function.CEntryPointSetup;
 import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveTearDownIsolateEpilogue;
 import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.log.FunctionPointerLogHandler;
+import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.option.RuntimeOptionParser;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.Utf8;
@@ -133,10 +136,33 @@ final class JNIInvocationInterface {
             }
         }
 
+        /**
+         * This method supports the non-standard option strings detailed in the table below.
+         *
+         * <pre>
+         | optionString  |                         meaning                                                   |
+         |===============|===================================================================================|
+         | _log          | extraInfo is a pointer to a "void(const char *buf, size_t count)" function.       |
+         |               | Formatted low level log messages are sent to this function.                       |
+         |               | If present, then _flush_log is also required to be present.                       |
+         |---------------|-----------------------------------------------------------------------------------|
+         | _flush_log    | extraInfo is a pointer to a "void()" function.                                    |
+         |               | This function is called when the low level log stream should be flushed.          |
+         |               | If present, then _log is also required to be present.                             |
+         |---------------|-----------------------------------------------------------------------------------|
+         | _fatal        | extraInfo is a pointer to a "void()" function.                                    |
+         |               | This function is called when a non-recoverable, fatal error occurs.               |
+         |---------------|-----------------------------------------------------------------------------------|
+         * </pre>
+         *
+         * @see LogHandler
+         * @see "https://docs.oracle.com/en/java/javase/14/docs/specs/jni/invocation.html#jni_createjavavm"
+         */
         @CEntryPoint(name = "JNI_CreateJavaVM")
         @CEntryPointOptions(prologue = JNICreateJavaVMPrologue.class, publishAs = Publish.SymbolOnly, include = CEntryPointOptions.NotIncludedAutomatically.class)
         static int JNI_CreateJavaVM(JNIJavaVMPointer vmBuf, JNIEnvironmentPointer penv, JNIJavaVMInitArgs vmArgs) {
             // NOTE: could check version, extra options (-verbose etc.), hooks etc.
+            WordPointer javavmIdPointer = WordFactory.nullPointer();
             if (vmArgs.isNonNull()) {
                 Pointer p = (Pointer) vmArgs.getOptions();
                 int count = vmArgs.getNOptions();
@@ -145,13 +171,25 @@ final class JNIInvocationInterface {
                     JNIJavaVMOption option = (JNIJavaVMOption) p.add(i * SizeOf.get(JNIJavaVMOption.class));
                     CCharPointer str = option.getOptionString();
                     if (str.isNonNull()) {
-                        options.add(CTypeConversion.toJavaString(option.getOptionString()));
+                        String optionString = CTypeConversion.toJavaString(option.getOptionString());
+                        if (!FunctionPointerLogHandler.parseVMOption(optionString, option.getExtraInfo())) {
+                            if (optionString.equals("_javavm_id")) {
+                                javavmIdPointer = option.getExtraInfo();
+                            } else {
+                                options.add(optionString);
+                            }
+                        }
                     }
                 }
+                FunctionPointerLogHandler.afterParsingVMOptions();
                 RuntimeOptionParser.parseAndConsumeAllOptions(options.toArray(new String[0]));
             }
             JNIJavaVM javavm = JNIFunctionTables.singleton().getGlobalJavaVM();
             JNIJavaVMList.addJavaVM(javavm);
+            if (javavmIdPointer.isNonNull()) {
+                long javavmId = IsolateUtil.getIsolateID();
+                javavmIdPointer.write(WordFactory.pointer(javavmId));
+            }
             RuntimeSupport.getRuntimeSupport().addTearDownHook(new Runnable() {
                 @Override
                 public void run() {
@@ -297,7 +335,7 @@ final class JNIInvocationInterface {
         static void releaseCurrentThreadOwnedMonitors() {
             JNIThreadOwnedMonitors.forEach((obj, depth) -> {
                 for (int i = 0; i < depth; i++) {
-                    MonitorSupport.monitorExit(obj);
+                    MonitorSupport.singleton().monitorExit(obj);
                 }
                 assert !Thread.holdsLock(obj);
             });

@@ -70,6 +70,7 @@ import com.oracle.truffle.api.library.test.CachedLibraryTestFactory.DoubleNodeGe
 import com.oracle.truffle.api.library.test.CachedLibraryTestFactory.ExcludeNodeGen;
 import com.oracle.truffle.api.library.test.CachedLibraryTestFactory.FromCached1NodeGen;
 import com.oracle.truffle.api.library.test.CachedLibraryTestFactory.FromCached2NodeGen;
+import com.oracle.truffle.api.library.test.CachedLibraryTestFactory.ReplaceCachedLibraryTestNodeGen;
 import com.oracle.truffle.api.library.test.CachedLibraryTestFactory.SimpleDispatchedNodeGen;
 import com.oracle.truffle.api.library.test.CachedLibraryTestFactory.SimpleNodeGen;
 import com.oracle.truffle.api.nodes.Node;
@@ -252,12 +253,6 @@ public class CachedLibraryTest extends AbstractLibraryTest {
         AssumptionNode.a = Truffle.getRuntime().createAssumption();
         assertEquals("cached_s0", node.execute(s3));
 
-        Assumption uncached = AssumptionNode.a = Truffle.getRuntime().createAssumption();
-        assertEquals("uncached_s0", node.execute(s1));
-
-        assertEquals("uncached_s0", node.execute(s2));
-        assertEquals("uncached_s0", node.execute(s3));
-        uncached.invalidate();
         assertEquals("cached_s1", node.execute(s1));
         assertEquals("cached_s1", node.execute(s2));
         assertEquals("uncached_s1", node.execute(s3));
@@ -513,6 +508,43 @@ public class CachedLibraryTest extends AbstractLibraryTest {
         } catch (UnsupportedSpecializationException e) {
         }
         assertEquals(5, node.invocationCount);
+    }
+
+    @SuppressWarnings("unused")
+    public abstract static class ReplaceCachedLibraryTest extends Node {
+
+        static final String TEST_STRING = "test";
+
+        static int limit = 2;
+
+        abstract String execute(Object a0);
+
+        @Specialization(limit = "2")
+        public static String s0(Object a0,
+                        @CachedLibrary("a0") SomethingLibrary lib1) {
+            return "s0_" + lib1.call(a0);
+        }
+
+        @Specialization(replaces = "s0")
+        public static String s1(Object a0) {
+            return "s1";
+        }
+
+    }
+
+    @Test
+    public void testReplace() {
+        Something s1 = new Something("1");
+        Something s2 = new Something("2");
+        Something s3 = new Something("3");
+        ReplaceCachedLibraryTest node = adopt(ReplaceCachedLibraryTestNodeGen.create());
+        assertEquals("s0_1_cached", node.execute(s1));
+        assertEquals("s0_2_cached", node.execute(s2));
+        assertEquals("s1", node.execute(s3));
+        node.execute(2);
+        node.execute(3);
+        node.execute(3);
+        node.execute(5);
     }
 
     @SuppressWarnings("unused")

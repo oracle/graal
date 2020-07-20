@@ -51,6 +51,7 @@ public class ConfigurationType implements JsonPrintable {
 
     public ConfigurationType(String qualifiedJavaName) {
         assert qualifiedJavaName.indexOf('/') == -1 : "Requires qualified Java name, not internal representation";
+        assert !qualifiedJavaName.startsWith("[") : "Requires Java source array syntax, for example java.lang.String[]";
         this.qualifiedJavaName = qualifiedJavaName;
     }
 

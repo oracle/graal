@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug;
 
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -57,9 +58,10 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 
+@GenerateUncached
 public abstract class LLVMToDebugValueNode extends LLVMNode implements LLVMDebugValue.Builder {
 
-    public abstract LLVMDebugValue executeWithTarget(Object target);
+    protected abstract LLVMDebugValue executeWithTarget(Object target);
 
     @Override
     public LLVMDebugValue build(Object irValue) {

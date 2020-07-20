@@ -25,32 +25,23 @@
 package com.oracle.graal.pointsto.flow;
 
 import org.graalvm.compiler.nodes.java.MonitorEnterNode;
+
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.typestate.TypeState;
 
-public class MonitorEnterTypeFlow extends TypeFlow<MonitorEnterNode> {
+import jdk.vm.ci.code.BytecodePosition;
+
+public class MonitorEnterTypeFlow extends TypeFlow<BytecodePosition> {
 
     private final BytecodeLocation location;
     private final AnalysisMethod method;
 
     public MonitorEnterTypeFlow(BigBang bb, MonitorEnterNode source, BytecodeLocation monitorLocation, AnalysisMethod method) {
-        super(source, null);
+        super(source.getNodeSourcePosition(), null);
         this.location = monitorLocation;
         this.method = method;
         this.addUse(bb, bb.getAllSynchronizedTypeFlow());
-    }
-
-    @Override
-    public TypeState filter(BigBang bb, TypeState newState) {
-        /* Check if the type is allowed to be used for synchronization. */
-        int bci = source.getNodeSourcePosition() != null ? source.getNodeSourcePosition().getBCI() : 0;
-        for (AnalysisType type : newState.types()) {
-            bb.checkUnsupportedSynchronization(method, bci, type);
-        }
-        return newState;
     }
 
     public BytecodeLocation getLocation() {
@@ -62,7 +53,7 @@ public class MonitorEnterTypeFlow extends TypeFlow<MonitorEnterNode> {
     }
 
     @Override
-    public TypeFlow<MonitorEnterNode> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+    public TypeFlow<BytecodePosition> copy(BigBang bb, MethodFlowsGraph methodFlows) {
         return this;
     }
 

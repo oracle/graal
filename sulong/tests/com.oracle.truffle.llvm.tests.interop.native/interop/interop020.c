@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,11 +30,11 @@
 #include <polyglot.h>
 
 int main() {
-  int *obj = (int *)polyglot_import("foreign");
-  obj[0] = 30;
-  obj[1] = 31;
-  obj[2] = 32;
-  obj[3] = 33;
-  obj[4] = 34;
-  return 0;
+    int *obj = (int *) polyglot_import("foreign");
+    obj[0] = 30;
+    obj[1] = 31;
+    obj[2] = 32;
+    obj[3] = 33;
+    obj[4] = 34;
+    return 0;
 }

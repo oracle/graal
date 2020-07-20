@@ -54,6 +54,20 @@ public class ArrayElementsTypeFlow extends TypeFlow<AnalysisType> {
     }
 
     @Override
+    public boolean canSaturate() {
+        return false;
+    }
+
+    @Override
+    protected void onInputSaturated(BigBang bb, TypeFlow<?> input) {
+        /*
+         * When an array store is saturated conservativelly assume that the array can contain any
+         * subtype of its declared type.
+         */
+        getDeclaredType().getTypeFlow(bb, true).addUse(bb, this);
+    }
+
+    @Override
     public TypeState filter(BigBang bb, TypeState update) {
         if (declaredType.equals(bb.getObjectType())) {
             /* No need to filter. */

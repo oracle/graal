@@ -92,6 +92,35 @@ public class ComponentInstallerTest extends CommandTestBase {
     }
 
     /**
+     * Checks that main/common options are all printed and are consistent.
+     */
+    @Test
+    public void testMainOptionsConsistent() {
+        ComponentInstaller.initCommands();
+        discoverOptions();
+        startCommand("Global");
+        String help = ResourceBundle.getBundle(
+                        "org.graalvm.component.installer.Bundle").getString("INFO_Usage");
+        List<String> lines = new ArrayList<>(Arrays.asList(help.split("\n")));
+        while (!lines.get(0).startsWith("Common options:")) {
+            lines.remove(0);
+        }
+        lines.remove(0);
+        int index = 0;
+        while (index < lines.size()) {
+            String tl = lines.get(index).trim();
+            if (tl.isEmpty()) {
+                break;
+            }
+            index++;
+        }
+        lines = lines.subList(0, index);
+        Map<String, String> globs = new HashMap<>(ComponentInstaller.globalOptions);
+        checkOptions(lines, globs);
+        assertTrue("Help inconsistencies found: \n " + String.join("\n", errors), errors.isEmpty());
+    }
+
+    /**
      * Checks that the main help reports all commands and all their options.
      */
     @Test
@@ -192,6 +221,90 @@ public class ComponentInstallerTest extends CommandTestBase {
 
     List<String> errors = new ArrayList<>();
 
+    private Set<String> checkOptions(List<String> optionLines, Map<String, String> cmdOpts) {
+        Set<String> coveredOptions = new HashSet<>();
+        for (int i = 0; i < optionLines.size(); i++) {
+            String l = optionLines.get(i).trim();
+            if (l.startsWith("-")) {
+                String[] spl = l.split(",?\\p{Blank}");
+                String shOpt = spl[0].trim().substring(1);
+                if (shOpt.startsWith("-")) {
+                    shOpt = spl[0].trim();
+                } else {
+                    if (shOpt.length() != 1) {
+                        errors.add("Command " + currentCmd + ": Invalid short option: " + shOpt);
+                    } else {
+                        coveredOptions.add(shOpt);
+                    }
+                    String def = cmdOpts.get(shOpt);
+                    if (def == null) {
+                        def = ComponentInstaller.globalOptions.get(shOpt);
+                    }
+                    if (def == null) {
+                        errors.add("Command " + currentCmd + ": Unsupported option: " + shOpt);
+                    } else if (deprecatedOptions.contains(shOpt) || def.startsWith("=")) {
+                        errors.add("Command " + currentCmd + ": Deperecated option: " + shOpt);
+                        continue;
+                    }
+
+                    if (spl.length == 1) {
+                        errors.add("Command " + currentCmd + ": No explanation for: " + shOpt);
+                        continue;
+                    }
+                    shOpt = spl[1].trim();
+                }
+                if (shOpt.startsWith("--")) {
+                    if (spl.length == 2) {
+                        errors.add("Command " + currentCmd + ": No explanation for: " + shOpt);
+                        continue;
+                    }
+                    String longOption = shOpt.substring(2);
+                    if (longOption.length() < 2) {
+                        errors.add("Command " + currentCmd + ": Long option too short: " + longOption);
+                    } else {
+                        coveredOptions.add(longOption);
+                    }
+                    String shopt = cmdOpts.get(longOption);
+                    if (shopt == null) {
+                        shopt = ComponentInstaller.globalOptions.get(longOption);
+                    }
+                    if (shopt == null) {
+                        errors.add("Command " + currentCmd + ": Long option not found: " + longOption);
+                    } else if (!(cmdOpts.containsKey(shopt) || ComponentInstaller.globalOptions.containsKey(shopt))) {
+                        errors.add("Command " + currentCmd + ": Long option mapped to bad char: " + longOption);
+                    } else if (Character.isLetterOrDigit(shopt.charAt(0))) {
+                        if (!l.startsWith("-" + shopt)) {
+                            errors.add("Command " + currentCmd + ": Long option with bad short option: " + longOption);
+                        }
+                    }
+                }
+            }
+        }
+        List<String> a = new ArrayList<>(cmdOpts.keySet());
+        Collections.sort(a, Collections.reverseOrder());
+
+        for (String s : a) {
+            String r = cmdOpts.get(s);
+            if (s.length() > 1) {
+                r = cmdOpts.get(r);
+            }
+            if ("X".equals(r)) {
+                cmdOpts.remove(s);
+            }
+        }
+        cmdOpts.keySet().removeAll(coveredOptions);
+        cmdOpts.keySet().removeAll(deprecatedOptions);
+        for (String s : new ArrayList<>(cmdOpts.keySet())) {
+            if (!Character.isLetterOrDigit(s.charAt(0))) {
+                cmdOpts.remove(s);
+            }
+        }
+        if (!cmdOpts.isEmpty()) {
+            errors.add("Command " + currentCmd + ": Option(s) missing in option list - " + cmdOpts.keySet());
+        }
+        return coveredOptions;
+    }
+
     private void checkCommandAndOptionsList(InstallerCommand cmd) {
         boolean overviewFound = false;
         String prefix = "gu " + currentCmd + " ";
@@ -262,79 +375,7 @@ public class ComponentInstallerTest extends CommandTestBase {
         if (!overviewFound) {
             errors.add("Command " + currentCmd + ": Overview line not found");
         }
-
-        Set<String> coveredOptions = new HashSet<>();
-        for (int i = 0; i < optionLines.size(); i++) {
-            String l = optionLines.get(i);
-            if (l.startsWith("-")) {
-                String[] spl = l.split(",?\\p{Blank}");
-                String shOpt = spl[0].trim().substring(1);
-                if (shOpt.length() != 1) {
-                    errors.add("Command " + currentCmd + ": Invalid short option: " + shOpt);
-                } else {
-                    coveredOptions.add(shOpt);
-                }
-                String def = cmdOpts.get(shOpt);
-                if (def == null) {
-                    def = ComponentInstaller.globalOptions.get(shOpt);
-                }
-                if (def == null) {
-                    errors.add("Command " + currentCmd + ": Unsupported option: " + shOpt);
-                } else if (deprecatedOptions.contains(shOpt) || def.startsWith("=")) {
-                    errors.add("Command " + currentCmd + ": Deperecated option: " + shOpt);
-                    continue;
-                }
-
-                if (spl.length == 1) {
-                    errors.add("Command " + currentCmd + ": No explanation for: " + shOpt);
-                    continue;
-                }
-                shOpt = spl[1].trim();
-                if (shOpt.startsWith("--")) {
-                    if (spl.length == 2) {
-                        errors.add("Command " + currentCmd + ": No explanation for: " + shOpt);
-                        continue;
-                    }
-                    String longOption = shOpt.substring(2);
-                    if (longOption.length() < 2) {
-                        errors.add("Command " + currentCmd + ": Long option too short: " + longOption);
-                    } else {
-                        coveredOptions.add(longOption);
-                    }
-                    String shopt = cmdOpts.get(longOption);
-                    if (shopt == null) {
-                        shopt = ComponentInstaller.globalOptions.get(longOption);
-                    }
-                    if (shopt == null) {
-                        errors.add("Command " + currentCmd + ": Long option not found: " + longOption);
-                    } else if (!(cmdOpts.containsKey(shopt) || ComponentInstaller.globalOptions.containsKey(shopt))) {
-                        errors.add("Command " + currentCmd + ": Long option mapped to bad char: " + longOption);
-                    } else {
-                        String shoptline = optionLines.get(i);
-                        if (!shoptline.startsWith("-" + shopt)) {
-                            errors.add("Command " + currentCmd + ": Long option with bad short option: " + longOption);
-                        }
-                    }
-                }
-            }
-        }
-        List<String> a = new ArrayList<>(cmdOpts.keySet());
-        Collections.sort(a, Collections.reverseOrder());
-
-        for (String s : a) {
-            String r = cmdOpts.get(s);
-            if (s.length() > 1) {
-                r = cmdOpts.get(r);
-            }
-            if ("X".equals(r)) {
-                cmdOpts.remove(s);
-            }
-        }
-        cmdOpts.keySet().removeAll(coveredOptions);
-        cmdOpts.keySet().removeAll(deprecatedOptions);
-        if (!cmdOpts.isEmpty()) {
-            errors.add("Command " + currentCmd + ": Option(s) missing in option list - " + cmdOpts.keySet());
-        }
+        checkOptions(optionLines, cmdOpts);
     }
 
     @Test

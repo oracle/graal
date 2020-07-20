@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,12 +31,10 @@ import java.util.Objects;
  * A document highlight is a range inside a text document which deserves special attention. Usually
  * a document highlight is visualized by changing the background color of its range.
  */
-public class DocumentHighlight {
-
-    final JSONObject jsonData;
+public class DocumentHighlight extends JSONBase {
 
     DocumentHighlight(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -87,9 +85,9 @@ public class DocumentHighlight {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 19 * hash + Objects.hashCode(this.getRange());
+        hash = 47 * hash + Objects.hashCode(this.getRange());
         if (this.getKind() != null) {
-            hash = 19 * hash + Objects.hashCode(this.getKind());
+            hash = 47 * hash + Objects.hashCode(this.getKind());
         }
         return hash;
     }

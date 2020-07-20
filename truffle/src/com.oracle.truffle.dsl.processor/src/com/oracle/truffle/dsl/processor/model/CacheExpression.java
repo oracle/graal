@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,12 +64,15 @@ public final class CacheExpression extends MessageContainer {
     private int dimensions = -1;
     private DSLExpression defaultExpression;
     private DSLExpression uncachedExpression;
-    private boolean alwaysInitialized = false;
-    private boolean eagerInitialize = false;
+    private boolean alwaysInitialized;
+    private boolean eagerInitialize;
     private Message uncachedExpressionError;
     private boolean requiresBoundary;
     private String sharedGroup;
     private boolean mergedLibrary;
+    private boolean guardForNull;
+    private boolean isWeakReference;
+    private boolean adopt = true;
 
     private TypeMirror languageType;
     private TypeMirror referenceType;
@@ -189,6 +192,10 @@ public final class CacheExpression extends MessageContainer {
         return isType(types.Cached);
     }
 
+    public boolean isBind() {
+        return isType(types.Bind);
+    }
+
     public boolean isCachedLibrary() {
         return isType(types.CachedLibrary);
     }
@@ -283,6 +290,30 @@ public final class CacheExpression extends MessageContainer {
         String libraryName = ElementUtils.getSimpleName(getParameter().getType());
 
         return b.toString() + libraryName + "_";
+    }
+
+    public void setGuardForNull(boolean b) {
+        this.guardForNull = b;
+    }
+
+    public boolean isGuardForNull() {
+        return guardForNull;
+    }
+
+    public void setWeakReference(boolean ignoreInUncached) {
+        this.isWeakReference = ignoreInUncached;
+    }
+
+    public boolean isWeakReference() {
+        return isWeakReference;
+    }
+
+    public boolean isAdopt() {
+        return adopt;
+    }
+
+    public void setAdopt(boolean adopt) {
+        this.adopt = adopt;
     }
 
 }

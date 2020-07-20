@@ -42,6 +42,7 @@ package com.oracle.truffle.object;
 
 import java.util.Objects;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.FinalLocationException;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -72,6 +73,7 @@ public class PropertyImpl extends Property {
      * @since 0.17 or earlier
      */
     PropertyImpl(Object key, Location location, int flags, boolean relocatable) {
+        CompilerAsserts.neverPartOfCompilation();
         this.key = Objects.requireNonNull(key);
         this.location = Objects.requireNonNull(location);
         this.flags = flags;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,12 +30,10 @@ import java.util.Objects;
 /**
  * The parameters send in a close text document notification.
  */
-public class DidCloseTextDocumentParams {
-
-    final JSONObject jsonData;
+public class DidCloseTextDocumentParams extends JSONBase {
 
     DidCloseTextDocumentParams(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -71,7 +69,7 @@ public class DidCloseTextDocumentParams {
     @Override
     public int hashCode() {
         int hash = 5;
-        hash = 11 * hash + Objects.hashCode(this.getTextDocument());
+        hash = 37 * hash + Objects.hashCode(this.getTextDocument());
         return hash;
     }
 

@@ -234,7 +234,7 @@ int joinLength() {
   return cs1 + cs2 + checksum(joined);
 }
 
-int benchmarkWarmupCount() {
+int benchmarkIterationsCount() {
   return 50;
 }
 
@@ -249,7 +249,7 @@ void benchmarkSetupEach() {
   initializeMemory();
 }
 
-void benchmarkTeardownEach() {
+void benchmarkTeardownEach(char* outputFile) {
 }
 
 int benchmarkRun() {

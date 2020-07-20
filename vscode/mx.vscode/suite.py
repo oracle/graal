@@ -48,33 +48,6 @@ suite = {
     "graalvm" : {
       "class": "VSCodeExtensionProject",
     },
-    "graalvm-r" : {
-      "dependencies" : [
-        "graalvm"
-      ],
-      "class": "VSCodeExtensionProject",
-    },
-    "graalvm-ruby" : {
-      "dependencies" : [
-        "graalvm"
-      ],
-      "class": "VSCodeExtensionProject",
-    },
-    "graalvm-python" : {
-      "dependencies" : [
-        "graalvm"
-      ],
-      "class": "VSCodeExtensionProject",
-    },
-    "graalvm-complete" : {
-      "dependencies" : [
-        "graalvm",
-        "graalvm-python",
-        "graalvm-r",
-        "graalvm-ruby"
-      ],
-      "class": "VSCodeExtensionProject",
-    },
   },
 
   "distributions": {
@@ -82,11 +55,7 @@ suite = {
       "type": "zip",
       "layout" : {
         "./" : [
-          "dependency:graalvm/*",
-          "dependency:graalvm-r/*",
-          "dependency:graalvm-ruby/*",
-          "dependency:graalvm-python/*",
-          "dependency:graalvm-complete/*"
+          "dependency:graalvm/*"
         ]
       }
     },

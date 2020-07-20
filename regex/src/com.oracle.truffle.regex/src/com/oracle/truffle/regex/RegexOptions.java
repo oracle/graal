@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,12 +40,12 @@
  */
 package com.oracle.truffle.regex;
 
+import java.util.Arrays;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.tregex.parser.RegexFeatureSet;
 import com.oracle.truffle.regex.tregex.parser.flavors.PythonFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
-
-import java.util.Arrays;
 
 public final class RegexOptions {
 
@@ -59,6 +59,8 @@ public final class RegexOptions {
     public static final String STEP_EXECUTION_NAME = "StepExecution";
     private static final int ALWAYS_EAGER = 1 << 4;
     public static final String ALWAYS_EAGER_NAME = "AlwaysEager";
+    private static final int UTF_16_EXPLODE_ASTRAL_SYMBOLS = 1 << 5;
+    public static final String UTF_16_EXPLODE_ASTRAL_SYMBOLS_NAME = "UTF16ExplodeAstralSymbols";
 
     private static final String FLAVOR_NAME = "Flavor";
     private static final String FLAVOR_PYTHON_STR = "PythonStr";
@@ -117,6 +119,9 @@ public final class RegexOptions {
                 case ALWAYS_EAGER_NAME:
                     options = parseBooleanOption(optionsString, options, key, value, ALWAYS_EAGER);
                     break;
+                case UTF_16_EXPLODE_ASTRAL_SYMBOLS_NAME:
+                    options = parseBooleanOption(optionsString, options, key, value, UTF_16_EXPLODE_ASTRAL_SYMBOLS);
+                    break;
                 case FLAVOR_NAME:
                     flavor = parseFlavor(optionsString, value);
                     break;
@@ -155,9 +160,9 @@ public final class RegexOptions {
     private static RegexFeatureSet parseFeatureSet(String optionsString, String value) throws RegexSyntaxException {
         switch (value) {
             case FEATURE_SET_TREGEX_JONI:
-                return RegexFeatureSet.TREGEX_JONI;
+                return RegexFeatureSet.DEFAULT;
             case FEATURE_SET_JONI:
-                return RegexFeatureSet.JONI;
+                return RegexFeatureSet.DEFAULT;
             default:
                 throw optionsSyntaxErrorUnexpectedValue(optionsString, FEATURE_SET_NAME, value, FEATURE_SET_TREGEX_JONI, FEATURE_SET_JONI);
         }
@@ -202,6 +207,14 @@ public final class RegexOptions {
      */
     public boolean isAlwaysEager() {
         return isBitSet(ALWAYS_EAGER);
+    }
+
+    /**
+     * Explode astral symbols ({@code 0x10000 - 0x10FFFF}) into sub-automata where every state
+     * matches one {@code char} as opposed to one code point.
+     */
+    public boolean isUTF16ExplodeAstralSymbols() {
+        return isBitSet(UTF_16_EXPLODE_ASTRAL_SYMBOLS);
     }
 
     public RegexFlavor getFlavor() {
@@ -258,11 +271,7 @@ public final class RegexOptions {
         } else if (flavor == PythonFlavor.BYTES_INSTANCE) {
             sb.append(FLAVOR_NAME + "=" + FLAVOR_PYTHON_BYTES + ",");
         }
-        if (featureSet == RegexFeatureSet.TREGEX_JONI) {
-            sb.append(FEATURE_SET_NAME + "=" + FEATURE_SET_TREGEX_JONI + ",");
-        } else if (featureSet == RegexFeatureSet.JONI) {
-            sb.append(FEATURE_SET_NAME + "=" + FEATURE_SET_JONI + ",");
-        }
+        sb.append(FEATURE_SET_NAME + "=Default");
         return sb.toString();
     }
 
@@ -300,6 +309,11 @@ public final class RegexOptions {
 
         public Builder alwaysEager(boolean enabled) {
             updateOption(enabled, ALWAYS_EAGER);
+            return this;
+        }
+
+        public Builder utf16ExplodeAstralSymbols(boolean enabled) {
+            updateOption(enabled, UTF_16_EXPLODE_ASTRAL_SYMBOLS);
             return this;
         }
 

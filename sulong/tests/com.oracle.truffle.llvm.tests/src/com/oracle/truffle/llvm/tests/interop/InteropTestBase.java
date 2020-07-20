@@ -58,7 +58,7 @@ public class InteropTestBase {
 
     public static Context.Builder getContextBuilder() {
         String lib = System.getProperty("test.sulongtest.lib.path");
-        return Context.newBuilder().allowAllAccess(true).option(SulongEngineOption.LIBRARY_PATH_NAME, lib);
+        return Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).option(SulongEngineOption.LIBRARY_PATH_NAME, lib).option(SulongEngineOption.CXX_INTEROP_NAME, "true");
     }
 
     private static final Path testBase = Paths.get(TestOptions.TEST_SUITE_PATH, "interop");

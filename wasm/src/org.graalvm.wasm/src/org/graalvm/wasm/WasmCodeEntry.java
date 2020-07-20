@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -55,6 +56,7 @@ public final class WasmCodeEntry {
     @CompilationFinal(dimensions = 1) private int[] intConstants;
     @CompilationFinal(dimensions = 1) private long[] longConstants;
     @CompilationFinal(dimensions = 2) private int[][] branchTables;
+    @CompilationFinal(dimensions = 1) private int[] profileCounters;
 
     public WasmCodeEntry(WasmFunction function, byte[] data) {
         this.function = function;
@@ -65,6 +67,7 @@ public final class WasmCodeEntry {
         this.byteConstants = null;
         this.intConstants = null;
         this.longConstants = null;
+        this.profileCounters = null;
     }
 
     public WasmFunction function() {
@@ -161,6 +164,68 @@ public final class WasmCodeEntry {
 
     public int functionIndex() {
         return function.index();
+    }
+
+    /**
+     * A constant holding the maximum value an {@code int} can have, 2<sup>30</sup>-1. The sum of
+     * the true and false count must not overflow. This constant is used to check whether one of the
+     * counts does not exceed the required maximum value.
+     */
+    public static final int CONDITION_COUNT_MAX_VALUE = 0x3fffffff;
+
+    /**
+     * Same logic as in {@link com.oracle.truffle.api.profiles.ConditionProfile#profile}.
+     *
+     * @param index Condition index
+     * @param condition Condition value
+     * @return {@code condition}
+     */
+    public boolean profileCondition(int index, boolean condition) {
+        // locals required to guarantee no overflow in multi-threaded environments
+        int t = this.profileCounters[index * 2];
+        int f = this.profileCounters[index * 2 + 1];
+        boolean val = condition;
+        if (val) {
+            if (t == 0) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+            }
+            if (f == 0) {
+                // Make this branch fold during PE
+                val = true;
+            }
+            if (CompilerDirectives.inInterpreter()) {
+                if (t < CONDITION_COUNT_MAX_VALUE) {
+                    ++this.profileCounters[index * 2];
+                }
+            }
+        } else {
+            if (f == 0) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+            }
+            if (t == 0) {
+                // Make this branch fold during PE
+                val = false;
+            }
+            if (CompilerDirectives.inInterpreter()) {
+                if (f < CONDITION_COUNT_MAX_VALUE) {
+                    ++this.profileCounters[index * 2 + 1];
+                }
+            }
+        }
+
+        if (CompilerDirectives.inInterpreter()) {
+            // no branch probability calculation in the interpreter
+            return val;
+        } else {
+            int sum = t + f;
+            return CompilerDirectives.injectBranchProbability((double) t / (double) sum, val);
+        }
+    }
+
+    public void setConditionsCount(int size) {
+        if (size > 0) {
+            this.profileCounters = new int[size * 2];
+        }
     }
 
     @Override

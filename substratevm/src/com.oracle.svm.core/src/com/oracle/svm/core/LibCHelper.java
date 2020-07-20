@@ -27,11 +27,16 @@ package com.oracle.svm.core;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
 import org.graalvm.nativeimage.c.function.CLibrary;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 
-@CLibrary(value = "libchelper", requireStatic = true)
+@CLibrary(value = "libchelper", requireStatic = true, dependsOn = "java")
 public class LibCHelper {
     @CFunction(transition = Transition.NO_TRANSITION)
     public static native CCharPointerPointer getEnviron();
 
+    @CFunction(transition = Transition.TO_NATIVE)
+    // Checkstyle: stop
+    public static native CCharPointer SVM_FindJavaTZmd(CCharPointer tzMappings, int length);
+    // Checkstyle: start
 }

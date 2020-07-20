@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,8 @@ import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags.WriteVariableTag;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.interop.NodeObjectDescriptor;
 
@@ -58,6 +60,7 @@ import com.oracle.truffle.sl.nodes.interop.NodeObjectDescriptor;
  */
 @NodeChild("valueNode")
 @NodeField(name = "slot", type = FrameSlot.class)
+@NodeField(name = "nameNode", type = SLExpressionNode.class)
 public abstract class SLWriteLocalVariableNode extends SLExpressionNode {
 
     /**
@@ -65,6 +68,12 @@ public abstract class SLWriteLocalVariableNode extends SLExpressionNode {
      * created by the Truffle DSL based on the {@link NodeField} annotation on the class.
      */
     protected abstract FrameSlot getSlot();
+
+    /**
+     * Returns the child node <code>nameNode</code>. The implementation of this method is created by
+     * the Truffle DSL based on the {@link NodeChild} annotation on the class.
+     */
+    protected abstract SLExpressionNode getNameNode();
 
     /**
      * Specialized method to write a primitive {@code long} value. This is only possible if the
@@ -139,6 +148,19 @@ public abstract class SLWriteLocalVariableNode extends SLExpressionNode {
 
     @Override
     public Object getNodeObject() {
-        return NodeObjectDescriptor.writeVariable(getSlot().getIdentifier().toString());
+        SLExpressionNode nameNode = getNameNode();
+        SourceSection nameSourceSection;
+        if (nameNode.getSourceCharIndex() == -1) {
+            nameSourceSection = null;
+        } else {
+            SourceSection rootSourceSection = getRootNode().getSourceSection();
+            if (rootSourceSection == null) {
+                nameSourceSection = null;
+            } else {
+                Source source = rootSourceSection.getSource();
+                nameSourceSection = source.createSection(nameNode.getSourceCharIndex(), nameNode.getSourceLength());
+            }
+        }
+        return NodeObjectDescriptor.writeVariable(getSlot().getIdentifier().toString(), nameSourceSection);
     }
 }

@@ -41,10 +41,10 @@
 package com.oracle.truffle.regex.result;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.regex.runtime.nodes.DispatchNode;
@@ -66,7 +66,7 @@ abstract class RegexResultGetStartNode extends Node {
 
     @Specialization
     static int doSingleResult(SingleResult receiver, int groupNumber,
-                    @Cached("createBinaryProfile()") ConditionProfile boundsProfile) {
+                    @Cached ConditionProfile boundsProfile) {
         if (boundsProfile.profile(groupNumber == 0)) {
             return receiver.getStart();
         } else {
@@ -77,11 +77,11 @@ abstract class RegexResultGetStartNode extends Node {
     @Specialization
     static int doSingleResultLazyStart(SingleResultLazyStart receiver, int groupNumber,
                     @Cached DispatchNode calcResult,
-                    @Cached("createBinaryProfile()") ConditionProfile boundsProfile,
-                    @Exclusive @Cached("createBinaryProfile()") ConditionProfile calcLazyProfile) {
+                    @Cached ConditionProfile boundsProfile,
+                    @Exclusive @Cached ConditionProfile calcLazyProfile) {
         if (boundsProfile.profile(groupNumber == 0)) {
             if (calcLazyProfile.profile(!receiver.isStartCalculated())) {
-                receiver.applyFindStartResult((int) calcResult.execute(receiver.getFindStartCallTarget(), receiver.createArgsFindStart()));
+                receiver.setStart((int) calcResult.execute(receiver.getFindStartCallTarget(), receiver.createArgsFindStart()));
             }
             return receiver.getStart();
         } else {
@@ -103,7 +103,7 @@ abstract class RegexResultGetStartNode extends Node {
     @Specialization
     static int doLazyCaptureGroups(LazyCaptureGroupsResult receiver, int groupNumber,
                     @Cached LazyCaptureGroupGetResultNode getResultNode) {
-        return fromSingleArray(getResultNode.execute(receiver), groupNumber) - 1;
+        return fromSingleArray(getResultNode.execute(receiver), groupNumber);
     }
 
     private static int fromSingleArray(int[] array, int groupNumber) {

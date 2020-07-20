@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,12 +30,10 @@ import java.util.Objects;
 /**
  * The result returned from an initialize request.
  */
-public class InitializeResult {
-
-    final JSONObject jsonData;
+public class InitializeResult extends JSONBase {
 
     InitializeResult(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -47,6 +45,20 @@ public class InitializeResult {
 
     public InitializeResult setCapabilities(ServerCapabilities capabilities) {
         jsonData.put("capabilities", capabilities.jsonData);
+        return this;
+    }
+
+    /**
+     * Information about the server.
+     *
+     * @since 3.15.0
+     */
+    public ServerInfoResult getServerInfo() {
+        return jsonData.has("serverInfo") ? new ServerInfoResult(jsonData.optJSONObject("serverInfo")) : null;
+    }
+
+    public InitializeResult setServerInfo(ServerInfoResult serverInfo) {
+        jsonData.putOpt("serverInfo", serverInfo != null ? serverInfo.jsonData : null);
         return this;
     }
 
@@ -77,13 +89,19 @@ public class InitializeResult {
         if (!Objects.equals(this.getCapabilities(), other.getCapabilities())) {
             return false;
         }
+        if (!Objects.equals(this.getServerInfo(), other.getServerInfo())) {
+            return false;
+        }
         return true;
     }
 
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 47 * hash + Objects.hashCode(this.getCapabilities());
+        hash = 41 * hash + Objects.hashCode(this.getCapabilities());
+        if (this.getServerInfo() != null) {
+            hash = 41 * hash + Objects.hashCode(this.getServerInfo());
+        }
         return hash;
     }
 
@@ -91,5 +109,67 @@ public class InitializeResult {
         final JSONObject json = new JSONObject();
         json.put("capabilities", capabilities.jsonData);
         return new InitializeResult(json);
+    }
+
+    public static class ServerInfoResult extends JSONBase {
+
+        ServerInfoResult(JSONObject jsonData) {
+            super(jsonData);
+        }
+
+        /**
+         * The name of the server as defined by the server.
+         */
+        public String getName() {
+            return jsonData.getString("name");
+        }
+
+        public ServerInfoResult setName(String name) {
+            jsonData.put("name", name);
+            return this;
+        }
+
+        /**
+         * The servers's version as defined by the server.
+         */
+        public String getVersion() {
+            return jsonData.optString("version", null);
+        }
+
+        public ServerInfoResult setVersion(String version) {
+            jsonData.putOpt("version", version);
+            return this;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj == null) {
+                return false;
+            }
+            if (this.getClass() != obj.getClass()) {
+                return false;
+            }
+            ServerInfoResult other = (ServerInfoResult) obj;
+            if (!Objects.equals(this.getName(), other.getName())) {
+                return false;
+            }
+            if (!Objects.equals(this.getVersion(), other.getVersion())) {
+                return false;
+            }
+            return true;
+        }
+
+        @Override
+        public int hashCode() {
+            int hash = 3;
+            hash = 37 * hash + Objects.hashCode(this.getName());
+            if (this.getVersion() != null) {
+                hash = 37 * hash + Objects.hashCode(this.getVersion());
+            }
+            return hash;
+        }
     }
 }

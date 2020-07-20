@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,7 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static org.graalvm.compiler.core.common.GraalOptions.MatchExpressions;
 import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.AllTargets;
 import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.Options.MitigateSpeculativeExecutionAttacks;
+import static org.graalvm.compiler.core.match.ComplexMatchValue.INTERIOR_MATCH;
 import static org.graalvm.compiler.debug.DebugOptions.LogVerbose;
 import static org.graalvm.compiler.lir.LIR.verifyBlock;
 
@@ -43,6 +44,7 @@ import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
+import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.match.ComplexMatchValue;
 import org.graalvm.compiler.core.match.MatchPattern;
@@ -99,6 +101,8 @@ import org.graalvm.compiler.nodes.calc.IntegerTestNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.extended.ForeignCall;
+import org.graalvm.compiler.nodes.extended.ForeignCallWithExceptionNode;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.compiler.nodes.extended.SwitchNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
@@ -134,6 +138,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
 
     private final NodeMatchRules nodeMatchRules;
     private EconomicMap<Class<? extends Node>, List<MatchStatement>> matchRules;
+    private EconomicMap<Node, Integer> sharedMatchCounts;
 
     public NodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen, NodeMatchRules nodeMatchRules) {
         this.gen = (LIRGenerator) gen;
@@ -143,6 +148,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         OptionValues options = graph.getOptions();
         if (MatchExpressions.getValue(options)) {
             matchRules = MatchRuleRegistry.lookup(nodeMatchRules.getClass(), options, graph.getDebug());
+            sharedMatchCounts = EconomicMap.create();
         }
         traceLIRGeneratorLevel = TTY.isSuppressed() ? 0 : Options.TraceLIRGeneratorLevel.getValue(options);
 
@@ -155,7 +161,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
     }
 
     protected DebugInfoBuilder createDebugInfoBuilder(StructuredGraph graph, NodeValueMap nodeValueMap) {
-        return new DebugInfoBuilder(nodeValueMap, graph.getDebug());
+        return new DebugInfoBuilder(nodeValueMap, gen.getProviders().getMetaAccessExtensionProvider(), graph.getDebug());
     }
 
     /**
@@ -216,11 +222,28 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
      * ValueNodes.
      */
     public void setMatchResult(Node x, Value operand) {
-        assert operand.equals(ComplexMatchValue.INTERIOR_MATCH) || operand instanceof ComplexMatchValue;
+        assert operand.equals(INTERIOR_MATCH) || operand instanceof ComplexMatchValue;
         assert operand instanceof ComplexMatchValue || MatchPattern.isSingleValueUser(x) : "interior matches must be single user";
         assert nodeOperands != null && nodeOperands.get(x) == null : "operand cannot be set twice";
         assert !(x instanceof VirtualObjectNode);
         nodeOperands.set(x, operand);
+    }
+
+    /**
+     * Track how many users have consumed a sharedable match and disable emission of the value if
+     * all users have consumed it.
+     */
+    public void incrementSharedMatchCount(Node node) {
+        assert nodeOperands != null && nodeOperands.get(node) == null : "operand cannot be set twice";
+        Integer matchValue = sharedMatchCounts.get(node);
+        if (matchValue == null) {
+            matchValue = 0;
+        }
+        matchValue = matchValue + 1;
+        sharedMatchCounts.put(node, matchValue);
+        if (node.getUsageCount() == matchValue) {
+            nodeOperands.set(node, INTERIOR_MATCH);
+        }
     }
 
     public LabelRef getLIRBlock(FixedNode b) {
@@ -381,7 +404,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
                                 throw new GraalGraphError(e).addContext(valueNode);
                             }
                         }
-                    } else if (ComplexMatchValue.INTERIOR_MATCH.equals(operand)) {
+                    } else if (INTERIOR_MATCH.equals(operand)) {
                         // Doesn't need to be evaluated
                         debug.log("interior match for %s", valueNode);
                     } else if (operand instanceof ComplexMatchValue) {
@@ -620,6 +643,28 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         }
     }
 
+    @Override
+    public void emitForeignCall(ForeignCall x) {
+        ForeignCallLinkage linkage = gen.getForeignCalls().lookupForeignCall(x.getDescriptor());
+
+        LabelRef exceptionEdge = null;
+        if (x instanceof ForeignCallWithExceptionNode) {
+            exceptionEdge = getLIRBlock(((ForeignCallWithExceptionNode) x).exceptionEdge());
+        }
+        LIRFrameState callState = stateWithExceptionEdge(x, exceptionEdge);
+
+        Value[] args = x.operands(this);
+
+        Value result = gen.emitForeignCall(linkage, callState, args);
+        if (result != null) {
+            setResult(x.asNode(), result);
+        }
+
+        if (x instanceof ForeignCallWithExceptionNode) {
+            gen.emitJump(getLIRBlock(((ForeignCallWithExceptionNode) x).next()));
+        }
+    }
+
     protected abstract void emitDirectCall(DirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState);
 
     protected abstract void emitIndirectCall(IndirectCallTargetNode callTarget, Value result, Value[] parameters, Value[] temps, LIRFrameState callState);
@@ -735,7 +780,7 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         if (gen.needOnlyOopMaps()) {
             return new LIRFrameState(null, null, null);
         }
-        assert state != null : deopt;
+        assert state != null : "Deopt node=" + deopt + " needs a state ";
         return getDebugInfoBuilder().build(deopt, state, exceptionEdge);
     }
 

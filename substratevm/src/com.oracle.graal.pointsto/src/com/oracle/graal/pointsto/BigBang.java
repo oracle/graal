@@ -47,12 +47,10 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.Indent;
-import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeSourcePosition;
-import org.graalvm.compiler.nodes.CallTargetNode;
-import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
@@ -84,6 +82,7 @@ import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
 import com.oracle.svm.util.ImageGeneratorThreadMarker;
 
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -97,6 +96,8 @@ public abstract class BigBang {
     private final DebugContext debug;
     private final HostedProviders providers;
     private final Replacements replacements;
+
+    private final HeapScanningPolicy heapScanningPolicy;
 
     /** The type of {@link java.lang.Object}. */
     private final AnalysisType objectType;
@@ -125,16 +126,20 @@ public abstract class BigBang {
 
     public final Timer typeFlowTimer;
     public final Timer checkObjectsTimer;
+    public final Timer processFeaturesTimer;
+    public final Timer analysisTimer;
 
     public BigBang(OptionValues options, AnalysisUniverse universe, HostedProviders providers, HostVM hostVM, ForkJoinPool executorService, Runnable heartbeatCallback,
                     UnsupportedFeatures unsupportedFeatures) {
         this.options = options;
         this.debugHandlerFactories = Collections.singletonList(new GraalDebugHandlersFactory(providers.getSnippetReflection()));
-        this.debug = DebugContext.create(options, debugHandlerFactories);
+        this.debug = new Builder(options, debugHandlerFactories).build();
         this.hostVM = hostVM;
         String imageName = hostVM.getImageName();
         this.typeFlowTimer = new Timer(imageName, "(typeflow)", false);
         this.checkObjectsTimer = new Timer(imageName, "(objects)", false);
+        this.processFeaturesTimer = new Timer(imageName, "(features)", false);
+        this.analysisTimer = new Timer(imageName, "analysis", true);
 
         this.universe = universe;
         this.metaAccess = (AnalysisMetaAccess) providers.getMetaAccess();
@@ -164,6 +169,14 @@ public abstract class BigBang {
         executor = new CompletionExecutor(this, executorService, heartbeatCallback);
         executor.init(timing);
         this.heartbeatCallback = heartbeatCallback;
+
+        heapScanningPolicy = PointstoOptions.ExhaustiveHeapScan.getValue(options)
+                        ? HeapScanningPolicy.scanAll()
+                        : HeapScanningPolicy.skipTypes(skippedHeapTypes());
+    }
+
+    public AnalysisType[] skippedHeapTypes() {
+        return new AnalysisType[]{metaAccess.lookupJavaType(String.class)};
     }
 
     public Runnable getHeartbeatCallback() {
@@ -208,8 +221,8 @@ public abstract class BigBang {
         unsafeStores.putIfAbsent(unsafeStore, true);
     }
 
-    public void reportIllegalUnknownUse(AnalysisMethod method, Node source, String message) {
-        String trace = "Location: " + (source.getNodeSourcePosition() == null ? "[unknown]" : method.asStackTraceElement(source.getNodeSourcePosition().getBCI()).toString()) + "\n";
+    public void reportIllegalUnknownUse(AnalysisMethod method, BytecodePosition source, String message) {
+        String trace = "Location: " + (source == null ? "[unknown]" : source.getMethod().asStackTraceElement(source.getBCI()).toString()) + "\n";
         trace += "Call path:";
         getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, message, trace);
     }
@@ -229,18 +242,28 @@ public abstract class BigBang {
 
         // force update of the unsafe loads
         for (AbstractUnsafeLoadTypeFlow unsafeLoad : unsafeLoads.keySet()) {
-            TypeFlow<?> receiverFlow = unsafeLoad.receiver();
-            // post the receiver object flow for update; an update of the receiver object
-            // flow will trigger an updated of the observers, i.e., of the unsafe load
-            this.postFlow(receiverFlow);
+            /* Force update for unsafe accessed static fields. */
+            unsafeLoad.initClone(this);
+
+            /*
+             * Force update for unsafe accessed instance fields: post the receiver object flow for
+             * update; an update of the receiver object flow will trigger an updated of the
+             * observers, i.e., of the unsafe load.
+             */
+            this.postFlow(unsafeLoad.receiver());
         }
 
         // force update of the unsafe stores
         for (AbstractUnsafeStoreTypeFlow unsafeStore : unsafeStores.keySet()) {
-            TypeFlow<?> receiverFlow = unsafeStore.receiver();
-            // post the receiver object flow for update; an update of the receiver object
-            // flow will trigger an updated of the observers, i.e., of the unsafe store
-            this.postFlow(receiverFlow);
+            /* Force update for unsafe accessed static fields. */
+            unsafeStore.initClone(this);
+
+            /*
+             * Force update for unsafe accessed instance fields: post the receiver object flow for
+             * update; an update of the receiver object flow will trigger an updated of the
+             * observers, i.e., of the unsafe store.
+             */
+            this.postFlow(unsafeStore.receiver());
         }
     }
 
@@ -354,6 +377,14 @@ public abstract class BigBang {
     }
 
     public TypeState getAllSynchronizedTypeState() {
+        /*
+         * If all-synchrnonized type flow, i.e., the type flow that keeps track of the types of all
+         * monitor objects, is saturated then we need to assume that any type can be used for
+         * monitors.
+         */
+        if (allSynchronizedTypeFlow.isSaturated()) {
+            return getAllInstantiatedTypeFlow().getState();
+        }
         return allSynchronizedTypeFlow.getState();
     }
 
@@ -498,8 +529,6 @@ public abstract class BigBang {
         return executor;
     }
 
-    public abstract boolean isValidClassLoader(Object valueObj);
-
     public void checkUserLimitations() {
     }
 
@@ -592,16 +621,6 @@ public abstract class BigBang {
         return didSomeWork;
     }
 
-    /**
-     * Check if the type is allowed to be used for synchronization.
-     *
-     * @param method - the method location of the synchronization
-     * @param bci - the bci location of the synchronization
-     * @param aType - the type that is synchronized on
-     */
-    public void checkUnsupportedSynchronization(AnalysisMethod method, int bci, AnalysisType aType) {
-    }
-
     private ReusableSet scannedObjects = new ReusableSet();
 
     @SuppressWarnings("try")
@@ -620,6 +639,10 @@ public abstract class BigBang {
             objectScanner.scanBootImageHeapRoots(null);
         }
         AnalysisType.updateAssignableTypes(this);
+    }
+
+    public HeapScanningPolicy scanningPolicy() {
+        return heapScanningPolicy;
     }
 
     /**
@@ -767,12 +790,6 @@ public abstract class BigBang {
             if (nanos > 500_000_000L && r instanceof TypeFlowRunnable) {
                 TypeFlow<?> tf = ((TypeFlowRunnable) r).getTypeFlow();
                 String source = String.valueOf(tf.getSource());
-                if (tf.getSource() instanceof ValueNode) {
-                    source = ((ValueNode) tf.getSource()).graph().method().format("%h.%n") + "@" + tf.getSource();
-                    if (tf.getSource() instanceof CallTargetNode) {
-                        source += "=" + ((CallTargetNode) tf.getSource()).targetName();
-                    }
-                }
                 System.out.format("LONG RUNNING  %.2f  %s %x %s  state %s %x  uses %d observers %d%n", (double) nanos / 1_000_000_000, tf.getClass().getSimpleName(), System.identityHashCode(tf),
                                 source, PointsToStats.asString(tf.getState()), System.identityHashCode(tf.getState()), tf.getUses().size(), tf.getObservers().size());
             }

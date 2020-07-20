@@ -31,5 +31,5 @@
 #include <stdio.h>
 
 __attribute__((constructor)) static void beginC(void) {
-  printf("ctor c\n");
+    printf("ctor c\n");
 }

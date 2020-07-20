@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,10 +30,10 @@
 char n = 5;
 
 int func() {
-  int x[3 * n];
-  return &x == x;
+    int x[3 * n];
+    return &x == x;
 }
 
 int main() {
-  return func();
+    return func();
 }

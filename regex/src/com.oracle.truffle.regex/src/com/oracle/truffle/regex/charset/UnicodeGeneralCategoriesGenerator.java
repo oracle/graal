@@ -58,7 +58,7 @@ public class UnicodeGeneralCategoriesGenerator {
                         {"gc=C", "Cc", "Cf", "Cs", "Co", "Cn"}
         };
         System.out.println(String.format("/*\n" +
-                        " * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.\n" +
+                        " * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.\n" +
                         " * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.\n" +
                         " *\n" +
                         " * The Universal Permissive License (UPL), Version 1.0\n" +
@@ -96,7 +96,7 @@ public class UnicodeGeneralCategoriesGenerator {
                         " * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\n" +
                         " * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\n" +
                         " * SOFTWARE.\n" +
-                        " */" +
+                        " */\n" +
                         "package com.oracle.truffle.regex.charset;\n" +
                         "\n" +
                         "import org.graalvm.collections.EconomicMap;\n" +

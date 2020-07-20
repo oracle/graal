@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -47,7 +47,7 @@ import com.oracle.truffle.llvm.tests.options.TestOptions;
 public final class ShootoutsSuite extends BaseSulongOnlyHarness {
 
     private static final String SHOOTOUTS_SUITE_SUBDIR = "/benchmarksgame-2014-08-31/benchmarksgame/bench/";
-    private static final String benchmarkSuffix = ".dir/O1.bc";
+    private static final String benchmarkSuffix = ".dir/O1_OUT.bc";
 
     @Parameter(value = 0) public Path path;
     @Parameter(value = 1) public RunConfiguration configuration;

@@ -29,7 +29,6 @@ import java.util.List;
 
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.jni.JNILibraryLoadFeature;
 import com.oracle.svm.jni.functions.JNIFunctionTablesFeature;
 
 /**

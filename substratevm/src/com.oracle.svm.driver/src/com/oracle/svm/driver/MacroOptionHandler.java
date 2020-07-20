@@ -80,6 +80,8 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         BuildConfiguration config = nativeImage.config;
         if (!config.useJavaModules()) {
             enabledOption.forEachPropertyValue(config, "ImageBuilderBootClasspath8", entry -> nativeImage.addImageBuilderBootClasspath(ClasspathUtils.stringToClasspath(entry)), PATH_SEPARATOR_REGEX);
+        } else {
+            enabledOption.forEachPropertyValue(config, "ImageIncludeBuiltinModules", entry -> nativeImage.addImageIncludeBuiltinModules(entry), ",");
         }
 
         if (!enabledOption.forEachPropertyValue(config, "ImageBuilderClasspath", entry -> nativeImage.addImageBuilderClasspath(ClasspathUtils.stringToClasspath(entry)), PATH_SEPARATOR_REGEX)) {

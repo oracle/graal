@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,12 +31,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-public class ExecuteCommandParams {
-
-    final JSONObject jsonData;
+/**
+ * The parameters of a [ExecuteCommandRequest](#ExecuteCommandRequest).
+ */
+public class ExecuteCommandParams extends WorkDoneProgressParams {
 
     ExecuteCommandParams(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -95,15 +96,21 @@ public class ExecuteCommandParams {
         if (!Objects.equals(this.getArguments(), other.getArguments())) {
             return false;
         }
+        if (!Objects.equals(this.getWorkDoneToken(), other.getWorkDoneToken())) {
+            return false;
+        }
         return true;
     }
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 41 * hash + Objects.hashCode(this.getCommand());
+        int hash = 3;
+        hash = 79 * hash + Objects.hashCode(this.getCommand());
         if (this.getArguments() != null) {
-            hash = 41 * hash + Objects.hashCode(this.getArguments());
+            hash = 79 * hash + Objects.hashCode(this.getArguments());
+        }
+        if (this.getWorkDoneToken() != null) {
+            hash = 79 * hash + Objects.hashCode(this.getWorkDoneToken());
         }
         return hash;
     }

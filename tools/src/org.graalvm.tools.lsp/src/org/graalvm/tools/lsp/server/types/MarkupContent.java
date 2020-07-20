@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -41,12 +41,10 @@ import java.util.Objects;
  * *Please Note* that clients might sanitize the return markdown. A client could decide to remove
  * HTML from the markdown to avoid script execution.
  */
-public class MarkupContent {
-
-    final JSONObject jsonData;
+public class MarkupContent extends JSONBase {
 
     MarkupContent(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -96,9 +94,9 @@ public class MarkupContent {
 
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 97 * hash + Objects.hashCode(this.getKind());
-        hash = 97 * hash + Objects.hashCode(this.getValue());
+        int hash = 3;
+        hash = 13 * hash + Objects.hashCode(this.getKind());
+        hash = 13 * hash + Objects.hashCode(this.getValue());
         return hash;
     }
 

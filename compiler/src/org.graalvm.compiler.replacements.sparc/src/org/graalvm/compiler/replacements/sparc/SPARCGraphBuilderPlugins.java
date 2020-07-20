@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -93,6 +93,11 @@ public class SPARCGraphBuilderPlugins {
         registerUnaryMath(r, "log10", LOG10);
         r.register2("pow", Double.TYPE, Double.TYPE, new InvocationPlugin() {
             @Override
+            public boolean inlineOnly() {
+                return true;
+            }
+
+            @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
                 b.push(JavaKind.Double, b.append(BinaryMathIntrinsicNode.create(x, y, BinaryMathIntrinsicNode.BinaryOperation.POW)));
                 return true;
@@ -102,6 +107,11 @@ public class SPARCGraphBuilderPlugins {
 
     private static void registerUnaryMath(Registration r, String name, UnaryOperation operation) {
         r.register1(name, Double.TYPE, new InvocationPlugin() {
+            @Override
+            public boolean inlineOnly() {
+                return true;
+            }
+
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 b.push(JavaKind.Double, b.append(UnaryMathIntrinsicNode.create(value, operation)));

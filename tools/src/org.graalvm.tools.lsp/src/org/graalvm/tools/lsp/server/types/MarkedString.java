@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,12 +40,10 @@ import java.util.Objects;
  * @deprecated use MarkupContent instead.
  */
 @Deprecated
-public class MarkedString {
-
-    final JSONObject jsonData;
+public class MarkedString extends JSONBase {
 
     MarkedString(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     public String getLanguage() {
@@ -67,14 +65,6 @@ public class MarkedString {
     }
 
     @Override
-    public int hashCode() {
-        int hash = 7;
-        hash = 89 * hash + Objects.hashCode(this.getLanguage());
-        hash = 89 * hash + Objects.hashCode(this.getValue());
-        return hash;
-    }
-
-    @Override
     public boolean equals(Object obj) {
         if (this == obj) {
             return true;
@@ -82,10 +72,10 @@ public class MarkedString {
         if (obj == null) {
             return false;
         }
-        if (getClass() != obj.getClass()) {
+        if (this.getClass() != obj.getClass()) {
             return false;
         }
-        final MarkedString other = (MarkedString) obj;
+        MarkedString other = (MarkedString) obj;
         if (!Objects.equals(this.getLanguage(), other.getLanguage())) {
             return false;
         }
@@ -93,6 +83,14 @@ public class MarkedString {
             return false;
         }
         return true;
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 7;
+        hash = 71 * hash + Objects.hashCode(this.getLanguage());
+        hash = 71 * hash + Objects.hashCode(this.getValue());
+        return hash;
     }
 
     public static MarkedString create(String language, String value) {

@@ -42,7 +42,7 @@ package com.oracle.truffle.regex.tregex.parser.ast;
 
 import com.oracle.truffle.regex.tregex.automaton.SimpleStateIndex;
 
-public class LookAroundIndex extends SimpleStateIndex<LookAroundAssertion> {
+public final class LookAroundIndex extends SimpleStateIndex<LookAroundAssertion> {
 
     @Override
     protected int getStateId(LookAroundAssertion state) {

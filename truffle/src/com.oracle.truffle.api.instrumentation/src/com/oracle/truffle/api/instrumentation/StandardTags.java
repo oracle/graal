@@ -44,7 +44,9 @@ import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * Set of standard tags usable by language agnostic tools. Language should {@link ProvidedTags
@@ -256,8 +258,18 @@ public final class StandardTags {
      * </ul>
      * To determine the name of the variable, it is required that a node tagged with
      * {@link ReadVariableTag} also provides a {@link InstrumentableNode#getNodeObject() node
-     * object} that has a <code>name</code> property. Furthermore, nodes tagged with
-     * {@link ReadVariableTag} have to provide a {@link Node#getSourceSection() source section}.
+     * object} that has {@link ReadVariableTag#NAME} property. The value of that property is either:
+     * <ul>
+     * <li>a String name of the variable (in that case the node's {@link Node#getSourceSection()
+     * source section} is considered as the variable's source section),
+     * <li>an object that provides name and {@link SourceSection} via
+     * {@link InteropLibrary#asString(Object)} and {@link InteropLibrary#getSourceLocation(Object)}
+     * respectively,
+     * <li>an array of objects when multiple variables are being read, where each array element
+     * provides name and {@link SourceSection} as specified above.
+     * </ul>
+     * Furthermore, nodes tagged with {@link ReadVariableTag} have to provide a
+     * {@link Node#getSourceSection() source section}.
      *
      * @since 20.0.0
      */
@@ -288,8 +300,19 @@ public final class StandardTags {
      * </ul>
      * To determine the name of the variable, it is required that a node tagged with
      * {@link WriteVariableTag} also provides a {@link InstrumentableNode#getNodeObject() node
-     * object} that has a <code>name</code> property. Furthermore, nodes tagged with
-     * {@link WriteVariableTag} have to provide a {@link Node#getSourceSection() source section}.
+     * object} that has {@link WriteVariableTag#NAME} property. The value of that property is
+     * either:
+     * <ul>
+     * <li>a String name of the variable (in that case the node's {@link Node#getSourceSection()
+     * source section} is considered as the variable's source section),
+     * <li>an object that provides name and {@link SourceSection} via
+     * {@link InteropLibrary#asString(Object)} and {@link InteropLibrary#getSourceLocation(Object)}
+     * respectively,
+     * <li>an array of objects when multiple variables are being read, where each array element
+     * provides name and {@link SourceSection} as specified above.
+     * </ul>
+     * Furthermore, nodes tagged with {@link WriteVariableTag} have to provide a
+     * {@link Node#getSourceSection() source section}.
      *
      * @since 20.0.0
      */

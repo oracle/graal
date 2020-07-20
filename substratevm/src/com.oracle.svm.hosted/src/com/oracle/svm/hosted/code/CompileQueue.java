@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -99,6 +99,7 @@ import org.graalvm.compiler.phases.tiers.MidTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.GraphOrder;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.nodes.MacroNode;
 import org.graalvm.compiler.virtual.phases.ea.EarlyReadEliminationPhase;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
@@ -487,8 +488,8 @@ public class CompileQueue {
                         .forEach(method -> ensureParsed(method, new EntryPointReason()));
 
         SubstrateForeignCallsProvider foreignCallsProvider = (SubstrateForeignCallsProvider) runtimeConfig.getProviders().getForeignCalls();
-        foreignCallsProvider.getForeignCalls().keySet().stream()
-                        .map(descriptor -> (HostedMethod) descriptor.findMethod(runtimeConfig.getProviders().getMetaAccess()))
+        foreignCallsProvider.getForeignCalls().values().stream()
+                        .map(linkage -> (HostedMethod) linkage.getDescriptor().findMethod(runtimeConfig.getProviders().getMetaAccess()))
                         .filter(method -> method.wrapped.isRootMethod())
                         .forEach(method -> ensureParsed(method, new EntryPointReason()));
     }
@@ -693,7 +694,9 @@ public class CompileQueue {
     @SuppressWarnings("try")
     private void defaultParseFunction(DebugContext debug, HostedMethod method, CompileReason reason, RuntimeConfiguration config) {
         if ((!NativeImageOptions.AllowFoldMethods.getValue() && method.getAnnotation(Fold.class) != null) || method.getAnnotation(NodeIntrinsic.class) != null) {
-            throw VMError.shouldNotReachHere("Parsing method annotated with @Fold or @NodeIntrinsic: " + method.format("%H.%n(%p)"));
+            throw VMError.shouldNotReachHere("Parsing method annotated with @" + Fold.class.getSimpleName() + " or " + NodeIntrinsic.class.getSimpleName() + ": " +
+                            method.format("%H.%n(%p)") +
+                            ". Make sure you have used Graal annotation processors on the parent-project of the method's declaring class.");
         }
 
         HostedProviders providers = (HostedProviders) config.lookupBackend(method).getProviders();
@@ -812,6 +815,10 @@ public class CompileQueue {
         return gbConf;
     }
 
+    protected boolean containsStackValueNode(HostedMethod method) {
+        return universe.getBigBang().getHostVM().containsStackValueNode(method.wrapped);
+    }
+
     protected boolean canBeUsedForInlining(Invoke invoke) {
         HostedMethod caller = (HostedMethod) invoke.asNode().graph().method();
         HostedMethod callee = (HostedMethod) invoke.callTarget().targetMethod();
@@ -823,7 +830,7 @@ public class CompileQueue {
              */
             return false;
         }
-        if (canDeoptForTesting(caller) && universe.getMethodsWithStackValues().contains(callee.wrapped)) {
+        if (canDeoptForTesting(caller) && containsStackValueNode(callee)) {
             /*
              * We must not inline a method that has stack values and can be deoptimized.
              */
@@ -1124,7 +1131,7 @@ public class CompileQueue {
             /* Deoptimization runtime cannot fill the callee saved registers. */
             return false;
         }
-        if (universe.getMethodsWithStackValues().contains(method.wrapped)) {
+        if (containsStackValueNode(method)) {
             return false;
         }
 
@@ -1174,6 +1181,11 @@ public class CompileQueue {
                 fixedWithNext.setNext(null);
                 testNode.setNext(next);
                 fixedWithNext.setNext(testNode);
+                if (((StateSplit) node).hasSideEffect() && ((StateSplit) node).stateAfter() != null) {
+                    testNode.setStateAfter(((StateSplit) node).stateAfter().duplicateWithVirtualState());
+                } else {
+                    testNode.setStateAfter(SnippetTemplate.findLastFrameState((FixedNode) node).duplicateWithVirtualState());
+                }
             }
         }
     }

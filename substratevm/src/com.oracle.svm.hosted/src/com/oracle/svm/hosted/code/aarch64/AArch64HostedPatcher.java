@@ -118,7 +118,7 @@ class AdrpLdrMacroInstructionHostedPatcher extends CompilationResult.CodeAnnotat
     public void relocate(Reference ref, RelocatableBuffer relocs, int compStart) {
         int siteOffset = compStart + macroInstruction.instructionPosition;
 
-        relocs.addRelocation(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADR_PREL_PG_HI21, 0, Long.valueOf(0), ref);
+        relocs.addRelocation(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADR_PREL_PG_HI21, 4, Long.valueOf(0), ref);
         siteOffset += 4;
         RelocationKind secondRelocation;
         switch (macroInstruction.srcSize) {
@@ -137,7 +137,7 @@ class AdrpLdrMacroInstructionHostedPatcher extends CompilationResult.CodeAnnotat
             default:
                 throw VMError.shouldNotReachHere("Unknown macro instruction src size of " + macroInstruction.srcSize);
         }
-        relocs.addRelocation(siteOffset, secondRelocation, 0, Long.valueOf(0), ref);
+        relocs.addRelocation(siteOffset, secondRelocation, 4, Long.valueOf(0), ref);
     }
 
     @Uninterruptible(reason = ".")
@@ -165,9 +165,9 @@ class AdrpAddMacroInstructionHostedPatcher extends CompilationResult.CodeAnnotat
     public void relocate(Reference ref, RelocatableBuffer relocs, int compStart) {
         int siteOffset = compStart + macroInstruction.instructionPosition;
 
-        relocs.addRelocation(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADR_PREL_PG_HI21, 0, Long.valueOf(0), ref);
+        relocs.addRelocation(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADR_PREL_PG_HI21, 4, Long.valueOf(0), ref);
         siteOffset += 4;
-        relocs.addRelocation(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADD_ABS_LO12_NC, 0, Long.valueOf(0), ref);
+        relocs.addRelocation(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADD_ABS_LO12_NC, 4, Long.valueOf(0), ref);
     }
 
     @Uninterruptible(reason = ".")

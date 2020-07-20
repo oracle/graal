@@ -31,10 +31,6 @@ package com.oracle.truffle.llvm.parser;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
-import com.oracle.truffle.llvm.parser.model.functions.FunctionParameter;
-import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
-import com.oracle.truffle.llvm.runtime.except.LLVMUserException;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.types.PointerType;
 
@@ -48,18 +44,5 @@ public final class StackManager {
         FrameDescriptor rootFrame = new FrameDescriptor();
         rootFrame.addFrameSlot(LLVMStack.FRAME_ID, PointerType.VOID, FrameSlotKind.Object);
         return rootFrame;
-    }
-
-    public static FrameDescriptor createFrame(FunctionDefinition function) {
-        FrameDescriptor frame = new FrameDescriptor();
-
-        frame.addFrameSlot(LLVMUserException.FRAME_SLOT_ID, null, FrameSlotKind.Object);
-        frame.addFrameSlot(LLVMStack.FRAME_ID, PointerType.VOID, FrameSlotKind.Object);
-
-        for (FunctionParameter parameter : function.getParameters()) {
-            LLVMSymbolReadResolver.findOrAddFrameSlot(frame, parameter);
-        }
-
-        return frame;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -144,7 +144,7 @@ public final class NFAExport {
             case REGULAR:
                 return "circle";
             default:
-                throw new IllegalStateException();
+                throw Exceptions.shouldNotReachHere();
         }
     }
 
@@ -154,7 +154,7 @@ public final class NFAExport {
     }
 
     private void exportLaTex() throws IOException {
-        StateSet<NFAState> visited = StateSet.create(nfa);
+        StateSet<NFA, NFAState> visited = StateSet.create(nfa);
         writer.write("\\documentclass{standalone}\n" +
                         "\\usepackage[utf8]{inputenc}\n" +
                         "\\usepackage[T1]{fontenc}\n" +
@@ -317,7 +317,7 @@ public final class NFAExport {
             case REGULAR:
                 return "state";
             default:
-                throw new IllegalStateException();
+                throw Exceptions.shouldNotReachHere();
         }
     }
 
@@ -389,7 +389,7 @@ public final class NFAExport {
     private String labelTransition(NFAStateTransition transition, int priority) {
         StringBuilder sb = new StringBuilder();
         if (!(transition.getTarget(forward).isFinalState(forward))) {
-            sb.append(transition.getTarget(forward).getCharSet());
+            sb.append(transition.getCodePointSet());
         }
         if (fullLabels) {
             sb.append(", p").append(priority).append(", ").append(transition.getGroupBoundaries());

@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
+import java.lang.ref.WeakReference;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -32,11 +33,14 @@ import java.util.concurrent.TimeoutException;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 
 public final class CancellableCompileTask implements TruffleCompilationTask {
+    private final WeakReference<OptimizedCallTarget> targetRef;
+    private final boolean lastTierCompilation;
     private volatile Future<?> future;
     private volatile boolean cancelled;
-    private final boolean lastTierCompilation;
+    private volatile boolean started;
 
-    public CancellableCompileTask(boolean lastTierCompilation) {
+    public CancellableCompileTask(WeakReference<OptimizedCallTarget> targetRef, boolean lastTierCompilation) {
+        this.targetRef = targetRef;
         this.lastTierCompilation = lastTierCompilation;
     }
 
@@ -64,9 +68,28 @@ public final class CancellableCompileTask implements TruffleCompilationTask {
     public synchronized boolean cancel() {
         if (!cancelled) {
             cancelled = true;
+            if (!started) {
+                finished();
+            }
             return true;
         }
         return false;
+    }
+
+    public void finished() {
+        final OptimizedCallTarget target = targetRef.get();
+        if (target != null) {
+            target.resetCompilationTask();
+        }
+    }
+
+    public synchronized boolean start() {
+        assert !started : "Should not start a stared task";
+        if (cancelled) {
+            return false;
+        }
+        started = true;
+        return true;
     }
 
     @Override
@@ -77,5 +100,9 @@ public final class CancellableCompileTask implements TruffleCompilationTask {
     @Override
     public boolean isLastTier() {
         return lastTierCompilation;
+    }
+
+    public Future<?> getFuture() {
+        return future;
     }
 }

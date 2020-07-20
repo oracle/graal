@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,6 +33,6 @@
 int globalB = 2;
 
 int methodB(int a, int b) {
-  printf("B\n");
-  return a - b - globalB;
+    printf("B\n");
+    return a - b - globalB;
 }

@@ -51,8 +51,8 @@ import org.graalvm.tools.lsp.server.utils.TextDocumentSurrogateMap;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Scope;
 import com.oracle.truffle.api.TruffleException;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
 import com.oracle.truffle.api.instrumentation.EventContext;
@@ -166,13 +166,20 @@ public final class SourceCodeEvaluator extends AbstractRequestHandler {
         CoverageData coverageData = dataBeforeNode.get(dataBeforeNode.size() - 1);
         if (((InstrumentableNode) nearestNode).hasTag(StandardTags.ReadVariableTag.class)) {
             // Shortcut for variables
-            List<? extends FrameSlot> slots = coverageData.getFrame().getFrameDescriptor().getSlots();
-            String symbol = nearestNode.getSourceSection().getCharacters().toString();
-            FrameSlot frameSlot = slots.stream().filter(slot -> slot.getIdentifier().equals(symbol)).findFirst().orElseGet(() -> null);
-            if (frameSlot != null) {
-                logger.fine("Coverage-based variable look-up");
-                Object frameSlotValue = coverageData.getFrame().getValue(frameSlot);
-                return EvaluationResult.createResult(frameSlotValue);
+            InteropUtils.VariableInfo[] variables = InteropUtils.getNodeObjectVariables((InstrumentableNode) nearestNode);
+            if (variables.length == 1) {
+                InteropUtils.VariableInfo var = variables[0];
+                for (Scope scope : env.findLocalScopes(nearestNode, coverageData.getFrame())) {
+                    if (INTEROP.isMemberReadable(scope.getVariables(), var.getName())) {
+                        logger.fine("Coverage-based variable look-up");
+                        try {
+                            Object value = INTEROP.readMember(scope.getVariables(), var.getName());
+                            return EvaluationResult.createResult(value);
+                        } catch (UnknownIdentifierException | UnsupportedMessageException ex) {
+                            throw new AssertionError("Unexpected interop exception", ex);
+                        }
+                    }
+                }
             }
         }
 

@@ -93,7 +93,8 @@ public abstract class LLVMStart extends LLVMIntrinsic {
     public abstract static class LLVMLangStartInternal extends LLVMStart {
 
         @TruffleBoundary
-        protected LangStartVtableType createLangStartVtable(Type vtableType) throws TypeOverflowException {
+        protected LangStartVtableType createLangStartVtable(LLVMGlobal vtableGlobal) throws TypeOverflowException {
+            Type vtableType = vtableGlobal.getPointeeType();
             LLVMFunctionStartNode startNode = (LLVMFunctionStartNode) getRootNode();
             DataLayout dataSpecConverter = startNode.getDatalayout();
             return LangStartVtableType.create(dataSpecConverter, vtableType);
@@ -109,8 +110,9 @@ public abstract class LLVMStart extends LLVMIntrinsic {
                         @Cached("createClosureDispatchNode()") LLVMClosureDispatchNode dropInPlaceDispatchNode) {
             LLVMMemory memory = language.getLLVMMemory();
             LLVMGlobal vtableGlobal = ctx.findGlobal(vtable);
+            assert vtableGlobal != null;
             try {
-                LangStartVtableType langStartVtable = createLangStartVtable(vtableGlobal.getPointeeType());
+                LangStartVtableType langStartVtable = createLangStartVtable(vtableGlobal);
                 LLVMNativePointer fn = readFn(memory, vtable, langStartVtable);
                 LLVMNativePointer dropInPlace = readDropInPlace(memory, vtable, langStartVtable);
                 LLVMNativePointer main = coerceMainForFn(memory, langStartVtable, mainPointer);
@@ -141,27 +143,27 @@ public abstract class LLVMStart extends LLVMIntrinsic {
 
             private LangStartVtableType(DataLayout datalayout, StructureType type, FunctionType fnType) throws TypeOverflowException {
                 this.offsetFn = type.getOffsetOf(5, datalayout);
-                this.fnExpectsCoercedMain = !(((PointerType) fnType.getArgumentTypes()[0]).getPointeeType() instanceof PointerType);
+                this.fnExpectsCoercedMain = !(((PointerType) fnType.getArgumentType(0)).getPointeeType() instanceof PointerType);
             }
 
             long readFn(LLVMMemory memory, long address) {
-                return memory.getPointer(address + offsetFn).asNative();
+                return memory.getPointer(null, address + offsetFn).asNative();
             }
 
             long coerceMainForFn(LLVMMemory memory, long mainAddress) {
                 if (fnExpectsCoercedMain) {
-                    return memory.getPointer(mainAddress).asNative();
+                    return memory.getPointer(null, mainAddress).asNative();
                 }
                 return mainAddress;
             }
 
             @SuppressWarnings("static-method")
             long readDropInPlace(LLVMMemory memory, long address) {
-                return memory.getPointer(address).asNative();
+                return memory.getPointer(null, address).asNative();
             }
 
             static LangStartVtableType create(DataLayout datalayout, Type vtableType) throws TypeOverflowException {
-                FunctionType fnType = (FunctionType) ((PointerType) ((StructureType) vtableType).getElementTypes()[5]).getPointeeType();
+                FunctionType fnType = (FunctionType) ((PointerType) ((StructureType) vtableType).getElementType(5)).getPointeeType();
                 return new LangStartVtableType(datalayout, (StructureType) vtableType, fnType);
             }
 

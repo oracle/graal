@@ -30,9 +30,12 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Formatter;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -40,7 +43,6 @@ import java.util.stream.Collectors;
 
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
 import com.oracle.objectfile.ObjectFile;
@@ -49,7 +51,6 @@ import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -84,6 +85,9 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
     }
 
     class BinutilsCCLinkerInvocation extends CCLinkerInvocation {
+
+        private final boolean staticExecWithDynamicallyLinkLibC = SubstrateOptions.StaticExecutableWithDynamicLibC.getValue();
+        private final Set<String> libCLibaries = new HashSet<>(Arrays.asList("pthread", "dl", "rt"));
 
         BinutilsCCLinkerInvocation() {
             additionalPreOptions.add("-z");
@@ -123,9 +127,6 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             if (SubstrateOptions.DeleteLocalSymbols.getValue()) {
                 additionalPreOptions.add("-Wl,-x");
             }
-
-            LibCBase currentLibc = ImageSingletons.lookup(LibCBase.class);
-            additionalPreOptions.addAll(currentLibc.getLinkerPreOptions());
         }
 
         @Override
@@ -141,7 +142,9 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
                 case EXECUTABLE:
                     break;
                 case STATIC_EXECUTABLE:
-                    cmd.add("-static");
+                    if (!staticExecWithDynamicallyLinkLibC) {
+                        cmd.add("-static");
+                    }
                     break;
                 case SHARED_LIBRARY:
                     cmd.add("-shared");
@@ -151,6 +154,25 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             }
         }
 
+        @Override
+        protected List<String> getLibrariesCommand() {
+            List<String> cmd = new ArrayList<>();
+            for (String lib : libs) {
+                if (staticExecWithDynamicallyLinkLibC) {
+                    String linkingMode = libCLibaries.contains(lib)
+                                    ? "dynamic"
+                                    : "static";
+                    cmd.add("-Wl,-B" + linkingMode);
+                }
+                cmd.add("-l" + lib);
+            }
+
+            // Make sure libgcc gets statically linked
+            if (staticExecWithDynamicallyLinkLibC) {
+                cmd.add("-static-libgcc");
+            }
+            return cmd;
+        }
     }
 
     class DarwinCCLinkerInvocation extends CCLinkerInvocation {
@@ -357,7 +379,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
     public LinkerInvocation write(DebugContext debug, Path outputDirectory, Path tempDirectory, String imageName, BeforeImageWriteAccessImpl config) {
         try (Indent indent = debug.logAndIndent("Writing native image")) {
             // 1. write the relocatable file
-            write(tempDirectory.resolve(imageName + ObjectFile.getFilenameSuffix()));
+            write(debug, tempDirectory.resolve(imageName + ObjectFile.getFilenameSuffix()));
             if (NativeImageOptions.ExitAfterRelocatableImageWrite.getValue()) {
                 return null;
             }

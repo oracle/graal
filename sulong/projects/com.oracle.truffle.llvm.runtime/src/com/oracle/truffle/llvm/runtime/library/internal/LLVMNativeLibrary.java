@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,6 +35,7 @@ import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary.Abstract;
 import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
 import com.oracle.truffle.api.library.Library;
+import com.oracle.truffle.api.library.LibraryFactory;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibraryDefaults.ArrayLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibraryDefaults.DefaultLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibraryDefaults.LongLibrary;
@@ -52,6 +53,12 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 @DefaultExport(DefaultLibrary.class)
 @SuppressWarnings("unused")
 public abstract class LLVMNativeLibrary extends Library {
+
+    static final LibraryFactory<LLVMNativeLibrary> FACTORY = LibraryFactory.resolve(LLVMNativeLibrary.class);
+
+    public static LibraryFactory<LLVMNativeLibrary> getFactory() {
+        return FACTORY;
+    }
 
     @Abstract
     public boolean isPointer(Object receiver) {

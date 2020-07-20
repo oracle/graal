@@ -46,11 +46,12 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 
+import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.NeverInline;
@@ -60,6 +61,7 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
 
 // Checkstyle: stop
 import sun.security.util.SecurityConstants;
@@ -153,29 +155,49 @@ final class Target_java_security_AccessController {
 
     @Substitute
     private static AccessControlContext getContext() {
-        AccessControlContext result = new AccessControlContext(new ProtectionDomain[0]);
-        SubstrateUtil.cast(result, Target_java_security_AccessControlContext.class).isPrivileged = true;
-        return result;
+        return AccessControllerUtil.NO_CONTEXT_SINGLETON;
     }
 
     @Substitute
-    private static AccessControlContext createWrapper(DomainCombiner combiner, Class<?> caller,
-                    AccessControlContext parent, AccessControlContext context, Permission[] perms) {
-        /* Avoid allocating ProtectionDomain objects. Should go away when GR-11112 is fixed. */
-        AccessControlContext result = new AccessControlContext(new ProtectionDomain[0]);
-        SubstrateUtil.cast(result, Target_java_security_AccessControlContext.class).isPrivileged = true;
-        return result;
+    private static AccessControlContext createWrapper(DomainCombiner combiner, Class<?> caller, AccessControlContext parent, AccessControlContext context, Permission[] perms) {
+        return AccessControllerUtil.NO_CONTEXT_SINGLETON;
     }
 }
 
 @InternalVMMethod
 class AccessControllerUtil {
+
+    static final AccessControlContext NO_CONTEXT_SINGLETON;
+
+    static {
+        try {
+            NO_CONTEXT_SINGLETON = ReflectionUtil.lookupConstructor(AccessControlContext.class, ProtectionDomain[].class, boolean.class).newInstance(new ProtectionDomain[0], true);
+        } catch (ReflectiveOperationException ex) {
+            throw VMError.shouldNotReachHere(ex);
+        }
+    }
+
     static Throwable wrapCheckedException(Throwable ex) {
         if (ex instanceof Exception && !(ex instanceof RuntimeException)) {
             return new PrivilegedActionException((Exception) ex);
         } else {
             return ex;
         }
+    }
+}
+
+@AutomaticFeature
+class AccessControlContextFeature implements Feature {
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        access.registerObjectReplacer(AccessControlContextFeature::replaceAccessControlContext);
+    }
+
+    private static Object replaceAccessControlContext(Object obj) {
+        if (obj instanceof AccessControlContext) {
+            return AccessControllerUtil.NO_CONTEXT_SINGLETON;
+        }
+        return obj;
     }
 }
 
@@ -284,6 +306,20 @@ final class ProviderUtil {
         }
     }
 
+}
+
+@TargetClass(className = "javax.crypto.ProviderVerifier", onlyWith = JDK11OrLater.class)
+@SuppressWarnings({"unused"})
+final class Target_javax_crypto_ProviderVerifier {
+
+    @Substitute
+    static boolean isTrustedCryptoProvider(Provider provider) {
+        /*
+         * This is just used for fast-path checks, so returning false is a safe default. The
+         * original method accesses the Java home directory.
+         */
+        return false;
+    }
 }
 
 @TargetClass(className = "javax.crypto.JceSecurity")
@@ -465,6 +501,47 @@ final class AllPermissionsPolicy extends Policy {
     public boolean implies(ProtectionDomain domain, Permission permission) {
         return true;
     }
+}
+
+/**
+ * This class is instantiated indirectly from the {@link Policy#getInstance} methods via the
+ * {@link java.security.Security#getProviders security provider} abstractions. We could just
+ * substitute the {@link Policy#getInstance} methods to return
+ * {@link AllPermissionsPolicy#SINGLETON}, this version is more fool-proof in case someone manually
+ * registers security providers for reflective instantiation.
+ */
+@TargetClass(className = "sun.security.provider.PolicySpiFile")
+@SuppressWarnings({"unused", "static-method"})
+final class Target_sun_security_provider_PolicySpiFile {
+
+    @Substitute
+    private Target_sun_security_provider_PolicySpiFile(Policy.Parameters params) {
+    }
+
+    @Substitute
+    private PermissionCollection engineGetPermissions(CodeSource codesource) {
+        return AllPermissionsPolicy.SINGLETON.getPermissions(codesource);
+    }
+
+    @Substitute
+    private PermissionCollection engineGetPermissions(ProtectionDomain d) {
+        return AllPermissionsPolicy.SINGLETON.getPermissions(d);
+    }
+
+    @Substitute
+    private boolean engineImplies(ProtectionDomain d, Permission p) {
+        return AllPermissionsPolicy.SINGLETON.implies(d, p);
+    }
+
+    @Substitute
+    private void engineRefresh() {
+        AllPermissionsPolicy.SINGLETON.refresh();
+    }
+}
+
+@Delete("Substrate VM does not use SecurityManager, so loading a security policy file would be misleading")
+@TargetClass(className = "sun.security.provider.PolicyFile")
+final class Target_sun_security_provider_PolicyFile {
 }
 
 /** Dummy class to have a class with the file's name. */

@@ -154,6 +154,11 @@ public abstract class InteropLibraryBaseTest extends AbstractParametrizedLibrary
         assertUnsupported(() -> lib.getLanguage(value));
     }
 
+    protected final void assertNoIdentity(Object value) {
+        InteropLibrary lib = createLibrary(InteropLibrary.class, value);
+        assertFalse(lib.hasIdentity(value));
+    }
+
     protected final void assertHasNoMetaObject(Object value) {
         InteropLibrary lib = createLibrary(InteropLibrary.class, value);
         assertFalse(lib.hasMetaObject(value));

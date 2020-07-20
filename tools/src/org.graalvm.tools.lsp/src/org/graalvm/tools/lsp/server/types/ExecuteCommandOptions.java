@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,14 +32,12 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Execute command options.
+ * The server capabilities of a [ExecuteCommandRequest](#ExecuteCommandRequest).
  */
-public class ExecuteCommandOptions {
-
-    final JSONObject jsonData;
+public class ExecuteCommandOptions extends WorkDoneProgressOptions {
 
     ExecuteCommandOptions(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -78,13 +76,19 @@ public class ExecuteCommandOptions {
         if (!Objects.equals(this.getCommands(), other.getCommands())) {
             return false;
         }
+        if (!Objects.equals(this.getWorkDoneProgress(), other.getWorkDoneProgress())) {
+            return false;
+        }
         return true;
     }
 
     @Override
     public int hashCode() {
         int hash = 5;
-        hash = 29 * hash + Objects.hashCode(this.getCommands());
+        hash = 41 * hash + Objects.hashCode(this.getCommands());
+        if (this.getWorkDoneProgress() != null) {
+            hash = 41 * hash + Boolean.hashCode(this.getWorkDoneProgress());
+        }
         return hash;
     }
 

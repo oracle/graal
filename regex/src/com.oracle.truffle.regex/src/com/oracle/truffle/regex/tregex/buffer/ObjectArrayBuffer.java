@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -93,6 +93,10 @@ public final class ObjectArrayBuffer<T> extends AbstractArrayBuffer implements I
         return (T) buf[i];
     }
 
+    public void set(int i, T obj) {
+        buf[i] = obj;
+    }
+
     public void add(T o) {
         if (length == buf.length) {
             grow(length * 2);
@@ -124,6 +128,13 @@ public final class ObjectArrayBuffer<T> extends AbstractArrayBuffer implements I
 
     public Object peek() {
         return buf[length - 1];
+    }
+
+    public ObjectArrayBuffer<T> asFixedSizeArray(int size) {
+        ensureCapacity(size);
+        Arrays.fill(buf, null);
+        length = size;
+        return this;
     }
 
     @SuppressWarnings("unchecked")

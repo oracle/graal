@@ -121,8 +121,16 @@ public abstract class WasmSuiteBase extends WasmTestBase {
     }
 
     private static boolean inCI() {
-        final String prid = System.getenv("PULL_REQUEST_ID");
+        final String prid = System.getenv("CONTINUOUS_INTEGRATION");
         return prid != null;
+    }
+
+    private static boolean inWindows() {
+        return System.getProperty("os.name").contains("win");
+    }
+
+    private static boolean isPoorShell() {
+        return inCI() || inWindows();
     }
 
     private static void runInContext(WasmCase testCase, Context context, List<Source> sources, int iterations, String phaseIcon, String phaseLabel) {
@@ -144,9 +152,11 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             // Execute the main function (exported as "_main").
             // Then, optionally save memory and globals, and compare them.
             // Execute a special function, which resets memory and globals to their default values.
-            Value mainFunction = context.getBindings("wasm").getMember("_main");
+            Value mainFunction = context.getBindings("wasm").getMember("_start");
+            if (mainFunction == null) {
+                mainFunction = context.getBindings("wasm").getMember("_main");
+            }
             Value resetContext = context.getBindings("wasm").getMember(TestutilModule.Names.RESET_CONTEXT);
-            Value customInitialize = context.getBindings("wasm").getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
             Value saveContext = context.getBindings("wasm").getMember(TestutilModule.Names.SAVE_CONTEXT);
             Value compareContexts = context.getBindings("wasm").getMember(TestutilModule.Names.COMPARE_CONTEXTS);
 
@@ -158,11 +168,6 @@ public abstract class WasmSuiteBase extends WasmTestBase {
                 try {
                     capturedStdout = new ByteArrayOutputStream();
                     System.setOut(new PrintStream(capturedStdout));
-
-                    // Run custom initialization.
-                    if (testCase.initialization() != null) {
-                        customInitialize.execute(testCase.initialization());
-                    }
 
                     // Execute benchmark.
                     final Value result = mainFunction.execute();
@@ -214,7 +219,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
         for (int i = formattedLabel.length(); i < STATUS_LABEL_WIDTH; i++) {
             formattedLabel += " ";
         }
-        if (inCI()) {
+        if (isPoorShell()) {
             oldOut.println();
             oldOut.print(icon);
             oldOut.print(formattedLabel);
@@ -347,7 +352,7 @@ public abstract class WasmSuiteBase extends WasmTestBase {
                 statusIcon = TEST_FAILED_ICON;
                 errors.put(testCase, e);
             } finally {
-                if (inCI()) {
+                if (isPoorShell()) {
                     System.out.println();
                     System.out.println(statusIcon);
                     System.out.println();
@@ -392,7 +397,8 @@ public abstract class WasmSuiteBase extends WasmTestBase {
             final int width = Integer.parseInt(output.split(" ")[1]);
             return width;
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            System.err.println("Could not retrieve terminal width: " + e.getMessage());
+            return -1;
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }

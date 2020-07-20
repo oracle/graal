@@ -33,7 +33,7 @@ import com.oracle.graal.pointsto.typestate.TypeState;
 /**
  * Implements a field store operation type flow.
  */
-public abstract class StoreFieldTypeFlow extends AccessFieldTypeFlow<StoreFieldNode> {
+public abstract class StoreFieldTypeFlow extends AccessFieldTypeFlow {
 
     protected StoreFieldTypeFlow(StoreFieldNode node) {
         super(node);
@@ -41,6 +41,15 @@ public abstract class StoreFieldTypeFlow extends AccessFieldTypeFlow<StoreFieldN
 
     protected StoreFieldTypeFlow(StoreFieldTypeFlow original, MethodFlowsGraph methodFlows) {
         super(original, methodFlows);
+    }
+
+    @Override
+    public TypeState filter(BigBang bb, TypeState newState) {
+        /*
+         * If the type flow constraints are relaxed filter the stored value using the field's
+         * declared type.
+         */
+        return declaredTypeFilter(bb, newState);
     }
 
     public static class StoreStaticFieldTypeFlow extends StoreFieldTypeFlow {
@@ -121,6 +130,11 @@ public abstract class StoreFieldTypeFlow extends AccessFieldTypeFlow<StoreFieldN
         }
 
         @Override
+        public void setObserved(TypeFlow<?> newObjectFlow) {
+            this.objectFlow = newObjectFlow;
+        }
+
+        @Override
         public void onObservedUpdate(BigBang bb) {
             /* Only a clone should be updated */
             assert this.isClone();
@@ -135,7 +149,7 @@ public abstract class StoreFieldTypeFlow extends AccessFieldTypeFlow<StoreFieldN
                 bb.reportIllegalUnknownUse(graphRef.getMethod(), source, "Illegal: Storing into UnknownTypeState objects. Field: " + field);
                 return;
             }
-
+            objectState = filterObjectState(bb, objectState);
             /* Iterate over the receiver objects. */
             for (AnalysisObject receiver : objectState.objects()) {
                 /* Get the field flow corresponding to the receiver object. */
@@ -143,6 +157,13 @@ public abstract class StoreFieldTypeFlow extends AccessFieldTypeFlow<StoreFieldN
                 /* Register the field flow as a use, if not already registered. */
                 this.addUse(bb, fieldFlow);
             }
+        }
+
+        @Override
+        public void onObservedSaturated(BigBang bb, TypeFlow<?> observed) {
+            assert this.isClone();
+            /* When receiver flow saturates start observing the flow of the field declaring type. */
+            replaceObservedWith(bb, field.getDeclaringClass());
         }
 
         @Override

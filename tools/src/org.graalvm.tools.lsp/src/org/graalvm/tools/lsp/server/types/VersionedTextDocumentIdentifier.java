@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,12 +42,13 @@ public class VersionedTextDocumentIdentifier extends TextDocumentIdentifier {
      * open notification before) the server can send `null` to indicate that the version is unknown
      * and the content on disk is the truth (as speced with document content ownership).
      */
-    public int getVersion() {
-        return jsonData.getInt("version");
+    public Integer getVersion() {
+        Object obj = jsonData.get("version");
+        return JSONObject.NULL.equals(obj) ? null : (Integer) obj;
     }
 
-    public VersionedTextDocumentIdentifier setVersion(int version) {
-        jsonData.put("version", version);
+    public VersionedTextDocumentIdentifier setVersion(Integer version) {
+        jsonData.put("version", version == null ? JSONObject.NULL : version);
         return this;
     }
 
@@ -63,7 +64,7 @@ public class VersionedTextDocumentIdentifier extends TextDocumentIdentifier {
             return false;
         }
         VersionedTextDocumentIdentifier other = (VersionedTextDocumentIdentifier) obj;
-        if (this.getVersion() != other.getVersion()) {
+        if (!Objects.equals(this.getVersion(), other.getVersion())) {
             return false;
         }
         if (!Objects.equals(this.getUri(), other.getUri())) {
@@ -74,9 +75,11 @@ public class VersionedTextDocumentIdentifier extends TextDocumentIdentifier {
 
     @Override
     public int hashCode() {
-        int hash = 5;
-        hash = 97 * hash + Integer.hashCode(this.getVersion());
-        hash = 97 * hash + Objects.hashCode(this.getUri());
+        int hash = 7;
+        if (this.getVersion() != null) {
+            hash = 73 * hash + Integer.hashCode(this.getVersion());
+        }
+        hash = 73 * hash + Objects.hashCode(this.getUri());
         return hash;
     }
 
@@ -88,7 +91,7 @@ public class VersionedTextDocumentIdentifier extends TextDocumentIdentifier {
      */
     public static VersionedTextDocumentIdentifier create(String uri, Integer version) {
         final JSONObject json = new JSONObject();
-        json.put("version", version);
+        json.put("version", version == null ? JSONObject.NULL : version);
         json.put("uri", uri);
         return new VersionedTextDocumentIdentifier(json);
     }

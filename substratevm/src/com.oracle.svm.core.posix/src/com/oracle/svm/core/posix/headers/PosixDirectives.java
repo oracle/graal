@@ -65,7 +65,6 @@ public class PosixDirectives implements CContext.Directives {
 
     private static final String[] linuxLibs = new String[]{
                     "<mntent.h>",
-                    "<paths.h>",
     };
 
     @Override

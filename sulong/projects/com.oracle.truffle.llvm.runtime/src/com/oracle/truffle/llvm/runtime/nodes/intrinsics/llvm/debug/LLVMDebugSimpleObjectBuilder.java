@@ -47,7 +47,7 @@ public final class LLVMDebugSimpleObjectBuilder extends LLVMDebugObjectBuilder {
     private final LLVMDebugValue.Builder builder;
     private final Object value;
 
-    LLVMDebugSimpleObjectBuilder(LLVMDebugValue.Builder builder, Object value) {
+    public LLVMDebugSimpleObjectBuilder(LLVMDebugValue.Builder builder, Object value) {
         this.builder = builder;
         this.value = value;
     }

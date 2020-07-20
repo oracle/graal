@@ -45,6 +45,8 @@ import com.oracle.truffle.api.nodes.SlowPathException;
 /**
  * This exception is thrown on an attempt to assign a value to a final location.
  *
+ * Planned to be deprecated.
+ *
  * @since 0.8 or earlier
  */
 public final class FinalLocationException extends SlowPathException {

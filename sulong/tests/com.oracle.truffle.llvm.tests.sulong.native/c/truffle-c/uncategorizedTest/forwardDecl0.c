@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,9 +30,9 @@
 int add(int, int);
 
 int main() {
-  return add(17, 3);
+    return add(17, 3);
 }
 
 int add(int a, int b) {
-  return a + b;
+    return a + b;
 }

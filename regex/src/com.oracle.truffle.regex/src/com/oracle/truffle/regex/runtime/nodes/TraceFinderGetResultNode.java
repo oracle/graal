@@ -54,7 +54,7 @@ public abstract class TraceFinderGetResultNode extends Node {
 
     @Specialization
     static int[] doTraceFinderCalc(TraceFinderResult receiver,
-                    @Cached("createBinaryProfile()") ConditionProfile conditionProfile,
+                    @Cached ConditionProfile conditionProfile,
                     @Cached DispatchNode calcResult) {
         if (conditionProfile.profile(!receiver.isResultCalculated())) {
             receiver.applyTraceFinderResult((int) calcResult.execute(receiver.getTraceFinderCallTarget(), receiver.createArgsTraceFinder()));

@@ -55,7 +55,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 public abstract class SimpleStateIndex<T> implements StateIndex<T>, Iterable<T> {
 
     private final ArrayList<T> states;
-    private StateSet<T> emptySet;
+    private StateSet<SimpleStateIndex<T>, T> emptySet;
 
     protected SimpleStateIndex() {
         states = new ArrayList<>();
@@ -93,7 +93,7 @@ public abstract class SimpleStateIndex<T> implements StateIndex<T>, Iterable<T> 
         return states.get(id);
     }
 
-    public StateSet<T> getEmptySet() {
+    public StateSet<SimpleStateIndex<T>, T> getEmptySet() {
         if (emptySet == null) {
             emptySet = StateSet.create(this);
         }

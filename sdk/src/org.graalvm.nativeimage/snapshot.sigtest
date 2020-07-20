@@ -483,6 +483,7 @@ CLSS public abstract interface !annotation org.graalvm.nativeimage.c.function.CL
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE, METHOD])
 intf java.lang.annotation.Annotation
 meth public abstract !hasdefault boolean requireStatic()
+meth public abstract !hasdefault java.lang.String[] dependsOn()
 meth public abstract java.lang.String value()
 
 CLSS public abstract interface !annotation org.graalvm.nativeimage.c.function.CMacroInfo
@@ -821,6 +822,9 @@ meth public abstract void registerObjectReplacer(java.util.function.Function<jav
 CLSS public abstract interface static org.graalvm.nativeimage.hosted.Feature$FeatureAccess
  outer org.graalvm.nativeimage.hosted.Feature
 meth public abstract java.lang.Class<?> findClassByName(java.lang.String)
+meth public abstract java.util.List<java.nio.file.Path> getApplicationClassPath()
+meth public abstract java.util.List<java.nio.file.Path> getApplicationModulePath()
+meth public abstract java.lang.ClassLoader getApplicationClassLoader()
 
 CLSS public abstract interface static org.graalvm.nativeimage.hosted.Feature$IsInConfigurationAccess
  outer org.graalvm.nativeimage.hosted.Feature

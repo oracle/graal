@@ -198,7 +198,8 @@ public class InstanceOfSnippets implements Snippets {
      * Type test used when the type being tested against is not known at compile time.
      */
     @Snippet
-    public static Object instanceofDynamic(KlassPointer hub, Object object, Object trueValue, Object falseValue, @ConstantParameter boolean allowNull, @ConstantParameter Counters counters) {
+    public static Object instanceofDynamic(KlassPointer hub, Object object, Object trueValue, Object falseValue, @ConstantParameter boolean allowNull, @ConstantParameter boolean exact,
+                    @ConstantParameter Counters counters) {
         if (probability(NOT_FREQUENT_PROBABILITY, object == null)) {
             counters.isNull.inc();
             if (allowNull) {
@@ -209,6 +210,14 @@ public class InstanceOfSnippets implements Snippets {
         }
         GuardingNode anchorNode = SnippetAnchorNode.anchor();
         KlassPointer nonNullObjectHub = loadHubIntrinsic(PiNode.piCastNonNull(object, anchorNode));
+        if (exact) {
+            if (probability(LIKELY_PROBABILITY, nonNullObjectHub.notEqual(hub))) {
+                counters.exactMiss.inc();
+                return falseValue;
+            }
+            counters.exactHit.inc();
+            return trueValue;
+        }
         // The hub of a primitive type can be null => always return false in this case.
         if (BranchProbabilityNode.probability(BranchProbabilityNode.FAST_PATH_PROBABILITY, !hub.isNull())) {
             if (checkUnknownSubType(hub, nonNullObjectHub, counters)) {
@@ -326,6 +335,7 @@ public class InstanceOfSnippets implements Snippets {
                 args.add("trueValue", replacer.trueValue);
                 args.add("falseValue", replacer.falseValue);
                 args.addConst("allowNull", instanceOf.allowsNull());
+                args.addConst("exact", instanceOf.isExact());
                 args.addConst("counters", counters);
                 return args;
             } else if (replacer.instanceOf instanceof ClassIsAssignableFromNode) {

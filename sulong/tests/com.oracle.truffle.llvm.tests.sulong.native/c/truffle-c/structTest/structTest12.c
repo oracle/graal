@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,21 +29,21 @@
  */
 
 struct test {
-  int a;
-  int b;
-  int c;
+    int a;
+    int b;
+    int c;
 };
 
 struct test t;
 
 int init(struct test *t, int a, int b, int c) {
-  t->a = a;
-  int *ptr = &t->b;
-  *ptr = 10;
-  t->c = c;
+    t->a = a;
+    int *ptr = &t->b;
+    *ptr = 10;
+    t->c = c;
 }
 
 int main() {
-  init(&t, 1, 2, 3);
-  return t.a + t.b + t.c;
+    init(&t, 1, 2, 3);
+    return t.a + t.b + t.c;
 }

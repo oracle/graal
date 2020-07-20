@@ -281,11 +281,11 @@ public class ValidationSuite extends WasmSuiteBase {
         String source = "(module\n" +
                         snippet +
                         "(func (export \"_main\") (result i32) i32.const 42)\n )";
-        return WasmCase.create(name, WasmCase.expectedThrows(errorMessage, WasmCaseData.ErrorType.Validation), source, null, opts);
+        return WasmCase.create(name, WasmCase.expectedThrows(errorMessage, WasmCaseData.ErrorType.Validation), source, opts);
     }
 
     private static WasmBinaryCase binaryCase(String name, String errorMessage, String hexString) {
-        return WasmCase.create(name, WasmCase.expectedThrows(errorMessage, WasmCaseData.ErrorType.Validation), hexStringToByteArray(hexString), null, opts);
+        return WasmCase.create(name, WasmCase.expectedThrows(errorMessage, WasmCaseData.ErrorType.Validation), hexStringToByteArray(hexString), opts);
     }
 
     private static byte[] hexStringToByteArray(String input) {

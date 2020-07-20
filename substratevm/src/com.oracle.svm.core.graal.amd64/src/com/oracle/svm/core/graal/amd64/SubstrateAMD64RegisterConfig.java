@@ -41,12 +41,20 @@ import static jdk.vm.ci.amd64.AMD64.rsp;
 import static jdk.vm.ci.amd64.AMD64.valueRegistersSSE;
 import static jdk.vm.ci.amd64.AMD64.xmm0;
 import static jdk.vm.ci.amd64.AMD64.xmm1;
+import static jdk.vm.ci.amd64.AMD64.xmm10;
+import static jdk.vm.ci.amd64.AMD64.xmm11;
+import static jdk.vm.ci.amd64.AMD64.xmm12;
+import static jdk.vm.ci.amd64.AMD64.xmm13;
+import static jdk.vm.ci.amd64.AMD64.xmm14;
+import static jdk.vm.ci.amd64.AMD64.xmm15;
 import static jdk.vm.ci.amd64.AMD64.xmm2;
 import static jdk.vm.ci.amd64.AMD64.xmm3;
 import static jdk.vm.ci.amd64.AMD64.xmm4;
 import static jdk.vm.ci.amd64.AMD64.xmm5;
 import static jdk.vm.ci.amd64.AMD64.xmm6;
 import static jdk.vm.ci.amd64.AMD64.xmm7;
+import static jdk.vm.ci.amd64.AMD64.xmm8;
+import static jdk.vm.ci.amd64.AMD64.xmm9;
 
 import java.util.ArrayList;
 
@@ -151,7 +159,8 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
                  * return address.
                  */
                 if (OS.getCurrent() == OS.WINDOWS) {
-                    calleeSaveRegisters = new RegisterArray(rbx, rdi, rsi, r12, r13, r14, r15, rbp);
+                    calleeSaveRegisters = new RegisterArray(rbx, rdi, rsi, r12, r13, r14, r15, rbp,
+                                    xmm6, xmm7, xmm8, xmm9, xmm10, xmm11, xmm12, xmm13, xmm14, xmm15);
                 } else {
                     calleeSaveRegisters = new RegisterArray(rbx, r12, r13, r14, r15, rbp);
                 }

@@ -62,6 +62,9 @@ public class SLTCKLanguageProvider implements LanguageProvider {
     private static final String PATTERN_VALUE_FNC = "function %s() {return %s;}";
     private static final String PATTERN_BIN_OP_FNC = "function %s(a,b) {return a %s b;}";
     private static final String PATTERN_POST_OP_FNC = "function %s(a) {a %s;}";
+    private static final String PATTERN_BUILTIN0 = "function %sBuiltin0() {return %s();}";
+    private static final String PATTERN_BUILTIN1 = "function %sBuiltin1(a) {return %s(a);}";
+    private static final String PATTERN_BUILTIN2 = "function %sBuiltin2(a, b) {return %s(a, b);}";
     private static final String[] PATTERN_STATEMENTS = {
                     "function %s() {r = 0;\n%s\nreturn r;\n}",
                     "function %s(p1) {r = 0;\n%s\nreturn r;\n}",
@@ -114,6 +117,20 @@ public class SLTCKLanguageProvider implements LanguageProvider {
         res.add(createValueConstructor(context, "wrapPrimitive(1 == 2)", "wrapped-boolean", "createWrappedBoolean", TypeDescriptor.BOOLEAN));
         res.add(createValueConstructor(context, "wrapPrimitive(1)", "wrapped-number", "createWrappedNumber", TypeDescriptor.NUMBER));
         res.add(createValueConstructor(context, "wrapPrimitive(\"string\")", "wrapped-string", "createWrappedString", TypeDescriptor.STRING));
+
+        res.add(createValueConstructor(context, "typeOf(1 == 2)", "boolean-metaobject",
+                        "createBooleanMetaObject", TypeDescriptor.META_OBJECT));
+        res.add(createValueConstructor(context, "typeOf(1)", "number-metaobject",
+                        "createNumberMetaObject", TypeDescriptor.META_OBJECT));
+        res.add(createValueConstructor(context, "typeOf(\"str\")", "string-metaobject",
+                        "createStringMetaObject", TypeDescriptor.META_OBJECT));
+        res.add(createValueConstructor(context, "typeOf(NULL)", "null-metaobject",
+                        "createNullMetaObject", TypeDescriptor.META_OBJECT));
+        res.add(createValueConstructor(context, "typeOf(new())", "object-metaobject",
+                        "createObjectMetaObject", TypeDescriptor.META_OBJECT));
+        res.add(createValueConstructor(context, "typeOf(createStringMetaObject)",
+                        "function-metaobject",
+                        "createFunctionMetaObject", TypeDescriptor.META_OBJECT));
 
         res.add(opb.build());
         return Collections.unmodifiableCollection(res);
@@ -176,6 +193,7 @@ public class SLTCKLanguageProvider implements LanguageProvider {
         res.add(createPostfixOperator(context, "()", "callNoArg", TypeDescriptor.NULL, TypeDescriptor.executable(TypeDescriptor.ANY)).build());
         res.add(createPostfixOperator(context, "(1)", "callOneArg", TypeDescriptor.NULL, TypeDescriptor.executable(TypeDescriptor.ANY, TypeDescriptor.NUMBER)).build());
         res.add(createPostfixOperator(context, "(1, \"\")", "callTwoArgs", TypeDescriptor.NULL, TypeDescriptor.executable(TypeDescriptor.ANY, TypeDescriptor.NUMBER, TypeDescriptor.STRING)).build());
+
         return Collections.unmodifiableCollection(res);
     }
 
@@ -185,6 +203,19 @@ public class SLTCKLanguageProvider implements LanguageProvider {
         res.add(createStatement(context, "if", "iffnc", "if ({1}) '{'\n{0}=1;\n'}' else '{'\n{0}=0;\n'}'", TypeDescriptor.NUMBER, TypeDescriptor.BOOLEAN));
         res.add(createStatement(context, "while", "whilefnc", "while ({1}) '{'break;\n'}'", TypeDescriptor.NUMBER, TypeDescriptor.BOOLEAN));
         res.add(createStatement(context, "assign", "assignfnc", "{1} = {0};", TypeDescriptor.ANY, TypeDescriptor.ANY));
+
+        // relevant builtins
+        res.add(createBuiltin(context, "getSize", TypeDescriptor.NUMBER, TypeDescriptor.ARRAY));
+        res.add(createBuiltin(context, "hasSize", TypeDescriptor.BOOLEAN, TypeDescriptor.ANY));
+        res.add(createBuiltin(context, "isExecutable", TypeDescriptor.BOOLEAN, TypeDescriptor.ANY));
+        res.add(createBuiltin(context, "isNull", TypeDescriptor.BOOLEAN, TypeDescriptor.ANY));
+
+        res.add(createBuiltin(context, "isInstance", TypeDescriptor.BOOLEAN,
+                        TypeDescriptor.META_OBJECT,
+                        TypeDescriptor.ANY));
+        res.add(createBuiltin(context, "typeOf", TypeDescriptor.union(TypeDescriptor.META_OBJECT,
+                        TypeDescriptor.NULL), TypeDescriptor.ANY));
+
         return res;
     }
 
@@ -259,6 +290,32 @@ public class SLTCKLanguageProvider implements LanguageProvider {
                         String.format(PATTERN_STATEMENTS[paramTypes.length], functionName, formattedExpression),
                         functionName);
         return Snippet.newBuilder(id, fnc, returnType).parameterTypes(paramTypes).build();
+    }
+
+    private static Snippet createBuiltin(
+                    final Context context,
+                    final String builtinName,
+                    final TypeDescriptor returnType,
+                    TypeDescriptor... paramTypes) {
+
+        String pattern;
+        switch (paramTypes.length) {
+            case 0:
+                pattern = PATTERN_BUILTIN0;
+                break;
+            case 1:
+                pattern = PATTERN_BUILTIN1;
+                break;
+            case 2:
+                pattern = PATTERN_BUILTIN2;
+                break;
+            default:
+                throw new AssertionError();
+        }
+
+        final String formattedExpression = String.format(pattern, builtinName, builtinName);
+        final Value fnc = eval(context, formattedExpression, builtinName);
+        return Snippet.newBuilder(builtinName, fnc, returnType).parameterTypes(paramTypes).build();
     }
 
     private static Snippet loadScript(

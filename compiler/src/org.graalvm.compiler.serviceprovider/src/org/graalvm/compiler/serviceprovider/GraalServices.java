@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,8 @@ import java.io.InputStream;
 import java.util.List;
 
 import jdk.vm.ci.code.VirtualObject;
+import jdk.vm.ci.meta.ConstantPool;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 import jdk.vm.ci.services.JVMCIPermission;
@@ -242,6 +244,35 @@ public final class GraalServices {
      */
     @SuppressWarnings("unused")
     public static VirtualObject createVirtualObject(ResolvedJavaType type, int id, boolean isAutoBox) {
+        throw shouldNotReachHere();
+    }
+
+    /**
+     * Gets the update-release counter for the current Java runtime.
+     *
+     * @see "https://download.java.net/java/GA/jdk14/docs/api/java.base/java/lang/Runtime.Version.html"
+     */
+    public static int getJavaUpdateVersion() {
+        throw shouldNotReachHere();
+    }
+
+    /**
+     * Looks up the type referenced by the constant pool entry at {@code cpi} as referenced by the
+     * {@code opcode} bytecode instruction.
+     *
+     * @param cpi the index of a constant pool entry that references a type
+     * @param opcode the opcode of the instruction with {@code cpi} as an operand
+     * @return a reference to the compiler interface type
+     */
+    @SuppressWarnings("unused")
+    public static JavaType lookupReferencedType(ConstantPool constantPool, int cpi, int opcode) {
+        throw shouldNotReachHere();
+    }
+
+    /**
+     * Returns true if JVMCI supports {@code ConstantPool.lookupReferencedType} API.
+     */
+    public static boolean hasLookupReferencedType() {
         throw shouldNotReachHere();
     }
 }

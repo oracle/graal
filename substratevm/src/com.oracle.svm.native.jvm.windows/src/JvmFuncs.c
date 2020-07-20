@@ -33,11 +33,21 @@
 
 #define BitsPerByte 8
 
+#ifdef JNI_VERSION_9
+    #define JVM_INTERFACE_VERSION 6
+#else
+    #define JVM_INTERFACE_VERSION 4
+#endif
+
 static int _processor_count = 0;
 static jlong _performance_frequency = 0L;
 
 jlong jlong_from(DWORD high, DWORD low) {
     return ((((uint64_t)high) << 32) | low);
+}
+
+JNIEXPORT int JNICALL JVM_GetInterfaceVersion() {
+    return JVM_INTERFACE_VERSION;
 }
 
 jlong as_long(LARGE_INTEGER x) {
@@ -268,6 +278,18 @@ int jio_snprintf(char *str, size_t count, const char *fmt, ...) {
   len = jio_vsnprintf(str, count, fmt, args);
   va_end(args);
   return len;
+}
+
+int jio_fprintf(FILE *fp, const char *fmt, ...)
+{
+    int len;
+
+    va_list args;
+    va_start(args, fmt);
+    len = jio_vfprintf(fp, fmt, args);
+    va_end(args);
+
+    return len;
 }
 #endif
 

@@ -36,6 +36,8 @@ public interface LanguageClient {
 
     void logMessage(LogMessageParams params);
 
+    CompletableFuture<Void> createProgress(WorkDoneProgressCreateParams params);
+
     // Telemetry related methods
     void event(Object object);
 

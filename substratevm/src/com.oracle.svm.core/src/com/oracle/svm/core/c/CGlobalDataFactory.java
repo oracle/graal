@@ -25,7 +25,6 @@
 package com.oracle.svm.core.c;
 
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
@@ -55,6 +54,18 @@ public final class CGlobalDataFactory {
      */
     public static <T extends PointerBase> CGlobalData<T> forSymbol(String symbolName) {
         return new CGlobalDataImpl<>(symbolName);
+    }
+
+    /**
+     * Create a reference to the symbol with the specified name. Calling {@link CGlobalData#get()}
+     * on the returned object at runtime returns the referenced symbol's address.
+     *
+     * @param nonConstant the provided object does not have to be used as a compile-time constant
+     *            (for example, it can be retrieved from a map), but it will always introduce a
+     *            linking dependency on that symbol in the image.
+     */
+    public static <T extends PointerBase> CGlobalData<T> forSymbol(String symbolName, boolean nonConstant) {
+        return new CGlobalDataImpl<>(symbolName, nonConstant);
     }
 
     /**
@@ -119,7 +130,7 @@ public final class CGlobalDataFactory {
     public static <T extends PointerBase> CGlobalData<T> createWord(WordBase initialValue, String symbolName) {
         Supplier<byte[]> supplier = () -> {
             assert ConfigurationValues.getTarget().wordSize == Long.BYTES;
-            return ByteBuffer.allocate(Long.BYTES).order(ByteOrder.nativeOrder()).putLong(initialValue.rawValue()).array();
+            return ByteBuffer.allocate(Long.BYTES).order(ConfigurationValues.getTarget().arch.getByteOrder()).putLong(initialValue.rawValue()).array();
         };
         return new CGlobalDataImpl<>(symbolName, supplier);
     }

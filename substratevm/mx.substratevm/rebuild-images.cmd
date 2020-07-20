@@ -120,7 +120,7 @@ for %%f in (%to_build%) do (
   )
   echo Building %%f...
   if defined verbose echo !cmd_line!
-  !cmd_line!
+  call !cmd_line!
 )
 
 goto :eof

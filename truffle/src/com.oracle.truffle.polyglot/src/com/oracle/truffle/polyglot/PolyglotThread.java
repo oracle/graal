@@ -72,7 +72,16 @@ final class PolyglotThread extends Thread {
 
     @Override
     public void run() {
-        Object prev = languageContext.enterThread(this);
+        Object prev;
+        try {
+            prev = languageContext.enterThread(this);
+        } catch (PolyglotEngineException polyglotException) {
+            if (polyglotException.closingContext) {
+                return;
+            } else {
+                throw polyglotException;
+            }
+        }
         assert prev == null;
         try {
             super.run();

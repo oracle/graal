@@ -33,7 +33,7 @@ import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 
-public abstract class JavaStackFrameVisitor implements StackFrameVisitor {
+public abstract class JavaStackFrameVisitor extends StackFrameVisitor {
 
     @Override
     public final boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame) {

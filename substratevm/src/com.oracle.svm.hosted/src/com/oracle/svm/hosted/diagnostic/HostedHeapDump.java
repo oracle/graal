@@ -51,13 +51,11 @@ public final class HostedHeapDump {
 
     public static void take(String outputFile) {
         HotSpotDiagnosticMXBean bean = getDiagnosticBean();
-        bean.setVMOption("PrintGC", "true");
         try {
             bean.dumpHeap(outputFile, true);
         } catch (IOException e) {
             throw VMError.shouldNotReachHere("Cannot dump heap.", e);
         }
-        bean.setVMOption("PrintGC", "false");
     }
 
 }

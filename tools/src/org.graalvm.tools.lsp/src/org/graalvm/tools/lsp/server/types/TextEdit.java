@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,12 +30,10 @@ import java.util.Objects;
 /**
  * A text edit applicable to a text document.
  */
-public class TextEdit {
-
-    final JSONObject jsonData;
+public class TextEdit extends JSONBase {
 
     TextEdit(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -86,9 +84,9 @@ public class TextEdit {
 
     @Override
     public int hashCode() {
-        int hash = 3;
-        hash = 83 * hash + Objects.hashCode(this.getRange());
-        hash = 83 * hash + Objects.hashCode(this.getNewText());
+        int hash = 7;
+        hash = 97 * hash + Objects.hashCode(this.getRange());
+        hash = 97 * hash + Objects.hashCode(this.getNewText());
         return hash;
     }
 

@@ -31,6 +31,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+import org.graalvm.compiler.phases.common.LazyValue;
+
 import com.oracle.svm.configure.config.ConfigurationMemberKind;
 import com.oracle.svm.configure.config.ConfigurationMethod;
 import com.oracle.svm.configure.config.ProxyConfiguration;
@@ -88,24 +90,27 @@ class ReflectionProcessor extends AbstractProcessor {
                 resourceConfiguration.addResourcePattern(regex);
                 return;
         }
-        String clazz = (String) entry.get("class");
         String callerClass = (String) entry.get("caller_class");
-        if (advisor.shouldIgnoreCaller(lazyValue(callerClass))) {
+        boolean isLoadClass = function.equals("loadClass");
+        if (isLoadClass || function.equals("forName")) {
+            String name = singleElement(args);
+            if (isLoadClass) { // different array syntax
+                name = MetaUtil.internalNameToJava(MetaUtil.toInternalName(name), true, true);
+            }
+            if (!advisor.shouldIgnore(lazyValue(name), lazyValue(callerClass)) &&
+                            !(isLoadClass && advisor.shouldIgnoreLoadClass(lazyValue(name), lazyValue(callerClass)))) {
+                configuration.getOrCreateType(name);
+            }
+            return;
+        }
+        String clazz = (String) entry.get("class");
+        if (advisor.shouldIgnore(lazyValue(clazz), lazyValue(callerClass))) {
             return;
         }
         ConfigurationMemberKind memberKind = ConfigurationMemberKind.PUBLIC;
         boolean unsafeAccess = false;
         String clazzOrDeclaringClass = entry.containsKey("declaring_class") ? (String) entry.get("declaring_class") : clazz;
         switch (function) {
-            case "loadClass":
-            case "forName": {
-                assert clazz.equals("java.lang.Class");
-                expectSize(args, 1);
-                String name = (String) args.get(0);
-                configuration.getOrCreateType(name);
-                break;
-            }
-
             case "getDeclaredFields": {
                 configuration.getOrCreateType(clazz).setAllDeclaredFields();
                 break;
@@ -172,12 +177,12 @@ class ReflectionProcessor extends AbstractProcessor {
 
             case "getProxyClass": {
                 expectSize(args, 2);
-                addDynamicProxy((List<?>) args.get(1));
+                addDynamicProxy((List<?>) args.get(1), lazyValue(callerClass));
                 break;
             }
             case "newProxyInstance": {
                 expectSize(args, 3);
-                addDynamicProxy((List<?>) args.get(1));
+                addDynamicProxy((List<?>) args.get(1), lazyValue(callerClass));
                 break;
             }
 
@@ -190,8 +195,7 @@ class ReflectionProcessor extends AbstractProcessor {
 
             case "newInstance": {
                 if (clazz.equals("java.lang.reflect.Array")) { // reflective array instantiation
-                    String qualifiedJavaName = MetaUtil.internalNameToJava((String) args.get(0), true, false);
-                    configuration.getOrCreateType(qualifiedJavaName);
+                    configuration.getOrCreateType((String) args.get(0));
                 } else {
                     configuration.getOrCreateType(clazz).addMethod(ConfigurationMethod.CONSTRUCTOR_NAME, "()V", ConfigurationMemberKind.DECLARED);
                 }
@@ -220,8 +224,14 @@ class ReflectionProcessor extends AbstractProcessor {
         configuration.getOrCreateType(qualifiedClass).addMethod(methodName, signature, ConfigurationMemberKind.DECLARED);
     }
 
-    @SuppressWarnings("unchecked")
-    private void addDynamicProxy(List<?> interfaceList) {
-        proxyConfiguration.add((List<String>) interfaceList);
+    private void addDynamicProxy(List<?> interfaceList, LazyValue<String> callerClass) {
+        @SuppressWarnings("unchecked")
+        List<String> interfaces = (List<String>) interfaceList;
+        for (String iface : interfaces) {
+            if (advisor.shouldIgnore(lazyValue(iface), callerClass)) {
+                return;
+            }
+        }
+        proxyConfiguration.add(interfaces);
     }
 }

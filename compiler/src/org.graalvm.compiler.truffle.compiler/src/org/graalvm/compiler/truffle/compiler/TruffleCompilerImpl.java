@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,8 +36,6 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Compi
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExcludeAssertions;
 
 import java.io.PrintStream;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
 import java.util.ArrayList;
@@ -45,7 +43,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.code.CompilationResult;
@@ -61,8 +58,8 @@ import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.debug.DebugContext.Scope;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.DiagnosticsOutputDirectory;
 import org.graalvm.compiler.debug.MemUseTrackerKey;
 import org.graalvm.compiler.debug.TimerKey;
@@ -70,7 +67,6 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.nodes.Cancellable;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
@@ -192,6 +188,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     public static final TimerKey PartialEvaluationTime = DebugContext.timer("PartialEvaluationTime");
     public static final TimerKey CompilationTime = DebugContext.timer("CompilationTime");
     public static final TimerKey CodeInstallationTime = DebugContext.timer("CodeInstallation");
+    public static final TimerKey EncodedGraphCacheEvictionTime = DebugContext.timer("EncodedGraphCacheEvictionTime");
 
     public static final MemUseTrackerKey PartialEvaluationMemUse = DebugContext.memUseTracker("TrufflePartialEvaluationMemUse");
     public static final MemUseTrackerKey CompilationMemUse = DebugContext.memUseTracker("TruffleCompilationMemUse");
@@ -217,11 +214,11 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     public final TruffleDebugContext openDebugContext(Map<String, Object> options, TruffleCompilation compilation) {
         final DebugContext debugContext;
         if (compilation == null) {
-            debugContext = DebugContext.create(TruffleCompilerOptions.getOptions(), DebugHandlersFactory.LOADER);
+            debugContext = new Builder(TruffleCompilerOptions.getOptions()).build();
         } else {
             TruffleCompilationIdentifier ident = asTruffleCompilationIdentifier(compilation);
             CompilableTruffleAST compilable = ident.getCompilable();
-            debugContext = createDebugContext(TruffleCompilerOptions.getOptions(), ident, compilable, DebugContext.DEFAULT_LOG_STREAM);
+            debugContext = createDebugContext(TruffleCompilerOptions.getOptions(), ident, compilable, DebugContext.getDefaultLogStream());
         }
         return new TruffleDebugContextImpl(debugContext);
     }
@@ -259,7 +256,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
             }
         } else {
             final OptionValues debugContextOptionValues = TruffleCompilerOptions.getOptions();
-            try (DebugContext graalDebug = createDebugContext(debugContextOptionValues, compilationId, compilable, DebugContext.DEFAULT_LOG_STREAM);
+            try (DebugContext graalDebug = createDebugContext(debugContextOptionValues, compilationId, compilable, DebugContext.getDefaultLogStream());
                             DebugContext.Scope s = maybeOpenTruffleScope(compilable, graalDebug)) {
                 actuallyCompile(options, inliningPlan, task, inListener, compilationId, compilable, graalDebug);
             } catch (Throwable e) {
@@ -269,13 +266,13 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     }
 
     @Override
-    public void initialize(Map<String, Object> optionsMap) {
+    public void initialize(Map<String, Object> optionsMap, CompilableTruffleAST compilable, boolean firstInitialization) {
         if (!initialized) {
             synchronized (this) {
                 if (!initialized) {
                     partialEvaluator.initialize(TruffleCompilerOptions.getOptionsForCompiler(optionsMap));
-                    if (Boolean.parseBoolean(System.getenv("TRUFFLE_STRICT_OPTION_DEPRECATION"))) {
-                        TruffleCompilerOptions.checkDeprecation();
+                    if (firstInitialization) {
+                        TruffleCompilerOptions.checkDeprecation(compilable);
                     }
                     initialized = true;
                 }
@@ -316,16 +313,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     private static void notifyCompilableOfFailure(CompilableTruffleAST compilable, Throwable e) {
         BailoutException bailout = e instanceof BailoutException ? (BailoutException) e : null;
         boolean permanentBailout = bailout != null ? bailout.isPermanent() : false;
-        final Supplier<String> reasonAndStackTrace = new Supplier<String>() {
-
-            @Override
-            public String get() {
-                StringWriter sw = new StringWriter();
-                e.printStackTrace(new PrintWriter(sw));
-                return sw.toString();
-            }
-        };
-        compilable.onCompilationFailed(reasonAndStackTrace, bailout != null, permanentBailout);
+        compilable.onCompilationFailed(() -> CompilableTruffleAST.serializeException(e), bailout != null, permanentBailout);
     }
 
     @Override
@@ -454,7 +442,9 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
             }
 
             try (DebugCloseable a = PartialEvaluationTime.start(debug); DebugCloseable c = PartialEvaluationMemUse.start(debug)) {
-                graph = partialEvaluator.createGraph(options, debug, compilable, inliningPlan, AllowAssumptions.YES, compilationId, speculationLog, task);
+                PartialEvaluator.Request request = partialEvaluator.new Request(options, debug, compilable, partialEvaluator.rootForCallTarget(compilable), inliningPlan,
+                                compilationId, speculationLog, task);
+                graph = partialEvaluator.evaluate(request);
             }
 
             // Check if the task has been cancelled
@@ -477,6 +467,9 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
             // compilation time and memory usage reported by printer
             printer.finish(compilationResult);
         } catch (Throwable t) {
+            if (t instanceof BailoutException) {
+                handleBailout(debug, graph, (BailoutException) t);
+            }
             // Note: If the compiler cancels the compilation with a bailout exception, then the
             // graph is null
             if (listener != null) {
@@ -489,7 +482,18 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     }
 
     /**
-     * Compiles a graph produced by {@link PartialEvaluator#createGraph partial evaluation}.
+     * Hook for processing bailout exceptions.
+     *
+     * @param graph graph producing the bailout, can be null
+     * @param bailout {@link BailoutException to process}
+     */
+    @SuppressWarnings("unused")
+    protected void handleBailout(DebugContext debug, StructuredGraph graph, BailoutException bailout) {
+        // nop
+    }
+
+    /**
+     * Compiles a graph produced by {@link PartialEvaluator#evaluate partial evaluation}.
      *
      * @param graph a graph resulting from partial evaluation
      * @param name the name to be used for the returned {@link CompilationResult#getName() result}

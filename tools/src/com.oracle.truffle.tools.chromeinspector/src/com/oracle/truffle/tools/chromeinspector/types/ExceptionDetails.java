@@ -24,11 +24,15 @@
  */
 package com.oracle.truffle.tools.chromeinspector.types;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.oracle.truffle.tools.utils.json.JSONObject;
 
 import com.oracle.truffle.api.debug.DebugException;
+import com.oracle.truffle.api.debug.DebugStackTraceElement;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.tools.chromeinspector.InspectorExecutionContext;
@@ -85,7 +89,17 @@ public final class ExceptionDetails {
             }
         }
         if (debugException != null) {
-            StackTrace stackTrace = new StackTrace(context, debugException.getDebugStackTrace());
+            List<DebugStackTraceElement> stack = debugException.getDebugStackTrace();
+            List<List<DebugStackTraceElement>> asyncStacks = debugException.getDebugAsynchronousStacks();
+            List<List<DebugStackTraceElement>> stacks;
+            if (asyncStacks.isEmpty()) {
+                stacks = Collections.singletonList(stack);
+            } else {
+                stacks = new ArrayList<>();
+                stacks.add(stack);
+                stacks.addAll(asyncStacks);
+            }
+            StackTrace stackTrace = new StackTrace(context, stacks);
             json.put("stackTrace", stackTrace.toJSON());
         }
         DebugValue exceptionObject = (debugException != null) ? debugException.getExceptionObject() : null;

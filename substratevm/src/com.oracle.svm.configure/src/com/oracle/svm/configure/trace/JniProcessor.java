@@ -60,37 +60,32 @@ class JniProcessor extends AbstractProcessor {
             return;
         }
         String function = (String) entry.get("function");
-        String clazz = (String) entry.get("class");
-        String declaringClass = (String) entry.get("declaring_class");
         String callerClass = (String) entry.get("caller_class");
         List<?> args = (List<?>) entry.get("args");
         LazyValue<String> callerClassLazyValue = lazyValue(callerClass);
-        if (advisor.shouldIgnoreCaller(callerClassLazyValue)) {
+        // Special: FindClass and DefineClass take the class in question as a string argument
+        if (function.equals("FindClass") || function.equals("DefineClass")) {
+            String lookupName = singleElement(args);
+            String internalName = (lookupName.charAt(0) != '[') ? ('L' + lookupName + ';') : lookupName;
+            String forNameString = MetaUtil.internalNameToJava(internalName, true, true);
+            if (!advisor.shouldIgnore(lazyValue(forNameString), callerClassLazyValue)) {
+                if (function.equals("FindClass")) {
+                    configuration.getOrCreateType(forNameString);
+                } else if (!lookupName.startsWith("com/sun/proxy/$Proxy")) { // DefineClass
+                    logWarning("Unsupported JNI function DefineClass used to load class " + forNameString);
+                }
+            }
             return;
         }
+        String clazz = (String) entry.get("class");
+        if (advisor.shouldIgnore(lazyValue(clazz), callerClassLazyValue)) {
+            return;
+        }
+        String declaringClass = (String) entry.get("declaring_class");
         String declaringClassOrClazz = (declaringClass != null) ? declaringClass : clazz;
         ConfigurationMemberKind memberKind = (declaringClass != null) ? ConfigurationMemberKind.DECLARED : ConfigurationMemberKind.PRESENT;
         TypeConfiguration config = configuration;
         switch (function) {
-            case "DefineClass": {
-                String name = singleElement(args);
-                if (name.startsWith("com/sun/proxy/$Proxy")) {
-                    break; // implementation detail of Proxy support
-                }
-                logWarning("Unsupported JNI function DefineClass used to load class " + name);
-                break;
-            }
-            case "FindClass": {
-                String name = singleElement(args);
-                if (name.charAt(0) != '[') {
-                    name = "L" + name + ";";
-                }
-                String qualifiedJavaName = MetaUtil.internalNameToJava(name, true, false);
-                if (!advisor.shouldIgnoreJniClassLookup(lazyValue(qualifiedJavaName), callerClassLazyValue)) {
-                    config.getOrCreateType(qualifiedJavaName);
-                }
-                break;
-            }
             case "GetStaticMethodID":
             case "GetMethodID": {
                 expectSize(args, 2);
@@ -136,10 +131,8 @@ class JniProcessor extends AbstractProcessor {
             }
             case "NewObjectArray": {
                 expectSize(args, 0);
-                if (!advisor.shouldIgnoreJniNewObjectArray(lazyValue(clazz), callerClassLazyValue)) {
-                    String arrayQualifiedJavaName = MetaUtil.internalNameToJava(clazz, true, false);
-                    config.getOrCreateType(arrayQualifiedJavaName);
-                }
+                String arrayQualifiedJavaName = MetaUtil.internalNameToJava(clazz, true, true);
+                config.getOrCreateType(arrayQualifiedJavaName);
                 break;
             }
         }

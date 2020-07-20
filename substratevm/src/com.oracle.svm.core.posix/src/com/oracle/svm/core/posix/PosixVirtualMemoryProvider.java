@@ -54,6 +54,8 @@ import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.posix.headers.Unistd;
+import com.oracle.svm.core.util.PointerUtils;
+import com.oracle.svm.core.util.UnsignedUtils;
 
 @AutomaticFeature
 class PosixVirtualMemoryProviderFeature implements Feature {
@@ -103,9 +105,33 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
 
     @Override
     @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
-    public Pointer reserve(UnsignedWord nbytes) {
-        final Pointer result = mmap(nullPointer(), nbytes, PROT_NONE(), MAP_ANON() | MAP_PRIVATE() | MAP_NORESERVE(), NO_FD, NO_FD_OFFSET);
-        return result.equal(MAP_FAILED()) ? nullPointer() : result;
+    public Pointer reserve(UnsignedWord nbytes, UnsignedWord alignment) {
+        UnsignedWord granularity = getGranularity();
+        boolean customAlignment = !UnsignedUtils.isAMultiple(granularity, alignment);
+        UnsignedWord mappingSize = nbytes;
+        if (customAlignment) {
+            mappingSize = mappingSize.add(alignment);
+        }
+        mappingSize = UnsignedUtils.roundUp(mappingSize, granularity);
+        Pointer mappingBegin = mmap(nullPointer(), mappingSize, PROT_NONE(), MAP_ANON() | MAP_PRIVATE() | MAP_NORESERVE(), NO_FD, NO_FD_OFFSET);
+        if (mappingBegin.equal(MAP_FAILED())) {
+            return nullPointer();
+        }
+        if (!customAlignment) {
+            return mappingBegin;
+        }
+        Pointer begin = PointerUtils.roundUp(mappingBegin, alignment);
+        UnsignedWord clippedBegin = begin.subtract(mappingBegin);
+        if (clippedBegin.aboveOrEqual(granularity)) {
+            munmap(mappingBegin, UnsignedUtils.roundDown(clippedBegin, granularity));
+        }
+        Pointer mappingEnd = mappingBegin.add(mappingSize);
+        UnsignedWord clippedEnd = mappingEnd.subtract(begin.add(nbytes));
+        if (clippedEnd.aboveOrEqual(granularity)) {
+            UnsignedWord rounded = UnsignedUtils.roundDown(clippedEnd, granularity);
+            munmap(mappingEnd.subtract(rounded), rounded);
+        }
+        return begin;
     }
 
     @Override
@@ -147,6 +173,9 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
     @Override
     @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
     public int free(PointerBase start, UnsignedWord nbytes) {
-        return munmap(start, nbytes);
+        UnsignedWord granularity = getGranularity();
+        Pointer mappingBegin = PointerUtils.roundDown(start, granularity);
+        UnsignedWord mappingSize = UnsignedUtils.roundUp(nbytes, granularity);
+        return munmap(mappingBegin, mappingSize);
     }
 }

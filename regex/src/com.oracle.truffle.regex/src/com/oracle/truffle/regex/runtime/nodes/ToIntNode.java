@@ -64,7 +64,7 @@ public abstract class ToIntNode extends Node {
         try {
             return args.asInt(arg);
         } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw UnsupportedTypeException.create(new Object[]{arg});
         }
     }

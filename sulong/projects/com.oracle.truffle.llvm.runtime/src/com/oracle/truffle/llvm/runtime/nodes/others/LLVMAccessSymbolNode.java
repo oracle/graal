@@ -67,9 +67,9 @@ public abstract class LLVMAccessSymbolNode extends LLVMExpressionNode {
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
         CompilerAsserts.partialEvaluationConstant(descriptor);
         LLVMSymbol target = ((LLVMAlias) descriptor).getTarget();
-        do {
+        while (target.isAlias()) {
             target = ((LLVMAlias) target).getTarget();
-        } while (target.isAlias());
+        }
         AssumedValue<LLVMPointer>[] symbols = context.findSymbolTable(target.getBitcodeID(false));
         int index = target.getSymbolIndex(false);
         return symbols[index].get();

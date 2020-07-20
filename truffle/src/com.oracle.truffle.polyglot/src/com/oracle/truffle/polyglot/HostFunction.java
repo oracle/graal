@@ -43,12 +43,15 @@ package com.oracle.truffle.polyglot;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.utilities.TriState;
 
 @ExportLibrary(InteropLibrary.class)
 final class HostFunction implements TruffleObject {
@@ -102,6 +105,26 @@ final class HostFunction implements TruffleObject {
         }
         String typeName = obj.getClass().getTypeName();
         return typeName + "." + method.getName();
+    }
+
+    @ExportMessage
+    @SuppressWarnings("unused")
+    static final class IsIdenticalOrUndefined {
+        @Specialization
+        static TriState doHostObject(HostFunction receiver, HostFunction other) {
+            return (receiver.method == other.method && receiver.obj == other.obj) ? TriState.TRUE : TriState.FALSE;
+        }
+
+        @Fallback
+        static TriState doOther(HostFunction receiver, Object other) {
+            return TriState.UNDEFINED;
+        }
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    static int identityHashCode(HostFunction receiver) {
+        return System.identityHashCode(receiver.method);
     }
 
     @Override

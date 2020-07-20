@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,22 +24,16 @@
  */
 package org.graalvm.tools.lsp.server.types;
 
-import com.oracle.truffle.tools.utils.json.JSONArray;
 import com.oracle.truffle.tools.utils.json.JSONObject;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import java.util.Objects;
 
 /**
  * Workspace specific client capabilities.
  */
-public class WorkspaceClientCapabilities {
-
-    final JSONObject jsonData;
+public class WorkspaceClientCapabilities extends JSONBase {
 
     WorkspaceClientCapabilities(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -59,11 +53,11 @@ public class WorkspaceClientCapabilities {
     /**
      * Capabilities specific to `WorkspaceEdit`s.
      */
-    public WorkspaceEditCapabilities getWorkspaceEdit() {
-        return jsonData.has("workspaceEdit") ? new WorkspaceEditCapabilities(jsonData.optJSONObject("workspaceEdit")) : null;
+    public WorkspaceEditClientCapabilities getWorkspaceEdit() {
+        return jsonData.has("workspaceEdit") ? new WorkspaceEditClientCapabilities(jsonData.optJSONObject("workspaceEdit")) : null;
     }
 
-    public WorkspaceClientCapabilities setWorkspaceEdit(WorkspaceEditCapabilities workspaceEdit) {
+    public WorkspaceClientCapabilities setWorkspaceEdit(WorkspaceEditClientCapabilities workspaceEdit) {
         jsonData.putOpt("workspaceEdit", workspaceEdit != null ? workspaceEdit.jsonData : null);
         return this;
     }
@@ -71,11 +65,11 @@ public class WorkspaceClientCapabilities {
     /**
      * Capabilities specific to the `workspace/didChangeConfiguration` notification.
      */
-    public DidChangeConfigurationCapabilities getDidChangeConfiguration() {
-        return jsonData.has("didChangeConfiguration") ? new DidChangeConfigurationCapabilities(jsonData.optJSONObject("didChangeConfiguration")) : null;
+    public DidChangeConfigurationClientCapabilities getDidChangeConfiguration() {
+        return jsonData.has("didChangeConfiguration") ? new DidChangeConfigurationClientCapabilities(jsonData.optJSONObject("didChangeConfiguration")) : null;
     }
 
-    public WorkspaceClientCapabilities setDidChangeConfiguration(DidChangeConfigurationCapabilities didChangeConfiguration) {
+    public WorkspaceClientCapabilities setDidChangeConfiguration(DidChangeConfigurationClientCapabilities didChangeConfiguration) {
         jsonData.putOpt("didChangeConfiguration", didChangeConfiguration != null ? didChangeConfiguration.jsonData : null);
         return this;
     }
@@ -83,11 +77,11 @@ public class WorkspaceClientCapabilities {
     /**
      * Capabilities specific to the `workspace/didChangeWatchedFiles` notification.
      */
-    public DidChangeWatchedFilesCapabilities getDidChangeWatchedFiles() {
-        return jsonData.has("didChangeWatchedFiles") ? new DidChangeWatchedFilesCapabilities(jsonData.optJSONObject("didChangeWatchedFiles")) : null;
+    public DidChangeWatchedFilesClientCapabilities getDidChangeWatchedFiles() {
+        return jsonData.has("didChangeWatchedFiles") ? new DidChangeWatchedFilesClientCapabilities(jsonData.optJSONObject("didChangeWatchedFiles")) : null;
     }
 
-    public WorkspaceClientCapabilities setDidChangeWatchedFiles(DidChangeWatchedFilesCapabilities didChangeWatchedFiles) {
+    public WorkspaceClientCapabilities setDidChangeWatchedFiles(DidChangeWatchedFilesClientCapabilities didChangeWatchedFiles) {
         jsonData.putOpt("didChangeWatchedFiles", didChangeWatchedFiles != null ? didChangeWatchedFiles.jsonData : null);
         return this;
     }
@@ -95,11 +89,11 @@ public class WorkspaceClientCapabilities {
     /**
      * Capabilities specific to the `workspace/symbol` request.
      */
-    public SymbolCapabilities getSymbol() {
-        return jsonData.has("symbol") ? new SymbolCapabilities(jsonData.optJSONObject("symbol")) : null;
+    public WorkspaceSymbolClientCapabilities getSymbol() {
+        return jsonData.has("symbol") ? new WorkspaceSymbolClientCapabilities(jsonData.optJSONObject("symbol")) : null;
     }
 
-    public WorkspaceClientCapabilities setSymbol(SymbolCapabilities symbol) {
+    public WorkspaceClientCapabilities setSymbol(WorkspaceSymbolClientCapabilities symbol) {
         jsonData.putOpt("symbol", symbol != null ? symbol.jsonData : null);
         return this;
     }
@@ -107,11 +101,11 @@ public class WorkspaceClientCapabilities {
     /**
      * Capabilities specific to the `workspace/executeCommand` request.
      */
-    public ExecuteCommandCapabilities getExecuteCommand() {
-        return jsonData.has("executeCommand") ? new ExecuteCommandCapabilities(jsonData.optJSONObject("executeCommand")) : null;
+    public ExecuteCommandClientCapabilities getExecuteCommand() {
+        return jsonData.has("executeCommand") ? new ExecuteCommandClientCapabilities(jsonData.optJSONObject("executeCommand")) : null;
     }
 
-    public WorkspaceClientCapabilities setExecuteCommand(ExecuteCommandCapabilities executeCommand) {
+    public WorkspaceClientCapabilities setExecuteCommand(ExecuteCommandClientCapabilities executeCommand) {
         jsonData.putOpt("executeCommand", executeCommand != null ? executeCommand.jsonData : null);
         return this;
     }
@@ -185,28 +179,28 @@ public class WorkspaceClientCapabilities {
     public int hashCode() {
         int hash = 7;
         if (this.getApplyEdit() != null) {
-            hash = 41 * hash + Boolean.hashCode(this.getApplyEdit());
+            hash = 71 * hash + Boolean.hashCode(this.getApplyEdit());
         }
         if (this.getWorkspaceEdit() != null) {
-            hash = 41 * hash + Objects.hashCode(this.getWorkspaceEdit());
+            hash = 71 * hash + Objects.hashCode(this.getWorkspaceEdit());
         }
         if (this.getDidChangeConfiguration() != null) {
-            hash = 41 * hash + Objects.hashCode(this.getDidChangeConfiguration());
+            hash = 71 * hash + Objects.hashCode(this.getDidChangeConfiguration());
         }
         if (this.getDidChangeWatchedFiles() != null) {
-            hash = 41 * hash + Objects.hashCode(this.getDidChangeWatchedFiles());
+            hash = 71 * hash + Objects.hashCode(this.getDidChangeWatchedFiles());
         }
         if (this.getSymbol() != null) {
-            hash = 41 * hash + Objects.hashCode(this.getSymbol());
+            hash = 71 * hash + Objects.hashCode(this.getSymbol());
         }
         if (this.getExecuteCommand() != null) {
-            hash = 41 * hash + Objects.hashCode(this.getExecuteCommand());
+            hash = 71 * hash + Objects.hashCode(this.getExecuteCommand());
         }
         if (this.getWorkspaceFolders() != null) {
-            hash = 41 * hash + Boolean.hashCode(this.getWorkspaceFolders());
+            hash = 71 * hash + Boolean.hashCode(this.getWorkspaceFolders());
         }
         if (this.getConfiguration() != null) {
-            hash = 41 * hash + Boolean.hashCode(this.getConfiguration());
+            hash = 71 * hash + Boolean.hashCode(this.getConfiguration());
         }
         return hash;
     }
@@ -214,386 +208,5 @@ public class WorkspaceClientCapabilities {
     public static WorkspaceClientCapabilities create() {
         final JSONObject json = new JSONObject();
         return new WorkspaceClientCapabilities(json);
-    }
-
-    public static class WorkspaceEditCapabilities {
-
-        final JSONObject jsonData;
-
-        WorkspaceEditCapabilities(JSONObject jsonData) {
-            this.jsonData = jsonData;
-        }
-
-        /**
-         * The client supports versioned document changes in `WorkspaceEdit`s.
-         */
-        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
-        public Boolean getDocumentChanges() {
-            return jsonData.has("documentChanges") ? jsonData.getBoolean("documentChanges") : null;
-        }
-
-        public WorkspaceEditCapabilities setDocumentChanges(Boolean documentChanges) {
-            jsonData.putOpt("documentChanges", documentChanges);
-            return this;
-        }
-
-        /**
-         * The resource operations the client supports. Clients should at least support 'create',
-         * 'rename' and 'delete' files and folders.
-         */
-        public List<ResourceOperationKind> getResourceOperations() {
-            final JSONArray json = jsonData.optJSONArray("resourceOperations");
-            if (json == null) {
-                return null;
-            }
-            final List<ResourceOperationKind> list = new ArrayList<>(json.length());
-            for (int i = 0; i < json.length(); i++) {
-                list.add(ResourceOperationKind.get(json.getString(i)));
-            }
-            return Collections.unmodifiableList(list);
-        }
-
-        public WorkspaceEditCapabilities setResourceOperations(List<ResourceOperationKind> resourceOperations) {
-            if (resourceOperations != null) {
-                final JSONArray json = new JSONArray();
-                for (ResourceOperationKind resourceOperationKind : resourceOperations) {
-                    json.put(resourceOperationKind.getStringValue());
-                }
-                jsonData.put("resourceOperations", json);
-            }
-            return this;
-        }
-
-        /**
-         * The failure handling strategy of a client if applying the workspace edit failes.
-         */
-        public FailureHandlingKind getFailureHandling() {
-            return FailureHandlingKind.get(jsonData.optString("failureHandling", null));
-        }
-
-        public WorkspaceEditCapabilities setFailureHandling(FailureHandlingKind failureHandling) {
-            jsonData.putOpt("failureHandling", failureHandling != null ? failureHandling.getStringValue() : null);
-            return this;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
-            }
-            if (obj == null) {
-                return false;
-            }
-            if (this.getClass() != obj.getClass()) {
-                return false;
-            }
-            WorkspaceEditCapabilities other = (WorkspaceEditCapabilities) obj;
-            if (!Objects.equals(this.getDocumentChanges(), other.getDocumentChanges())) {
-                return false;
-            }
-            if (!Objects.equals(this.getResourceOperations(), other.getResourceOperations())) {
-                return false;
-            }
-            if (this.getFailureHandling() != other.getFailureHandling()) {
-                return false;
-            }
-            return true;
-        }
-
-        @Override
-        public int hashCode() {
-            int hash = 7;
-            if (this.getDocumentChanges() != null) {
-                hash = 97 * hash + Boolean.hashCode(this.getDocumentChanges());
-            }
-            if (this.getResourceOperations() != null) {
-                hash = 97 * hash + Objects.hashCode(this.getResourceOperations());
-            }
-            if (this.getFailureHandling() != null) {
-                hash = 97 * hash + Objects.hashCode(this.getFailureHandling());
-            }
-            return hash;
-        }
-    }
-
-    public static class DidChangeConfigurationCapabilities {
-
-        final JSONObject jsonData;
-
-        DidChangeConfigurationCapabilities(JSONObject jsonData) {
-            this.jsonData = jsonData;
-        }
-
-        /**
-         * Did change configuration notification supports dynamic registration.
-         */
-        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
-        public Boolean getDynamicRegistration() {
-            return jsonData.has("dynamicRegistration") ? jsonData.getBoolean("dynamicRegistration") : null;
-        }
-
-        public DidChangeConfigurationCapabilities setDynamicRegistration(Boolean dynamicRegistration) {
-            jsonData.putOpt("dynamicRegistration", dynamicRegistration);
-            return this;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
-            }
-            if (obj == null) {
-                return false;
-            }
-            if (this.getClass() != obj.getClass()) {
-                return false;
-            }
-            DidChangeConfigurationCapabilities other = (DidChangeConfigurationCapabilities) obj;
-            if (!Objects.equals(this.getDynamicRegistration(), other.getDynamicRegistration())) {
-                return false;
-            }
-            return true;
-        }
-
-        @Override
-        public int hashCode() {
-            int hash = 5;
-            if (this.getDynamicRegistration() != null) {
-                hash = 31 * hash + Boolean.hashCode(this.getDynamicRegistration());
-            }
-            return hash;
-        }
-    }
-
-    public static class DidChangeWatchedFilesCapabilities {
-
-        final JSONObject jsonData;
-
-        DidChangeWatchedFilesCapabilities(JSONObject jsonData) {
-            this.jsonData = jsonData;
-        }
-
-        /**
-         * Did change watched files notification supports dynamic registration.
-         */
-        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
-        public Boolean getDynamicRegistration() {
-            return jsonData.has("dynamicRegistration") ? jsonData.getBoolean("dynamicRegistration") : null;
-        }
-
-        public DidChangeWatchedFilesCapabilities setDynamicRegistration(Boolean dynamicRegistration) {
-            jsonData.putOpt("dynamicRegistration", dynamicRegistration);
-            return this;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
-            }
-            if (obj == null) {
-                return false;
-            }
-            if (this.getClass() != obj.getClass()) {
-                return false;
-            }
-            DidChangeWatchedFilesCapabilities other = (DidChangeWatchedFilesCapabilities) obj;
-            if (!Objects.equals(this.getDynamicRegistration(), other.getDynamicRegistration())) {
-                return false;
-            }
-            return true;
-        }
-
-        @Override
-        public int hashCode() {
-            int hash = 7;
-            if (this.getDynamicRegistration() != null) {
-                hash = 23 * hash + Boolean.hashCode(this.getDynamicRegistration());
-            }
-            return hash;
-        }
-    }
-
-    public static class SymbolCapabilities {
-
-        final JSONObject jsonData;
-
-        SymbolCapabilities(JSONObject jsonData) {
-            this.jsonData = jsonData;
-        }
-
-        /**
-         * Symbol request supports dynamic registration.
-         */
-        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
-        public Boolean getDynamicRegistration() {
-            return jsonData.has("dynamicRegistration") ? jsonData.getBoolean("dynamicRegistration") : null;
-        }
-
-        public SymbolCapabilities setDynamicRegistration(Boolean dynamicRegistration) {
-            jsonData.putOpt("dynamicRegistration", dynamicRegistration);
-            return this;
-        }
-
-        /**
-         * Specific capabilities for the `SymbolKind` in the `workspace/symbol` request.
-         */
-        public SymbolKindCapabilities getSymbolKind() {
-            return jsonData.has("symbolKind") ? new SymbolKindCapabilities(jsonData.optJSONObject("symbolKind")) : null;
-        }
-
-        public SymbolCapabilities setSymbolKind(SymbolKindCapabilities symbolKind) {
-            jsonData.putOpt("symbolKind", symbolKind != null ? symbolKind.jsonData : null);
-            return this;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
-            }
-            if (obj == null) {
-                return false;
-            }
-            if (this.getClass() != obj.getClass()) {
-                return false;
-            }
-            SymbolCapabilities other = (SymbolCapabilities) obj;
-            if (!Objects.equals(this.getDynamicRegistration(), other.getDynamicRegistration())) {
-                return false;
-            }
-            if (!Objects.equals(this.getSymbolKind(), other.getSymbolKind())) {
-                return false;
-            }
-            return true;
-        }
-
-        @Override
-        public int hashCode() {
-            int hash = 7;
-            if (this.getDynamicRegistration() != null) {
-                hash = 47 * hash + Boolean.hashCode(this.getDynamicRegistration());
-            }
-            if (this.getSymbolKind() != null) {
-                hash = 47 * hash + Objects.hashCode(this.getSymbolKind());
-            }
-            return hash;
-        }
-
-        public static class SymbolKindCapabilities {
-
-            final JSONObject jsonData;
-
-            SymbolKindCapabilities(JSONObject jsonData) {
-                this.jsonData = jsonData;
-            }
-
-            /**
-             * The symbol kind values the client supports. When this property exists the client also
-             * guarantees that it will handle values outside its set gracefully and falls back to a
-             * default value when unknown.
-             *
-             * If this property is not present the client only supports the symbol kinds from `File`
-             * to `Array` as defined in the initial version of the protocol.
-             */
-            public List<SymbolKind> getValueSet() {
-                final JSONArray json = jsonData.optJSONArray("valueSet");
-                if (json == null) {
-                    return null;
-                }
-                final List<SymbolKind> list = new ArrayList<>(json.length());
-                for (int i = 0; i < json.length(); i++) {
-                    list.add(SymbolKind.get(json.getInt(i)));
-                }
-                return Collections.unmodifiableList(list);
-            }
-
-            public SymbolKindCapabilities setValueSet(List<SymbolKind> valueSet) {
-                if (valueSet != null) {
-                    final JSONArray json = new JSONArray();
-                    for (SymbolKind symbolKind : valueSet) {
-                        json.put(symbolKind.getIntValue());
-                    }
-                    jsonData.put("valueSet", json);
-                }
-                return this;
-            }
-
-            @Override
-            public boolean equals(Object obj) {
-                if (this == obj) {
-                    return true;
-                }
-                if (obj == null) {
-                    return false;
-                }
-                if (this.getClass() != obj.getClass()) {
-                    return false;
-                }
-                SymbolKindCapabilities other = (SymbolKindCapabilities) obj;
-                if (!Objects.equals(this.getValueSet(), other.getValueSet())) {
-                    return false;
-                }
-                return true;
-            }
-
-            @Override
-            public int hashCode() {
-                int hash = 5;
-                if (this.getValueSet() != null) {
-                    hash = 41 * hash + Objects.hashCode(this.getValueSet());
-                }
-                return hash;
-            }
-        }
-    }
-
-    public static class ExecuteCommandCapabilities {
-
-        final JSONObject jsonData;
-
-        ExecuteCommandCapabilities(JSONObject jsonData) {
-            this.jsonData = jsonData;
-        }
-
-        /**
-         * Execute command supports dynamic registration.
-         */
-        @SuppressFBWarnings("NP_BOOLEAN_RETURN_NULL")
-        public Boolean getDynamicRegistration() {
-            return jsonData.has("dynamicRegistration") ? jsonData.getBoolean("dynamicRegistration") : null;
-        }
-
-        public ExecuteCommandCapabilities setDynamicRegistration(Boolean dynamicRegistration) {
-            jsonData.putOpt("dynamicRegistration", dynamicRegistration);
-            return this;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (this == obj) {
-                return true;
-            }
-            if (obj == null) {
-                return false;
-            }
-            if (this.getClass() != obj.getClass()) {
-                return false;
-            }
-            ExecuteCommandCapabilities other = (ExecuteCommandCapabilities) obj;
-            if (!Objects.equals(this.getDynamicRegistration(), other.getDynamicRegistration())) {
-                return false;
-            }
-            return true;
-        }
-
-        @Override
-        public int hashCode() {
-            int hash = 3;
-            if (this.getDynamicRegistration() != null) {
-                hash = 89 * hash + Boolean.hashCode(this.getDynamicRegistration());
-            }
-            return hash;
-        }
     }
 }

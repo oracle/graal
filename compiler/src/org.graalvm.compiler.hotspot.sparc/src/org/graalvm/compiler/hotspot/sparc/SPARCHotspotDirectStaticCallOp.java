@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,12 @@
  */
 package org.graalvm.compiler.hotspot.sparc;
 
+import static jdk.vm.ci.sparc.SPARC.l7;
+import static jdk.vm.ci.sparc.SPARC.sp;
+
 import org.graalvm.compiler.asm.sparc.SPARCMacroAssembler;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.hotspot.HotSpotMarkId;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
@@ -33,6 +37,7 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.sparc.SPARCCall.DirectCallOp;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 
+import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
 
@@ -57,6 +62,18 @@ final class SPARCHotspotDirectStaticCallOp extends DirectCallOp {
 
     @Override
     public void emitCallPrefixCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
-        crb.recordMark(invokeKind == InvokeKind.Static ? config.MARKID_INVOKESTATIC : config.MARKID_INVOKESPECIAL);
+        crb.recordMark(invokeKind == InvokeKind.Static ? HotSpotMarkId.INVOKESTATIC : HotSpotMarkId.INVOKESPECIAL);
+        if (config.supportsMethodHandleDeoptimizationEntry() && config.isMethodHandleCall((HotSpotResolvedJavaMethod) callTarget) && invokeKind != InvokeKind.Static) {
+            crb.setNeedsMHDeoptHandler();
+            masm.mov(sp, l7);
+        }
+    }
+
+    @Override
+    @SuppressWarnings("try")
+    public void emitCode(CompilationResultBuilder crb, SPARCMacroAssembler masm) {
+        try (CompilationResultBuilder.CallContext callContext = crb.openCallContext(invokeKind.isDirect())) {
+            super.emitCode(crb, masm);
+        }
     }
 }

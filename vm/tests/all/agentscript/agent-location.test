@@ -2,5 +2,5 @@
 > cp agent-fib.js ${TMP_DIR}/fib.js
 > cp agent-fib.js ${TMP_DIR}/fibonacci.js
 > cd ${TMP_DIR}
->[0?] js --experimental-options --agentscript=agent.js fib.js
->[0?] js --experimental-options --agentscript=agent.js fibonacci.js
+>[0?] js --experimental-options --insight=agent.js fib.js
+>[0?] js --experimental-options --insight=agent.js fibonacci.js

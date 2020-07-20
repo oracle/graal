@@ -138,6 +138,14 @@ suite = {
 
   "projects" : {
 
+    "com.oracle.truffle.llvm.docs" : {
+      "class" : "DocumentationProject",
+      "subDir" : "docs",
+      "dir" : "docs",
+      "sourceDirs" : ["src"],
+      "license" : "BSD-new",
+      "defaultBuild" : False,
+    },
     "com.oracle.truffle.llvm.tests" : {
       "subDir" : "tests",
       "sourceDirs" : ["src"],
@@ -492,6 +500,7 @@ suite = {
       "variants" : ["O0"],
       "buildDependencies" : [
         "LLIR_TEST_GEN",
+        "SULONG_HOME",
       ],
       "buildEnv" : {
         "LDFLAGS": "-lm",
@@ -533,9 +542,11 @@ suite = {
       ],
       "headers" : [
         "include/polyglot.h",
+        "include/llvm/api/toolchain.h",
       ],
       "buildDependencies" : [
         "sdk:LLVM_TOOLCHAIN",
+        "sdk:LLVM_ORG_SRC",
       ],
       "buildEnv" : {
         "CFLAGS" : "-Xclang -disable-O0-optnone",
@@ -546,6 +557,7 @@ suite = {
         "LLVM_TOOLCHAIN_LIB" : "<path:LLVM_TOOLCHAIN>/lib",
         "LIBSULONG" : "<lib:sulong>",
         "LIBSULONGXX" : "<lib:sulong++>",
+        "LIBCXX_SRC" : "<path:sdk:LLVM_ORG_SRC>",
         "OS" : "<os>",
       },
       "license" : "BSD-new",
@@ -591,6 +603,43 @@ suite = {
         "OS" : "<os>",
       },
       "license" : "BSD-new",
+    },
+    "com.oracle.truffle.llvm.libraries.bitcode.libcxx" : {
+      "subDir" : "projects",
+      "vpath" : True,
+      "sourceDir" : "<path:sdk:LLVM_ORG_SRC>/llvm",
+      "class" : "CMakeProject",
+      "makeTarget" : ["install-libcxxabi", "install-libcxx"],
+      "results" : ["native"],
+      "cmakeConfig" : {
+        "LLVM_ENABLE_PROJECTS" : "libcxx;libcxxabi",
+        "LLVM_INCLUDE_DOCS" : "NO",
+        "LLVM_TARGETS_TO_BUILD" : "X86",
+        "LIBCXXABI_INCLUDE_TESTS": "NO",
+        "LIBCXXABI_LIBCXX_INCLUDES" : "<path:sdk:LLVM_ORG_SRC>/libcxx/include",
+        "LIBCXXABI_LIBCXX_PATH" : "<path:sdk:LLVM_ORG_SRC>/libcxx",
+        "LIBCXXABI_ENABLE_STATIC" : "NO",
+        "LIBCXX_INCLUDE_BENCHMARKS": "NO",
+        "LIBCXX_INCLUDE_TESTS": "NO",
+        "LIBCXX_CXX_ABI" : "libcxxabi",
+        # shouldn't this be detected automatically?
+        "LIBCXX_CXX_ABI_LIBRARY_PATH" : "<path:com.oracle.truffle.llvm.libraries.bitcode.libcxx>/native/lib",
+        # shouldn't this be detected automatically?
+        "LIBCXX_CXX_ABI_INCLUDE_PATHS" : "<path:sdk:LLVM_ORG_SRC>/libcxxabi/include",
+        "LIBCXX_ENABLE_STATIC" : "NO",
+        "LIBCXX_ENABLE_EXPERIMENTAL_LIBRARY" : "NO",
+        "CMAKE_C_COMPILER" : "<toolchainGetToolPath:native,CC>",
+        "CMAKE_CXX_COMPILER" :  "<toolchainGetToolPath:native,CXX>",
+        # Work around for mx not liking $ signs. We use '{{}}' as a placeholder and replace that in the CMakeProject.
+        "CMAKE_SHARED_LINKER_FLAGS" : "-Wl,-rpath,{{}}ORIGIN",
+        "CMAKE_INSTALL_PREFIX" : "native",
+      },
+      "buildDependencies" : [
+        "sdk:LLVM_ORG_SRC",
+        "SULONG_BOOTSTRAP_TOOLCHAIN",
+        "sdk:LLVM_TOOLCHAIN",
+      ],
+      "clangFormat" : False,
     },
 
     "com.oracle.truffle.llvm.tests.debug.native" : {
@@ -717,8 +766,10 @@ suite = {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
       "variants" : ["O0"],
+      "fileExts" : [".ll"],
       "buildEnv" : {
         "OS" : "<os>",
+        "SUITE_LDFLAGS" : "-lm",
       },
       "dependencies" : [
         "SULONG_TEST",
@@ -737,6 +788,7 @@ suite = {
       # issue in exeuction mistmatches. Until then the Sulong behavior
       # is the more accurate one.
       "variants" : ["O0"],
+      "fileExts" : [".ll"],
       "buildEnv" : {
         "OS" : "<os>",
         "CFLAGS" : "-O0",
@@ -751,6 +803,7 @@ suite = {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
       "variants" : ["O0"],
+      "fileExts" : [".ll"],
       "buildRef" : False,
       "buildEnv" : {
         "OS" : "<os>",
@@ -766,16 +819,19 @@ suite = {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
       "variants" : ["O0"],
+      "fileExts" : [".ll"],
       "buildRef" : True,
       "buildEnv" : {
         "OS" : "<os>",
         "CFLAGS" : "-O0",
+        "SUITE_LDFLAGS" : "-lm",
       },
       "dependencies" : [
         "SULONG_TEST",
       ],
       "buildDependencies" : [
-        "AMD64_SUPPORT",
+        # "AMD64_SUPPORT" currently not working on darwin GR-21946,
+        "LINUX_AMD64_SUPPORT",
       ],
       "testProject" : True,
       "defaultBuild" : False,
@@ -801,7 +857,7 @@ suite = {
     "com.oracle.truffle.llvm.tests.sulongcpp.native" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
-      "variants" : ["O0", "O0_MISC_OPTS", "O1"],
+      "variants" : ["O0_OUT", "O1_OUT"],
       "buildEnv" : {
         "OS" : "<os>",
       },
@@ -934,7 +990,7 @@ suite = {
       "fileExts" : [".cpp", ".C", ".cc"],
       "native" : True,
       "vpath" : True,
-      "variants" : ["O0"],
+      "variants" : ["O0_OUT"],
       "buildRef" : True,
       "buildEnv" : {
         "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include",
@@ -1006,7 +1062,7 @@ suite = {
       "fileExts" : [".c", ".cpp", ".C", ".cc", ".m"],
       "native" : True,
       "vpath" : True,
-      "variants" : ["O0"],
+      "variants" : ["O0_OUT"],
       "buildRef" : True,
       "buildEnv" : {
         "SUITE_CPPFLAGS" : "-I<path:SULONG_LEGACY>/include",
@@ -1028,7 +1084,7 @@ suite = {
       "fileExts" : [".c", ".cpp", ".C", ".cc", ".m", ".gcc", ".cint", ".gpp"],
       "native" : True,
       "vpath" : True,
-      "variants" : ["O1"],
+      "variants" : ["O1_OUT"],
       "extraLibs" : ["libgmp.so.10"],
       "buildRef" : True,
       "buildEnv" : {
@@ -1121,17 +1177,14 @@ suite = {
       "relpath" : False,
       "platformDependent" : True,
       "layout" : {
+        "./": [
+          "dependency:com.oracle.truffle.llvm.libraries.bitcode.libcxx/*",
+        ],
         "./native/lib/" : [
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/<lib:sulong>",
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/bin/<lib:sulong++>",
           "dependency:com.oracle.truffle.llvm.libraries.native/bin/*",
           "dependency:com.oracle.truffle.llvm.libraries.mock/bin/*",
-          {
-            "source_type": "extracted-dependency",
-            "dependency": "sdk:LLVM_ORG",
-            "path": "./lib/<lib:c++*>*",
-            "dereference" : "never",
-          },
         ],
         "./include/" : [
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/include/*"
@@ -1141,6 +1194,7 @@ suite = {
         "com.oracle.truffle.llvm.libraries.bitcode",
         "com.oracle.truffle.llvm.libraries.native",
         "com.oracle.truffle.llvm.libraries.mock",
+        "com.oracle.truffle.llvm.libraries.bitcode.libcxx",
       ],
       "license" : "BSD-new",
     },

@@ -41,6 +41,8 @@ import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.PointerBase;
 
+import com.oracle.svm.core.RegisterDumper;
+
 // Checkstyle: stop
 
 /**
@@ -131,7 +133,7 @@ public class Signal {
     }
 
     @CStruct
-    public interface ucontext_t extends PointerBase {
+    public interface ucontext_t extends RegisterDumper.Context {
         @CFieldAddress("uc_mcontext.gregs")
         @Platforms({Platform.LINUX_AMD64.class})
         GregsPointer uc_mcontext_gregs();

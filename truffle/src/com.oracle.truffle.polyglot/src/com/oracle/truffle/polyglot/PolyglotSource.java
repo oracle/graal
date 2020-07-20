@@ -40,22 +40,29 @@
  */
 package com.oracle.truffle.polyglot;
 
-import com.oracle.truffle.api.TruffleFile;
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
+
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
 import java.net.URI;
 import java.net.URL;
+import java.nio.charset.Charset;
+import java.util.Collection;
+import java.util.Map;
 import java.util.Objects;
+import java.util.function.Supplier;
 
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceImpl;
 import org.graalvm.polyglot.io.ByteSequence;
+import org.graalvm.polyglot.io.FileSystem;
 
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.source.Source.SourceBuilder;
-import java.nio.charset.Charset;
 
 class PolyglotSource extends AbstractSourceImpl {
 
@@ -110,8 +117,7 @@ class PolyglotSource extends AbstractSourceImpl {
     @SuppressWarnings("deprecation")
     @Override
     public InputStream getInputStream(Object impl) {
-        com.oracle.truffle.api.source.Source source = (com.oracle.truffle.api.source.Source) impl;
-        return source.getInputStream();
+        return new ByteArrayInputStream(getCharacters(impl).toString().getBytes());
     }
 
     @Override
@@ -122,14 +128,14 @@ class PolyglotSource extends AbstractSourceImpl {
     }
 
     @Override
-    public CharSequence getCode(Object impl) {
+    public CharSequence getCharacters(Object impl) {
         com.oracle.truffle.api.source.Source source = (com.oracle.truffle.api.source.Source) impl;
 
         return source.getCharacters();
     }
 
     @Override
-    public CharSequence getCode(Object impl, int lineNumber) {
+    public CharSequence getCharacters(Object impl, int lineNumber) {
         com.oracle.truffle.api.source.Source source = (com.oracle.truffle.api.source.Source) impl;
 
         return source.getCharacters(lineNumber);
@@ -208,7 +214,7 @@ class PolyglotSource extends AbstractSourceImpl {
     public String findMimeType(File file) throws IOException {
         Objects.requireNonNull(file);
         TruffleFile truffleFile = EngineAccessor.LANGUAGE.getTruffleFile(file.toPath().toString(), getDefaultFileSystemContext());
-        return truffleFile.getMimeType();
+        return truffleFile.detectMimeType();
     }
 
     @Override
@@ -271,7 +277,7 @@ class PolyglotSource extends AbstractSourceImpl {
         } else if (origin instanceof URL) {
             builder = com.oracle.truffle.api.source.Source.newBuilder(language, (URL) origin);
         } else {
-            throw new AssertionError();
+            throw shouldNotReachHere();
         }
 
         if (origin instanceof File || origin instanceof URL) {
@@ -302,7 +308,7 @@ class PolyglotSource extends AbstractSourceImpl {
         } catch (RuntimeException e) {
             throw e;
         } catch (Exception e) {
-            throw new AssertionError(e);
+            throw shouldNotReachHere(e);
         }
     }
 
@@ -312,13 +318,21 @@ class PolyglotSource extends AbstractSourceImpl {
             synchronized (this) {
                 res = defaultFileSystemContext;
                 if (res == null) {
-                    res = EngineAccessor.LANGUAGE.createFileSystemContext(FileSystems.newDefaultFileSystem(),
-                                    FileSystems.newFileTypeDetectorsSupplier(LanguageCache.languages().values()));
+                    EmbedderFileSystemContext context = new EmbedderFileSystemContext();
+                    res = EngineAccessor.LANGUAGE.createFileSystemContext(context, context.fileSystem);
                     defaultFileSystemContext = res;
                 }
             }
         }
         return res;
+    }
+
+    static final class EmbedderFileSystemContext {
+
+        final FileSystem fileSystem = FileSystems.newDefaultFileSystem();
+        final Map<String, LanguageCache> cachedLanguages = LanguageCache.languages();
+        final Supplier<Map<String, Collection<? extends TruffleFile.FileTypeDetector>>> fileTypeDetectors = FileSystems.newFileTypeDetectorsSupplier(cachedLanguages.values());
+
     }
 
 }

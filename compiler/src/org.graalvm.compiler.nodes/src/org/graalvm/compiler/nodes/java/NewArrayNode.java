@@ -100,24 +100,18 @@ public class NewArrayNode extends AbstractNewArrayNode implements VirtualizableA
             int constantLength = lengthAlias.asJavaConstant().asInt();
             if (constantLength >= 0 && constantLength <= tool.getMaximumEntryCount()) {
                 ValueNode[] state = new ValueNode[constantLength];
-                ConstantNode defaultForKind = constantLength == 0 ? null : defaultElementValue();
-                for (int i = 0; i < constantLength; i++) {
-                    state[i] = defaultForKind;
+                if (constantLength > 0) {
+                    ConstantNode defaultForKind = ConstantNode.defaultForKind(tool.getMetaAccessExtensionProvider().getStorageKind(elementType()), graph());
+                    for (int i = 0; i < constantLength; i++) {
+                        state[i] = defaultForKind;
+                    }
                 }
-                VirtualObjectNode virtualObject = createVirtualArrayNode(constantLength);
+
+                VirtualObjectNode virtualObject = new VirtualArrayNode(elementType(), constantLength);
                 tool.createVirtualObject(virtualObject, state, Collections.<MonitorIdNode> emptyList(), false);
                 tool.replaceWithVirtual(virtualObject);
             }
         }
-    }
-
-    protected VirtualArrayNode createVirtualArrayNode(int constantLength) {
-        return new VirtualArrayNode(elementType(), constantLength);
-    }
-
-    /* Factored out in a separate method so that subclasses can override it. */
-    protected ConstantNode defaultElementValue() {
-        return ConstantNode.defaultForKind(elementType().getJavaKind(), graph());
     }
 
     @Override

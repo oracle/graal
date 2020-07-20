@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,15 +59,15 @@ public class RegexValidator {
     private final RegexLexer lexer;
     private RegexFeatures features;
 
-    public RegexValidator(RegexSource source, RegexFlags flags, RegexOptions options) {
+    public RegexValidator(RegexSource source, RegexOptions options) {
         this.source = source;
-        this.flags = flags;
+        this.flags = RegexFlags.parseFlags(source.getFlags());
         this.lexer = new RegexLexer(source, flags, options);
     }
 
     @TruffleBoundary
     public static void validate(RegexSource source) throws RegexSyntaxException {
-        new RegexValidator(source, RegexFlags.parseFlags(source.getFlags()), RegexOptions.DEFAULT).validate();
+        new RegexValidator(source, RegexOptions.DEFAULT).validate();
     }
 
     @TruffleBoundary

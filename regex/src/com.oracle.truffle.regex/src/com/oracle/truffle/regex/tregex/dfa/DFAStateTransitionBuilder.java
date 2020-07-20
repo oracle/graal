@@ -48,6 +48,7 @@ import com.oracle.truffle.regex.tregex.automaton.AbstractTransition;
 import com.oracle.truffle.regex.tregex.automaton.StateSet;
 import com.oracle.truffle.regex.tregex.automaton.TransitionBuilder;
 import com.oracle.truffle.regex.tregex.automaton.TransitionSet;
+import com.oracle.truffle.regex.tregex.nfa.NFA;
 import com.oracle.truffle.regex.tregex.nfa.NFAState;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
 import com.oracle.truffle.regex.tregex.util.json.Json;
@@ -55,22 +56,22 @@ import com.oracle.truffle.regex.tregex.util.json.JsonArray;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 
-public class DFAStateTransitionBuilder extends TransitionBuilder<NFAState, NFAStateTransition> implements AbstractTransition<DFAStateNodeBuilder, DFAStateTransitionBuilder>, JsonConvertible {
+public class DFAStateTransitionBuilder extends TransitionBuilder<NFA, NFAState, NFAStateTransition> implements AbstractTransition<DFAStateNodeBuilder, DFAStateTransitionBuilder>, JsonConvertible {
 
     private int id = -1;
     private DFAStateNodeBuilder source;
     private DFAStateNodeBuilder target;
 
-    public DFAStateTransitionBuilder(NFAStateTransition[] transitions, StateSet<NFAState> targetStateSet, CodePointSet matcherBuilder) {
+    public DFAStateTransitionBuilder(NFAStateTransition[] transitions, StateSet<NFA, NFAState> targetStateSet, CodePointSet matcherBuilder) {
         super(transitions, targetStateSet, matcherBuilder);
     }
 
-    public DFAStateTransitionBuilder(TransitionSet<NFAState, NFAStateTransition> transitionSet, CodePointSet matcherBuilder) {
+    public DFAStateTransitionBuilder(TransitionSet<NFA, NFAState, NFAStateTransition> transitionSet, CodePointSet matcherBuilder) {
         super(transitionSet, matcherBuilder);
     }
 
     public DFAStateTransitionBuilder createNodeSplitCopy() {
-        return new DFAStateTransitionBuilder(getTransitionSet(), getMatcherBuilder());
+        return new DFAStateTransitionBuilder(getTransitionSet(), getCodePointSet());
     }
 
     @Override
@@ -103,7 +104,7 @@ public class DFAStateTransitionBuilder extends TransitionBuilder<NFAState, NFASt
     @TruffleBoundary
     @Override
     public String toString() {
-        return source + " -" + getMatcherBuilder() + "-> " + target;
+        return source + " -" + getCodePointSet() + "-> " + target;
     }
 
     @TruffleBoundary
@@ -119,7 +120,7 @@ public class DFAStateTransitionBuilder extends TransitionBuilder<NFAState, NFASt
         return Json.obj(Json.prop("id", id),
                         Json.prop("source", source.getId()),
                         Json.prop("target", target.getId()),
-                        Json.prop("matcherBuilder", getMatcherBuilder().toString()),
+                        Json.prop("matcherBuilder", getCodePointSet().toString()),
                         Json.prop("nfaTransitions", nfaTransitions));
     }
 }

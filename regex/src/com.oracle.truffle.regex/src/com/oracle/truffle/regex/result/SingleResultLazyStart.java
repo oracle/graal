@@ -71,16 +71,17 @@ public final class SingleResultLazyStart extends LazyResult {
         return start;
     }
 
+    public void setStart(int start) {
+        assert start >= 0;
+        this.start = start;
+    }
+
     public CallTarget getFindStartCallTarget() {
         return findStartCallTarget;
     }
 
     public Object[] createArgsFindStart() {
-        return new Object[]{getInput(), getEnd() - 1, getFromIndex()};
-    }
-
-    public void applyFindStartResult(int findStartResult) {
-        this.start = findStartResult + 1;
+        return new Object[]{getInput(), getFromIndex(), getEnd()};
     }
 
     /**
@@ -91,7 +92,7 @@ public final class SingleResultLazyStart extends LazyResult {
     @Override
     public void debugForceEvaluation() {
         if (!isStartCalculated()) {
-            applyFindStartResult((int) findStartCallTarget.call(createArgsFindStart()));
+            setStart((int) findStartCallTarget.call(createArgsFindStart()));
         }
     }
 

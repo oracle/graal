@@ -28,8 +28,6 @@ import java.lang.reflect.Field;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 
-import com.oracle.graal.pointsto.util.AnalysisError;
-
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 public interface OriginalFieldProvider {
@@ -38,13 +36,26 @@ public interface OriginalFieldProvider {
         if (field instanceof OriginalFieldProvider) {
             return ((OriginalFieldProvider) field).getJavaField();
         }
+        Class<?> declaringClass = OriginalClassProvider.getJavaClass(reflectionProvider, field.getDeclaringClass());
         try {
-            Class<?> declaringClass = OriginalClassProvider.getJavaClass(reflectionProvider, field.getDeclaringClass());
             return declaringClass.getDeclaredField(field.getName());
-        } catch (NoSuchFieldException e) {
-            throw AnalysisError.shouldNotReachHere();
+        } catch (Throwable e) {
+            /*
+             * Return null if there is some incomplete classpath issue or the field is either
+             * missing or hidden from reflection.
+             */
+            return null;
         }
     }
 
+    /**
+     * Returns the original reflecton field. First the original Java class corresponding to the
+     * field's declaring class is retrieved. Then the field is accesed using
+     * Class.getDeclaredField(name). This method can return null if the field's declaring class
+     * references types missing from the classpath or the field is either missing or hidden from
+     * reflection.
+     * 
+     * @return original reflecton field, or {@code null}
+     */
     Field getJavaField();
 }

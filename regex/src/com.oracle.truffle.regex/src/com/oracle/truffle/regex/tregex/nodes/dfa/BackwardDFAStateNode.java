@@ -40,13 +40,11 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
-import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
-
 public class BackwardDFAStateNode extends DFAStateNode {
 
-    public BackwardDFAStateNode(short id, byte flags, LoopOptimizationNode loopOptimizationNode, short[] successors, CharMatcher[] matchers, DFASimpleCG simpleCG,
+    public BackwardDFAStateNode(short id, byte flags, short loopTransitionIndex, LoopOptimizationNode loopOptimizationNode, short[] successors, Matchers matchers, DFASimpleCG simpleCG,
                     AllTransitionsInOneTreeMatcher allTransitionsInOneTreeMatcher) {
-        super(id, flags, loopOptimizationNode, successors, matchers, simpleCG, allTransitionsInOneTreeMatcher);
+        super(id, flags, loopTransitionIndex, loopOptimizationNode, successors, matchers, simpleCG, allTransitionsInOneTreeMatcher);
     }
 
     protected BackwardDFAStateNode(BackwardDFAStateNode copy, short copyID) {
@@ -58,33 +56,8 @@ public class BackwardDFAStateNode extends DFAStateNode {
         return new BackwardDFAStateNode(this, copyID);
     }
 
-    private int getBackwardPrefixStateIndex() {
+    int getBackwardPrefixStateIndex() {
         assert hasBackwardPrefixState();
         return getSuccessors().length - 1;
-    }
-
-    @Override
-    int prevIndex(TRegexDFAExecutorLocals locals) {
-        return locals.getIndex() + 1;
-    }
-
-    @Override
-    int atEnd(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
-        super.atEnd(locals, executor);
-        if (hasBackwardPrefixState() && locals.getIndex() == locals.getFromIndex() - 1 && locals.getFromIndex() - 1 > locals.getMaxIndex()) {
-            locals.setCurMaxIndex(locals.getMaxIndex());
-            return getBackwardPrefixStateIndex();
-        }
-        return FS_RESULT_NO_SUCCESSOR;
-    }
-
-    @Override
-    void applySimpleCGTransition(DFASimpleCGTransition transition, TRegexDFAExecutorLocals locals, int index) {
-        transition.apply(locals.getCGData().results, index + 1);
-    }
-
-    @Override
-    void applySimpleCGFinalTransition(DFASimpleCGTransition transition, TRegexDFAExecutorNode executor, TRegexDFAExecutorLocals locals, int index) {
-        transition.apply(simpleCGFinalTransitionTargetArray(locals, executor), index + 1);
     }
 }

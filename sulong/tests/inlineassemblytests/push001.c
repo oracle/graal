@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,7 +28,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 int main() {
-  unsigned short value = 0;
-  __asm__("pushw $0x1234; popw %0" : "=r"(value));
-  return value == 0x1234;
+    unsigned short value = 0;
+    __asm__("pushw $0x1234; popw %0" : "=r"(value));
+    return value == 0x1234;
 }

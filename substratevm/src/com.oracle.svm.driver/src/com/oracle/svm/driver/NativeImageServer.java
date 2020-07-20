@@ -76,7 +76,7 @@ final class NativeImageServer extends NativeImage {
     private static final String pKeyMaxServers = "MaxServers";
     private static final String machineProperties = "machine.properties";
 
-    private boolean useServer = true;
+    private boolean useServer = false;
     private boolean verboseServer = false;
     private String sessionName = null;
 
@@ -739,8 +739,8 @@ final class NativeImageServer extends NativeImage {
 
     @Override
     protected int buildImage(List<String> javaArgs, LinkedHashSet<Path> bcp, LinkedHashSet<Path> cp, LinkedHashSet<String> imageArgs, LinkedHashSet<Path> imagecp) {
-        boolean printFlags = imageArgs.stream().anyMatch(arg -> arg.contains(enablePrintFlags));
-        if (useServer && !printFlags && !javaArgs.contains("-Xdebug")) {
+        boolean printFlags = imageArgs.stream().anyMatch(arg -> arg.contains(enablePrintFlags) || arg.contains(enablePrintFlagsWithExtraHelp));
+        if (useServer && !printFlags && !useDebugAttach()) {
             AbortBuildSignalHandler signalHandler = new AbortBuildSignalHandler();
             sun.misc.Signal.handle(new sun.misc.Signal("TERM"), signalHandler);
             sun.misc.Signal.handle(new sun.misc.Signal("INT"), signalHandler);
@@ -810,7 +810,9 @@ final class NativeImageServer extends NativeImage {
     @Override
     protected void setDryRun(boolean val) {
         super.setDryRun(val);
-        useServer = !val;
+        if (val) {
+            useServer = false;
+        }
     }
 
     void setVerboseServer(boolean val) {

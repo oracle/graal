@@ -44,6 +44,8 @@ package com.oracle.truffle.api.object;
  * Location modifiers specify the desired semantics and allowed use of a location to be allocated by
  * {@link Shape.Allocator}.
  *
+ * Planned to be deprecated.
+ *
  * @since 0.8 or earlier
  */
 public enum LocationModifier {

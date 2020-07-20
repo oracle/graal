@@ -65,7 +65,7 @@ public abstract class LLVMUniquesRegionAllocNode extends LLVMNode {
     protected void doOp(VirtualFrame frame,
                     @CachedLanguage LLVMLanguage language) {
         try {
-            allocator.allocate(frame, language.getLLVMMemory(), getStackPointerSlot());
+            allocator.allocate(this, frame, language.getLLVMMemory(), getStackPointerSlot());
         } catch (LLVMStackOverflowError soe) {
             CompilerDirectives.transferToInterpreter();
             throw new LLVMAllocationFailureException(this, soe);

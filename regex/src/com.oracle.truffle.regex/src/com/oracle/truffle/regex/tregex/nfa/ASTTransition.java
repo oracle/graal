@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -60,11 +60,13 @@ public class ASTTransition implements AbstractTransition<Term, ASTTransition>, J
         this.target = target;
     }
 
+    @TruffleBoundary
     @Override
     public int getId() {
         throw new UnsupportedOperationException();
     }
 
+    @TruffleBoundary
     @Override
     public Term getSource() {
         throw new UnsupportedOperationException();

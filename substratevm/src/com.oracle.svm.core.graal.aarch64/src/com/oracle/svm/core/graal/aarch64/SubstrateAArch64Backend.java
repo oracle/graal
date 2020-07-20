@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.graal.aarch64;
 
+import static com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId.PROLOGUE_DECD_RSP;
+import static com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId.PROLOGUE_END;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.core.util.VMError.unimplemented;
 import static jdk.vm.ci.aarch64.AArch64.lr;
@@ -117,6 +119,7 @@ import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.code.SubstrateCompiledCode;
 import com.oracle.svm.core.graal.code.SubstrateDataBuilder;
+import com.oracle.svm.core.graal.code.SubstrateDebugInfoBuilder;
 import com.oracle.svm.core.graal.code.SubstrateLIRGenerator;
 import com.oracle.svm.core.graal.code.SubstrateNodeLIRBuilder;
 import com.oracle.svm.core.graal.lir.VerificationMarkerOp;
@@ -128,7 +131,6 @@ import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.SubstrateReferenceMapBuilder;
 import com.oracle.svm.core.meta.CompressedNullConstant;
 import com.oracle.svm.core.meta.SharedMethod;
-import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
@@ -155,13 +157,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
 
 public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGenerationProvider {
-
-    public static final String MARK_PROLOGUE_DECD_RSP = "PROLOGUE_DECD_RSP";
-    public static final String MARK_PROLOGUE_SAVED_REGS = "PROLOGUE_SAVED_REGS";
-    public static final String MARK_PROLOGUE_END = "PROLOGUE_END";
-    public static final String MARK_EPILOGUE_START = "EPILOGUE_START";
-    public static final String MARK_EPILOGUE_INCD_RSP = "EPILOGUE_INCD_RSP";
-    public static final String MARK_EPILOGUE_END = "EPILOGUE_END";
 
     protected static CompressEncoding getCompressEncoding() {
         return ImageSingletons.lookup(CompressEncoding.class);
@@ -247,12 +242,17 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         }
 
         if (SubstrateOptions.MultiThreaded.getValue()) {
-            /* Change the VMThread status from Java to Native. */
-            try (ScratchRegister scratch = masm.getScratchRegister()) {
-                Register tempRegister = scratch.getRegister();
-                masm.mov(tempRegister, newThreadStatus);
-                masm.str(32, tempRegister,
-                                AArch64Address.createPairUnscaledImmediateAddress(runtimeConfiguration.getThreadRegister(), runtimeConfiguration.getVMThreadStatusOffset()));
+            /*
+             * Change VMThread status from Java to Native. Note a "store release" is needed for this
+             * update to ensure VMThread status is only updated once all prior stores are also
+             * observable.
+             */
+            try (ScratchRegister scratch1 = masm.getScratchRegister(); ScratchRegister scratch2 = masm.getScratchRegister()) {
+                Register statusValueRegister = scratch1.getRegister();
+                Register statusAddressRegister = scratch2.getRegister();
+                masm.mov(statusValueRegister, newThreadStatus);
+                masm.lea(statusAddressRegister, AArch64Address.createUnscaledImmediateAddress(runtimeConfiguration.getThreadRegister(), runtimeConfiguration.getVMThreadStatusOffset()));
+                masm.stlr(32, statusValueRegister, statusAddressRegister);
             }
         }
     }
@@ -414,17 +414,6 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         }
     }
 
-    public static final class SubstrateDebugInfoBuilder extends DebugInfoBuilder {
-        public SubstrateDebugInfoBuilder(NodeValueMap nodeValueMap, DebugContext debug) {
-            super(nodeValueMap, debug);
-        }
-
-        @Override
-        protected JavaKind storageKind(JavaType type) {
-            return ((SharedType) type).getStorageKind();
-        }
-    }
-
     public final class SubstrateAArch64NodeLIRBuilder extends AArch64NodeLIRBuilder implements SubstrateNodeLIRBuilder {
 
         public SubstrateAArch64NodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen, AArch64NodeMatchRules nodeMatchRules) {
@@ -449,7 +438,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
 
         @Override
         protected DebugInfoBuilder createDebugInfoBuilder(StructuredGraph graph, NodeValueMap nodeValueMap) {
-            return new SubstrateDebugInfoBuilder(nodeValueMap, graph.getDebug());
+            return new SubstrateDebugInfoBuilder(graph, gen.getProviders().getMetaAccessExtensionProvider(), nodeValueMap);
         }
 
         @Override
@@ -549,15 +538,15 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
 
                 }
             }
-            crb.recordMark(MARK_PROLOGUE_DECD_RSP);
-            crb.recordMark(MARK_PROLOGUE_END);
+            crb.recordMark(PROLOGUE_DECD_RSP);
+            crb.recordMark(PROLOGUE_END);
         }
 
         @Override
         public void leave(CompilationResultBuilder crb) {
             int frameSize = crb.frameMap.frameSize();
 
-            crb.recordMark(MARK_EPILOGUE_START);
+            crb.recordMark(SubstrateMarkId.EPILOGUE_START);
             AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
             FrameMap frameMap = crb.frameMap;
             final int totalFrameSize = frameMap.totalFrameSize();
@@ -581,9 +570,13 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
                 }
             }
             if (frameSize != 0) {
-                crb.recordMark(MARK_EPILOGUE_INCD_RSP);
+                crb.recordMark(SubstrateMarkId.EPILOGUE_INCD_RSP);
             }
-            crb.recordMark(MARK_EPILOGUE_END);
+        }
+
+        @Override
+        public void returned(CompilationResultBuilder crb) {
+            crb.recordMark(SubstrateMarkId.EPILOGUE_END);
         }
 
         @Override
@@ -875,8 +868,8 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             }
             asm.jmp(scratchRegister);
         }
-        result.recordMark(asm.position(), SubstrateAArch64Backend.MARK_PROLOGUE_DECD_RSP);
-        result.recordMark(asm.position(), SubstrateAArch64Backend.MARK_PROLOGUE_END);
+        result.recordMark(asm.position(), PROLOGUE_DECD_RSP);
+        result.recordMark(asm.position(), PROLOGUE_END);
         byte[] instructions = asm.close(true);
         result.setTargetCode(instructions, instructions.length);
         result.setTotalFrameSize(getTarget().wordSize); // not really, but 0 not allowed

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.regex.tregex.parser.ast;
 
 import com.oracle.truffle.regex.tregex.TRegexOptions;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.CopyVisitor;
 import com.oracle.truffle.regex.tregex.parser.ast.visitors.MarkLookBehindEntriesVisitor;
 import com.oracle.truffle.regex.tregex.util.json.Json;
@@ -86,19 +87,23 @@ public abstract class RegexASTNode implements JsonConvertible {
     }
 
     /**
-     * Copy this node, in one of the following ways:
-     * <ul>
-     * <li>if {@code recursive} is {@code true}, recursively copy this subtree. This method should
-     * be used instead of {@link CopyVisitor} if the copying process is required to be thread-safe.
-     * </li>
-     * <li>else, copy this node only, without any child nodes.</li>
-     * </ul>
-     * In both cases, the ID and minPath of the copied nodes is left unset.
+     * Copy this node only, without any child nodes. The ID and minPath of the copied nodes is left
+     * unset.
+     *
+     * @param ast RegexAST the node should belong to.
+     * @return A shallow copy of this node.
+     */
+    public abstract RegexASTNode copy(RegexAST ast);
+
+    /**
+     * Recursively copy this subtree. This method should be used instead of {@link CopyVisitor} if
+     * the copying process is required to be thread-safe. The ID and minPath of the copied nodes is
+     * left unset.
      *
      * @param ast RegexAST the new nodes should belong to.
-     * @return A shallow or deep copy of this node.
+     * @return A deep copy of this node.
      */
-    public abstract RegexASTNode copy(RegexAST ast, boolean recursive);
+    public abstract RegexASTNode copyRecursive(RegexAST ast, CompilationBuffer compilationBuffer);
 
     public abstract boolean equalsSemantic(RegexASTNode obj);
 
@@ -106,12 +111,12 @@ public abstract class RegexASTNode implements JsonConvertible {
         return id >= 0;
     }
 
-    public int getId() {
+    public final int getId() {
         assert idInitialized();
         return id;
     }
 
-    public void setId(int id) {
+    public final void setId(int id) {
         assert !idInitialized();
         assert id <= TRegexOptions.TRegexParserTreeMaxSize;
         this.id = id;

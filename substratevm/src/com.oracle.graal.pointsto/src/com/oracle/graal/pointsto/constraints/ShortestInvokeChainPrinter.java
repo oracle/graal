@@ -34,6 +34,8 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 
+import jdk.vm.ci.code.BytecodePosition;
+
 public final class ShortestInvokeChainPrinter {
 
     static class Element {
@@ -95,7 +97,8 @@ public final class ShortestInvokeChainPrinter {
         Element cur = start;
         out.print("\tat " + cur.method.asStackTraceElement(0));
         while (cur.parent != null) {
-            out.print("\n\tat " + cur.parent.method.asStackTraceElement(cur.invoke.getSource().invoke().bci()));
+            BytecodePosition source = cur.invoke.getSource();
+            out.print("\n\tat " + source.getMethod().asStackTraceElement(source.getBCI()));
             cur = cur.parent;
         }
     }

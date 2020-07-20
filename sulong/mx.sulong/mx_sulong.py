@@ -107,28 +107,6 @@ basicLLVMDependencies = [
     mx_buildtools.Opt.OPT
 ]
 
-# the file paths that we want to check with clang-format
-clangFormatCheckPaths = [
-    join(_suite.dir, "include"),
-    join(_root, "com.oracle.truffle.llvm.libraries.bitcode", "src"),
-    join(_root, "com.oracle.truffle.llvm.libraries.bitcode", "include"),
-    join(_testDir, "com.oracle.truffle.llvm.tests.pipe.native", "src"),
-    join(_testDir, "com.oracle.truffle.llvm.tests.sulong.native"),
-    join(_testDir, "com.oracle.truffle.llvm.tests.sulongcpp.native"),
-    join(_testDir, "com.oracle.truffle.llvm.tests.linker.native"),
-    join(_testDir, "com.oracle.truffle.llvm.tests.debugexpr.native"),
-    join(_testDir, "interoptests"),
-    join(_testDir, "inlineassemblytests"),
-    join(_testDir, "other")
-]
-
-# the clang-format versions that can be used for formatting the test case C and C++ files
-clangFormatVersions = [
-    '3.8',
-    '3.9',
-    '4.0',
-]
-
 
 def _sulong_gate_testdist(title, test_dist, tasks, args, tags=None, testClasses=None, vmArgs=None):
     if tags is None:
@@ -169,6 +147,16 @@ def _sulong_gate_sulongsuite_unittest(title, tasks, args, tags=None, testClasses
     test_suite = 'SULONG_TEST_SUITES'
     _sulong_gate_unittest(title, test_suite, tasks, args, tags=tags, testClasses=testClasses)
 
+
+class SulongGateEnv(object):
+    """"Sets a marker environment variable."""
+    def __enter__(self):
+        os.environ['_MX_SULONG_GATE'] = "1"
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        del os.environ['_MX_SULONG_GATE']
+
+
 def _sulong_gate_runner(args, tasks):
     with Task('CheckCopyright', tasks, tags=['style']) as t:
         if t:
@@ -179,7 +167,7 @@ def _sulong_gate_runner(args, tasks):
         # needed for clang-format
         if t: build_llvm_org(args)
     with Task('ClangFormat', tasks, tags=['style', 'clangformat']) as t:
-        if t: clangformatcheck()
+        if t: clangformat([])
     _sulong_gate_testsuite('Benchmarks', 'shootout', tasks, args, tags=['benchmarks', 'sulongMisc'])
     _sulong_gate_unittest('Types', 'SULONG_TEST', tasks, args, tags=['type', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.tests.types.floating'])
     _sulong_gate_unittest('Pipe', 'SULONG_TEST', tasks, args, tags=['pipe', 'sulongMisc', 'sulongCoverage'], testClasses=['CaptureOutputTest'])
@@ -204,8 +192,9 @@ def _sulong_gate_runner(args, tasks):
     _sulong_gate_testsuite('Varargs', 'other', tasks, args, tags=['vaargs', 'sulongMisc', 'sulongCoverage'], testClasses=['com.oracle.truffle.llvm.tests.VAArgsTest'])
     with Task('TestToolchain', tasks, tags=['toolchain', 'sulongMisc', 'sulongCoverage']) as t:
         if t:
-            mx.command_function('clean')(['--project', 'toolchain-launchers-tests'] + args.extra_build_args)
-            mx.command_function('build')(['--project', 'toolchain-launchers-tests'] + args.extra_build_args)
+            with SulongGateEnv():
+                mx.command_function('clean')(['--project', 'toolchain-launchers-tests'] + args.extra_build_args)
+                mx.command_function('build')(['--project', 'toolchain-launchers-tests'] + args.extra_build_args)
 
 
 add_gate_runner(_suite, _sulong_gate_runner)
@@ -273,23 +262,48 @@ def build_llvm_org(args=None):
     mx.command_function('build')(defaultBuildArgs + ['--project', 'LLVM_TOOLCHAIN'] + args.extra_build_args)
 
 
-def clangformatcheck(args=None):
-    """ Performs a format check on the include/truffle.h file """
-    for f in clangFormatCheckPaths:
-        checkCFiles(f)
+@mx.command(_suite.name, "clangformat")
+def clangformat(args=None):
+    """ Runs clang-format on C/C++ files in native projects of the primary suite """
+    parser = ArgumentParser(prog='mx clangformat')
+    parser.add_argument('--with-projects', action='store_true', help='check native projects. Defaults to true unless a path is specified.')
+    parser.add_argument('paths', metavar='path', nargs='*', help='check given paths')
+    args = parser.parse_args(args)
+    paths = args.paths
 
-def checkCFiles(targetDir):
+    if not paths or args.with_projects:
+        paths += [p.dir for p in mx.projects(limit_to_primary=True) if p.isNativeProject() and getattr(p, "clangFormat", True)]
+
     error = False
-    for path, _, files in os.walk(targetDir):
-        for f in files:
-            if f.endswith('.c') or f.endswith('.cpp') or f.endswith('.h') or f.endswith('.hpp'):
-                if not checkCFile(path + '/' + f):
-                    error = True
+    for f in paths:
+        if not checkCFiles(f):
+            error = True
     if error:
         mx.log_error("found formatting errors!")
         exit(-1)
 
+
+def checkCFiles(target):
+    error = False
+    files_to_check = []
+    if os.path.isfile(target):
+        files_to_check.append(target)
+    else:
+        for path, _, files in os.walk(target):
+            for f in files:
+                if f.endswith('.c') or f.endswith('.cpp') or f.endswith('.h') or f.endswith('.hpp'):
+                    files_to_check.append(join(path, f))
+    if not files_to_check:
+        mx.logv("clang-format: no files found {}".format(target))
+        return True
+    mx.logv("clang-format: checking {} ({} files)".format(target, len(files_to_check)))
+    for f in files_to_check:
+        if not checkCFile(f):
+            error = True
+    return not error
+
 def checkCFile(targetFile):
+    mx.logvv("  checking file " + targetFile)
     """ Checks the formatting of a C file and returns True if the formatting is okay """
     clangFormat = findBundledLLVMProgram('clang-format')
     formatCommand = [clangFormat, targetFile]
@@ -752,7 +766,18 @@ def llvm_dis(args=None, out=None):
 
         # write output file and patch paths
         ll_path = parsed_args.output or get_ll_filename(in_file)
-        with open(ll_tmp_path, 'r') as ll_tmp_f, open(ll_path, 'w') as ll_f:
+
+        def _open_for_writing(path):
+            if path == "-":
+                return sys.stdout
+            return open(path, 'w')
+
+        def _open_for_reading(path):
+            if path == "-":
+                return sys.stdin
+            return open(path, 'r')
+
+        with _open_for_reading(ll_tmp_path) as ll_tmp_f, _open_for_writing(ll_path) as ll_f:
             ll_f.writelines((l.replace(tmp_path, in_file) for l in ll_tmp_f))
 
     finally:
@@ -1143,6 +1168,157 @@ class BootstrapToolchainLauncherBuildTask(mx.BuildTask):
         main_class = self.subject.suite.toolchain._tool_to_main(tool)
         command = [java] + jvm_args + extra_props + [main_class, '"$@"']
         return "#!/usr/bin/env bash\n" + "exec " + " ".join(command) + "\n"
+
+
+class CMakeBuildTask(mx.NativeBuildTask):
+
+    def __str__(self):
+        return 'Building {} with CMake'.format(self.subject.name)
+
+    def _build_run_args(self):
+        cmdline, cwd, env = super(CMakeBuildTask, self)._build_run_args()
+
+        def _flatten(lst):
+            for e in lst:
+                if isinstance(e, list):
+                    for sub in _flatten(e):
+                        yield sub
+                else:
+                    yield e
+
+        # flatten cmdline to support for multiple make targets
+        return list(_flatten(cmdline)), cwd, env
+
+    def build(self):
+        # get cwd and env
+        self._configure()
+        # This is copied from the super call because we want to make it
+        # less verbose but calling super does not allow us to do that.
+        # super(CMakeBuildTask, self).build()
+        cmdline, cwd, env = self._build_run_args()
+        if mx._opts.verbose:
+            mx.run(cmdline, cwd=cwd, env=env)
+        else:
+            with open(os.devnull, 'w') as fnull:
+                mx.run(cmdline, cwd=cwd, env=env, out=fnull)
+        self._newestOutput = None
+        # END super(CMakeBuildTask, self).build()
+        source_dir = self.subject.source_dirs()[0]
+        self._write_guard(self.guard_file(), source_dir, self.subject.cmake_config())
+
+    def needsBuild(self, newestInput):
+        mx.logv('Checking whether to build {} with CMake'.format(self.subject.name))
+        need_configure, reason = self._need_configure()
+        return need_configure, "rebuild needed by CMake ({})".format(reason)
+
+    def _write_guard(self, guard_file, source_dir, cmake_config):
+        with open(guard_file, 'w') as fp:
+            fp.write(self._guard_data(source_dir, cmake_config))
+
+    def _guard_data(self, source_dir, cmake_config):
+        return source_dir + '\n' + '\n'.join(cmake_config)
+
+    def _check_cmake(self):
+        try:
+            self.run_cmake(["--version"], silent=False, nonZeroIsFatal=False)
+        except OSError as e:
+            mx.abort(str(e) + "\nError executing 'cmake --version'. Are you sure 'cmake' is installed? ")
+
+    def _need_configure(self):
+        source_dir = self.subject.source_dirs()[0]
+        guard_file = self.guard_file()
+        if not os.path.exists(os.path.join(self.subject.dir, 'Makefile')):
+            return True, "No existing Makefile - reconfigure"
+        cmake_config = self.subject.cmake_config()
+        if not os.path.exists(guard_file):
+            return True, "No guard file - reconfigure"
+        with open(guard_file, 'r') as fp:
+            if fp.read() != self._guard_data(source_dir, cmake_config):
+                return True, "Guard file changed - reconfigure"
+            return False, None
+
+    def _configure(self, silent=False):
+        need_configure, _ = self._need_configure()
+        if not need_configure:
+            return
+        _, cwd, env = self._build_run_args()
+        source_dir = self.subject.source_dirs()[0]
+        cmakefile = os.path.join(self.subject.dir, 'CMakeCache.txt')
+        if os.path.exists(cmakefile):
+            # remove cache file if it exist
+            os.remove(cmakefile)
+        cmdline = ["-G", "Unix Makefiles", source_dir] + self.subject.cmake_config()
+        self._check_cmake()
+        self.run_cmake(cmdline, silent=silent, cwd=cwd, env=env)
+        return True
+
+    def run_cmake(self, cmdline, silent, *args, **kwargs):
+        if mx._opts.verbose:
+            mx.run(["cmake"] + cmdline, *args, **kwargs)
+        else:
+            with open(os.devnull, 'w') as fnull:
+                err = fnull if silent else None
+                mx.run(["cmake"] + cmdline, out=fnull, err=err, *args, **kwargs)
+
+    def guard_file(self):
+        return os.path.join(self.subject.dir, 'mx.cmake.rebuild.guard')
+
+
+class CMakeProject(mx.NativeProject):  # pylint: disable=too-many-ancestors
+    def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, **args):
+        projectDir = args.pop('dir', None)
+        if projectDir:
+            d = join(suite.dir, projectDir)
+        elif subDir is None:
+            d = join(suite.dir, name)
+        else:
+            d = join(suite.dir, subDir, name)
+        srcDir = args.pop('sourceDir', d)
+        if not srcDir:
+            mx.abort("Exactly one 'sourceDir' is required")
+        srcDir = mx_subst.path_substitutions.substitute(srcDir)
+        cmake_config = args.pop('cmakeConfig', {})
+        self.cmake_config = lambda: ['-D{}={}'.format(k, mx_subst.path_substitutions.substitute(v).replace('{{}}', '$')) for k, v in sorted(cmake_config.items())]
+
+        super(CMakeProject, self).__init__(suite, name, subDir, [srcDir], deps, workingSets, results, output, d, **args)
+        self.dir = self.getOutput()
+
+    def getBuildTask(self, args):
+        return CMakeBuildTask(args, self)
+
+
+class DocumentationBuildTask(mx.AbstractNativeBuildTask):
+    def __str__(self):
+        return 'Building {} with Documentation Build Task'.format(self.subject.name)
+
+    def build(self):
+        pass
+
+    def needsBuild(self, newestInput):
+        return False, None
+
+    def clean(self, forBuild=False):
+        pass
+
+
+class DocumentationProject(mx.NativeProject):  # pylint: disable=too-many-ancestors
+    def __init__(self, suite, name, deps, workingSets, subDir, results=None, output=None, **args):
+        projectDir = args.pop('dir', None)
+        if projectDir:
+            d = join(suite.dir, projectDir)
+        elif subDir is None:
+            d = join(suite.dir, name)
+        else:
+            d = join(suite.dir, subDir, name)
+        srcDir = args.pop('sourceDir', d)
+        if not srcDir:
+            mx.abort("Exactly one 'sourceDir' is required")
+        srcDir = mx_subst.path_substitutions.substitute(srcDir)
+        super(DocumentationProject, self).__init__(suite, name, subDir, [srcDir], deps, workingSets, results, output, d, **args)
+        self.dir = d
+
+    def getBuildTask(self, args):
+        return DocumentationBuildTask(args, self)
 
 
 _suite.toolchain = ToolchainConfig('native', 'SULONG_TOOLCHAIN_LAUNCHERS', 'SULONG_BOOTSTRAP_TOOLCHAIN',

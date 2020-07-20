@@ -15,7 +15,7 @@ function dumpHistogram() {
     print("===================");
 }
 
-agent.on('enter', function(ev) {
+insight.on('enter', function(ev) {
     var cnt = map.get(ev.name);
     if (cnt) {
         cnt = cnt + 1;
@@ -27,4 +27,4 @@ agent.on('enter', function(ev) {
     roots: true
 });
 
-agent.on('close', dumpHistogram);
+insight.on('close', dumpHistogram);

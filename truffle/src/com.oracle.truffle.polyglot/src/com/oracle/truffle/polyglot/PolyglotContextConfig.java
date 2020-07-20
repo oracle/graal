@@ -62,6 +62,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 final class PolyglotContextConfig {
     private static final String[] EMPTY_STRING_ARRAY = new String[0];
 
+    final PolyglotEngineImpl engine;
     final OutputStream out;
     final OutputStream err;
     final InputStream in;
@@ -85,18 +86,20 @@ final class PolyglotContextConfig {
     private volatile Map<String, String> configuredEnvironement;
     private volatile ZoneId timeZone;
     final PolyglotLimits limits;
+    final ClassLoader hostClassLoader;
 
     PolyglotContextConfig(PolyglotEngineImpl engine, OutputStream out, OutputStream err, InputStream in,
                     boolean hostLookupAllowed, PolyglotAccess polyglotAccess, boolean nativeAccessAllowed, boolean createThreadAllowed,
                     boolean hostClassLoadingAllowed, boolean allowExperimentalOptions,
                     Predicate<String> classFilter, Map<String, String[]> applicationArguments,
-                    EconomicSet<String> allowedPublicLanguages, Map<String, String> options, FileSystem fileSystem, FileSystem internalFileSystem, Handler logHandler,
+                    EconomicSet<String> allowedPublicLanguages, Map<String, String> options, FileSystem publicFileSystem, FileSystem internalFileSystem, Handler logHandler,
                     boolean createProcessAllowed, ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment,
-                    ZoneId timeZone, PolyglotLimits limits) {
+                    ZoneId timeZone, PolyglotLimits limits, ClassLoader hostClassLoader) {
         assert out != null;
         assert err != null;
         assert in != null;
         assert environmentAccess != null;
+        this.engine = engine;
         this.out = out;
         this.err = err;
         this.in = in;
@@ -109,7 +112,7 @@ final class PolyglotContextConfig {
         this.classFilter = classFilter;
         this.applicationArguments = applicationArguments;
         this.allowedPublicLanguages = allowedPublicLanguages;
-        this.fileSystem = fileSystem;
+        this.fileSystem = publicFileSystem;
         this.internalFileSystem = internalFileSystem;
         this.optionsByLanguage = new HashMap<>();
         this.logHandler = logHandler;
@@ -134,6 +137,7 @@ final class PolyglotContextConfig {
         this.processHandler = processHandler;
         this.environmentAccess = environmentAccess;
         this.environment = environment == null ? Collections.emptyMap() : environment;
+        this.hostClassLoader = hostClassLoader;
     }
 
     public ZoneId getTimeZone() {
@@ -147,6 +151,9 @@ final class PolyglotContextConfig {
     boolean isAccessPermitted(PolyglotLanguage from, PolyglotLanguage to) {
         if (to.isHost() || to.cache.isInternal()) {
             // everyone has access to host or internal languages
+            return true;
+        }
+        if (from == to) {
             return true;
         }
         if (from == null) {
@@ -208,7 +215,7 @@ final class PolyglotContextConfig {
                             result = Collections.unmodifiableMap(result);
                         }
                     } else {
-                        throw new IllegalStateException(String.format("Unsupported EnvironmentAccess: %s", environmentAccess));
+                        throw PolyglotEngineException.unsupported(String.format("Unsupported EnvironmentAccess: %s", environmentAccess));
                     }
                     configuredEnvironement = result;
                 }
@@ -224,8 +231,9 @@ final class PolyglotContextConfig {
                 // Test that "engine options" are not present among the options designated for
                 // this context
                 if (engine.getAllOptions().get(optionKey) != null) {
-                    throw new IllegalArgumentException("Option " + optionKey + " is an engine option. Engine level options can only be configured for contexts without a shared engine set." +
-                                    " To resolve this, configure the option when creating the Engine or create a context without a shared engine.");
+                    throw PolyglotEngineException.illegalArgument(
+                                    "Option " + optionKey + " is an engine option. Engine level options can only be configured for contexts without a shared engine set." +
+                                                    " To resolve this, configure the option when creating the Engine or create a context without a shared engine.");
                 }
             }
             throw OptionValuesImpl.failNotFound(engine.getAllOptions(), optionKey);

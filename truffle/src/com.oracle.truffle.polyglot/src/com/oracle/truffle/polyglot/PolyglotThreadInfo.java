@@ -42,18 +42,19 @@ package com.oracle.truffle.polyglot;
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
-import java.lang.ref.Reference;
-import java.lang.ref.WeakReference;
 import java.util.LinkedList;
 import java.util.concurrent.TimeUnit;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.utilities.TruffleWeakReference;
 
 final class PolyglotThreadInfo {
 
-    static final PolyglotThreadInfo NULL = new PolyglotThreadInfo(null);
+    static final PolyglotThreadInfo NULL = new PolyglotThreadInfo(null, null);
+    private static final Object NULL_CLASS_LOADER = new Object();
 
-    private final Reference<Thread> thread;
+    private final PolyglotContextImpl context;
+    private final TruffleWeakReference<Thread> thread;
 
     private int enteredCount;
     final LinkedList<Object> explicitContextStack = new LinkedList<>();
@@ -61,11 +62,14 @@ final class PolyglotThreadInfo {
     private volatile long lastEntered;
     private volatile long timeExecuted;
     private boolean deprioritized;
+    private Object originalContextClassLoader = NULL_CLASS_LOADER;
+    private ClassLoaderEntry prevContextClassLoader;
 
     private static volatile ThreadMXBean threadBean;
 
-    PolyglotThreadInfo(Thread thread) {
-        this.thread = new WeakReference<>(thread);
+    PolyglotThreadInfo(PolyglotContextImpl context, Thread thread) {
+        this.context = context;
+        this.thread = new TruffleWeakReference<>(thread);
         this.deprioritized = false;
     }
 
@@ -87,7 +91,9 @@ final class PolyglotThreadInfo {
         if (!engine.noThreadTimingNeeded.isValid() && count == 1) {
             lastEntered = getTime();
         }
-
+        if (!engine.customHostClassLoader.isValid()) {
+            setContextClassLoader();
+        }
     }
 
     @TruffleBoundary
@@ -148,6 +154,9 @@ final class PolyglotThreadInfo {
     void leave(PolyglotEngineImpl engine) {
         assert Thread.currentThread() == getThread();
         int count = --enteredCount;
+        if (!engine.customHostClassLoader.isValid()) {
+            restoreContextClassLoader();
+        }
         if (!engine.noThreadTimingNeeded.isValid() && count == 0) {
             long last = this.lastEntered;
             this.lastEntered = 0;
@@ -174,4 +183,43 @@ final class PolyglotThreadInfo {
         return super.toString() + "[thread=" + getThread() + ", enteredCount=" + enteredCount + ", cancelled=" + cancelled + "]";
     }
 
+    @TruffleBoundary
+    private void setContextClassLoader() {
+        ClassLoader hostClassLoader = context.config.hostClassLoader;
+        if (hostClassLoader != null) {
+            Thread t = getThread();
+            ClassLoader original = t.getContextClassLoader();
+            assert originalContextClassLoader != NULL_CLASS_LOADER || prevContextClassLoader == null;
+            if (originalContextClassLoader != NULL_CLASS_LOADER) {
+                prevContextClassLoader = new ClassLoaderEntry((ClassLoader) originalContextClassLoader, prevContextClassLoader);
+            }
+            originalContextClassLoader = original;
+            t.setContextClassLoader(hostClassLoader);
+        }
+    }
+
+    @TruffleBoundary
+    private void restoreContextClassLoader() {
+        if (originalContextClassLoader != NULL_CLASS_LOADER) {
+            assert context.config.hostClassLoader != null;
+            Thread t = getThread();
+            t.setContextClassLoader((ClassLoader) originalContextClassLoader);
+            if (prevContextClassLoader != null) {
+                originalContextClassLoader = prevContextClassLoader.classLoader;
+                prevContextClassLoader = prevContextClassLoader.next;
+            } else {
+                originalContextClassLoader = NULL_CLASS_LOADER;
+            }
+        }
+    }
+
+    private static final class ClassLoaderEntry {
+        final ClassLoader classLoader;
+        final ClassLoaderEntry next;
+
+        ClassLoaderEntry(ClassLoader classLoader, ClassLoaderEntry next) {
+            this.classLoader = classLoader;
+            this.next = next;
+        }
+    }
 }

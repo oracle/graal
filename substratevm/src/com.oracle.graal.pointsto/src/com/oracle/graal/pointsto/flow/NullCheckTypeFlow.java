@@ -30,7 +30,9 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
-public class NullCheckTypeFlow extends TypeFlow<ValueNode> {
+import jdk.vm.ci.code.BytecodePosition;
+
+public class NullCheckTypeFlow extends TypeFlow<BytecodePosition> {
 
     /** If true, lets anything but null pass through. If false only null passes through. */
     private final boolean blockNull;
@@ -40,7 +42,7 @@ public class NullCheckTypeFlow extends TypeFlow<ValueNode> {
          * OffsetLoadTypeFlow reflects the state of the receiver array or unsafe read object. Null
          * check type flow filters based on the values that can be written to the object.
          */
-        super(node, inputType);
+        super(node.getNodeSourcePosition(), inputType);
         this.blockNull = blockNull;
     }
 
@@ -50,7 +52,7 @@ public class NullCheckTypeFlow extends TypeFlow<ValueNode> {
     }
 
     @Override
-    public TypeFlow<ValueNode> copy(BigBang bb, MethodFlowsGraph methodFlows) {
+    public TypeFlow<BytecodePosition> copy(BigBang bb, MethodFlowsGraph methodFlows) {
         return new NullCheckTypeFlow(methodFlows, this);
     }
 

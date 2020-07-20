@@ -1,10 +1,29 @@
+local root_ci = import '../ci.jsonnet';
+
+local wasm_suite_root = root_ci.wasm_suite_root;
+
+local graal_suite_root = root_ci.graal_suite_root;
+
 {
   local jdks = (import "../../common.json").jdks,
   local labsjdk8 = jdks.oraclejdk8,
+  local labsjdk11 = jdks["labsjdk-ce-11"],
 
   jdk8: {
     downloads+: {
       JAVA_HOME: labsjdk8,
+    },
+    environment+: {
+      JDK_JVMCI_ARGS: '--jdk=jvmci',
+    },
+  },
+
+  jdk11: {
+    downloads+: {
+      JAVA_HOME: labsjdk11,
+    },
+    environment+: {
+      JDK_JVMCI_ARGS: '--jdk=',
     },
   },
 
@@ -37,7 +56,19 @@
       llvm: '==8.0.1',
       nodejs: '==8.9.4',
     },
-    capabilities+: ['linux', 'amd64'],
+    capabilities+: ['linux'],
+  },
+
+  windows: self.common + {
+    capabilities+: ['windows'],
+  },
+
+  amd64: {
+    capabilities+: ['amd64'],
+  },
+
+  aarch64: {
+    capabilities+: ['aarch64'],
   },
 
   eclipse: {
@@ -62,39 +93,33 @@
   },
 
   emsdk: {
+    docker: {
+      "image": "phx.ocir.io/oraclelabs2/c_graal/buildslave:b_ol7_2",
+      "mount_modules": true
+    },
     downloads+: {
-      EMSDK_DIR: {name: 'emsdk', version: '1.39.3', platformspecific: true},
+      EMSDK_DIR: {name: 'emsdk', version: '1.39.13', platformspecific: true},
     },
     environment+: {
-      EMCC_DIR: '$EMSDK_DIR/fastcomp/emscripten/',
-      NODE_DIR: '$EMSDK_DIR/node/12.9.1_64bit/',
-    },
+      EMCC_DIR: '$EMSDK_DIR/emscripten/master/'
+    }
   },
 
   local gate_cmd       = ['mx', '--strict-compliance', 'gate', '--strict-mode', '--tags', '${GATE_TAGS}'],
-  local gate_cmd_jvmci = ['mx', '--strict-compliance', '--dynamicimports', '/compiler', '--jdk', 'jvmci', 'gate', '--strict-mode', '--tags', '${GATE_TAGS}'],
+  local gate_cmd_jvmci = ['mx', '--strict-compliance', '--dynamicimports', graal_suite_root, '${JDK_JVMCI_ARGS}', 'gate', '--strict-mode', '--tags', '${GATE_TAGS}'],
 
   setup_common: {
     setup+: [
-      ['cd', 'wasm'],
+      ['cd', wasm_suite_root],
       ['mx', 'sversions'],
     ],
   },
 
-  setup_emsdk: {
+  setup_emsdk: self.setup_common + {
     setup+: [
       ['set-export', 'ROOT_DIR', ['pwd']],
       ['set-export', 'EM_CONFIG', '$ROOT_DIR/.emscripten-config'],
-      ['cd', '$SUITE'],
-      [
-        './generate_em_config',
-        '$EM_CONFIG',
-        '$EMSDK_DIR/myfastcomp/emscripten-fastcomp/bin/',
-        '$EMSDK_DIR/myfastcomp/old-binaryen/',
-        '$EMSDK_DIR/fastcomp/emscripten/',
-        ['which', 'node'],
-      ],
-      ['mx', 'sversions'],
+      ['./generate_em_config', '$EM_CONFIG', '$EMSDK_DIR']
     ],
   },
 
@@ -107,7 +132,7 @@
 
   gate_graalwasm_jvmci: {
     setup+: [
-      ['cd', 'wasm'],
+      ['cd', wasm_suite_root],
       ['mx', 'sversions'],
     ],
     run+: [
@@ -128,7 +153,7 @@
       BENCH_RESULTS_FILE_PATH : 'bench-results.json',
     },
     setup+: [
-      ['mx', '--dy', '/compiler', 'build', '--all'],
+      ['mx', '--dy', graal_suite_root, 'build', '--all'],
     ],
     run+: [
       [
@@ -143,8 +168,11 @@
     capabilities+: ['x52'],
   },
 
-  jdk8_gate_linux_eclipse_jdt : self.jdk8 + self.gate + self.linux + self.eclipse + self.jdt,
-  jdk8_gate_linux_wabt        : self.jdk8 + self.gate + self.linux + self.wabt,
-  jdk8_gate_linux_wabt_emsdk  : self.jdk8 + self.gate + self.linux + self.wabt + self.emsdk,
-  jdk8_bench_linux_wabt_emsdk : self.jdk8 + self.bench + self.linux + self.wabt + self.emsdk,
+  jdk8_gate_linux_eclipse_jdt   : self.jdk8 + self.gate + self.linux + self.eclipse + self.jdt,
+  jdk8_gate_linux_wabt          : self.jdk8 + self.gate + self.linux + self.wabt,
+  jdk8_gate_linux_wabt_emsdk    : self.jdk8 + self.gate + self.linux + self.wabt + self.emsdk,
+  jdk8_bench_linux_wabt_emsdk   : self.jdk8 + self.bench + self.linux + self.wabt + self.emsdk,
+  jdk8_gate_windows_wabt        : self.jdk8 + self.gate + self.windows + self.wabt,
+
+  jdk11_gate_linux_wabt         : self.jdk11 + self.gate + self.linux + self.wabt,
 }

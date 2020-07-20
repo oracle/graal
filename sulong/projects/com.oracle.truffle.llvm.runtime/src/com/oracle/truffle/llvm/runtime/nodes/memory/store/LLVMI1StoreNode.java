@@ -46,7 +46,7 @@ public abstract class LLVMI1StoreNode extends LLVMStoreNodeCommon {
     @Specialization(guards = "!isAutoDerefHandle(language, addr)")
     protected void doOp(LLVMNativePointer addr, boolean value,
                     @CachedLanguage LLVMLanguage language) {
-        language.getLLVMMemory().putI1(addr, value);
+        language.getLLVMMemory().putI1(this, addr, value);
     }
 
     @Specialization(guards = "isAutoDerefHandle(language, addr)")

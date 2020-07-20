@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,12 +30,10 @@ import java.util.Objects;
 /**
  * Save options.
  */
-public class SaveOptions {
-
-    final JSONObject jsonData;
+public class SaveOptions extends JSONBase {
 
     SaveOptions(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -73,7 +71,7 @@ public class SaveOptions {
     public int hashCode() {
         int hash = 5;
         if (this.getIncludeText() != null) {
-            hash = 73 * hash + Boolean.hashCode(this.getIncludeText());
+            hash = 37 * hash + Boolean.hashCode(this.getIncludeText());
         }
         return hash;
     }

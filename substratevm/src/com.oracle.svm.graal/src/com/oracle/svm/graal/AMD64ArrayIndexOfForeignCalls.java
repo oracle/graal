@@ -25,10 +25,9 @@
 package com.oracle.svm.graal;
 
 import java.util.Arrays;
-import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.amd64.AMD64ArrayIndexOf;
 import org.graalvm.compiler.replacements.amd64.AMD64ArrayIndexOfNode;
@@ -41,7 +40,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
-import com.oracle.svm.core.graal.meta.SubstrateForeignCallLinkage;
+import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
@@ -66,18 +65,14 @@ class AMD64ArrayIndexOfForeignCallsFeature implements GraalFeature {
     }
 
     @Override
-    public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection,
-                    Map<SubstrateForeignCallDescriptor, SubstrateForeignCallLinkage> foreignCalls, boolean hosted) {
-
-        for (SubstrateForeignCallDescriptor descriptor : AMD64ArrayIndexOfForeignCalls.FOREIGN_CALLS) {
-            foreignCalls.put(descriptor, new SubstrateForeignCallLinkage(providers, descriptor));
-        }
+    public void registerForeignCalls(RuntimeConfiguration runtimeConfig, Providers providers, SnippetReflectionProvider snippetReflection, SubstrateForeignCallsProvider foreignCalls, boolean hosted) {
+        foreignCalls.register(providers, AMD64ArrayIndexOfForeignCalls.FOREIGN_CALLS);
     }
 }
 
 @Platforms(AMD64.class)
 class AMD64ArrayIndexOfForeignCalls {
-    private static final ForeignCallDescriptor[] ORIGINAL_FOREIGN_CALLS = {
+    private static final ForeignCallSignature[] ORIGINAL_FOREIGN_CALLS = {
                     AMD64ArrayIndexOf.STUB_INDEX_OF_TWO_CONSECUTIVE_BYTES,
                     AMD64ArrayIndexOf.STUB_INDEX_OF_TWO_CONSECUTIVE_CHARS,
                     AMD64ArrayIndexOf.STUB_INDEX_OF_TWO_CONSECUTIVE_CHARS_COMPACT,

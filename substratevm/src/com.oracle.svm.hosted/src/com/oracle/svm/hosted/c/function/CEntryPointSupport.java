@@ -28,6 +28,7 @@ import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
+import org.graalvm.compiler.nodes.extended.StateSplitProxyNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
@@ -127,6 +128,9 @@ public class CEntryPointSupport implements GraalFeature {
         r.register0("leave", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                StateSplitProxyNode proxy = new StateSplitProxyNode(null);
+                b.add(proxy);
+                b.setStateAfter(proxy);
                 b.addPush(JavaKind.Int, new CEntryPointLeaveNode(LeaveAction.Leave));
                 return true;
             }
@@ -134,6 +138,9 @@ public class CEntryPointSupport implements GraalFeature {
         r.register0("leaveDetachThread", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                StateSplitProxyNode proxy = new StateSplitProxyNode(null);
+                b.add(proxy);
+                b.setStateAfter(proxy);
                 b.addPush(JavaKind.Int, new CEntryPointLeaveNode(LeaveAction.DetachThread));
                 return true;
             }
@@ -141,6 +148,9 @@ public class CEntryPointSupport implements GraalFeature {
         r.register0("leaveTearDownIsolate", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                StateSplitProxyNode proxy = new StateSplitProxyNode(null);
+                b.add(proxy);
+                b.setStateAfter(proxy);
                 b.addPush(JavaKind.Int, new CEntryPointLeaveNode(LeaveAction.TearDownIsolate));
                 return true;
             }

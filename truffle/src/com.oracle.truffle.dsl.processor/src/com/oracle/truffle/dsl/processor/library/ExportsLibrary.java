@@ -164,6 +164,11 @@ public final class ExportsLibrary extends Template {
             }
             receiverTypeElement = getSuperType(receiverTypeElement);
         }
+        if (ElementUtils.typeEquals(receiverType, types.DynamicObject)) {
+            // GR-24700: DynamicObject may be dispatched via DynamicObjectImpl
+            // which we cannot use as @ExportLibrary receiverType.
+            return true;
+        }
         return false;
     }
 

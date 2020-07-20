@@ -41,8 +41,19 @@ final class Target_java_lang_invoke_MethodType {
      */
     @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClassName = "java.lang.invoke.MethodType$ConcurrentWeakInternSet") //
     private static Target_java_lang_invoke_MethodType_ConcurrentWeakInternSet internTable;
+
+    /**
+     * This field is lazily initialized. We need a stable value, otherwise the initialization can
+     * happen just during image heap writing.
+     */
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
+    private Target_java_lang_invoke_Invokers invokers;
 }
 
 @TargetClass(value = java.lang.invoke.MethodType.class, innerClass = "ConcurrentWeakInternSet")
 final class Target_java_lang_invoke_MethodType_ConcurrentWeakInternSet {
+}
+
+@TargetClass(className = "java.lang.invoke.Invokers")
+final class Target_java_lang_invoke_Invokers {
 }

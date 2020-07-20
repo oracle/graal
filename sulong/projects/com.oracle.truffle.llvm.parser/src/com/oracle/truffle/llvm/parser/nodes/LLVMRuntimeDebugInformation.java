@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,296 +30,369 @@
 package com.oracle.truffle.llvm.parser.nodes;
 
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Objects;
 
-import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.llvm.parser.metadata.DwarfOpcode;
-import com.oracle.truffle.llvm.parser.metadata.MDExpression;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceVariable;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.ValueFragment;
-import com.oracle.truffle.llvm.parser.model.SymbolImpl;
-import com.oracle.truffle.llvm.parser.model.functions.FunctionDefinition;
-import com.oracle.truffle.llvm.parser.model.functions.FunctionParameter;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.NullConstant;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.UndefinedConstant;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.floatingpoint.DoubleConstant;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.floatingpoint.FloatConstant;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.floatingpoint.X86FP80Constant;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.BigIntegerConstant;
-import com.oracle.truffle.llvm.parser.model.symbols.constants.integer.IntegerConstant;
-import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalValueSymbol;
-import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.AllocateInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgDeclareInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.DbgValueInstruction;
-import com.oracle.truffle.llvm.parser.model.symbols.instructions.ValueInstruction;
-import com.oracle.truffle.llvm.parser.model.visitors.ValueInstructionVisitor;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceSymbol;
-import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugObjectBuilder;
-import com.oracle.truffle.llvm.runtime.debug.value.LLVMFrameValueAccess;
-import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
+import com.oracle.truffle.llvm.runtime.debug.value.LLVMDebugValue;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
-import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
-import com.oracle.truffle.llvm.runtime.types.FunctionType;
-import com.oracle.truffle.llvm.runtime.types.MetaType;
-import com.oracle.truffle.llvm.runtime.types.PointerType;
-import com.oracle.truffle.llvm.runtime.types.PrimitiveType;
-import com.oracle.truffle.llvm.runtime.types.symbols.SSAValue;
+import com.oracle.truffle.llvm.runtime.nodes.base.LLVMBasicBlockNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMDebugAggregateObjectBuilder;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.debug.LLVMDebugSimpleObjectBuilder;
+import com.oracle.truffle.llvm.runtime.types.symbols.LocalVariableDebugInfo;
 
-public final class LLVMRuntimeDebugInformation {
+/**
+ * This class contains the information needed to produce a debugging scope for local variables. It
+ * encodes the llvm debug intrinsics and does propagation and abstract interpretation of those
+ * intrinsics when debug information is requested.
+ *
+ * The code in this class does not need to be efficient, as it is only used when debugging
+ * functions.
+ */
+public final class LLVMRuntimeDebugInformation implements LocalVariableDebugInfo {
 
-    private final FrameDescriptor frame;
-    private final LLVMContext context;
-    private final HashSet<Integer> notNullableSlots;
-    private final LLVMSymbolReadResolver symbols;
-    private final boolean isEnabled;
-    private final StaticValueAccessVisitor staticValueAccessVisitor;
+    /**
+     * One piece of debugging information: either a simple value, an initialization of an aggregate
+     * value, or clearing/setting parts of an aggregate value.
+     */
+    abstract static class LocalVarDebugInfo {
 
-    public LLVMRuntimeDebugInformation(FrameDescriptor frame, LLVMContext context, HashSet<Integer> notNullableSlots, LLVMSymbolReadResolver symbols) {
-        this.frame = frame;
-        this.context = context;
-        this.notNullableSlots = notNullableSlots;
-        this.symbols = symbols;
-        this.isEnabled = context.getEnv().getOptions().get(SulongEngineOption.ENABLE_LVI);
-        this.staticValueAccessVisitor = new StaticValueAccessVisitor();
+        /**
+         * This is an index into the block node's array of statements (not a bitcode index).
+         */
+        public final int instructionIndex;
+        public final LLVMSourceSymbol variable;
+
+        LocalVarDebugInfo(int instructionIndex, LLVMSourceSymbol variable) {
+            this.instructionIndex = instructionIndex;
+            this.variable = variable;
+        }
+
+        /**
+         * Applies the debug info in this object on the object's state, taking information from the
+         * frame as necessary.
+         */
+        public abstract LLVMDebugObjectBuilder process(LLVMDebugObjectBuilder previous, Frame frame);
+
+        /**
+         * Returns true if this entry in the debug info will completely reset the state of the local
+         * variable (as opposed to only changing parts of it).
+         */
+        public abstract boolean isInitialize();
     }
 
-    private final class StaticValueAccessVisitor extends ValueInstructionVisitor {
+    static class SimpleLocalVariable extends LocalVarDebugInfo {
 
-        private SourceVariable variable = null;
-        private LLVMSourceSymbol symbol = null;
-        private boolean isDeclaration = false;
+        private final boolean mustDereference;
+        private final Object value;
+        private final int valueFrameIdentifier;
 
-        void registerStaticAccess(SourceVariable descriptor, SymbolImpl value, boolean mustDereference) {
-            this.variable = descriptor;
-            this.symbol = variable.getSymbol();
-            this.isDeclaration = mustDereference;
-
-            if (value != null) {
-                value.accept(this);
-            }
-
-            this.variable = null;
-            this.symbol = null;
-            this.isDeclaration = false;
+        SimpleLocalVariable(int instructionIndex, boolean mustDereference, Object value, int valueFrameIdentifier, LLVMSourceSymbol variable) {
+            super(instructionIndex, variable);
+            this.mustDereference = mustDereference;
+            this.value = value;
+            this.valueFrameIdentifier = valueFrameIdentifier;
         }
 
-        private void visitFrameValue(SSAValue value) {
-            final LLVMFrameValueAccess valueAccess = CommonNodeFactory.createDebugFrameValue(value.getFrameIdentifier(), isDeclaration);
-            context.getSourceContext().registerFrameValue(symbol, valueAccess);
-            notNullableSlots.add(value.getFrameIdentifier());
-            variable.addStaticValue();
-        }
-
-        private void visitSimpleConstant(SymbolImpl constant) {
-            final LLVMExpressionNode node = symbols.resolve(constant);
-            assert node != null;
-            final LLVMDebugObjectBuilder value = CommonNodeFactory.createDebugStaticValue(context, node, false);
-            context.getSourceContext().registerStatic(symbol, value);
-            variable.addStaticValue();
-        }
-
-        @Override
-        public void visitValueInstruction(ValueInstruction inst) {
-            visitFrameValue(inst);
-        }
-
-        @Override
-        public void visit(FunctionParameter param) {
-            visitFrameValue(param);
-        }
-
-        @Override
-        public void visit(IntegerConstant constant) {
-            visitSimpleConstant(constant);
-        }
-
-        @Override
-        public void visit(BigIntegerConstant constant) {
-            visitSimpleConstant(constant);
-        }
-
-        @Override
-        public void visit(DoubleConstant constant) {
-            visitSimpleConstant(constant);
-        }
-
-        @Override
-        public void visit(FloatConstant constant) {
-            visitSimpleConstant(constant);
-        }
-
-        @Override
-        public void visit(X86FP80Constant constant) {
-            visitSimpleConstant(constant);
-        }
-
-        @Override
-        public void visit(GlobalVariable global) {
-            if (global.isReadOnly()) {
-                visitSimpleConstant(global);
-            } else {
-                super.visit(global);
-            }
-        }
-
-        @Override
-        public void visit(NullConstant constant) {
-            if (constant.getType() instanceof PrimitiveType || constant.getType() instanceof PointerType || constant.getType() instanceof FunctionType) {
-                visitSimpleConstant(constant);
-            }
-        }
-    }
-
-    public boolean isEnabled() {
-        return isEnabled;
-    }
-
-    private static boolean mustDereferenceValue(MDExpression expr, LLVMSourceType type, SymbolImpl value) {
-        // sometimes at O1+ llvm drops a dbg.declare to a dbg.value without adding a Dwarf.DEREF to
-        // it
-        return DwarfOpcode.isDeref(expr) || (type != null && !type.isPointer() && value instanceof AllocateInstruction);
-    }
-
-    public void registerStaticDebugSymbols(FunctionDefinition fn) {
-        if (!isEnabled) {
-            return;
-        }
-
-        for (SourceVariable local : fn.getSourceFunction().getVariables()) {
-            if (local.isSingleDeclaration()) {
-                final DbgDeclareInstruction dbg = local.getSingleDeclaration();
-                int identifier;
-                if (dbg.getValue() instanceof AllocateInstruction) {
-                    identifier = ((SSAValue) dbg.getValue()).getFrameIdentifier();
+        protected Object getValue(Frame frame) {
+            if (valueFrameIdentifier != -1) {
+                FrameSlot slot = frame.getFrameDescriptor().findFrameSlot(valueFrameIdentifier);
+                if (slot != null) {
+                    return frame.getValue(slot);
+                }
+            } else if (value != null) {
+                if (value instanceof LLVMExpressionNode) {
+                    try {
+                        return ((LLVMExpressionNode) value).executeGeneric((VirtualFrame) frame);
+                    } catch (IllegalStateException e) {
+                        // fallthrough
+                    }
                 } else {
-                    continue;
+                    return value;
                 }
-
-                final LLVMSourceSymbol symbol = local.getSymbol();
-                final LLVMFrameValueAccess alloc = CommonNodeFactory.createDebugFrameValue(identifier, true);
-                notNullableSlots.add(identifier);
-                context.getSourceContext().registerFrameValue(symbol, alloc);
-                local.addStaticValue();
-
-            } else if (local.isSingleValue()) {
-                final DbgValueInstruction dbg = local.getSingleValue();
-                final MDExpression expr = dbg.getExpression();
-                final SymbolImpl value = dbg.getValue();
-                if (expr.getElementCount() != 0) {
-                    continue;
-                }
-                final boolean mustDereference = mustDereferenceValue(expr, local.getSourceType(), value);
-
-                staticValueAccessVisitor.registerStaticAccess(local, value, mustDereference);
             }
-        }
-    }
-
-    public LLVMStatementNode createInitializer(SourceVariable variable) {
-        if (!isEnabled) {
             return null;
         }
 
-        final FrameSlot targetSlot = frame.findOrAddFrameSlot(variable.getSymbol(), MetaType.DEBUG, FrameSlotKind.Object);
+        protected LLVMDebugValue.Builder createBuilder() {
+            return mustDereference ? CommonNodeFactory.createDebugDeclarationBuilder() : CommonNodeFactory.createDebugValueBuilder();
+        }
 
-        int[] offsets = null;
-        int[] lengths = null;
+        @Override
+        public LLVMDebugObjectBuilder process(LLVMDebugObjectBuilder previous, Frame frame) {
+            return new LLVMDebugSimpleObjectBuilder(createBuilder(), getValue(frame));
+        }
 
-        if (variable.hasFragments()) {
-            final List<ValueFragment> fragments = variable.getFragments();
+        @Override
+        public boolean isInitialize() {
+            return true;
+        }
+    }
+
+    static final class InitAggreateLocalVariable extends LocalVarDebugInfo {
+
+        private final int[] offsets;
+        private final int[] lengths;
+
+        InitAggreateLocalVariable(int instructionIndex, SourceVariable variable) {
+            super(instructionIndex, variable.getSymbol());
+            assert variable.hasFragments();
+            List<ValueFragment> fragments = variable.getFragments();
             offsets = new int[fragments.size()];
             lengths = new int[fragments.size()];
 
             for (int i = 0; i < fragments.size(); i++) {
-                final ValueFragment fragment = fragments.get(i);
+                ValueFragment fragment = fragments.get(i);
                 offsets[i] = fragment.getOffset();
                 lengths[i] = fragment.getLength();
             }
         }
 
-        return CommonNodeFactory.createDebugValueInit(targetSlot, offsets, lengths);
+        @Override
+        public LLVMDebugObjectBuilder process(LLVMDebugObjectBuilder previous, Frame frame) {
+            return new LLVMDebugAggregateObjectBuilder(offsets, lengths);
+        }
+
+        @Override
+        public boolean isInitialize() {
+            return true;
+        }
     }
 
-    private static final int[] CLEAR_NONE = new int[0];
+    static final class ClearLocalVariableParts extends LocalVarDebugInfo {
+        private final int[] parts;
 
-    LLVMStatementNode handleDebugIntrinsic(SymbolImpl value, SourceVariable variable, MDExpression expression, long index, boolean isDeclaration) {
-        if (!isEnabled || variable.hasStaticAllocation()) {
-            return null;
+        ClearLocalVariableParts(int instructionIndex, LLVMSourceSymbol variable, int[] parts) {
+            super(instructionIndex, variable);
+            this.parts = parts;
         }
 
-        LLVMExpressionNode valueRead = null;
-        if (isDeclaration) {
-            if (value instanceof UndefinedConstant) {
-                if (variable.hasValue()) {
-                    // this declaration only tells us that the variable is not in memory, we already
-                    // know this from the presence of the value
-                    return null;
+        @Override
+        public LLVMDebugObjectBuilder process(LLVMDebugObjectBuilder previous, Frame frame) {
+            ((LLVMDebugAggregateObjectBuilder) previous).clear(parts);
+            return previous;
+        }
+
+        @Override
+        public boolean isInitialize() {
+            return false;
+        }
+    }
+
+    static final class SetLocalVariablePart extends SimpleLocalVariable {
+
+        private final int partIndex;
+
+        SetLocalVariablePart(int instructionIndex, boolean mustDereference, Object value, int valueFrameIdentifier, LLVMSourceSymbol variable, int partIndex) {
+            super(instructionIndex, mustDereference, value, valueFrameIdentifier, variable);
+            this.partIndex = partIndex;
+        }
+
+        @Override
+        public LLVMDebugObjectBuilder process(LLVMDebugObjectBuilder previous, Frame frame) {
+            ((LLVMDebugAggregateObjectBuilder) previous).setPart(partIndex, createBuilder(), getValue(frame));
+            return previous;
+        }
+
+        @Override
+        public boolean isInitialize() {
+            return false;
+        }
+    }
+
+    /**
+     * A list of all debug intrinsics describing local variables, as an array (sorted by statement
+     * index) for each block.
+     */
+    private final LocalVarDebugInfo[][] infos;
+
+    /**
+     * The list of predecessors for each block (initialized lazily).
+     */
+    private ArrayList<Integer>[] predecessors;
+
+    private LLVMBasicBlockNode[] blocks;
+
+    /**
+     * The debug information available at the entry of each block (initialized lazily). This is
+     * generated by propagating the debug information using a fixed-point iteration.
+     *
+     * For every block, there is a map from {@link LLVMSourceSymbol} to a list of debug info
+     * entries. The first one in the list always needs to have
+     * {@link LocalVarDebugInfo#isInitialize()} == {@code true}, for all following list elements it
+     * needs to be {@code false}. (i.e., the list only has multiple entries for local variables with
+     * {@link SourceVariable#hasFragments() fragments}.
+     */
+    private ArrayList<HashMap<LLVMSourceSymbol, List<LocalVarDebugInfo>>> blockEntryDebugInfo;
+
+    public LLVMRuntimeDebugInformation(int blockCount) {
+        this.infos = new LocalVarDebugInfo[blockCount][];
+    }
+
+    public void setBlockDebugInfo(int blockIndex, LocalVarDebugInfo[] debugInfo) {
+        assert infos[blockIndex] == null;
+        infos[blockIndex] = debugInfo;
+    }
+
+    public void setBlocks(LLVMBasicBlockNode[] blocks) {
+        this.blocks = blocks;
+    }
+
+    @Override
+    public Map<LLVMSourceSymbol, Object> getLocalVariables(Frame frame, Node node) {
+        Node current = node;
+        while (current != null) {
+            if (current.getParent() instanceof LLVMBasicBlockNode) {
+                LLVMBasicBlockNode block = (LLVMBasicBlockNode) current.getParent();
+                for (int i = 0; i < block.getStatements().length; i++) {
+                    if (block.getStatements()[i] == current) {
+                        return getLocalVariablesForIndex(frame, block.getBlockId(), i);
+                    }
                 }
-                valueRead = symbols.resolve(new NullConstant(MetaType.DEBUG));
-
-            } else if (value instanceof NullConstant) {
-                valueRead = symbols.resolve(new NullConstant(MetaType.DEBUG));
-
-            } else if (value instanceof GlobalValueSymbol || value.getType() instanceof PointerType) {
-                valueRead = symbols.resolve(value);
+                assert current == block.getTerminatingInstruction();
+                return getLocalVariablesForIndex(frame, block.getBlockId(), Integer.MAX_VALUE);
             }
+            current = current.getParent();
+        }
+        /*
+         * If `node` is not a child of a basic block, we are stopped before entering the dispatch
+         * loop. Treat this as if we're stopped at the first statement of the first block.
+         */
+        return getLocalVariablesForIndex(frame, 0, 0);
+    }
 
-        } else {
-            valueRead = symbols.resolve(value);
-
-            if (index != 0) {
-                // this is unsupported, it doesn't appear in LLVM 3.8+
-                return null;
+    /**
+     * Take the given entry state and apply all additional debug information in the block up until
+     * {@code end} (which is an index into the statement node array). If all information in the
+     * block should be applied, {@code end} can be {@link Integer#MAX_VALUE}.
+     */
+    private HashMap<LLVMSourceSymbol, List<LocalVarDebugInfo>> applyBlockInfo(HashMap<LLVMSourceSymbol, List<LocalVarDebugInfo>> blockEntryState, int blockId, int end) {
+        HashMap<LLVMSourceSymbol, List<LocalVarDebugInfo>> result = new HashMap<>();
+        for (Map.Entry<LLVMSourceSymbol, List<LocalVarDebugInfo>> entry : blockEntryState.entrySet()) {
+            result.put(entry.getKey(), new ArrayList<>(entry.getValue()));
+        }
+        for (LocalVarDebugInfo info : infos[blockId]) {
+            if (info.instructionIndex > end) {
+                break;
             }
-        }
-
-        if (valueRead == null) {
-            return null;
-        }
-
-        int partIndex = -1;
-        int[] clearParts = null;
-
-        if (ValueFragment.describesFragment(expression)) {
-            final ValueFragment fragment = ValueFragment.parse(expression);
-            final List<ValueFragment> siblings = variable.getFragments();
-            final List<Integer> clearSiblings = new ArrayList<>(siblings.size());
-            partIndex = ValueFragment.getPartIndex(fragment, siblings, clearSiblings);
-            if (clearSiblings.isEmpty()) {
-                // this will be the case most of the time
-                clearParts = CLEAR_NONE;
+            List<LocalVarDebugInfo> list;
+            if (info.isInitialize()) {
+                result.put(info.variable, list = new ArrayList<>());
             } else {
-                clearParts = clearSiblings.stream().mapToInt(Integer::intValue).toArray();
+                list = result.get(info.variable);
+                if (list == null) {
+                    result.put(info.variable, list = new ArrayList<>());
+                }
+            }
+            list.add(info);
+        }
+        return result;
+    }
+
+    private Map<LLVMSourceSymbol, Object> getLocalVariablesForIndex(Frame frame, int blockId, int index) {
+        initializePredecessors();
+        initializeDebugInfo();
+        HashMap<LLVMSourceSymbol, List<LocalVarDebugInfo>> info = applyBlockInfo(blockEntryDebugInfo.get(blockId), blockId, index);
+
+        HashMap<LLVMSourceSymbol, Object> values = new HashMap<>();
+        for (Map.Entry<LLVMSourceSymbol, List<LocalVarDebugInfo>> entry : info.entrySet()) {
+            // process all debug info entries for this variable
+            LLVMDebugObjectBuilder builder = null;
+            for (LocalVarDebugInfo di : entry.getValue()) {
+                builder = di.process(builder, frame);
+            }
+            values.put(entry.getKey(), builder.getValue(entry.getKey()));
+        }
+        return values;
+    }
+
+    private void initializePredecessors() {
+        if (predecessors == null) {
+            @SuppressWarnings("unchecked")
+            ArrayList<Integer>[] result = new ArrayList[infos.length];
+            for (int i = 0; i < infos.length; i++) {
+                result[i] = new ArrayList<>(2);
+            }
+            for (LLVMBasicBlockNode b : blocks) {
+                for (int successor : b.getTerminatingInstruction().getSuccessors()) {
+                    if (successor >= 0) {
+                        result[successor].add(b.getBlockId());
+                    }
+                }
+            }
+            predecessors = result;
+        }
+    }
+
+    /**
+     * Iteratively propagate the debug info: this consists of two fixed-point iterations, one that
+     * optimistically propagates the debug info into loops, and a second one that conservatively
+     * merges the state from the predecessors.
+     */
+    private void initializeDebugInfo() {
+        if (blockEntryDebugInfo == null) {
+            ArrayList<HashMap<LLVMSourceSymbol, List<LocalVarDebugInfo>>> result = new ArrayList<>();
+            for (int i = 0; i < infos.length; i++) {
+                result.add(new HashMap<>());
+            }
+            boolean changed;
+            // step 1: optimistically propagate values from predecessors
+            do {
+                changed = false;
+                for (int i = 0; i < infos.length; i++) {
+                    changed = changed | merge(i, result, predecessors[i], true);
+                }
+            } while (changed);
+            // step 2: only propagate common values from predecessors
+            do {
+                changed = false;
+                for (int i = 0; i < infos.length; i++) {
+                    changed = changed | merge(i, result, predecessors[i], false);
+                }
+            } while (changed);
+            blockEntryDebugInfo = result;
+        }
+    }
+
+    private boolean merge(int blockId, List<HashMap<LLVMSourceSymbol, List<LocalVarDebugInfo>>> entryDebugInfo, ArrayList<Integer> preds, boolean propagate) {
+        if (preds.isEmpty()) {
+            return false;
+        }
+        // get the first predecessor state
+        HashMap<LLVMSourceSymbol, List<LocalVarDebugInfo>> result = applyBlockInfo(entryDebugInfo.get(preds.get(0)), preds.get(0), Integer.MAX_VALUE);
+        for (int i = 1; i < preds.size(); i++) {
+            // merge with all other predecessor states
+            HashMap<LLVMSourceSymbol, List<LocalVarDebugInfo>> variables = applyBlockInfo(entryDebugInfo.get(preds.get(i)), preds.get(i), Integer.MAX_VALUE);
+            Iterator<Entry<LLVMSourceSymbol, List<LocalVarDebugInfo>>> iterator = variables.entrySet().iterator();
+            while (iterator.hasNext()) {
+                Map.Entry<LLVMSourceSymbol, List<LocalVarDebugInfo>> existing = iterator.next();
+                if (propagate) {
+                    // propagate optimistically
+                    if (!result.containsKey(existing.getKey())) {
+                        result.put(existing.getKey(), existing.getValue());
+                    }
+                } else {
+                    // merge only matching states
+                    if (!Objects.equals(variables.get(existing.getKey()), existing.getValue())) {
+                        iterator.remove();
+                    }
+                }
             }
         }
-
-        if (partIndex < 0 && variable.hasFragments()) {
-            partIndex = variable.getFragmentIndex(0, (int) variable.getSymbol().getType().getSize());
-            if (partIndex < 0) {
-                throw new LLVMParserException("Cannot find index of value fragment!");
-            }
-
-            clearParts = new int[variable.getFragments().size() - 1];
-            for (int i = 0; i < partIndex; i++) {
-                clearParts[i] = i;
-            }
-            for (int i = partIndex; i < clearParts.length; i++) {
-                clearParts[i] = i + 1;
-            }
-        }
-
-        final boolean mustDereference = isDeclaration || mustDereferenceValue(expression, variable.getSourceType(), value);
-
-        final FrameSlot targetSlot = frame.findOrAddFrameSlot(variable.getSymbol(), MetaType.DEBUG, FrameSlotKind.Object);
-        final LLVMExpressionNode containerRead = CommonNodeFactory.createFrameRead(MetaType.DEBUG, targetSlot);
-        return CommonNodeFactory.createDebugValueUpdate(mustDereference, valueRead, targetSlot, containerRead, partIndex, clearParts);
+        HashMap<LLVMSourceSymbol, List<LocalVarDebugInfo>> old = entryDebugInfo.get(blockId);
+        entryDebugInfo.set(blockId, result);
+        return !old.equals(result);
     }
 }

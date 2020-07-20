@@ -91,6 +91,7 @@ import com.oracle.truffle.llvm.runtime.types.visitors.TypeVisitor;
 
 public final class LLVMSymbolReadResolver {
 
+    private final boolean storeSSAValueInSlot;
     private final LLVMParserRuntime runtime;
     private final NodeFactory nodeFactory;
     private final FrameDescriptor frame;
@@ -396,19 +397,19 @@ public final class LLVMSymbolReadResolver {
 
         @Override
         public void visit(FunctionDeclaration toResolve) {
-            LLVMFunction value = runtime.lookupFunction(toResolve.getName(), toResolve.isOverridable());
+            LLVMFunction value = runtime.lookupFunction(toResolve.getName());
             resolvedNode = nodeFactory.createLiteral(value, toResolve.getType());
         }
 
         @Override
         public void visit(FunctionDefinition toResolve) {
-            LLVMFunction value = runtime.lookupFunction(toResolve.getName(), toResolve.isOverridable());
+            LLVMFunction value = runtime.lookupFunction(toResolve.getName());
             resolvedNode = nodeFactory.createLiteral(value, toResolve.getType());
         }
 
         @Override
         public void visit(GlobalAlias alias) {
-            LLVMSymbol symbol = runtime.lookupSymbol(alias.getName(), alias.isOverridable());
+            LLVMSymbol symbol = runtime.lookupSymbol(alias.getName());
             if (symbol.isFunction()) {
                 LLVMFunction value = symbol.asFunction();
                 resolvedNode = nodeFactory.createLiteral(value, alias.getType());
@@ -422,7 +423,7 @@ public final class LLVMSymbolReadResolver {
 
         @Override
         public void visit(GlobalVariable global) {
-            LLVMGlobal value = runtime.lookupGlobal(global.getName(), global.isOverridable());
+            LLVMGlobal value = runtime.lookupGlobal(global.getName());
             resolvedNode = nodeFactory.createLiteral(value, new PointerType(global.getType()));
         }
 
@@ -445,20 +446,22 @@ public final class LLVMSymbolReadResolver {
         }
     }
 
-    public LLVMSymbolReadResolver(LLVMParserRuntime runtime, FrameDescriptor frame, GetStackSpaceFactory getStackSpaceFactory, DataLayout dataLayout) {
+    public LLVMSymbolReadResolver(LLVMParserRuntime runtime, FrameDescriptor frame, GetStackSpaceFactory getStackSpaceFactory, DataLayout dataLayout, boolean storeSSAValueInSlot) {
         this.runtime = runtime;
+        this.storeSSAValueInSlot = storeSSAValueInSlot;
         this.nodeFactory = runtime.getNodeFactory();
         this.frame = frame;
         this.getStackSpaceFactory = getStackSpaceFactory;
         this.dataLayout = dataLayout;
     }
 
-    public static FrameSlot findOrAddFrameSlot(FrameDescriptor descriptor, SSAValue value) {
+    public FrameSlot findOrAddFrameSlot(FrameDescriptor descriptor, SSAValue value) {
         FrameSlot slot = descriptor.findFrameSlot(value.getFrameIdentifier());
+        Object info = storeSSAValueInSlot ? value : null;
         if (slot == null) {
-            slot = descriptor.findOrAddFrameSlot(value.getFrameIdentifier(), value, Type.getFrameSlotKind(value.getType()));
+            slot = descriptor.findOrAddFrameSlot(value.getFrameIdentifier(), info, Type.getFrameSlotKind(value.getType()));
         }
-        assert slot.getInfo() == value;
+        assert slot.getInfo() == info;
         return slot;
     }
 

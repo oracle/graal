@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,12 +30,10 @@ import java.util.Objects;
 /**
  * Represents information about programming constructs like variables, classes, interfaces etc.
  */
-public class SymbolInformation {
-
-    final JSONObject jsonData;
+public class SymbolInformation extends JSONBase {
 
     SymbolInformation(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -139,15 +137,15 @@ public class SymbolInformation {
 
     @Override
     public int hashCode() {
-        int hash = 3;
-        hash = 13 * hash + Objects.hashCode(this.getName());
-        hash = 13 * hash + Objects.hashCode(this.getKind());
+        int hash = 7;
+        hash = 97 * hash + Objects.hashCode(this.getName());
+        hash = 97 * hash + Objects.hashCode(this.getKind());
         if (this.getDeprecated() != null) {
-            hash = 13 * hash + Boolean.hashCode(this.getDeprecated());
+            hash = 97 * hash + Boolean.hashCode(this.getDeprecated());
         }
-        hash = 13 * hash + Objects.hashCode(this.getLocation());
+        hash = 97 * hash + Objects.hashCode(this.getLocation());
         if (this.getContainerName() != null) {
-            hash = 13 * hash + Objects.hashCode(this.getContainerName());
+            hash = 97 * hash + Objects.hashCode(this.getContainerName());
         }
         return hash;
     }

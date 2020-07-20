@@ -29,7 +29,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.JDK14OrLater;
-import com.oracle.svm.core.jdk.Target_jdk_internal_ref_Cleaner;
+import com.oracle.svm.core.heap.Target_jdk_internal_ref_Cleaner;
 
 import java.io.FileDescriptor;
 import jdk.internal.access.foreign.MemorySegmentProxy;

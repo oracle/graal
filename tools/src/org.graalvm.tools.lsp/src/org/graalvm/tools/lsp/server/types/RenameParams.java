@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,12 +27,13 @@ package org.graalvm.tools.lsp.server.types;
 import com.oracle.truffle.tools.utils.json.JSONObject;
 import java.util.Objects;
 
-public class RenameParams {
-
-    final JSONObject jsonData;
+/**
+ * The parameters of a [RenameRequest](#RenameRequest).
+ */
+public class RenameParams extends WorkDoneProgressParams {
 
     RenameParams(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -93,15 +94,21 @@ public class RenameParams {
         if (!Objects.equals(this.getNewName(), other.getNewName())) {
             return false;
         }
+        if (!Objects.equals(this.getWorkDoneToken(), other.getWorkDoneToken())) {
+            return false;
+        }
         return true;
     }
 
     @Override
     public int hashCode() {
         int hash = 2;
-        hash = 53 * hash + Objects.hashCode(this.getTextDocument());
-        hash = 53 * hash + Objects.hashCode(this.getPosition());
-        hash = 53 * hash + Objects.hashCode(this.getNewName());
+        hash = 43 * hash + Objects.hashCode(this.getTextDocument());
+        hash = 43 * hash + Objects.hashCode(this.getPosition());
+        hash = 43 * hash + Objects.hashCode(this.getNewName());
+        if (this.getWorkDoneToken() != null) {
+            hash = 43 * hash + Objects.hashCode(this.getWorkDoneToken());
+        }
         return hash;
     }
 

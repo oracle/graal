@@ -44,8 +44,8 @@ import java.io.IOException;
 import java.util.AbstractMap;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedHashSet;
 import java.util.Objects;
+import java.util.TreeSet;
 import org.graalvm.polyglot.Value;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -64,7 +64,7 @@ public class ScriptTest {
     @Parameterized.Parameters(name = "{0}")
     public static Collection<TestRun> createScriptTests() {
         context = new TestContext(ScriptTest.class);
-        final Collection<TestRun> res = new LinkedHashSet<>();
+        final Collection<TestRun> res = new TreeSet<>((a, b) -> a.toString().compareTo(b.toString()));
         for (String lang : TestUtil.getRequiredLanguages(context)) {
             for (Snippet script : context.getScripts(null, lang)) {
                 res.add(new TestRun(new AbstractMap.SimpleImmutableEntry<>(lang, script), Collections.emptyList()));
@@ -91,10 +91,10 @@ public class ScriptTest {
         try {
             try {
                 final Value result = testRun.getSnippet().getExecutableValue().execute(testRun.getActualParameters().toArray());
-                TestUtil.validateResult(testRun, result, null);
+                TestUtil.validateResult(testRun, result, null, true);
                 success = true;
             } catch (PolyglotException pe) {
-                TestUtil.validateResult(testRun, null, pe);
+                TestUtil.validateResult(testRun, null, pe, true);
                 success = true;
             }
         } finally {

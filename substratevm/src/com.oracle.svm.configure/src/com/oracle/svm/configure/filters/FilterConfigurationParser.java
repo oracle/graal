@@ -85,6 +85,6 @@ public class FilterConfigurationParser extends ConfigurationParser {
         if (qualified == null) {
             throw new JSONParserException(exactlyOneMessage);
         }
-        rootNode.addOrGetChildren(qualified.toString(), inclusion);
+        rootNode.addOrGetChildren(asString(qualified), inclusion);
     }
 }

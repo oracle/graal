@@ -90,6 +90,7 @@ import com.oracle.graal.pointsto.flow.builder.TypeFlowBuilder;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -602,20 +603,15 @@ public class PointsToStats {
 
     private static String formatSource(TypeFlow<?> flow) {
         Object source = flow.getSource();
-        if (source instanceof ValueNode) {
-            ValueNode node = (ValueNode) source;
-            NodeSourcePosition nodeSource = node.getNodeSourcePosition();
-            if (nodeSource != null) {
-                return formatMethod(nodeSource.getMethod()) + ":" + nodeSource.getBCI();
-            } else if (flow.graphRef() != null) {
-                return formatMethod(flow.graphRef().getMethod());
-            } else {
-                return "<unknown-source>";
-            }
+        if (source instanceof BytecodePosition) {
+            BytecodePosition nodeSource = (BytecodePosition) source;
+            return formatMethod(nodeSource.getMethod()) + ":" + nodeSource.getBCI();
         } else if (source instanceof AnalysisType) {
             return formatType((AnalysisType) source);
         } else if (source instanceof AnalysisField) {
             return formatField((AnalysisField) source);
+        } else if (flow.graphRef() != null) {
+            return formatMethod(flow.graphRef().getMethod());
         } else if (source == null) {
             return "<no-source>";
         } else {

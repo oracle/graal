@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,14 +28,12 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 import java.util.Objects;
 
 /**
- * Params for the Code Lens request.
+ * The parameters of a [CodeLensRequest](#CodeLensRequest).
  */
-public class CodeLensParams {
-
-    final JSONObject jsonData;
+public class CodeLensParams extends WorkDoneProgressParams {
 
     CodeLensParams(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -47,6 +45,19 @@ public class CodeLensParams {
 
     public CodeLensParams setTextDocument(TextDocumentIdentifier textDocument) {
         jsonData.put("textDocument", textDocument.jsonData);
+        return this;
+    }
+
+    /**
+     * An optional token that a server can use to report partial results (e.g. streaming) to the
+     * client.
+     */
+    public Object getPartialResultToken() {
+        return jsonData.opt("partialResultToken");
+    }
+
+    public CodeLensParams setPartialResultToken(Object partialResultToken) {
+        jsonData.putOpt("partialResultToken", partialResultToken);
         return this;
     }
 
@@ -65,13 +76,25 @@ public class CodeLensParams {
         if (!Objects.equals(this.getTextDocument(), other.getTextDocument())) {
             return false;
         }
+        if (!Objects.equals(this.getPartialResultToken(), other.getPartialResultToken())) {
+            return false;
+        }
+        if (!Objects.equals(this.getWorkDoneToken(), other.getWorkDoneToken())) {
+            return false;
+        }
         return true;
     }
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 17 * hash + Objects.hashCode(this.getTextDocument());
+        int hash = 2;
+        hash = 53 * hash + Objects.hashCode(this.getTextDocument());
+        if (this.getPartialResultToken() != null) {
+            hash = 53 * hash + Objects.hashCode(this.getPartialResultToken());
+        }
+        if (this.getWorkDoneToken() != null) {
+            hash = 53 * hash + Objects.hashCode(this.getWorkDoneToken());
+        }
         return hash;
     }
 

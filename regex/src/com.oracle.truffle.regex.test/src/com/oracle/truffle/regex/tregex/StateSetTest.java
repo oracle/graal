@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,13 @@
  */
 package com.oracle.truffle.regex.tregex;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 
 import org.junit.Assert;
@@ -53,30 +58,30 @@ import com.oracle.truffle.regex.tregex.automaton.StateSet;
 
 public class StateSetTest {
 
-    private static final int INDEX_SIZE = 0xFF;
     static final int MAX_SMALL_STATE_INDEX_SIZE = 64;
+    private static final int INDEX_SIZE = 256;
     private static final int SWITCH_TO_BITSET_THRESHOLD = 4;
 
-    private ShortStateIndex index;
     private ShortStateIndex smallIndex;
+    private ShortStateIndex largeIndex;
+    private StateSet<ShortStateIndex, ShortState> small;
+    private StateSet<ShortStateIndex, ShortState> large;
     private List<ShortState> tooManyForStateList;
 
     @Before
     public void setUp() {
-        index = new ShortStateIndex(INDEX_SIZE);
         smallIndex = new ShortStateIndex(MAX_SMALL_STATE_INDEX_SIZE);
+        largeIndex = new ShortStateIndex(INDEX_SIZE);
+        small = StateSet.create(smallIndex);
+        large = StateSet.create(largeIndex);
         tooManyForStateList = new ArrayList<>();
         for (int i = 1; i <= SWITCH_TO_BITSET_THRESHOLD + 1; i++) {
             tooManyForStateList.add(new ShortState(i));
         }
     }
 
-    private StateSetChecker<ShortState> stateSetCreate() {
-        return new StateSetChecker<>(StateSet.create(index), StateSet.create(smallIndex));
-    }
-
-    private StateSet<ShortState> bitSet(int... elems) {
-        StateSetChecker<ShortState> result = stateSetCreate();
+    private StateSet<ShortStateIndex, ShortState> bitSet(ShortStateIndex idx, int... elems) {
+        StateSet<ShortStateIndex, ShortState> result = StateSet.create(idx);
 
         // force the use of a bit set instead of a state list
         result.addAll(tooManyForStateList);
@@ -89,8 +94,8 @@ public class StateSetTest {
         return result;
     }
 
-    private StateSet<ShortState> stateList(int... elems) {
-        StateSet<ShortState> result = stateSetCreate();
+    private static StateSet<ShortStateIndex, ShortState> stateList(ShortStateIndex idx, int... elems) {
+        StateSet<ShortStateIndex, ShortState> result = StateSet.create(idx);
 
         assert elems.length <= SWITCH_TO_BITSET_THRESHOLD;
 
@@ -103,12 +108,152 @@ public class StateSetTest {
 
     @Test
     public void consistentHashCodes() {
-        StateSet<ShortState> usingBitSet = bitSet(1, 2, 3, 4);
-        StateSet<ShortState> usingStateList = stateList(1, 2, 3, 4);
+        for (ShortStateIndex idx : new ShortStateIndex[]{largeIndex, smallIndex}) {
+            StateSet<ShortStateIndex, ShortState> usingBitSet = bitSet(idx, 1, 2, 3, 4);
+            StateSet<ShortStateIndex, ShortState> usingStateList = stateList(idx, 1, 2, 3, 4);
 
-        Assert.assertEquals(usingBitSet, usingStateList);
+            Assert.assertEquals(usingBitSet, usingStateList);
 
-        Assert.assertEquals("hash codes of equal StateSets should be equal", usingBitSet.hashCode(), usingStateList.hashCode());
+            Assert.assertEquals("hash codes of equal StateSets should be equal", usingBitSet.hashCode(), usingStateList.hashCode());
+        }
+    }
+
+    private static ShortState state(int id) {
+        return new ShortState(id);
+    }
+
+    private StateSet<ShortStateIndex, ShortState> small(int... id) {
+        StateSet<ShortStateIndex, ShortState> ret = StateSet.create(smallIndex);
+        for (int i : id) {
+            ret.add(state(i));
+        }
+        return ret;
+    }
+
+    private StateSet<ShortStateIndex, ShortState> large(int... id) {
+        StateSet<ShortStateIndex, ShortState> ret = StateSet.create(largeIndex);
+        for (int i : id) {
+            ret.add(state(i));
+        }
+        return ret;
+    }
+
+    private void addNew(ShortState s) {
+        assertTrue(small.add(s));
+        assertTrue(small.contains(s));
+        assertTrue(large.add(s));
+        assertTrue(large.contains(s));
+    }
+
+    private void addExisting(ShortState s) {
+        assertFalse(small.add(s));
+        assertTrue(small.contains(s));
+        assertFalse(large.add(s));
+        assertTrue(large.contains(s));
+    }
+
+    private void removeExisting(ShortState s) {
+        assertTrue(small.remove(s));
+        assertFalse(small.contains(s));
+        assertTrue(large.remove(s));
+        assertFalse(large.contains(s));
+    }
+
+    private void removeNotExisting(ShortState s) {
+        assertFalse(small.remove(s));
+        assertFalse(small.contains(s));
+        assertFalse(large.remove(s));
+        assertFalse(large.contains(s));
+    }
+
+    private void addAllNew(int... id) {
+        StateSet<ShortStateIndex, ShortState> sSmall = small(id);
+        StateSet<ShortStateIndex, ShortState> sLarge = large(id);
+        assertTrue(small.addAll(sSmall));
+        assertTrue(small.containsAll(sSmall));
+        assertTrue(large.addAll(sLarge));
+        assertTrue(large.containsAll(sLarge));
+    }
+
+    private void addAllExisting(int... id) {
+        StateSet<ShortStateIndex, ShortState> sSmall = small(id);
+        StateSet<ShortStateIndex, ShortState> sLarge = large(id);
+        assertFalse(small.addAll(sSmall));
+        assertTrue(small.containsAll(sSmall));
+        assertFalse(large.addAll(sLarge));
+        assertTrue(large.containsAll(sLarge));
+    }
+
+    private void removeAllExisting(int... id) {
+        StateSet<ShortStateIndex, ShortState> sSmall = small(id);
+        StateSet<ShortStateIndex, ShortState> sLarge = large(id);
+        assertTrue(small.removeAll(sSmall));
+        assertFalse(small.containsAll(sSmall));
+        assertTrue(small.isDisjoint(sSmall));
+        assertTrue(large.removeAll(sLarge));
+        assertFalse(large.containsAll(sLarge));
+        assertTrue(large.isDisjoint(sLarge));
+    }
+
+    private void removeAllNotExisting(int... id) {
+        StateSet<ShortStateIndex, ShortState> sSmall = small(id);
+        StateSet<ShortStateIndex, ShortState> sLarge = large(id);
+        assertFalse(small.removeAll(sSmall));
+        assertFalse(small.containsAll(sSmall));
+        assertTrue(small.isDisjoint(sSmall));
+        assertFalse(large.removeAll(sLarge));
+        assertFalse(large.containsAll(sLarge));
+        assertTrue(large.isDisjoint(sLarge));
+    }
+
+    private void checkIteratorsEqual(int size) {
+        assertEquals(small.size(), size);
+        assertEquals(large.size(), size);
+        Iterator<ShortState> itSmall = small.iterator();
+        Iterator<ShortState> itLarge = large.iterator();
+        for (int i = 0; i < size; i++) {
+            assertTrue(itSmall.hasNext());
+            assertTrue(itLarge.hasNext());
+            assertEquals(itSmall.next(), itLarge.next());
+        }
+    }
+
+    @Test
+    public void addRemove() {
+        for (int stride = 1; stride < 16; stride++) {
+            for (int i = 0; i < MAX_SMALL_STATE_INDEX_SIZE; i += stride) {
+                addNew(state(i));
+                checkIteratorsEqual((i / stride) + 1);
+            }
+            for (int i = 0; i < MAX_SMALL_STATE_INDEX_SIZE; i += stride) {
+                addExisting(state(i));
+            }
+            for (int i = 0; i < MAX_SMALL_STATE_INDEX_SIZE; i += stride) {
+                removeExisting(state(i));
+            }
+            for (int i = 0; i < MAX_SMALL_STATE_INDEX_SIZE; i += stride) {
+                removeNotExisting(state(i));
+            }
+        }
+    }
+
+    @Test
+    public void addAllRemoveAll() {
+        for (int stride = 2; stride < 16; stride++) {
+            for (int i = 0; i < MAX_SMALL_STATE_INDEX_SIZE - 1; i += stride) {
+                addAllNew(i, i + 1);
+                checkIteratorsEqual(((i / stride) + 1) * 2);
+            }
+            for (int i = 0; i < MAX_SMALL_STATE_INDEX_SIZE - 1; i += stride) {
+                addAllExisting(i, i + 1);
+            }
+            for (int i = 0; i < MAX_SMALL_STATE_INDEX_SIZE - 1; i += stride) {
+                removeAllExisting(i, i + 1);
+            }
+            for (int i = 0; i < MAX_SMALL_STATE_INDEX_SIZE - 1; i += stride) {
+                removeAllNotExisting(i, i + 1);
+            }
+        }
     }
 
     private static class ShortState {
@@ -122,9 +267,24 @@ public class StateSetTest {
         public short getId() {
             return id;
         }
+
+        @Override
+        public String toString() {
+            return "s" + id;
+        }
+
+        @Override
+        public int hashCode() {
+            return id;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof ShortState && id == ((ShortState) obj).id;
+        }
     }
 
-    private static class ShortStateIndex implements StateIndex<ShortState> {
+    private static final class ShortStateIndex implements StateIndex<ShortState> {
 
         private final ShortState[] index;
 

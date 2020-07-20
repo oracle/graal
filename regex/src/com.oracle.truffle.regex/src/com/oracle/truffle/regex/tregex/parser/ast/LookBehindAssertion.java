@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,9 +40,9 @@
  */
 package com.oracle.truffle.regex.tregex.parser.ast;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
-
-import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 /**
  * An assertion that succeeds depending on whether or not text preceding the current position
@@ -72,13 +72,22 @@ public class LookBehindAssertion extends LookAroundAssertion {
         super(negated);
     }
 
-    private LookBehindAssertion(LookBehindAssertion copy, RegexAST ast, boolean recursive) {
-        super(copy, ast, recursive);
+    private LookBehindAssertion(LookBehindAssertion copy, RegexAST ast) {
+        super(copy, ast);
+    }
+
+    private LookBehindAssertion(LookBehindAssertion copy, RegexAST ast, CompilationBuffer compilationBuffer) {
+        super(copy, ast, compilationBuffer);
     }
 
     @Override
-    public LookBehindAssertion copy(RegexAST ast, boolean recursive) {
-        return ast.register(new LookBehindAssertion(this, ast, recursive));
+    public LookBehindAssertion copy(RegexAST ast) {
+        return ast.register(new LookBehindAssertion(this, ast));
+    }
+
+    @Override
+    public LookBehindAssertion copyRecursive(RegexAST ast, CompilationBuffer compilationBuffer) {
+        return ast.register(new LookBehindAssertion(this, ast, compilationBuffer));
     }
 
     @Override

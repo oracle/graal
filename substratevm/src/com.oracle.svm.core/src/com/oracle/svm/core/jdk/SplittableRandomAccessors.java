@@ -25,11 +25,11 @@
 
 package com.oracle.svm.core.jdk;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.TargetClass;
-
-import java.util.concurrent.atomic.AtomicLong;
 
 @TargetClass(java.util.SplittableRandom.class)
 final class Target_java_util_SplittableRandom {
@@ -66,31 +66,44 @@ public class SplittableRandomAccessors {
         return result;
     }
 
+    private static class Lock {
+    }
+
+    private static final Lock lock = new Lock();
+
     // Checkstyle: allow synchronization
-    private static synchronized AtomicLong initialize() {
-        AtomicLong result = defaultGen;
-        if (result != null) {
+    private static AtomicLong initialize() {
+        /**
+         * Lock on an instance instead of a java.lang.Class object because SVM currently uses a
+         * secondary storage map for locking on classes, which in this particular case can lead to
+         * recursive locking problems when this code is called from the constructor of
+         * JavaVMOperation.
+         */
+        synchronized (lock) {
+            AtomicLong result = defaultGen;
+            if (result != null) {
+                return result;
+            }
+
+            /*
+             * The code below to compute the seed is taken from the original
+             * SplittableRandom.initialSeed() implementation.
+             */
+            long seed;
+            if (SECURE_SEED) {
+                byte[] seedBytes = java.security.SecureRandom.getSeed(8);
+                seed = seedBytes[0] & 0xffL;
+                for (int i = 1; i < 8; ++i) {
+                    seed = (seed << 8) | (seedBytes[i] & 0xffL);
+                }
+            } else {
+                seed = Target_java_util_SplittableRandom.mix64(System.currentTimeMillis()) ^ Target_java_util_SplittableRandom.mix64(System.nanoTime());
+            }
+
+            result = new AtomicLong(seed);
+            defaultGen = result;
             return result;
         }
-
-        /*
-         * The code below to compute the seed is taken from the original
-         * SplittableRandom.initialSeed() implementation.
-         */
-        long seed;
-        if (SECURE_SEED) {
-            byte[] seedBytes = java.security.SecureRandom.getSeed(8);
-            seed = seedBytes[0] & 0xffL;
-            for (int i = 1; i < 8; ++i) {
-                seed = (seed << 8) | (seedBytes[i] & 0xffL);
-            }
-        } else {
-            seed = Target_java_util_SplittableRandom.mix64(System.currentTimeMillis()) ^ Target_java_util_SplittableRandom.mix64(System.nanoTime());
-        }
-
-        result = new AtomicLong(seed);
-        defaultGen = result;
-        return result;
     }
     // Checkstyle: disallow synchronization
 }

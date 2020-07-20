@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,12 +36,10 @@ import java.util.Objects;
  * in the UI and, optionally, an array of arguments which will be passed to the command handler
  * function when invoked.
  */
-public class Command {
-
-    final JSONObject jsonData;
+public class Command extends JSONBase {
 
     Command(JSONObject jsonData) {
-        this.jsonData = jsonData;
+        super(jsonData);
     }
 
     /**
@@ -120,11 +118,11 @@ public class Command {
 
     @Override
     public int hashCode() {
-        int hash = 2;
-        hash = 59 * hash + Objects.hashCode(this.getTitle());
-        hash = 59 * hash + Objects.hashCode(this.getCommand());
+        int hash = 5;
+        hash = 71 * hash + Objects.hashCode(this.getTitle());
+        hash = 71 * hash + Objects.hashCode(this.getCommand());
         if (this.getArguments() != null) {
-            hash = 59 * hash + Objects.hashCode(this.getArguments());
+            hash = 71 * hash + Objects.hashCode(this.getArguments());
         }
         return hash;
     }

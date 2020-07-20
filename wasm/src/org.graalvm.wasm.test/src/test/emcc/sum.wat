@@ -1,5 +1,5 @@
 ;;
-;; Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+;; Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
 ;; DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 ;;
 ;; The Universal Permissive License (UPL), Version 1.0
@@ -61,5 +61,7 @@
   (func (;1;) (type 0) (result i32)
     i32.const 1000
     call 0)
+  (memory (;0;) 4)
   (global (;0;) (mut i32) (i32.const 2768))
+  (export "memory" (memory 0))
   (export "_main" (func 1)))
