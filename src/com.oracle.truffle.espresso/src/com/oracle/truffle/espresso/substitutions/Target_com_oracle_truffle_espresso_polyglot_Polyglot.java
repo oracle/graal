@@ -79,7 +79,7 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
 
     private static void checkHasAllFieldsOrThrow(Object foreignObject, Klass klass, InteropLibrary interopLibrary) {
         for (Field f : klass.getDeclaredFields()) {
-            if (!f.isStatic() && interopLibrary.isMemberExisting(foreignObject, f.getNameAsString())) {
+            if (!f.isStatic() && !interopLibrary.isMemberExisting(foreignObject, f.getNameAsString())) {
                 throw new NoSuchElementException(f.getNameAsString());
             }
         }
