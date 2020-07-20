@@ -47,7 +47,7 @@ import com.oracle.truffle.api.nodes.Node;
  * The unsatisfied link error should show as non-internal error to the user.
  */
 @SuppressWarnings("serial")
-class NFIUnsatisfiedLinkError extends TruffleException {
+public class NFIUnsatisfiedLinkError extends TruffleException {
 
     private final Node location;
 

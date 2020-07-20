@@ -45,6 +45,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.nfi.impl.NFIUnsatisfiedLinkError;
 
 public class LoadNFILibraryTest extends NFITest {
 
@@ -104,7 +105,7 @@ public class LoadNFILibraryTest extends NFITest {
         Assert.assertNotNull(library);
     }
 
-    @Test(expected = UnsatisfiedLinkError.class)
+    @Test(expected = NFIUnsatisfiedLinkError.class)
     public void fileNotFound() {
         eval("load /this/file/does/not/exist.so");
     }
