@@ -271,21 +271,25 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
             printStatisticTime(out, "  Graal Tier", compilationTimeGraalTier);
             printStatisticTime(out, "  Code Installation", compilationTimeCodeInstallation);
 
-            printStatistic(out, "Truffle node count", nodeCount);
-            printStatistic(out, "  Trivial", nodeCountTrivial);
-            printStatistic(out, "  Non Trivial", nodeCountNonTrivial);
-            printStatistic(out, "    Monomorphic", nodeCountMonomorphic);
-            printStatistic(out, "    Polymorphic", nodeCountPolymorphic);
-            printStatistic(out, "    Megamorphic", nodeCountMegamorphic);
-            printStatistic(out, "Truffle call count", callCount);
-            printStatistic(out, "  Indirect", callCountIndirect);
-            printStatistic(out, "  Direct", callCountDirect);
-            printStatistic(out, "    Dispatched", callCountDirectDispatched);
-            printStatistic(out, "    Inlined", callCountDirectInlined);
-            printStatistic(out, "    ----------");
-            printStatistic(out, "    Cloned", callCountDirectCloned);
-            printStatistic(out, "    Not Cloned", callCountDirectNotCloned);
-            printStatistic(out, "Truffle loops", loopCount);
+            // GR-25014 Truffle node count statistics are broken with language agnostic inlining
+            if (!runtimeData.getEngineOptions().get(PolyglotCompilerOptions.LanguageAgnosticInlining)) {
+                printStatistic(out, "Truffle node count", nodeCount);
+                printStatistic(out, "  Trivial", nodeCountTrivial);
+                printStatistic(out, "  Non Trivial", nodeCountNonTrivial);
+                printStatistic(out, "    Monomorphic", nodeCountMonomorphic);
+                printStatistic(out, "    Polymorphic", nodeCountPolymorphic);
+                printStatistic(out, "    Megamorphic", nodeCountMegamorphic);
+                printStatistic(out, "Truffle call count", callCount);
+                printStatistic(out, "  Indirect", callCountIndirect);
+                printStatistic(out, "  Direct", callCountDirect);
+                printStatistic(out, "    Dispatched", callCountDirectDispatched);
+                printStatistic(out, "    Inlined", callCountDirectInlined);
+                printStatistic(out, "    ----------");
+                printStatistic(out, "    Cloned", callCountDirectCloned);
+                printStatistic(out, "    Not Cloned", callCountDirectNotCloned);
+                printStatistic(out, "Truffle loops", loopCount);
+            }
+
             printStatistic(out, "Graal node count");
             printStatistic(out, "  After Truffle Tier", truffleTierNodeCount);
             printStatistic(out, "  After Graal Tier", graalTierNodeCount);
@@ -300,8 +304,11 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
             printStatistic(out, "  Data references", compilationResultDataPatches);
 
             if (runtimeData.callTargetStatisticDetails) {
-                printStatistic(out, "Truffle nodes");
-                nodeStatistics.printStatistics(out, Class::getSimpleName);
+                // GR-25014 Truffle node count statistics are broken with language agnostic inlining
+                if (!runtimeData.getEngineOptions().get(PolyglotCompilerOptions.LanguageAgnosticInlining)) {
+                    printStatistic(out, "Truffle nodes");
+                    nodeStatistics.printStatistics(out, Class::getSimpleName);
+                }
                 printStatistic(out, "Graal nodes after Truffle tier");
                 truffleTierNodeStatistics.printStatistics(out, Function.identity());
                 printStatistic(out, "Graal nodes after Graal tier");
