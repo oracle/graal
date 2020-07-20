@@ -71,6 +71,7 @@ import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizableAllocation;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
+import org.graalvm.compiler.nodes.virtual.EnsureVirtualizedNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.virtual.nodes.VirtualObjectState;
 
@@ -249,11 +250,20 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 break;
             case STOP_NEW_VIRTUALIZATIONS_LOOP_NEST:
                 if (node instanceof VirtualizableAllocation) {
-                    /*
-                     * Do not try to do new devirtualizations of allocations after we reached a
-                     * certain loop nest.
-                     */
-                    return false;
+                    boolean mayEnsureVirtualized = false;
+                    for (Node usage : node.usages()) {
+                        if (usage instanceof EnsureVirtualizedNode) {
+                            mayEnsureVirtualized = true;
+                            break;
+                        }
+                    }
+                    if (!mayEnsureVirtualized) {
+                        /*
+                         * Do not try to do new devirtualizations of allocations after we reached a
+                         * certain loop nest.
+                         */
+                        return false;
+                    }
                 }
                 break;
             case LOOP_NEST_OVERFLOW:

@@ -88,6 +88,52 @@ public class NestedLoopEffectsPhaseComplexityTest2 extends GraalCompilerTest {
      * new virtualizations are performed. We check this by ensuring that the allocations of B >
      * level remain
      */
+    public static int method20LevelNoNewAllocationsEnsureVirtualized(int a) {
+        if (a == 0) {
+            return 0;
+        }
+        int res = 0;
+        for (int i = 0; i < a; i++) {
+            res += new A(method20LevelNoNewAllocations1EnsureVirtualized(20)).x;
+        }
+        return res;
+    }
+
+    public static int method20LevelNoNewAllocations1EnsureVirtualized(int a) {
+        if (GraalDirectives.injectBranchProbability(0.01D, a == 0)) {
+            B b = new B(a);
+            GraalDirectives.ensureVirtualized(b);
+            return b.x;
+        }
+        int res = 0;
+        for (int i = 0; i < IntSideEffect; i++) {
+            res += new A(method20LevelNoNewAllocations1EnsureVirtualized(a - 1)).x;
+        }
+        return res;
+    }
+
+    /**
+     * Test that the depth cutoff of partial escape analysis triggers after the correct loop depth
+     * and that no new virtualizations are performed once we reach a certain depth.
+     */
+    @Test
+    public void testNoNewAllocationsEnsureVirtualized() {
+        method20LevelNoNewAllocations(0);
+        method20LevelNoNewAllocations(1);
+        method20LevelNoNewAllocations1(0);
+        method20LevelNoNewAllocations1(1);
+        /*
+         * 2 remaining allocations = 1 times the >= depth level allocation of a and one allocations
+         * of b inside
+         */
+        testAndTimeFixedDepth("method20LevelNoNewAllocationsEnsureVirtualized", 1);
+    }
+
+    /**
+     * Very deep loop nests, once {@linkplain GraalOptions#EscapeAnalysisLoopCutoff} is reached, no
+     * new virtualizations are performed. We check this by ensuring that the allocations of B >
+     * level remain
+     */
     public static int method20LevelNoNewAllocations(int a) {
         if (a == 0) {
             return 0;
@@ -121,7 +167,7 @@ public class NestedLoopEffectsPhaseComplexityTest2 extends GraalCompilerTest {
         method20LevelNoNewAllocations1(0);
         method20LevelNoNewAllocations1(1);
         /*
-         * 3 remaining allocations = 1 times the >= depth level allocation of a and all allocations
+         * 2 remaining allocations = 1 times the >= depth level allocation of a and one allocations
          * of b inside
          */
         testAndTimeFixedDepth("method20LevelNoNewAllocations", 2);
