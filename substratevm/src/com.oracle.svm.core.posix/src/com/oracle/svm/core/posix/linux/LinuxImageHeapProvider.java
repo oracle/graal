@@ -170,7 +170,9 @@ public class LinuxImageHeapProvider implements ImageHeapProvider {
             CCharPointer buffer = StackValue.get(MAX_PATHLEN);
             WordPointer startAddr = StackValue.get(WordPointer.class);
             WordPointer offset = StackValue.get(WordPointer.class);
-            boolean found = findMapping(mapfd, buffer, MAX_PATHLEN, IMAGE_HEAP_RELOCATABLE_BEGIN.get(), IMAGE_HEAP_RELOCATABLE_END.get(), startAddr, offset, true);
+            // The relocatables partition might stretch over two adjacent mappings due to permission
+            // differences, so only locate the mapping where the start symbol is
+            boolean found = findMapping(mapfd, buffer, MAX_PATHLEN, IMAGE_HEAP_RELOCATABLE_BEGIN.get(), IMAGE_HEAP_RELOCATABLE_BEGIN.get(), startAddr, offset, true);
             Unistd.NoTransitions.close(mapfd);
             if (!found) {
                 return CEntryPointErrors.LOCATE_IMAGE_FAILED;

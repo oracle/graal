@@ -72,6 +72,7 @@ import com.oracle.svm.core.thread.ThreadStatus;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.UnsignedUtils;
+import com.oracle.svm.core.util.UserError;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -559,16 +560,32 @@ public final class HeapImpl extends Heap {
     }
 
     @Fold
-    public static boolean usesImageHeapRememberedSets() {
-        return HeapOptions.ChunkedImageHeapLayout.getValue() &&
-                        CommittedMemoryProvider.get().guaranteesHeapPreferredAddressSpaceAlignment() &&
-                        HeapPolicyOptions.MaxSurvivorSpaces.getValue() != 0; // unsupported/untested
+    public static boolean usesImageHeapChunks() {
+        // Chunks are needed for card marking and not very useful without it
+        return usesImageHeapCardMarking();
+    }
+
+    @Fold
+    public static boolean usesImageHeapCardMarking() {
+        Boolean enabled = HeapOptions.ImageHeapCardMarking.getValue();
+        if (enabled == Boolean.FALSE) {
+            return false;
+        } else if (enabled == null) {
+            return CommittedMemoryProvider.get().guaranteesHeapPreferredAddressSpaceAlignment() &&
+                            HeapPolicyOptions.MaxSurvivorSpaces.getValue() == 0;
+        }
+        UserError.guarantee(CommittedMemoryProvider.get().guaranteesHeapPreferredAddressSpaceAlignment(),
+                        "Enabling option %s requires a custom image heap alignment at runtime, which cannot be ensured with the current configuration (option %s might be disabled)",
+                        HeapOptions.ImageHeapCardMarking, SubstrateOptions.SpawnIsolates);
+        UserError.guarantee(HeapPolicyOptions.MaxSurvivorSpaces.getValue() == 0,
+                        "Enabling option %s is currently not supported together with non-zero %s", HeapOptions.ImageHeapCardMarking, HeapPolicyOptions.MaxSurvivorSpaces);
+        return true;
     }
 
     @Fold
     @Override
     public int getPreferredAddressSpaceAlignment() {
-        if (HeapOptions.ChunkedImageHeapLayout.getValue()) {
+        if (usesImageHeapChunks()) {
             return UnsignedUtils.safeToInt(HeapPolicy.getAlignedHeapChunkAlignment());
         }
         return ConfigurationValues.getObjectLayout().getAlignment();
