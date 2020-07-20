@@ -1078,6 +1078,7 @@ public final class StaticObject implements TruffleObject {
     private StaticObject(Klass klass, Object foreignObject, @SuppressWarnings("unused") Void unused) {
         this.klass = klass;
         assert foreignObject != null;
+        assert !(foreignObject instanceof StaticObject) : "Espresso objects cannot be wrapped";
         this.primitiveFields = FOREIGN_OBJECT_MARKER;
         this.fields = foreignObject;
     }
@@ -1103,12 +1104,18 @@ public final class StaticObject implements TruffleObject {
         return new StaticObject(klass, array);
     }
 
-    public static StaticObject createForeign(Klass klass, Object foreignObject) {
+    public static StaticObject createForeign(Klass klass, Object foreignObject, InteropLibrary interopLibrary) {
         assert foreignObject != null;
-        if (InteropLibrary.getUncached().isNull(foreignObject)) {
-            return new StaticObject(null, foreignObject, null);
+        if (interopLibrary.isNull(foreignObject)) {
+            return createForeignNull(foreignObject);
         }
         return new StaticObject(klass, foreignObject, null);
+    }
+
+    public static StaticObject createForeignNull(Object foreignObject) {
+        assert foreignObject != null;
+        assert InteropLibrary.getUncached().isNull(foreignObject);
+        return new StaticObject(null, foreignObject, null);
     }
 
     public Klass getKlass() {

@@ -64,14 +64,16 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                 return value;
             }
 
+            InteropLibrary interopLibrary = InteropLibrary.getUncached();
+
             try {
-                checkHasAllFieldsOrThrow(value.rawForeignObject(), targetKlass, InteropLibrary.getUncached());
+                checkHasAllFieldsOrThrow(value.rawForeignObject(), targetKlass, interopLibrary);
             } catch (NoSuchElementException e) {
                 throw Meta.throwExceptionWithMessage(meta.java_lang_ClassCastException,
                                 String.format("Field %s not found", e.getMessage()));
             }
 
-            return StaticObject.createForeign(targetKlass, value.rawForeignObject());
+            return StaticObject.createForeign(targetKlass, value.rawForeignObject(), interopLibrary);
         } else {
             return InterpreterToVM.checkCast(value, targetKlass);
         }
@@ -156,7 +158,7 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
         if (evalResult instanceof StaticObject) {
             return (StaticObject) evalResult;
         }
-        return createForeignObject(evalResult, meta);
+        return createForeignObject(evalResult, meta, InteropLibrary.getUncached());
     }
 
     @Substitution
@@ -172,7 +174,7 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
         if (binding instanceof StaticObject) {
             return (StaticObject) binding;
         }
-        return createForeignObject(binding, meta);
+        return createForeignObject(binding, meta, InteropLibrary.getUncached());
     }
 
     @Substitution
@@ -189,7 +191,7 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
         }
     }
 
-    protected static StaticObject createForeignObject(Object object, Meta meta) {
-        return StaticObject.createForeign(meta.java_lang_Object, object);
+    protected static StaticObject createForeignObject(Object object, Meta meta, InteropLibrary interopLibrary) {
+        return StaticObject.createForeign(meta.java_lang_Object, object, interopLibrary);
     }
 }
