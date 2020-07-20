@@ -23,6 +23,7 @@
 package com.oracle.truffle.espresso.substitutions;
 
 import java.util.NoSuchElementException;
+import java.util.Set;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleException;
@@ -128,9 +129,10 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
     @Substitution
     public static @Host(Object.class) StaticObject eval(@Host(String.class) StaticObject language, @Host(String.class) StaticObject code, @InjectMeta Meta meta) {
         String languageString = Meta.toHostString(language);
-        if (!isPublicLanguage(languageString, meta)) {
+        Set<String> publicLanguages = meta.getContext().getEnv().getPublicLanguages().keySet();
+        if (!publicLanguages.contains(languageString)) {
             throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException,
-                            "No language for id " + languageString + " found. Supported languages are: " + meta.getContext().getEnv().getPublicLanguages().keySet());
+                            "No language for id " + languageString + " found. Supported languages are: " + publicLanguages);
         }
 
         Source source = Source.newBuilder(language.toString(), code.toString(), "(eval)").build();
@@ -185,10 +187,6 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
         } else {
             meta.getContext().getEnv().exportSymbol(bindingName, value);
         }
-    }
-
-    protected static boolean isPublicLanguage(String language, Meta meta) {
-        return meta.getContext().getEnv().getPublicLanguages().containsKey(language);
     }
 
     protected static StaticObject createForeignObject(Object object, Meta meta) {
