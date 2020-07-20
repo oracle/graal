@@ -156,6 +156,10 @@ public final class EngineData {
         this.splittingStatistics = new TruffleSplittingStrategy.SplitStatisticsData();
     }
 
+    public OptionValues getEngineOptions() {
+        return engineOptions;
+    }
+
     void loadOptions(OptionValues options) {
         this.engineOptions = options;
 
