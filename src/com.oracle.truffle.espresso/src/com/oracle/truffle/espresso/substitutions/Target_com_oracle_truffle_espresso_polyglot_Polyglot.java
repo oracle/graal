@@ -45,9 +45,6 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
     public static @Host(Object.class) StaticObject cast(@Host(Class.class) StaticObject targetClass, @Host(Object.class) StaticObject value, @InjectMeta Meta meta) {
         Klass targetKlass = targetClass.getMirrorKlass();
         if (StaticObject.isNull(value)) {
-            if (targetKlass.isPrimitive()) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Cannot cast null to a primitive type");
-            }
             return value;
         }
         if (value.isForeignObject()) {
