@@ -31,8 +31,6 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import com.oracle.svm.core.jdk8.containers.CgroupSubsystem;
 import com.oracle.svm.core.jdk8.containers.CgroupSubsystemController;
@@ -63,13 +61,13 @@ public class CgroupV2Subsystem implements CgroupSubsystem {
     private static CgroupV2Subsystem initSubsystem() {
         // read mountinfo so as to determine root mount path
         String mountPath = null;
-        try (Stream<String> lines =
-                CgroupUtil.readFilePrivileged(Paths.get("/proc/self/mountinfo"))) {
-
-            String l = lines.filter(line -> line.contains(" - cgroup2 "))
-                            .collect(Collectors.joining());
-            String[] tokens = l.split(" ");
-            mountPath = tokens[4];
+        try {
+            for (String line : CgroupUtil.readAllLinesPrivileged(Paths.get("/proc/self/mountinfo"))) {
+                if (line.contains(" - cgroup2 ")) {
+                    String[] tokens = line.split(" ");
+                    mountPath = tokens[4];
+                }
+            }
         } catch (IOException e) {
             return null;
         }
@@ -305,9 +303,11 @@ public class CgroupV2Subsystem implements CgroupSubsystem {
 
     private long sumTokensIOStat(Function<String, Long> mapFunc) {
         try {
-            return CgroupUtil.readFilePrivileged(Paths.get(unified.path(), "io.stat"))
-                                .map(mapFunc)
-                                .collect(Collectors.summingLong(e -> e));
+            long sum = 0L;
+            for (String line : CgroupUtil.readAllLinesPrivileged(Paths.get(unified.path(), "io.stat"))) {
+                sum += mapFunc.apply(line);
+            }
+            return sum;
         } catch (IOException e) {
             return CgroupSubsystem.LONG_RETVAL_UNLIMITED;
         }

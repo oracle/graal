@@ -32,7 +32,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Stream;
 
 import com.oracle.svm.core.jdk8.containers.cgroupv1.CgroupV1Subsystem;
 import com.oracle.svm.core.jdk8.containers.cgroupv2.CgroupV2Subsystem;
@@ -117,8 +116,8 @@ public class CgroupSubsystemFactory {
         // seen 0 hierarchy IDs in /proc/cgroups, we are on a cgroups v1 system.
         // However, continuing in that case does not make sense as we'd need
         // information from mountinfo for the mounted controller paths anyway.
-        try (Stream<String> mntInfo = CgroupUtil.readFilePrivileged(Paths.get(mountInfo))) {
-            boolean anyCgroupMounted = mntInfo.anyMatch(line -> line.contains("cgroup"));
+        for (String line : CgroupUtil.readAllLinesPrivileged(Paths.get(mountInfo))) {
+            boolean anyCgroupMounted = line.contains("cgroup");
             if (!anyCgroupMounted && isCgroupsV2) {
                 return Optional.empty();
             }

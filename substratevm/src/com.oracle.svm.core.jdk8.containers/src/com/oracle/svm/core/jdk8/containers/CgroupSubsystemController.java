@@ -34,7 +34,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
-import java.util.stream.Stream;
 
 /**
  * Cgroup version agnostic controller logic
@@ -161,13 +160,15 @@ public interface CgroupSubsystemController {
     public static long getLongEntry(CgroupSubsystemController controller, String param, String entryname, long defaultRetval) {
         if (controller == null) return defaultRetval;
 
-        try (Stream<String> lines = CgroupUtil.readFilePrivileged(Paths.get(controller.path(), param))) {
-
-            Optional<String> result = lines.map(line -> line.split(" "))
-                                           .filter(line -> (line.length == 2 &&
-                                                   line[0].equals(entryname)))
-                                           .map(line -> line[1])
-                                           .findFirst();
+        try {
+            Optional<String> result = Optional.empty();
+            for (String line : CgroupUtil.readAllLinesPrivileged(Paths.get(controller.path(), param))) {
+                String[] tokens = line.split(" ");
+                if (tokens.length == 2 && tokens[0].equals(entryname)) {
+                    result = Optional.of(tokens[1]);
+                    break;
+                }
+            }
 
             return result.isPresent() ? Long.parseLong(result.get()) : defaultRetval;
         }

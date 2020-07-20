@@ -29,7 +29,6 @@ package com.oracle.svm.core.jdk8.containers.cgroupv1;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.stream.Stream;
 
 import com.oracle.svm.core.jdk8.containers.CgroupSubsystem;
 import com.oracle.svm.core.jdk8.containers.CgroupSubsystemController;
@@ -69,12 +68,13 @@ public class CgroupV1Subsystem implements CgroupSubsystem, CgroupV1Metrics {
          * Example for host:
          * 34 28 0:29 / /sys/fs/cgroup/MemorySubSystem rw,nosuid,nodev,noexec,relatime shared:16 - cgroup cgroup rw,MemorySubSystem
          */
-        try (Stream<String> lines =
-                CgroupUtil.readFilePrivileged(Paths.get("/proc/self/mountinfo"))) {
-
-            lines.filter(line -> line.contains(" - cgroup "))
-                 .map(line -> line.split(" "))
-                 .forEach(entry -> createSubSystemController(subsystem, entry));
+        try {
+            for (String line : CgroupUtil.readAllLinesPrivileged(Paths.get("/proc/self/mountinfo"))) {
+                if (line.contains(" - cgroup ")) {
+                    String[] tokens = line.split(" ");
+                    createSubSystemController(subsystem, tokens);
+                }
+            }
 
         } catch (IOException e) {
             return null;
@@ -103,12 +103,13 @@ public class CgroupV1Subsystem implements CgroupSubsystem, CgroupV1Metrics {
          * /sys/fs/cgroup/memory/user.slice
          *
          */
-        try (Stream<String> lines =
-                CgroupUtil.readFilePrivileged(Paths.get("/proc/self/cgroup"))) {
-
-            lines.map(line -> line.split(":"))
-                 .filter(line -> (line.length >= 3))
-                 .forEach(line -> setSubSystemControllerPath(subsystem, line));
+        try {
+            for (String line : CgroupUtil.readAllLinesPrivileged(Paths.get("/proc/self/cgroup"))) {
+                String[] tokens = line.split(":");
+                if (tokens.length >= 3) {
+                    setSubSystemControllerPath(subsystem, tokens);
+                }
+            }
 
         } catch (IOException e) {
             return null;

@@ -35,19 +35,8 @@ import java.security.AccessController;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
 import java.util.List;
-import java.util.stream.Stream;
 
 public final class CgroupUtil {
-
-    public static Stream<String> readFilePrivileged(Path path) throws IOException {
-        try {
-            PrivilegedExceptionAction<Stream<String>> pea = () -> Files.lines(path);
-            return AccessController.doPrivileged(pea);
-        } catch (PrivilegedActionException e) {
-            unwrapIOExceptionAndRethrow(e);
-            throw new InternalError(e.getCause());
-        }
-    }
 
     static void unwrapIOExceptionAndRethrow(PrivilegedActionException pae) throws IOException {
         Throwable x = pae.getCause();
