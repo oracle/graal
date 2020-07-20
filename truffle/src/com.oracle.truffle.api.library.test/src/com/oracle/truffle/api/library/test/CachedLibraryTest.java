@@ -57,6 +57,7 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -837,4 +838,21 @@ public class CachedLibraryTest extends AbstractLibraryTest {
         }
 
     }
+
+    /*
+     * This test was crashing in GR-24920 as the uncached library lookup was accidently using lib1
+     * to match lib2 for the generated uncached specializations.
+     */
+    abstract static class DispatchedAndExpressionLibraryNode extends Node {
+
+        public abstract int execute(Object arg) throws UnsupportedMessageException;
+
+        @Specialization(limit = "2")
+        static int doBoxed(Object arg,
+                        @CachedLibrary(limit = "2") InteropLibrary lib1,
+                        @SuppressWarnings("unused") @CachedLibrary("arg") InteropLibrary lib2) throws UnsupportedMessageException {
+            return lib1.asInt(arg);
+        }
+    }
+
 }
