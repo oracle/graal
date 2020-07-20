@@ -726,7 +726,7 @@ public final class GCImpl implements GC {
 
     @SuppressWarnings("try")
     private void blackenDirtyImageHeapRoots() {
-        if (!HeapImpl.usesImageHeapRememberedSets()) {
+        if (!HeapImpl.usesImageHeapCardMarking()) {
             blackenImageHeapRoots();
             return;
         }

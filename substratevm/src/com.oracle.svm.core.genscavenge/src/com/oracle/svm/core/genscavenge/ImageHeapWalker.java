@@ -93,7 +93,7 @@ public final class ImageHeapWalker {
         Pointer lastPointer = Word.objectToUntrackedPointer(lastObject);
         Pointer current = firstPointer;
         HeapChunk.Header<?> currentChunk = WordFactory.nullPointer();
-        if (HeapOptions.ChunkedImageHeapLayout.getValue()) {
+        if (HeapImpl.usesImageHeapChunks()) {
             Pointer base = WordFactory.zero();
             if (!CommittedMemoryProvider.get().guaranteesHeapPreferredAddressSpaceAlignment()) {
                 base = (Pointer) Isolates.getHeapBase(CurrentIsolate.getIsolate());
@@ -108,7 +108,7 @@ public final class ImageHeapWalker {
         }
         do {
             Pointer limit = lastPointer;
-            if (HeapOptions.ChunkedImageHeapLayout.getValue()) {
+            if (HeapImpl.usesImageHeapChunks()) {
                 Pointer chunkTop = HeapChunk.getTopPointer(currentChunk);
                 if (lastPointer.aboveThan(chunkTop)) {
                     limit = chunkTop.subtract(1); // lastObject in another chunk, visit all objects
@@ -125,7 +125,7 @@ public final class ImageHeapWalker {
                 }
                 current = LayoutEncoding.getObjectEnd(current.toObject());
             }
-            if (HeapOptions.ChunkedImageHeapLayout.getValue() && current.belowThan(lastPointer)) {
+            if (HeapImpl.usesImageHeapChunks() && current.belowThan(lastPointer)) {
                 currentChunk = HeapChunk.getNext(currentChunk);
                 current = alignedChunks ? AlignedHeapChunk.getObjectsStart((AlignedHeapChunk.AlignedHeader) currentChunk)
                                 : UnalignedHeapChunk.getObjectStart((UnalignedHeapChunk.UnalignedHeader) currentChunk);
