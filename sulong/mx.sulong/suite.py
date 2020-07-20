@@ -235,6 +235,16 @@ suite = {
       "testProject" : True,
       "jacoco" : "exclude",
     },
+    "com.oracle.truffle.llvm.toolchain.config" : {
+      "description" : "Provide constants from llvm-config",
+      "subDir" : "projects",
+      "sourceDirs" : ["src"],
+      "checkstyle" : "com.oracle.truffle.llvm.runtime",
+      "javaCompliance" : "1.8+",
+      "workingSets" : "Truffle, LLVM",
+      "license" : "BSD-new",
+      "jacoco" : "exclude",
+    },
     "com.oracle.truffle.llvm.api" : {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
@@ -283,6 +293,7 @@ suite = {
         "truffle:TRUFFLE_API",
         "com.oracle.truffle.llvm.api",
         "com.oracle.truffle.llvm.spi",
+        "com.oracle.truffle.llvm.toolchain.config",
         "truffle:ANTLR4",
       ],
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
@@ -1129,6 +1140,7 @@ suite = {
         "truffle:ANTLR4",
         "SULONG_HOME",
         "SULONG_API",
+        "SULONG_TOOLCHAIN_CONFIG",
       ],
       "javaProperties" : {
         "org.graalvm.language.llvm.home": "<sulong_home>",
@@ -1144,6 +1156,13 @@ suite = {
       ],
       "distDependencies" : [
         "truffle:TRUFFLE_API",
+      ],
+      "license" : "BSD-new",
+    },
+    "SULONG_TOOLCHAIN_CONFIG" : {
+      "subDir" : "projects",
+      "dependencies" : [
+        "com.oracle.truffle.llvm.toolchain.config",
       ],
       "license" : "BSD-new",
     },
