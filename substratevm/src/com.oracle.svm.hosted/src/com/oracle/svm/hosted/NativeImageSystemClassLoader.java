@@ -37,9 +37,9 @@ import com.oracle.svm.util.ReflectionUtil;
 
 /**
  * NativeImageCustomSystemClassLoader is a minimal {@link ClassLoader} that forwards loading of a
- * class to a {@link NativeImageSystemClassLoader#delegateClassLoader} {@link ClassLoader}. If such
- * delegate is null, then NativeImageSystemClassLoader forwards the class loading operation to the
- * default system class loader.
+ * class to a {@link NativeImageSystemClassLoader#nativeImageClassLoader} {@link ClassLoader}. If
+ * such delegate is null, then NativeImageSystemClassLoader forwards the class loading operation to
+ * the default system class loader.
  * 
  * This ClassLoader is necessary to enable the loading of classes/resources during image build-time.
  * This class must be used as a replacement for {@link ClassLoader#getSystemClassLoader()} and its
@@ -49,7 +49,7 @@ import com.oracle.svm.util.ReflectionUtil;
 public final class NativeImageSystemClassLoader extends SecureClassLoader {
 
     public final ClassLoader defaultSystemClassLoader;
-    private volatile ClassLoader delegateClassLoader = null;
+    private volatile ClassLoader nativeImageClassLoader = null;
 
     public NativeImageSystemClassLoader(ClassLoader defaultSystemClassLoader) {
         super(defaultSystemClassLoader);
@@ -69,8 +69,23 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
         return singleton;
     }
 
-    public void setDelegate(ClassLoader delegateClassLoader) {
-        this.delegateClassLoader = delegateClassLoader;
+    public void setNativeImageClassLoader(ClassLoader nativeImageClassLoader) {
+        this.nativeImageClassLoader = nativeImageClassLoader;
+    }
+
+    public ClassLoader getNativeImageClassLoader() {
+        return nativeImageClassLoader;
+    }
+
+    public boolean isNativeImageClassLoader(ClassLoader c) {
+        ClassLoader loader = nativeImageClassLoader;
+        if (loader == null) {
+            return false;
+        }
+        if (c == loader) {
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -81,11 +96,11 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
      */
     private static final Method loadClass = ReflectionUtil.lookupMethod(ClassLoader.class, "loadClass",
                     String.class, boolean.class);
-
     private static final Method getClassLoadingLock = ReflectionUtil.lookupMethod(ClassLoader.class, "getClassLoadingLock",
                     String.class);
     private static final Method findResource = ReflectionUtil.lookupMethod(ClassLoader.class, "findResource",
                     String.class);
+
     private static final Method findResources = ReflectionUtil.lookupMethod(ClassLoader.class, "findResources",
                     String.class);
 
@@ -150,27 +165,16 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
     public String toString() {
         final String clString = super.toString();
         return clString + " {" +
-                        "delegate=" + delegateClassLoader +
+                        "delegate=" + nativeImageClassLoader +
                         ", defaultSystemClassLoader=" + defaultSystemClassLoader +
                         '}';
     }
 
     private ClassLoader getActiveClassLoader() {
-        ClassLoader delegate = delegateClassLoader;
+        ClassLoader delegate = nativeImageClassLoader;
         return delegate != null
                         ? delegate
                         : defaultSystemClassLoader;
-    }
-
-    public boolean isNativeImageClassLoader(ClassLoader c) {
-        ClassLoader delegate = delegateClassLoader;
-        if (delegate == null) {
-            return false;
-        }
-        if (c == delegate) {
-            return true;
-        }
-        return false;
     }
 
     /**

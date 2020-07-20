@@ -64,7 +64,7 @@ public final class ImageClassLoader {
         Word.ensureInitialized();
     }
 
-    final Platform platform;
+    public final Platform platform;
     final NativeImageClassLoaderSupport classLoaderSupport;
 
     private final EconomicSet<Class<?>> applicationClasses = EconomicSet.create();
@@ -72,26 +72,12 @@ public final class ImageClassLoader {
     private final EconomicSet<Method> systemMethods = EconomicSet.create();
     private final EconomicSet<Field> systemFields = EconomicSet.create();
 
-    private ImageClassLoader(Platform platform, NativeImageClassLoaderSupport classLoaderSupport) {
+    ImageClassLoader(Platform platform, NativeImageClassLoaderSupport classLoaderSupport) {
         this.platform = platform;
         this.classLoaderSupport = classLoaderSupport;
     }
 
-    public static ImageClassLoader create(Platform platform, NativeImageClassLoaderSupport classLoader) {
-        /*
-         * Iterating all classes can already trigger class initialization: We need annotation
-         * information, which triggers class initialization of annotation classes and enum classes
-         * referenced by annotations. Therefore, we need to have the system properties that indicate
-         * "during image build" set up already at this time.
-         */
-        NativeImageGenerator.setSystemPropertiesForImageEarly();
-
-        ImageClassLoader result = new ImageClassLoader(platform, classLoader);
-        result.initAllClasses();
-        return result;
-    }
-
-    private void initAllClasses() {
+    public void initAllClasses() {
         final ForkJoinPool executor = new ForkJoinPool(Math.min(Runtime.getRuntime().availableProcessors(), CLASS_LOADING_MAX_SCALING));
         classLoaderSupport.initAllClasses(executor, this);
         boolean completed = executor.awaitQuiescence(CLASS_LOADING_TIMEOUT_IN_MINUTES, TimeUnit.MINUTES);
@@ -151,7 +137,6 @@ public final class ImageClassLoader {
     }
 
     /**
-     *
      * @param element The element to check
      * @return Returns true if and only if the the {@code element} has any annotations present and
      *         the {@link AnnotatedElement#getAnnotations()} did not throw any error.
@@ -394,5 +379,9 @@ public final class ImageClassLoader {
 
     public ClassLoader getClassLoader() {
         return classLoaderSupport.getClassLoader();
+    }
+
+    public Class<?> loadClassFromModule(Object module, String className) throws ClassNotFoundException {
+        return classLoaderSupport.loadClassFromModule(module, className);
     }
 }

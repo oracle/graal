@@ -108,7 +108,7 @@ public class NativeImageClassLoaderSupport extends AbstractNativeImageClassLoade
         return clazz;
     }
 
-    public ClassLoader getClassLoader() {
+    ClassLoader getClassLoader() {
         return classLoader;
     }
 
