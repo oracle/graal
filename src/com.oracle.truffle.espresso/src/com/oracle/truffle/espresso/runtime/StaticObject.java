@@ -303,10 +303,10 @@ public final class StaticObject implements TruffleObject {
         }
 
         Meta meta = klass.getMeta();
-        // We might lose precision when we convert an int or a long to a float, however, we
-        // still
-        // perform the conversion.
-        // This is consistent with Truffle interop, see GR-22718 for more details.
+/*
+ * We might lose precision when we convert an int or a long to a float, however, we still perform
+ * the conversion. This is consistent with Truffle interop, see GR-22718 for more details.
+ */
         if (klass == meta.java_lang_Integer) {
             int content = getIntField(meta.java_lang_Integer_value);
             float floatContent = content;
