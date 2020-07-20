@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import static com.oracle.truffle.api.impl.DefaultTruffleRuntime.getRuntime;
 
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleRuntime;
+import com.oracle.truffle.api.impl.DefaultTruffleRuntime.DefaultFrameInstance;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -76,15 +77,15 @@ public final class DefaultCallTarget implements RootCallTarget {
         if (!this.initialized) {
             initialize();
         }
-        final DefaultVirtualFrame frame = new DefaultVirtualFrame(getRootNode().getFrameDescriptor(), args);
-        getRuntime().pushFrame(frame, this, callNode);
+        final DefaultVirtualFrame frame = new DefaultVirtualFrame(rootNode.getFrameDescriptor(), args);
+        DefaultFrameInstance callerFrame = getRuntime().pushFrame(frame, this, callNode);
         try {
-            return getRootNode().execute(frame);
+            return rootNode.execute(frame);
         } catch (Throwable t) {
             DefaultRuntimeAccessor.LANGUAGE.onThrowable(callNode, this, t, frame);
             throw t;
         } finally {
-            getRuntime().popFrame();
+            getRuntime().popFrame(callerFrame);
         }
     }
 
@@ -93,15 +94,15 @@ public final class DefaultCallTarget implements RootCallTarget {
         if (!this.initialized) {
             initialize();
         }
-        final DefaultVirtualFrame frame = new DefaultVirtualFrame(getRootNode().getFrameDescriptor(), args);
-        getRuntime().pushFrame(frame, this, null);
+        final DefaultVirtualFrame frame = new DefaultVirtualFrame(rootNode.getFrameDescriptor(), args);
+        DefaultFrameInstance callerFrame = getRuntime().pushFrame(frame, this, null);
         try {
-            return getRootNode().execute(frame);
+            return rootNode.execute(frame);
         } catch (Throwable t) {
             DefaultRuntimeAccessor.LANGUAGE.onThrowable(null, this, t, frame);
             throw t;
         } finally {
-            getRuntime().popFrame();
+            getRuntime().popFrame(callerFrame);
         }
     }
 
