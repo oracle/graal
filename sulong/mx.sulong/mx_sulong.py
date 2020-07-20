@@ -46,6 +46,7 @@ import mx_benchmark
 import mx_sulong_benchmarks
 import mx_buildtools
 import mx_sulong_fuzz #pylint: disable=unused-import
+import mx_sulong_llvm_config
 
 from mx_gate import Task, add_gate_runner, add_gate_argument
 
@@ -94,7 +95,7 @@ supportedLLVMVersions = [
     '9.0',
 ]
 
-toolchainLLVMVersion = "8.0"
+toolchainLLVMVersion = mx_sulong_llvm_config.VERSION
 
 # the basic LLVM dependencies for running the test cases and executing the mx commands
 basicLLVMDependencies = [
