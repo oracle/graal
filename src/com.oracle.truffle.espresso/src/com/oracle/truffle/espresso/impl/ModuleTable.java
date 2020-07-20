@@ -69,11 +69,6 @@ public class ModuleTable extends EntryTable<ModuleTable.ModuleEntry, ClassRegist
             return result;
         }
 
-        @Override
-        public Symbol<Name> getName() {
-            return name;
-        }
-
         private final ClassRegistry registry;
         private StaticObject module = StaticObject.NULL;
         private boolean isOpen = false;
@@ -104,15 +99,15 @@ public class ModuleTable extends EntryTable<ModuleTable.ModuleEntry, ClassRegist
             }
         }
 
-        public boolean canRead(ModuleEntry from, EspressoContext context) {
-            if (!from.isNamed() || from.isJavaBase(context)) {
+        public boolean canRead(ModuleEntry m, EspressoContext context) {
+            if (!isNamed() || m.isJavaBase(context)) {
                 return true;
             }
             synchronized (this) {
                 if (!hasReads()) {
                     return false;
                 } else {
-                    return contains(from);
+                    return contains(m);
                 }
             }
         }
