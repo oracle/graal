@@ -74,6 +74,11 @@ public class InlinedSetterNode extends QuickNode {
         return -slotCount + stackEffect;
     }
 
+    @Override
+    public boolean producedForeignObject(VirtualFrame frame) {
+        return false;
+    }
+
     private static Field getInlinedField(Method inlinedMethod) {
         BytecodeStream code = new BytecodeStream(inlinedMethod.getCode());
         if (inlinedMethod.isStatic()) {

@@ -71,6 +71,11 @@ public final class InvokeDynamicCallSiteNode extends QuickNode {
         return (resultAt - top) + root.putKind(frame, resultAt, unbasic(result, returnType), returnKind);
     }
 
+    @Override
+    public boolean producedForeignObject(VirtualFrame frame) {
+        return false;
+    }
+
     // Transforms ints to sub-words
     public static Object unbasic(Object arg, Symbol<Type> t) {
         if (t == Type._boolean) {

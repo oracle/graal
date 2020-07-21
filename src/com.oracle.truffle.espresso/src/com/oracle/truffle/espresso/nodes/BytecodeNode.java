@@ -233,10 +233,12 @@ import java.util.Set;
 import java.util.concurrent.locks.Lock;
 import java.util.logging.Level;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -348,6 +350,8 @@ public final class BytecodeNode extends EspressoMethodNode {
 
     @Child private volatile InstrumentationSupport instrumentation;
 
+    private final Assumption noForeignObjects;
+
     @TruffleBoundary
     public BytecodeNode(MethodVersion method, FrameDescriptor frameDescriptor, FrameSlot bciSlot) {
         super(method);
@@ -360,6 +364,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         this.stackSlots = Arrays.copyOfRange(slots, codeAttribute.getMaxLocals(), codeAttribute.getMaxLocals() + codeAttribute.getMaxStack());
         this.bciSlot = bciSlot;
         this.stackOverflowErrorInfo = getMethod().getSOEHandlerInfo();
+        noForeignObjects = Truffle.getRuntime().createAssumption("noForeignObjects");
     }
 
     public BytecodeNode(BytecodeNode copy) {
@@ -418,7 +423,13 @@ public final class BytecodeNode extends EspressoMethodNode {
                 case Float   : setLocalFloat(frame, n, (float) arguments[i]);           break;
                 case Long    : setLocalLong(frame, n, (long) arguments[i]);             break;
                 case Double  : setLocalDouble(frame, n, (double) arguments[i]);         break;
-                case Object  : setLocalObject(frame, n, (StaticObject) arguments[i]);   break;
+                case Object  :
+                    setLocalObject(frame, n, (StaticObject) arguments[i]);
+                    if (noForeignObjects.isValid() && ((StaticObject) arguments[i]).isForeignObject()) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        noForeignObjects.invalidate();
+                    }
+                    break;
                 default      :
                     CompilerDirectives.transferToInterpreter();
                     throw EspressoError.shouldNotReachHere("unexpected kind");
@@ -437,7 +448,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         return (int) FrameUtil.getLongSafe(frame, stackSlots[slot]);
     }
 
-    // Exposed to InstanceOfNode.
+    // Exposed to InstanceOfNode and quick nodes, which can produce foreign objects.
     public StaticObject peekObject(VirtualFrame frame, int slot) {
         Object result = FrameUtil.getObjectSafe(frame, stackSlots[slot]);
         assert result instanceof StaticObject;
@@ -673,7 +684,13 @@ public final class BytecodeNode extends EspressoMethodNode {
                     case LALOAD: putLong(frame, top - 2, getInterpreterToVM().getArrayLong(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2)))); break;
                     case FALOAD: putFloat(frame, top - 2, getInterpreterToVM().getArrayFloat(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2)))); break;
                     case DALOAD: putDouble(frame, top - 2, getInterpreterToVM().getArrayDouble(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2)))); break;
-                    case AALOAD: putObject(frame, top - 2, getInterpreterToVM().getArrayObject(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2)))); break;
+                    case AALOAD:
+                        putObject(frame, top - 2, getInterpreterToVM().getArrayObject(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2))));
+                        if (noForeignObjects.isValid() && peekObject(frame, top - 2).isForeignObject()) {
+                            CompilerDirectives.transferToInterpreterAndInvalidate();
+                            noForeignObjects.invalidate();
+                        }
+                        break;
                     case BALOAD: putInt(frame, top - 2, getInterpreterToVM().getArrayByte(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2)))); break;
                     case CALOAD: putInt(frame, top - 2, getInterpreterToVM().getArrayChar(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2)))); break;
                     case SALOAD: putInt(frame, top - 2, getInterpreterToVM().getArrayShort(peekInt(frame, top - 1), nullCheck(peekAndReleaseObject(frame, top - 2)))); break;
@@ -1024,7 +1041,14 @@ public final class BytecodeNode extends EspressoMethodNode {
                         throw EspressoError.unimplemented(Bytecodes.nameOf(curOpcode) + " not supported.");
 
                     case INVOKEDYNAMIC: top += quickenInvokeDynamic(frame, top, curBCI, curOpcode); break;
-                    case QUICK: top += nodes[bs.readCPI(curBCI)].execute(frame); break;
+                    case QUICK:
+                        QuickNode quickNode = nodes[bs.readCPI(curBCI)];
+                        top += quickNode.execute(frame);
+                        if (noForeignObjects.isValid() && quickNode.producedForeignObject(frame)) {
+                            CompilerDirectives.transferToInterpreterAndInvalidate();
+                            noForeignObjects.invalidate();
+                        }
+                        break;
 
                     default:
                         CompilerDirectives.transferToInterpreter();
@@ -2056,6 +2080,10 @@ public final class BytecodeNode extends EspressoMethodNode {
                 throw EspressoError.shouldNotReachHere("unexpected kind");
         }
         // @formatter:on
+        if (noForeignObjects.isValid() && field.getKind().isObject() && peekObject(frame, resultAt).isForeignObject()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            noForeignObjects.invalidate();
+        }
         return field.getKind().getSlotCount();
     }
 

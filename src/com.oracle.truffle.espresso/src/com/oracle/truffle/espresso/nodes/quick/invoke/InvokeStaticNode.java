@@ -79,8 +79,16 @@ public final class InvokeStaticNode extends QuickNode {
         }
 
         Object result = directCallNode.call(args);
-        int resultAt = top - Signatures.slotsForParameters(method.getMethod().getParsedSignature()); // no
-        // receiver
-        return (resultAt - top) + root.putKind(frame, resultAt, result, method.getMethod().getReturnKind());
+        return (getResultAt() - top) + root.putKind(frame, getResultAt(), result, method.getMethod().getReturnKind());
+    }
+
+    @Override
+    public boolean producedForeignObject(VirtualFrame frame) {
+        return method.getMethod().getReturnKind().isObject() && getBytecodesNode().peekObject(frame, getResultAt()).isForeignObject();
+    }
+
+    private int getResultAt() {
+        // no receiver
+        return top - Signatures.slotsForParameters(method.getMethod().getParsedSignature());
     }
 }

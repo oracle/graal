@@ -57,7 +57,15 @@ public final class InvokeSpecialNode extends QuickNode {
         Object[] args = root.peekAndReleaseArguments(frame, top, true, method.getMethod().getParsedSignature());
         assert receiver == args[0] : "receiver must be the first argument";
         Object result = directCallNode.call(args);
-        int resultAt = top - Signatures.slotsForParameters(method.getMethod().getParsedSignature()) - 1; // -receiver
-        return (resultAt - top) + root.putKind(frame, resultAt, result, method.getMethod().getReturnKind());
+        return (getResultAt() - top) + root.putKind(frame, getResultAt(), result, method.getMethod().getReturnKind());
+    }
+
+    @Override
+    public boolean producedForeignObject(VirtualFrame frame) {
+        return method.getMethod().getReturnKind().isObject() && getBytecodesNode().peekObject(frame, getResultAt()).isForeignObject();
+    }
+
+    private int getResultAt() {
+        return top - Signatures.slotsForParameters(method.getMethod().getParsedSignature()) - 1; // -receiver
     }
 }

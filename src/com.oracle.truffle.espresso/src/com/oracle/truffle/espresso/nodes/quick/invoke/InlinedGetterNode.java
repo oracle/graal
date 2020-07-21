@@ -69,8 +69,16 @@ public class InlinedGetterNode extends QuickNode {
         StaticObject receiver = field.isStatic()
                         ? field.getDeclaringKlass().tryInitializeAndGetStatics()
                         : nullCheck(root.peekAndReleaseObject(frame, top - 1));
-        int resultAt = inlinedMethod.isStatic() ? top : (top - 1);
-        return (resultAt - top) + getFieldNode.getField(frame, root, receiver, resultAt);
+        return (getResultAt() - top) + getFieldNode.getField(frame, root, receiver, getResultAt());
+    }
+
+    @Override
+    public boolean producedForeignObject(VirtualFrame frame) {
+        return field.getKind().isObject() && getBytecodesNode().peekObject(frame, getResultAt()).isForeignObject();
+    }
+
+    private int getResultAt() {
+        return inlinedMethod.isStatic() ? top : (top - 1);
     }
 
     private static Field getInlinedField(Method inlinedMethod) {
