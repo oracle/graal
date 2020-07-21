@@ -224,7 +224,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         /* verifyLibrary = */ loadLibraryInternal(bootLibraryPath, "verify", false);
         TruffleObject libJava = loadLibraryInternal(bootLibraryPath, "java");
 
-        if (getContext().getJavaVersion().java9OrLater()) {
+        if (getJavaVersion().java9OrLater()) {
             return libJava;
         }
 
@@ -905,7 +905,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     public int JVM_GetInterfaceVersion() {
-        if (getContext().getJavaVersion().java8OrEarlier()) {
+        if (getJavaVersion().java8OrEarlier()) {
             return JniEnv.JVM_INTERFACE_VERSION_8;
         } else {
             return JniEnv.JVM_INTERFACE_VERSION_11;

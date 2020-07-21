@@ -605,7 +605,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         // class.
         // * It has a single formal parameter of type Object[].
         // * It has the ACC_VARARGS and ACC_NATIVE flags set.
-        // * ONLY JAVA < 9: It has a return type of Object.
+        // * ONLY JAVA <= 8: It has a return type of Object.
         if (!(Type.java_lang_invoke_MethodHandle.equals(getDeclaringKlass().getType()) ||
                         Type.java_lang_invoke_VarHandle.equals(getDeclaringKlass().getType()))) {
             return false;
@@ -613,7 +613,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         Symbol<Type>[] signature = getParsedSignature();
         if (!(Signatures.parameterCount(signature, false) == 1 &&
                         Signatures.parameterType(signature, 0) == Type.java_lang_Object_array &&
-                        (getContext().getJavaVersion().varHandlesEnabled() || Signatures.returnType(signature) == Type.java_lang_Object))) {
+                        (getJavaVersion().java8OrEarlier() && Signatures.returnType(signature) == Type.java_lang_Object))) {
             return false;
         }
         int required = ACC_NATIVE | ACC_VARARGS;

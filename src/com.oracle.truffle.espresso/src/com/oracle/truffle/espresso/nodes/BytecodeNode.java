@@ -1530,7 +1530,8 @@ public final class BytecodeNode extends EspressoMethodNode {
             case INVOKEINTERFACE:
                 // Otherwise, if the resolved method is static or (jdk8 or earlier) private, the
                 // invokeinterface instruction throws an IncompatibleClassChangeError.
-                if (resolved.isStatic() || (!getContext().modulesEnabled() && resolved.isPrivate())) {
+                if (resolved.isStatic() ||
+                                (getContext().getJavaVersion().java8OrEarlier() && resolved.isPrivate())) {
                     CompilerDirectives.transferToInterpreter();
                     throw Meta.throwException(getMeta().java_lang_IncompatibleClassChangeError);
                 }
@@ -1679,7 +1680,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         StaticObject methodType = signatureToMethodType(parsedInvokeSignature, accessingKlass, getMeta());
         StaticObject appendix = StaticObject.createArray(meta.java_lang_Object_array, new StaticObject[1]);
         StaticObject memberName;
-        if (getContext().getJavaVersion().varHandlesEnabled()) {
+        if (getJavaVersion().varHandlesEnabled()) {
             memberName = (StaticObject) meta.java_lang_invoke_MethodHandleNatives_linkCallSite11.invokeDirect(
                             null,
                             accessingKlass.mirror(),

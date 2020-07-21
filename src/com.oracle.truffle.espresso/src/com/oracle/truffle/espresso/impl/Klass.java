@@ -246,7 +246,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
             return true;
         }
         EspressoContext context = accessingKlass.getContext();
-        if (context.modulesEnabled()) {
+        if (context.getJavaVersion().modulesEnabled()) {
             if (klass.sameRuntimePackage(accessingKlass)) {
                 return true;
             }
@@ -979,7 +979,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         if (this.getDefiningClassLoader() != other.getDefiningClassLoader()) {
             return false;
         }
-        if (getContext().getJavaVersion().modulesEnabled()) {
+        if (getJavaVersion().modulesEnabled()) {
             return this.packageEntry() == other.packageEntry();
         } else {
             return this.getRuntimePackage().equals(other.getRuntimePackage());
