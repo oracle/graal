@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,42 +27,50 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.factories;
+package com.oracle.truffle.llvm.tests;
 
-import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallMmapNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMNativeSyscallNode;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMSyscallExitNode;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.darwin.amd64.DarwinAMD64Syscall;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.x86.LLVMX86_64VaListStorage;
-import com.oracle.truffle.llvm.runtime.types.Type;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.function.Predicate;
 
-final class DarwinAMD64PlatformCapability extends BasicPlatformCapability<DarwinAMD64Syscall> {
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
-    DarwinAMD64PlatformCapability(boolean loadCxxLibraries) {
-        super(DarwinAMD64Syscall.class, loadCxxLibraries);
+import com.oracle.truffle.llvm.tests.options.TestOptions;
+
+@RunWith(Parameterized.class)
+public final class VAListTest extends BaseSuiteHarness {
+
+    private static final Path VALIST_SUITE_DIR = Paths.get(TestOptions.TEST_SUITE_PATH, "valist");
+    private static final Path VA_ARG_SUITE_DIR = Paths.get(TestOptions.TEST_SUITE_PATH, "va_arg");
+
+    @Parameter(value = 0) public Path path;
+    @Parameter(value = 1) public String testName;
+
+    @Parameters(name = "{1}")
+    public static Collection<Object[]> data() {
+        return Arrays.asList(new Object[]{VALIST_SUITE_DIR, "valist"}, new Object[]{VA_ARG_SUITE_DIR, "va_arg"});
     }
 
     @Override
-    protected LLVMSyscallOperationNode createSyscallNode(DarwinAMD64Syscall syscall) {
-        switch (syscall) {
-            case SYS_mmap:
-                return LLVMAMD64SyscallMmapNodeGen.create();
-            case SYS_exit:
-                return new LLVMSyscallExitNode();
-            default:
-                return new LLVMNativeSyscallNode(syscall);
-        }
+    protected Predicate<? super Path> getIsSulongFilter() {
+        return f -> {
+            boolean isOut = f.getFileName().toString().endsWith(".out");
+            return isOut;
+        };
     }
 
     @Override
-    public Object createVAListStorage() {
-        return new LLVMX86_64VaListStorage();
+    protected Path getTestDirectory() {
+        return path;
     }
 
     @Override
-    public Type getVAListType() {
-        return LLVMX86_64VaListStorage.VA_LIST_TYPE;
+    protected String getTestName() {
+        return testName;
     }
-
 }
