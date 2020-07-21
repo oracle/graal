@@ -27,13 +27,16 @@
 package com.oracle.svm.core.jdk8.containers;
 
 import java.io.BufferedReader;
+import java.io.FileInputStream;
 import java.io.IOException;
-import java.nio.file.Files;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.AccessController;
 import java.security.PrivilegedActionException;
 import java.security.PrivilegedExceptionAction;
+import java.util.ArrayList;
 import java.util.List;
 
 public final class CgroupUtil {
@@ -50,11 +53,10 @@ public final class CgroupUtil {
 
     static String readStringValue(CgroupSubsystemController controller, String param) throws IOException {
         PrivilegedExceptionAction<BufferedReader> pea = () ->
-                Files.newBufferedReader(Paths.get(controller.path(), param));
+                new BufferedReader(new InputStreamReader(new FileInputStream(Paths.get(controller.path(), param).toString()), StandardCharsets.UTF_8));
         try (BufferedReader bufferedReader =
                      AccessController.doPrivileged(pea)) {
-            String line = bufferedReader.readLine();
-            return line;
+            return bufferedReader.readLine();
         } catch (PrivilegedActionException e) {
             unwrapIOExceptionAndRethrow(e);
             throw new InternalError(e.getCause());
@@ -62,9 +64,16 @@ public final class CgroupUtil {
     }
 
     public static List<String> readAllLinesPrivileged(Path path) throws IOException {
-        try {
-            PrivilegedExceptionAction<List<String>> pea = () -> Files.readAllLines(path);
-            return AccessController.doPrivileged(pea);
+        PrivilegedExceptionAction<BufferedReader> pea = () ->
+                new BufferedReader(new InputStreamReader(new FileInputStream(path.toString()), StandardCharsets.UTF_8));
+        try (BufferedReader bufferedReader =
+                     AccessController.doPrivileged(pea)) {
+            String line;
+            List<String> lines = new ArrayList<>();
+            while ((line = bufferedReader.readLine()) != null) {
+                lines.add(line);
+            }
+            return lines;
         } catch (PrivilegedActionException e) {
             unwrapIOExceptionAndRethrow(e);
             throw new InternalError(e.getCause());
