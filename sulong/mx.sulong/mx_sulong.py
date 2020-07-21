@@ -793,7 +793,6 @@ def llvm_dis(args=None, out=None):
             shutil.rmtree(tmp_dir)
 
 
-
 _env_flags = []
 if 'CPPFLAGS' in os.environ:
     _env_flags = os.environ['CPPFLAGS'].split(' ')

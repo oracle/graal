@@ -168,10 +168,10 @@ def ll_reduce(args=None, out=None):
         rand = Random(parsed_args.seed)
         lli_timeout = 10
 
-        def count_lines(file):
+        def count_lines(file_name):
             i = 0
-            with open(file) as f:
-                for i, l in enumerate(f, 1):
+            with open(file_name) as f:
+                for i, _ in enumerate(f, 1):
                     pass
             return i
 
@@ -182,8 +182,8 @@ def ll_reduce(args=None, out=None):
             with open(out_f, 'w') as o, open(err_f, 'w') as e:
                 mx_sulong.runLLVM([tmp_out], timeout=lli_timeout, nonZeroIsFatal=False, out=o, err=e)
 
-        def run_interestingness_test(interestingness_test, input):
-            return mx.run(shlex.split(interestingness_test) + [input], nonZeroIsFatal=False)
+        def run_interestingness_test(interestingness_test, input_file):
+            return mx.run(shlex.split(interestingness_test) + [input_file], nonZeroIsFatal=False)
 
         def run_llvm_reduce(nrmutations, input_bc, output_ll):
             reduce_out = mx.OutputCapture()
@@ -310,7 +310,7 @@ def check_interesting(args=None, out=None):
 def bugpoint(args=None, out=None):
     parser = ArgumentParser(prog='mx bugpoint', description="Run 'bugpoint' with useful defaults.", epilog="Remaining arguments are passed to 'bugpoint'.")
     parser.add_argument('--opt-command', help="Path to opt. (default: use 'opt' from the toolchain)", default=mx_sulong.findBundledLLVMProgram('opt'))
-    parser.add_argument('--keep-main', help= 'Force function reduction to keep main. (always true)', action='store_true')
+    parser.add_argument('--keep-main', help='Force function reduction to keep main. (always true)', action='store_true')
     parser.add_argument('--compile-custom', help='Use -compile-command to define a command to compile the bitcode. Useful to avoid linking. (always true)', action='store_true')
     group = parser.add_mutually_exclusive_group()
     group.add_argument('--compile-command', help='Command to compile the bitcode. The command will be stored in a temporary script file.  (default:  %(default)s)', default='mx check-interesting')
