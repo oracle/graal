@@ -905,7 +905,7 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     public int JVM_GetInterfaceVersion() {
-        if (getContext().getJavaVersion() <= 8) {
+        if (getContext().getJavaVersion().java8OrEarlier()) {
             return JniEnv.JVM_INTERFACE_VERSION_8;
         } else {
             return JniEnv.JVM_INTERFACE_VERSION_11;
