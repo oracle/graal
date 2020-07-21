@@ -29,6 +29,7 @@ import java.lang.reflect.Method;
 import java.net.URL;
 import java.security.SecureClassLoader;
 import java.util.Enumeration;
+import java.util.WeakHashMap;
 import java.util.jar.JarFile;
 
 import com.oracle.svm.core.util.UserError;
@@ -51,6 +52,8 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
     public final ClassLoader defaultSystemClassLoader;
     private volatile ClassLoader nativeImageClassLoader = null;
 
+    private WeakHashMap<ClassLoader, Boolean> disallowedClassLoaders = new WeakHashMap<>();
+
     public NativeImageSystemClassLoader(ClassLoader defaultSystemClassLoader) {
         super(defaultSystemClassLoader);
         this.defaultSystemClassLoader = defaultSystemClassLoader;
@@ -69,6 +72,9 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
     }
 
     public void setNativeImageClassLoader(ClassLoader nativeImageClassLoader) {
+        if (nativeImageClassLoader == null && this.nativeImageClassLoader != null) {
+            disallowedClassLoaders.put(this.nativeImageClassLoader, Boolean.TRUE);
+        }
         this.nativeImageClassLoader = nativeImageClassLoader;
     }
 
@@ -85,6 +91,10 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
             return true;
         }
         return false;
+    }
+
+    public boolean isDisallowedClassLoader(ClassLoader c) {
+        return disallowedClassLoaders.containsKey(c);
     }
 
     /**

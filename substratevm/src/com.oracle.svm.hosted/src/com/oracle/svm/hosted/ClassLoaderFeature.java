@@ -34,7 +34,13 @@ public class ClassLoaderFeature implements Feature {
     private static final NativeImageSystemClassLoader nativeImageSystemClassLoader = NativeImageSystemClassLoader.singleton();
 
     private static boolean needsReplacement(ClassLoader loader) {
-        return loader == nativeImageSystemClassLoader || nativeImageSystemClassLoader.isNativeImageClassLoader(loader);
+        if (loader == nativeImageSystemClassLoader) {
+            return true;
+        }
+        if (nativeImageSystemClassLoader.isNativeImageClassLoader(loader)) {
+            return true;
+        }
+        return false;
     }
 
     private Object runtimeClassLoaderObjectReplacer(Object replaceCandidate) {
