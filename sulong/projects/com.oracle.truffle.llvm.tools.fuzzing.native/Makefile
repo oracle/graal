@@ -36,6 +36,7 @@ default: ${LLVM_STRESS} ${LLVM_REDUCE}
 
 ifeq ($(OS), darwin)
 CLANG_PREFIX=/usr/bin/xcrun --sdk macosx
+LDFLAGS+=-lz
 else
 CLANG_PREFIX=
 endif
