@@ -1528,9 +1528,9 @@ public final class BytecodeNode extends EspressoMethodNode {
                 }
                 break;
             case INVOKEINTERFACE:
-                // Otherwise, if the resolved method is static or private, the invokeinterface
-                // instruction throws an IncompatibleClassChangeError.
-                if (resolved.isStatic() || resolved.isPrivate()) {
+                // Otherwise, if the resolved method is static or (jdk8 or earlier) private, the
+                // invokeinterface instruction throws an IncompatibleClassChangeError.
+                if (resolved.isStatic() || (!getContext().modulesEnabled() && resolved.isPrivate())) {
                     CompilerDirectives.transferToInterpreter();
                     throw Meta.throwException(getMeta().java_lang_IncompatibleClassChangeError);
                 }

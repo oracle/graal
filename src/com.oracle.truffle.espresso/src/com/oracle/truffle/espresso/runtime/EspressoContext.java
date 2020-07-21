@@ -40,6 +40,7 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -289,12 +290,17 @@ public final class EspressoContext {
         try {
             synchronized (pendingLock) {
                 while (!hasReferencePendingList()) {
-                    pendingLock.wait();
+                    waitBoundary(pendingLock);
                 }
             }
         } catch (InterruptedException e) {
             /* nop */
         }
+    }
+
+    @TruffleBoundary
+    private static void waitBoundary(Object lock) throws InterruptedException {
+        lock.wait();
     }
 
     private abstract class ReferenceDrain implements Runnable {
