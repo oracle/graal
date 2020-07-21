@@ -1,10 +1,4 @@
 
-# Truffle Usage Documentation
-
-This document contains use-cases, examples and descriptions of various Truffle features,
-and is intended for Truffle language developers.
-
-
 ## Truffle Branches Instrumentation
 
 In Truffle languages, it is common that the AST implementations contain fast and slow
@@ -23,13 +17,13 @@ form.
 There are several flags that control how branch instrumentation works. These flags are
 specified as system properties:
 
-- `-Dgraal.TruffleInstrumentBranches` - controls whether instrumentation is on (`true`
+- `--engine.InstrumentBranches` - controls whether instrumentation is on (`true`
   or `false`, default is `false`)
-- `-Dgraal.TruffleInstrumentFilter` - filters methods in which instrumentation
+- `--engine.InstrumentFilter` - filters methods in which instrumentation
   should be done (method filter syntax, essentially `<package>.<class>.<method>[.<signature>]`)
-- `-Dgraal.TruffleInstrumentationTableSize` - controls the maximum number of
+- `--engine.InstrumentationTableSize` - controls the maximum number of
   instrumented locations
-- `-Dgraal.TruffleInstrumentBranchesPerInlineSite` - controls whether instrumentation
+- `--engine.InstrumentBranchesPerInlineSite` - controls whether instrumentation
   provides separate branch profiles for each guest language function/compilation unit
   (default is `false`).
 
@@ -44,9 +38,9 @@ problematic method. The following command runs a unit test for the Simple Langua
 and instruments all the `if`-statements:
 
 ```
-mx --jdk jvmci sl -Dgraal.TruffleBackgroundCompilation=false \
-  -Dgraal.TruffleInstrumentBranches=true \
-  '-Dgraal.TruffleInstrumentFilter=*.*.*' \
+mx --jdk jvmci sl --engine.BackgroundCompilation=false \
+  --engine.InstrumentBranches \
+  '--engine.InstrumentFilter=*.*.*' \
   ../truffle/truffle/com.oracle.truffle.sl.test/src/tests/LoopObjectDyn.sl
 ```
 
@@ -76,9 +70,9 @@ per-inline-site flag to `true`, and change the filter to focus only on
 
 ```
 mx --jdk jvmci sl -Dgraal.TruffleBackgroundCompilation=false \
-  -Dgraal.TruffleInstrumentBranchesPerInlineSite=true \
-  -Dgraal.TruffleInstrumentBranches=true \
-  '-Dgraal.TruffleInstrumentFilter=*.SLPropertyCacheNode.*' \
+  --engine.InstrumentBranchesPerInlineSite \
+  --engine.InstrumentBranches \
+  '--engine.InstrumentFilter=*.SLPropertyCacheNode.*' \
   ../truffle/truffle/com.oracle.truffle.sl.test/src/tests/LoopObjectDyn.sl
 ```
 
@@ -135,13 +129,13 @@ The Truffle call boundary instrumentation tool instruments callsites to methods 
 have a `TruffleCallBoundary` annotation, and counts the calls to those methods. It is
 controlled by the following set of flags:
 
-- `-Dgraal.TruffleInstrumentBoundaries` - controls whether instrumentation is on (`true`
+- `--engine.InstrumentBoundaries` - controls whether instrumentation is on (`true`
   or `false`, default is `false`)
-- `-Dgraal.TruffleInstrumentFilter` - filters methods in which instrumentation
+- `--engine.InstrumentFilter` - filters methods in which instrumentation
   should be done (method filter syntax, essentially `<package>.<class>.<method>[.<signature>]`)
-- `-Dgraal.TruffleInstrumentationTableSize` - controls the maximum number of
+- `--engine.InstrumentationTableSize` - controls the maximum number of
   instrumented locations
-- `-Dgraal.TruffleInstrumentBoundariesPerInlineSite` - controls whether instrumentation
+- `--engine.InstrumentBoundariesPerInlineSite` - controls whether instrumentation
   is done per a declaration of an Truffle boundary call (`false`), or per every call
   stack where that callsite was inlined (`true`)
 
@@ -149,6 +143,6 @@ This tool can be used together with the branch instrumentation tool.
 
 Assume that you need to find frequently occurring methods that were not, for example,
 inlined. The usual steps in identifying the Truffle call boundaries is to first run the
-program the `TruffleInstrumentBoundariesPerInlineSite` flag set to `false`, and
+program the `InstrumentBoundariesPerInlineSite` flag set to `false`, and
 then, after identifying the problematic methods, set that flag to `true` and set the
-`TruffleInstrumentFilter` to identify the particular call stacks for those methods.
+`InstrumentFilter` to identify the particular call stacks for those methods.
