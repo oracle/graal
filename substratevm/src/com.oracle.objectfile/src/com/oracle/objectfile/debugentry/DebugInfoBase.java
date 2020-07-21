@@ -205,7 +205,7 @@ public abstract class DebugInfoBase {
         FileEntry fileEntry = filesIndex.get(fileAsPath);
         if (fileEntry == null) {
             DirEntry dirEntry = ensureDirEntry(filePath);
-            fileEntry = new FileEntry(fileName, dirEntry, range.getCachePath());
+            fileEntry = new FileEntry(fileName, dirEntry);
             files.add(fileEntry);
             /*
              * Index the file entry by file path.
@@ -224,7 +224,7 @@ public abstract class DebugInfoBase {
     private void addRange(Range primaryRange, List<DebugInfoProvider.DebugFrameSizeChange> frameSizeInfos, int frameSize) {
         assert primaryRange.isPrimary();
         ClassEntry classEntry = ensureClassEntry(primaryRange);
-        classEntry.addPrimary(primaryRange, frameSizeInfos, frameSize);
+        classEntry.addPrimary(primaryRange, frameSizeInfos, frameSize, stringTable);
     }
 
     private void addSubRange(Range primaryRange, Range subrange) {
@@ -239,7 +239,7 @@ public abstract class DebugInfoBase {
          */
         assert classEntry.primaryIndexFor(primaryRange) != null;
         if (subrangeFileEntry != null) {
-            classEntry.addSubRange(subrange, subrangeFileEntry);
+            classEntry.addSubRange(subrange, subrangeFileEntry, stringTable);
         }
     }
 
