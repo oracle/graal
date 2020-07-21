@@ -101,27 +101,29 @@ public abstract class TruffleException extends RuntimeException implements Truff
     private volatile Throwable lazyStackTrace;
 
     protected TruffleException() {
-        this(null, null, -1);
+        this((String) null, -1);
     }
 
     protected TruffleException(int stackTraceElementLimit) {
-        this(null, null, stackTraceElementLimit);
+        this((String) null, stackTraceElementLimit);
     }
 
     protected TruffleException(String message) {
-        this(message, null, -1);
+        this(message, -1);
     }
 
     protected TruffleException(String message, int stackTraceElementLimit) {
-        this(message, null, stackTraceElementLimit);
+        super(message);
+        this.stackTraceElementLimit = stackTraceElementLimit;
     }
 
-    protected TruffleException(Throwable internaCause) {
-        this(null, internaCause, -1);
+    protected TruffleException(Throwable internalCause) {
+        this(internalCause, -1);
     }
 
-    protected TruffleException(Throwable internaCause, int stackTraceElementLimit) {
-        this(null, internaCause, stackTraceElementLimit);
+    protected TruffleException(Throwable internalCause, int stackTraceElementLimit) {
+        super(checkCause(internalCause));
+        this.stackTraceElementLimit = stackTraceElementLimit;
     }
 
     protected TruffleException(String message, Throwable internalCause) {
@@ -271,6 +273,13 @@ public abstract class TruffleException extends RuntimeException implements Truff
         } catch (UnsupportedMessageException um) {
             throw CompilerDirectives.shouldNotReachHere(um);
         }
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public Throwable initCause(Throwable cause) {
+        return super.initCause(checkCause(cause));
     }
 
     Throwable getLazyStackTrace() {
