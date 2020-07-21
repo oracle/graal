@@ -54,19 +54,18 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
     public NativeImageSystemClassLoader(ClassLoader defaultSystemClassLoader) {
         super(defaultSystemClassLoader);
         this.defaultSystemClassLoader = defaultSystemClassLoader;
-        singleton = this;
     }
 
-    private static NativeImageSystemClassLoader singleton;
-
     public static NativeImageSystemClassLoader singleton() {
-        if (singleton == null) {
-            String badCustomClassLoaderError = "NativeImageSystemClassLoader is not the default system class loader." +
-                            " This might create problems when using reflection during class initialization at build-time. " +
-                            "To fix this error add -Djava.system.class.loader=" + NativeImageSystemClassLoader.class.getCanonicalName();
-            UserError.abort(badCustomClassLoaderError);
+        ClassLoader loader = ClassLoader.getSystemClassLoader();
+        if (loader instanceof NativeImageSystemClassLoader) {
+            return ((NativeImageSystemClassLoader) loader);
         }
-        return singleton;
+
+        String badCustomClassLoaderError = "NativeImageSystemClassLoader is not the default system class loader." +
+                        " This might create problems when using reflection during class initialization at build-time. " +
+                        "To fix this error add -Djava.system.class.loader=" + NativeImageSystemClassLoader.class.getCanonicalName();
+        throw UserError.abort(badCustomClassLoaderError);
     }
 
     public void setNativeImageClassLoader(ClassLoader nativeImageClassLoader) {
