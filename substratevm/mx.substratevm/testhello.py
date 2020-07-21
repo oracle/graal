@@ -30,7 +30,7 @@
 # Assumes you have already executed
 #
 # $ javac hello/Hello.java
-# $ mx native-image -H:GenerateDebugInfo=1 hello.hello
+# $ mx native-image -g hello.hello
 #
 # Run test
 #
