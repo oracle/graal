@@ -43,6 +43,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -197,6 +198,7 @@ public class RewriteDuringCompilationTest extends AbstractPolyglotTest {
         testCompilation(detectInvalidCodeNode, null, detectInvalidCodeNode, 1000, 20);
     }
 
+    @Ignore("GR-25000")
     @Test
     public void testLoopCompilation() throws IOException, InterruptedException, ExecutionException {
         DetectInvalidCodeNode detectInvalidCodeNode = new DetectInvalidCodeNode();
