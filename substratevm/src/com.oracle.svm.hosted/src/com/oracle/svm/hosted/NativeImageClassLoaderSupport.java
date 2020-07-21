@@ -42,6 +42,11 @@ public class NativeImageClassLoaderSupport extends AbstractNativeImageClassLoade
     }
 
     @Override
+    List<Path> applicationModulePath() {
+        return Collections.emptyList();
+    }
+
+    @Override
     public Optional<Object> findModule(String moduleName) {
         return Optional.empty();
     }

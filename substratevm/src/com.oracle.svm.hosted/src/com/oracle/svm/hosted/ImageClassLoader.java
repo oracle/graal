@@ -280,6 +280,14 @@ public final class ImageClassLoader {
         return classLoaderSupport.modulepath();
     }
 
+    public List<Path> applicationClassPath() {
+        return classLoaderSupport.applicationClassPath();
+    }
+
+    public List<Path> applicationModulePath() {
+        return classLoaderSupport.applicationModulePath();
+    }
+
     public <T> List<Class<? extends T>> findSubclasses(Class<T> baseClass, boolean includeHostedOnly) {
         ArrayList<Class<? extends T>> result = new ArrayList<>();
         addSubclasses(applicationClasses, baseClass, result);
