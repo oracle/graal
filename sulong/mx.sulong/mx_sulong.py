@@ -853,7 +853,7 @@ class ToolchainConfig(object):
 
     def __init__(self, name, dist, bootstrap_dist, tools, suite):
         self.name = name
-        self.dist = dist
+        self.dist = dist if isinstance(dist, list) else [dist]
         self.bootstrap_provider = create_toolchain_root_provider(name, bootstrap_dist)
         self.tools = tools
         self.suite = suite
@@ -879,7 +879,7 @@ class ToolchainConfig(object):
         main = self._tool_to_main(self.exe_map[parsed_args.command])
         if "JACOCO" in os.environ:
             mx_gate._jacoco = os.environ["JACOCO"]
-        return mx.run_java(mx.get_runtime_jvm_args([self.dist]) + ['-Dorg.graalvm.launcher.executablename=' + parsed_args.command] + [main] + tool_args, out=out)
+        return mx.run_java(mx.get_runtime_jvm_args([mx.splitqualname(d)[1] for d in self.dist]) + ['-Dorg.graalvm.launcher.executablename=' + parsed_args.command] + [main] + tool_args, out=out)
 
     def _supported_exes(self):
         return [exe for tool in self._supported_tools() for exe in self._tool_to_aliases(tool)]
@@ -900,7 +900,7 @@ class ToolchainConfig(object):
 
     def _check_tool(self, tool):
         if tool not in self._supported_tools():
-            mx.abort("The {} toolchain (defined by {}) does not support tool '{}'".format(self.name, self.dist, tool))
+            mx.abort("The {} toolchain (defined by {}) does not support tool '{}'".format(self.name, self.dist[0], tool))
 
     def get_toolchain_tool(self, tool):
         return os.path.join(self.bootstrap_provider(), 'bin', self._tool_to_exe(tool))
@@ -912,7 +912,7 @@ class ToolchainConfig(object):
         return [
             mx_sdk_vm.LauncherConfig(
                 destination=os.path.join(self.name, 'bin', self._tool_to_exe(tool)),
-                jar_distributions=[self.suite.name + ":" + self.dist],
+                jar_distributions=self._get_jar_dists(),
                 main_class=self._tool_to_main(tool),
                 build_args=[
                     '-H:-ParseRuntimeOptions',  # we do not want `-D` options parsed by SVM
@@ -922,6 +922,9 @@ class ToolchainConfig(object):
                 links=[os.path.join(self.name, 'bin', e) for e in self._tool_to_aliases(tool)[1:]],
             ) for tool in self._supported_tools()
         ]
+
+    def _get_jar_dists(self):
+        return [d if ":" in d else self.suite.name + ":" + d for d in self.dist]
 
 
 class BootstrapToolchainLauncherProject(mx.Project):  # pylint: disable=too-many-ancestors
