@@ -56,7 +56,7 @@ public final class Classpath {
             // regular file.
 
             EspressoContext context = EspressoLanguage.getCurrentContext();
-            if (context.getJavaVersion() >= 9) {
+            if (context.getJavaVersion().modulesEnabled()) {
                 JImageLibrary library = context.jimageLibrary();
                 TruffleObject image = library.open(name);
                 if (!InteropLibrary.getUncached().isNull(image)) {

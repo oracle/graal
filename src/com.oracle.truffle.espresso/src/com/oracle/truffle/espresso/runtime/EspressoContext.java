@@ -128,6 +128,7 @@ public final class EspressoContext {
     @CompilationFinal private VM vm;
     @CompilationFinal private JImageLibrary jimageLibrary;
     @CompilationFinal private EspressoProperties vmProperties;
+    @CompilationFinal private JavaVersion javaVersion;
 
     @CompilationFinal private EspressoException stackOverflow;
     @CompilationFinal private EspressoException outOfMemory;
@@ -269,7 +270,7 @@ public final class EspressoContext {
 
         initVmProperties();
 
-        if (modulesEnabled()) {
+        if (getJavaVersion().modulesEnabled()) {
             registries.initJavaBaseModule();
             registries.getBootClassRegistry().initUnnamedModule(StaticObject.NULL);
         }
@@ -351,10 +352,10 @@ public final class EspressoContext {
             }
         });
 
-        if (getJavaVersion() <= 8) {
+        if (getJavaVersion().java8OrEarlier()) {
             meta.java_lang_System_initializeSystemClass.invokeDirect(null);
         }
-        if (getJavaVersion() >= 9) {
+        if (getJavaVersion().java9OrLater()) {
             meta.java_lang_System_initPhase1.invokeDirect(null);
             int e = (int) meta.java_lang_System_initPhase2.invokeDirect(null, false, false);
             if (e != 0) {
@@ -532,6 +533,7 @@ public final class EspressoContext {
             builder.javaHome(Engine.findHome().resolve("jre"));
         }
         vmProperties = EspressoProperties.processOptions(getLanguage(), builder, getEnv().getOptions()).build();
+        javaVersion = new JavaVersion(vmProperties.bootClassPathType().getJavaVersion());
     }
 
     private void initializeKnownClass(Symbol<Type> type) {
@@ -562,18 +564,14 @@ public final class EspressoContext {
     public JImageLibrary jimageLibrary() {
         if (jimageLibrary == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            EspressoError.guarantee(modulesEnabled(), "Jimage availbale for java >= 9");
+            EspressoError.guarantee(getJavaVersion().modulesEnabled(), "Jimage available for java >= 9");
             this.jimageLibrary = new JImageLibrary(this);
         }
         return jimageLibrary;
     }
 
-    public int getJavaVersion() {
-        return getVmProperties().bootClassPathType().getJavaVersion();
-    }
-
-    public boolean modulesEnabled() {
-        return getJavaVersion() >= 9;
+    public JavaVersion getJavaVersion() {
+        return javaVersion;
     }
 
     public Types getTypes() {
