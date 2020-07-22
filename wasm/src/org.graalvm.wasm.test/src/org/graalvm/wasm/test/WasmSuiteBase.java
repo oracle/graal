@@ -169,8 +169,10 @@ public abstract class WasmSuiteBase extends WasmTestBase {
                     capturedStdout = new ByteArrayOutputStream();
                     System.setOut(new PrintStream(capturedStdout));
 
+                    final String argString = testCase.options().getProperty("argument");
+
                     // Execute benchmark.
-                    final Value result = mainFunction.execute();
+                    final Value result = argString == null ? mainFunction.execute() : mainFunction.execute(Integer.parseInt(argString));
 
                     // Save context state, and check that it's consistent with the previous one.
                     if (iterationNeedsStateCheck(i)) {
