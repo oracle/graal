@@ -140,7 +140,9 @@ final class InterfaceTables {
         CompilerAsserts.neverPartOfCompilation();
         ArrayList<Method> tmpMethodTable = new ArrayList<>();
         for (Method method : declared) {
-            if (!method.isStatic() && !method.isPrivate()) {
+            if (!method.isStatic() &&
+                            // Since Java 9, invokeinterface can call private interface methods.
+                            (thisInterfKlass.getJavaVersion().java9OrLater() || !method.isPrivate())) {
                 method.setITableIndex(tmpMethodTable.size());
                 tmpMethodTable.add(method);
             }

@@ -402,13 +402,13 @@ public final class Meta implements ContextAccess {
 
         java_lang_Class_classLoader = java_lang_Class.lookupField(Name.classLoader, Type.java_lang_ClassLoader);
 
-        if (getContext().getJavaVersion().java9OrLater()) {
+        if (getJavaVersion().java9OrLater()) {
             jdk_internal_loader_ClassLoaders$PlatformClassLoader = knownKlass(Type.jdk_internal_loader_ClassLoaders$PlatformClassLoader);
         } else {
             jdk_internal_loader_ClassLoaders$PlatformClassLoader = null;
         }
 
-        if (getContext().getJavaVersion().modulesEnabled()) {
+        if (getJavaVersion().modulesEnabled()) {
             java_lang_Module = knownKlass(Type.java_lang_Module);
             java_lang_Module_name = java_lang_Module.lookupField(Name.name, Type.java_lang_String);
             java_lang_Module_loader = java_lang_Module.lookupField(Name.loader, Type.java_lang_ClassLoader);
@@ -482,9 +482,9 @@ public final class Meta implements ContextAccess {
     }
 
     private Field lookupFieldDiffVersion(ObjectKlass klass, Symbol<Name> n1, Symbol<Type> t1, Symbol<Name> n2, Symbol<Type> t2) {
-        if (getContext().getJavaVersion().java8OrEarlier()) {
+        if (getJavaVersion().java8OrEarlier()) {
             return klass.lookupDeclaredField(n1, t1);
-        } else if (getContext().getJavaVersion().java9OrLater()) {
+        } else if (getJavaVersion().java9OrLater()) {
             return klass.lookupDeclaredField(n2, t2);
         } else {
             throw EspressoError.shouldNotReachHere();
@@ -492,9 +492,9 @@ public final class Meta implements ContextAccess {
     }
 
     private ObjectKlass knownKlassDiffVersion(Symbol<Type> t1, Symbol<Type> t2) {
-        if (getContext().getJavaVersion().java8OrEarlier()) {
+        if (getJavaVersion().java8OrEarlier()) {
             return knownKlass(t1);
-        } else if (getContext().getJavaVersion().java9OrLater()) {
+        } else if (getJavaVersion().java9OrLater()) {
             return knownKlass(t2);
         } else {
             throw EspressoError.shouldNotReachHere();
@@ -1026,7 +1026,7 @@ public final class Meta implements ContextAccess {
         ObjectKlass k = loadKlassWithBootClassLoader(type);
         if (k == null) {
             // TODO: rework loading of classes with differences according to version.
-            getContext().getLogger().log(Level.WARNING, "Failed loading known class: " + type + ", discovered java version: " + getContext().getJavaVersion());
+            getContext().getLogger().log(Level.WARNING, "Failed loading known class: " + type + ", discovered java version: " + getJavaVersion());
         }
         return k;
     }
@@ -1150,7 +1150,7 @@ public final class Meta implements ContextAccess {
             return null;
         }
         Meta meta = str.getKlass().getMeta();
-        if (meta.getContext().getJavaVersion().compactStringsEnabled()) {
+        if (meta.getJavaVersion().compactStringsEnabled()) {
             StaticObject wrappedChars = (StaticObject) meta.java_lang_String_toCharArray.invokeDirect(str);
             return HostJava.createString(wrappedChars.unwrap());
         }
@@ -1166,7 +1166,7 @@ public final class Meta implements ContextAccess {
         final char[] value = HostJava.getStringValue(hostString);
         final int hash = HostJava.getStringHash(hostString);
         StaticObject guestString = java_lang_String.allocateInstance();
-        if (getContext().getJavaVersion().compactStringsEnabled()) {
+        if (getJavaVersion().compactStringsEnabled()) {
             // TODO(garcia): avoid expensive array copies
             byte[] bytes = null;
             byte coder = LATIN1;

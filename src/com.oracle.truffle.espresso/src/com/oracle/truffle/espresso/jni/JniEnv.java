@@ -1580,7 +1580,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     public void GetStringRegion(@Host(String.class) StaticObject str, int start, int len, @Pointer TruffleObject bufPtr) {
         char[] chars;
-        if (getContext().getJavaVersion().compactStringsEnabled()) {
+        if (getJavaVersion().compactStringsEnabled()) {
             chars = Meta.toHostString(str).toCharArray();
         } else {
             chars = ((StaticObject) getMeta().java_lang_String_value.get(str)).unwrap();

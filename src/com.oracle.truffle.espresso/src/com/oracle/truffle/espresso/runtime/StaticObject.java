@@ -1450,7 +1450,11 @@ public final class StaticObject implements TruffleObject {
         StringBuilder str = new StringBuilder(getKlass().getType().toString());
         for (Field f : ((ObjectKlass) getKlass()).getFieldTable()) {
             // Also prints hidden fields
-            str.append("\n    ").append(f.getName()).append(": ").append(f.get(this).toString());
+            if (!f.isHidden()) {
+                str.append("\n    ").append(f.getName()).append(": ").append(f.get(this).toString());
+            } else {
+                str.append("\n    ").append(f.getName()).append(": ").append((this.getHiddenField(f)).toString());
+            }
         }
         return str.toString();
     }
