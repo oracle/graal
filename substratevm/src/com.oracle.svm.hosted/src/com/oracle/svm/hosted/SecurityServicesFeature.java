@@ -146,16 +146,15 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
 
         /*
          * SSL debug logging enabled by javax.net.debug system property is setup during the class
-         * initialization of sun.security.ssl.Debug (in Java 8) or sun.security.ssl.SSLLogger (in
-         * Java 11). We cannot avoid these classes from being dragged in during image build time, so
-         * we have to reinitialize these classes at runtime to allow honouring runtime passed
-         * configuration for the javax.net.debug system property.
+         * initialization of either sun.security.ssl.Debug or sun.security.ssl.SSLLogger. (In JDK 8
+         * this was implemented in sun.security.ssl.Debug, the logic was moved to
+         * sun.security.ssl.SSLLogger in JDK11 but not yet backported to all JDKs. See JDK-8196584
+         * for details.) We cannot prevent these classes from being initialized at image build time,
+         * so we have to reinitialize them at run time to honour the run time passed value for the
+         * javax.net.debug system property.
          */
-        if (JavaVersionUtil.JAVA_SPEC == 8) {
-            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(clazz(access, "sun.security.ssl.Debug"), "for substitutions");
-        } else if (JavaVersionUtil.JAVA_SPEC >= 11) {
-            ImageSingletons.lookup(RuntimeClassInitializationSupport.class).rerunInitialization(clazz(access, "sun.security.ssl.SSLLogger"), "for substitutions");
-        }
+        optionalClazz(access, "sun.security.ssl.Debug").ifPresent(c -> rci.rerunInitialization(c, "for reading properties at run time"));
+        optionalClazz(access, "sun.security.ssl.SSLLogger").ifPresent(c -> rci.rerunInitialization(c, "for reading properties at run time"));
 
         if (SubstrateOptions.EnableAllSecurityServices.getValue()) {
             /* Prepare SunEC native library access. */
