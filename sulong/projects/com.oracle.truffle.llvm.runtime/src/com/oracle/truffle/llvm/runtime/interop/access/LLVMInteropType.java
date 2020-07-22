@@ -40,6 +40,7 @@ import org.graalvm.collections.Equivalence;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -313,13 +314,18 @@ public abstract class LLVMInteropType implements TruffleObject {
         }
 
         @TruffleBoundary
-        public Method findMethod(String memberName, Object[] arguments) {
+        public Method findMethod(String memberName, Object[] arguments) throws ArityException {
+            boolean methodFound = false;
+            int expectedLength = 0;
             for (Method method : methods) {
                 if (method.getName().equals(memberName)) {
-                    // check parameters to resolve overloaded methods
+                    methodFound = true;
+                    // arity check, also for overloaded methods
                     LLVMInteropType[] types = method.parameterTypes;
                     if (types.length == arguments.length) {
                         return method;
+                    } else {
+                        expectedLength = types.length;
                     }
                 } else if (method.getLinkageName().equals(memberName)) {
                     return method;
@@ -327,6 +333,12 @@ public abstract class LLVMInteropType implements TruffleObject {
             }
             if (superclass != null) {
                 return superclass.findMethod(memberName, arguments);
+            } else if (methodFound) {
+                /*
+                 * At least 1 method has been found, but with wrong arity. For message, remove
+                 * 'self' object from expected and actual arguments, respectively.
+                 */
+                throw ArityException.create(expectedLength - 1, arguments.length - 1);
             }
             return null;
         }
