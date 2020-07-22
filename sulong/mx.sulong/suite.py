@@ -437,6 +437,7 @@ suite = {
       "subDir" : "projects",
       "native" : True,
       "vpath" : True,
+      "headers" : ["src/fuzzmain.c"],
       "results" : [
         "bin/<exe:llvm-reduce>",
         "bin/<exe:llvm-stress>",

@@ -84,7 +84,7 @@ def fuzz(args=None, out=None):
             toolchain_clang = mx_sulong._get_toolchain_tool("native,CC")
             if parsed_args.generator == "llvm-stress":
                 _run_fuzz_tool("llvm-stress", ["-o", tmp_ll, "--size", str(parsed_args.size), "--seed", str(rand.randint(0, 10000000))])
-                fuzz_main = os.path.join(mx.dependency('com.oracle.truffle.llvm.tools.fuzzing.native', fatalIfMissing=True).dir, "src", "fuzzmain.c")
+                fuzz_main = os.path.join(mx.dependency('SULONG_TOOLS', fatalIfMissing=True).get_output(), "src", "fuzzmain.c")
                 mx.run([toolchain_clang, "-O0", "-Wno-everything", "-o", tmp_out, tmp_ll, fuzz_main])
                 mx_sulong.llvm_tool(["clang", "-O0", "-Wno-everything", "-S", "-emit-llvm", "-o", tmp_main_ll, fuzz_main])
                 mx_sulong.llvm_tool(["llvm-link", "-o", tmp_ll, tmp_ll, tmp_main_ll])
