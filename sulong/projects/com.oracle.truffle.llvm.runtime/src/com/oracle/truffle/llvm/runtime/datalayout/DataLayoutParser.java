@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,7 +29,10 @@
  */
 package com.oracle.truffle.llvm.runtime.datalayout;
 
-import java.util.ArrayList;
+import static java.nio.ByteOrder.BIG_ENDIAN;
+import static java.nio.ByteOrder.LITTLE_ENDIAN;
+
+import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.List;
 
@@ -110,10 +113,27 @@ final class DataLayoutParser {
         specs.add(newSpec);
     }
 
-    static List<DataTypeSpecification> parseDataLayout(String layout) {
+    /**
+     * Parses the LLVM data layout string.
+     * 
+     * @see <a href="https://llvm.org/docs/LangRef.html#data-layout">Data Layout</a>
+     * @param layout The data layout string
+     * @param specs list to collect data type specifications
+     * @return the byte order specified by the data layout
+     */
+    static ByteOrder parseDataLayout(String layout, List<DataTypeSpecification> specs) {
+        /* According to the LLVM documentation, big endian is the default. */
+        ByteOrder byteOrder = BIG_ENDIAN;
         String[] layoutSpecs = layout.split("-");
-        List<DataTypeSpecification> specs = new ArrayList<>();
         for (String spec : layoutSpecs) {
+            if (spec.equals("E")) {
+                byteOrder = BIG_ENDIAN;
+                continue;
+            }
+            if (spec.equals("e")) {
+                byteOrder = LITTLE_ENDIAN;
+                continue;
+            }
             // at the moment, we are only interested in a small subset of all identifiers
             DataLayoutType type = getDataType(spec);
             DataTypeSpecification dataTypeSpec = createDataTypeSpec(type, spec);
@@ -139,7 +159,7 @@ final class DataLayoutParser {
 
         // FIXME:work around to handle pointer type in LLVM 3.9.0 bitcode format
         checkPointerType(specs);
-        return specs;
+        return byteOrder;
     }
 
     private static void checkPointerType(List<DataTypeSpecification> specs) {
