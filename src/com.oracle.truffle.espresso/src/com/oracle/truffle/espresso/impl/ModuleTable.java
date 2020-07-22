@@ -54,6 +54,7 @@ public class ModuleTable extends EntryTable<ModuleTable.ModuleEntry, ClassRegist
 
     public static class ModuleEntry extends EntryTable.NamedEntry {
 
+        // TODO: module versions.
         ModuleEntry(Symbol<Name> name, ClassRegistry data) {
             super(name);
             this.registry = data;

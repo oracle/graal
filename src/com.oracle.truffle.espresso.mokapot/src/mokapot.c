@@ -1379,12 +1379,14 @@ JNIEXPORT void JNICALL JVM_InitializeFromArchive(JNIEnv* env, jclass cls) {
 }
 
 JNIEXPORT void JNICALL JVM_InitStackTraceElement(JNIEnv* env, jobject element, jobject stackFrameInfo){
-  UNIMPLEMENTED(JVM_InitStackTraceElement);
+  IMPLEMENTED(JVM_InitStackTraceElement);
+  (*getEnv())->JVM_InitStackTraceElement(env, element, stackFrameInfo);
   return;
 }
 
 JNIEXPORT void JNICALL JVM_InitStackTraceElementArray(JNIEnv *env, jobjectArray elements, jobject throwable) {
-  UNIMPLEMENTED(JVM_InitStackTraceElementArray);
+  IMPLEMENTED(JVM_InitStackTraceElementArray);
+  (*getEnv())->JVM_InitStackTraceElementArray(env, elements, throwable);
   return;
 }
 

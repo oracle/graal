@@ -613,7 +613,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         Symbol<Type>[] signature = getParsedSignature();
         if (!(Signatures.parameterCount(signature, false) == 1 &&
                         Signatures.parameterType(signature, 0) == Type.java_lang_Object_array &&
-                        (getJavaVersion().java8OrEarlier() && Signatures.returnType(signature) == Type.java_lang_Object))) {
+                        (getJavaVersion().java9OrLater() || Signatures.returnType(signature) == Type.java_lang_Object))) {
             return false;
         }
         int required = ACC_NATIVE | ACC_VARARGS;
@@ -1006,6 +1006,14 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 Meta meta = getMeta();
                 if (poisonPill) {
+                    // Conflicting Maximally-specific non-abstract interface methods.
+                    if (meta.getJavaVersion().java9OrLater()) {
+                        /*
+                         * Supposed to be IncompatibleClassChangeError (see
+                         * jvms-6.5.invokeinterface), but HotSpot throws AbstractMethodError.
+                         */
+                        throw Meta.throwExceptionWithMessage(meta.java_lang_AbstractMethodError, "Conflicting default methods: " + getMethod().getName());
+                    }
                     throw Meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "Conflicting default methods: " + getMethod().getName());
                 }
                 // Initializing a class costs a lock, do it outside of this method's lock to avoid

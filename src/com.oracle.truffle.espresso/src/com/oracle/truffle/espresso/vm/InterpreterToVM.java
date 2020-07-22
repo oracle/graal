@@ -619,6 +619,9 @@ public final class InterpreterToVM implements ContextAccess {
         });
         throwable.setHiddenField(meta.HIDDEN_FRAMES, frames);
         throwable.setField(meta.java_lang_Throwable_backtrace, throwable);
+        if (meta.getJavaVersion().java9OrLater()) {
+            throwable.setIntField(meta.java_lang_Throwable_depth, frames.size);
+        }
         return throwable;
     }
 

@@ -2604,5 +2604,63 @@ public final class VM extends NativeEnv implements ContextAccess {
          */
     }
 
+    @VmImpl
+    @JniImpl
+    public void JVM_InitStackTraceElement(@Host(StackTraceElement.class) StaticObject element, @Host(typeName = "Ljava/lang/StackFrameInfo;") StaticObject info) {
+        // TODO: this
+    }
+
+    @VmImpl
+    @JniImpl
+    public void JVM_InitStackTraceElementArray(@Host(StackTraceElement[].class) StaticObject elements, @Host(Throwable.class) StaticObject throwable) {
+        if (StaticObject.isNull(elements) || StaticObject.isNull(throwable)) {
+            throw getMeta().throwNullPointerException();
+        }
+        assert elements.isArray();
+        VM.StackTrace stackTrace = (VM.StackTrace) throwable.getHiddenField(getMeta().HIDDEN_FRAMES);
+        if (elements.length() != stackTrace.size) {
+            throw Meta.throwException(getMeta().java_lang_IndexOutOfBoundsException);
+        }
+        for (int i = 0; i < stackTrace.size; i++) {
+            if (StaticObject.isNull(elements.get(i))) {
+                throw getMeta().throwNullPointerException();
+            }
+            fillInElement(elements.get(i), stackTrace.trace[i]);
+        }
+    }
+
+    private void fillInElement(@Host(StackTraceElement.class) StaticObject ste, VM.StackElement element) {
+        Method m = element.getMethod();
+        Klass k = m.getDeclaringKlass();
+        StaticObject guestClass = k.mirror();
+        StaticObject loader = k.getDefiningClassLoader();
+        ModuleEntry module = k.module();
+
+        // Fill in class name
+        ste.setField(getMeta().java_lang_StackTraceElement_declaringClass, getMeta().java_lang_Class_getName.invokeDirect(guestClass));
+        ste.setField(getMeta().java_lang_StackTraceElement_declaringClassObject, guestClass);
+
+        // Fill in loader name
+        if (!StaticObject.isNull(loader)) {
+            StaticObject loaderName = loader.getField(getMeta().java_lang_ClassLoader_name);
+            if (!StaticObject.isNull(loader)) {
+                ste.setField(getMeta().java_lang_StackTraceElement_classLoaderName, loaderName);
+            }
+        }
+
+        // Fill in method name
+        Symbol<Name> mname = m.getName();
+        ste.setField(getMeta().java_lang_StackTraceElement_methodName, getMeta().toGuestString(mname));
+
+        // Fill in module
+        if (module.isNamed()) {
+            ste.setField(getMeta().java_lang_StackTraceElement_moduleName, getMeta().toGuestString(module.getName()));
+            // TODO: module version
+        }
+
+        // Fill in source information
+        ste.setField(getMeta().java_lang_StackTraceElement_fileName, getMeta().toGuestString(m.getSourceFile()));
+        ste.setIntField(getMeta().java_lang_StackTraceElement_lineNumber, m.bciToLineNumber(element.getBCI()));
+    }
     // Checkstyle: resume method name check
 }

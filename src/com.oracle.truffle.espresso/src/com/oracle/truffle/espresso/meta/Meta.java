@@ -74,6 +74,7 @@ public final class Meta implements ContextAccess {
         HIDDEN_SIGNERS = java_lang_Class.lookupHiddenField(Name.HIDDEN_SIGNERS);
         java_lang_String = knownKlass(Type.java_lang_String);
         java_lang_Class_array = java_lang_Class.array();
+        java_lang_Class_getName = java_lang_Class.lookupDeclaredMethod(Name.getName, Signature.String);
         java_lang_Class_forName_String = java_lang_Class.lookupDeclaredMethod(Name.forName, Signature.Class_String);
         java_lang_Class_forName_String_boolean_ClassLoader = java_lang_Class.lookupDeclaredMethod(Name.forName, Signature.Class_String_boolean_ClassLoader);
         HIDDEN_PROTECTION_DOMAIN = java_lang_Class.lookupHiddenField(Name.HIDDEN_PROTECTION_DOMAIN);
@@ -167,9 +168,18 @@ public final class Meta implements ContextAccess {
         java_lang_Throwable_backtrace = java_lang_Throwable.lookupField(Name.backtrace, Type.java_lang_Object);
         java_lang_Throwable_detailMessage = java_lang_Throwable.lookupField(Name.detailMessage, Type.java_lang_String);
         java_lang_Throwable_cause = java_lang_Throwable.lookupField(Name.cause, Type.java_lang_Throwable);
+        java_lang_Throwable_depth = java_lang_Throwable.lookupField(Name.depth, Type._int);
 
         java_lang_StackTraceElement = knownKlass(Type.java_lang_StackTraceElement);
         java_lang_StackTraceElement_init = java_lang_StackTraceElement.lookupDeclaredMethod(Name._init_, Signature._void_String_String_String_int);
+        java_lang_StackTraceElement_declaringClassObject = java_lang_StackTraceElement.lookupDeclaredField(Name.declaringClassObject, Type.java_lang_Class);
+        java_lang_StackTraceElement_classLoaderName = java_lang_StackTraceElement.lookupDeclaredField(Name.classLoaderName, Type.java_lang_String);
+        java_lang_StackTraceElement_moduleName = java_lang_StackTraceElement.lookupDeclaredField(Name.moduleName, Type.java_lang_String);
+        java_lang_StackTraceElement_moduleVersion = java_lang_StackTraceElement.lookupDeclaredField(Name.moduleVersion, Type.java_lang_String);
+        java_lang_StackTraceElement_declaringClass = java_lang_StackTraceElement.lookupDeclaredField(Name.declaringClass, Type.java_lang_String);
+        java_lang_StackTraceElement_methodName = java_lang_StackTraceElement.lookupDeclaredField(Name.methodName, Type.java_lang_String);
+        java_lang_StackTraceElement_fileName = java_lang_StackTraceElement.lookupDeclaredField(Name.fileName, Type.java_lang_String);
+        java_lang_StackTraceElement_lineNumber = java_lang_StackTraceElement.lookupDeclaredField(Name.lineNumber, Type._int);
 
         java_lang_Exception = knownKlass(Type.java_lang_Exception);
         java_lang_reflect_InvocationTargetException = knownKlass(Type.java_lang_reflect_InvocationTargetException);
@@ -229,6 +239,7 @@ public final class Meta implements ContextAccess {
         java_lang_ClassLoader_getSystemClassLoader = java_lang_ClassLoader.lookupDeclaredMethod(Name.getSystemClassLoader, Signature.ClassLoader);
         java_lang_ClassLoader_parent = java_lang_ClassLoader.lookupDeclaredField(Name.parent, Type.java_lang_ClassLoader);
         java_lang_ClassLoader_unnamedModule = java_lang_ClassLoader.lookupDeclaredField(Name.unnamedModule, Type.java_lang_Module);
+        java_lang_ClassLoader_name = java_lang_ClassLoader.lookupDeclaredField(Name.name, Type.java_lang_String);
         HIDDEN_CLASS_LOADER_REGISTRY = java_lang_ClassLoader.lookupHiddenField(Name.HIDDEN_CLASS_LOADER_REGISTRY);
 
         // Guest reflection.
@@ -515,6 +526,7 @@ public final class Meta implements ContextAccess {
     public final Field java_lang_Class_classLoader;
     public final Field sun_reflect_ConstantPool_constantPoolOop;
     public final ArrayKlass java_lang_Class_array;
+    public final Method java_lang_Class_getName;
     public final Method java_lang_Class_forName_String;
     public final Method java_lang_Class_forName_String_boolean_ClassLoader;
 
@@ -580,6 +592,7 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass java_lang_ClassLoader;
     public final Field java_lang_ClassLoader_parent;
     public final Field java_lang_ClassLoader_unnamedModule;
+    public final Field java_lang_ClassLoader_name;
     public final ObjectKlass java_lang_ClassLoader$NativeLibrary;
     public final Method java_lang_ClassLoader$NativeLibrary_getFromClass;
     public final Method java_lang_ClassLoader_findNative;
@@ -679,6 +692,7 @@ public final class Meta implements ContextAccess {
     public final Field java_lang_Throwable_backtrace;
     public final Field java_lang_Throwable_detailMessage;
     public final Field java_lang_Throwable_cause;
+    public final Field java_lang_Throwable_depth;
 
     public final ObjectKlass java_lang_Error;
     public final ObjectKlass java_lang_NoSuchFieldError;
@@ -689,6 +703,14 @@ public final class Meta implements ContextAccess {
 
     public final ObjectKlass java_lang_StackTraceElement;
     public final Method java_lang_StackTraceElement_init;
+    public final Field java_lang_StackTraceElement_declaringClassObject;
+    public final Field java_lang_StackTraceElement_classLoaderName;
+    public final Field java_lang_StackTraceElement_moduleName;
+    public final Field java_lang_StackTraceElement_moduleVersion;
+    public final Field java_lang_StackTraceElement_declaringClass;
+    public final Field java_lang_StackTraceElement_methodName;
+    public final Field java_lang_StackTraceElement_fileName;
+    public final Field java_lang_StackTraceElement_lineNumber;
 
     public final ObjectKlass java_security_PrivilegedActionException;
     public final Method java_security_PrivilegedActionException_init_Exception;
