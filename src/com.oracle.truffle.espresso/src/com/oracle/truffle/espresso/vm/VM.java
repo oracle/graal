@@ -2579,6 +2579,31 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
+    public boolean JVM_AreNestMates(@Host(Class.class) StaticObject current, @Host(Class.class) StaticObject member) {
+        return current.getMirrorKlass().nest() == member.getMirrorKlass().nest();
+    }
+
+    @VmImpl
+    @JniImpl
+    public @Host(Class.class) StaticObject JVM_GetNestHost(@Host(Class.class) StaticObject current) {
+        return current.getMirrorKlass().nest().mirror();
+    }
+
+    @VmImpl
+    @JniImpl
+    public @Host(Class[].class) StaticObject JVM_GetNestMembers(@Host(Class.class) StaticObject current) {
+        Klass k = current.getMirrorKlass();
+        Klass[] nestMembers = k.getNestMembers();
+        StaticObject[] array = new StaticObject[nestMembers.length];
+        for (int i = 0; i < nestMembers.length; i++) {
+            array[i] = nestMembers[i].mirror();
+        }
+        StaticObject result = StaticObject.createArray(getMeta().java_lang_Class_array, array);
+        return result;
+    }
+
+    @VmImpl
+    @JniImpl
     public StaticObject JVM_GetAndClearReferencePendingList() {
         return getContext().getAndClearReferencePendingList();
     }
@@ -2612,24 +2637,30 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
-    public void JVM_InitStackTraceElementArray(@Host(StackTraceElement[].class) StaticObject elements, @Host(Throwable.class) StaticObject throwable) {
+    public void JVM_InitStackTraceElementArray(@Host(StackTraceElement[].class) StaticObject elements, @Host(Throwable.class) StaticObject throwable,
+                    @GuestCall(target = "java_lang_Class_getName") DirectCallNode classGetName,
+                    @InjectProfile SubstitutionProfiler profiler) {
         if (StaticObject.isNull(elements) || StaticObject.isNull(throwable)) {
+            profiler.profile(0);
             throw getMeta().throwNullPointerException();
         }
         assert elements.isArray();
         VM.StackTrace stackTrace = (VM.StackTrace) throwable.getHiddenField(getMeta().HIDDEN_FRAMES);
         if (elements.length() != stackTrace.size) {
+            profiler.profile(1);
             throw Meta.throwException(getMeta().java_lang_IndexOutOfBoundsException);
         }
         for (int i = 0; i < stackTrace.size; i++) {
             if (StaticObject.isNull(elements.get(i))) {
+                profiler.profile(2);
                 throw getMeta().throwNullPointerException();
             }
-            fillInElement(elements.get(i), stackTrace.trace[i]);
+            fillInElement(elements.get(i), stackTrace.trace[i], classGetName);
         }
     }
 
-    private void fillInElement(@Host(StackTraceElement.class) StaticObject ste, VM.StackElement element) {
+    private void fillInElement(@Host(StackTraceElement.class) StaticObject ste, VM.StackElement element,
+                    DirectCallNode classGetName) {
         Method m = element.getMethod();
         Klass k = m.getDeclaringKlass();
         StaticObject guestClass = k.mirror();
@@ -2637,7 +2668,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         ModuleEntry module = k.module();
 
         // Fill in class name
-        ste.setField(getMeta().java_lang_StackTraceElement_declaringClass, getMeta().java_lang_Class_getName.invokeDirect(guestClass));
+        ste.setField(getMeta().java_lang_StackTraceElement_declaringClass, classGetName.call(guestClass));
         ste.setField(getMeta().java_lang_StackTraceElement_declaringClassObject, guestClass);
 
         // Fill in loader name

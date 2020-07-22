@@ -1056,13 +1056,29 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return mirror();
     }
 
+    /**
+     * Returns an identifier for the nest this klass is in. In practice, the nest is identified by
+     * its nest host.
+     * 
+     * @return The nest host of this klass.
+     */
     public Klass nest() {
         return this;
     }
 
-    @SuppressWarnings("unused")
+    /**
+     * Checks that the given klass k is a nest member of {@code this} as a nest host. This does NOT
+     * check whether this and k are in the same nest.
+     */
     public boolean nestMembersCheck(Klass k) {
         return false;
+    }
+
+    /**
+     * Returns an array containing the nest members of {@code this} as a nest host.
+     */
+    public Klass[] getNestMembers() {
+        return EMPTY_ARRAY;
     }
 
     @Override

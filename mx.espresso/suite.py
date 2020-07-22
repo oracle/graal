@@ -233,8 +233,8 @@ suite = {
             "dependencies": [
                 "com.oracle.truffle.espresso.test"
             ],
-            "overlayTarget": "com.oracle.truffle.espresso.test",
             "javaCompliance": "8",
+            "checkstyle": "com.oracle.truffle.espresso",
         },
 
         "com.oracle.truffle.espresso.test.jdk11": {
@@ -346,6 +346,17 @@ suite = {
                 "native.test.lib": "<path:ESPRESSO_TESTS_NATIVE>/<lib:nativetest>",
                 "espresso.test.SingletonContext": "true",
             },
+            "testDistribution": True,
+        },
+
+        "ESPRESSO_TESTS_8": {
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.truffle.espresso.test.jdk8"
+            ],
+            "distDependencies": [
+                "espresso:ESPRESSO_TESTS",
+            ],
             "testDistribution": True,
         },
 
