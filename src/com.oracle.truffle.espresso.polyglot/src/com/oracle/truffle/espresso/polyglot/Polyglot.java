@@ -108,6 +108,19 @@ public final class Polyglot {
     }
 
     /**
+     * {@link Polyglot#eval Evaluates} the given code in the given language, and
+     * {@link Polyglot#cast casts} the result to the given class.
+     * <p>
+     * See {@link Polyglot#cast} for the details of casting.
+     *
+     * @param languageId id of one of the Truffle languages
+     *
+     */
+    public static <T> T eval(String languageId, String sourceCode, Class<? extends T> targetClass) throws ClassCastException {
+        return cast(targetClass, eval(languageId, sourceCode));
+    }
+
+    /**
      * Imports {@code name} from global Polyglot scope. If {@code name} does not exist in the scope,
      * returns {@code null}.
      *
