@@ -1263,7 +1263,8 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
 
                 build_args += [
                     '--features=org.graalvm.home.HomeFinderFeature',
-                    '-Dorg.graalvm.launcher.relative.home=' + relpath(graalvm_image_destination, graalvm_home)
+                    '-Dorg.graalvm.launcher.relative.home=' + relpath(graalvm_image_destination, graalvm_home),
+                    '--install-exit-handlers'
                 ]
 
                 for language, path in sorted(image_config.relative_home_paths.items()):
