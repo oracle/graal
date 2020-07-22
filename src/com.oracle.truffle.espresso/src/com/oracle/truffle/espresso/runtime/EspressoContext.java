@@ -30,6 +30,7 @@ import java.lang.ref.ReferenceQueue;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
@@ -266,20 +267,18 @@ public final class EspressoContext {
 
     private final ReferenceQueue<StaticObject> referenceQueue = new ReferenceQueue<>();
     private volatile StaticObject referencePendingList = StaticObject.NULL;
+    private final AtomicReferenceFieldUpdater<EspressoContext, StaticObject> pendingListUpdater = //
+                    AtomicReferenceFieldUpdater.newUpdater(EspressoContext.class, StaticObject.class, "referencePendingList");
     private final Object pendingLock = new Object() {
     };
 
     public StaticObject getAndClearReferencePendingList() {
         // Should be under guest lock
-        synchronized (pendingLock) {
-            StaticObject res = referencePendingList;
-            referencePendingList = StaticObject.NULL;
-            return res;
-        }
+        return pendingListUpdater.getAndSet(this, StaticObject.NULL);
     }
 
     public boolean hasReferencePendingList() {
-        return !StaticObject.isNull(referencePendingList);
+        return !StaticObject.isNull(pendingListUpdater.get(this));
     }
 
     public void waitForReferencePendingList() {
@@ -288,6 +287,7 @@ public final class EspressoContext {
         }
         try {
             synchronized (pendingLock) {
+                // Wait until the reference drain updates the list.
                 while (!hasReferencePendingList()) {
                     pendingLock.wait();
                 }
@@ -335,8 +335,7 @@ public final class EspressoContext {
                         StaticObject obj = getAndSetReferencePendingList(head.getGuestReference());
 
                         meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), obj);
-
-                        getVM().JVM_MonitorNotify(lock, profiler);
+                        notifyGuest(lock);
                     } finally {
                         lock.getLock().unlock();
                     }
@@ -348,6 +347,10 @@ public final class EspressoContext {
         }
 
         protected abstract StaticObject getAndSetReferencePendingList(@Host(Reference.class) StaticObject ref);
+
+        protected void notifyGuest(StaticObject lock) {
+            getVM().JVM_MonitorNotify(lock, profiler);
+        }
     }
 
     private void spawnVM() {
@@ -402,10 +405,15 @@ public final class EspressoContext {
             this.hostToGuestReferenceDrainThread = getEnv().createThread(new ReferenceDrain() {
                 @Override
                 protected StaticObject getAndSetReferencePendingList(@Host(Reference.class) StaticObject ref) {
+                    return pendingListUpdater.getAndSet(EspressoContext.this, ref);
+                }
+
+                @Override
+                protected void notifyGuest(StaticObject lock) {
+                    super.notifyGuest(lock);
                     synchronized (pendingLock) {
-                        StaticObject res = referencePendingList;
-                        referencePendingList = ref;
-                        return res;
+                        // Wake up reference handler thread
+                        pendingLock.notifyAll();
                     }
                 }
             });

@@ -352,20 +352,11 @@ suite = {
         "ESPRESSO_TESTS_11": {
             "subDir": "src",
             "dependencies": [
-                "com.oracle.truffle.espresso.test",
                 "com.oracle.truffle.espresso.test.jdk11"
             ],
             "distDependencies": [
-                "espresso:ESPRESSO",
-                "truffle:TRUFFLE_API",
-                "truffle:TRUFFLE_TCK",
-                "tools:AGENTSCRIPT",
-                "mx:JUNIT",
+                "espresso:ESPRESSO_TESTS",
             ],
-            "javaProperties": {
-                "native.test.lib": "<path:ESPRESSO_TESTS_NATIVE>/<lib:nativetest>",
-                "espresso.test.SingletonContext": "true",
-            },
             "testDistribution": True,
         },
 
