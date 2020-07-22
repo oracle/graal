@@ -57,6 +57,7 @@ import com.oracle.svm.hosted.c.util.FileUtils;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
+import org.graalvm.nativeimage.Platform;
 
 public abstract class CCompilerInvoker {
 
@@ -203,7 +204,10 @@ public abstract class CCompilerInvoker {
 
         @Override
         protected String getDefaultCompiler() {
-            return LibCBase.singleton().getTargetCompiler();
+            if (Platform.includedIn(Platform.LINUX.class)) {
+                return LibCBase.singleton().getTargetCompiler();
+            }
+            return "gcc";
         }
 
         @Override
