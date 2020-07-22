@@ -97,7 +97,7 @@ abstract class DynamicObjectLibraryImpl {
         } else if (cachedKey instanceof Long) {
             return key instanceof Long && ((Long) cachedKey).equals(key);
         } else {
-            return cachedKey == key && keyEqualsBoundary(cachedKey, key);
+            return cachedKey == key || keyEqualsBoundary(cachedKey, key);
         }
     }
 
