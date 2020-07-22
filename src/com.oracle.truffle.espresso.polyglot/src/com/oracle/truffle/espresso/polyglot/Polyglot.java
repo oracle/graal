@@ -89,15 +89,15 @@ public final class Polyglot {
     /**
      * Evaluates the given code in the given language.
      *
-     * @param language the id of one of the Truffle languages
-     * @param code the source code in the {@code language}
+     * @param languageId the id of one of the Truffle languages
+     * @param sourceCode the source code in the {@code language}
      *
      * @return the result of the evaluation as {@link Object}. To access members of the underlying
      *         foreign object, write a corresponding class or interface stub in Java and cast the
      *         eval result to it using {@link #cast Polyglot.cast}.
      */
     @SuppressWarnings("unused")
-    public static Object eval(String language, String code) {
+    public static Object eval(String languageId, String sourceCode) {
         throw new UnsupportedOperationException("Polyglot is not available. Run Espresso on GraalVM to interact with other Truffle languages.");
     }
 

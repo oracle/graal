@@ -129,15 +129,15 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
     }
 
     @Substitution
-    public static @Host(Object.class) StaticObject eval(@Host(String.class) StaticObject language, @Host(String.class) StaticObject code, @InjectMeta Meta meta) {
-        String languageString = Meta.toHostString(language);
+    public static @Host(Object.class) StaticObject eval(@Host(String.class) StaticObject languageId, @Host(String.class) StaticObject code, @InjectMeta Meta meta) {
+        String languageString = Meta.toHostString(languageId);
         Set<String> publicLanguages = meta.getContext().getEnv().getPublicLanguages().keySet();
         if (!publicLanguages.contains(languageString)) {
             throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException,
                             "No language for id " + languageString + " found. Supported languages are: " + publicLanguages);
         }
 
-        Source source = Source.newBuilder(language.toString(), code.toString(), "(eval)").build();
+        Source source = Source.newBuilder(languageId.toString(), code.toString(), "(eval)").build();
         CallTarget callTarget;
         try {
             callTarget = meta.getContext().getEnv().parsePublic(source);
