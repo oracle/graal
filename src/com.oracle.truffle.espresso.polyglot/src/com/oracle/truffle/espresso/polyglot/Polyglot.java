@@ -85,16 +85,22 @@ public final class Polyglot {
         return targetClass.cast(value);
     }
 
-    // TODO: link something about language ids?
     /**
      * Evaluates the given code in the given language.
      *
      * @param languageId the id of one of the Truffle languages
      * @param sourceCode the source code in the {@code language}
      *
-     * @return the result of the evaluation as {@link Object}. To access members of the underlying
-     *         foreign object, write a corresponding class or interface stub in Java and cast the
-     *         eval result to it using {@link #cast Polyglot.cast}.
+     * @return the result of the evaluation as {@link Object}.
+     *
+     * @throws IllegalArgumentException
+     *             <ul>
+     *             <li>if the language is not available
+     *             <li>if parsing of the code fails
+     *             </ul>
+     *
+     * @apiNote To access members of the foreign object, write a corresponding class or interface
+     *          stub in Java and cast the eval result to it using {@link #cast Polyglot.cast}.
      */
     @SuppressWarnings("unused")
     public static Object eval(String languageId, String sourceCode) {
@@ -105,9 +111,10 @@ public final class Polyglot {
      * Imports {@code name} from global Polyglot scope. If {@code name} does not exist in the scope,
      * returns {@code null}.
      *
-     * The foreign value is returned as {@link Object}. To the foreign object's members, write a
-     * corresponding class or interface stub in Java and cast the eval result to it using
-     * {@link #cast Polyglot.cast}.
+     * The foreign value is returned as {@link Object}.
+     *
+     * @apiNote To access the foreign object's members, write a corresponding class or interface
+     *          stub in Java and cast the eval result to it using {@link #cast Polyglot.cast}.
      */
     @SuppressWarnings("unused")
     public static Object importObject(String name) {
