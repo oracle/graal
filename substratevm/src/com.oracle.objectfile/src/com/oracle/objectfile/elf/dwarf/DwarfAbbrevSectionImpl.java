@@ -29,7 +29,8 @@ package com.oracle.objectfile.elf.dwarf;
 import com.oracle.objectfile.LayoutDecision;
 import org.graalvm.compiler.debug.DebugContext;
 
-import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_ABBREV_CODE_compile_unit;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_ABBREV_CODE_compile_unit_1;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_ABBREV_CODE_compile_unit_2;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_ABBREV_CODE_subprogram;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_ABBREV_SECTION_NAME;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_AT_comp_dir;
@@ -108,13 +109,13 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          *
          * </ul>
          *
-         * For the moment we only use one abbrev table for all CUs. It contains two DIEs, the first
-         * to describe the compilation unit itself and the second to describe each method within
+         * For the moment we only use one abbrev table for all CUs. It contains three DIEs. The
+         * first two describe the compilation unit itself and the third describes each method within
          * that compilation unit.
          *
          * The DIE layouts are as follows:
          *
-         * <ul> <li><code>abbrev_code == 1, tag == DW_TAG_compilation_unit, has_children</code>
+         * <ul> <li><code>abbrev_code == 1 or 2, tag == DW_TAG_compilation_unit, has_children</code>
          *
          * <li><code>DW_AT_language : ... DW_FORM_data1</code>
          *
@@ -124,9 +125,12 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          *
          * <li><code>DW_AT_hi_pc : ...... DW_FORM_address</code>
          *
-         * <li><code>DW_AT_stmt_list : .. DW_FORM_data4</code> </ul>
+         * <li><code>DW_AT_stmt_list : .. DW_FORM_data4</code> n.b only for <code>abbrev-code ==
+         * 2</code>
          *
-         * <ul> <li><code>abbrev_code == 2, tag == DW_TAG_subprogram, no_children</code>
+         * </ul>
+         *
+         * <ul> <li><code>abbrev_code == 3, tag == DW_TAG_subprogram, no_children</code>
          *
          * <li><code>DW_AT_name : ....... DW_FORM_strp</code>
          *
@@ -137,8 +141,9 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          * </ul>
          */
 
-        pos = writeAbbrev1(null, null, pos);
-        pos = writeAbbrev2(null, null, pos);
+        pos = writeCUAbbrev1(null, null, pos);
+        pos = writeCUAbbrev2(null, null, pos);
+        pos = writeMethodAbbrev(null, null, pos);
 
         byte[] buffer = new byte[pos];
         super.setContent(buffer);
@@ -152,9 +157,20 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
 
         enableLog(context, pos);
 
-        pos = writeAbbrev1(context, buffer, pos);
-        pos = writeAbbrev2(context, buffer, pos);
+        pos = writeCUAbbrev1(context, buffer, pos);
+        pos = writeCUAbbrev2(context, buffer, pos);
+        pos = writeMethodAbbrev(context, buffer, pos);
         assert pos == size;
+    }
+
+    @SuppressWarnings("unused")
+    private int writeCUAbbrev1(DebugContext context, byte[] buffer, int p) {
+        return writeCUAbbrev(context, DW_ABBREV_CODE_compile_unit_1, buffer, p);
+    }
+
+    @SuppressWarnings("unused")
+    private int writeCUAbbrev2(DebugContext context, byte[] buffer, int p) {
+        return writeCUAbbrev(context, DW_ABBREV_CODE_compile_unit_2, buffer, p);
     }
 
     private int writeAttrType(long code, byte[] buffer, int pos) {
@@ -174,12 +190,12 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
     }
 
     @SuppressWarnings("unused")
-    private int writeAbbrev1(DebugContext context, byte[] buffer, int p) {
+    private int writeCUAbbrev(DebugContext context, int abbrevCode, byte[] buffer, int p) {
         int pos = p;
         /*
-         * Abbrev 1 compile unit.
+         * Abbrev 1/2 compile unit.
          */
-        pos = writeAbbrevCode(DW_ABBREV_CODE_compile_unit, buffer, pos);
+        pos = writeAbbrevCode(abbrevCode, buffer, pos);
         pos = writeTag(DW_TAG_compile_unit, buffer, pos);
         pos = writeFlag(DW_CHILDREN_yes, buffer, pos);
         pos = writeAttrType(DW_AT_language, buffer, pos);
@@ -192,8 +208,10 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         pos = writeAttrForm(DW_FORM_addr, buffer, pos);
         pos = writeAttrType(DW_AT_hi_pc, buffer, pos);
         pos = writeAttrForm(DW_FORM_addr, buffer, pos);
-        pos = writeAttrType(DW_AT_stmt_list, buffer, pos);
-        pos = writeAttrForm(DW_FORM_data4, buffer, pos);
+        if (abbrevCode == DW_ABBREV_CODE_compile_unit_1) {
+            pos = writeAttrType(DW_AT_stmt_list, buffer, pos);
+            pos = writeAttrForm(DW_FORM_data4, buffer, pos);
+        }
         /*
          * Now terminate.
          */
@@ -203,7 +221,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
     }
 
     @SuppressWarnings("unused")
-    private int writeAbbrev2(DebugContext context, byte[] buffer, int p) {
+    private int writeMethodAbbrev(DebugContext context, byte[] buffer, int p) {
         int pos = p;
         /*
          * Abbrev 2 compile unit.

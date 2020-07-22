@@ -34,7 +34,8 @@ import org.graalvm.compiler.debug.DebugContext;
 
 import java.util.LinkedList;
 
-import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_ABBREV_CODE_compile_unit;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_ABBREV_CODE_compile_unit_1;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_ABBREV_CODE_compile_unit_2;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_ABBREV_CODE_subprogram;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_ABBREV_SECTION_NAME;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_FLAG_true;
@@ -254,8 +255,10 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     private int writeCU(DebugContext context, ClassEntry classEntry, boolean isDeoptTargetCU, byte[] buffer, int p) {
         int pos = p;
         LinkedList<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
-        log(context, "  [0x%08x] <0> Abbrev Number %d", pos, DW_ABBREV_CODE_compile_unit);
-        pos = writeAbbrevCode(DW_ABBREV_CODE_compile_unit, buffer, pos);
+        int lineIndex = classEntry.getLineIndex();
+        int abbrevCode = (lineIndex >= 0 ? DW_ABBREV_CODE_compile_unit_1 : DW_ABBREV_CODE_compile_unit_2);
+        log(context, "  [0x%08x] <0> Abbrev Number %d", pos, abbrevCode);
+        pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     language  %s", pos, "DW_LANG_Java");
         pos = writeAttrData1(DW_LANG_Java, buffer, pos);
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(classEntry.getFileName()), classEntry.getFileName());
@@ -269,8 +272,10 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeAttrAddress(lo, buffer, pos);
         log(context, "  [0x%08x]     hi_pc  0x%08x", pos, hi);
         pos = writeAttrAddress(hi, buffer, pos);
-        log(context, "  [0x%08x]     stmt_list  0x%08x", pos, classEntry.getLineIndex());
-        pos = writeAttrData4(classEntry.getLineIndex(), buffer, pos);
+        if (abbrevCode == DW_ABBREV_CODE_compile_unit_1) {
+            log(context, "  [0x%08x]     stmt_list  0x%08x", pos, lineIndex);
+            pos = writeAttrData4(lineIndex, buffer, pos);
+        }
         for (PrimaryEntry primaryEntry : classPrimaryEntries) {
             Range range = primaryEntry.getPrimary();
             if (isDeoptTargetCU == range.isDeoptTarget()) {
