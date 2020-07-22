@@ -141,9 +141,9 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          * </ul>
          */
 
-        pos = writeCUAbbrev1(null, null, pos);
-        pos = writeCUAbbrev2(null, null, pos);
-        pos = writeMethodAbbrev(null, null, pos);
+        pos = writeCUAbbrev1(null, pos);
+        pos = writeCUAbbrev2(null, pos);
+        pos = writeMethodAbbrev(null, pos);
 
         byte[] buffer = new byte[pos];
         super.setContent(buffer);
@@ -157,20 +157,18 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
 
         enableLog(context, pos);
 
-        pos = writeCUAbbrev1(context, buffer, pos);
-        pos = writeCUAbbrev2(context, buffer, pos);
-        pos = writeMethodAbbrev(context, buffer, pos);
+        pos = writeCUAbbrev1(buffer, pos);
+        pos = writeCUAbbrev2(buffer, pos);
+        pos = writeMethodAbbrev(buffer, pos);
         assert pos == size;
     }
 
-    @SuppressWarnings("unused")
-    private int writeCUAbbrev1(DebugContext context, byte[] buffer, int p) {
-        return writeCUAbbrev(context, DW_ABBREV_CODE_compile_unit_1, buffer, p);
+    private int writeCUAbbrev1(byte[] buffer, int p) {
+        return writeCUAbbrev(DW_ABBREV_CODE_compile_unit_1, buffer, p);
     }
 
-    @SuppressWarnings("unused")
-    private int writeCUAbbrev2(DebugContext context, byte[] buffer, int p) {
-        return writeCUAbbrev(context, DW_ABBREV_CODE_compile_unit_2, buffer, p);
+    private int writeCUAbbrev2(byte[] buffer, int p) {
+        return writeCUAbbrev(DW_ABBREV_CODE_compile_unit_2, buffer, p);
     }
 
     private int writeAttrType(long code, byte[] buffer, int pos) {
@@ -189,8 +187,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         }
     }
 
-    @SuppressWarnings("unused")
-    private int writeCUAbbrev(DebugContext context, int abbrevCode, byte[] buffer, int p) {
+    private int writeCUAbbrev(int abbrevCode, byte[] buffer, int p) {
         int pos = p;
         /*
          * Abbrev 1/2 compile unit.
@@ -220,8 +217,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
         return pos;
     }
 
-    @SuppressWarnings("unused")
-    private int writeMethodAbbrev(DebugContext context, byte[] buffer, int p) {
+    private int writeMethodAbbrev(byte[] buffer, int p) {
         int pos = p;
         /*
          * Abbrev 2 compile unit.
