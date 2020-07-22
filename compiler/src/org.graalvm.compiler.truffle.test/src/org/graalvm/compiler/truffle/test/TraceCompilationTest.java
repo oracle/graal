@@ -52,7 +52,7 @@ import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class CompilationLoggingTest extends TestWithPolyglotOptions {
+public class TraceCompilationTest extends TestWithPolyglotOptions {
 
     private static final String CONFIGURED_PROPERTY = ExceptionActionTest.class.getSimpleName() + ".configured";
 
@@ -85,8 +85,7 @@ public class CompilationLoggingTest extends TestWithPolyglotOptions {
 
     @Test
     public void testCompilationFailureTracingOff() throws Exception {
-        testHelper(
-                        CompilationLoggingTest::createFailureNode,
+        testHelper(TraceCompilationTest::createFailureNode,
                         Collections.emptyMap(),
                         Arrays.asList(),
                         Arrays.asList("opt done", "opt queued", "opt start", "opt failed"));
@@ -94,8 +93,7 @@ public class CompilationLoggingTest extends TestWithPolyglotOptions {
 
     @Test
     public void testCompilationFailureTracingOn() throws Exception {
-        testHelper(
-                        CompilationLoggingTest::createFailureNode,
+        testHelper(TraceCompilationTest::createFailureNode,
                         Collections.singletonMap("engine.TraceCompilation", "true"),
                         Arrays.asList("opt failed"),
                         Arrays.asList("opt queued", "opt start", "opt done"));
@@ -103,8 +101,7 @@ public class CompilationLoggingTest extends TestWithPolyglotOptions {
 
     @Test
     public void testCompilationFailureTracingDetails() throws Exception {
-        testHelper(
-                        CompilationLoggingTest::createFailureNode,
+        testHelper(TraceCompilationTest::createFailureNode,
                         Collections.singletonMap("engine.TraceCompilationDetails", "true"),
                         Arrays.asList("opt queued", "opt start", "opt failed"),
                         Arrays.asList("opt done"));
@@ -169,10 +166,9 @@ public class CompilationLoggingTest extends TestWithPolyglotOptions {
     }
 
     private static void execute(String testName, String... additionalVmOptions) throws IOException, InterruptedException {
-        SubprocessUtil.Subprocess subprocess = SubprocessUtil.java(
-                        configure(getVmArgs(), additionalVmOptions),
+        SubprocessUtil.Subprocess subprocess = SubprocessUtil.java(configure(getVmArgs(), additionalVmOptions),
                         "com.oracle.mxtool.junit.MxJUnitWrapper",
-                        String.format("%s#%s", CompilationLoggingTest.class.getName(), testName));
+                        String.format("%s#%s", TraceCompilationTest.class.getName(), testName));
         Assert.assertEquals(String.join("\n", subprocess.output), 0, subprocess.exitCode);
     }
 

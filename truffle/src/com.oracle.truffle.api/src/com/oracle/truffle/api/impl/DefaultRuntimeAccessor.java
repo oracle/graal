@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.api.impl;
 
-import java.io.OutputStream;
-
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
@@ -103,11 +101,6 @@ final class DefaultRuntimeAccessor extends Accessor {
 
         @Override
         public void onEngineClosed(Object runtimeData) {
-        }
-
-        @Override
-        public OutputStream getConfiguredLogStream() {
-            return null;
         }
 
         @Override

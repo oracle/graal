@@ -36,6 +36,8 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.Compi
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExcludeAssertions;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.FirstTierUseEconomy;
 
+import java.io.IOException;
+import java.io.OutputStream;
 import java.io.PrintStream;
 import java.nio.BufferOverflowException;
 import java.nio.BufferUnderflowException;
@@ -62,8 +64,10 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.debug.DebugContext.Scope;
 import org.graalvm.compiler.debug.DiagnosticsOutputDirectory;
+import org.graalvm.compiler.debug.LogStream;
 import org.graalvm.compiler.debug.MemUseTrackerKey;
 import org.graalvm.compiler.debug.TimerKey;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.nodes.Cancellable;
@@ -245,23 +249,24 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         org.graalvm.options.OptionValues options = TruffleCompilerOptions.getOptionsForCompiler(optionsMap);
         TruffleCompilationIdentifier compilationId = asTruffleCompilationIdentifier(compilation);
         CompilableTruffleAST compilable = compilationId.getCompilable();
+        try (TTY.Filter ttyFilter = new TTY.Filter(new LogStream(new PolyglotLoggerPrintStream(compilable)))) {
+            boolean usingCallersDebug = truffleDebug instanceof TruffleDebugContextImpl;
+            if (usingCallersDebug) {
+                final DebugContext callerDebug = ((TruffleDebugContextImpl) truffleDebug).debugContext;
 
-        boolean usingCallersDebug = truffleDebug instanceof TruffleDebugContextImpl;
-        if (usingCallersDebug) {
-            final DebugContext callerDebug = ((TruffleDebugContextImpl) truffleDebug).debugContext;
-
-            try (DebugContext.Scope s = maybeOpenTruffleScope(compilable, callerDebug)) {
-                actuallyCompile(options, inliningPlan, task, inListener, compilationId, compilable, callerDebug);
-            } catch (Throwable e) {
-                notifyCompilableOfFailure(compilable, e);
-            }
-        } else {
-            final OptionValues debugContextOptionValues = TruffleCompilerOptions.getOptions();
-            try (DebugContext graalDebug = createDebugContext(debugContextOptionValues, compilationId, compilable, DebugContext.getDefaultLogStream());
-                            DebugContext.Scope s = maybeOpenTruffleScope(compilable, graalDebug)) {
-                actuallyCompile(options, inliningPlan, task, inListener, compilationId, compilable, graalDebug);
-            } catch (Throwable e) {
-                notifyCompilableOfFailure(compilable, e);
+                try (DebugContext.Scope s = maybeOpenTruffleScope(compilable, callerDebug)) {
+                    actuallyCompile(options, inliningPlan, task, inListener, compilationId, compilable, callerDebug);
+                } catch (Throwable e) {
+                    notifyCompilableOfFailure(compilable, e);
+                }
+            } else {
+                final OptionValues debugContextOptionValues = TruffleCompilerOptions.getOptions();
+                try (DebugContext graalDebug = createDebugContext(debugContextOptionValues, compilationId, compilable, DebugContext.getDefaultLogStream());
+                                DebugContext.Scope s = maybeOpenTruffleScope(compilable, graalDebug)) {
+                    actuallyCompile(options, inliningPlan, task, inListener, compilationId, compilable, graalDebug);
+                } catch (Throwable e) {
+                    notifyCompilableOfFailure(compilable, e);
+                }
             }
         }
     }
@@ -826,6 +831,28 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         @Override
         public String toString() {
             return delegate.toString();
+        }
+    }
+
+    private static final class PolyglotLoggerPrintStream extends PrintStream {
+
+        private final TruffleCompilerRuntime runtime;
+        private final CompilableTruffleAST compilable;
+
+        PolyglotLoggerPrintStream(CompilableTruffleAST compilable) {
+            super(new OutputStream() {
+                @Override
+                public void write(int b) throws IOException {
+                    throw new UnsupportedOperationException("Should not reach here.");
+                }
+            });
+            this.runtime = TruffleCompilerRuntime.getRuntime();
+            this.compilable = compilable;
+        }
+
+        @Override
+        public void print(String s) {
+            runtime.log(compilable, s);
         }
     }
 }

@@ -504,8 +504,7 @@ final class PolyglotLoggers {
                             spi = LoggerCacheImpl.newEngineLoggerCache(useHandler, engine, false, Level.INFO);
                             levels = engine.logLevels;
                         } else {
-                            OutputStream logOut = EngineAccessor.RUNTIME.getConfiguredLogStream();
-                            Handler useHandler = logOut != null ? createStreamHandler(logOut, false, true) : createDefaultHandler(PolyglotEngineImpl.ALLOW_IO ? System.err : new NullOutputStream());
+                            Handler useHandler = createDefaultHandler(PolyglotEngineImpl.ALLOW_IO ? System.err : new NullOutputStream());
                             spi = LoggerCacheImpl.newFallBackLoggerCache(useHandler);
                             levels = Collections.emptyMap();
                         }
@@ -519,12 +518,7 @@ final class PolyglotLoggers {
 
         private static Handler resolveHandler(Handler handler) {
             if (isDefaultHandler(handler)) {
-                OutputStream logOut = EngineAccessor.RUNTIME.getConfiguredLogStream();
-                if (logOut != null) {
-                    return createStreamHandler(logOut, false, true);
-                } else {
-                    return handler;
-                }
+                return handler;
             } else {
                 return new SafeHandler(handler);
             }
