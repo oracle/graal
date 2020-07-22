@@ -49,6 +49,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Activation;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.DiagnosticsOutputDirectory;
+import org.graalvm.compiler.hotspot.CommunityCompilerConfigurationFactory;
 import org.graalvm.compiler.hotspot.CompilerConfigurationFactory;
 import org.graalvm.compiler.hotspot.EconomyCompilerConfigurationFactory;
 import org.graalvm.compiler.hotspot.HotSpotBackend;
@@ -131,9 +132,12 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         CompilerConfiguration compilerConfiguration = lowTierCompilerConfigurationFactory.createCompilerConfiguration();
         HotSpotBackendFactory backendFactory = lowTierCompilerConfigurationFactory.createBackendMap().getBackendFactory(backend.getTarget().arch);
         HotSpotBackend firstTierBackend = backendFactory.createBackend(hotspotGraalRuntime, compilerConfiguration, HotSpotJVMCIRuntime.runtime(), null);
-        Suites firstTierSuites = firstTierBackend.getSuites().getDefaultSuites(options);
-        LIRSuites firstTierLirSuites = firstTierBackend.getSuites().getDefaultLIRSuites(options);
-        Providers firstTierProviders = firstTierBackend.getProviders();
+        // Suites firstTierSuites = firstTierBackend.getSuites().getDefaultSuites(options);
+        // LIRSuites firstTierLirSuites = firstTierBackend.getSuites().getDefaultLIRSuites(options);
+        // Providers firstTierProviders = firstTierBackend.getProviders();
+        Suites firstTierSuites = suites;
+        LIRSuites firstTierLirSuites = lirSuites;
+        Providers firstTierProviders = backend.getProviders();
         firstTierBackend.completeInitialization(HotSpotJVMCIRuntime.runtime(), options);
 
         return new HotSpotTruffleCompilerImpl(hotspotGraalRuntime, runtime, plugins, suites, lirSuites, backend, firstTierSuites, firstTierLirSuites, firstTierProviders, snippetReflection);
