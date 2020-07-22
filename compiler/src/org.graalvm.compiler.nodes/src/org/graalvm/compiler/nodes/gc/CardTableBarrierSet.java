@@ -171,7 +171,7 @@ public class CardTableBarrierSet implements BarrierSet {
         if (needsWriteBarrier(write)) {
             StructuredGraph graph = write.asNode().graph();
             SerialArrayRangeWriteBarrier serialArrayRangeWriteBarrier = graph.add(new SerialArrayRangeWriteBarrier(write.getAddress(), write.getLength(), write.getElementStride()));
-            graph.addAfterFixed(write.asNode(), serialArrayRangeWriteBarrier);
+            graph.addAfterFixed(write.postBarrierInsertionPosition(), serialArrayRangeWriteBarrier);
         }
     }
 
