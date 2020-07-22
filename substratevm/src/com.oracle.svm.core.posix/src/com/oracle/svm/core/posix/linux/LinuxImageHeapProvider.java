@@ -41,6 +41,7 @@ import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -50,8 +51,10 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.CErrorNumber;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
@@ -63,6 +66,7 @@ import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
 import com.oracle.svm.core.posix.headers.Fcntl;
 import com.oracle.svm.core.posix.headers.Unistd;
+import com.oracle.svm.core.posix.thread.PosixVMThreads;
 import com.oracle.svm.core.util.PointerUtils;
 
 import jdk.vm.ci.code.MemoryBarriers;
@@ -94,6 +98,17 @@ class LinuxImageHeapProviderFeature implements Feature {
 public class LinuxImageHeapProvider implements ImageHeapProvider {
     private static final CGlobalData<CCharPointer> PROC_SELF_MAPS = CGlobalDataFactory.createCString("/proc/self/maps");
 
+    private static final CGlobalData<CCharPointer> LS_PROC_SELF_MAP_FILES = CGlobalDataFactory.createCString("ls -l /proc/%d/map_files");
+    private static final CGlobalData<CCharPointer> LS_PROC_SELF_ROOT = CGlobalDataFactory.createCString("ls -l /proc/%d/root");
+    private static final CGlobalData<CCharPointer> CAT_PROC_SELF_MAPS = CGlobalDataFactory.createCString("cat /proc/%d/maps");
+    private static final CGlobalData<CCharPointer> CAT_PROC_SELF_MOUNTINFO = CGlobalDataFactory.createCString("cat /proc/%d/mountinfo");
+
+    private static final CGlobalData<CCharPointer> OPEN_PROC_SELF_MAPS_FAILED = CGlobalDataFactory.createCString("Failed to open /proc/self/maps");
+    private static final CGlobalData<CCharPointer> LOCATE_IN_PROC_SELF_MAPS_FAILED = CGlobalDataFactory.createCString("Failed to locate mapping in /proc/self/maps");
+    private static final CGlobalData<CCharPointer> OPEN_IMAGE_FILE_FAILED = CGlobalDataFactory.createCString("Failed to open image file");
+    private static final CGlobalData<CCharPointer> PRINTF_ADDRESS_RANGE = CGlobalDataFactory.createCString("%p .. %p\n");
+    private static final CGlobalData<CCharPointer> W = CGlobalDataFactory.createCString("w");
+
     private static final SignedWord FIRST_ISOLATE_FD = signed(-2);
     private static final SignedWord UNASSIGNED_FD = signed(-1);
     private static final CGlobalData<WordPointer> CACHED_IMAGE_FD = CGlobalDataFactory.createWord(FIRST_ISOLATE_FD);
@@ -105,6 +120,24 @@ public class LinuxImageHeapProvider implements ImageHeapProvider {
     public boolean guaranteesHeapPreferredAddressSpaceAlignment() {
         return true;
     }
+
+    interface FILE extends PointerBase {
+    }
+
+    @CFunction(value = "fdopen", transition = CFunction.Transition.NO_TRANSITION)
+    private static native FILE fdopen(int fd, CCharPointer mode);
+
+    @CFunction(value = "fflush", transition = CFunction.Transition.NO_TRANSITION)
+    private static native int fflush(FILE f);
+
+    @CFunction(value = "fprintf", transition = CFunction.Transition.NO_TRANSITION)
+    private static native int fprintfWW(FILE stream, CCharPointer format, WordBase arg0, WordBase arg1);
+
+    @CFunction(value = "snprintf", transition = CFunction.Transition.NO_TRANSITION)
+    private static native int snprintfD(CCharPointer str, UnsignedWord size, CCharPointer format, int d);
+
+    @CFunction(transition = CFunction.Transition.NO_TRANSITION)
+    private static native int system(CCharPointer cmd);
 
     @Override
     @Uninterruptible(reason = "Called during isolate initialization.")
@@ -165,6 +198,7 @@ public class LinuxImageHeapProvider implements ImageHeapProvider {
              */
             int mapfd = Fcntl.NoTransitions.open(PROC_SELF_MAPS.get(), Fcntl.O_RDONLY(), 0);
             if (mapfd == -1) {
+                PosixVMThreads.singleton().failFatally(CErrorNumber.getCErrorNumber(), OPEN_PROC_SELF_MAPS_FAILED.get());
                 return CEntryPointErrors.LOCATE_IMAGE_FAILED;
             }
             CCharPointer buffer = StackValue.get(MAX_PATHLEN);
@@ -176,10 +210,38 @@ public class LinuxImageHeapProvider implements ImageHeapProvider {
                             IMAGE_HEAP_RELOCATABLE_BEGIN.get().add(pageSize), startAddr, offset, true);
             Unistd.NoTransitions.close(mapfd);
             if (!found) {
+                int errno = CErrorNumber.getCErrorNumber();
+                FILE f = fdopen(2, W.get());
+                fprintfWW(f, PRINTF_ADDRESS_RANGE.get(), IMAGE_HEAP_RELOCATABLE_BEGIN.get(), IMAGE_HEAP_RELOCATABLE_END.get());
+                fflush(f);
+                int pid = Unistd.NoTransitions.getpid();
+                snprintfD(buffer, WordFactory.unsigned(MAX_PATHLEN), CAT_PROC_SELF_MAPS.get(), pid);
+                system(buffer);
+                snprintfD(buffer, WordFactory.unsigned(MAX_PATHLEN), LS_PROC_SELF_MAP_FILES.get(), pid);
+                system(buffer);
+                snprintfD(buffer, WordFactory.unsigned(MAX_PATHLEN), CAT_PROC_SELF_MOUNTINFO.get(), pid);
+                system(buffer);
+                snprintfD(buffer, WordFactory.unsigned(MAX_PATHLEN), LS_PROC_SELF_ROOT.get(), pid);
+                system(buffer);
+                PosixVMThreads.singleton().failFatally(errno, LOCATE_IN_PROC_SELF_MAPS_FAILED.get());
                 return CEntryPointErrors.LOCATE_IMAGE_FAILED;
             }
             int opened = Fcntl.NoTransitions.open(buffer, Fcntl.O_RDONLY(), 0);
             if (opened < 0) {
+                int errno = CErrorNumber.getCErrorNumber();
+                FILE f = fdopen(2, W.get());
+                fprintfWW(f, PRINTF_ADDRESS_RANGE.get(), IMAGE_HEAP_RELOCATABLE_BEGIN.get(), IMAGE_HEAP_RELOCATABLE_END.get());
+                fflush(f);
+                int pid = Unistd.NoTransitions.getpid();
+                snprintfD(buffer, WordFactory.unsigned(MAX_PATHLEN), CAT_PROC_SELF_MAPS.get(), pid);
+                system(buffer);
+                snprintfD(buffer, WordFactory.unsigned(MAX_PATHLEN), LS_PROC_SELF_MAP_FILES.get(), pid);
+                system(buffer);
+                snprintfD(buffer, WordFactory.unsigned(MAX_PATHLEN), CAT_PROC_SELF_MOUNTINFO.get(), pid);
+                system(buffer);
+                snprintfD(buffer, WordFactory.unsigned(MAX_PATHLEN), LS_PROC_SELF_ROOT.get(), pid);
+                system(buffer);
+                PosixVMThreads.singleton().failFatally(errno, OPEN_IMAGE_FILE_FAILED.get());
                 return CEntryPointErrors.OPEN_IMAGE_FAILED;
             }
             Word imageHeapRelocsOffset = IMAGE_HEAP_RELOCATABLE_BEGIN.get().subtract(IMAGE_HEAP_BEGIN.get());
