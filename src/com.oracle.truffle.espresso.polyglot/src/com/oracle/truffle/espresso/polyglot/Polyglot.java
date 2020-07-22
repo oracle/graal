@@ -135,6 +135,17 @@ public final class Polyglot {
     }
 
     /**
+     * {@link Polyglot#importObject Imports} {@code name} from global Polyglot scope and
+     * {@link Polyglot#cast casts} the result to the given class.
+     * <p>
+     * See {@link Polyglot#cast} for the details of casting.
+     *
+     */
+    public static <T> T importObject(String name, Class<? extends T> targetClass) {
+        return cast(targetClass, importObject(name));
+    }
+
+    /**
      * Exports {@code value} under {@code name} to the Polyglot scope.
      */
     @SuppressWarnings("unused")
