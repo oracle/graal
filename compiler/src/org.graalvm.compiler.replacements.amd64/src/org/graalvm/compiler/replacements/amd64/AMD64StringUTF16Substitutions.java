@@ -37,9 +37,9 @@ import org.graalvm.compiler.api.replacements.ClassSubstitution;
 import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
+import org.graalvm.compiler.nodes.extended.JavaReadNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.replacements.ReplacementsUtil;
-import org.graalvm.compiler.replacements.StringUTF16Substitutions;
-import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.Pointer;
@@ -63,30 +63,8 @@ public class AMD64StringUTF16Substitutions {
      */
     static final MetaAccessProvider INJECTED = null;
 
-    public static int length(byte[] value) {
+    private static int length(byte[] value) {
         return value.length >> 1;
-    }
-
-    /**
-     * @param value is char[]
-     * @param other is char[]
-     */
-    @MethodSubstitution
-    public static int compareTo(byte[] value, byte[] other) {
-        return ArrayCompareToNode.compareTo(value, other, value.length, other.length, JavaKind.Char, JavaKind.Char);
-    }
-
-    /**
-     * @param value is char[]
-     * @param other is byte[]
-     */
-    @MethodSubstitution
-    public static int compareToLatin1(byte[] value, byte[] other) {
-        /*
-         * Swapping array arguments because intrinsic expects order to be byte[]/char[] but kind
-         * arguments stay in original order.
-         */
-        return ArrayCompareToNode.compareTo(other, value, other.length, value.length, JavaKind.Char, JavaKind.Byte);
     }
 
     @MethodSubstitution
@@ -102,6 +80,11 @@ public class AMD64StringUTF16Substitutions {
         return pointer(value).add(offset * charArrayIndexScale(INJECTED));
     }
 
+    /**
+     * Will be intrinsified with an {@link InvocationPlugin} to a {@link JavaReadNode}.
+     */
+    private static native char getChar(byte[] value, int i);
+
     @MethodSubstitution
     public static int indexOfUnsafe(byte[] source, int sourceCount, byte[] target, int targetCount, int fromIndex) {
         ReplacementsUtil.dynamicAssert(fromIndex >= 0, "StringUTF16.indexOfUnsafe invalid args: fromIndex negative");
@@ -109,13 +92,13 @@ public class AMD64StringUTF16Substitutions {
         ReplacementsUtil.dynamicAssert(targetCount <= length(target), "StringUTF16.indexOfUnsafe invalid args: targetCount > length(target)");
         ReplacementsUtil.dynamicAssert(sourceCount >= targetCount, "StringUTF16.indexOfUnsafe invalid args: sourceCount < targetCount");
         if (targetCount == 1) {
-            return AMD64ArrayIndexOf.indexOf1Char(source, sourceCount, fromIndex, StringUTF16Substitutions.getChar(target, 0));
+            return AMD64ArrayIndexOf.indexOf1Char(source, sourceCount, fromIndex, getChar(target, 0));
         } else {
             int haystackLength = sourceCount - (targetCount - 2);
             int offset = fromIndex;
             while (injectBranchProbability(LIKELY_PROBABILITY, offset < haystackLength)) {
-                int indexOfResult = AMD64ArrayIndexOf.indexOfTwoConsecutiveChars(source, haystackLength, offset, StringUTF16Substitutions.getChar(target, 0),
-                                StringUTF16Substitutions.getChar(target, 1));
+                int indexOfResult = AMD64ArrayIndexOf.indexOfTwoConsecutiveChars(source, haystackLength, offset, getChar(target, 0),
+                                getChar(target, 1));
                 if (injectBranchProbability(UNLIKELY_PROBABILITY, indexOfResult < 0)) {
                     return -1;
                 }

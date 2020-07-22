@@ -202,12 +202,19 @@ public final class InspectorServer extends NanoWSD implements InspectorWSConnect
 
     }
 
-    private static Response handleDnsRebind(IHTTPSession ihttpSession) {
-        if (!isHostOk(ihttpSession.getHeaders().get("host"))) {
+    private Response handleDnsRebind(IHTTPSession ihttpSession) {
+        String host = ihttpSession.getHeaders().get("host");
+        if (!isHostOk(host)) {
+            String badHost = host != null ? "Bad host " + host + ". Please use IP address." : "Missing host header. Use an up-to-date client.";
+            String message = badHost + " This request cannot be served because it looks like DNS rebind attack.";
+            Iterator<ServerPathSession> sessionIterator = sessions.values().iterator();
+            if (sessionIterator.hasNext()) {
+                sessionIterator.next().getContext().getErr().println("Bad connection from " + ihttpSession.getRemoteIpAddress() + ". " + message);
+            }
             return Response.newFixedLengthResponse(
                             Status.BAD_REQUEST,
                             "text/plain; charset=UTF-8",
-                            "Bad host. Please use IP address. This request cannot be served because it looks like DNS rebind attack.");
+                            message);
         } else {
             return null;
         }

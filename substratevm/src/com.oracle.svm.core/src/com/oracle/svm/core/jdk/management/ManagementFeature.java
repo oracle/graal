@@ -47,6 +47,7 @@ import javax.management.openmbean.OpenType;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -71,16 +72,6 @@ public final class ManagementFeature extends JNIRegistrationUtil implements Feat
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        /*
-         * These classes have global caches of bean interfaces and attributes. Re-initializing them
-         * ensures no hosted objects are available at run time.
-         */
-        rerunClassInit(access, "com.sun.jmx.mbeanserver.MXBeanLookup",
-                        "javax.management.MBeanServerFactory",
-                        "com.sun.jmx.mbeanserver.MBeanIntrospector",
-                        "com.sun.jmx.mbeanserver.StandardMBeanIntrospector",
-                        "com.sun.jmx.mbeanserver.MXBeanIntrospector");
-
         platformManagedObjectReplacements = new IdentityHashMap<>();
         for (Class<? extends PlatformManagedObject> clazz : Arrays.asList(ClassLoadingMXBean.class, CompilationMXBean.class, RuntimeMXBean.class,
                         ThreadMXBean.class, OperatingSystemMXBean.class, MemoryMXBean.class)) {
@@ -91,6 +82,8 @@ public final class ManagementFeature extends JNIRegistrationUtil implements Feat
             }
         }
         access.registerObjectReplacer(this::replaceHostedPlatformManagedObject);
+
+        RuntimeClassInitialization.initializeAtBuildTime("com.sun.jmx.mbeanserver.DefaultMXBeanMappingFactory", "Avoids unnecessary reflection in the image");
     }
 
     /**

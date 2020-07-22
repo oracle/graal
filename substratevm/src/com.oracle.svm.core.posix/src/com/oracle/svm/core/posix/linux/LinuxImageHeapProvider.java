@@ -36,14 +36,12 @@ import static com.oracle.svm.core.posix.linux.ProcFSSupport.findMapping;
 import static com.oracle.svm.core.util.PointerUtils.roundUp;
 import static com.oracle.svm.core.util.UnsignedUtils.isAMultiple;
 import static org.graalvm.word.WordFactory.signed;
-import static org.graalvm.word.WordFactory.unsigned;
 
 import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.ComparableWord;
@@ -63,11 +61,9 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.os.ImageHeapProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.os.VirtualMemoryProvider.Access;
-import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Fcntl;
-import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Unistd;
-import com.oracle.svm.core.posix.headers.linux.LinuxStat;
+import com.oracle.svm.core.util.PointerUtils;
 
 import jdk.vm.ci.code.MemoryBarriers;
 
@@ -97,8 +93,6 @@ class LinuxImageHeapProviderFeature implements Feature {
  */
 public class LinuxImageHeapProvider implements ImageHeapProvider {
     private static final CGlobalData<CCharPointer> PROC_SELF_MAPS = CGlobalDataFactory.createCString("/proc/self/maps");
-    private static final CGlobalData<CCharPointer> PROC_VERSION = CGlobalDataFactory.createCString("/proc/version");
-    private static final CGlobalData<CCharPointer> PROC_VERSION_WSL_SUBSTRING = CGlobalDataFactory.createCString("Microsoft");
 
     private static final SignedWord FIRST_ISOLATE_FD = signed(-2);
     private static final SignedWord UNASSIGNED_FD = signed(-1);
@@ -108,9 +102,15 @@ public class LinuxImageHeapProvider implements ImageHeapProvider {
     private static final int MAX_PATHLEN = 4096;
 
     @Override
+    public boolean guaranteesHeapPreferredAddressSpaceAlignment() {
+        return true;
+    }
+
+    @Override
     @Uninterruptible(reason = "Called during isolate initialization.")
     public int initialize(Pointer reservedAddressSpace, UnsignedWord reservedSize, WordPointer basePointer, WordPointer endPointer) {
         int imageHeapOffsetInAddressSpace = Heap.getHeap().getImageHeapOffsetInAddressSpace();
+        UnsignedWord alignment = WordFactory.unsigned(Heap.getHeap().getPreferredAddressSpaceAlignment());
         Pointer imageHeapBegin = IMAGE_HEAP_BEGIN.get();
         UnsignedWord imageHeapSizeInFile = ((Pointer) IMAGE_HEAP_END.get()).subtract(imageHeapBegin);
         UnsignedWord requiredReservedSize = imageHeapSizeInFile.add(imageHeapOffsetInAddressSpace);
@@ -131,8 +131,9 @@ public class LinuxImageHeapProvider implements ImageHeapProvider {
         if (reservedAddressSpace.isNull() && FIRST_ISOLATE_FD.equal(fd)) {
             assert imageHeapOffsetInAddressSpace == 0 : "the image heap that was loaded by the loader does not support a heap address space offset";
             SignedWord previous = ((Pointer) CACHED_IMAGE_FD.get()).compareAndSwapWord(0, FIRST_ISOLATE_FD, UNASSIGNED_FD, LocationIdentity.ANY_LOCATION);
-            if (FIRST_ISOLATE_FD.equal(previous)) {
-                // We are the first isolate to spawn, so just use the existing heap
+            if (FIRST_ISOLATE_FD.equal(previous) && PointerUtils.isAMultiple(imageHeapBegin, alignment)) {
+                // We are the first isolate, so use the existing heap if it has the required
+                // alignment (the loader might not align to more than page boundaries)
                 if (VirtualMemoryProvider.get().protect(imageHeapBegin, imageHeapSizeInFile, Access.READ) != 0) {
                     return CEntryPointErrors.PROTECT_HEAP_FAILED;
                 }
@@ -148,7 +149,7 @@ public class LinuxImageHeapProvider implements ImageHeapProvider {
                 }
                 return CEntryPointErrors.NO_ERROR;
             }
-            fd = previous;
+            fd = CACHED_IMAGE_FD.get().read();
         }
         if (UNASSIGNED_FD.equal(fd) || (reservedAddressSpace.isNonNull() && fd.equal(FIRST_ISOLATE_FD))) {
             /*
@@ -166,47 +167,24 @@ public class LinuxImageHeapProvider implements ImageHeapProvider {
             if (mapfd == -1) {
                 return CEntryPointErrors.LOCATE_IMAGE_FAILED;
             }
-            final CCharPointer buffer = StackValue.get(MAX_PATHLEN);
-            final CLongPointer startAddr = StackValue.get(CLongPointer.class);
-            final CLongPointer offset = StackValue.get(CLongPointer.class);
-            final CLongPointer inode = StackValue.get(CLongPointer.class);
-            boolean found = findMapping(mapfd, buffer, MAX_PATHLEN, IMAGE_HEAP_RELOCATABLE_BEGIN.get(), IMAGE_HEAP_RELOCATABLE_END.get(), startAddr, offset, inode, true);
+            CCharPointer buffer = StackValue.get(MAX_PATHLEN);
+            WordPointer startAddr = StackValue.get(WordPointer.class);
+            WordPointer offset = StackValue.get(WordPointer.class);
+            // The relocatables partition might stretch over two adjacent mappings due to permission
+            // differences, so only locate the mapping where the start symbol is
+            boolean found = findMapping(mapfd, buffer, MAX_PATHLEN, IMAGE_HEAP_RELOCATABLE_BEGIN.get(), IMAGE_HEAP_RELOCATABLE_BEGIN.get(), startAddr, offset, true);
             Unistd.NoTransitions.close(mapfd);
             if (!found) {
                 return CEntryPointErrors.LOCATE_IMAGE_FAILED;
             }
-            LinuxStat.stat64 stat = StackValue.get(LinuxStat.stat64.class);
             int opened = Fcntl.NoTransitions.open(buffer, Fcntl.O_RDONLY(), 0);
             if (opened < 0) {
                 return CEntryPointErrors.OPEN_IMAGE_FAILED;
             }
-            if (LinuxStat.NoTransitions.fstat64(opened, stat) != 0) {
-                Unistd.NoTransitions.close(opened);
-                return CEntryPointErrors.LOCATE_IMAGE_FAILED;
-            }
-            if (stat.st_ino() != inode.read()) {
-                boolean ignore = false;
-                int versionfd = Fcntl.NoTransitions.open(PROC_VERSION.get(), Fcntl.O_RDONLY(), 0);
-                if (versionfd != -1) {
-                    if (PosixUtils.readEntirely(versionfd, buffer, MAX_PATHLEN)) {
-                        /*
-                         * The Windows Subsystem for Linux (WSL) reports incorrect inodes via /proc
-                         * that don't match those returned by fstat. If we are running under WSL,
-                         * ignore when the comparison fails.
-                         */
-                        ignore = LibC.strstr(buffer, PROC_VERSION_WSL_SUBSTRING.get()).isNonNull();
-                    }
-                    Unistd.NoTransitions.close(versionfd);
-                }
-                if (!ignore) {
-                    Unistd.NoTransitions.close(opened);
-                    return CEntryPointErrors.LOCATE_IMAGE_IDENTITY_MISMATCH;
-                }
-            }
             Word imageHeapRelocsOffset = IMAGE_HEAP_RELOCATABLE_BEGIN.get().subtract(IMAGE_HEAP_BEGIN.get());
-            Word imageHeapOffset = IMAGE_HEAP_RELOCATABLE_BEGIN.get().subtract(unsigned(startAddr.read())).subtract(imageHeapRelocsOffset);
-            long fileOffset = offset.read() + imageHeapOffset.rawValue();
-            CACHED_IMAGE_HEAP_OFFSET.get().write(signed(fileOffset));
+            Word imageHeapOffset = IMAGE_HEAP_RELOCATABLE_BEGIN.get().subtract(startAddr.read()).subtract(imageHeapRelocsOffset);
+            UnsignedWord fileOffset = imageHeapOffset.add(offset.read());
+            CACHED_IMAGE_HEAP_OFFSET.get().write(fileOffset);
             MembarNode.memoryBarrier(MemoryBarriers.STORE_STORE);
             SignedWord previous = ((Pointer) CACHED_IMAGE_FD.get()).compareAndSwapWord(0, fd, signed(opened), LocationIdentity.ANY_LOCATION);
             if (previous.equal(fd)) {
@@ -217,19 +195,23 @@ public class LinuxImageHeapProvider implements ImageHeapProvider {
             }
         }
 
-        // Map image heap into memory
-        UnsignedWord fileOffset = CACHED_IMAGE_HEAP_OFFSET.get().read();
         Pointer heap;
         Pointer allocatedMemory = WordFactory.nullPointer();
         if (reservedAddressSpace.isNull()) {
             assert imageHeapOffsetInAddressSpace == 0;
-            heap = allocatedMemory = VirtualMemoryProvider.get().mapFile(WordFactory.nullPointer(), imageHeapSizeInFile, fd, fileOffset, Access.READ);
+            allocatedMemory = VirtualMemoryProvider.get().reserve(imageHeapSizeInFile, alignment);
+            if (allocatedMemory.isNull()) {
+                return CEntryPointErrors.RESERVE_ADDRESS_SPACE_FAILED;
+            }
+            heap = allocatedMemory;
         } else {
-            PointerBase mappedImageHeapBegin = reservedAddressSpace.add(imageHeapOffsetInAddressSpace);
-            heap = VirtualMemoryProvider.get().mapFile(mappedImageHeapBegin, imageHeapSizeInFile, fd, fileOffset, Access.READ);
+            heap = reservedAddressSpace.add(imageHeapOffsetInAddressSpace);
         }
 
+        UnsignedWord fileOffset = CACHED_IMAGE_HEAP_OFFSET.get().read();
+        heap = VirtualMemoryProvider.get().mapFile(heap, imageHeapSizeInFile, fd, fileOffset, Access.READ);
         if (heap.isNull()) {
+            freeImageHeap(allocatedMemory);
             return CEntryPointErrors.MAP_HEAP_FAILED;
         }
 

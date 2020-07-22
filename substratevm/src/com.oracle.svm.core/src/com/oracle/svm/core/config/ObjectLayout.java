@@ -191,6 +191,18 @@ public final class ObjectLayout {
         return alignUp(getArrayBaseOffset(kind) + ((long) length << getArrayIndexShift(kind)));
     }
 
+    public int getMinimumInstanceObjectSize() {
+        return alignUp(firstFieldOffset); // assumes there are no always-present "synthetic fields"
+    }
+
+    public int getMinimumArraySize() {
+        return NumUtil.safeToInt(getArraySize(JavaKind.Byte, 0));
+    }
+
+    public int getMinimumObjectSize() {
+        return Math.min(getMinimumArraySize(), getMinimumInstanceObjectSize());
+    }
+
     public static JavaKind getCallSignatureKind(boolean isEntryPoint, ResolvedJavaType type, MetaAccessProvider metaAccess, TargetDescription target) {
         if (metaAccess.lookupJavaType(WordBase.class).isAssignableFrom(type)) {
             return target.wordJavaKind;

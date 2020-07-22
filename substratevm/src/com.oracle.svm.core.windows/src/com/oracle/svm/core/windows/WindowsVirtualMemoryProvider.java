@@ -41,6 +41,8 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
+import com.oracle.svm.core.util.PointerUtils;
+import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.windows.headers.MemoryAPI;
 import com.oracle.svm.core.windows.headers.SysinfoAPI;
 
@@ -132,7 +134,20 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
 
     @Override
     @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
-    public Pointer reserve(UnsignedWord nbytes) {
+    public Pointer reserve(UnsignedWord nbytes, UnsignedWord alignment) {
+        if (UnsignedUtils.isAMultiple(getAllocationGranularity(), alignment)) {
+            return reserve(nbytes);
+        }
+        /* Reserve a container that is large enough for the requested size *and* the alignment. */
+        Pointer reservedStart = reserve(nbytes.add(alignment));
+        if (reservedStart.isNull()) {
+            return WordFactory.nullPointer();
+        }
+        return PointerUtils.roundUp(reservedStart, alignment);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static Pointer reserve(UnsignedWord nbytes) {
         return MemoryAPI.VirtualAlloc(WordFactory.nullPointer(), nbytes, MemoryAPI.MEM_RESERVE(), MemoryAPI.PAGE_NOACCESS());
     }
 
@@ -166,15 +181,13 @@ public class WindowsVirtualMemoryProvider implements VirtualMemoryProvider {
     @Override
     @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
     public int free(PointerBase start, UnsignedWord nbytes) {
-        assert isValid(start) : "Invalid address range start";
-        int result = MemoryAPI.VirtualFree(start, WordFactory.zero(), MemoryAPI.MEM_RELEASE());
-        return result != 0 ? 0 : -1;
-    }
-
-    @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
-    private static boolean isValid(PointerBase start) {
+        /* Retrieve the start of the enclosing container that was originally reserved. */
         MemoryAPI.MEMORY_BASIC_INFORMATION memoryInfo = StackValue.get(MemoryAPI.MEMORY_BASIC_INFORMATION.class);
-        MemoryAPI.VirtualQuery(start, memoryInfo, SizeOf.unsigned(MemoryAPI.MEMORY_BASIC_INFORMATION.class));
-        return start.equal(memoryInfo.AllocationBase());
+        if (MemoryAPI.VirtualQuery(start, memoryInfo, SizeOf.unsigned(MemoryAPI.MEMORY_BASIC_INFORMATION.class)).equal(0)) {
+            return -1;
+        }
+        assert start.equal(memoryInfo.BaseAddress()) : "Invalid memory block start";
+        int result = MemoryAPI.VirtualFree(memoryInfo.AllocationBase(), WordFactory.zero(), MemoryAPI.MEM_RELEASE());
+        return (result != 0) ? 0 : -1;
     }
 }

@@ -45,6 +45,7 @@ import re
 import mx_benchmark
 import mx_sulong_benchmarks
 import mx_buildtools
+import mx_sulong_fuzz #pylint: disable=unused-import
 
 from mx_gate import Task, add_gate_runner, add_gate_argument
 
@@ -686,11 +687,23 @@ def findBundledLLVMProgram(llvm_program):
     dep = mx.dependency(llvm_dist, fatalIfMissing=True)
     return os.path.join(dep.get_output(), 'bin', llvm_program)
 
-def llvm_tool(args=None, out=None):
+@mx.command(_suite.name, 'llvm-tool', 'Run a tool from the LLVM_TOOLCHAIN distribution')
+def llvm_tool(args=None, nonZeroIsFatal=True, out=None, err=None):
     if len(args) < 1:
         mx.abort("usage: mx llvm-tool <llvm-tool> [args...]")
     llvm_program = findBundledLLVMProgram(args[0])
-    mx.run([llvm_program] + args[1:], out=out)
+    mx.run([llvm_program] + args[1:], nonZeroIsFatal=nonZeroIsFatal, out=out, err=err)
+
+
+_LLVM_EXTRA_TOOL_DIST = 'LLVM_TOOLCHAIN_FULL'
+@mx.command(_suite.name, 'llvm-extra-tool', 'Run a tool from the ' + _LLVM_EXTRA_TOOL_DIST + ' distribution')
+def llvm_extra_tool(args=None, nonZeroIsFatal=True, out=None, err=None):
+    if len(args) < 1:
+        mx.abort("usage: llvm-extra-tool <llvm-tool> [args...]")
+    program = args[0]
+    dep = mx.dependency(_LLVM_EXTRA_TOOL_DIST, fatalIfMissing=True)
+    llvm_program = os.path.join(dep.get_output(), 'bin', program)
+    mx.run([llvm_program] + args[1:], nonZeroIsFatal=nonZeroIsFatal, out=out, err=err)
 
 def getClasspathOptions(extra_dists=None):
     """gets the classpath of the Sulong distributions"""
@@ -718,13 +731,13 @@ def update_sulong_home(new_home):
 mx_subst.path_substitutions.register_no_arg('sulong_home', get_sulong_home)
 
 
-def runLLVM(args=None, out=None, get_classpath_options=getClasspathOptions):
+def runLLVM(args=None, out=None, err=None, timeout=None, nonZeroIsFatal=True, get_classpath_options=getClasspathOptions):
     """uses Sulong to execute a LLVM IR file"""
     vmArgs, sulongArgs = truffle_extract_VM_args(args)
     dists = []
     if "tools" in (s.name for s in mx.suites()):
         dists.append('CHROMEINSPECTOR')
-    return mx.run_java(getCommonOptions(False) + vmArgs + get_classpath_options(dists) + ["com.oracle.truffle.llvm.launcher.LLVMLauncher"] + sulongArgs, out=out)
+    return mx.run_java(getCommonOptions(False) + vmArgs + get_classpath_options(dists) + ["com.oracle.truffle.llvm.launcher.LLVMLauncher"] + sulongArgs, timeout=timeout, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err)
 
 
 def extract_bitcode(args=None, out=None):
@@ -1220,6 +1233,5 @@ mx.update_commands(_suite, {
     'create-debugexpr-parser' : [create_debugexpr_parser, 'create the debug expression parser using antlr'],
     'create-parsers' : [create_parsers, 'create the debug expression and the inline assembly parser using antlr'],
     'extract-bitcode' : [extract_bitcode, 'Extract embedded LLVM bitcode from object files'],
-    'llvm-tool' : [llvm_tool, 'Run a tool from the LLVM.ORG distribution'],
     'llvm-dis' : [llvm_dis, 'Disassemble (embedded) LLVM bitcode to LLVM assembly'],
 })

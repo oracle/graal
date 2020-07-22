@@ -47,6 +47,7 @@ import com.oracle.svm.hosted.c.info.NativeCodeInfo;
 import com.oracle.svm.hosted.c.query.QueryResultParser;
 import com.oracle.svm.hosted.c.query.RawStructureLayoutPlanner;
 import com.oracle.svm.hosted.c.query.SizeAndSignednessVerifier;
+import org.graalvm.nativeimage.Platform;
 
 /**
  * Processes native library information for one C Library header file (one { NativeCodeContext }).
@@ -142,7 +143,9 @@ public class CAnnotationProcessor {
         Path binary = queryFile.resolveSibling(compilerInvoker.asExecutableName(fileName.substring(0, fileName.lastIndexOf("."))));
         ArrayList<String> options = new ArrayList<>();
         options.addAll(codeCtx.getDirectives().getOptions());
-        options.addAll(LibCBase.singleton().getAdditionalQueryCodeCompilerOptions());
+        if (Platform.includedIn(Platform.LINUX.class)) {
+            options.addAll(LibCBase.singleton().getAdditionalQueryCodeCompilerOptions());
+        }
         compilerInvoker.compileAndParseError(options, queryFile, binary, this::reportCompilerError, nativeLibs.debug);
         return binary;
     }

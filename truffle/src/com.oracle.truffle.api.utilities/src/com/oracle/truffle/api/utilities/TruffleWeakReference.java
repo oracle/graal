@@ -43,7 +43,6 @@ package com.oracle.truffle.api.utilities;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 
 /**
@@ -109,7 +108,6 @@ public final class TruffleWeakReference<T> extends WeakReference<T> {
      */
     public TruffleWeakReference(T t) {
         super(t);
-        CompilerAsserts.neverPartOfCompilation();
     }
 
     /**
@@ -121,7 +119,6 @@ public final class TruffleWeakReference<T> extends WeakReference<T> {
      */
     public TruffleWeakReference(T referent, ReferenceQueue<? super T> q) {
         super(referent, q);
-        CompilerAsserts.neverPartOfCompilation();
     }
 
 }

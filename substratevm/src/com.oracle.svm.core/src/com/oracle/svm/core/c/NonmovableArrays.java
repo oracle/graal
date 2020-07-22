@@ -101,12 +101,6 @@ public final class NonmovableArrays {
         return (T) array;
     }
 
-    @Uninterruptible(reason = "Cast to object might not be valid.")
-    private static boolean isInImageHeap(NonmovableArray<?> array) {
-        Object obj = KnownIntrinsics.convertUnknownValue(((Word) array).toObject(), Object.class);
-        return obj != null && Heap.getHeap().isInImageHeap(obj);
-    }
-
     /** Begins tracking an array, e.g. when it is handed over from a different isolate. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void trackUnmanagedArray(@SuppressWarnings("unused") NonmovableArray<?> array) {

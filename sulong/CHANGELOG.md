@@ -4,6 +4,10 @@ Changes:
 
 New features:
 
+* Support reading multi-byte values from polyglot arrays explicitly typed as i8 arrays.
+
+* Fail when a function is called over interop with fewer arguments than it expects.
+
 * Support `InteropLibrary.isIdentical` and related messages.
 
 * Added the `--print-toolchain-api-identifier`,  `--print-toolchain-api-tool <tool-name>`
@@ -23,6 +27,9 @@ Removed:
 
 * Removed the `--llvm.sourcePath` option (deprecated since 19.0), use
   `--inspect.SourcePath` instead.
+
+* Removed support for the application/x-llvm-ir-bitcode-base64 mime-type
+  (deprecated since 19.0).
 
 # Version 20.1.0
 
@@ -233,7 +240,7 @@ Changes:
 * Removed support for implicit polyglot types for local variables
   as the availability of type information is not guaranteed.
   Explicit polyglot casts are now strictly required (`polyglot_as_typed`).
-  See [docs/INTEROP.md](docs/INTEROP.md) and [polyglot.h](projects/com.oracle.truffle.llvm.libraries.bitcode/include/polyglot.h)
+  See [docs/contributor/INTEROP.md](docs/contributor/INTEROP.md) and [polyglot.h](projects/com.oracle.truffle.llvm.libraries.bitcode/include/polyglot.h)
   for more details.
 * Support for IR-level tracing.
 * Preliminary support for LLVM 7.

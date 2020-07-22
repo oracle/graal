@@ -137,7 +137,6 @@ import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Base64;
 import java.util.BitSet;
 import java.util.Comparator;
 import java.util.List;
@@ -199,14 +198,7 @@ final class Runner {
                 library = ExternalLibrary.createFromName("<STREAM-" + UUID.randomUUID().toString() + ">", false, source.isInternal());
             }
         } else if (source.hasCharacters()) {
-            switch (source.getMimeType()) {
-                case LLVMLanguage.LLVM_BITCODE_BASE64_MIME_TYPE:
-                    bytes = ByteSequence.create(decodeBase64(source.getCharacters()));
-                    library = ExternalLibrary.createFromName("<STREAM-" + UUID.randomUUID().toString() + ">", false, source.isInternal());
-                    break;
-                default:
-                    throw new LLVMParserException("Character-based source with unexpected mime type: " + source.getMimeType());
-            }
+            throw new LLVMParserException("Unexpected character-based source with mime type: " + source.getMimeType());
         } else {
             throw new LLVMParserException("Should not reach here: Source is neither char-based nor byte-based!");
         }
@@ -1820,16 +1812,6 @@ final class Runner {
         } catch (TypeOverflowException e) {
             return new LLVMStatementNode[]{Type.handleOverflowStatement(e)};
         }
-    }
-
-    static byte[] decodeBase64(CharSequence charSequence) {
-        byte[] result = new byte[charSequence.length()];
-        for (int i = 0; i < result.length; i++) {
-            char ch = charSequence.charAt(i);
-            assert ch >= 0 && ch <= Byte.MAX_VALUE;
-            result[i] = (byte) ch;
-        }
-        return Base64.getDecoder().decode(result);
     }
 
     private CallTarget createLibraryCallTarget(String name, List<LLVMParserResult> parserResults, InitializationOrder initializationOrder) {

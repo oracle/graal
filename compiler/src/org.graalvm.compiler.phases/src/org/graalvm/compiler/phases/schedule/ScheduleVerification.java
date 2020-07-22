@@ -35,6 +35,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
+import org.graalvm.compiler.nodes.GuardNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.MemoryProxyNode;
@@ -133,6 +134,15 @@ public final class ScheduleVerification extends BlockIteratorClosure<EconomicSet
             if (graph.hasValueProxies() && block.getLoop() != null && !(n instanceof VirtualState)) {
                 for (Node usage : n.usages()) {
                     Node usageNode = usage;
+
+                    if (!(usage instanceof GuardNode) && usage.hasNoUsages()) {
+                        /*
+                         * We do not want to run the schedule behind the verification with dead code
+                         * elimination, i.e., floating nodes without usages are not removed, thus we
+                         * must handle the case that a floating node without a usage occurs here.
+                         */
+                        continue;
+                    }
 
                     if (usageNode instanceof PhiNode) {
                         PhiNode phiNode = (PhiNode) usage;

@@ -2,6 +2,10 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 20.3.0
+* Added `RepeatingNode.initialLoopStatus` and `RepeatingNode.shouldContinue` to allow defining a custom loop continuation condition.
+
+
 ## Version 20.2.0
 * Added new internal engine option `ShowInternalStackFrames` to show internal frames specific to the language implementation in stack traces.
 * Added new identity APIs to `InteropLibrary`:
@@ -29,6 +33,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * The use of `InteropException.initCause` is now deprecated for performance reasons. Instead pass the cause when the `InteropException` is constructed. The method `initCause` will throw `UnsupportedOperationException` in future versions. Please validate all calls to `Throwable.initCause` for language or tool implementation code.
 * Added [TruffleFile.isSameFile](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleFile.html#isSameFile-com.oracle.truffle.api.TruffleFile-java.nio.file.LinkOption...-) method to test if two `TruffleFile`s refer to the same physical file.
 * Added new `EncapsulatingNodeReference` class to lookup read and write the current encapsulating node. Deprecated encapsulating node methods in `NodeUtil`.
+* Added support for subclassing `DynamicObject` so that guest languages can directly base their object class hierarchy on it, add fields, and use `@ExportLibrary` on subclasses. Guest language object classes should implement `TruffleObject`.
+* Added new [DynamicObjectLibrary](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/DynamicObjectLibrary.html) API for accessing and mutating properties and the shape of `DynamicObject` instances. This is the recommended API from now on. Other, low-level property access APIs will be deprecated and removed in a future release.
 
 ## Version 20.1.0
 * Added `@GenerateLibrary(dynamicDispatchEnabled = false)` that allows to disable dynamic dispatch semantics for a library. The default is `true`.

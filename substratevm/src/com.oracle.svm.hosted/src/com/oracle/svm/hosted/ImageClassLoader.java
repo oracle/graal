@@ -576,7 +576,7 @@ public final class ImageClassLoader {
         return result;
     }
 
-    public ClassLoader getClassLoader() {
+    public NativeImageClassLoader getClassLoader() {
         return classLoader;
     }
 

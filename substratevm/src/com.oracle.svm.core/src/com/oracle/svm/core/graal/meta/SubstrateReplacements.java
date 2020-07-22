@@ -317,7 +317,7 @@ public class SubstrateReplacements extends ReplacementsImpl {
     }
 
     @Override
-    public boolean hasSubstitution(ResolvedJavaMethod method, int callerBci) {
+    public boolean hasSubstitution(ResolvedJavaMethod method) {
         // This override keeps graphBuilderPlugins from being reached during image generation.
         return false;
     }

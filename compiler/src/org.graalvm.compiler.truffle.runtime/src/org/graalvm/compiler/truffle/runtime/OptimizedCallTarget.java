@@ -834,7 +834,11 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     public final boolean nodeReplaced(Node oldNode, Node newNode, CharSequence reason) {
         CompilerAsserts.neverPartOfCompilation();
         invalidate(newNode, reason);
-        /* Notify compiled method that have inlined this call target that the tree changed. */
+        /*
+         * Notify compiled method that have inlined this call target that the tree changed. It also
+         * ensures that compiled code that might be installed by currently running compilation task
+         * that can no longer be cancelled is invalidated.
+         */
         invalidateNodeRewritingAssumption();
         return false;
     }

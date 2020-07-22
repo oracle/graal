@@ -32,10 +32,15 @@ import java.io.IOException;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.FileSystems;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 
 import com.oracle.svm.core.util.VMError;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 public class JDKSourceCache extends SourceCache {
 
@@ -48,7 +53,19 @@ public class JDKSourceCache extends SourceCache {
      * properties needed to locate relevant JDK and app source roots
      */
     private static final String JAVA_HOME_PROP = "java.home";
-    private static final String JAVA_SPEC_VERSION_PROP = "java.specification.version";
+
+    /**
+     * Modules needing special case root processing.
+     */
+    private static final String[] specialRootModules = {
+                    "jdk.internal.vm.ci",
+                    "jdk.internal.vm.compiler",
+    };
+
+    /**
+     * Extra root directories for files in the jdk.internal.vm.ci/compiler modules.
+     */
+    private HashMap<String, List<Path>> specialSrcRoots;
 
     @Override
     protected void initSrcRoots() {
@@ -56,15 +73,13 @@ public class JDKSourceCache extends SourceCache {
         assert javaHome != null;
         Path javaHomePath = Paths.get("", javaHome);
         Path srcZipPath;
-        String javaSpecVersion = System.getProperty(JAVA_SPEC_VERSION_PROP);
-        if (javaSpecVersion.equals("1.8")) {
+        if (JavaVersionUtil.JAVA_SPEC < 11) {
             Path srcZipDir = javaHomePath.getParent();
             if (srcZipDir == null) {
                 VMError.shouldNotReachHere("Cannot resolve parent directory of " + javaHome);
             }
             srcZipPath = srcZipDir.resolve("src.zip");
         } else {
-            assert javaSpecVersion.matches("[1-9][0-9]");
             srcZipPath = javaHomePath.resolve("lib").resolve("src.zip");
         }
         if (srcZipPath.toFile().exists()) {
@@ -73,10 +88,77 @@ public class JDKSourceCache extends SourceCache {
                 for (Path root : srcFileSystem.getRootDirectories()) {
                     srcRoots.add(root);
                 }
+                specialSrcRoots = new HashMap<>();
+                if (JavaVersionUtil.JAVA_SPEC >= 11) {
+                    for (Path root : srcFileSystem.getRootDirectories()) {
+                        // add dirs named "src" as extra roots for special modules
+                        for (String specialRootModule : specialRootModules) {
+                            ArrayList<Path> rootsList = new ArrayList<>();
+                            specialSrcRoots.put(specialRootModule, rootsList);
+                            Path specialModuleRoot = root.resolve(specialRootModule);
+                            Files.find(specialModuleRoot, 2, (path, attributes) -> path.endsWith("src")).forEach(rootsList::add);
+                        }
+                    }
+                }
             } catch (IOException | FileSystemNotFoundException ioe) {
                 /* ignore this entry */
             }
         }
+    }
+
+    @Override
+    public Path checkCacheFile(Path filePath) {
+        if (JavaVersionUtil.JAVA_SPEC >= 11) {
+            for (String specialRootModule : specialRootModules) {
+                if (filePath.startsWith(specialRootModule)) {
+                    // handle this module specially as it has intermediate dirs
+                    Path targetPath = cachedPath(filePath);
+                    Path filePathNoModule = filePath.subpath(1, filePath.getNameCount());
+                    for (Path srcRoot : specialSrcRoots.get(specialRootModule)) {
+                        String srcRootGroup = srcRoot.subpath(1, 2).toString().replace(".", filePath.getFileSystem().getSeparator());
+                        if (filePathNoModule.toString().startsWith(srcRootGroup)) {
+                            Path sourcePath = extendPath(srcRoot, filePathNoModule);
+                            try {
+                                if (tryCheckCacheFile(sourcePath, targetPath)) {
+                                    return filePath;
+                                }
+                            } catch (IOException e) {
+                                /* delete the target file as it is invalid */
+                                targetPath.toFile().delete();
+                                /* have another go at caching it */
+                                return tryCacheFile(filePath);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        // try the usual check instead
+        return super.checkCacheFile(filePath);
+    }
+
+    @Override
+    public Path tryCacheFile(Path filePath) {
+        if (JavaVersionUtil.JAVA_SPEC >= 11) {
+            for (String specialRootModule : specialRootModules) {
+                if (filePath.startsWith(specialRootModule)) {
+                    // handle this module specially as it has intermediate dirs
+                    Path targetPath = cachedPath(filePath);
+                    Path filePathNoModule = filePath.subpath(1, filePath.getNameCount());
+                    for (Path srcRoot : specialSrcRoots.get(specialRootModule)) {
+                        String srcRootGroup = srcRoot.subpath(1, 2).toString().replace(".", filePath.getFileSystem().getSeparator());
+                        if (filePathNoModule.toString().startsWith(srcRootGroup)) {
+                            Path sourcePath = extendPath(srcRoot, filePathNoModule);
+                            if (tryCacheFileFromRoot(sourcePath, targetPath)) {
+                                return filePath;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        // try the usual lookup instead
+        return super.tryCacheFile(filePath);
     }
 
     @Override

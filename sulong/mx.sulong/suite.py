@@ -433,6 +433,32 @@ suite = {
       "jacoco" : "include",
     },
 
+    "com.oracle.truffle.llvm.tools.fuzzing.native" : {
+      "subDir" : "projects",
+      "native" : True,
+      "vpath" : True,
+      "headers" : ["src/fuzzmain.c"],
+      "results" : [
+        "bin/<exe:llvm-reduce>",
+        "bin/<exe:llvm-stress>",
+      ],
+      "buildDependencies" : [
+        "sdk:LLVM_TOOLCHAIN_FULL",
+      ],
+      "buildEnv" : {
+        "LLVM_CONFIG" : "<path:LLVM_TOOLCHAIN_FULL>/bin/llvm-config",
+        "CXX" : "<path:LLVM_TOOLCHAIN_FULL>/bin/clang++",
+        "LLVM_REDUCE" :"bin/<exe:llvm-reduce>",
+        "LLVM_STRESS" :"bin/<exe:llvm-stress>",
+        "LLVM_ORG_SRC" : "<path:LLVM_ORG_SRC>",
+        "OS" : "<os>",
+      },
+      "checkstyle" : "com.oracle.truffle.llvm.runtime",
+      "license" : "BSD-new",
+      "testProject" : True,
+      "jacoco" : "exclude",
+    },
+
     "com.oracle.truffle.llvm.tests.pipe" : {
       "subDir" : "tests",
       "sourceDirs" : ["src"],
@@ -1196,6 +1222,15 @@ suite = {
       "license": "BSD-new",
     },
 
+    "SULONG_TOOLS": {
+      "native": True,
+      "relpath": False,
+      "platformDependent": True,
+      "layout": {
+        "./": "dependency:com.oracle.truffle.llvm.tools.fuzzing.native/*",
+      },
+      "license": "BSD-new",
+    },
 
     "SULONG_TEST" : {
       "subDir" : "tests",

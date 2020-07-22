@@ -283,9 +283,16 @@ public class LLVMFunctionCode {
 
     public static final class IntrinsicFunction extends LLVMFunctionCode.ManagedFunction {
         private final LLVMFunctionCode.Intrinsic intrinsic;
+        private final LLVMSourceFunctionType sourceType;
 
-        public IntrinsicFunction(LLVMFunctionCode.Intrinsic intrinsic) {
+        public IntrinsicFunction(LLVMFunctionCode.Intrinsic intrinsic, LLVMSourceFunctionType sourceType) {
             this.intrinsic = intrinsic;
+            this.sourceType = sourceType;
+        }
+
+        @Override
+        LLVMSourceFunctionType getSourceType() {
+            return this.sourceType;
         }
     }
 
@@ -339,7 +346,7 @@ public class LLVMFunctionCode {
 
     public void define(LLVMIntrinsicProvider intrinsicProvider, NodeFactory nodeFactory) {
         Intrinsic intrinsification = new Intrinsic(intrinsicProvider, llvmFunction.getName(), nodeFactory);
-        define(intrinsicProvider.getLibrary(), new IntrinsicFunction(intrinsification), true);
+        define(intrinsicProvider.getLibrary(), new IntrinsicFunction(intrinsification, getFunction().getSourceType()), true);
     }
 
     public void define(ExternalLibrary lib, Function newFunction) {

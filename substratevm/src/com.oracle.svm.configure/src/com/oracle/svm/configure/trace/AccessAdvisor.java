@@ -43,12 +43,39 @@ public final class AccessAdvisor {
     static {
         internalCallerFilter = RuleNode.createRoot();
         internalCallerFilter.addOrGetChildren("**", RuleNode.Inclusion.Include);
-        internalCallerFilter.addOrGetChildren("java.**", RuleNode.Inclusion.Exclude);
-        internalCallerFilter.addOrGetChildren("javax.**", RuleNode.Inclusion.Exclude);
-        internalCallerFilter.addOrGetChildren("javax.security.auth.**", RuleNode.Inclusion.Include);
-        internalCallerFilter.addOrGetChildren("sun.**", RuleNode.Inclusion.Exclude);
-        internalCallerFilter.addOrGetChildren("com.sun.**", RuleNode.Inclusion.Exclude);
-        internalCallerFilter.addOrGetChildren("jdk.**", RuleNode.Inclusion.Exclude);
+
+        internalCallerFilter.addOrGetChildren("com.sun.crypto.provider.**", RuleNode.Inclusion.Exclude);
+        internalCallerFilter.addOrGetChildren("com.sun.java.util.jar.pack.**", RuleNode.Inclusion.Exclude);
+        internalCallerFilter.addOrGetChildren("com.sun.net.ssl.**", RuleNode.Inclusion.Exclude);
+        internalCallerFilter.addOrGetChildren("com.sun.nio.file.**", RuleNode.Inclusion.Exclude);
+        internalCallerFilter.addOrGetChildren("com.sun.nio.sctp.**", RuleNode.Inclusion.Exclude);
+        internalCallerFilter.addOrGetChildren("com.sun.nio.zipfs.**", RuleNode.Inclusion.Exclude);
+        internalCallerFilter.addOrGetChildren("java.io.**", RuleNode.Inclusion.Exclude);
+        internalCallerFilter.addOrGetChildren("java.lang.**", RuleNode.Inclusion.Exclude);
+        internalCallerFilter.addOrGetChildren("java.math.**", RuleNode.Inclusion.Exclude);
+        internalCallerFilter.addOrGetChildren("java.net.**", RuleNode.Inclusion.Exclude);
+        internalCallerFilter.addOrGetChildren("java.nio.**", RuleNode.Inclusion.Exclude);
+        internalCallerFilter.addOrGetChildren("java.text.**", RuleNode.Inclusion.Exclude);
+        internalCallerFilter.addOrGetChildren("java.time.**", RuleNode.Inclusion.Exclude);
+        internalCallerFilter.addOrGetChildren("java.util.**", RuleNode.Inclusion.Exclude);
+        internalCallerFilter.addOrGetChildren("javax.crypto.**", RuleNode.Inclusion.Exclude);
+        internalCallerFilter.addOrGetChildren("javax.lang.model.**", RuleNode.Inclusion.Exclude);
+        internalCallerFilter.addOrGetChildren("javax.net.**", RuleNode.Inclusion.Exclude);
+        internalCallerFilter.addOrGetChildren("javax.tools.**", RuleNode.Inclusion.Exclude);
+        internalCallerFilter.addOrGetChildren("jdk.internal.**", RuleNode.Inclusion.Exclude);
+        internalCallerFilter.addOrGetChildren("jdk.jfr.**", RuleNode.Inclusion.Exclude);
+        internalCallerFilter.addOrGetChildren("jdk.net.**", RuleNode.Inclusion.Exclude);
+        internalCallerFilter.addOrGetChildren("jdk.nio.**", RuleNode.Inclusion.Exclude);
+        internalCallerFilter.addOrGetChildren("jdk.vm.**", RuleNode.Inclusion.Exclude);
+        internalCallerFilter.addOrGetChildren("sun.invoke.**", RuleNode.Inclusion.Exclude);
+        internalCallerFilter.addOrGetChildren("sun.launcher.**", RuleNode.Inclusion.Exclude);
+        internalCallerFilter.addOrGetChildren("sun.misc.**", RuleNode.Inclusion.Exclude);
+        internalCallerFilter.addOrGetChildren("sun.net.**", RuleNode.Inclusion.Exclude);
+        internalCallerFilter.addOrGetChildren("sun.nio.**", RuleNode.Inclusion.Exclude);
+        internalCallerFilter.addOrGetChildren("sun.reflect.**", RuleNode.Inclusion.Exclude);
+        internalCallerFilter.addOrGetChildren("sun.text.**", RuleNode.Inclusion.Exclude);
+        internalCallerFilter.addOrGetChildren("sun.util.**", RuleNode.Inclusion.Exclude);
+
         internalCallerFilter.addOrGetChildren("org.graalvm.compiler.**", RuleNode.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("org.graalvm.libgraal.**", RuleNode.Inclusion.Exclude);
         internalCallerFilter.removeRedundantNodes();

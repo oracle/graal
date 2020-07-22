@@ -41,17 +41,11 @@
 package com.oracle.truffle.regex;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.ValueProfile;
-import com.oracle.truffle.regex.AbstractConstantKeysObjectFactory.IsReadableCacheNodeGen;
-import com.oracle.truffle.regex.AbstractConstantKeysObjectFactory.ReadCacheNodeGen;
 import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 
 @ExportLibrary(InteropLibrary.class)
@@ -72,27 +66,11 @@ public abstract class AbstractConstantKeysObject extends AbstractRegexObject {
     }
 
     @ExportMessage
-    public boolean isMemberReadable(String member,
-                    @Cached IsReadableCacheNode cache,
-                    @Shared("receiverProfile") @Cached("createIdentityProfile()") ValueProfile receiverProfile) {
-        return cache.execute(receiverProfile.profile(this), member);
-    }
-
-    @ExportMessage
-    public Object readMember(String member,
-                    @Cached ReadCacheNode readCache,
-                    @Shared("receiverProfile") @Cached("createIdentityProfile()") ValueProfile receiverProfile) throws UnknownIdentifierException {
-        return readCache.execute(receiverProfile.profile(this), member);
-    }
-
-    @GenerateUncached
-    public abstract static class IsReadableCacheNode extends Node {
-
-        public abstract boolean execute(AbstractConstantKeysObject receiver, String symbol);
+    public abstract static class IsMemberReadable {
 
         @SuppressWarnings("unused")
         @Specialization(guards = "symbol == cachedSymbol", limit = "8")
-        static boolean cacheIdentity(AbstractConstantKeysObject receiver, String symbol,
+        public static boolean cacheIdentity(AbstractConstantKeysObject receiver, String symbol,
                         @Cached("symbol") String cachedSymbol,
                         @Cached("isReadable(receiver, cachedSymbol)") boolean result) {
             return result;
@@ -100,7 +78,7 @@ public abstract class AbstractConstantKeysObject extends AbstractRegexObject {
 
         @SuppressWarnings("unused")
         @Specialization(guards = "symbol.equals(cachedSymbol)", limit = "8", replaces = "cacheIdentity")
-        static boolean cacheEquals(AbstractConstantKeysObject receiver, String symbol,
+        public static boolean cacheEquals(AbstractConstantKeysObject receiver, String symbol,
                         @Cached("symbol") String cachedSymbol,
                         @Cached("isReadable(receiver, cachedSymbol)") boolean result) {
             return result;
@@ -108,47 +86,29 @@ public abstract class AbstractConstantKeysObject extends AbstractRegexObject {
 
         @SuppressWarnings("unused")
         @Specialization(replaces = "cacheEquals")
-        static boolean isReadable(AbstractConstantKeysObject receiver, String symbol) {
+        public static boolean isReadable(AbstractConstantKeysObject receiver, String symbol) {
             return receiver.getKeys().contains(symbol);
-        }
-
-        public static IsReadableCacheNode create() {
-            return IsReadableCacheNodeGen.create();
-        }
-
-        public static IsReadableCacheNode getUncached() {
-            return IsReadableCacheNodeGen.getUncached();
         }
     }
 
-    @GenerateUncached
-    public abstract static class ReadCacheNode extends Node {
-
-        public abstract Object execute(AbstractConstantKeysObject receiver, String symbol) throws UnknownIdentifierException;
+    @ExportMessage
+    public abstract static class ReadMember {
 
         @Specialization(guards = "symbol == cachedSymbol", limit = "8")
-        Object readIdentity(AbstractConstantKeysObject receiver, @SuppressWarnings("unused") String symbol,
+        public static Object readIdentity(AbstractConstantKeysObject receiver, @SuppressWarnings("unused") String symbol,
                         @Cached("symbol") String cachedSymbol) throws UnknownIdentifierException {
             return read(receiver, cachedSymbol);
         }
 
         @Specialization(guards = "symbol.equals(cachedSymbol)", limit = "8", replaces = "readIdentity")
-        Object readEquals(AbstractConstantKeysObject receiver, @SuppressWarnings("unused") String symbol,
+        public static Object readEquals(AbstractConstantKeysObject receiver, @SuppressWarnings("unused") String symbol,
                         @Cached("symbol") String cachedSymbol) throws UnknownIdentifierException {
             return read(receiver, cachedSymbol);
         }
 
         @Specialization(replaces = "readEquals")
-        static Object read(AbstractConstantKeysObject receiver, String symbol) throws UnknownIdentifierException {
+        public static Object read(AbstractConstantKeysObject receiver, String symbol) throws UnknownIdentifierException {
             return receiver.readMemberImpl(symbol);
-        }
-
-        public static ReadCacheNode create() {
-            return ReadCacheNodeGen.create();
-        }
-
-        public static ReadCacheNode getUncached() {
-            return ReadCacheNodeGen.getUncached();
         }
     }
 }

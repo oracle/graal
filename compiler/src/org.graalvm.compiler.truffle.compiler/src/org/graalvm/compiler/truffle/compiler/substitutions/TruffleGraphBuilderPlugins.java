@@ -25,11 +25,12 @@
 package org.graalvm.compiler.truffle.compiler.substitutions;
 
 import static java.lang.Character.toUpperCase;
-import static org.graalvm.compiler.debug.DebugOptions.DumpOnError;
 import static org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.getRuntime;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
@@ -39,7 +40,6 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
@@ -603,13 +603,9 @@ public class TruffleGraphBuilderPlugins {
                 } else if (canDelayIntrinsification) {
                     return false;
                 } else {
-                    String message = "unsafeCast arguments could not reduce to a constant: " + clazz + ", " + nonNull + ", " + isExactType;
-                    if (DumpOnError.getValue(b.getOptions())) {
-                        // Throw an error to produce a graph dump to diagnose GR-8831
-                        message = String.format("%s%nParsing context: %s", message, b);
-                        throw new GraalError(message);
-                    }
-                    throw b.bailout(message);
+                    logPerformanceWarningUnsafeCastArgNotConst(targetMethod, clazz, nonNull, isExactType);
+                    b.push(JavaKind.Object, object);
+                    return true;
                 }
             }
         });
@@ -707,7 +703,7 @@ public class TruffleGraphBuilderPlugins {
             try (DebugContext.Scope s = debug.scope("TrufflePerformanceWarnings", graph)) {
                 TruffleDebugJavaMethod truffleMethod = debug.contextLookup(TruffleDebugJavaMethod.class);
                 if (truffleMethod != null) {    // Never null in compilation but can be null in
-                                                // TrufflCompilerImplTest
+                                                // TruffleCompilerImplTest
                     Map<String, Object> properties = new LinkedHashMap<>();
                     properties.put("location", location);
                     properties.put("method", targetMethod.format("%h.%n"));
@@ -715,6 +711,40 @@ public class TruffleGraphBuilderPlugins {
                                     Collections.singletonList(access),
                                     "location argument not PE-constant", properties);
                     debug.dump(DebugContext.VERBOSE_LEVEL, graph, "perf warn: Location argument is not a partial evaluation constant: %s", location);
+                }
+            } catch (Throwable t) {
+                debug.handle(t);
+            }
+        }
+    }
+
+    @SuppressWarnings("try")
+    static void logPerformanceWarningUnsafeCastArgNotConst(ResolvedJavaMethod targetMethod, ValueNode type, ValueNode nonNull, ValueNode isExactType) {
+        if (PerformanceInformationHandler.isWarningEnabled(PerformanceWarningKind.VIRTUAL_STORE)) {
+            StructuredGraph graph = type.graph();
+            DebugContext debug = type.getDebug();
+            try (DebugContext.Scope s = debug.scope("TrufflePerformanceWarnings", graph)) {
+                TruffleDebugJavaMethod truffleMethod = debug.contextLookup(TruffleDebugJavaMethod.class);
+                if (truffleMethod != null) {    // Never null in compilation but can be null in
+                                                // TruffleCompilerImplTest
+                    Map<String, Object> properties = new LinkedHashMap<>();
+                    List<ValueNode> nonConstArgs = new ArrayList<>();
+                    properties.put("type", type);
+                    if (!type.isConstant()) {
+                        nonConstArgs.add(type);
+                    }
+                    properties.put("nonNull", nonNull);
+                    if (!nonNull.isConstant()) {
+                        nonConstArgs.add(nonNull);
+                    }
+                    properties.put("exactType", isExactType);
+                    if (!isExactType.isConstant()) {
+                        nonConstArgs.add(isExactType);
+                    }
+                    properties.put("method", targetMethod.format("%h.%n"));
+                    PerformanceInformationHandler.logPerformanceWarning(PerformanceWarningKind.VIRTUAL_STORE, truffleMethod.getCompilable(), nonConstArgs,
+                                    "unsafeCast arguments could not reduce to a constant", properties);
+                    debug.dump(DebugContext.VERBOSE_LEVEL, graph, "perf warn: unsafeCast arguments could not reduce to a constant: %s, %s, %s", type, nonNull, isExactType);
                 }
             } catch (Throwable t) {
                 debug.handle(t);

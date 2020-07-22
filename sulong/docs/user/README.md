@@ -15,6 +15,8 @@ Where `<bitcode file>` is a [compiled program with embedded LLVM bitcode](COMPIL
 Note: LLVM bitcode is platform dependent. The program must be compiled for
 the appropriate platform.
 
+See [COMMANDLINE](COMMANDLINE.md) or use `lli --help` for documentation of the options.
+
 ## Compiling to LLVM bitcode format
 
 GraalVM can execute C/C++, Fortran, and other programs that can be compiled to

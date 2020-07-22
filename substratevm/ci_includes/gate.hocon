@@ -28,11 +28,20 @@ builds += [
   }
   ${labsjdk-ee-11} ${svm-common-linux-gate} ${linux-deploy} {
     name: "gate-svm-build-ee-11"
+    downloads: {
+      "MUSL_LIBS": {
+        "name": "musl-libs",
+        "version": "1.0",
+        "platformspecific": true
+      }
+    }
     environment : {
       MAVEN_REPO_LOCAL : "$BUILD_DIR/.m2"
+      PATH : "$MUSL_LIBS/bin:$PATH"
     }
     run: [
-      ${svm-cmd-gate} ["build,helloworld,test,relocations,maven,nativeimagehelp"]
+      ["$MUSL_LIBS/fix_paths.sh"]
+      ${svm-cmd-gate} ["build,helloworld,test,relocations,maven,nativeimagehelp,muslcbuild"]
     ]
   }
   ${oraclejdk8} ${svm-common-linux-gate} ${eclipse} ${jdt} ${linux-deploy} {
