@@ -121,13 +121,14 @@ public abstract class LLVMInteropReadNode extends LLVMNode {
                         @Cached ToLLVM toLLVM,
                         @Cached ReinterpretLongAsLLVM fromLongToLLVM,
                         @Cached BranchProfile exception,
+                        @Cached BranchProfile outOfBounds,
                         @Bind("location.type.getKind().foreignToLLVMType") ForeignToLLVMType locationType,
                         @Bind("accessType.getSizeInBytes()") int accessTypeSizeInBytes) {
             assert identifier == (Long) location.identifier;
             long idx = identifier;
+            assert locationType == ForeignToLLVMType.I8;
+            long res = 0;
             try {
-                assert locationType == ForeignToLLVMType.I8;
-                long res = 0;
                 // TODO (je) this currently assumes little endian (GR-24919)
                 for (int i = 0; i < accessTypeSizeInBytes; i++, idx++) {
                     Object ret = interop.readArrayElement(location.base, idx);
@@ -136,6 +137,14 @@ public abstract class LLVMInteropReadNode extends LLVMNode {
                 }
                 return fromLongToLLVM.executeWithAccessType(res, accessType);
             } catch (InvalidArrayIndexException ex) {
+                if (idx != identifier) {
+                    outOfBounds.enter();
+                    /*
+                     * Reading out of bounds but we read at least one byte. Simulate native
+                     * allocation alignment, i.e., ignore the out-of-bounds reads.
+                     */
+                    return fromLongToLLVM.executeWithAccessType(res, accessType);
+                }
                 exception.enter();
                 throw new LLVMPolyglotException(this, "Invalid array index %d", idx);
             } catch (UnsupportedMessageException ex) {
