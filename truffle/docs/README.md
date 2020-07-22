@@ -10,12 +10,12 @@ The Truffle bits are uploaded to Maven central. You can use them from your
 <dependency>
     <groupId>org.graalvm.truffle</groupId>
     <artifactId>truffle-api</artifactId>
-    <version>20.0.0</version> <!-- or any later version -->
+    <version>20.1.0</version> <!-- or any later version -->
 </dependency>
 <dependency>
     <groupId>org.graalvm.truffle</groupId>
     <artifactId>truffle-dsl-processor</artifactId>
-    <version>20.0.0</version>
+    <version>20.1.0</version>
     <scope>provided</scope>
 </dependency>
 ```
