@@ -61,11 +61,11 @@ public class LLVMForeignConstructorCallNode extends LLVMForeignCallNode {
     protected Object doCall(VirtualFrame frame, StackPointer stackPointer) throws ArityException, TypeOverflowException {
         Object[] rawArguments = frame.getArguments();
         rawArguments[0] = language.getLLVMMemory().allocateMemory(this, clazzType.getBitSize());
-        Object[] arguments = packArguments.execute(rawArguments, stackPointer);
-        if (rawArguments.length + 1 != arguments.length) {
-            // 'arguments' also contains stack pointer and 'self', rawArguments contains 'self'
-            throw ArityException.create(arguments.length - 2, rawArguments.length - 1);
+        if (packArguments.toLLVM.length != rawArguments.length) {
+            // arguments also contain 'self' object, thus -1 for argCount
+            throw ArityException.create(packArguments.toLLVM.length - 1, rawArguments.length - 1);
         }
+        Object[] arguments = packArguments.execute(rawArguments, stackPointer);
         callNode.call(arguments);
         /*
          * The packArgumentsNode adds the stack pointer to the argument list. Therefore,
