@@ -36,6 +36,7 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> implements LLVMCapability {
@@ -101,5 +102,7 @@ public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> i
     public abstract Object createVAListStorage();
 
     public abstract Type getVAListType();
+
+    public abstract Object createNativeVAListWrapper(LLVMNativePointer vaListPtr);
 
 }

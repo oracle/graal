@@ -32,6 +32,7 @@ package com.oracle.truffle.llvm.parser.factories;
 import com.oracle.truffle.llvm.runtime.LLVMSyscallEntry;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMUnsupportedSyscallNode;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 /**
@@ -71,6 +72,11 @@ final class UnknownBasicPlatformCapability extends BasicPlatformCapability<Unkno
 
     @Override
     public Type getVAListType() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Object createNativeVAListWrapper(LLVMNativePointer vaListPtr) {
         throw new UnsupportedOperationException();
     }
 

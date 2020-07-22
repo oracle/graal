@@ -4,7 +4,8 @@
 
 double sumDoublesNative(int count, va_list* args) {
     double sum = 0;
-    for (int i = 0; i < count; ++i) {
+    int i = 0;
+    for (; i < count; ++i) {
         double num = va_arg(*args, double);
         sum += num;
     }
@@ -13,7 +14,8 @@ double sumDoublesNative(int count, va_list* args) {
 
 double testVariousTypesNative(int count, va_list* args) {
     double sum = 0;
-    for (int i = 0; i < count; ++i) {
+    int i = 0;
+    for (; i < count; ++i) {
         double num1 = va_arg(*args, double);
         int num2 = va_arg(*args, int);
         sum += num1 + num2;

@@ -29,11 +29,18 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.va;
 
+import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.PlatformCapability;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @NodeChild
 public abstract class LLVMVAEnd extends LLVMExpressionNode {
@@ -41,9 +48,42 @@ public abstract class LLVMVAEnd extends LLVMExpressionNode {
     public LLVMVAEnd() {
     }
 
-    @Specialization(limit = "1")
-    Object doGeneric(LLVMManagedPointer targetAddress, @CachedLibrary("targetAddress.getObject()") LLVMVaListLibrary vaListLibrary) {
+    static boolean isManagedPtr(Object targetAddress) {
+        return LLVMManagedPointer.isInstance(targetAddress);
+    }
+
+    static boolean isNativePtr(Object targetAddress) {
+        return LLVMNativePointer.isInstance(targetAddress);
+    }
+
+    @Specialization(guards = "isManagedPtr(targetAddress)", limit = "1")
+    protected Object vaEnd(LLVMManagedPointer targetAddress, @CachedLibrary("targetAddress.getObject()") LLVMVaListLibrary vaListLibrary) {
         vaListLibrary.cleanup(targetAddress.getObject());
         return null;
     }
+
+    static Object createNativeVAListWrapper(LLVMNativePointer targetAddress, LanguageReference<LLVMLanguage> langRef) {
+        return langRef.get().getCapability(PlatformCapability.class).createNativeVAListWrapper(targetAddress);
+    }
+
+    @Specialization(guards = "isNativePtr(targetAddress)")
+    protected Object vaEnd(LLVMNativePointer targetAddress,
+                    @SuppressWarnings("unused") @CachedLanguage LanguageReference<LLVMLanguage> langRef,
+                    @Cached NativeLLVMVaListHelper nativeLLVMVaListHelper) {
+        return nativeLLVMVaListHelper.execute(createNativeVAListWrapper(targetAddress, langRef));
+    }
+
+    abstract static class NativeLLVMVaListHelper extends LLVMNode {
+
+        public abstract Object execute(Object nativeVaListWrapper);
+
+        @Specialization(limit = "1")
+        protected Object vaStart(Object nativeVaListWrapper,
+                        @CachedLibrary("nativeVaListWrapper") LLVMVaListLibrary vaListLibrary) {
+            vaListLibrary.cleanup(nativeVaListWrapper);
+            return null;
+        }
+
+    }
+
 }

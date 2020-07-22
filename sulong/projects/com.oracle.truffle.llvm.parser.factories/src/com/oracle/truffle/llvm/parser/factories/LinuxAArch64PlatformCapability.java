@@ -34,6 +34,7 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMSyscallExitNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMNativeSyscallNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.linux.aarch64.LinuxAArch64Syscall;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
 final class LinuxAArch64PlatformCapability extends BasicPlatformCapability<LinuxAArch64Syscall> {
@@ -60,6 +61,11 @@ final class LinuxAArch64PlatformCapability extends BasicPlatformCapability<Linux
 
     @Override
     public Type getVAListType() {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Object createNativeVAListWrapper(LLVMNativePointer vaListPtr) {
         throw new UnsupportedOperationException();
     }
 
