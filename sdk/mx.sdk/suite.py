@@ -463,5 +463,22 @@ suite = {
       "maven": False,
       "license" : "Apache-2.0-LLVM",
     },
+    "LLVM_TOOLCHAIN_FULL": {
+      "description": "Distribution including all of LLVM. Use only for building/testing. Only the content of LLVM_TOOLCHAIN will be included in the llvm-toolchain installable.",
+      "native": True,
+      "layout": {
+        "./": [
+          {
+            "source_type": "extracted-dependency",
+            "dependency": "LLVM_ORG",
+            "path": ".",
+            "dereference": "never",
+          },
+        ],
+      },
+      "platformDependent" : True,
+      "maven": False,
+      "license" : "Apache-2.0-LLVM",
+    },
   },
 }
