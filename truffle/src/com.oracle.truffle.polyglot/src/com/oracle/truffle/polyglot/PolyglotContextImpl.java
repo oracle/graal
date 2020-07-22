@@ -487,7 +487,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             boolean transitionToMultiThreading = singleThreaded.isValid() && hasActiveOtherThread(true);
             if (transitionToMultiThreading) {
                 // recheck all thread accesses
-                checkAllThreadAccesses();
+                checkAllThreadAccesses(Thread.currentThread(), false);
             }
 
             Thread closing = this.closingThread;
@@ -532,21 +532,25 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
         }
     }
 
-    private void checkAllThreadAccesses() {
+    synchronized void checkMultiThreadedAccess(PolyglotThread newThread) {
+        boolean singleThread = singleThreaded.isValid() ? !isActive() : false;
+        checkAllThreadAccesses(newThread, singleThread);
+    }
+
+    private void checkAllThreadAccesses(Thread enteringThread, boolean singleThread) {
         assert Thread.holdsLock(this);
-        Thread current = Thread.currentThread();
         List<PolyglotLanguage> deniedLanguages = null;
         for (PolyglotLanguageContext context : contexts) {
             if (!context.isInitialized()) {
                 continue;
             }
             boolean accessAllowed = true;
-            if (!LANGUAGE.isThreadAccessAllowed(context.env, current, false)) {
+            if (!LANGUAGE.isThreadAccessAllowed(context.env, enteringThread, singleThread)) {
                 accessAllowed = false;
             }
             if (accessAllowed) {
                 for (PolyglotThreadInfo seenThread : threads.values()) {
-                    if (!LANGUAGE.isThreadAccessAllowed(context.env, seenThread.getThread(), false)) {
+                    if (!LANGUAGE.isThreadAccessAllowed(context.env, seenThread.getThread(), singleThread)) {
                         accessAllowed = false;
                         break;
                     }
@@ -560,7 +564,7 @@ final class PolyglotContextImpl extends AbstractContextImpl implements com.oracl
             }
         }
         if (deniedLanguages != null) {
-            throw throwDeniedThreadAccess(current, false, deniedLanguages);
+            throw throwDeniedThreadAccess(enteringThread, singleThread, deniedLanguages);
         }
     }
 

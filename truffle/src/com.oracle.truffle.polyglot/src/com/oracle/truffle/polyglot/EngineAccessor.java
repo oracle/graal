@@ -758,7 +758,9 @@ final class EngineAccessor extends Accessor {
                 PolyglotContextImpl innerContext = (PolyglotContextImpl) innerContextImpl;
                 threadContext = innerContext.getContext(threadContext.language);
             }
-            return new PolyglotThread(threadContext, runnable, group, stackSize);
+            PolyglotThread newThread = new PolyglotThread(threadContext, runnable, group, stackSize);
+            threadContext.context.checkMultiThreadedAccess(newThread);
+            return newThread;
         }
 
         @Override
