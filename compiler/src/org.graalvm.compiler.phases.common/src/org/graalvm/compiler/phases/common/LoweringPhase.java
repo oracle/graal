@@ -148,6 +148,11 @@ public class LoweringPhase extends BasePhase<CoreProviders> {
         }
 
         @Override
+        public boolean lowerOptimizableMacroNodes() {
+            return lowerOptimizableMacroNodes;
+        }
+
+        @Override
         public GuardingNode createGuard(FixedNode before, LogicNode condition, DeoptimizationReason deoptReason, DeoptimizationAction action) {
             return createGuard(before, condition, deoptReason, action, SpeculationLog.NO_SPECULATION, false, null);
         }
@@ -194,10 +199,16 @@ public class LoweringPhase extends BasePhase<CoreProviders> {
 
     private final CanonicalizerPhase canonicalizer;
     private final LoweringTool.LoweringStage loweringStage;
+    private final boolean lowerOptimizableMacroNodes;
 
-    public LoweringPhase(CanonicalizerPhase canonicalizer, LoweringTool.LoweringStage loweringStage) {
+    public LoweringPhase(CanonicalizerPhase canonicalizer, LoweringTool.LoweringStage loweringStage, boolean lowerOptimizableMacroNodes) {
         this.canonicalizer = canonicalizer;
         this.loweringStage = loweringStage;
+        this.lowerOptimizableMacroNodes = lowerOptimizableMacroNodes;
+    }
+
+    public LoweringPhase(CanonicalizerPhase canonicalizer, LoweringTool.LoweringStage loweringStage) {
+        this(canonicalizer, loweringStage, false);
     }
 
     @Override
