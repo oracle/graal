@@ -1015,7 +1015,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
 def _native_image_configure_extra_jvm_args():
     if svm_java8():
         return []
-    packages = ['jdk.internal.vm.compiler/org.graalvm.compiler.phases.common', 'jdk.internal.vm.ci/jdk.vm.ci.meta', 'org.graalvm.compiler.core.common.util']
+    packages = ['jdk.internal.vm.compiler/org.graalvm.compiler.phases.common', 'jdk.internal.vm.ci/jdk.vm.ci.meta', 'jdk.internal.vm.compiler/org.graalvm.compiler.core.common.util']
     args = ['--add-exports=' + packageName + '=ALL-UNNAMED' for packageName in packages]
     if not mx_sdk_vm.jdk_enables_jvmci_by_default(mx.get_jdk(tag='default')):
         args.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'])
