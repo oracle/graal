@@ -458,7 +458,11 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         }
 
         static void traceTransferToInterpreter(AbstractHotSpotTruffleRuntime runtime, HotSpotTruffleCompiler compiler) {
-            OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.getCurrentFrame().getCallTarget();
+            FrameInstance currentFrame = runtime.getCurrentFrame();
+            if (currentFrame == null) {
+                return;
+            }
+            OptimizedCallTarget callTarget = (OptimizedCallTarget) currentFrame.getCallTarget();
             long thread = UNSAFE.getLong(Thread.currentThread(), THREAD_EETOP_OFFSET);
             long pendingTransferToInterpreterAddress = thread + compiler.pendingTransferToInterpreterOffset(callTarget);
             boolean deoptimized = UNSAFE.getByte(pendingTransferToInterpreterAddress) != 0;
