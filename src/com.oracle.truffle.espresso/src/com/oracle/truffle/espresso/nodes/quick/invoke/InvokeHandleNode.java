@@ -53,7 +53,7 @@ public final class InvokeHandleNode extends QuickNode {
         this.parsedSignature = method.getParsedSignature();
         this.hasReceiver = !method.isStatic();
         this.intrinsic = method.spawnIntrinsicNode(accessingKlass, method.getName(), method.getRawSignature());
-        this.argCount = method.getParameterCount() + (method.isStatic() ? 0 : 1) + (method.isMethodHandleInvokeIntrinsic() ? 1 : 0);
+        this.argCount = method.getParameterCount() + (method.isStatic() ? 0 : 1) + (method.isInvokeIntrinsic() ? 1 : 0);
         this.parameterCount = method.getParameterCount();
         this.rKind = method.getReturnKind();
     }
@@ -66,23 +66,9 @@ public final class InvokeHandleNode extends QuickNode {
             args[0] = nullCheck(root.peekReceiver(frame, top, method));
         }
         root.peekAndReleaseBasicArgumentsWithArray(frame, top, parsedSignature, args, parameterCount, hasReceiver ? 1 : 0);
-        Object result = unbasic(intrinsic.call(args), rKind);
+        Object result = intrinsic.processReturnValue(intrinsic.call(args), rKind);
         int resultAt = top - Signatures.slotsForParameters(method.getParsedSignature()) - (hasReceiver ? 1 : 0); // -receiver
         return (resultAt - top) + root.putKind(frame, resultAt, result, method.getReturnKind());
     }
 
-    private static Object unbasic(Object obj, JavaKind kind) {
-        switch (kind) {
-            case Boolean:
-                return ((int) obj != 0);
-            case Byte:
-                return ((byte) (int) obj);
-            case Char:
-                return ((char) (int) obj);
-            case Short:
-                return ((short) (int) obj);
-            default:
-                return obj;
-        }
-    }
 }

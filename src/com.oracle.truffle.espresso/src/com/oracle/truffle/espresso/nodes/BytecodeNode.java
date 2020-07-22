@@ -1589,7 +1589,7 @@ public final class BytecodeNode extends EspressoMethodNode {
             invoke = InlinedGetterNode.create(resolved, top, opcode, curBCI);
         } else if (allowFieldAccessInlining && resolved.isInlinableSetter()) {
             invoke = InlinedSetterNode.create(resolved, top, opcode, curBCI);
-        } else if (resolved.isMethodHandleIntrinsic()) {
+        } else if (resolved.isPolySignatureIntrinsic()) {
             invoke = new InvokeHandleNode(resolved, getMethod().getDeclaringKlass(), top, curBCI);
         } else if (opcode == INVOKEINTERFACE && resolved.getITableIndex() < 0) {
             // Can happen in old classfiles that calls j.l.Object on interfaces.
@@ -1679,19 +1679,19 @@ public final class BytecodeNode extends EspressoMethodNode {
         StaticObject methodType = signatureToMethodType(parsedInvokeSignature, accessingKlass, getMeta());
         StaticObject appendix = StaticObject.createArray(meta.java_lang_Object_array, new StaticObject[1]);
         StaticObject memberName;
-        if (getContext().getJavaVersion() <= 8) {
-            memberName = (StaticObject) meta.java_lang_invoke_MethodHandleNatives_linkCallSite8.invokeDirect(
+        if (getContext().getJavaVersion().varHandlesEnabled()) {
+            memberName = (StaticObject) meta.java_lang_invoke_MethodHandleNatives_linkCallSite11.invokeDirect(
                             null,
                             accessingKlass.mirror(),
+                            indyIndex,
                             bootstrapmethodMethodHandle,
                             name, methodType,
                             StaticObject.createArray(meta.java_lang_Object_array, args),
                             appendix);
         } else {
-            memberName = (StaticObject) meta.java_lang_invoke_MethodHandleNatives_linkCallSite11.invokeDirect(
+            memberName = (StaticObject) meta.java_lang_invoke_MethodHandleNatives_linkCallSite8.invokeDirect(
                             null,
                             accessingKlass.mirror(),
-                            indyIndex,
                             bootstrapmethodMethodHandle,
                             name, methodType,
                             StaticObject.createArray(meta.java_lang_Object_array, args),

@@ -30,6 +30,8 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.MONITOREXIT;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.PUTFIELD;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.PUTSTATIC;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.RETURN;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_NATIVE;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_VARARGS;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeInterface;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeSpecial;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeStatic;
@@ -592,8 +594,31 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     // Polymorphic signature method 'creation'
 
-    Method findIntrinsic(Symbol<Signature> signature, MethodHandleIntrinsics.PolySigIntrinsics id) {
-        return getContext().getMethodHandleIntrinsics().findIntrinsic(this, signature, id);
+    Method findIntrinsic(Symbol<Signature> signature) {
+        return getContext().getMethodHandleIntrinsics().findIntrinsic(this, signature);
+    }
+
+    public boolean isSignaturePolymorphicDeclared() {
+        // JVM 2.9 Special Methods:
+        // A method is signature polymorphic if and only if all of the following conditions hold :
+        // * It is declared in the java.lang.invoke.MethodHandle or java.lang.invoke.VarHandle
+        // class.
+        // * It has a single formal parameter of type Object[].
+        // * It has the ACC_VARARGS and ACC_NATIVE flags set.
+        // * ONLY JAVA < 9: It has a return type of Object.
+        if (!(Type.java_lang_invoke_MethodHandle.equals(getDeclaringKlass().getType()) ||
+                        Type.java_lang_invoke_VarHandle.equals(getDeclaringKlass().getType()))) {
+            return false;
+        }
+        Symbol<Type>[] signature = getParsedSignature();
+        if (!(Signatures.parameterCount(signature, false) == 1 &&
+                        Signatures.parameterType(signature, 0) == Type.java_lang_Object_array &&
+                        (getContext().getJavaVersion().varHandlesEnabled() || Signatures.returnType(signature) == Type.java_lang_Object))) {
+            return false;
+        }
+        int required = ACC_NATIVE | ACC_VARARGS;
+        int flags = getModifiers();
+        return (flags & required) == required;
     }
 
     void setVTableIndex(int i) {
@@ -650,12 +675,12 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return "at " + MetaUtil.internalNameToJava(getDeclaringKlass().getType().toString(), true, false) + "." + getName() + "(unknown source)";
     }
 
-    public boolean isMethodHandleInvokeIntrinsic() {
-        return isNative() && declaringKlass == getMeta().java_lang_invoke_MethodHandle && MethodHandleIntrinsics.getId(this) == MethodHandleIntrinsics.PolySigIntrinsics.InvokeGeneric;
+    public boolean isInvokeIntrinsic() {
+        return isNative() && MethodHandleIntrinsics.getId(this) == MethodHandleIntrinsics.PolySigIntrinsics.InvokeGeneric;
     }
 
-    public boolean isMethodHandleIntrinsic() {
-        return isNative() && declaringKlass == getMeta().java_lang_invoke_MethodHandle && MethodHandleIntrinsics.getId(this) != MethodHandleIntrinsics.PolySigIntrinsics.None;
+    public boolean isPolySignatureIntrinsic() {
+        return isNative() && MethodHandleIntrinsics.getId(this) != MethodHandleIntrinsics.PolySigIntrinsics.None;
     }
 
     public boolean isInlinableGetter() {
@@ -796,17 +821,16 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     // Spawns a placeholder method for MH intrinsics
     public Method createIntrinsic(Symbol<Signature> polymorphicRawSignature) {
-        assert isMethodHandleIntrinsic();
+        assert isPolySignatureIntrinsic();
         return new Method(declaringKlass, getLinkedMethod(), polymorphicRawSignature, getRuntimeConstantPool());
     }
 
     public MethodHandleIntrinsicNode spawnIntrinsicNode(Klass accessingKlass, Symbol<Name> mname, Symbol<Signature> signature) {
-        assert isMethodHandleIntrinsic();
+        assert isPolySignatureIntrinsic();
         return getContext().getMethodHandleIntrinsics().createIntrinsicNode(this, accessingKlass, mname, signature);
     }
 
     public Method forceSplit() {
-        assert isMethodHandleIntrinsic();
         Method result = new Method(this, getCodeAttribute().forceSplit());
         FrameDescriptor frameDescriptor = initFrameDescriptor(result.getMaxLocals() + result.getMaxStackSize());
 
@@ -1037,14 +1061,14 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                             // (print_jni_name_suffix_on ...)
 
                             if (callTarget == null) {
-                                if (getDeclaringKlass() == meta.java_lang_invoke_MethodHandle && (Name.invokeExact.equals(getName()) || Name.invoke.equals(getName()))) {
+                                if (isSignaturePolymorphicDeclared()) {
                                     /*
                                      * Happens only when trying to obtain call target of
                                      * MethodHandle.invoke(Object... args), or
                                      * MethodHandle.invokeExact(Object... args).
                                      *
                                      * The method was obtained through a regular lookup (since it is
-                                     * in the declared method). Delegate it to a polysignature
+                                     * in the declared methods). Delegate it to a polysignature
                                      * method lookup.
                                      *
                                      * Redundant callTarget assignment. Better sure than sorry.

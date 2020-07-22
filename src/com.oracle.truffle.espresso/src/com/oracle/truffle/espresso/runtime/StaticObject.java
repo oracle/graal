@@ -119,7 +119,7 @@ public final class StaticObject implements TruffleObject {
     }
 
     @ExportMessage
-    public String asString() {
+    String asString() {
         if (isForeignObject()) {
             CompilerDirectives.transferToInterpreter();
             throw EspressoError.shouldNotReachHere("Unexpected foreign object");
@@ -128,7 +128,7 @@ public final class StaticObject implements TruffleObject {
     }
 
     @ExportMessage
-    public boolean isBoolean() {
+    boolean isBoolean() {
         if (isForeignObject()) {
             CompilerDirectives.transferToInterpreter();
             throw EspressoError.shouldNotReachHere("Unexpected foreign object");
@@ -140,7 +140,7 @@ public final class StaticObject implements TruffleObject {
     }
 
     @ExportMessage
-    public boolean asBoolean() throws UnsupportedMessageException {
+    boolean asBoolean() throws UnsupportedMessageException {
         if (isForeignObject()) {
             CompilerDirectives.transferToInterpreter();
             throw EspressoError.shouldNotReachHere("Unexpected foreign object");
@@ -152,7 +152,7 @@ public final class StaticObject implements TruffleObject {
     }
 
     @ExportMessage
-    public boolean isNumber() {
+    boolean isNumber() {
         if (isForeignObject()) {
             CompilerDirectives.transferToInterpreter();
             throw EspressoError.shouldNotReachHere("Unexpected foreign object");
@@ -236,7 +236,7 @@ public final class StaticObject implements TruffleObject {
     }
 
     @ExportMessage
-    public boolean fitsInInt() {
+    boolean fitsInInt() {
         if (isForeignObject()) {
             CompilerDirectives.transferToInterpreter();
             throw EspressoError.shouldNotReachHere("Unexpected foreign object");
@@ -402,7 +402,7 @@ public final class StaticObject implements TruffleObject {
     }
 
     @ExportMessage
-    public int asInt() throws UnsupportedMessageException {
+    int asInt() throws UnsupportedMessageException {
         if (isForeignObject()) {
             CompilerDirectives.transferToInterpreter();
             throw EspressoError.shouldNotReachHere("Unexpected foreign object");
@@ -1022,7 +1022,7 @@ public final class StaticObject implements TruffleObject {
         this.fields = lgk.getObjectFieldsCount() > 0 ? new Object[lgk.getObjectFieldsCount()] : null;
         this.primitiveFields = primitiveFieldCount > 0 ? new byte[primitiveFieldCount] : null;
         initInstanceFields(guestClass);
-        if (klass.getContext().modulesEnabled()) {
+        if (klass.getContext().getJavaVersion().modulesEnabled()) {
             setField(klass.getMeta().java_lang_Class_classLoader, klass.getDefiningClassLoader());
             setModule(klass);
         }

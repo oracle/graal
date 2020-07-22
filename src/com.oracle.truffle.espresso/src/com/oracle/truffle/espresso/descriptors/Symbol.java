@@ -453,7 +453,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_lang_ClassLoader$NativeLibrary = StaticSymbols.putType("Ljava/lang/ClassLoader$NativeLibrary;");
         public static final Symbol<Type> sun_misc_Launcher$ExtClassLoader = StaticSymbols.putType("Lsun/misc/Launcher$ExtClassLoader;");
 
-        public static final Symbol<Type> jdk_internal_ClassLoaders$PlatformClassLoader = StaticSymbols.putType("Ljdk/internal/loader/ClassLoaders$PlatformClassLoader;");
+        public static final Symbol<Type> jdk_internal_loader_ClassLoaders$PlatformClassLoader = StaticSymbols.putType("Ljdk/internal/loader/ClassLoaders$PlatformClassLoader;");
 
         // Primitive types.
         public static final Symbol<Type> _boolean = StaticSymbols.putType(boolean.class);
@@ -602,6 +602,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_lang_AssertionStatusDirectives = StaticSymbols.putType("Ljava/lang/AssertionStatusDirectives;");
 
         public static final Symbol<Type> java_lang_invoke_MethodHandles = StaticSymbols.putType(java.lang.invoke.MethodHandles.class);
+        public static final Symbol<Type> java_lang_invoke_VarHandle = StaticSymbols.putType("Ljava/lang/invoke/VarHandle;");
         public static final Symbol<Type> java_lang_invoke_MethodHandles$Lookup = StaticSymbols.putType(java.lang.invoke.MethodHandles.Lookup.class);
         public static final Symbol<Type> java_lang_invoke_CallSite = StaticSymbols.putType(java.lang.invoke.CallSite.class);
         public static final Symbol<Type> java_lang_invoke_DirectMethodHandle = StaticSymbols.putType("Ljava/lang/invoke/DirectMethodHandle;");

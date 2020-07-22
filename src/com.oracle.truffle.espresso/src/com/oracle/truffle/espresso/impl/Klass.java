@@ -23,14 +23,7 @@
 
 package com.oracle.truffle.espresso.impl;
 
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.InvokeBasic;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.InvokeGeneric;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToInterface;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToSpecial;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToStatic;
-import static com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics.PolySigIntrinsics.LinkToVirtual;
 import static com.oracle.truffle.espresso.runtime.StaticObject.CLASS_TO_STATIC;
-import static com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.toBasic;
 
 import java.util.Comparator;
 import java.util.function.IntFunction;
@@ -840,55 +833,32 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     }
 
     public Method lookupPolysigMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
-        if (methodName == Name.invoke || methodName == Name.invokeExact) {
-            return findMethodHandleIntrinsic(methodName, signature, InvokeGeneric);
-        } else if (methodName == Name.invokeBasic) {
-            return findMethodHandleIntrinsic(methodName, signature, InvokeBasic);
-        } else if (methodName == Name.linkToInterface) {
-            return findMethodHandleIntrinsic(methodName, signature, LinkToInterface);
-        } else if (methodName == Name.linkToSpecial) {
-            return findMethodHandleIntrinsic(methodName, signature, LinkToSpecial);
-        } else if (methodName == Name.linkToStatic) {
-            return findMethodHandleIntrinsic(methodName, signature, LinkToStatic);
-        } else if (methodName == Name.linkToVirtual) {
-            return findMethodHandleIntrinsic(methodName, signature, LinkToVirtual);
+        Method m = lookupPolysignatureDeclaredMethod(methodName);
+        if (m != null) {
+            return findMethodHandleIntrinsic(m, signature);
         }
+        return null;
+    }
+
+    public Method lookupPolysignatureDeclaredMethod(Symbol<Name> methodName) {
         for (Method m : getDeclaredMethods()) {
-            if (m.isNative() && m.isVarargs() && m.getName() == methodName) {
-                // check signature?
-                throw EspressoError.unimplemented("New method handle invoke method? ", methodName);
+            if (m.getName() == methodName && m.isSignaturePolymorphicDeclared()) {
+                return m;
             }
         }
         return null;
     }
 
     @TruffleBoundary
-    private Method findMethodHandleIntrinsic(Symbol<Name> methodName,
-                    Symbol<Signature> signature,
-                    MethodHandleIntrinsics.PolySigIntrinsics methodHandleId) {
-        if (methodHandleId == InvokeGeneric) {
-            return (methodName == Name.invoke ? getMeta().java_lang_invoke_MethodHandle_invoke : getMeta().java_lang_invoke_MethodHandle_invokeExact).findIntrinsic(signature, methodHandleId);
-        } else if (methodHandleId == InvokeBasic) {
-            return getMeta().java_lang_invoke_MethodHandle_invokeBasic.findIntrinsic(signature, methodHandleId);
-        } else {
-            Symbol<Signature> basicSignature = toBasic(getSignatures().parsed(signature), true, getSignatures());
-            switch (methodHandleId) {
-                case LinkToInterface:
-                    return findLinkToIntrinsic(getMeta().java_lang_invoke_MethodHandle_linkToInterface, basicSignature, methodHandleId);
-                case LinkToSpecial:
-                    return findLinkToIntrinsic(getMeta().java_lang_invoke_MethodHandle_linkToSpecial, basicSignature, methodHandleId);
-                case LinkToStatic:
-                    return findLinkToIntrinsic(getMeta().java_lang_invoke_MethodHandle_linkToStatic, basicSignature, methodHandleId);
-                case LinkToVirtual:
-                    return findLinkToIntrinsic(getMeta().java_lang_invoke_MethodHandle_linkToVirtual, basicSignature, methodHandleId);
-                default:
-                    throw EspressoError.shouldNotReachHere();
-            }
+    private Method findMethodHandleIntrinsic(Method m,
+                    Symbol<Signature> signature) {
+        assert m.isSignaturePolymorphicDeclared();
+        MethodHandleIntrinsics.PolySigIntrinsics iid = MethodHandleIntrinsics.getId(m);
+        Symbol<Signature> sig = signature;
+        if (iid.isStaticPolymorphicSignature()) {
+            sig = getSignatures().toBasic(signature, true);
         }
-    }
-
-    private static Method findLinkToIntrinsic(Method m, Symbol<Signature> signature, MethodHandleIntrinsics.PolySigIntrinsics id) {
-        return m.findIntrinsic(signature, id);
+        return m.findIntrinsic(sig);
     }
 
     /**
@@ -910,6 +880,11 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     @CompilationFinal private Symbol<Name> runtimePackage;
 
+    private Symbol<Name> initRuntimePackage() {
+        ByteSequence hostPkgName = Types.getRuntimePackage(getType());
+        return getNames().getOrCreate(hostPkgName);
+    }
+
     public Symbol<Name> getRuntimePackage() {
         return runtimePackage;
     }
@@ -922,20 +897,19 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return packageEntry() == null;
     }
 
-    private Symbol<Name> initRuntimePackage() {
-        ByteSequence hostPkgName = Types.getRuntimePackage(getType());
-        if (hostPkgName.length() == 0) {
-            return null;
-        }
-        return getNames().getOrCreate(hostPkgName);
-    }
-
     public Symbol<Name> getName() {
         return name;
     }
 
     public boolean sameRuntimePackage(Klass other) {
-        return this.getDefiningClassLoader() == other.getDefiningClassLoader() && this.getRuntimePackage().equals(other.getRuntimePackage());
+        if (this.getDefiningClassLoader() != other.getDefiningClassLoader()) {
+            return false;
+        }
+        if (getContext().getJavaVersion().modulesEnabled()) {
+            return this.packageEntry() == other.packageEntry();
+        } else {
+            return this.getRuntimePackage().equals(other.getRuntimePackage());
+        }
     }
 
     // region jdwp-specific

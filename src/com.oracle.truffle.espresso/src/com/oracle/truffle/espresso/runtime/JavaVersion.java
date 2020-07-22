@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,41 +20,48 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.descriptors;
 
-import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+package com.oracle.truffle.espresso.runtime;
 
 /**
- * Manages access to "name" symbols.
- *
- * Names do not have a well-defined format, except for not being empty.
- *
- * TODO(peterssen): In debug mode this class should warn if name symbol is valid type or signature.
+ * Utility class to provide version checking predicates for clarity in the code base. Avoids
+ * cluttering {@link EspressoContext}.
+ * 
+ * Makes it harder to access the raw int version: please add new predicates instead.
  */
-public final class Names {
-    private final Symbols symbols;
+public class JavaVersion {
+    private final int version;
 
-    public Names(Symbols symbols) {
-        this.symbols = symbols;
+    JavaVersion(int version) {
+        this.version = version;
     }
 
-    public Symbol<Name> lookup(ByteSequence bytes) {
-        return symbols.lookup(bytes);
+    public boolean java8OrEarlier() {
+        return version <= 8;
     }
 
-    public Symbol<Name> lookup(String name) {
-        return lookup(ByteSequence.create(name));
+    public boolean java9OrLater() {
+        return version >= 9;
     }
 
-    public Symbol<Name> getOrCreate(String name) {
-        return getOrCreate(ByteSequence.create(name));
+    public boolean java11OrLater() {
+        return version >= 11;
     }
 
-    public Symbol<Name> getOrCreate(ByteSequence name) {
-        return symbols.symbolify(name);
+    public boolean modulesEnabled() {
+        return java9OrLater();
     }
 
-    public static boolean isUnnamedPackage(Symbol<Name> pkg) {
-        return pkg.length() == 0;
+    public boolean varHandlesEnabled() {
+        return java9OrLater();
+    }
+
+    public boolean compactStringsEnabled() {
+        return java9OrLater();
+    }
+
+    @Override
+    public String toString() {
+        return Integer.toString(version);
     }
 }

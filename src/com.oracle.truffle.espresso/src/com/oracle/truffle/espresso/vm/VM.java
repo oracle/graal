@@ -224,7 +224,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         /* verifyLibrary = */ loadLibraryInternal(bootLibraryPath, "verify", false);
         TruffleObject libJava = loadLibraryInternal(bootLibraryPath, "java");
 
-        if (getContext().getJavaVersion() >= 9) {
+        if (getContext().getJavaVersion().java9OrLater()) {
             return libJava;
         }
 
@@ -1195,7 +1195,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         if (meta.sun_reflect_MethodAccessorImpl.isAssignableFrom(holderKlass)) {
             return true;
         }
-        if (MethodHandleIntrinsics.isMethodHandleIntrinsic(m, meta) || (m.getModifiers() & ACC_LAMBDA_FORM_COMPILED) != 0) {
+        if (MethodHandleIntrinsics.isMethodHandleIntrinsic(m) || (m.getModifiers() & ACC_LAMBDA_FORM_COMPILED) != 0) {
             return true;
         }
         return false;
@@ -2449,7 +2449,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         PackageTable packageTable = registry.packages();
         ModuleTable moduleTable = registry.modules();
         assert moduleTable != null && packageTable != null;
-        boolean loaderIsBootOrPlatform = StaticObject.isNull(loader) || getMeta().jdk_internal_ClassLoaders_PlatformClassLoader.isAssignableFrom(loader.getKlass());
+        boolean loaderIsBootOrPlatform = StaticObject.isNull(loader) || getMeta().jdk_internal_loader_ClassLoaders$PlatformClassLoader.isAssignableFrom(loader.getKlass());
 
         ArrayList<Symbol<Name>> pkgSymbols = new ArrayList<>();
         String[] packages = extractNativePackages(pkgs, num_package, profiler);
