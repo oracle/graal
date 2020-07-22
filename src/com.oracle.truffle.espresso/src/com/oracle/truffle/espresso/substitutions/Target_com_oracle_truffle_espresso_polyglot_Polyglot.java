@@ -56,7 +56,7 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                     return castToBoxed(targetKlass, value.rawForeignObject(), meta);
                 } catch (UnsupportedMessageException e) {
                     throw Meta.throwExceptionWithMessage(meta.java_lang_ClassCastException,
-                                    String.format("Couldn't read %s value from foreign object", targetKlass.getTypeAsString()));
+                                    "Couldn't read " + targetKlass.getTypeAsString() + " value from foreign object");
                 }
             }
 
@@ -70,7 +70,7 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                 checkHasAllFieldsOrThrow(value.rawForeignObject(), targetKlass, interopLibrary);
             } catch (NoSuchElementException e) {
                 throw Meta.throwExceptionWithMessage(meta.java_lang_ClassCastException,
-                                String.format("Field %s not found", e.getMessage()));
+                                "Field " + e.getMessage() + " not found");
             }
 
             return StaticObject.createForeign(targetKlass, value.rawForeignObject(), interopLibrary);
@@ -101,7 +101,7 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                 String value = interopLibrary.asString(foreignValue);
                 if (value.length() != 1) {
                     throw Meta.throwExceptionWithMessage(meta.java_lang_ClassCastException,
-                                    String.format("Cannot cast string %s to char", value));
+                                    "Cannot cast string " + value + " to char");
                 }
                 return meta.boxCharacter(value.charAt(0));
             case Byte:
