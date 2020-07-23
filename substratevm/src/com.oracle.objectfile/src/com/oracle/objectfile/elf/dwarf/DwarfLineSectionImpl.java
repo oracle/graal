@@ -41,7 +41,7 @@ import java.util.Map;
 
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_LINE_SECTION_NAME;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_STR_SECTION_NAME;
-import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_VERSION_2;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_VERSION;
 
 /**
  * Section generator for debug_line section.
@@ -317,7 +317,7 @@ public class DwarfLineSectionImpl extends DwarfSectionImpl {
         /*
          * 2 ubyte version is always 2.
          */
-        pos = putShort(DW_VERSION_2, buffer, pos);
+        pos = putShort(DW_VERSION, buffer, pos);
         /*
          * 4 ubyte prologue length includes rest of header and dir + file table section.
          */

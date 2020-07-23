@@ -39,7 +39,7 @@ import java.util.Map;
 
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_ARANGES_SECTION_NAME;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_INFO_SECTION_NAME;
-import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_VERSION_2;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_VERSION;
 
 /**
  * Section generator for debug_aranges section.
@@ -184,7 +184,7 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
             log(context, "  [0x%08x] %s CU %d length 0x%x", pos, classEntry.getFileName(), cuIndex, length);
             pos = putInt(length, buffer, pos);
             /* DWARF version is always 2. */
-            pos = putShort(DW_VERSION_2, buffer, pos);
+            pos = putShort(DW_VERSION, buffer, pos);
             pos = putInt(cuIndex, buffer, pos);
             /* Address size is always 8. */
             pos = putByte((byte) 8, buffer, pos);
@@ -237,7 +237,7 @@ public class DwarfARangesSectionImpl extends DwarfSectionImpl {
                 log(context, "  [0x%08x] %s CU linkage stubs %d length 0x%x", pos, classEntry.getFileName(), cuIndex, length);
                 pos = putInt(length, buffer, pos);
                 /* DWARF version is always 2. */
-                pos = putShort(DW_VERSION_2, buffer, pos);
+                pos = putShort(DW_VERSION, buffer, pos);
                 pos = putInt(cuIndex, buffer, pos);
                 /* Address size is always 8. */
                 pos = putByte((byte) 8, buffer, pos);

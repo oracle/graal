@@ -47,7 +47,7 @@ import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_FLAG_true;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_INFO_SECTION_NAME;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_INL_inlined;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_LANG_Java;
-import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_VERSION_2;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_VERSION;
 
 /**
  * Section generator for debug_info section.
@@ -203,7 +203,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             /* CU length. */
             pos += putInt(0, scratch, 0);
             /* DWARF version. */
-            pos += putShort(DW_VERSION_2, scratch, 0);
+            pos += putShort(DW_VERSION, scratch, 0);
             /* Abbrev offset. */
             pos += putInt(0, scratch, 0);
             /* Address size. */
@@ -212,7 +212,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             /* CU length. */
             pos = putInt(0, buffer, pos);
             /* DWARF version. */
-            pos = putShort(DW_VERSION_2, buffer, pos);
+            pos = putShort(DW_VERSION, buffer, pos);
             /* Abbrev offset. */
             pos = putInt(0, buffer, pos);
             /* Address size. */

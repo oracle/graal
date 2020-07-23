@@ -51,9 +51,9 @@ public class DwarfDebugInfo extends DebugInfoBase {
     public static final String DW_ARANGES_SECTION_NAME = ".debug_aranges";
 
     /**
-     * Currently generated debug info relies on DWARF spec vesion 2.
+     * Currently generated debug info relies on DWARF spec version 2.
      */
-    public static final short DW_VERSION_2 = 2;
+    public static final short DW_VERSION = 2;
 
     /*
      * Define all the abbrev section codes we need for our DIEs.
