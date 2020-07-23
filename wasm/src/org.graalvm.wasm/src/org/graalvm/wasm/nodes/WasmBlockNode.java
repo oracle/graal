@@ -514,15 +514,21 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     // but since we are returning, it does not really matter.
 
                     int returnTypeLength = table[0];
-                    int unwindCounter = table[1 + 2 * index];
-                    int continuationStackPointer = table[1 + 2 * index + 1];
-                    trace("br_table, target = %d", unwindCounter);
 
-                    // Populate the stack with the return values of the current block (the one we
-                    // are escaping from).
-                    unwindStack(frame, stackPointer, continuationStackPointer, returnTypeLength);
+                    for (int i = 0; i < (table.length - 1) / 2; ++i) {
+                        if (i == index) {
+                            int unwindCounter = table[1 + 2 * i];
+                            int continuationStackPointer = table[1 + 2 * i + 1];
+                            trace("br_table, target = %d", unwindCounter);
 
-                    return unwindCounter;
+                            // Populate the stack with the return values of the current block (the
+                            // one we are escaping from).
+                            unwindStack(frame, stackPointer, continuationStackPointer, returnTypeLength);
+
+                            return unwindCounter;
+                        }
+                    }
+                    throw new WasmExecutionException(this, "Should not reach here");
                 }
                 case RETURN: {
                     // A return statement causes the termination of the current function, i.e.
@@ -2444,12 +2450,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
             long value = pop(frame, stackPointer + i - 1);
             push(frame, continuationStackPointer + i, value);
         }
-        // This check will be removed in the next PR which makes continuationStackPointer always
-        // constants by improving the BR_TABLE implementation.
-        if (CompilerDirectives.isPartialEvaluationConstant(continuationStackPointer)) {
-            for (int i = continuationStackPointer + returnLength; i < stackPointer; ++i) {
-                pop(frame, i);
-            }
+        for (int i = continuationStackPointer + returnLength; i < stackPointer; ++i) {
+            pop(frame, i);
         }
     }
 
