@@ -1041,14 +1041,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                         throw EspressoError.unimplemented(Bytecodes.nameOf(curOpcode) + " not supported.");
 
                     case INVOKEDYNAMIC: top += quickenInvokeDynamic(frame, top, curBCI, curOpcode); break;
-                    case QUICK:
-                        QuickNode quickNode = nodes[bs.readCPI(curBCI)];
-                        top += quickNode.execute(frame);
-                        if (noForeignObjects.isValid() && quickNode.producedForeignObject(frame)) {
-                            CompilerDirectives.transferToInterpreterAndInvalidate();
-                            noForeignObjects.invalidate();
-                        }
-                        break;
+                    case QUICK: top += nodes[bs.readCPI(curBCI)].execute(frame); break;
 
                     default:
                         CompilerDirectives.transferToInterpreter();
@@ -1147,6 +1140,14 @@ public final class BytecodeNode extends EspressoMethodNode {
             } catch (EspressoExitException e) {
                 getRoot().abortMonitor(frame);
                 throw e;
+            }
+            // This check includes newly rewritten QUICK nodes, not just curOpcode == quick
+            if (noForeignObjects.isValid() && bs.currentBC(curBCI) == QUICK) {
+                QuickNode quickNode = nodes[bs.readCPI(curBCI)];
+                if (quickNode.producedForeignObject(frame)) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    noForeignObjects.invalidate();
+                }
             }
             top += Bytecodes.stackEffectOf(curOpcode);
             int targetBCI = bs.nextBCI(curBCI);
