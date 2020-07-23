@@ -49,12 +49,12 @@ public abstract class LLVMForeignWriteNode extends LLVMNode {
 
     public abstract void execute(LLVMPointer ptr, LLVMInteropType type, Object value) throws UnsupportedMessageException;
 
-    @Specialization(guards = "type.getKind() == cachedKind", limit = "VALUE_KIND_COUNT")
+    @Specialization(guards = "type.kind == cachedKind", limit = "VALUE_KIND_COUNT")
     static void doValue(LLVMPointer ptr, LLVMInteropType.Value type, Object value,
-                    @Cached(value = "type.getKind()", allowUncached = true) @SuppressWarnings("unused") LLVMInteropType.ValueKind cachedKind,
+                    @Cached(value = "type.kind", allowUncached = true) @SuppressWarnings("unused") LLVMInteropType.ValueKind cachedKind,
                     @Cached(parameters = "cachedKind") LLVMStoreNode store,
                     @Cached("createForeignToLLVM(type)") ForeignToLLVM toLLVM) {
-        Object llvmValue = toLLVM.executeWithForeignToLLVMType(value, type.getBaseType(), cachedKind.foreignToLLVMType);
+        Object llvmValue = toLLVM.executeWithForeignToLLVMType(value, type.baseType, cachedKind.foreignToLLVMType);
         store.executeWithTarget(ptr, llvmValue);
     }
 

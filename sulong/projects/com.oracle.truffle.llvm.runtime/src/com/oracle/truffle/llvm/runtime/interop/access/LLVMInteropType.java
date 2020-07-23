@@ -29,14 +29,6 @@
  */
 package com.oracle.truffle.llvm.runtime.interop.access;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
-
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.EconomicSet;
-import org.graalvm.collections.Equivalence;
-
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -54,6 +46,13 @@ import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStructLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.Equivalence;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Describes how foreign interop should interpret values.
@@ -145,8 +144,8 @@ public abstract class LLVMInteropType implements TruffleObject {
 
     public static final class Value extends LLVMInteropType {
 
-        final ValueKind kind;
-        final Structured baseType;
+        public final ValueKind kind;
+        public final Structured baseType;
 
         private static Value primitive(ValueKind kind, long size) {
             return new Value(kind, null, size);
@@ -162,12 +161,8 @@ public abstract class LLVMInteropType implements TruffleObject {
             this.baseType = baseType;
         }
 
-        public ValueKind getKind() {
-            return kind;
-        }
-
-        public Structured getBaseType() {
-            return baseType;
+        public int getSizeInBytes() {
+            return kind.foreignToLLVMType.getSizeInBytes();
         }
 
         @Override
@@ -194,9 +189,9 @@ public abstract class LLVMInteropType implements TruffleObject {
 
     public static final class Array extends Structured {
 
-        final LLVMInteropType elementType;
-        final long elementSize;
-        final long length;
+        public final LLVMInteropType elementType;
+        public final long elementSize;
+        public final long length;
 
         Array(InteropTypeRegistry.Register elementType, long elementSize, long length) {
             super(elementSize * length);
@@ -210,18 +205,6 @@ public abstract class LLVMInteropType implements TruffleObject {
             this.elementType = elementType;
             this.elementSize = elementSize;
             this.length = length;
-        }
-
-        public LLVMInteropType getElementType() {
-            return elementType;
-        }
-
-        public long getElementSize() {
-            return elementSize;
-        }
-
-        public long getLength() {
-            return length;
         }
 
         @Override
@@ -254,7 +237,7 @@ public abstract class LLVMInteropType implements TruffleObject {
         @TruffleBoundary
         public StructMember findMember(String memberName) {
             for (StructMember member : members) {
-                if (member.getName().equals(memberName)) {
+                if (member.name.equals(memberName)) {
                     return member;
                 }
             }
@@ -273,12 +256,12 @@ public abstract class LLVMInteropType implements TruffleObject {
 
     public static final class StructMember {
 
-        final Struct struct;
+        public final Struct struct;
 
-        final String name;
-        final long startOffset;
-        final long endOffset;
-        final LLVMInteropType type;
+        public final String name;
+        public final long startOffset;
+        public final long endOffset;
+        public final LLVMInteropType type;
 
         StructMember(Struct struct, String name, long startOffset, long endOffset, LLVMInteropType type) {
             this.struct = struct;
@@ -290,22 +273,6 @@ public abstract class LLVMInteropType implements TruffleObject {
 
         boolean contains(long offset) {
             return startOffset <= offset && ((startOffset == endOffset) | offset < endOffset);
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public LLVMInteropType getType() {
-            return type;
-        }
-
-        public Struct getStruct() {
-            return struct;
-        }
-
-        public long getStartOffset() {
-            return startOffset;
         }
 
     }

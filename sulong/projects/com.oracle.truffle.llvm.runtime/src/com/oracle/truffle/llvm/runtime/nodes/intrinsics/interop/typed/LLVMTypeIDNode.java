@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -74,7 +74,7 @@ public abstract class LLVMTypeIDNode extends LLVMExpressionNode {
                     @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> ctxRef) {
         LLVMInteropType type = getType(ctxRef, pointer);
         if (type instanceof LLVMInteropType.Array) {
-            return ((LLVMInteropType.Array) type).getElementType();
+            return ((LLVMInteropType.Array) type).elementType;
         }
 
         CompilerDirectives.transferToInterpreter();
