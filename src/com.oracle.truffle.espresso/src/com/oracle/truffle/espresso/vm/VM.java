@@ -2319,7 +2319,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         StaticObject threadIds = ids;
         if (StaticObject.isNull(threadIds)) {
             StaticObject[] activeThreads = getContext().getActiveThreads();
-            threadIds = InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Long.getBasicType(), activeThreads.length);
+            threadIds = InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Long.getBasicType(), activeThreads.length, getMeta());
             for (int j = 0; j < activeThreads.length; ++j) {
                 long tid = (long) getMeta().java_lang_Thread_tid.get(activeThreads[j]);
                 getInterpreterToVM().setArrayLong(tid, j, threadIds);

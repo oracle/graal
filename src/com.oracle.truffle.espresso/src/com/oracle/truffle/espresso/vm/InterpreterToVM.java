@@ -38,7 +38,6 @@ import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
@@ -414,7 +413,7 @@ public final class InterpreterToVM implements ContextAccess {
         assert dimensions != null && dimensions.length > 0;
         if (dimensions.length == 1) {
             if (component.isPrimitive()) {
-                return allocatePrimitiveArray((byte) component.getJavaKind().getBasicType(), dimensions[0]);
+                return allocatePrimitiveArray((byte) component.getJavaKind().getBasicType(), dimensions[0], component.getMeta());
             } else {
                 return component.allocateReferenceArray(dimensions[0], new IntFunction<StaticObject>() {
                     @Override
@@ -434,9 +433,8 @@ public final class InterpreterToVM implements ContextAccess {
         });
     }
 
-    public static StaticObject allocatePrimitiveArray(byte jvmPrimitiveType, int length) {
+    public static StaticObject allocatePrimitiveArray(byte jvmPrimitiveType, int length, Meta meta) {
         // the constants for the cpi are loosely defined and no real cpi indices.
-        Meta meta = EspressoLanguage.getCurrentContext().getMeta();
         if (length < 0) {
             throw Meta.throwException(meta.java_lang_NegativeArraySizeException);
         }
