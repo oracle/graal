@@ -298,67 +298,6 @@ public final class LLVM80BitFloat implements LLVMArithmetic {
         return fraction >>> (FRACTION_BIT_WIDTH - getUnbiasedExponent() - EXPLICIT_LEADING_ONE_BITS);
     }
 
-    private long compareNoSign(LLVM80BitFloat val) {
-        if (getExponent() != val.getExponent()) {
-            return getExponent() - val.getExponent();
-        } else {
-            return (getFraction() - val.getFraction());
-        }
-    }
-
-    @SuppressWarnings("unused")
-    private LLVM80BitFloat add2(LLVM80BitFloat right) {
-        int leftExponent = getExponent();
-        int rightExponent = right.getExponent();
-        long leftFraction = getFraction();
-        long rightFraction = right.getFraction();
-
-        int shiftAmount = Math.abs(leftExponent - rightExponent);
-        if (leftExponent < rightExponent) {
-            leftFraction >>>= shiftAmount;
-            leftExponent = rightExponent;
-        } else {
-            rightFraction >>>= shiftAmount;
-            rightExponent = leftExponent;
-        }
-        boolean newSign;
-        if (getSign() == right.getSign()) {
-            newSign = getSign();
-        } else {
-            newSign = compareNoSign(right) < 0 ? right.getSign() : getSign();
-        }
-        boolean addition = getSign() == right.getSign();
-        long resultLo;
-        long resultHi;
-        long leftFractionLowerPart = leftFraction & BinaryHelper.getBitMask(Integer.SIZE);
-        long rightFractionLowerPart = rightFraction & BinaryHelper.getBitMask(Integer.SIZE);
-        long leftFractionHigherPart = leftFraction >>> Integer.SIZE;
-        long rightFractionHigherPart = rightFraction >>> Integer.SIZE;
-        if (addition) {
-            resultLo = -leftFractionLowerPart + rightFractionLowerPart;
-            long overFlowLowerPart = resultLo >>> Integer.SIZE;
-            resultHi = leftFractionHigherPart + rightFractionHigherPart + overFlowLowerPart;
-        } else if (getSign()) { // left is negative
-            resultLo = -leftFractionLowerPart + rightFractionLowerPart;
-            long overFlowLowerPart = resultLo >>> Integer.SIZE;
-            resultHi = -leftFractionHigherPart - rightFractionHigherPart - overFlowLowerPart;
-        } else {
-            resultLo = leftFractionLowerPart - rightFractionLowerPart;
-            long overFlowLowerPart = resultLo >>> Integer.SIZE;
-            resultHi = leftFractionHigherPart - rightFractionHigherPart - overFlowLowerPart;
-        }
-        int overFlow = (int) (resultHi >>> Integer.SIZE);
-        if (overFlow > 0) {
-            resultHi = resultHi >>> overFlow;
-            long lostBits = resultHi & overFlow;
-            long shiftedLostBits = lostBits << Integer.SIZE - overFlow;
-            resultLo = resultLo >>> overFlow | shiftedLostBits;
-        }
-        int newExponent = leftExponent + overFlow;
-        long newFraction = resultLo + resultHi << Integer.SIZE;
-        return LLVM80BitFloat.fromRawValues(newSign, newExponent, newFraction);
-    }
-
     public LLVM80BitFloat abs() {
         return LLVM80BitFloat.fromRawValues(false, biasedExponent, fraction);
     }

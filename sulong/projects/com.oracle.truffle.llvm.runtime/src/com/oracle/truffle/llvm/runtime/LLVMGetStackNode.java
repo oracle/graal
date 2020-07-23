@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -54,15 +54,22 @@ public abstract class LLVMGetStackNode extends LLVMNode {
         throw new IllegalStateException();
     }
 
-    @SuppressWarnings("unused")
+    /**
+     * @param stack
+     * @param currentThread
+     * @see #executeWithTarget(LLVMThreadingStack, Thread)
+     */
     @Specialization(limit = "3", guards = "currentThread == cachedThread")
     protected LLVMStack cached(LLVMThreadingStack stack, Thread currentThread,
-                    @Cached("currentThread") Thread cachedThread,
+                    @Cached("currentThread") @SuppressWarnings("unused") Thread cachedThread,
                     @Cached("getStack(stack, cachedThread)") LLVMStack cachedStack) {
         return cachedStack;
     }
 
-    @SuppressWarnings("unused")
+    /**
+     * @param currentThread
+     * @see #executeWithTarget(LLVMThreadingStack, Thread)
+     */
     @Specialization(replaces = "cached")
     static LLVMStack generic(LLVMThreadingStack stack, Thread currentThread) {
         return stack.getStack();

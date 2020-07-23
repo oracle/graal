@@ -76,8 +76,14 @@ public abstract class LLVMStart extends LLVMIntrinsic {
     @NodeChild(type = LLVMExpressionNode.class)
     public abstract static class LLVMLangStart extends LLVMStart {
 
+        /**
+         * @param stackPointer
+         * @param main
+         * @param argc
+         * @param argv
+         * @see LLVMLangStart
+         */
         @Specialization
-        @SuppressWarnings("unused")
         protected long doOp(StackPointer stackPointer, LLVMPointer main, long argc, LLVMPointer argv,
                         @Cached("createClosureDispatchNode()") LLVMClosureDispatchNode dispatchNode) {
             dispatchNode.executeDispatch(main, new Object[]{stackPointer});
@@ -100,12 +106,20 @@ public abstract class LLVMStart extends LLVMIntrinsic {
             return LangStartVtableType.create(dataSpecConverter, vtableType);
         }
 
+        /**
+         * @param stackPointer
+         * @param mainPointer
+         * @param vtable
+         * @param argc
+         * @param argv
+         * @param ctx
+         * @see LLVMLangStartInternal
+         */
         @Specialization
-        @SuppressWarnings("unused")
         protected long doOp(StackPointer stackPointer, LLVMNativePointer mainPointer, LLVMNativePointer vtable, long argc, LLVMPointer argv,
                         @CachedContext(LLVMLanguage.class) LLVMContext ctx,
                         @CachedLanguage LLVMLanguage language,
-                        @Cached("createToNativeWithTarget()") LLVMToNativeNode toNative,
+                        @Cached("createToNativeWithTarget()") @SuppressWarnings("unused") LLVMToNativeNode toNative,
                         @Cached("createClosureDispatchNode()") LLVMClosureDispatchNode fnDispatchNode,
                         @Cached("createClosureDispatchNode()") LLVMClosureDispatchNode dropInPlaceDispatchNode) {
             LLVMMemory memory = language.getLLVMMemory();

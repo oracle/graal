@@ -67,8 +67,12 @@ abstract class CommonPointerLibraries {
         return receiver.getExportType() instanceof LLVMInteropType.Struct;
     }
 
+    /**
+     * @param receiver
+     * @param includeInternal
+     * @see InteropLibrary#getMembers(Object, boolean)
+     */
     @ExportMessage
-    @SuppressWarnings("unused")
     static Object getMembers(LLVMPointerImpl receiver, boolean includeInternal,
                     @Shared("isObject") @Cached ConditionProfile isObject) throws UnsupportedMessageException {
         if (isObject.profile(receiver.getExportType() instanceof LLVMInteropType.Struct)) {
@@ -116,8 +120,12 @@ abstract class CommonPointerLibraries {
         }
     }
 
+    /**
+     * @param receiver
+     * @param ident
+     * @see InteropLibrary#isMemberInsertable(Object, String)
+     */
     @ExportMessage
-    @SuppressWarnings("unused")
     static boolean isMemberInsertable(LLVMPointerImpl receiver, String ident) {
         return false;
     }
@@ -181,8 +189,12 @@ abstract class CommonPointerLibraries {
         }
     }
 
+    /**
+     * @param receiver
+     * @param idx
+     * @see InteropLibrary#isArrayElementInsertable(Object, long)
+     */
     @ExportMessage
-    @SuppressWarnings("unused")
     static boolean isArrayElementInsertable(LLVMPointerImpl receiver, long idx) {
         // native arrays have fixed size, new elements can't be inserted
         return false;
@@ -241,15 +253,21 @@ abstract class CommonPointerLibraries {
             return equals.executeWithTarget(receiver, other);
         }
 
+        /**
+         * @param receiver
+         * @param other
+         */
         @Fallback
-        @SuppressWarnings("unused")
         static boolean doOther(LLVMPointerImpl receiver, Object other) {
             return false;
         }
     }
 
+    /**
+     * @param receiver
+     * @see InteropLibrary#hasLanguage(Object)
+     */
     @ExportMessage
-    @SuppressWarnings("unused")
     static boolean hasLanguage(LLVMPointerImpl receiver) {
         return true;
     }

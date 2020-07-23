@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -47,14 +47,20 @@ public abstract class LLVMMemSet extends LLVMBuiltin {
         this.memSet = memSet;
     }
 
-    @SuppressWarnings("unused")
+    /**
+     * @param isVolatile
+     * @see LLVMMemSet
+     */
     @Specialization
     protected Object doOp(LLVMPointer address, byte value, int length, boolean isVolatile) {
         memSet.executeWithTarget(address, value, length);
         return address;
     }
 
-    @SuppressWarnings("unused")
+    /**
+     * @param isVolatile
+     * @see LLVMMemSet
+     */
     @Specialization
     protected Object doOp(LLVMPointer address, byte value, long length, boolean isVolatile) {
         memSet.executeWithTarget(address, value, length);

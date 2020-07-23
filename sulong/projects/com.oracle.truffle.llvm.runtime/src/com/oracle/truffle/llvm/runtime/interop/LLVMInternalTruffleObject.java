@@ -46,7 +46,7 @@ import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 public abstract class LLVMInternalTruffleObject implements TruffleObject {
 
     @ExportMessage
-    @SuppressWarnings({"unused", "static-method"})
+    @SuppressWarnings("static-method")
     public final boolean hasLanguage() {
         return true;
     }

@@ -250,8 +250,8 @@ public class LLVMForeignCallNode extends RootNode {
         }
     }
 
-    @SuppressWarnings({"unchecked", "unused"})
-    private static <E extends Exception> RuntimeException silenceException(Class<E> type, Exception ex) throws E {
+    @SuppressWarnings("unchecked")
+    private static <E extends Exception> RuntimeException silenceException(@SuppressWarnings("unused") Class<E> type, Exception ex) throws E {
         throw (E) ex;
     }
 }
