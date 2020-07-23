@@ -57,7 +57,7 @@ public enum HotSpotMarkId implements CompilationResult.MarkId {
     NARROW_KLASS_BASE_ADDRESS(true),
     NARROW_OOP_BASE_ADDRESS(true),
     CRC_TABLE_ADDRESS(true),
-    LOG_OF_HEAP_REGION_GRAIN_BYTES(true),
+    LOG_OF_HEAP_REGION_GRAIN_BYTES(true, true),
     VERIFY_OOPS(true, true),
     VERIFY_OOP_COUNT_ADDRESS(true, true);
 
