@@ -55,14 +55,14 @@ public abstract class AbstractCommittedMemoryProvider implements CommittedMemory
         if (Heap.getHeap().getImageHeapOffsetInAddressSpace() != 0) {
             return CEntryPointErrors.MAP_HEAP_FAILED;
         }
-        if (!SubstrateOptions.UseOnlyWritableBootImageHeap.getValue()) {
+        if (!SubstrateOptions.ForceNoROSectionRelocations.getValue()) {
             /*
              * Set strict read-only and read+write permissions for the image heap (the entire image
              * heap should already be read-only, but the linker/loader can place it in a segment
              * that has the executable bit set unnecessarily)
              *
-             * If UseOnlyWritableBootImageHeap is set, however, the image heap is writable and
-             * should remain so.
+             * If ForceNoROSectionRelocations is set, however, the image heap is writable and should
+             * remain so.
              */
             UnsignedWord heapSize = IMAGE_HEAP_END.get().subtract(heapBegin);
             if (VirtualMemoryProvider.get().protect(heapBegin, heapSize, VirtualMemoryProvider.Access.READ) != 0) {
