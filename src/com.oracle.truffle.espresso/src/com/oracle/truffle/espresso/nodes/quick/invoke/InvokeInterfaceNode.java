@@ -72,7 +72,7 @@ public abstract class InvokeInterfaceNode extends QuickNode {
         this.declaringKlass = resolutionSeed.getDeclaringKlass();
     }
 
-    protected MethodVersion methodLookup(StaticObject receiver, int itableIndex, Klass declaringKlass) {
+    protected static MethodVersion methodLookup(StaticObject receiver, int itableIndex, Klass declaringKlass) {
         assert !receiver.getKlass().isArray();
         Method method = ((ObjectKlass) receiver.getKlass()).itableLookup(declaringKlass, itableIndex);
         if (!method.isPublic()) {

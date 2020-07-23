@@ -1070,6 +1070,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
      * Checks that the given klass k is a nest member of {@code this} as a nest host. This does NOT
      * check whether this and k are in the same nest.
      */
+    @SuppressWarnings("unused")
     public boolean nestMembersCheck(Klass k) {
         return false;
     }

@@ -394,14 +394,14 @@ public final class Target_sun_misc_Unsafe {
     }
 
     @Substitution(hasReceiver = true, nameProvider = Unsafe11.class)
-    public static boolean compareAndExchangeLong(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, long before,
+    public static long compareAndExchangeLong(@SuppressWarnings("unused") @Host(Unsafe.class) StaticObject self, @Host(Object.class) StaticObject holder, long offset, long before,
                     long after) {
         if (isNullOrArray(holder)) {
-            return UNSAFE.compareAndSwapLong(unwrapNullOrArray(holder), offset, before, after);
+            return doCompareExchangeLong(unwrapNullOrArray(holder), offset, before, after);
         }
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
-        return holder.compareAndSwapLongField(f, before, after);
+        return doStaticObjectCompareExchangeLong(holder, f, before, after);
     }
 
     // endregion compareAndExchange*

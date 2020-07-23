@@ -560,9 +560,10 @@ public final class EspressoContext {
                         Target_java_lang_Thread.killThread(guest);
                         Target_java_lang_Thread.interrupt0(guest);
                         t.join(10);
-                        if (t.isAlive()) {
+                        while (t.isAlive()) {
                             Target_java_lang_Thread.setThreadStop(guest, Target_java_lang_Thread.KillStatus.DISSIDENT);
-                            t.join();
+                            Target_java_lang_Thread.interrupt0(guest);
+                            t.join(10);
                         }
                     } else {
                         Target_java_lang_Thread.interrupt0(guest);
