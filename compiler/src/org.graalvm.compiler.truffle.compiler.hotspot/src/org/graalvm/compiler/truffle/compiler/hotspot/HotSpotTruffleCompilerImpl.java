@@ -127,9 +127,9 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         SnippetReflectionProvider snippetReflection = hotspotGraalRuntime.getRequiredCapability(SnippetReflectionProvider.class);
 
         // Create low tier suites.
-        EconomyCompilerConfigurationFactory economyConfigurationFactory = new EconomyCompilerConfigurationFactory();
-        CompilerConfiguration compilerConfiguration = economyConfigurationFactory.createCompilerConfiguration();
-        HotSpotBackendFactory backendFactory = economyConfigurationFactory.createBackendMap().getBackendFactory(backend.getTarget().arch);
+        CompilerConfigurationFactory lowTierCompilerConfigurationFactory = new EconomyCompilerConfigurationFactory();
+        CompilerConfiguration compilerConfiguration = lowTierCompilerConfigurationFactory.createCompilerConfiguration();
+        HotSpotBackendFactory backendFactory = lowTierCompilerConfigurationFactory.createBackendMap().getBackendFactory(backend.getTarget().arch);
         HotSpotBackend firstTierBackend = backendFactory.createBackend(hotspotGraalRuntime, compilerConfiguration, HotSpotJVMCIRuntime.runtime(), null);
         Suites firstTierSuites = firstTierBackend.getSuites().getDefaultSuites(options);
         LIRSuites firstTierLirSuites = firstTierBackend.getSuites().getDefaultLIRSuites(options);
