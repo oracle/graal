@@ -75,9 +75,7 @@ public abstract class InvokeInterfaceNode extends QuickNode {
     protected MethodVersion methodLookup(StaticObject receiver, int itableIndex, Klass declaringKlass) {
         assert !receiver.getKlass().isArray();
         Method method = ((ObjectKlass) receiver.getKlass()).itableLookup(declaringKlass, itableIndex);
-        if (!method.isPublic() &&
-                        // Since Java 9, invokeinterface can call private interface methods.
-                        (getBytecodesNode().getJavaVersion().java9OrLater() && !method.isPrivate())) {
+        if (!method.isPublic()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             Meta meta = receiver.getKlass().getMeta();
             throw Meta.throwException(meta.java_lang_IllegalAccessError);

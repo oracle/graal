@@ -1593,8 +1593,13 @@ public final class BytecodeNode extends EspressoMethodNode {
         } else if (resolved.isPolySignatureIntrinsic()) {
             invoke = new InvokeHandleNode(resolved, getMethod().getDeclaringKlass(), top, curBCI);
         } else if (opcode == INVOKEINTERFACE && resolved.getITableIndex() < 0) {
-            // Can happen in old classfiles that calls j.l.Object on interfaces.
-            invoke = InvokeVirtualNodeGen.create(resolved, top, curBCI);
+            if (getJavaVersion().java9OrLater() && resolved.isPrivate()) {
+                // Interface private methods do not appear in itables.
+                invoke = new InvokeSpecialNode(resolved, top, curBCI);
+            } else {
+                // Can happen in old classfiles that calls j.l.Object on interfaces.
+                invoke = InvokeVirtualNodeGen.create(resolved, top, curBCI);
+            }
         } else if (opcode == INVOKEVIRTUAL && (resolved.isFinalFlagSet() || resolved.getDeclaringKlass().isFinalFlagSet() || resolved.isPrivate())) {
             invoke = new InvokeSpecialNode(resolved, top, curBCI);
         } else {

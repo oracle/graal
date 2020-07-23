@@ -352,7 +352,7 @@ suite = {
         "ESPRESSO_TESTS_8": {
             "subDir": "src",
             "dependencies": [
-                "com.oracle.truffle.espresso.test.jdk8"
+                "com.oracle.truffle.espresso.test.jdk8",
             ],
             "distDependencies": [
                 "espresso:ESPRESSO_TESTS",

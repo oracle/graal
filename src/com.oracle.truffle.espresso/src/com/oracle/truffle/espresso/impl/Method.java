@@ -57,6 +57,7 @@ import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.Utils;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
@@ -1007,7 +1008,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                 Meta meta = getMeta();
                 if (poisonPill) {
                     // Conflicting Maximally-specific non-abstract interface methods.
-                    if (meta.getJavaVersion().java9OrLater()) {
+                    if (getJavaVersion().java9OrLater() && getContext().specCompliancyMode() == EspressoOptions.SpecCompliancyMode.HOTSPOT) {
                         /*
                          * Supposed to be IncompatibleClassChangeError (see
                          * jvms-6.5.invokeinterface), but HotSpot throws AbstractMethodError.

@@ -228,7 +228,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
      * </ul>
      * <h3>Java 11
      * <ul>
-     * <li>C is public, and a member of the same run-time module as D (§5.3.6).
+     * <li>C is public, and a member of the same run-time module as D (&sect;5.3.6).
      * <li>C is public, and a member of a different run-time module than D, and C's run-time module
      * is read by D's run-time module, and C's run-time module exports C's run-time package to D's
      * run-time module.
