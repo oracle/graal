@@ -31,11 +31,19 @@ import org.graalvm.compiler.debug.DebugContext;
 
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_ABBREV_CODE_compile_unit_1;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_ABBREV_CODE_compile_unit_2;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_ABBREV_CODE_inlined_subprogram;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_ABBREV_CODE_inlined_subroutine;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_ABBREV_CODE_subprogram;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_ABBREV_SECTION_NAME;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_AT_abstract_origin;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_AT_call_file;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_AT_call_line;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_AT_comp_dir;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_AT_decl_file;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_AT_decl_line;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_AT_external;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_AT_hi_pc;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_AT_inline;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_AT_language;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_AT_low_pc;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_AT_name;
@@ -48,9 +56,11 @@ import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_FORM_data1;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_FORM_data4;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_FORM_flag;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_FORM_null;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_FORM_ref4;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_FORM_strp;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_FRAME_SECTION_NAME;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_TAG_compile_unit;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_TAG_inlined_subroutine;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_TAG_subprogram;
 
 /**
@@ -70,7 +80,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
     @Override
     public void createContent() {
         int pos = 0;
-        /*
+        /*-
          * An abbrev table contains abbrev entries for one or more CUs. the table includes a
          * sequence of abbrev entries each of which defines a specific DIE layout employed to
          * describe some DIE in a CU. a table is terminated by a null entry.
@@ -78,35 +88,24 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          * A null entry has consists of just a 0 abbrev code.
          *
          * <ul>
-         *
          * <li><code>LEB128 abbrev_code; ...... == 0</code>
-         *
          * </ul>
          *
          * Mon-null entries have the following format.
          *
          * <ul>
-         *
          * <li><code>LEB128 abbrev_code; ......unique noncode for this layout != 0</code>
-         *
-         * <li><code>LEB128 tag; .............. defines the type of the DIE (class, subprogram, var
-         * etc)</code>
-         *
-         * <li><code>uint8 has_chldren; ....... is the DIE followed by child DIEs or a sibling
-         * DIE</code>
-         *
+         * <li><code>LEB128 tag; .............. defines the type of the DIE (class, subprogram, var etc)</code>
+         * <li><code>uint8 has_chldren; ....... is the DIE followed by child DIEs or a sibling DIE</code>
          * <li><code>attribute_spec* .......... zero or more attributes</code>
-         *
-         * <li><code>null_attribute_spec ...... terminator</code> </ul>
+         * <li><code>null_attribute_spec ...... terminator</code>
+         * </ul>
          *
          * An attribute_spec consists of an attribute name and form
          *
          * <ul>
-         *
          * <li><code>LEB128 attr_name; ........ 0 for the null attribute name</code>
-         *
          * <li><code>LEB128 attr_form; ........ 0 for the null attribute form</code>
-         *
          * </ul>
          *
          * For the moment we only use one abbrev table for all CUs. It contains three DIEs. The
@@ -115,35 +114,47 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
          *
          * The DIE layouts are as follows:
          *
-         * <ul> <li><code>abbrev_code == 1 or 2, tag == DW_TAG_compilation_unit, has_children</code>
-         *
+         * <ul>
+         * <li><code>abbrev_code == 1 or 2, tag == DW_TAG_compilation_unit, has_children</code>
          * <li><code>DW_AT_language : ... DW_FORM_data1</code>
-         *
          * <li><code>DW_AT_name : ....... DW_FORM_strp</code>
-         *
+         * <li><code>DW_AT_comp_dir : ....... DW_FORM_strp</code>
          * <li><code>DW_AT_low_pc : ..... DW_FORM_address</code>
-         *
          * <li><code>DW_AT_hi_pc : ...... DW_FORM_address</code>
-         *
-         * <li><code>DW_AT_stmt_list : .. DW_FORM_data4</code> n.b only for <code>abbrev-code ==
-         * 2</code>
-         *
+         * <li><code>DW_AT_stmt_list : .. DW_FORM_data4</code> n.b only for <code>abbrev-code == 2</code>
          * </ul>
          *
-         * <ul> <li><code>abbrev_code == 3, tag == DW_TAG_subprogram, no_children</code>
-         *
+         * <ul>
+         * <li><code>abbrev_code == 3, tag == DW_TAG_subprogram, no_children</code>
          * <li><code>DW_AT_name : ....... DW_FORM_strp</code>
-         *
          * <li><code>DW_AT_hi_pc : ...... DW_FORM_addr</code>
-         *
+         * <li><code>DW_AT_decl_file : ... DW_FORM_data4</code>
+         * <li><code>DW_AT_decl_line : ... DW_FORM_data4</code>
          * <li><code>DW_AT_external : ... DW_FORM_flag</code>
+         * </ul>
          *
+         * <ul>
+         * <li><code>abbrev_code == 4, tag == DW_TAG_subprogram, no_children</code>
+         * <li><code>DW_AT_name : ....... DW_FORM_strp</code>
+         * <li><code>DW_AT_inline : ...... DW_FORM_data1</code>
+         * <li><code>DW_AT_decl_file : ... DW_FORM_data4</code>
+         * <li><code>DW_AT_decl_line : ... DW_FORM_data4</code>
+         * <li><code>DW_AT_external : ... DW_FORM_flag</code>
+         * </ul>
+         *
+         * <ul>
+         * <li><code>abbrev_code == 5, tag == DW_TAG_inlined_subroutine, no_children</code>
+         * <li><code>DW_AT_abstract_origin : ...... DW_FORM_ref_addr</code>
+         * <li><code>DW_AT_low_pc : ...... DW_FORM_addr</code>
+         * <li><code>DW_AT_hi_pc : ...... DW_FORM_addr</code>
          * </ul>
          */
 
         pos = writeCUAbbrev1(null, pos);
         pos = writeCUAbbrev2(null, pos);
-        pos = writeMethodAbbrev(null, pos);
+        pos = writeMethodAbbrev(null, pos, false);
+        pos = writeMethodAbbrev(null, pos, true);
+        pos = writeInlinedSubroutineAbbrevs(null, pos);
 
         byte[] buffer = new byte[pos];
         super.setContent(buffer);
@@ -159,7 +170,9 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
 
         pos = writeCUAbbrev1(buffer, pos);
         pos = writeCUAbbrev2(buffer, pos);
-        pos = writeMethodAbbrev(buffer, pos);
+        pos = writeMethodAbbrev(buffer, pos, false);
+        pos = writeMethodAbbrev(buffer, pos, true);
+        pos = writeInlinedSubroutineAbbrevs(buffer, pos);
         assert pos == size;
     }
 
@@ -189,9 +202,7 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
 
     private int writeCUAbbrev(int abbrevCode, byte[] buffer, int p) {
         int pos = p;
-        /*
-         * Abbrev 1/2 compile unit.
-         */
+        /* Abbrev 1/2 compile unit. */
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         pos = writeTag(DW_TAG_compile_unit, buffer, pos);
         pos = writeFlag(DW_CHILDREN_yes, buffer, pos);
@@ -209,33 +220,58 @@ public class DwarfAbbrevSectionImpl extends DwarfSectionImpl {
             pos = writeAttrType(DW_AT_stmt_list, buffer, pos);
             pos = writeAttrForm(DW_FORM_data4, buffer, pos);
         }
-        /*
-         * Now terminate.
-         */
+        /* Now terminate. */
         pos = writeAttrType(DW_AT_null, buffer, pos);
         pos = writeAttrForm(DW_FORM_null, buffer, pos);
         return pos;
     }
 
-    private int writeMethodAbbrev(byte[] buffer, int p) {
+    private int writeMethodAbbrev(byte[] buffer, int p, boolean inline) {
         int pos = p;
-        /*
-         * Abbrev 2 compile unit.
-         */
-        pos = writeAbbrevCode(DW_ABBREV_CODE_subprogram, buffer, pos);
+        /* Abbrev 3/4 subprogram. */
+        pos = writeAbbrevCode(inline ? DW_ABBREV_CODE_inlined_subprogram : DW_ABBREV_CODE_subprogram, buffer, pos);
         pos = writeTag(DW_TAG_subprogram, buffer, pos);
         pos = writeFlag(DW_CHILDREN_no, buffer, pos);
         pos = writeAttrType(DW_AT_name, buffer, pos);
         pos = writeAttrForm(DW_FORM_strp, buffer, pos);
+        if (inline) {
+            pos = writeAttrType(DW_AT_inline, buffer, pos);
+            pos = writeAttrForm(DW_FORM_data1, buffer, pos);
+        } else {
+            pos = writeAttrType(DW_AT_low_pc, buffer, pos);
+            pos = writeAttrForm(DW_FORM_addr, buffer, pos);
+            pos = writeAttrType(DW_AT_hi_pc, buffer, pos);
+            pos = writeAttrForm(DW_FORM_addr, buffer, pos);
+        }
+        pos = writeAttrType(DW_AT_decl_file, buffer, pos);
+        pos = writeAttrForm(DW_FORM_data4, buffer, pos);
+        pos = writeAttrType(DW_AT_decl_line, buffer, pos);
+        pos = writeAttrForm(DW_FORM_data4, buffer, pos);
+        pos = writeAttrType(DW_AT_external, buffer, pos);
+        pos = writeAttrForm(DW_FORM_flag, buffer, pos);
+        /* Now terminate. */
+        pos = writeAttrType(DW_AT_null, buffer, pos);
+        pos = writeAttrForm(DW_FORM_null, buffer, pos);
+        return pos;
+    }
+
+    private int writeInlinedSubroutineAbbrevs(byte[] buffer, int p) {
+        int pos = p;
+        /* Abbrev 5 inline subroutine. */
+        pos = writeAbbrevCode(DW_ABBREV_CODE_inlined_subroutine, buffer, pos);
+        pos = writeTag(DW_TAG_inlined_subroutine, buffer, pos);
+        pos = writeFlag(DW_CHILDREN_no, buffer, pos);
+        pos = writeAttrType(DW_AT_abstract_origin, buffer, pos);
+        pos = writeAttrForm(DW_FORM_ref4, buffer, pos);
         pos = writeAttrType(DW_AT_low_pc, buffer, pos);
         pos = writeAttrForm(DW_FORM_addr, buffer, pos);
         pos = writeAttrType(DW_AT_hi_pc, buffer, pos);
         pos = writeAttrForm(DW_FORM_addr, buffer, pos);
-        pos = writeAttrType(DW_AT_external, buffer, pos);
-        pos = writeAttrForm(DW_FORM_flag, buffer, pos);
-        /*
-         * Now terminate.
-         */
+        pos = writeAttrType(DW_AT_call_file, buffer, pos);
+        pos = writeAttrForm(DW_FORM_data4, buffer, pos);
+        pos = writeAttrType(DW_AT_call_line, buffer, pos);
+        pos = writeAttrForm(DW_FORM_data4, buffer, pos);
+        /* Now terminate. */
         pos = writeAttrType(DW_AT_null, buffer, pos);
         pos = writeAttrForm(DW_FORM_null, buffer, pos);
         return pos;

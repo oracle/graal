@@ -188,7 +188,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             if (fileName().length() == 0) {
                 return Stream.empty();
             }
-            return compilation.getSourceMappings().stream().map(sourceMapping -> new NativeImageDebugLineInfo(sourceMapping));
+            return compilation.getSourceMappings().stream().map(sourceMapping -> new NativeImageDebugLineInfo(sourceMapping, compilation));
         }
 
         @Override
@@ -232,19 +232,33 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
      */
     private class NativeImageDebugLineInfo implements DebugLineInfo {
         private final int bci;
+        private final int callerBCI;
         private final ResolvedJavaMethod method;
+        private final ResolvedJavaMethod callerMethod;
         private final int lo;
         private final int hi;
+        private final CompilationResult parentCompilation;
         private Path cachePath;
         private Path fullFilePath;
 
-        NativeImageDebugLineInfo(SourceMapping sourceMapping) {
+        NativeImageDebugLineInfo(SourceMapping sourceMapping, CompilationResult parentCompilation) {
             NodeSourcePosition position = sourceMapping.getSourcePosition();
             int posbci = position.getBCI();
             this.bci = (posbci >= 0 ? posbci : 0);
             this.method = position.getMethod();
             this.lo = sourceMapping.getStartOffset();
             this.hi = sourceMapping.getEndOffset();
+            this.parentCompilation = parentCompilation;
+            if (isInlinedMethod()) {
+                NodeSourcePosition callerPosition = position.getCaller();
+                assert callerPosition != null;
+                int callerBCI = callerPosition.getBCI();
+                this.callerBCI = (callerBCI >= 0 ? callerBCI : 0);
+                this.callerMethod = callerPosition.getMethod();
+            } else {
+                this.callerBCI = 0;
+                this.callerMethod = null;
+            }
             computeFullFilePathAndCachePath();
         }
 
@@ -283,6 +297,16 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
+        public String paramNames() {
+            return method.format("%P");
+        }
+
+        @Override
+        public String returnTypeName() {
+            return method.format("%R");
+        }
+
+        @Override
         public int addressLo() {
             return lo;
         }
@@ -299,6 +323,21 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                 return lineNumberTable.getLineNumber(bci);
             }
             return -1;
+        }
+
+        @Override
+        public int callerLine() {
+            assert isInlinedMethod();
+            LineNumberTable lineNumberTable = callerMethod.getLineNumberTable();
+            if (lineNumberTable != null) {
+                return lineNumberTable.getLineNumber(callerBCI);
+            }
+            return -1;
+        }
+
+        @Override
+        public boolean isInlinedMethod() {
+            return !parentCompilation.getMethods()[0].equals(method);
         }
 
         @SuppressWarnings("try")

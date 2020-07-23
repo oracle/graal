@@ -47,7 +47,9 @@ public class Range {
     private int lo;
     private int hi;
     private int line;
+    private int callerLine;
     private boolean isDeoptTarget;
+    private final boolean isInlined;
     /*
      * This is null for a primary range.
      */
@@ -58,22 +60,22 @@ public class Range {
      */
     public Range(String fileName, Path filePath, Path cachePath, String className, String methodName, String paramNames, String returnTypeName, StringTable stringTable, int lo, int hi, int line,
                     boolean isDeoptTarget) {
-        this(fileName, filePath, cachePath, className, methodName, paramNames, returnTypeName, stringTable, lo, hi, line, isDeoptTarget, null);
+        this(fileName, filePath, cachePath, className, methodName, paramNames, returnTypeName, stringTable, lo, hi, line, -3, isDeoptTarget, false, null);
     }
 
     /*
      * Create a secondary range.
      */
     public Range(String fileName, Path filePath, Path cachePath, String className, String methodName, String paramNames, String returnTypeName, StringTable stringTable, int lo, int hi, int line,
-                    Range primary) {
-        this(fileName, filePath, cachePath, className, methodName, paramNames, returnTypeName, stringTable, lo, hi, line, false, primary);
+                    int callerLine, boolean isInline, Range primary) {
+        this(fileName, filePath, cachePath, className, methodName, paramNames, returnTypeName, stringTable, lo, hi, line, callerLine, false, isInline, primary);
     }
 
     /*
      * Create a primary or secondary range.
      */
     private Range(String fileName, Path filePath, Path cachePath, String className, String methodName, String paramNames, String returnTypeName, StringTable stringTable, int lo, int hi, int line,
-                    boolean isDeoptTarget, Range primary) {
+                    int callerLine, boolean isDeoptTarget, boolean isInline, Range primary) {
         /*
          * Currently file name and full method name need to go into the debug_str section other
          * strings just need to be deduplicated to save space.
@@ -89,7 +91,9 @@ public class Range {
         this.lo = lo;
         this.hi = hi;
         this.line = line;
+        this.callerLine = callerLine;
         this.isDeoptTarget = isDeoptTarget;
+        this.isInlined = isInline;
         this.primary = primary;
     }
 
@@ -143,6 +147,11 @@ public class Range {
         return line;
     }
 
+    public int getCallerLine() {
+        assert isInlined;
+        return callerLine;
+    }
+
     public String getFullMethodName() {
         return fullMethodName;
     }
@@ -179,5 +188,9 @@ public class Range {
      */
     public String getCachePath() {
         return cachePath;
+    }
+
+    public boolean isInlined() {
+        return isInlined;
     }
 }

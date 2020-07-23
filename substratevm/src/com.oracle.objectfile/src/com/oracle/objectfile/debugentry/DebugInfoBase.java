@@ -149,15 +149,20 @@ public abstract class DebugInfoBase {
                 // Switch '$' in class names for '.'
                 String classNameAtLine = debugLineInfo.className().replaceAll("\\$", ".");
                 String methodNameAtLine = debugLineInfo.methodName();
+                String paramNamesAtLine = debugLineInfo.paramNames();
+                String returnTypeNameAtLine = debugLineInfo.returnTypeName();
+                boolean isInlined = debugLineInfo.isInlinedMethod();
                 int loAtLine = lo + debugLineInfo.addressLo();
                 int hiAtLine = lo + debugLineInfo.addressHi();
                 int line = debugLineInfo.line();
+                int callerLine = isInlined ? debugLineInfo.callerLine() : -2;
                 Path cachePathAtLine = debugLineInfo.cachePath();
                 /*
                  * Record all subranges even if they have no line or file so we at least get a
                  * symbol for them.
                  */
-                Range subRange = new Range(fileNameAtLine, filePathAtLine, cachePathAtLine, classNameAtLine, methodNameAtLine, "", "", stringTable, loAtLine, hiAtLine, line, primaryRange);
+                Range subRange = new Range(fileNameAtLine, filePathAtLine, cachePathAtLine, classNameAtLine, methodNameAtLine, paramNamesAtLine, returnTypeNameAtLine, stringTable, loAtLine, hiAtLine,
+                                line, callerLine, isInlined, primaryRange);
                 addSubRange(primaryRange, subRange);
                 try (DebugContext.Scope s = debugContext.scope("Subranges")) {
                     debugContext.log(DebugContext.VERBOSE_LEVEL, "SubRange %s.%s %s %s:%d 0x%x, 0x%x]", classNameAtLine, methodNameAtLine, filePathAtLine, fileNameAtLine, line, loAtLine, hiAtLine);

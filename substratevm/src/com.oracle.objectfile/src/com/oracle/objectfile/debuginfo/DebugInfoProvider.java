@@ -166,6 +166,16 @@ public interface DebugInfoProvider {
         String methodName();
 
         /**
+         * @return a string identifying the method parameters.
+         */
+        String paramNames();
+
+        /**
+         * @return a string identifying the method return type.
+         */
+        String returnTypeName();
+
+        /**
          * @return the lowest address containing code generated for an outer or inlined code segment
          *         reported at this line represented as an offset into the code segment.
          */
@@ -181,6 +191,16 @@ public interface DebugInfoProvider {
          * @return the line number for the outer or inlined segment.
          */
         int line();
+
+        /**
+         * @return the line number for the outer or inlined segment that called the current segment.
+         */
+        int callerLine();
+
+        /**
+         * @return true if this method has been compiled inline
+         */
+        boolean isInlinedMethod();
     }
 
     interface DebugFrameSizeChange {

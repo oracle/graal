@@ -28,18 +28,24 @@ package com.oracle.objectfile.elf.dwarf;
 
 import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.debugentry.ClassEntry;
+import com.oracle.objectfile.debugentry.FileEntry;
 import com.oracle.objectfile.debugentry.PrimaryEntry;
 import com.oracle.objectfile.debugentry.Range;
 import org.graalvm.compiler.debug.DebugContext;
 
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_ABBREV_CODE_compile_unit_1;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_ABBREV_CODE_compile_unit_2;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_ABBREV_CODE_inlined_subprogram;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_ABBREV_CODE_inlined_subroutine;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_ABBREV_CODE_subprogram;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_ABBREV_SECTION_NAME;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_FLAG_true;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_INFO_SECTION_NAME;
+import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_INL_inlined;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_LANG_Java;
 import static com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.DW_VERSION_2;
 
@@ -118,6 +124,11 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
 
         /* CUs for normal methods */
         for (ClassEntry classEntry : getPrimaryClasses()) {
+            /*
+             * Save the offset of this file's CU so it can be used when writing the aranges section
+             * and inlined_subroutines.
+             */
+            classEntry.setCUIndex(pos);
             int lengthPos = pos;
             pos = writeCUHeader(buffer, pos);
             assert pos == lengthPos + DW_DIE_HEADER_SIZE;
@@ -129,6 +140,11 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         /* CUs for deopt targets */
         for (ClassEntry classEntry : getPrimaryClasses()) {
             if (classEntry.includesDeoptTarget()) {
+                /*
+                 * Save the offset of this file's CU so it can be used when writing the aranges
+                 * section and inlined_subroutines.
+                 */
+                classEntry.setDeoptCUIndex(pos);
                 int lengthPos = pos;
                 pos = writeCUHeader(buffer, pos);
                 assert pos == lengthPos + DW_DIE_HEADER_SIZE;
@@ -154,10 +170,6 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x] size = 0x%08x", pos, size);
         /* write CUs for normal methods */
         for (ClassEntry classEntry : getPrimaryClasses()) {
-            /*
-             * Save the offset of this file's CU so it can be used when writing the aranges section.
-             */
-            classEntry.setCUIndex(pos);
             int lengthPos = pos;
             pos = writeCUHeader(buffer, pos);
             log(context, "  [0x%08x] Compilation Unit", pos, size);
@@ -171,11 +183,6 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         /* write CUs for deopt targets */
         for (ClassEntry classEntry : getPrimaryClasses()) {
             if (classEntry.includesDeoptTarget()) {
-                /*
-                 * Save the offset of this file's CU so it can be used when writing the aranges
-                 * section.
-                 */
-                classEntry.setDeoptCUIndex(pos);
                 int lengthPos = pos;
                 pos = writeCUHeader(buffer, pos);
                 log(context, "  [0x%08x] Compilation Unit (deopt targets)", pos, size);
@@ -255,6 +262,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
     private int writeCU(DebugContext context, ClassEntry classEntry, boolean isDeoptTargetCU, byte[] buffer, int p) {
         int pos = p;
         LinkedList<PrimaryEntry> classPrimaryEntries = classEntry.getPrimaryEntries();
+        assert !classPrimaryEntries.isEmpty();
         int lineIndex = classEntry.getLineIndex();
         int abbrevCode = (lineIndex >= 0 ? DW_ABBREV_CODE_compile_unit_1 : DW_ABBREV_CODE_compile_unit_2);
         log(context, "  [0x%08x] <0> Abbrev Number %d", pos, abbrevCode);
@@ -276,34 +284,104 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             log(context, "  [0x%08x]     stmt_list  0x%08x", pos, lineIndex);
             pos = writeAttrData4(lineIndex, buffer, pos);
         }
+
+        /* Keep a map of method names to the corresponding position of their subprogram entry. */
+        HashMap<String, Integer> primaryMap = new HashMap<>();
+        /* Keep track of inlined subroutines to avoid duplicate entries */
+        HashSet<Long> inlinedSubroutinesSet = new HashSet<>();
+        /* The primary file entry should always be first in the local files list. */
+        assert classEntry.localFilesIdx(classEntry.getFileEntry()) == 1;
+
         for (PrimaryEntry primaryEntry : classPrimaryEntries) {
             Range range = primaryEntry.getPrimary();
-            if (isDeoptTargetCU == range.isDeoptTarget()) {
-                pos = writePrimary(context, range, buffer, pos);
+            if (isDeoptTargetCU != range.isDeoptTarget()) {
+                continue;
+            }
+            primaryMap.put(range.getFullMethodName(), pos);
+            pos = writePrimary(context, range, false, 1, buffer, pos);
+            /* Go through the subranges and generate debug entries for inlined methods. */
+            for (Range subrange : primaryEntry.getSubranges()) {
+                if (!subrange.isInlined()) {
+                    continue;
+                }
+                Integer subprogramPos = primaryMap.get(subrange.getFullMethodName());
+                if (subprogramPos == null) {
+                    subprogramPos = pos;
+                    primaryMap.put(subrange.getFullMethodName(), subprogramPos);
+                    FileEntry subFileEntry = primaryEntry.getSubrangeFileEntry(subrange);
+                    assert subFileEntry != null;
+                    if (subFileEntry == null) {
+                        continue;
+                    }
+                    Integer fileIndex = classEntry.localFilesIdx(subFileEntry);
+                    assert fileIndex != null;
+                    pos = writePrimary(context, subrange, true, fileIndex, buffer, pos);
+                }
+                if (inlinedSubroutinesSet.add(((long) subrange.getHi() << 32) | subrange.getLo())) {
+                    pos = writeInlineSubroutine(context, subrange, buffer, pos, subprogramPos - classEntry.getCUIndex());
+                }
             }
         }
-        /*
-         * Write a terminating null attribute for the the level 2 primaries.
-         */
+
+        /* Write a terminating null attribute for the the level 2 primaries. */
         return writeAttrNull(buffer, pos);
 
     }
 
-    private int writePrimary(DebugContext context, Range range, byte[] buffer, int p) {
+    private int writePrimary(DebugContext context, Range range, boolean isInline, int fileIndex, byte[] buffer, int p) {
         int pos = p;
-        verboseLog(context, "  [0x%08x] <1> Abbrev Number  %d", pos, DW_ABBREV_CODE_subprogram);
-        pos = writeAbbrevCode(DW_ABBREV_CODE_subprogram, buffer, pos);
+        int abbrevCode = isInline ? DW_ABBREV_CODE_inlined_subprogram : DW_ABBREV_CODE_subprogram;
+        verboseLog(context, "  [0x%08x] <1> Abbrev Number  %d", pos, abbrevCode);
+        pos = writeAbbrevCode(abbrevCode, buffer, pos);
         verboseLog(context, "  [0x%08x]     name  0x%X (%s)", pos, debugStringIndex(range.getFullMethodName()), range.getFullMethodName());
         pos = writeAttrStrp(range.getFullMethodName(), buffer, pos);
+        if (isInline) {
+            verboseLog(context, "  [0x%08x]     inline  0x%X", pos, DW_INL_inlined);
+            pos = writeAttrData1(DW_INL_inlined, buffer, pos);
+        } else {
+            verboseLog(context, "  [0x%08x]     lo_pc  0x%08x", pos, range.getLo());
+            pos = writeAttrAddress(range.getLo(), buffer, pos);
+            verboseLog(context, "  [0x%08x]     hi_pc  0x%08x", pos, range.getHi());
+            pos = writeAttrAddress(range.getHi(), buffer, pos);
+        }
+        verboseLog(context, "  [0x%08x]     decl_file  0x%X (%s)", pos, fileIndex, range.getFileName());
+        pos = writeAttrData4(fileIndex, buffer, pos);
+        verboseLog(context, "  [0x%08x]     decl_line  %d", pos, range.getLine());
+        pos = writeAttrData4(range.getLine(), buffer, pos);
+        /* FIXME: Need to pass true only if method is public. */
+        verboseLog(context, "  [0x%08x]     external  true", pos);
+        return writeFlag(DW_FLAG_true, buffer, pos);
+    }
+
+    private int writeInlineSubroutine(DebugContext context, Range range, byte[] buffer, int p, int subprogramOffset) {
+        assert range.isInlined();
+        int pos = p;
+        int callLine = range.getCallerLine();
+        assert callLine >= -1 : callLine;
+        if (callLine == -1) {
+            log(context, "  Unable to retrieve call line for inlined method %s", range.getFullMethodName());
+            return p;
+        }
+        verboseLog(context, "  [0x%08x] <2> Abbrev Number  %d", pos, DW_ABBREV_CODE_inlined_subroutine);
+        pos = writeAbbrevCode(DW_ABBREV_CODE_inlined_subroutine, buffer, pos);
+        verboseLog(context, "  [0x%08x]     abstract_origin  0x%X", pos, subprogramOffset);
+        pos = writeAttrRef4(subprogramOffset, buffer, pos);
         verboseLog(context, "  [0x%08x]     lo_pc  0x%08x", pos, range.getLo());
         pos = writeAttrAddress(range.getLo(), buffer, pos);
         verboseLog(context, "  [0x%08x]     hi_pc  0x%08x", pos, range.getHi());
         pos = writeAttrAddress(range.getHi(), buffer, pos);
         /*
-         * Need to pass true only if method is public.
+         * The call file is always that of the Primary range, which has index 1 in the file table.
          */
-        verboseLog(context, "  [0x%08x]     external  true", pos);
-        return writeFlag(DW_FLAG_true, buffer, pos);
+        verboseLog(context, "  [0x%08x]     call_file  %d", pos, 1);
+        pos = writeAttrData4(1, buffer, pos);
+        verboseLog(context, "  [0x%08x]     callLine  %d", pos, callLine);
+        pos = writeAttrData4(callLine, buffer, pos);
+        return pos;
+    }
+
+    private int writeAttrRef4(int reference, byte[] buffer, int p) {
+        return writeAttrData4(reference, buffer, p);
     }
 
     private int writeAttrStrp(String value, byte[] buffer, int p) {
