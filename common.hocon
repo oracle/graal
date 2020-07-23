@@ -213,7 +213,7 @@ svm-common-windows: ${svm-common} ${windows-amd64} {
 
 windows-devkit-jdk11: {
   packages : {
-    "devkit:VS2017-15.5.5+1" : "==0"
+    "devkit:VS2017-15.9.16+1" : "==0"
   }
 }
 

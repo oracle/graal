@@ -251,6 +251,11 @@ public class CheckGraalIntrinsics extends GraalTest {
                         "oracle/jrockit/jfr/VMJFR.threadID()I");
 
         add(toBeInvestigated,
+                        "jdk/jfr/internal/JVM.counterTime()J",
+                        "jdk/jfr/internal/JVM.getClassId(Ljava/lang/Class;)J",
+                        "jdk/jfr/internal/JVM.getEventWriter()Ljava/lang/Object;");
+
+        add(toBeInvestigated,
                         // Similar to addExact
                         "java/lang/Math.negateExact(I)I",
                         // Similar to addExact
