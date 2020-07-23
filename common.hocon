@@ -34,6 +34,7 @@ openjdk8 :          { downloads : { JAVA_HOME : ${jdks.openjdk8} }}
 oraclejdk11 :       { downloads : { JAVA_HOME : ${jdks.oraclejdk11} }}
 oraclejdk15 :       { downloads : { JAVA_HOME : ${jdks.oraclejdk15} }}
 openjdk11 :         { downloads : { JAVA_HOME : ${jdks.openjdk11} }}
+openjdk15 :         { downloads : { JAVA_HOME : ${jdks.openjdk15} }}
 
 labsjdk-ce-11 :         { downloads : { JAVA_HOME : ${jdks.labsjdk-ce-11} }}
 labsjdk-ee-11 :         { downloads : { JAVA_HOME : ${jdks.labsjdk-ee-11} }}

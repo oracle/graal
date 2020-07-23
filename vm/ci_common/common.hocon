@@ -250,6 +250,27 @@ full_vm_build_linux: ${svm-common-linux-amd64} ${sulong_linux} ${truffleruby_lin
 full_vm_build_linux_aarch64: ${svm-common-linux-aarch64} ${sulong_linux} ${custom_vm_linux}
 full_vm_build_darwin: ${svm-common-darwin} ${sulong_darwin} ${truffleruby_darwin} ${fastr_darwin} ${graalpython_darwin} ${custom_vm_darwin}
 
+libgraal_compiler: ${svm-common-linux-amd64} ${custom_vm_linux} ${vm_linux} {
+  run: [
+    # enable asserts in the JVM building the image and enable asserts in the resulting native image
+    [mx, --env, ${libgraal_env}, "--extra-image-builder-argument=-J-esa",  "--extra-image-builder-argument=-J-ea", "--extra-image-builder-argument=-ea", build]
+    [mx, --env, ${libgraal_env}, gate, --task, "LibGraal Compiler"]
+  ]
+  timelimit: "1:00:00"
+  targets: [gate]
+}
+
+libgraal_truffle: ${svm-common-linux-amd64} ${custom_vm_linux} ${vm_linux} {
+  run: [
+    # enable asserts in the JVM building the image and enable asserts in the resulting native image
+    [mx, --env, ${libgraal_env}, "--extra-image-builder-argument=-J-esa", "--extra-image-builder-argument=-J-ea", "--extra-image-builder-argument=-ea", build]
+    [mx, --env, ${libgraal_env}, gate, --task, "LibGraal Truffle"]
+  ]
+  logs: ${common_vm.logs} ["*/graal-compiler.log"]
+  timelimit: "45:00"
+  targets: [gate]
+}
+
 builds += [
   #
   # Gates
@@ -260,27 +281,14 @@ builds += [
     ]
     name: gate-vm-style-linux-amd64
   }
-  ${vm_java_8} ${svm-common-linux-amd64} ${custom_vm_linux} ${vm_linux} {
-    run: [
-      # enable asserts in the JVM building the image and enable asserts in the resulting native image
-      [mx, --env, ${libgraal_env}, "--extra-image-builder-argument=-J-esa",  "--extra-image-builder-argument=-J-ea", "--extra-image-builder-argument=-ea", build]
-      [mx, --env, ${libgraal_env}, gate, --task, "LibGraal Compiler"]
-    ]
-    timelimit: "1:00:00"
-    targets: [gate]
-    name: gate-vm-libgraal-compiler
-  }
-  ${vm_java_8} ${svm-common-linux-amd64} ${custom_vm_linux} ${vm_linux} {
-    run: [
-      # enable asserts in the JVM building the image and enable asserts in the resulting native image
-      [mx, --env, ${libgraal_env}, "--extra-image-builder-argument=-J-esa", "--extra-image-builder-argument=-J-ea", "--extra-image-builder-argument=-ea", build]
-      [mx, --env, ${libgraal_env}, gate, --task, "LibGraal Truffle"]
-    ]
-    logs: ${common_vm.logs} ["*/graal-compiler.log"]
-    timelimit: "45:00"
-    targets: [gate]
-    name: gate-vm-libgraal-truffle
-  }
+  ${libgraal_compiler} ${vm_java_8}  { name: gate-vm-libgraal-compiler-8-linux-amd64 }
+# Blocked JDK-8249880
+#  ${libgraal_compiler} ${vm_java_15} { name: gate-vm-libgraal-compiler-15-linux-amd64 }
+
+  ${libgraal_truffle} ${vm_java_8}  { name: gate-vm-libgraal-truffle-8-linux-amd64 }
+# Blocked JDK-8249880
+#  ${libgraal_truffle} ${vm_java_15} { name: gate-vm-libgraal-truffle-15-linux-amd64 }
+
   ${vm_java_8} ${svm-common-linux-amd64} ${sulong_linux} ${custom_vm_linux} ${gate_vm_linux} {
     run: [
       [export, "SVM_SUITE="${svm_suite}]

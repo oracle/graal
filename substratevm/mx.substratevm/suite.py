@@ -227,6 +227,8 @@ suite = {
             "requiresConcealed" : {
                 "java.base" : [
                     "jdk.internal.loader",
+                    "jdk.internal.misc",
+                    "sun.invoke.util",
                 ],
             },
             "javaCompliance": "15+",
