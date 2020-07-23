@@ -46,6 +46,7 @@ import mx_benchmark
 import mx_sulong_benchmarks
 import mx_buildtools
 import mx_sulong_fuzz #pylint: disable=unused-import
+import mx_sulong_llvm_config
 
 from mx_gate import Task, add_gate_runner, add_gate_argument
 
@@ -94,7 +95,7 @@ supportedLLVMVersions = [
     '9.0',
 ]
 
-toolchainLLVMVersion = "8.0"
+toolchainLLVMVersion = mx_sulong_llvm_config.VERSION
 
 # the basic LLVM dependencies for running the test cases and executing the mx commands
 basicLLVMDependencies = [
@@ -688,22 +689,22 @@ def findBundledLLVMProgram(llvm_program):
     return os.path.join(dep.get_output(), 'bin', llvm_program)
 
 @mx.command(_suite.name, 'llvm-tool', 'Run a tool from the LLVM_TOOLCHAIN distribution')
-def llvm_tool(args=None, nonZeroIsFatal=True, out=None, err=None):
+def llvm_tool(args=None, out=None, **kwargs):
     if len(args) < 1:
         mx.abort("usage: mx llvm-tool <llvm-tool> [args...]")
     llvm_program = findBundledLLVMProgram(args[0])
-    mx.run([llvm_program] + args[1:], nonZeroIsFatal=nonZeroIsFatal, out=out, err=err)
+    mx.run([llvm_program] + args[1:], out=out, **kwargs)
 
 
 _LLVM_EXTRA_TOOL_DIST = 'LLVM_TOOLCHAIN_FULL'
 @mx.command(_suite.name, 'llvm-extra-tool', 'Run a tool from the ' + _LLVM_EXTRA_TOOL_DIST + ' distribution')
-def llvm_extra_tool(args=None, nonZeroIsFatal=True, out=None, err=None):
+def llvm_extra_tool(args=None, out=None, **kwargs):
     if len(args) < 1:
         mx.abort("usage: llvm-extra-tool <llvm-tool> [args...]")
     program = args[0]
     dep = mx.dependency(_LLVM_EXTRA_TOOL_DIST, fatalIfMissing=True)
     llvm_program = os.path.join(dep.get_output(), 'bin', program)
-    mx.run([llvm_program] + args[1:], nonZeroIsFatal=nonZeroIsFatal, out=out, err=err)
+    mx.run([llvm_program] + args[1:], out=out, **kwargs)
 
 def getClasspathOptions(extra_dists=None):
     """gets the classpath of the Sulong distributions"""
@@ -852,7 +853,7 @@ class ToolchainConfig(object):
 
     def __init__(self, name, dist, bootstrap_dist, tools, suite):
         self.name = name
-        self.dist = dist
+        self.dist = dist if isinstance(dist, list) else [dist]
         self.bootstrap_provider = create_toolchain_root_provider(name, bootstrap_dist)
         self.tools = tools
         self.suite = suite
@@ -878,7 +879,7 @@ class ToolchainConfig(object):
         main = self._tool_to_main(self.exe_map[parsed_args.command])
         if "JACOCO" in os.environ:
             mx_gate._jacoco = os.environ["JACOCO"]
-        return mx.run_java(mx.get_runtime_jvm_args([self.dist]) + ['-Dorg.graalvm.launcher.executablename=' + parsed_args.command] + [main] + tool_args, out=out)
+        return mx.run_java(mx.get_runtime_jvm_args([mx.splitqualname(d)[1] for d in self.dist]) + ['-Dorg.graalvm.launcher.executablename=' + parsed_args.command] + [main] + tool_args, out=out)
 
     def _supported_exes(self):
         return [exe for tool in self._supported_tools() for exe in self._tool_to_aliases(tool)]
@@ -899,7 +900,7 @@ class ToolchainConfig(object):
 
     def _check_tool(self, tool):
         if tool not in self._supported_tools():
-            mx.abort("The {} toolchain (defined by {}) does not support tool '{}'".format(self.name, self.dist, tool))
+            mx.abort("The {} toolchain (defined by {}) does not support tool '{}'".format(self.name, self.dist[0], tool))
 
     def get_toolchain_tool(self, tool):
         return os.path.join(self.bootstrap_provider(), 'bin', self._tool_to_exe(tool))
@@ -911,7 +912,7 @@ class ToolchainConfig(object):
         return [
             mx_sdk_vm.LauncherConfig(
                 destination=os.path.join(self.name, 'bin', self._tool_to_exe(tool)),
-                jar_distributions=[self.suite.name + ":" + self.dist],
+                jar_distributions=self._get_jar_dists(),
                 main_class=self._tool_to_main(tool),
                 build_args=[
                     '-H:-ParseRuntimeOptions',  # we do not want `-D` options parsed by SVM
@@ -921,6 +922,9 @@ class ToolchainConfig(object):
                 links=[os.path.join(self.name, 'bin', e) for e in self._tool_to_aliases(tool)[1:]],
             ) for tool in self._supported_tools()
         ]
+
+    def _get_jar_dists(self):
+        return [d if ":" in d else self.suite.name + ":" + d for d in self.dist]
 
 
 class BootstrapToolchainLauncherProject(mx.Project):  # pylint: disable=too-many-ancestors
@@ -1208,6 +1212,40 @@ COPYRIGHT_HEADER_BSD = """\
 {0}
 """
 
+
+COPYRIGHT_HEADER_BSD_HASH = """\
+#
+# Copyright (c) 2020, 2020, Oracle and/or its affiliates.
+#
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without modification, are
+# permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this list of
+# conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice, this list of
+# conditions and the following disclaimer in the documentation and/or other materials provided
+# with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors may be used to
+# endorse or promote products derived from this software without specific prior written
+# permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS
+# OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+# COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+# GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+# AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+# NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+# OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+"""
+
+
 def create_asm_parser(args=None, out=None):
     """create the inline assembly parser using antlr"""
     mx.suite("truffle").extensions.create_parser("com.oracle.truffle.llvm.asm.amd64", "com.oracle.truffle.llvm.asm.amd64", "InlineAssembly", COPYRIGHT_HEADER_BSD, args, out)
@@ -1222,6 +1260,85 @@ def create_debugexpr_parser(args=None, out=None):
 def create_parsers(args=None, out=None):
     create_asm_parser(args, out)
     create_debugexpr_parser(args, out)
+
+
+def _write_llvm_config_java(constants, file_comment=None):
+    package_name = "com.oracle.truffle.llvm.toolchain.config"
+    project_name = package_name
+    class_name = "LLVMConfig"
+    source_gen_dir = mx.dependency(project_name).source_dirs()[0]
+    rel_file = package_name.split(".") + [class_name + ".java"]
+    src_file = os.path.join(source_gen_dir, *rel_file)
+    mx.ensure_dir_exists(os.path.dirname(src_file))
+    with open(src_file, "w") as fp:
+        mx.log("Generating {}".format(src_file))
+        fp.write(COPYRIGHT_HEADER_BSD.format("package {package};".format(package=package_name)))
+        if file_comment:
+            fp.write("\n/**\n * {}\n */\n".format(file_comment))
+        fp.write("public abstract class {class_name} {{\n".format(class_name=class_name))
+        fp.write("\n    private {class_name}() {{}}\n\n".format(class_name=class_name))
+        for const_name, value, description in constants:
+            fp.write("    /** {} */\n".format(description))
+            if isinstance(value, int):
+                fp.write("    public static final int {} = {};\n".format(const_name, value))
+            else:
+                fp.write("    public static final String {} = \"{}\";\n".format(const_name, value))
+        fp.write("}\n")
+
+
+def _write_llvm_config_mx(constants, file_comment=None):
+    file_name = "mx_sulong_llvm_config.py"
+    src_file = os.path.join(_suite.mxDir, file_name)
+    mx.ensure_dir_exists(os.path.dirname(src_file))
+    with open(src_file, "w") as fp:
+        mx.log("Generating {}".format(src_file))
+        fp.write(COPYRIGHT_HEADER_BSD_HASH)
+        if file_comment:
+            fp.write("\n# {}\n\n".format(file_comment))
+        for const_name, value, description in constants:
+            fp.write("# {}\n".format(description))
+            if isinstance(value, int):
+                fp.write("{} = {}\n".format(const_name, value))
+            else:
+                fp.write("{} = \"{}\"\n".format(const_name, value))
+
+
+GENERATE_LLVM_CONFIG = "generate-llvm-config"
+
+
+@mx.command(_suite.name, GENERATE_LLVM_CONFIG)
+def generate_llvm_config(args=None, **kwargs):
+
+    constants = []
+
+    # get config full string
+    out = mx.OutputCapture()
+    llvm_tool(["llvm-config", "--version"] + list(args), out=out)
+    full_version = out.data.strip()
+    # NOTE: do not add full version until we need it to avoid regeneration
+    # constants.append(("VERSION_FULL", full_version, "Full LLVM version string."))
+    # version without suffix
+    s = full_version.split("-", 3)
+    version = s[0]
+    constants.append(("VERSION", version, "LLVM version string."))
+    # major, minor, patch
+    s = version.split(".", 3)
+    major_version, minor_version, patch_version = s[0], s[1], s[2]
+    constants.append(("VERSION_MAJOR", int(major_version), "Major version of the LLVM API."))
+    constants.append(("VERSION_MINOR", int(minor_version), "Minor version of the LLVM API."))
+    constants.append(("VERSION_PATCH", int(patch_version), "Patch version of the LLVM API."))
+
+    file_comment = "GENERATED BY 'mx {}'. DO NOT MODIFY.".format(GENERATE_LLVM_CONFIG)
+
+    _write_llvm_config_java(constants, file_comment)
+    _write_llvm_config_mx(constants, file_comment)
+
+
+@mx.command(_suite.name, "create-generated-sources", usage_msg="# recreate generated source files (parsers, config files)")
+def create_generated_sources(args=None, out=None):
+    create_parsers(args, out=out)
+    generate_llvm_config(args, out=out)
+
 
 def llirtestgen(args=None, out=None):
     return mx.run_java(mx.get_runtime_jvm_args(["LLIR_TEST_GEN"]) + ["com.oracle.truffle.llvm.tests.llirtestgen.LLIRTestGen"] + args, out=out)
