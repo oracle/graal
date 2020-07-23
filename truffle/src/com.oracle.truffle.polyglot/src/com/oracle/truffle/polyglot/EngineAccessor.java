@@ -216,6 +216,10 @@ final class EngineAccessor extends Accessor {
         @Override
         public CallTarget parseForLanguage(Object sourceLanguageContext, Source source, String[] argumentNames, boolean allowInternal) {
             PolyglotLanguageContext sourceContext = (PolyglotLanguageContext) sourceLanguageContext;
+            if (PolyglotContextImpl.currentNotEntered() != sourceContext.context) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw PolyglotEngineException.illegalState("The context is not entered.");
+            }
             PolyglotLanguage targetLanguage = sourceContext.context.engine.findLanguage(sourceContext, source.getLanguage(), source.getMimeType(), true, allowInternal);
             PolyglotLanguageContext targetContext = sourceContext.context.getContextInitialized(targetLanguage, sourceContext.language);
             targetContext.checkAccess(sourceContext.getLanguageInstance().language);
@@ -1132,6 +1136,16 @@ final class EngineAccessor extends Accessor {
                 throw notAccessible;
             }
             return targetLanguageContext.ensureInitialized(accessingPolyglotLanguage);
+        }
+
+        @Override
+        public boolean isHostToGuestRootNode(RootNode rootNode) {
+            return rootNode instanceof HostToGuestRootNode;
+        }
+
+        @Override
+        public AssertionError invalidSharingError(Object polyglotEngine) throws AssertionError {
+            return PolyglotReferences.invalidSharingError((PolyglotEngineImpl) polyglotEngine);
         }
     }
 

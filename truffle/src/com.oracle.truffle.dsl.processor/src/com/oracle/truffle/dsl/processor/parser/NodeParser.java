@@ -2232,6 +2232,11 @@ public final class NodeParser extends AbstractParser<NodeData> {
     }
 
     private void verifyLanguageType(DeclaredType annotationType, CacheExpression cache, TypeMirror languageType) {
+        if (ElementUtils.typeEquals(types.HostLanguage, languageType)) {
+            // allowed without Registration annotation
+            return;
+        }
+
         AnnotationMirror registration = ElementUtils.findAnnotationMirror(ElementUtils.fromTypeMirror(languageType), types.TruffleLanguage_Registration);
         if (registration == null) {
             cache.addError("Invalid @%s specification. The type '%s' is not a valid language type. Valid language types must be annotated with @%s.",

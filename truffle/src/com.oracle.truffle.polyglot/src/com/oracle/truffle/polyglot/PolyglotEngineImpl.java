@@ -87,6 +87,7 @@ import org.graalvm.polyglot.io.ProcessHandler;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Truffle;
@@ -181,6 +182,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
     final boolean conservativeContextReferences;
     private final MessageTransport messageInterceptor;
     private volatile int asynchronousStackDepth = 0;
+    @CompilationFinal private HostToGuestCodeCache hostToGuestCodeCache;
 
     PolyglotEngineImpl(PolyglotImpl impl, DispatchOutputStream out, DispatchOutputStream err, InputStream in, Map<String, String> options,
                     boolean allowExperimentalOptions, boolean useSystemProperties, ClassLoader contextClassLoader, boolean boundEngine,
@@ -351,6 +353,15 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         }
         ensureInstrumentsCreated(instrumentsToCreate);
         registerShutDownHook();
+    }
+
+    HostToGuestCodeCache getHostToGuestCodeCache() {
+        HostToGuestCodeCache cache = this.hostToGuestCodeCache;
+        if (cache == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            hostToGuestCodeCache = cache = new HostToGuestCodeCache();
+        }
+        return cache;
     }
 
     private static OptionDescriptors createEngineOptionDescriptors() {
