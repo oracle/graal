@@ -484,7 +484,7 @@ suite = {
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "8+",
       "workingSets" : "Truffle,Tools",
-      "testProject" : True,
+      "testProject" : False,
     },
     "com.oracle.truffle.tck.instrumentation" : {
       "subDir" : "src",
@@ -903,7 +903,7 @@ suite = {
       "exclude" : ["mx:JUNIT"],
       "description" : "A collection of tests that can certify language implementation to be compliant\nwith most recent requirements of the Truffle infrastructure and tooling.",
       "allowsJavadocWarnings": True,
-      "testProject" : True,
+      "testDistribution" : False,
       "maven": True,
     },
 
