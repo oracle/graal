@@ -22,18 +22,20 @@
  */
 package com.oracle.truffle.espresso.substitutions;
 
-import java.util.NoSuchElementException;
 import java.util.Set;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
@@ -65,28 +67,22 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
             }
 
             InteropLibrary interopLibrary = InteropLibrary.getUncached();
-
-            try {
-                checkHasAllFieldsOrThrow(value.rawForeignObject(), targetKlass, interopLibrary);
-            } catch (NoSuchElementException e) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_ClassCastException,
-                                "Field " + e.getMessage() + " not found");
-            }
-
+            checkHasAllFieldsOrThrow(value.rawForeignObject(), targetKlass, interopLibrary, meta);
             return StaticObject.createForeign(targetKlass, value.rawForeignObject(), interopLibrary);
         } else {
             return InterpreterToVM.checkCast(value, targetKlass);
         }
     }
 
-    private static void checkHasAllFieldsOrThrow(Object foreignObject, Klass klass, InteropLibrary interopLibrary) {
+    private static void checkHasAllFieldsOrThrow(Object foreignObject, Klass klass, InteropLibrary interopLibrary, Meta meta) {
         for (Field f : klass.getDeclaredFields()) {
             if (!f.isStatic() && !interopLibrary.isMemberExisting(foreignObject, f.getNameAsString())) {
-                throw new NoSuchElementException(f.getNameAsString());
+                throw Meta.throwExceptionWithMessage(meta.java_lang_ClassCastException,
+                                "Field " + f.getNameAsString() + " not found");
             }
         }
         if (klass.getSuperClass() != null) {
-            checkHasAllFieldsOrThrow(foreignObject, klass.getSuperKlass(), interopLibrary);
+            checkHasAllFieldsOrThrow(foreignObject, klass.getSuperKlass(), interopLibrary, meta);
         }
     }
 
@@ -128,21 +124,36 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
         throw EspressoError.shouldNotReachHere("Unexpected primitive klass: ", targetKlass);
     }
 
-    @Substitution
-    public static @Host(Object.class) StaticObject eval(@Host(String.class) StaticObject languageId, @Host(String.class) StaticObject code, @InjectMeta Meta meta) {
-        String languageString = Meta.toHostString(languageId);
-        Set<String> publicLanguages = meta.getContext().getEnv().getPublicLanguages().keySet();
-        if (!publicLanguages.contains(languageString)) {
-            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException,
-                            "No language for id " + languageString + " found. Supported languages are: " + publicLanguages);
-        }
+    @TruffleBoundary
+    private static EspressoException rethrowExceptionAsEspresso(ObjectKlass exceptionKlass, String additionalMessage, Throwable originalException) {
+        throw Meta.throwExceptionWithMessage(exceptionKlass, additionalMessage + originalException.getMessage());
+    }
 
-        Source source = Source.newBuilder(languageId.toString(), code.toString(), "(eval)").build();
+    @TruffleBoundary
+    private static Source getSource(String languageId, String code) {
+        return Source.newBuilder(languageId, code, "(eval)").build();
+    }
+
+    @TruffleBoundary
+    private static void validateLanguage(String languageId, Meta meta) {
+        Set<String> publicLanguages = meta.getContext().getEnv().getPublicLanguages().keySet();
+        if (!publicLanguages.contains(languageId)) {
+            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException,
+                            "No language for id " + languageId + " found. Supported languages are: " + publicLanguages);
+        }
+    }
+
+    @Substitution
+    public static @Host(Object.class) StaticObject eval(@Host(String.class) StaticObject language, @Host(String.class) StaticObject code, @InjectMeta Meta meta) {
+        String languageId = Meta.toHostString(language);
+        validateLanguage(languageId, meta);
+
+        Source source = getSource(languageId, Meta.toHostString(code));
         CallTarget callTarget;
         try {
             callTarget = meta.getContext().getEnv().parsePublic(source);
         } catch (Exception e) {
-            throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, "Error when parsing the source: " + e.getMessage());
+            throw rethrowExceptionAsEspresso(meta.java_lang_IllegalArgumentException, "Error when parsing the source: ", e);
         }
 
         Object evalResult;
@@ -150,7 +161,7 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
             evalResult = callTarget.call();
         } catch (Exception e) {
             if (e instanceof TruffleException) {
-                throw Meta.throwExceptionWithMessage(meta.java_lang_RuntimeException, "Exception during evaluation: " + e.getMessage());
+                throw rethrowExceptionAsEspresso(meta.java_lang_RuntimeException, "Exception during evaluation: ", e);
             } else {
                 throw e;
             }
