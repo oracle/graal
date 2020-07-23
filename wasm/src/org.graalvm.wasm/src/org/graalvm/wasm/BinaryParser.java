@@ -325,7 +325,7 @@ public class BinaryParser extends BinaryStreamParser {
         if (state.branchTables().length > 0) {
             rootNode.codeEntry().setBranchTables(state.branchTables());
         }
-        rootNode.codeEntry().setConditionsCount(state.profileCount());
+        rootNode.codeEntry().setProfileCount(state.profileCount());
         rootNode.codeEntry().initStackSlots(rootNode.getFrameDescriptor(), state.maxStackSize());
     }
 

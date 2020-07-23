@@ -303,13 +303,13 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
 
     @SuppressWarnings("hiding")
     public void initialize(Node[] children, int byteLength, int byteConstantLength,
-                    int intConstantLength, int longConstantLength, int branchTableLength, int brIfProfilesLength) {
+                    int intConstantLength, int longConstantLength, int branchTableLength, int profileCount) {
         initialize(byteLength);
         this.byteConstantLength = byteConstantLength;
         this.intConstantLength = intConstantLength;
         this.longConstantLength = longConstantLength;
         this.branchTableLength = branchTableLength;
-        this.profileCount = brIfProfilesLength;
+        this.profileCount = profileCount;
         this.children = children;
     }
 
@@ -385,6 +385,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     intConstantOffset += block.intConstantLength();
                     longConstantOffset += block.longConstantLength();
                     branchTableOffset += block.branchTableLength();
+                    profileOffset += block.profileCount();
                     break;
                 }
                 case LOOP: {
@@ -419,6 +420,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     intConstantOffset += loopBody.intConstantLength();
                     longConstantOffset += loopBody.longConstantLength();
                     branchTableOffset += loopBody.branchTableLength();
+                    profileOffset += loopBody.profileCount();
                     break;
                 }
                 case IF: {
@@ -437,6 +439,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     intConstantOffset += ifNode.intConstantLength();
                     longConstantOffset += ifNode.longConstantLength();
                     branchTableOffset += ifNode.branchTableLength();
+                    profileOffset += ifNode.profileCount();
                     break;
                 }
                 case ELSE:

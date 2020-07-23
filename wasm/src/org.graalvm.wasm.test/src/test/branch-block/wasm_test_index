@@ -1,4 +1,6 @@
 br_if-return
+multiple_br_if_in_loop
+multiple_br_if_in_loop_with_block
 simple_br_before_add
 simple_br_before_add_twice
 simple_br_in_loop
