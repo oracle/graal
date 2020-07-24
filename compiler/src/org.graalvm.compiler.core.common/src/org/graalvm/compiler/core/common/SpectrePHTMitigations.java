@@ -30,7 +30,7 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionStability;
 import org.graalvm.compiler.options.OptionType;
 
-public enum SpeculativeExecutionAttacksMitigations {
+public enum SpectrePHTMitigations {
     None,
     AllTargets,
     GuardTargets,
@@ -39,9 +39,9 @@ public enum SpeculativeExecutionAttacksMitigations {
     public static class Options {
         // @formatter:off
         @Option(help = "file:doc-files/MitigateSpeculativeExecutionAttacksHelp.txt")
-        public static final EnumOptionKey<SpeculativeExecutionAttacksMitigations> MitigateSpeculativeExecutionAttacks = new EnumOptionKey<>(None);
-        @Option(help = "Use index masking after bounds check to mitigate speculative execution attacks.", type = OptionType.User, stability = OptionStability.STABLE)
-        public static final OptionKey<Boolean> UseIndexMasking = new OptionKey<>(false);
+        public static final EnumOptionKey<SpectrePHTMitigations> SpectrePHTBarriers = new EnumOptionKey<>(None);
+        @Option(help = "Mask indices to scope access to allocation size after bounds check.", type = OptionType.User, stability = OptionStability.STABLE)
+        public static final OptionKey<Boolean> SpectrePHTIndexMasking = new OptionKey<>(false);
         // @formatter:on
     }
 }

@@ -31,7 +31,7 @@ import static jdk.vm.ci.code.MemoryBarriers.JMM_PRE_VOLATILE_WRITE;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationReason.BoundsCheckException;
 import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
-import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.Options.UseIndexMasking;
+import static org.graalvm.compiler.core.common.SpectrePHTMitigations.Options.SpectrePHTIndexMasking;
 import static org.graalvm.compiler.nodes.NamedLocationIdentity.ARRAY_LENGTH_LOCATION;
 import static org.graalvm.compiler.nodes.calc.BinaryArithmeticNode.branchlessMax;
 import static org.graalvm.compiler.nodes.calc.BinaryArithmeticNode.branchlessMin;
@@ -551,7 +551,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
 
         GuardingNode boundsCheck = getBoundsCheck(loadIndexed, array, tool);
         ValueNode index = loadIndexed.index();
-        if (UseIndexMasking.getValue(graph.getOptions())) {
+        if (SpectrePHTIndexMasking.getValue(graph.getOptions())) {
             index = proxyIndex(loadIndexed, index, array, tool);
         }
         AddressNode address = createArrayIndexAddress(graph, array, elementKind, index, boundsCheck);
