@@ -470,7 +470,7 @@ class NativeImageVM(GraalVm):
                         else:
                             image_run_cmd += image_run_args + config.extra_run_args
                         with stages.set_command(image_run_cmd) as s:
-                            s.execute_command()
+                            s.execute_command(True)
                             if s.exit_code == 0:
                                 mx.copyfile(profile_path, latest_profile_path)
 
@@ -494,7 +494,7 @@ class NativeImageVM(GraalVm):
                 image_path = os.path.join(config.output_dir, final_image_name)
                 image_run_cmd = [image_path] + image_run_args + config.extra_run_args
                 with stages.set_command(image_run_cmd) as s:
-                    s.execute_command(True)
+                    s.execute_command()
 
     def create_log_files(self, config, executable_name, stage):
         stdout_path = os.path.abspath(
