@@ -43,7 +43,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
-import org.junit.Ignore;
+import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -59,6 +59,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.CompileImmediatelyCheck;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
@@ -198,9 +199,9 @@ public class RewriteDuringCompilationTest extends AbstractPolyglotTest {
         testCompilation(detectInvalidCodeNode, null, detectInvalidCodeNode, 1000, 20);
     }
 
-    @Ignore("GR-25000")
     @Test
     public void testLoopCompilation() throws IOException, InterruptedException, ExecutionException {
+        Assume.assumeFalse(CompileImmediatelyCheck.isCompileImmediately());
         DetectInvalidCodeNode detectInvalidCodeNode = new DetectInvalidCodeNode();
         WhileLoopNode testedCode = new WhileLoopNode(10000000, detectInvalidCodeNode);
         testCompilation(testedCode, testedCode.loop, detectInvalidCodeNode, 1000, 40);
