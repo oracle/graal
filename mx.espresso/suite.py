@@ -94,6 +94,61 @@ suite = {
             ],
             "sha1": "280c265b789e041c02e5c97815793dfc283fb1e6",
         },
+
+        "ASM-7.1": {
+            "moduleName": "org.objectweb.asm",
+            "sha1": "fa29aa438674ff19d5e1386d2c3527a0267f291e",
+            "sourceSha1": "9d170062d595240da35301362b079e5579c86f49",
+            "maven": {
+                "groupId": "org.ow2.asm",
+                "artifactId": "asm",
+                "version": "7.1",
+            },
+        },
+
+        "ASM_TREE-7.1": {
+            "moduleName": "org.objectweb.asm.tree",
+            "sha1": "a3662cf1c1d592893ffe08727f78db35392fa302",
+            "sourceSha1": "157238292b551de8680505fa2d19590d136e25b9",
+            "maven": {
+                "groupId": "org.ow2.asm",
+                "artifactId": "asm-tree",
+                "version": "7.1",
+            },
+            "dependencies": [
+                "ASM-7.1",
+            ],
+        },
+
+        "ASM_ANALYSIS-7.1": {
+            "moduleName": "org.objectweb.asm.tree.analysis",
+            "sha1": "379e0250f7a4a42c66c5e94e14d4c4491b3c2ed3",
+            "sourceSha1": "36789198124eb075f1a5efa18a0a7812fb16f47f",
+            "maven": {
+                "groupId": "org.ow2.asm",
+                "artifactId": "asm-analysis",
+                "version": "7.1",
+            },
+            "dependencies": [
+                "ASM_TREE-7.1",
+            ],
+        },
+
+        "ASM_COMMONS-7.1": {
+            "moduleName": "org.objectweb.asm.commons",
+            "sha1": "431dc677cf5c56660c1c9004870de1ed1ea7ce6c",
+            "sourceSha1": "a62ff3ae6e37affda7c6fb7d63b89194c6d006ee",
+            "maven": {
+                "groupId": "org.ow2.asm",
+                "artifactId": "asm-commons",
+                "version": "7.1",
+            },
+            "dependencies": [
+                "ASM-7.1",
+                "ASM_TREE-7.1",
+                "ASM_ANALYSIS-7.1",
+            ],
+        },
     },
 
     # ------------- projects
@@ -217,7 +272,7 @@ suite = {
                 "com.oracle.truffle.espresso",
                 "truffle:TRUFFLE_TCK",
                 "mx:JUNIT",
-                "tools:AGENTSCRIPT"
+                "tools:AGENTSCRIPT",
             ],
             # JTT unit tests run both on the host JVM and on Espresso, so they must be compiled with a version compatible with Espresso (8).
             # Espresso itself can be compiled with Java 11 and the unit tests (compiled to 8) should run on a JVM 11.
@@ -231,7 +286,7 @@ suite = {
             "sourceDirs": ["src"],
             "testProject": True,
             "dependencies": [
-                "com.oracle.truffle.espresso.test"
+                "com.oracle.truffle.espresso.test",
             ],
             "javaCompliance": "8",
             "checkstyle": "com.oracle.truffle.espresso",
@@ -242,7 +297,8 @@ suite = {
             "sourceDirs": ["src"],
             "testProject": True,
             "dependencies": [
-                "com.oracle.truffle.espresso.test"
+                "com.oracle.truffle.espresso.test",
+                "ASM_COMMONS-7.1",
             ],
             "javaCompliance": "11",
             "checkstyle": "com.oracle.truffle.espresso",
@@ -363,7 +419,7 @@ suite = {
         "ESPRESSO_TESTS_11": {
             "subDir": "src",
             "dependencies": [
-                "com.oracle.truffle.espresso.test.jdk11"
+                "com.oracle.truffle.espresso.test.jdk11",
             ],
             "distDependencies": [
                 "espresso:ESPRESSO_TESTS",
