@@ -285,21 +285,27 @@ public final class EspressoContext {
         if (hasReferencePendingList()) {
             return;
         }
+        doWaitForReferencePendingList();
+    }
+
+    @TruffleBoundary
+    private void doWaitForReferencePendingList() {
         try {
             synchronized (pendingLock) {
                 // Wait until the reference drain updates the list.
                 while (!hasReferencePendingList()) {
-                    waitBoundary(pendingLock);
+                    pendingLock.wait();
                 }
             }
         } catch (InterruptedException e) {
-            /* nop */
+            /*
+             * The guest handler thread will attempt emptying the reference list by re-obtaining it.
+             * If the list is not null, then everything will proceed as normal. In the case it is
+             * empty, the guest handler will simply loop back into waiting. This looping back into
+             * waiting done in guest code gives us a chance to reach an espresso safe point (a back
+             * edge), thus giving us the possibility to stop this thread when tearing down the VM.
+             */
         }
-    }
-
-    @TruffleBoundary
-    private static void waitBoundary(Object lock) throws InterruptedException {
-        lock.wait();
     }
 
     private abstract class ReferenceDrain implements Runnable {
