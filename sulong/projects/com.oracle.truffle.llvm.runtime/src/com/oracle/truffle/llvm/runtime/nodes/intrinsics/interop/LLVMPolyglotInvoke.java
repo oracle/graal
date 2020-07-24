@@ -89,6 +89,7 @@ public abstract class LLVMPolyglotInvoke extends LLVMIntrinsic {
         return threadingStack;
     }
 
+    @SuppressWarnings("try")
     @ExplodeLoop
     private Object doInvoke(VirtualFrame frame, Object value, String id, ContextReference<LLVMContext> ctxRef,
                     LLVMGetStackNode getStack) {

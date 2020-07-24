@@ -109,6 +109,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
      * Function is defined in the user program (available as LLVM IR)
      */
 
+    @SuppressWarnings("try")
     @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"descriptor == cachedDescriptor", "functionCode.isLLVMIRFunction()"})
     protected static Object doDirect(@SuppressWarnings("unused") LLVMFunctionDescriptor descriptor, Object[] arguments,
                     @Cached("descriptor") @SuppressWarnings("unused") LLVMFunctionDescriptor cachedDescriptor,
@@ -119,6 +120,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         }
     }
 
+    @SuppressWarnings("try")
     @Specialization(replaces = "doDirect", guards = "descriptor.getFunctionCode().isLLVMIRFunction()")
     protected static Object doIndirect(LLVMFunctionDescriptor descriptor, Object[] arguments,
                     @Cached ResolveFunctionNode resolve,
@@ -139,6 +141,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         return directCallNode;
     }
 
+    @SuppressWarnings("try")
     @Specialization(limit = "INLINE_CACHE_SIZE", guards = {"descriptor == cachedDescriptor", "functionCode.isIntrinsicFunctionSlowPath()"})
     protected Object doDirectIntrinsic(@SuppressWarnings("unused") LLVMFunctionDescriptor descriptor, Object[] arguments,
                     @Cached("descriptor") @SuppressWarnings("unused") LLVMFunctionDescriptor cachedDescriptor,
@@ -149,6 +152,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         }
     }
 
+    @SuppressWarnings("try")
     @Specialization(replaces = "doDirectIntrinsic", guards = "descriptor.getFunctionCode().isIntrinsicFunction(resolve)")
     protected Object doIndirectIntrinsic(LLVMFunctionDescriptor descriptor, Object[] arguments,
                     @Cached ResolveFunctionNode resolve,
@@ -163,6 +167,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
      * available. We do a native call.
      */
 
+    @SuppressWarnings("try")
     @Specialization(limit = "10", guards = {"descriptor == cachedDescriptor", "functionCode.isNativeFunctionSlowPath()"})
     protected Object doCachedNative(@SuppressWarnings("unused") LLVMFunctionDescriptor descriptor,
                     Object[] arguments,
@@ -189,6 +194,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         return LLVMNativeCallUtils.bindNativeSymbol(InteropLibrary.getFactory().getUncached(), functionCode.getNativeFunctionSlowPath(), getSignature());
     }
 
+    @SuppressWarnings("try")
     @Specialization(replaces = "doCachedNative", guards = "descriptor.getFunctionCode().isNativeFunction(resolve)")
     protected Object doNative(LLVMFunctionDescriptor descriptor, Object[] arguments,
                     @Cached("createToNativeNodes()") LLVMNativeConvertNode[] toNative,
@@ -282,6 +288,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
             return doGeneric(function, cachedType, arguments, crossLanguageCall, dataEscapeNodes, toLLVMNode);
         }
 
+        @SuppressWarnings("try")
         @Specialization(replaces = "doCachedType", limit = "0")
         protected Object doGeneric(TruffleObject function, LLVMInteropType.Function functionType, Object[] arguments,
                         @CachedLibrary("function") InteropLibrary crossLanguageCall,

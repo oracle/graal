@@ -123,6 +123,7 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
      * @param function
      * @see #executeDispatch(Object, Object[])
      */
+    @SuppressWarnings("try")
     @Specialization(guards = "function.asNative() == cachedFunction.asNative()")
     protected Object doCached(LLVMNativePointer function, Object[] arguments,
                     @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> context,
@@ -140,6 +141,7 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
         return fromNative.executeConvert(returnValue);
     }
 
+    @SuppressWarnings("try")
     @Specialization
     protected Object doGeneric(LLVMNativePointer function, Object[] arguments,
                     @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> context,

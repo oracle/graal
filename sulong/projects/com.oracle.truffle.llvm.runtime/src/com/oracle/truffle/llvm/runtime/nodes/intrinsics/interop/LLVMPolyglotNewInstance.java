@@ -88,6 +88,7 @@ public abstract class LLVMPolyglotNewInstance extends LLVMIntrinsic {
         return threadingStack;
     }
 
+    @SuppressWarnings("try")
     @Specialization
     @ExplodeLoop
     protected Object doNew(VirtualFrame frame, LLVMManagedPointer value,
