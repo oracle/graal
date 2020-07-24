@@ -15,8 +15,6 @@ suite = {
     ],
   },
 
-  "javac.lint.overrides" : "none",
-
   "libraries" : {
     "LLVM_TEST_SUITE" : {
       "packedResource" : True,
