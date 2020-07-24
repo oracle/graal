@@ -34,6 +34,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.core.common.RetryableBailoutException;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -448,6 +449,17 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
     protected boolean ensureMaterialized(PartialEscapeBlockState<?> state, int object, FixedNode materializeBefore, GraphEffectList effects, CounterKey counter) {
         if (state.getObjectState(object).isVirtual()) {
             if (currentMode == EffectsClosureMode.STOP_NEW_VIRTUALIZATIONS_LOOP_NEST) {
+                if (state.getObjectState(object).getEnsureVirtualized()) {
+                    /*
+                     * We materialize something after heaving reached the loop depth cut-off, that
+                     * is virtualized because it has the ensure virtualized flag set.
+                     *
+                     * In this case the algorithm would again become exponential in runtime over the
+                     * loop nest depth, thus we throw a non-permanent bailout excpetion.
+                     */
+                    throw new RetryableBailoutException(
+                                    "Materializing an ensureVirtualized marked allocation inside a very deep loop nest, this may lead to exponential " + "runtime of the partial escape analysis.");
+                }
                 /*
                  * If we ever enter a state where we do not allow new virtualizations to occur, we
                  * can never materialize something since no new virtualizations happened in the

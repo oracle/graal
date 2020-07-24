@@ -29,6 +29,7 @@ import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Option
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.core.common.RetryableBailoutException;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.TTY;
@@ -80,6 +81,51 @@ public class NestedLoopEffectsPhaseComplexityTest2 extends GraalCompilerTest {
 
         C(int x) {
             this.x = x;
+        }
+    }
+
+    public static int method20LevelNoNewAllocationsEnsureVirtualizedWronglyMaterialized(int a) {
+        if (a == 0) {
+            return 0;
+        }
+        int res = 0;
+        for (int i = 0; i < a; i++) {
+            C c = new C(i);
+            GraalDirectives.ensureVirtualized(c);
+            res += new A(method20LevelNoNewAllocations1EnsureVirtualizedWronglyMaterialized(20, c)).x;
+        }
+        return res;
+    }
+
+    public static int method20LevelNoNewAllocations1EnsureVirtualizedWronglyMaterialized(int a, Object o) {
+        if (GraalDirectives.injectBranchProbability(0.01D, a == 0)) {
+            // materialize the escaped object
+            OSideEffect = o;
+            return 0;
+        }
+        int res = 0;
+        for (int i = 0; i < IntSideEffect; i++) {
+            res += new A(method20LevelNoNewAllocations1EnsureVirtualizedWronglyMaterialized(a - 1, o)).x;
+        }
+        return res;
+    }
+
+    /**
+     * Test that the depth cutoff of partial escape analysis triggers after the correct loop depth
+     * and that no new virtualizations are performed once we reach a certain depth.
+     */
+    @Test
+    public void testNoNewAllocationsEnsureVirtualizedWronglyMaterialized() {
+        method20LevelNoNewAllocationsEnsureVirtualizedWronglyMaterialized(0);
+        method20LevelNoNewAllocationsEnsureVirtualizedWronglyMaterialized(1);
+        method20LevelNoNewAllocationsEnsureVirtualizedWronglyMaterialized(0);
+        method20LevelNoNewAllocationsEnsureVirtualizedWronglyMaterialized(1);
+        method20LevelNoNewAllocationsEnsureVirtualizedWronglyMaterialized(3);
+        try {
+            testAndTimeFixedDepth("method20LevelNoNewAllocationsEnsureVirtualizedWronglyMaterialized", 1);
+            Assert.fail("PEA should run into a bailout");
+        } catch (RetryableBailoutException e) {
+            Assert.assertTrue(e.getMessage().contains("ensureVirtualized"));
         }
     }
 

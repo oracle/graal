@@ -334,9 +334,10 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
          * are no changes we only have to do 1 iteration and are done.
          *
          * However, the stripping in the innermost loop(s) is only done for new allocations, i.e.
-         * every allocation reached after the loop depth filter is automatically materialized. If
-         * there is an outer allocation that is still virtual materialized in the inner case we
-         * throw an exception and re-do the iterations and materialize everything.
+         * every allocation reached after the loop depth filter is automatically materialized. If we
+         * reach an outer loop's allocation that is still virtual in an inner loop with depth >
+         * cutOff, and this virtualized allocation is materialized in the inner loop we throw an
+         * exception and re-do the entire loop nest and materialize everything
          *
          */
         BlockT initialStateRemovedKilledLocations = stripKilledLoopLocations(loop, cloneState(initialState));
