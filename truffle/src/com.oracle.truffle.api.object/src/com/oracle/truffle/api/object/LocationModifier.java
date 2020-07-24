@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,8 @@ package com.oracle.truffle.api.object;
 /**
  * Location modifiers specify the desired semantics and allowed use of a location to be allocated by
  * {@link Shape.Allocator}.
+ *
+ * Planned to be deprecated.
  *
  * @since 0.8 or earlier
  */

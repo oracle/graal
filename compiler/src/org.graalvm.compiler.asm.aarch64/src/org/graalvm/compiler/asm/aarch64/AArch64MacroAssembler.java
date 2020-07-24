@@ -1766,22 +1766,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * dst = src1 % src2.
-     *
-     * @param size register size. Has to be 32 or 64.
-     * @param dst floating-point register. May not be null.
-     * @param n numerator. Floating-point register. May not be null.
-     * @param d denominator. Floating-point register. May not be null.
-     */
-    public void frem(int size, Register dst, Register n, Register d) {
-        // There is no frem instruction, instead we compute the remainder using the relation:
-        // rem = n - Truncating(n / d) * d
-        super.fdiv(size, dst, n, d);
-        super.frintz(size, dst, dst);
-        super.fmsub(size, dst, dst, d, n);
-    }
-
-    /**
      * dst = src1 * src2 + src3.
      *
      * @param size register size.
@@ -2361,7 +2345,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             int[] adrLoOffsets = {5};
             PatcherUtil.writeBitSequence(code, pos + 3, curValue, adrLoBits, adrLoOffsets);
             // ldr bits
-            curValue = (targetAddress >> shiftSize) & 0x1FF;
+            curValue = (targetAddress & 0xFFF) >> shiftSize;
             int[] ldrBits = {6, 6};
             int[] ldrOffsets = {2, 0};
             PatcherUtil.writeBitSequence(code, pos + 5, curValue, ldrBits, ldrOffsets);

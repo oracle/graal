@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -69,7 +69,7 @@ public abstract class SLReadPropertyNode extends SLExpressionNode {
     static final int LIBRARY_LIMIT = 3;
 
     @Specialization(guards = "arrays.hasArrayElements(receiver)", limit = "LIBRARY_LIMIT")
-    protected Object writeArray(Object receiver, Object index,
+    protected Object readArray(Object receiver, Object index,
                     @CachedLibrary("receiver") InteropLibrary arrays,
                     @CachedLibrary("index") InteropLibrary numbers) {
         try {
@@ -81,7 +81,7 @@ public abstract class SLReadPropertyNode extends SLExpressionNode {
     }
 
     @Specialization(guards = "objects.hasMembers(receiver)", limit = "LIBRARY_LIMIT")
-    protected Object writeObject(Object receiver, Object name,
+    protected Object readObject(Object receiver, Object name,
                     @CachedLibrary("receiver") InteropLibrary objects,
                     @Cached SLToMemberNode asMember) {
         try {

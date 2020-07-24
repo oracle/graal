@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,6 +49,7 @@ import com.oracle.svm.core.monitor.MultiThreadedMonitorSupport;
 import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
 import com.oracle.svm.hosted.config.HybridLayout;
+import com.oracle.svm.hosted.config.HybridLayoutSupport;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInstanceClass;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
@@ -74,6 +75,8 @@ public class HostedConfiguration {
 
             ObjectLayout objectLayout = createObjectLayout();
             ImageSingletons.add(ObjectLayout.class, objectLayout);
+
+            ImageSingletons.add(HybridLayoutSupport.class, new HybridLayoutSupport());
         }
     }
 
@@ -111,11 +114,10 @@ public class HostedConfiguration {
         int arrayLengthOffset = hubOffset + referenceSize;
         int arrayIdentityHashCodeOffset = arrayLengthOffset + target.arch.getPlatformKind(JavaKind.Int).getSizeInBytes();
         int arrayBaseOffset = arrayIdentityHashCodeOffset + target.arch.getPlatformKind(JavaKind.Int).getSizeInBytes();
-        int arrayZeroingStartOffset = arrayIdentityHashCodeOffset;
         boolean useExplicitIdentityHashCodeField = true;
         int instanceIdentityHashCodeOffset = -1; // depends on the hub
 
-        ObjectLayout objectLayout = new ObjectLayout(target, referenceSize, objectAlignment, hubOffset, firstFieldOffset, arrayLengthOffset, arrayBaseOffset, arrayZeroingStartOffset,
+        ObjectLayout objectLayout = new ObjectLayout(target, referenceSize, objectAlignment, hubOffset, firstFieldOffset, arrayLengthOffset, arrayBaseOffset,
                         useExplicitIdentityHashCodeField, instanceIdentityHashCodeOffset, arrayIdentityHashCodeOffset);
         return objectLayout;
     }

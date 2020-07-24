@@ -764,7 +764,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
                 for (Node signExtendNodeUsage : signExtendNode.usages()) {
                     if (signExtendNodeUsage instanceof StoreFieldNode && offsetField == null) {
                         offsetField = ((StoreFieldNode) signExtendNodeUsage).field();
-                    } else if (isAllowedUnsafeValueSink(valueNodeUsage)) {
+                    } else if (isAllowedUnsafeValueSink(signExtendNodeUsage)) {
                         continue;
                     } else {
                         illegalUseFound = true;
@@ -1054,7 +1054,8 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
                 invoke.replaceWithInvoke();
             }
         }
-        CanonicalizerPhase.create().apply(graph, context);
+        /* Disable canonicalization of LoadFieldNodes to avoid constant folding of unsafe values. */
+        CanonicalizerPhase.createWithoutReadCanonicalization().apply(graph, context);
 
         return graph;
     }

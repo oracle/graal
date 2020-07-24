@@ -40,9 +40,9 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMPointerCompareNodeGen.LLVMNegateNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.ToComparableValue.ManagedToComparableValue;
+import com.oracle.truffle.llvm.runtime.nodes.util.LLVMSameObjectNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
-import com.oracle.truffle.llvm.spi.ReferenceLibrary;
 
 @NodeChild(type = LLVMExpressionNode.class)
 @NodeChild(type = LLVMExpressionNode.class)
@@ -162,20 +162,20 @@ public abstract class LLVMPointerCompareNode extends LLVMAbstractCompareNode {
 
         abstract boolean execute(Object a, LLVMNativeLibrary libA, Object b, LLVMNativeLibrary libB, NativePointerCompare op);
 
-        @Specialization(limit = "3", guards = {"pointToSameObject.isSame(a.getObject(), b.getObject())"})
+        @Specialization(guards = {"pointToSameObject.execute(a.getObject(), b.getObject())"})
         protected boolean doForeign(LLVMManagedPointer a, @SuppressWarnings("unused") LLVMNativeLibrary libA,
                         LLVMManagedPointer b, @SuppressWarnings("unused") LLVMNativeLibrary libB, NativePointerCompare op,
-                        @CachedLibrary("a.getObject()") @SuppressWarnings("unused") ReferenceLibrary pointToSameObject) {
+                        @SuppressWarnings("unused") @Cached LLVMSameObjectNode pointToSameObject) {
             // when comparing pointers to the same object, it is not sufficient to simply compare
             // the offsets if we have an unsigned comparison and one of the offsets is negative. So,
             // we add a "typical" pointer value to both offsets and compare the resulting values.
             return op.compare(TYPICAL_POINTER + a.getOffset(), TYPICAL_POINTER + b.getOffset());
         }
 
-        @Specialization(limit = "3", guards = "!pointToSameObject.isSame(a.getObject(), b.getObject())")
+        @Specialization(guards = "!pointToSameObject.execute(a.getObject(), b.getObject())")
         protected boolean doForeign(LLVMManagedPointer a, @SuppressWarnings("unused") LLVMNativeLibrary libA,
                         LLVMManagedPointer b, @SuppressWarnings("unused") LLVMNativeLibrary libB, NativePointerCompare op,
-                        @CachedLibrary("a.getObject()") @SuppressWarnings("unused") ReferenceLibrary pointToSameObject,
+                        @SuppressWarnings("unused") @Cached LLVMSameObjectNode pointToSameObject,
                         @Cached("createIgnoreOffset()") ManagedToComparableValue convertA,
                         @Cached("createIgnoreOffset()") ManagedToComparableValue convertB) {
             return op.compare(convertA.executeWithTarget(a), convertB.executeWithTarget(b));

@@ -30,9 +30,6 @@
 package com.oracle.truffle.llvm.parser.factories;
 
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallGetPpidNode;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallGetpidNode;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallGettidNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallMmapNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMSyscallExitNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMUnknownSyscallNode;
@@ -49,14 +46,8 @@ final class DarwinAMD64PlatformCapability extends BasicPlatformCapability<Darwin
         switch (syscall) {
             case SYS_mmap:
                 return LLVMAMD64SyscallMmapNodeGen.create();
-            case SYS_getpid:
-                return new LLVMAMD64SyscallGetpidNode();
             case SYS_exit:
                 return new LLVMSyscallExitNode();
-            case SYS_getppid:
-                return new LLVMAMD64SyscallGetPpidNode();
-            case SYS_gettid:
-                return new LLVMAMD64SyscallGettidNode();
             default:
                 return new LLVMUnknownSyscallNode(syscall);
         }

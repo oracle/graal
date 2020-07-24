@@ -63,6 +63,7 @@ import java.util.logging.StreamHandler;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import java.io.IOException;
 
 final class PolyglotLoggers {
 
@@ -504,7 +505,7 @@ final class PolyglotLoggers {
                             levels = engine.logLevels;
                         } else {
                             OutputStream logOut = EngineAccessor.RUNTIME.getConfiguredLogStream();
-                            Handler useHandler = logOut != null ? createStreamHandler(logOut, false, true) : createDefaultHandler(System.err);
+                            Handler useHandler = logOut != null ? createStreamHandler(logOut, false, true) : createDefaultHandler(PolyglotEngineImpl.ALLOW_IO ? System.err : new NullOutputStream());
                             spi = LoggerCacheImpl.newFallBackLoggerCache(useHandler);
                             levels = Collections.emptyMap();
                         }
@@ -556,6 +557,17 @@ final class PolyglotLoggers {
         @Override
         public void close() throws SecurityException {
             delegate.close();
+        }
+    }
+
+    private static final class NullOutputStream extends OutputStream {
+
+        @Override
+        public void write(int b) throws IOException {
+        }
+
+        @Override
+        public void write(byte[] array, int off, int len) throws IOException {
         }
     }
 }

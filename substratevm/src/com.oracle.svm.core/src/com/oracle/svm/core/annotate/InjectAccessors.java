@@ -39,8 +39,8 @@ import java.lang.annotation.Target;
  * have 0, 1, or 2 parameters.
  *
  * If the field is non-static, the first method parameter is the accessed object. The type of the
- * parameter must be the class that declared the field. No null check is performed on the object
- * before the accessor is called, i.e., the object parameter can be {@code null}.
+ * parameter must be the class that declared the field. The null check on the object is performed
+ * before the accessor is called, in the same way as the null check for a regular field access.
  *
  * For get-accessors, the return type of the method must be the type of the field. For
  * set-accessors, the last method parameter must be the type of the field and denotes the value

@@ -29,6 +29,10 @@
  */
 package com.oracle.truffle.llvm.runtime.pointer;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -38,10 +42,12 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
 @ExportLibrary(value = LLVMNativeLibrary.class, receiverType = LLVMPointerImpl.class)
 @ExportLibrary(value = InteropLibrary.class, receiverType = LLVMPointerImpl.class)
 @ExportLibrary(value = LLVMAsForeignLibrary.class, receiverType = LLVMPointerImpl.class)
+@SuppressWarnings("deprecation") // needed because the superclass implements ReferenceLibrary
 abstract class ManagedPointerLibraries extends CommonPointerLibraries {
 
     @ExportMessage
@@ -114,5 +120,60 @@ abstract class ManagedPointerLibraries extends CommonPointerLibraries {
 
     static boolean isForeignTest(LLVMPointerImpl receiver, LLVMAsForeignLibrary foreigns) {
         return receiver.getOffset() == 0 && foreigns.isForeign(receiver.object);
+    }
+
+    @ExportMessage
+    static class IdentityHashCode {
+
+        @Specialization(guards = "!foreigns.isForeign(receiver.object)")
+        @TruffleBoundary
+        static int doInternal(LLVMPointerImpl receiver,
+                        @SuppressWarnings("unused") @CachedLibrary("receiver.object") LLVMAsForeignLibrary foreigns) {
+            return hash(System.identityHashCode(receiver.getObject()), receiver.getOffset());
+        }
+
+        @Specialization(guards = "foreigns.isForeign(receiver.object)")
+        static int doForeign(LLVMPointerImpl receiver,
+                        @CachedLibrary("receiver.object") LLVMAsForeignLibrary foreigns,
+                        @Cached ForeignIdentityHashNode hashForeign) {
+            Object foreign = foreigns.asForeign(receiver.getObject());
+            return hash(hashForeign.execute(foreign), receiver.getOffset());
+        }
+
+        private static int hash(int objHash, long offset) {
+            int ret = 0;
+            ret = ret * 31 + objHash;
+            ret = ret * 31 + Long.hashCode(offset);
+            return ret;
+        }
+    }
+
+    @GenerateUncached
+    abstract static class ForeignIdentityHashNode extends LLVMNode {
+
+        abstract int execute(Object obj);
+
+        @Specialization(limit = "3", rewriteOn = UnsupportedMessageException.class)
+        int doUnchecked(Object obj,
+                        @CachedLibrary("obj") InteropLibrary interop) throws UnsupportedMessageException {
+            return interop.identityHashCode(obj);
+        }
+
+        @Specialization(limit = "3", guards = "!interop.hasIdentity(obj)", replaces = "doUnchecked")
+        @TruffleBoundary
+        int doNoIdentity(Object obj,
+                        @SuppressWarnings("unused") @CachedLibrary("obj") InteropLibrary interop) {
+            return System.identityHashCode(obj);
+        }
+
+        @Specialization(limit = "3", replaces = "doNoIdentity")
+        int doChecked(Object obj,
+                        @CachedLibrary("obj") InteropLibrary interop) {
+            try {
+                return interop.identityHashCode(obj);
+            } catch (UnsupportedMessageException ex) {
+                return doNoIdentity(obj, interop);
+            }
+        }
     }
 }

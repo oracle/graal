@@ -35,15 +35,11 @@ import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallBrkNode
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallClockGetTimeNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMSyscallExitNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallFutexNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallGetPpidNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallGetcwdNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallGetpidNode;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallGettidNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallMmapNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallRtSigactionNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallRtSigprocmaskNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallSetTidAddressNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallUnameNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMUnknownSyscallNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.linux.amd64.LinuxAMD64Syscall;
 
@@ -64,21 +60,13 @@ final class LinuxAMD64PlatformCapability extends BasicPlatformCapability<LinuxAM
                 return LLVMAMD64SyscallRtSigactionNodeGen.create();
             case SYS_rt_sigprocmask:
                 return LLVMAMD64SyscallRtSigprocmaskNodeGen.create();
-            case SYS_getpid:
-                return new LLVMAMD64SyscallGetpidNode();
             case SYS_exit:
             case SYS_exit_group: // TODO: implement difference to SYS_exit
                 return new LLVMSyscallExitNode();
-            case SYS_uname:
-                return LLVMAMD64SyscallUnameNodeGen.create();
             case SYS_getcwd:
                 return LLVMAMD64SyscallGetcwdNodeGen.create();
-            case SYS_getppid:
-                return new LLVMAMD64SyscallGetPpidNode();
             case SYS_arch_prctl:
                 return LLVMAMD64SyscallArchPrctlNodeGen.create();
-            case SYS_gettid:
-                return new LLVMAMD64SyscallGettidNode();
             case SYS_futex:
                 return LLVMAMD64SyscallFutexNodeGen.create();
             case SYS_set_tid_address:

@@ -112,10 +112,38 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
              * class Lock for all its locking needs.
              */
             HashSet<Class<?>> monitorTypes = new HashSet<>();
-            Class<?> referenceQueueLock = Class.forName("java.lang.ref.ReferenceQueue$Lock");
-            monitorTypes.add(referenceQueueLock);
+            monitorTypes.add(Class.forName("java.lang.ref.ReferenceQueue$Lock"));
             /* The WeakIdentityHashMap also synchronizes on its internal ReferenceQueue field. */
             monitorTypes.add(java.lang.ref.ReferenceQueue.class);
+
+            /*
+             * Whenever the monitor allocation in
+             * MultiThreadedMonitorSupport.getOrCreateMonitorFromMap() is done via
+             * ThreadLocalAllocation.slowPathNewInstance() then
+             * LinuxPhysicalMemory$PhysicalMemorySupportImpl.sizeFromCGroup() is called which
+             * triggers file IO using the synchronized java.io.FileDescriptor.attach().
+             */
+            monitorTypes.add(java.io.FileDescriptor.class);
+
+            /*
+             * LinuxPhysicalMemory$PhysicalMemorySupportImpl.sizeFromCGroup() also calls
+             * java.io.FileInputStream.close() which synchronizes on a 'Object closeLock = new
+             * Object()' object. We cannot modify the type of the monitor since it is in JDK code.
+             * Adding a monitor slot to java.lang.Object doesn't impact any subtypes.
+             * 
+             * This should also take care of the synchronization in
+             * ReferenceInternals.processPendingReferences().
+             */
+            monitorTypes.add(java.lang.Object.class);
+
+            /*
+             * The map access in MultiThreadedMonitorSupport.getOrCreateMonitorFromMap() calls
+             * System.identityHashCode() which on the slow path calls
+             * IdentityHashCodeSupport.generateIdentityHashCode(). The hashcode generation calls
+             * SplittableRandomAccessors.initialize() which synchronizes on the a Lock object.
+             */
+            monitorTypes.add(Class.forName("com.oracle.svm.core.jdk.SplittableRandomAccessors$Lock"));
+
             FORCE_MONITOR_SLOT_TYPES = Collections.unmodifiableSet(monitorTypes);
         } catch (ClassNotFoundException e) {
             throw VMError.shouldNotReachHere("Error building the list of types that always need a monitor slot.", e);
@@ -170,6 +198,13 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         try {
             singleton().monitorEnter(obj);
 
+        } catch (OutOfMemoryError ex) {
+            /*
+             * Exposing OutOfMemoryError to application. Note that since the foreign call from
+             * snippets to this method does not have an exception edge, it is possible this throw
+             * will miss the proper exception handler.
+             */
+            throw ex;
         } catch (Throwable ex) {
             /*
              * The foreign call from snippets to this method does not have an exception edge. So we
@@ -207,6 +242,13 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         try {
             singleton().monitorExit(obj);
 
+        } catch (OutOfMemoryError ex) {
+            /*
+             * Exposing OutOfMemoryError to application. Note that since the foreign call from
+             * snippets to this method does not have an exception edge, it is possible this throw
+             * will miss the proper exception handler.
+             */
+            throw ex;
         } catch (Throwable ex) {
             /*
              * The foreign call from snippets to this method does not have an exception edge. So we

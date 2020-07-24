@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -942,8 +942,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
         builder.string(" || ");
         builder.staticReference(dispatchLibraryConstant).string(
                         ".getUncached().dispatch(receiver) == null : ").doubleQuote(
-                                        "Invalid library export '" + libraryExports.getTemplateType().getQualifiedName().toString() +
-                                                        "'. Exported receiver with dynamic dispatch found but not expected.");
+                                        "Invalid library export. Exported receiver with dynamic dispatch found but not expected.");
         builder.end();
         return builder.build();
     }

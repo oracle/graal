@@ -14,26 +14,15 @@ import { TextEncoder } from 'util';
 import { registerLanguageServer } from './graalVMLanguageServer';
 
 export const R_LANGUAGE_SERVER_PACKAGE_NAME: string = 'languageserver';
-const INSTALL_GRAALVM_R_COMPONENT: string = 'Install GraalVM R Component';
 const INSTALL_R_LANGUAGE_SERVER: string = 'Install R Language Server';
 
-export function rConfig(graalVMHome: string) {
+export function rConfig(graalVMHome: string): boolean {
 	const executable: string = path.join(graalVMHome, 'bin', 'R');
-	if (!fs.existsSync(executable)) {
-		vscode.window.showInformationMessage('R component is not installed in your GraalVM.', INSTALL_GRAALVM_R_COMPONENT).then(value => {
-			switch (value) {
-				case INSTALL_GRAALVM_R_COMPONENT:
-					vscode.commands.executeCommand('extension.graalvm.installGraalVMComponent', 'R');
-					const watcher:fs.FSWatcher = fs.watch(path.join(graalVMHome, 'bin'), () => {
-						setConfig(executable);
-						watcher.close();
-					});
-					break;
-			}
-		});
-	} else {
+	if (fs.existsSync(executable)) {
 		setConfig(executable);
+		return true;
 	}
+	return false;
 }
 
 function setConfig(path: string) {
@@ -88,7 +77,7 @@ export function installRPackage(name: string) {
 				terminal = vscode.window.createTerminal();
 			}
 			terminal.show();
-			terminal.sendText(`${executable.replace(/(\s+)/g, '\\$1')} --quiet --slave -e 'install.packages("${name}")'`);
+			terminal.sendText(`R_DEFAULT_PACKAGES=base ${executable.replace(/(\s+)/g, '\\$1')} --vanilla --quiet --slave -e 'utils::install.packages("${name}", Ncpus=1, INSTALL_opts="--no-docs --no-byte-compile --no-staged-install --no-test-load --use-vanilla")'`);
 		}
 	}
 	return false;

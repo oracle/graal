@@ -37,7 +37,8 @@ By default, the following locations are searched for an already installed GraalV
     * `GRAALVM_HOME` environment variable content
     * `JAVA_HOME` environment variable content
 
-* __Install GraalVM__ - Downloads the latest GraalVM release from [Github](https://github.com/graalvm/graalvm-ce-builds/releases) and installs it within the extension's global storage.
+* __Install GraalVM__ - Downloads the latest GraalVM release from [Github](https://github.com/graalvm/graalvm-ce-builds/releases) and installs it within the extension's global storage. If you are behind a proxy,
+do not forget to setup your proxy configuration in `File -> Preferences -> Settings`, or run your VS Code instance with the `http_proxy` and `https_proxy` environment variables exported.
 
 Once the path to the GraalVM home directory is provided, the GraalVM is checked for presence of the optional components:
 * [Native image](https://www.graalvm.org/docs/reference-manual/aot-compilation/)

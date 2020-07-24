@@ -79,12 +79,13 @@ public interface VirtualMemoryProvider {
      * the range). Even then, the call to {@link #commit} is not guaranteed to succeed because no
      * physical memory or swap memory is guaranteed to be provisioned for the reserved range.
      *
-     * @param nbytes The size in bytes of the address range to be reserved, which is rounded up to a
-     *            multiple of the {@linkplain #getGranularity() granularity}.
+     * @param nbytes The size in bytes of the address range to be reserved, which will be rounded up
+     *            to a multiple of the {@linkplain #getGranularity() granularity}.
+     * @param alignment The alignment in bytes of the start of the address range to be reserved.
      * @return An {@linkplain #getAlignment aligned} pointer to the beginning of the reserved
      *         address range, or {@link WordFactory#nullPointer()} in case of an error.
      */
-    Pointer reserve(UnsignedWord nbytes);
+    Pointer reserve(UnsignedWord nbytes, UnsignedWord alignment);
 
     /**
      * Map a region of an open file to the specified address range. When {@linkplain Access#WRITE
@@ -127,8 +128,8 @@ public interface VirtualMemoryProvider {
      *            {@linkplain #getGranularity() granularity}, or {@link WordFactory#nullPointer()
      *            NULL} to select an available (unreserved, uncommitted) address range in an
      *            arbitrary but {@linkplain #getAlignment aligned} location.
-     * @param nbytes The size in bytes of the address range to be committed, which is rounded up to
-     *            a multiple of the {@linkplain #getGranularity() granularity}.
+     * @param nbytes The size in bytes of the address range to be committed, which will be rounded
+     *            up to a multiple of the {@linkplain #getGranularity() granularity}.
      * @param access The modes in which the memory is permitted to be accessed, see {@link Access}.
      * @return The start of the committed address range, or {@link WordFactory#nullPointer()} in
      *         case of an error, such as inadequate physical memory.
@@ -141,8 +142,8 @@ public interface VirtualMemoryProvider {
      *
      * @param start The start of the address range to be protected, which must be a multiple of the
      *            {@linkplain #getGranularity() granularity}.
-     * @param nbytes The size in bytes of the address range to be protected, which is rounded up to
-     *            a multiple of the {@linkplain #getGranularity() granularity}.
+     * @param nbytes The size in bytes of the address range to be protected, which will be rounded
+     *            up to a multiple of the {@linkplain #getGranularity() granularity}.
      * @param access The modes in which the memory is permitted to be accessed, see {@link Access}.
      * @return 0 when successful, or a non-zero implementation-specific error code.
      */
@@ -157,8 +158,8 @@ public interface VirtualMemoryProvider {
      *
      * @param start The start of the address range to be uncommitted, which must be a multiple of
      *            the {@linkplain #getGranularity() granularity}.
-     * @param nbytes The size in bytes of the address range to be uncommitted, which is rounded up
-     *            to a multiple of the {@linkplain #getGranularity() granularity}.
+     * @param nbytes The size in bytes of the address range to be uncommitted, which will be rounded
+     *            up to a multiple of the {@linkplain #getGranularity() granularity}.
      * @return 0 when successful, or a non-zero implementation-specific error code.
      */
     int uncommit(PointerBase start, UnsignedWord nbytes);

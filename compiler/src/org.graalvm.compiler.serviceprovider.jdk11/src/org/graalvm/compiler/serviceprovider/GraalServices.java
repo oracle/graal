@@ -42,6 +42,8 @@ import java.util.ServiceLoader;
 import java.util.concurrent.atomic.AtomicLong;
 
 import jdk.vm.ci.code.VirtualObject;
+import jdk.vm.ci.meta.ConstantPool;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 import jdk.vm.ci.runtime.JVMCI;
@@ -440,5 +442,34 @@ public final class GraalServices {
 
     public static int getJavaUpdateVersion() {
         return Runtime.version().update();
+    }
+
+    private static final Method constantPoolLookupReferencedType;
+
+    static {
+        Method lookupReferencedType = null;
+        Class<?> constantPool = ConstantPool.class;
+        try {
+            lookupReferencedType = constantPool.getDeclaredMethod("lookupReferencedType", Integer.TYPE, Integer.TYPE);
+        } catch (NoSuchMethodException e) {
+        }
+        constantPoolLookupReferencedType = lookupReferencedType;
+    }
+
+    public static JavaType lookupReferencedType(ConstantPool constantPool, int cpi, int opcode) {
+        if (constantPoolLookupReferencedType != null) {
+            try {
+                return (JavaType) constantPoolLookupReferencedType.invoke(constantPool, cpi, opcode);
+            } catch (Error e) {
+                throw e;
+            } catch (Throwable throwable) {
+                throw new InternalError(throwable);
+            }
+        }
+        throw new InternalError("This JVMCI version doesn't support ConstantPool.lookupReferencedType()");
+    }
+
+    public static boolean hasLookupReferencedType() {
+        return constantPoolLookupReferencedType != null;
     }
 }

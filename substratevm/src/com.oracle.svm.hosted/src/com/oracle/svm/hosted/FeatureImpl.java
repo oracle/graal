@@ -45,7 +45,6 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.hosted.code.CompileQueue;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -71,6 +70,7 @@ import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.code.CompilationInfoSupport;
+import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
 import com.oracle.svm.hosted.image.AbstractBootImage;
 import com.oracle.svm.hosted.image.AbstractBootImage.NativeImageKind;
@@ -131,6 +131,25 @@ public class FeatureImpl {
 
         public DebugContext getDebugContext() {
             return debugContext;
+        }
+
+        @Override
+        public List<Path> getApplicationClassPath() {
+            return imageClassLoader.getClassLoader().imagecp;
+        }
+
+        @Override
+        public List<Path> getApplicationModulePath() {
+            /*
+             * GR-16855: The image generator does not yet support a module path. This method will
+             * return the proper module path when module support gets implemented.
+             */
+            return Collections.emptyList();
+        }
+
+        @Override
+        public ClassLoader getApplicationClassLoader() {
+            return imageClassLoader.getClassLoader();
         }
     }
 
@@ -324,7 +343,7 @@ public class FeatureImpl {
             if (!aField.isUnsafeAccessed()) {
                 /* Register the field as unsafe accessed. */
                 aField.registerAsAccessed();
-                aField.registerAsUnsafeAccessed();
+                aField.registerAsUnsafeAccessed(bb.getUniverse());
                 /* Force the update of registered unsafe loads and stores. */
                 bb.forceUnsafeUpdate(aField);
                 return true;
@@ -349,7 +368,7 @@ public class FeatureImpl {
             if (!aField.isUnsafeAccessed()) {
                 /* Register the field as unsafe accessed. */
                 aField.registerAsAccessed();
-                aField.registerAsUnsafeAccessed(partitionKind);
+                aField.registerAsUnsafeAccessed(bb.getUniverse(), partitionKind);
                 /* Force the update of registered unsafe loads and stores. */
                 bb.forceUnsafeUpdate(aField);
             }

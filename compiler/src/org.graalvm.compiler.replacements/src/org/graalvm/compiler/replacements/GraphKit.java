@@ -290,9 +290,9 @@ public class GraphKit implements GraphBuilderTool {
 
     @SuppressWarnings("try")
     public InvokeWithExceptionNode createInvokeWithExceptionAndUnwind(ResolvedJavaMethod method, InvokeKind invokeKind,
-                    FrameStateBuilder frameStateBuilder, int invokeBci, int exceptionEdgeBci, ValueNode... args) {
+                    FrameStateBuilder frameStateBuilder, int invokeBci, ValueNode... args) {
         try (DebugCloseable context = graph.withNodeSourcePosition(NodeSourcePosition.substitution(graph.currentNodeSourcePosition(), method))) {
-            InvokeWithExceptionNode result = startInvokeWithException(method, invokeKind, frameStateBuilder, invokeBci, exceptionEdgeBci, args);
+            InvokeWithExceptionNode result = startInvokeWithException(method, invokeKind, frameStateBuilder, invokeBci, args);
             exceptionPart();
             ExceptionObjectNode exception = exceptionObject();
             append(new UnwindNode(exception));
@@ -302,9 +302,9 @@ public class GraphKit implements GraphBuilderTool {
     }
 
     @SuppressWarnings("try")
-    public InvokeWithExceptionNode createInvokeWithExceptionAndUnwind(MethodCallTargetNode callTarget, FrameStateBuilder frameStateBuilder, int invokeBci, int exceptionEdgeBci) {
+    public InvokeWithExceptionNode createInvokeWithExceptionAndUnwind(MethodCallTargetNode callTarget, FrameStateBuilder frameStateBuilder, int invokeBci) {
         try (DebugCloseable context = graph.withNodeSourcePosition(NodeSourcePosition.substitution(graph.currentNodeSourcePosition(), callTarget.targetMethod()))) {
-            InvokeWithExceptionNode result = startInvokeWithException(callTarget, frameStateBuilder, invokeBci, exceptionEdgeBci);
+            InvokeWithExceptionNode result = startInvokeWithException(callTarget, frameStateBuilder, invokeBci);
             exceptionPart();
             ExceptionObjectNode exception = exceptionObject();
             append(new UnwindNode(exception));
@@ -529,7 +529,7 @@ public class GraphKit implements GraphBuilderTool {
     }
 
     public InvokeWithExceptionNode startInvokeWithException(ResolvedJavaMethod method, InvokeKind invokeKind,
-                    FrameStateBuilder frameStateBuilder, int invokeBci, int exceptionEdgeBci, ValueNode... args) {
+                    FrameStateBuilder frameStateBuilder, int invokeBci, ValueNode... args) {
 
         assert method.isStatic() == (invokeKind == InvokeKind.Static);
         Signature signature = method.getSignature();
@@ -540,11 +540,11 @@ public class GraphKit implements GraphBuilderTool {
             returnStamp = StampFactory.forDeclaredType(graph.getAssumptions(), returnType, false);
         }
         MethodCallTargetNode callTarget = graph.add(createMethodCallTarget(invokeKind, method, args, returnStamp, invokeBci));
-        return startInvokeWithException(callTarget, frameStateBuilder, invokeBci, exceptionEdgeBci);
+        return startInvokeWithException(callTarget, frameStateBuilder, invokeBci);
     }
 
-    public InvokeWithExceptionNode startInvokeWithException(MethodCallTargetNode callTarget, FrameStateBuilder frameStateBuilder, int invokeBci, int exceptionEdgeBci) {
-        ExceptionObjectNode exceptionObject = createExceptionObjectNode(frameStateBuilder, exceptionEdgeBci);
+    public InvokeWithExceptionNode startInvokeWithException(MethodCallTargetNode callTarget, FrameStateBuilder frameStateBuilder, int invokeBci) {
+        ExceptionObjectNode exceptionObject = createExceptionObjectNode(frameStateBuilder, invokeBci);
         InvokeWithExceptionNode invoke = append(new InvokeWithExceptionNode(callTarget, exceptionObject, invokeBci));
         AbstractBeginNode noExceptionEdge = graph.add(KillingBeginNode.create(LocationIdentity.any()));
         invoke.setNext(noExceptionEdge);
@@ -575,7 +575,7 @@ public class GraphKit implements GraphBuilderTool {
             FrameStateBuilder exceptionState = frameStateBuilder.copy();
             exceptionState.clearStack();
             exceptionState.push(JavaKind.Object, exceptionObject);
-            exceptionState.setRethrowException(false);
+            exceptionState.setRethrowException(true);
             exceptionObject.setStateAfter(exceptionState.create(exceptionEdgeBci, exceptionObject));
         }
         return exceptionObject;

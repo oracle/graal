@@ -105,14 +105,14 @@ public final class ArrayCopyCallNode extends FixedWithNextNode implements Lowera
                         disjoint, uninitialized, heapWordSize);
     }
 
-    protected ArrayCopyCallNode(@InjectedNodeParameter ArrayCopyForeignCalls foreignCalls, @InjectedNodeParameter WordTypes wordTypes,
+    public ArrayCopyCallNode(@InjectedNodeParameter ArrayCopyForeignCalls foreignCalls, @InjectedNodeParameter WordTypes wordTypes,
                     ValueNode src, ValueNode srcPos, ValueNode dest,
                     ValueNode destPos, ValueNode length, JavaKind elementKind,
                     LocationIdentity killedLocationIdentity, boolean aligned, boolean disjoint, boolean uninitialized, int heapWordSize) {
         this(foreignCalls, wordTypes, src, srcPos, dest, destPos, length, elementKind, null, killedLocationIdentity, aligned, disjoint, uninitialized, heapWordSize);
     }
 
-    protected ArrayCopyCallNode(@InjectedNodeParameter ArrayCopyForeignCalls foreignCalls, @InjectedNodeParameter WordTypes wordTypes,
+    public ArrayCopyCallNode(@InjectedNodeParameter ArrayCopyForeignCalls foreignCalls, @InjectedNodeParameter WordTypes wordTypes,
                     ValueNode src, ValueNode srcPos, ValueNode dest,
                     ValueNode destPos, ValueNode length, JavaKind elementKind,
                     LocationIdentity locationIdentity, LocationIdentity killedLocationIdentity, boolean aligned, boolean disjoint, boolean uninitialized, int heapWordSize) {

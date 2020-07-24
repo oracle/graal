@@ -30,9 +30,12 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Formatter;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -83,9 +86,16 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
 
     class BinutilsCCLinkerInvocation extends CCLinkerInvocation {
 
+        private final boolean staticExecWithDynamicallyLinkLibC = SubstrateOptions.StaticExecutableWithDynamicLibC.getValue();
+        private final Set<String> libCLibaries = new HashSet<>(Arrays.asList("pthread", "dl", "rt"));
+
         BinutilsCCLinkerInvocation() {
             additionalPreOptions.add("-z");
             additionalPreOptions.add("noexecstack");
+            if (SubstrateOptions.ForceNoROSectionRelocations.getValue()) {
+                additionalPreOptions.add("-fuse-ld=gold");
+                additionalPreOptions.add("-Wl,--rosegment");
+            }
 
             if (removeUnusedSymbols()) {
                 /* Perform garbage collection of unused input sections. */
@@ -136,7 +146,9 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
                 case EXECUTABLE:
                     break;
                 case STATIC_EXECUTABLE:
-                    cmd.add("-static");
+                    if (!staticExecWithDynamicallyLinkLibC) {
+                        cmd.add("-static");
+                    }
                     break;
                 case SHARED_LIBRARY:
                     cmd.add("-shared");
@@ -146,6 +158,25 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             }
         }
 
+        @Override
+        protected List<String> getLibrariesCommand() {
+            List<String> cmd = new ArrayList<>();
+            for (String lib : libs) {
+                if (staticExecWithDynamicallyLinkLibC) {
+                    String linkingMode = libCLibaries.contains(lib)
+                                    ? "dynamic"
+                                    : "static";
+                    cmd.add("-Wl,-B" + linkingMode);
+                }
+                cmd.add("-l" + lib);
+            }
+
+            // Make sure libgcc gets statically linked
+            if (staticExecWithDynamicallyLinkLibC) {
+                cmd.add("-static-libgcc");
+            }
+            return cmd;
+        }
     }
 
     class DarwinCCLinkerInvocation extends CCLinkerInvocation {
@@ -336,6 +367,11 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
             potentialCauses.add("Native Image is using a linker that appears to be incompatible with the tool chain used to build the JDK static libraries. " +
                             "The latter is typically shown in the output of `java -Xinternalversion`.");
         }
+        if (SubstrateOptions.ForceNoROSectionRelocations.getValue() && (linkerOutput.contains("fatal error: cannot find ") ||
+                        linkerOutput.contains("error: invalid linker name in argument"))) {
+            potentialCauses.add(SubstrateOptions.ForceNoROSectionRelocations.getName() + " option cannot be used if ld.gold linker is missing from the host system");
+        }
+
         Pattern p = Pattern.compile(".*cannot find -l([^\\s]+)\\s.*", Pattern.DOTALL);
         Matcher m = p.matcher(linkerOutput);
         if (m.matches()) {
@@ -418,7 +454,7 @@ public abstract class NativeBootImageViaCC extends NativeBootImage {
         }
         buf.format("Linker command executed:%n%s", commandLine);
         if (output != null) {
-            buf.format("%n%nLinker command ouput:%n%s", output);
+            buf.format("%n%nLinker command output:%n%s", output);
         }
         throw new RuntimeException(buf.toString());
     }

@@ -29,12 +29,16 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownObjectField;
+import com.oracle.svm.core.annotate.UnknownPrimitiveField;
 
 /**
  * Information on the multiple partitions that make up the image heap, which don't necessarily form
  * a contiguous block of memory (there can be holes in between), and their boundaries.
  */
 public final class ImageHeapInfo {
+    /** Indicates no chunk with {@link #initialize} chunk offset parameters. */
+    public static final long NO_CHUNK = -1;
+
     @UnknownObjectField(types = Object.class) public Object firstReadOnlyPrimitiveObject;
     @UnknownObjectField(types = Object.class) public Object lastReadOnlyPrimitiveObject;
 
@@ -50,8 +54,17 @@ public final class ImageHeapInfo {
     @UnknownObjectField(types = Object.class) public Object firstWritableReferenceObject;
     @UnknownObjectField(types = Object.class) public Object lastWritableReferenceObject;
 
+    @UnknownObjectField(types = Object.class) public Object firstWritableHugeObject;
+    @UnknownObjectField(types = Object.class) public Object lastWritableHugeObject;
+
+    @UnknownObjectField(types = Object.class) public Object firstReadOnlyHugeObject;
+    @UnknownObjectField(types = Object.class) public Object lastReadOnlyHugeObject;
+
     @UnknownObjectField(types = Object.class) public Object firstObject;
     @UnknownObjectField(types = Object.class) public Object lastObject;
+
+    @UnknownPrimitiveField public long offsetOfFirstAlignedChunkWithRememberedSet;
+    @UnknownPrimitiveField public long offsetOfFirstUnalignedChunkWithRememberedSet;
 
     public ImageHeapInfo() {
     }
@@ -59,7 +72,11 @@ public final class ImageHeapInfo {
     @SuppressWarnings("hiding")
     public void initialize(Object firstReadOnlyPrimitiveObject, Object lastReadOnlyPrimitiveObject, Object firstReadOnlyReferenceObject, Object lastReadOnlyReferenceObject,
                     Object firstReadOnlyRelocatableObject, Object lastReadOnlyRelocatableObject, Object firstWritablePrimitiveObject, Object lastWritablePrimitiveObject,
-                    Object firstWritableReferenceObject, Object lastWritableReferenceObject) {
+                    Object firstWritableReferenceObject, Object lastWritableReferenceObject, Object firstWritableHugeObject, Object lastWritableHugeObject,
+                    Object firstReadOnlyHugeObject, Object lastReadOnlyHugeObject, long offsetOfFirstAlignedChunkWithRememberedSet, long offsetOfFirstUnalignedChunkWithRememberedSet) {
+        assert offsetOfFirstAlignedChunkWithRememberedSet == NO_CHUNK || offsetOfFirstAlignedChunkWithRememberedSet >= 0;
+        assert offsetOfFirstUnalignedChunkWithRememberedSet == NO_CHUNK || offsetOfFirstUnalignedChunkWithRememberedSet >= 0;
+
         this.firstReadOnlyPrimitiveObject = firstReadOnlyPrimitiveObject;
         this.lastReadOnlyPrimitiveObject = lastReadOnlyPrimitiveObject;
         this.firstReadOnlyReferenceObject = firstReadOnlyReferenceObject;
@@ -70,6 +87,12 @@ public final class ImageHeapInfo {
         this.lastWritablePrimitiveObject = lastWritablePrimitiveObject;
         this.firstWritableReferenceObject = firstWritableReferenceObject;
         this.lastWritableReferenceObject = lastWritableReferenceObject;
+        this.firstWritableHugeObject = firstWritableHugeObject;
+        this.lastWritableHugeObject = lastWritableHugeObject;
+        this.firstReadOnlyHugeObject = firstReadOnlyHugeObject;
+        this.lastReadOnlyHugeObject = lastReadOnlyHugeObject;
+        this.offsetOfFirstAlignedChunkWithRememberedSet = offsetOfFirstAlignedChunkWithRememberedSet;
+        this.offsetOfFirstUnalignedChunkWithRememberedSet = offsetOfFirstUnalignedChunkWithRememberedSet;
 
         // Compute boundaries for checks considering partitions can be empty (first == last == null)
         Object firstReadOnlyObject = (firstReadOnlyPrimitiveObject != null) ? firstReadOnlyPrimitiveObject
@@ -78,8 +101,12 @@ public final class ImageHeapInfo {
                         : ((lastReadOnlyReferenceObject != null) ? lastReadOnlyReferenceObject : lastReadOnlyPrimitiveObject);
         Object firstWritableObject = (firstWritablePrimitiveObject != null) ? firstWritablePrimitiveObject : firstWritableReferenceObject;
         Object lastWritableObject = (lastWritableReferenceObject != null) ? lastWritableReferenceObject : lastWritablePrimitiveObject;
-        this.firstObject = (firstReadOnlyObject != null) ? firstReadOnlyObject : firstWritableObject;
-        this.lastObject = (lastWritableObject != null) ? lastWritableObject : lastReadOnlyObject;
+        Object firstRegularObject = (firstReadOnlyObject != null) ? firstReadOnlyObject : firstWritableObject;
+        Object lastRegularObject = (lastWritableObject != null) ? lastWritableObject : lastReadOnlyObject;
+        Object firstHugeObject = (firstWritableHugeObject != null) ? firstWritableHugeObject : firstReadOnlyHugeObject;
+        Object lastHugeObject = (lastReadOnlyHugeObject != null) ? lastReadOnlyHugeObject : lastWritableHugeObject;
+        this.firstObject = (firstRegularObject != null) ? firstRegularObject : firstHugeObject;
+        this.lastObject = (lastHugeObject != null) ? lastHugeObject : lastRegularObject;
     }
 
     /*
@@ -97,12 +124,6 @@ public final class ImageHeapInfo {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean isInWritablePrimitivePartition(Pointer ptr) {
-        assert ptr.isNonNull();
-        return Word.objectToUntrackedPointer(firstWritablePrimitiveObject).belowOrEqual(ptr) && ptr.belowOrEqual(Word.objectToUntrackedPointer(lastWritablePrimitiveObject));
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isInReadOnlyReferencePartition(Pointer ptr) {
         assert ptr.isNonNull();
         return Word.objectToUntrackedPointer(firstReadOnlyReferenceObject).belowOrEqual(ptr) && ptr.belowOrEqual(Word.objectToUntrackedPointer(lastReadOnlyReferenceObject));
@@ -115,9 +136,27 @@ public final class ImageHeapInfo {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean isInWritablePrimitivePartition(Pointer ptr) {
+        assert ptr.isNonNull();
+        return Word.objectToUntrackedPointer(firstWritablePrimitiveObject).belowOrEqual(ptr) && ptr.belowOrEqual(Word.objectToUntrackedPointer(lastWritablePrimitiveObject));
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isInWritableReferencePartition(Pointer ptr) {
         assert ptr.isNonNull();
         return Word.objectToUntrackedPointer(firstWritableReferenceObject).belowOrEqual(ptr) && ptr.belowOrEqual(Word.objectToUntrackedPointer(lastWritableReferenceObject));
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean isInWritableHugePartition(Pointer ptr) {
+        assert ptr.isNonNull();
+        return Word.objectToUntrackedPointer(firstWritableHugeObject).belowOrEqual(ptr) && ptr.belowOrEqual(Word.objectToUntrackedPointer(lastWritableHugeObject));
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean isInReadOnlyHugePartition(Pointer ptr) {
+        assert ptr.isNonNull();
+        return Word.objectToUntrackedPointer(firstReadOnlyHugeObject).belowOrEqual(ptr) && ptr.belowOrEqual(Word.objectToUntrackedPointer(lastReadOnlyHugeObject));
     }
 
     /**
@@ -146,6 +185,8 @@ public final class ImageHeapInfo {
             result |= isInReadOnlyRelocatablePartition(objectPointer);
             result |= isInWritablePrimitivePartition(objectPointer);
             result |= isInWritableReferencePartition(objectPointer);
+            result |= isInWritableHugePartition(objectPointer);
+            result |= isInReadOnlyHugePartition(objectPointer);
         }
         return result;
     }

@@ -48,6 +48,7 @@ import java.util.stream.Stream;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.hotspot.JVMCIVersionCheck;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -280,10 +281,15 @@ public final class NativeLibraries {
             Path platformDependentPath = staticLibPath.resolve((OS.getCurrent().className + "-" + target.arch.getName()).toLowerCase());
             if (OS.getCurrent() == OS.LINUX) {
                 platformDependentPath = platformDependentPath.resolve(LibCBase.singleton().getName());
+                if (LibCBase.singleton().requiresLibCSpecificStaticJDKLibraries()) {
+                    return platformDependentPath;
+                }
             }
-            // Fallback for older JDK versions
+
             if (Files.exists(platformDependentPath)) {
                 return platformDependentPath;
+            } else {
+                System.err.println("WARNING: Using an older version of the labsjdk-11.");
             }
         }
         return baseSearchPath;
@@ -304,11 +310,11 @@ public final class NativeLibraries {
             if (defaultBuiltInLibraries.stream().allMatch(hasStaticLibrary)) {
                 staticLibsDir = jdkLibDir;
             } else {
-                hint = System.lineSeparator() + defaultBuiltInLibraries.stream().filter(hasStaticLibrary.negate()).collect(Collectors.joining(", ", "Missing libraries:", ""));
+                hint = defaultBuiltInLibraries.stream().filter(hasStaticLibrary.negate()).collect(Collectors.joining(", ", "Missing libraries:", ""));
             }
         } catch (IOException e) {
             /* Fallthrough to next strategy */
-            hint = System.lineSeparator() + e.getMessage();
+            hint = e.getMessage();
         }
 
         if (staticLibsDir == null) {
@@ -324,12 +330,12 @@ public final class NativeLibraries {
                 if (Platform.includedIn(Platform.LINUX.class)) {
                     libCMessage = "(target libc: " + LibCBase.singleton().getName() + ")";
                 }
+                String jdkDownloadURL = (JavaVersionUtil.JAVA_SPEC > 8 ? JVMCIVersionCheck.JVMCI11_RELEASES_URL : JVMCIVersionCheck.JVMCI8_RELEASES_URL);
                 UserError.guarantee(!Platform.includedIn(InternalPlatform.PLATFORM_JNI.class),
-                                "Building images for %s%s requires static JDK libraries.%nUse JDK from %s or %s%s",
+                                "Building images for %s%s requires static JDK libraries.%Use the JDK from %s%n%s",
                                 ImageSingletons.lookup(Platform.class).getClass().getName(),
                                 libCMessage,
-                                "https://github.com/graalvm/openjdk8-jvmci-builder/releases",
-                                "https://github.com/graalvm/labs-openjdk-11/releases",
+                                jdkDownloadURL,
                                 hint);
             }
         }

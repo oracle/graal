@@ -82,6 +82,28 @@ public interface EconomicMap<K, V> extends UnmodifiableEconomicMap<K, V> {
     V put(K key, V value);
 
     /**
+     * If the specified key is not already associated with a value (or is mapped to {@code null})
+     * associates it with the given value and returns {@code null}, else returns the current value.
+     *
+     * @param key key with which the specified value is to be associated
+     * @param value value to be associated with the specified key
+     *
+     * @return the previous value associated with the specified key, or {@code null} if there was no
+     *         mapping for the key. (A {@code null} return can also indicate that the map previously
+     *         associated {@code null} with the key, if the implementation supports null values.)
+     *
+     * @since 20.2
+     */
+    default V putIfAbsent(K key, V value) {
+        V v = get(key);
+        if (v == null) {
+            v = put(key, value);
+        }
+
+        return v;
+    }
+
+    /**
      * Copies all of the mappings from {@code other} to this map.
      *
      * @since 19.0
@@ -218,6 +240,12 @@ public interface EconomicMap<K, V> extends UnmodifiableEconomicMap<K, V> {
             @Override
             public V put(K key, V value) {
                 V result = map.put(key, value);
+                return result;
+            }
+
+            @Override
+            public V putIfAbsent(K key, V value) {
+                V result = map.putIfAbsent(key, value);
                 return result;
             }
 

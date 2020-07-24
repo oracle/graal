@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -85,8 +85,9 @@ class Mode:
     def compile():
         if not Mode._compile:
             Mode._compile = Mode('compile', [
-                '-Dgraal.TruffleCompileImmediately=true',
-                '-Dgraal.TruffleBackgroundCompilation=false',
+                '-Dpolyglot.engine.AllowExperimentalOptions=true',
+                '-Dpolyglot.engine.CompileImmediately=true',
+                '-Dpolyglot.engine.BackgroundCompilation=false',
                 '-Dtck.inlineVerifierInstrument=false'])
         return Mode._compile
 

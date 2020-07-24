@@ -162,8 +162,6 @@ public abstract class Accessor {
 
         public abstract Lock getLock(Node node);
 
-        public abstract void clearPolyglotEngine(RootNode rootNode);
-
         public abstract void applyPolyglotEngine(RootNode from, RootNode to);
 
         public abstract void forceAdoption(Node parent, Node child);
@@ -437,7 +435,7 @@ public abstract class Accessor {
 
         public abstract String getUnparsedOptionValue(OptionValues optionValues, OptionKey<?> optionKey);
 
-        public abstract String getPreinitializedRelativePathInLanguageHome(TruffleFile truffleFile);
+        public abstract String getRelativePathInLanguageHome(TruffleFile truffleFile);
 
         public abstract void onSourceCreated(Source source);
 
@@ -466,6 +464,10 @@ public abstract class Accessor {
         public abstract Object getInternalFileSystemContext(Object polyglotContextImpl);
 
         public abstract Map<String, Collection<? extends FileTypeDetector>> getEngineFileTypeDetectors(Object engineFileSystemContext);
+
+        public abstract boolean isHostToGuestRootNode(RootNode rootNode);
+
+        public abstract AssertionError invalidSharingError(Object polyglotEngine) throws AssertionError;
 
     }
 

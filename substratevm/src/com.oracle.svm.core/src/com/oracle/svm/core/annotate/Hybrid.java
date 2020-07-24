@@ -33,13 +33,15 @@ import java.util.BitSet;
 import com.oracle.svm.core.hub.DynamicHub;
 
 /**
- * Defines that the annotated class should have an Hybrid layout. The contents of a specified member
- * array an (optional) member {@link BitSet} are directly placed within the class layout. This saves
- * one indirection when accessing the array or bit-set.
+ * Defines that the annotated class should have a Hybrid layout. Hybrid layouts are hybrids between
+ * instance layouts and array layouts. The contents of a specified member array and an (optional)
+ * member {@link BitSet} are directly placed within the class layout. This saves one indirection
+ * when accessing the array or bit-set.
+ *
  * <p>
  * The array length is located directly after the HUB pointer, like in regular array. Then (if
- * present) the bits are located. Then the instance fields are placed, and at the end of the layout
- * the array elements are located.
+ * present) the bits are located. Then the instance fields are placed. Then, with the default GC,
+ * there is an optional identity hashcode. At the end of the layout, the array elements are located.
  * 
  * <pre>
  *    +--------------------------------+
@@ -52,6 +54,8 @@ import com.oracle.svm.core.hub.DynamicHub;
  *    +--------------------------------+
  *    | instance fields                |
  *    |     ...                        |
+ *    +--------------------------------+
+ *    | identity hashcode (optional)   |
  *    +--------------------------------+
  *    | array elements                 |
  *    :     ...                        :

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -55,9 +55,9 @@ import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.Manage
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.ManagedSubNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.ManagedXorNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMArithmeticNodeFactory.PointerToI64NodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.util.LLVMSameObjectNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
-import com.oracle.truffle.llvm.spi.ReferenceLibrary;
 
 @NodeChild("leftNode")
 @NodeChild("rightNode")
@@ -351,15 +351,15 @@ public abstract class LLVMArithmeticNode extends LLVMExpressionNode {
             super(ArithmeticOperation.SUB);
         }
 
-        @Specialization(limit = "3", guards = "sameObject.isSame(left.getObject(), right.getObject())")
+        @Specialization(guards = "sameObject.execute(left.getObject(), right.getObject())")
         long doSameObjectLong(LLVMManagedPointer left, LLVMManagedPointer right,
-                        @SuppressWarnings("unused") @CachedLibrary("left.getObject()") ReferenceLibrary sameObject) {
+                        @SuppressWarnings("unused") @Cached LLVMSameObjectNode sameObject) {
             return left.getOffset() - right.getOffset();
         }
 
-        @Specialization(limit = "3", guards = "!sameObject.isSame(left.getObject(), right.getObject())")
+        @Specialization(limit = "3", guards = "!sameObject.execute(left.getObject(), right.getObject())")
         long doNotSameObject(LLVMManagedPointer left, LLVMManagedPointer right,
-                        @SuppressWarnings("unused") @CachedLibrary("left.getObject()") ReferenceLibrary sameObject,
+                        @SuppressWarnings("unused") @Cached LLVMSameObjectNode sameObject,
                         @CachedLibrary("left") LLVMNativeLibrary leftLib,
                         @CachedLibrary("right") LLVMNativeLibrary rightLib) {
             return leftLib.toNativePointer(left).asNative() - rightLib.toNativePointer(right).asNative();

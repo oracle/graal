@@ -102,6 +102,34 @@ public interface Feature {
          * @since 19.0
          */
         Class<?> findClassByName(String className);
+
+        /**
+         * Returns the class path of the native image that is currently built.
+         * 
+         * The returned list does not include the native image generator itself, and does not
+         * include the JDK.
+         * 
+         * @since 20.2
+         */
+        List<Path> getApplicationClassPath();
+
+        /**
+         * Returns the module path of the native image that is currently built.
+         *
+         * The returned list does not include the native image generator itself, and does not
+         * include the JDK.
+         *
+         * @since 20.2
+         */
+        List<Path> getApplicationModulePath();
+
+        /**
+         * Returns the {@link ClassLoader} that can find all classes of the class path and module
+         * path.
+         *
+         * @since 20.2
+         */
+        ClassLoader getApplicationClassLoader();
     }
 
     /**

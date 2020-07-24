@@ -27,6 +27,7 @@ package com.oracle.svm.core.genscavenge;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.image.AbstractImageHeapLayouter;
 import com.oracle.svm.core.image.ImageHeap;
+import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 
 public class LinearImageHeapLayouter extends AbstractImageHeapLayouter<LinearImageHeapPartition> {
     private final ImageHeapInfo heapInfo;
@@ -43,12 +44,12 @@ public class LinearImageHeapLayouter extends AbstractImageHeapLayouter<LinearIma
     }
 
     @Override
-    protected LinearImageHeapPartition createPartition(String name, boolean containsReferences, boolean writable) {
+    protected LinearImageHeapPartition createPartition(String name, boolean containsReferences, boolean writable, boolean hugeObjects) {
         return new LinearImageHeapPartition(name, writable);
     }
 
     @Override
-    protected void doLayout(ImageHeap imageHeap) {
+    protected ImageHeapLayoutInfo doLayout(ImageHeap imageHeap) {
         long startOffset = 0;
         if (compressedNullPadding) {
             /*
@@ -62,6 +63,7 @@ public class LinearImageHeapLayouter extends AbstractImageHeapLayouter<LinearIma
             partition.allocateObjects(allocator);
         }
         initializeHeapInfo();
+        return createDefaultLayoutInfo();
     }
 
     /**
@@ -71,6 +73,7 @@ public class LinearImageHeapLayouter extends AbstractImageHeapLayouter<LinearIma
     private void initializeHeapInfo() {
         heapInfo.initialize(getReadOnlyPrimitive().firstObject, getReadOnlyPrimitive().lastObject, getReadOnlyReference().firstObject, getReadOnlyReference().lastObject,
                         getReadOnlyRelocatable().firstObject, getReadOnlyRelocatable().lastObject, getWritablePrimitive().firstObject, getWritablePrimitive().lastObject,
-                        getWritableReference().firstObject, getWritableReference().lastObject);
+                        getWritableReference().firstObject, getWritableReference().lastObject, getWritableHuge().firstObject, getWritableHuge().lastObject,
+                        getReadOnlyHuge().firstObject, getReadOnlyHuge().lastObject, ImageHeapInfo.NO_CHUNK, ImageHeapInfo.NO_CHUNK);
     }
 }

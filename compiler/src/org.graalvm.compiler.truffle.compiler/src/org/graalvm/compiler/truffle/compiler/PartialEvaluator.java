@@ -87,6 +87,7 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.InlineKind;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
 import org.graalvm.compiler.truffle.compiler.debug.HistogramInlineInvokePlugin;
+import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
 import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.AllowMaterializeNode;
 import org.graalvm.compiler.truffle.compiler.phases.DeoptimizeOnExceptionPhase;
@@ -166,7 +167,7 @@ public abstract class PartialEvaluator {
         this.nodePlugins = createNodePlugins(configForRoot.getPlugins());
     }
 
-    void initialize(OptionValues options) {
+    protected void initialize(OptionValues options) {
         instrumentationCfg = new InstrumentPhase.InstrumentationConfiguration(options);
         boolean needSourcePositions = TruffleCompilerOptions.getPolyglotOptionValue(options, NodeSourcePositions) ||
                         instrumentationCfg.instrumentBranches ||
@@ -174,6 +175,10 @@ public abstract class PartialEvaluator {
                         !TruffleCompilerOptions.getPolyglotOptionValue(options, TracePerformanceWarnings).isEmpty();
         configForParsing = configPrototype.withNodeSourcePosition(configPrototype.trackNodeSourcePosition() || needSourcePositions).withOmitAssertions(
                         TruffleCompilerOptions.getPolyglotOptionValue(options, ExcludeAssertions));
+    }
+
+    public EconomicMap<ResolvedJavaMethod, EncodedGraph> getOrCreateEncodedGraphCache() {
+        return EconomicMap.create();
     }
 
     /**
@@ -305,6 +310,7 @@ public abstract class PartialEvaluator {
             // @formatter:on
             builder = customizeStructuredGraphBuilder(builder);
             this.graph = builder.build();
+            this.graph.getAssumptions().record(new TruffleAssumption(compilable.getNodeRewritingAssumptionConstant()));
             highTierContext = new HighTierContext(providers, new PhaseSuite<HighTierContext>(), OptimisticOptimizations.NONE);
         }
     }
@@ -567,7 +573,7 @@ public abstract class PartialEvaluator {
                 agnosticInlining.apply(request.graph, providers);
             } else {
                 final PEInliningPlanInvokePlugin plugin = new PEInliningPlanInvokePlugin(this, request.options, request.compilable, request.inliningPlan, request.graph);
-                doGraphPE(request, plugin, EconomicMap.create());
+                doGraphPE(request, plugin, getOrCreateEncodedGraphCache());
             }
         }
         request.debug.dump(DebugContext.BASIC_LEVEL, request.graph, "After Partial Evaluation");

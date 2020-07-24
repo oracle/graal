@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.object;
 
 import java.util.Objects;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.FinalLocationException;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -72,6 +73,7 @@ public class PropertyImpl extends Property {
      * @since 0.17 or earlier
      */
     PropertyImpl(Object key, Location location, int flags, boolean relocatable) {
+        CompilerAsserts.neverPartOfCompilation();
         this.key = Objects.requireNonNull(key);
         this.location = Objects.requireNonNull(location);
         this.flags = flags;

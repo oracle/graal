@@ -117,7 +117,10 @@ public interface WasmNodeInterface {
 
     default long pop(VirtualFrame frame, int slot) {
         try {
-            return frame.getLong(codeEntry().stackSlot(slot));
+            long result = frame.getLong(codeEntry().stackSlot(slot));
+            // Needed to avoid keeping track of popped slots in FrameStates.
+            frame.setLong(codeEntry().stackSlot(slot), 0L);
+            return result;
         } catch (FrameSlotTypeException e) {
             throw new RuntimeException(e);
         }

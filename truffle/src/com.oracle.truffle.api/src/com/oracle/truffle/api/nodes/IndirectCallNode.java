@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -84,8 +84,8 @@ public abstract class IndirectCallNode extends Node {
 
     /**
      * Returns an uncached version of an indirect call node. Uncached versions of an indirect call
-     * node use the {@link NodeUtil#getCurrentEncapsulatingNode() current encapsulating node} as
-     * source location.
+     * node use the {@link EncapsulatingNodeReference#get() current encapsulating node} as source
+     * location.
      *
      * @since 19.0
      */

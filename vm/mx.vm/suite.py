@@ -1,6 +1,6 @@
 suite = {
     "name": "vm",
-    "version" : "20.2.0",
+    "version" : "20.3.0",
     "mxversion" : "5.256.0",
     "release" : False,
     "groupId" : "org.graalvm",
@@ -39,7 +39,7 @@ suite = {
                 "name": "graal-nodejs",
                 "subdir": True,
                 "dynamic": True,
-                "version": "f59ffbdeef2d88823d409edcfe335dfffb7b45b8",
+                "version": "7170cfbf2e49156d1054e11d4c53319bb20301cf",
                 "urls" : [
                     {"url" : "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -49,7 +49,7 @@ suite = {
                 "name": "graal-js",
                 "subdir": True,
                 "dynamic": True,
-                "version": "f59ffbdeef2d88823d409edcfe335dfffb7b45b8",
+                "version": "7170cfbf2e49156d1054e11d4c53319bb20301cf",
                 "urls": [
                     {"url": "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -57,7 +57,7 @@ suite = {
             },
             {
                 "name": "truffleruby",
-                "version": "d0c19655af6bc078806f71d8558d933be0fa10bd",
+                "version": "b8bc6c493579d2deb38ddf40b068f1517d3a4096",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
@@ -66,7 +66,7 @@ suite = {
             },
             {
                 "name": "fastr",
-                "version": "b5b379f7b2fad7d98a0e8a22eab667e9190565ef",
+                "version": "3fb16def819ced459caf89690eb3f8638eb69241",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/fastr.git", "kind": "git"},
@@ -75,7 +75,7 @@ suite = {
             },
             {
                 "name": "graalpython",
-                "version": "916ae5c7f3505256ccff80c00a762dfa6056e6c5",
+                "version": "4a8dc03c1e1c2d351ba2473995dca7e900183c2b",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/graalpython.git", "kind": "git"},

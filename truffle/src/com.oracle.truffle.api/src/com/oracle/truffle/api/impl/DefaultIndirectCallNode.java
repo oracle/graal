@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,9 +42,9 @@ package com.oracle.truffle.api.impl;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.NodeUtil;
 
 /**
  * This is runtime specific API. Do not use in a guest language.
@@ -70,11 +70,12 @@ final class DefaultIndirectCallNode extends IndirectCallNode {
                  * Clear encapsulating node for uncached indirect call boundary. The encapsulating
                  * node is not longer needed if a call boundary is crossed.
                  */
-                Node parent = NodeUtil.pushEncapsulatingNode(null);
+                EncapsulatingNodeReference encapsulating = EncapsulatingNodeReference.getCurrent();
+                Node parent = encapsulating.set(null);
                 try {
                     return ((DefaultCallTarget) target).callDirectOrIndirect(parent, arguments);
                 } finally {
-                    NodeUtil.popEncapsulatingNode(parent);
+                    encapsulating.set(parent);
                 }
             }
         };

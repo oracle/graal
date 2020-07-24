@@ -135,8 +135,9 @@ import org.graalvm.compiler.serviceprovider.GraalServices;
 /**
  * Entry points in libgraal for {@link TruffleToLibGraal calls} from HotSpot.
  *
- * To trace Truffle calls between HotSpot and libgraal, set the environment variable
- * {@code JNI_LIBGRAAL_TRACE_LEVEL} to {@code true}.
+ * To trace Truffle calls between HotSpot and libgraal, set the {@code JNI_LIBGRAAL_TRACE_LEVEL}
+ * system property to {@code 1}. For detailed tracing set the {@code JNI_LIBGRAAL_TRACE_LEVEL}
+ * system property to {@code 3}.
  */
 final class TruffleToLibGraalEntryPoints {
 
@@ -171,13 +172,15 @@ final class TruffleToLibGraalEntryPoints {
     }
 
     @TruffleToLibGraal(InitializeCompiler)
-    @SuppressWarnings({"unused", "try"})
+    @SuppressWarnings("unused")
     @CEntryPoint(name = "Java_org_graalvm_compiler_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls_initializeCompiler")
-    public static void initializeCompiler(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long compilerHandle, JByteArray hsOptions) {
+    public static void initializeCompiler(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long compilerHandle, JByteArray hsOptions, JObject hsCompilable,
+                    boolean firstInitialization) {
         try (JNILibGraalScope<TruffleToLibGraal.Id> s = new JNILibGraalScope<>(InitializeCompiler, env)) {
             HotSpotTruffleCompilerImpl compiler = LibGraalObjectHandles.resolve(compilerHandle, HotSpotTruffleCompilerImpl.class);
             Map<String, Object> options = decodeOptions(env, hsOptions);
-            compiler.initialize(options);
+            CompilableTruffleAST compilable = new HSCompilableTruffleAST(s, hsCompilable);
+            compiler.initialize(options, compilable, firstInitialization);
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
         }
@@ -291,24 +294,26 @@ final class TruffleToLibGraalEntryPoints {
     }
 
     @TruffleToLibGraal(InstallTruffleCallBoundaryMethods)
-    @SuppressWarnings({"unused", "try"})
+    @SuppressWarnings("unused")
     @CEntryPoint(name = "Java_org_graalvm_compiler_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls_installTruffleCallBoundaryMethods")
-    public static void installTruffleCallBoundaryMethods(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long handle) {
+    public static void installTruffleCallBoundaryMethods(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long handle, JObject hsCompilable) {
         try (JNILibGraalScope<TruffleToLibGraal.Id> s = new JNILibGraalScope<>(InstallTruffleCallBoundaryMethods, env)) {
             HotSpotTruffleCompilerImpl compiler = LibGraalObjectHandles.resolve(handle, HotSpotTruffleCompilerImpl.class);
-            compiler.installTruffleCallBoundaryMethods();
+            CompilableTruffleAST compilable = new HSCompilableTruffleAST(s, hsCompilable);
+            compiler.installTruffleCallBoundaryMethods(compilable);
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
         }
     }
 
     @TruffleToLibGraal(PendingTransferToInterpreterOffset)
-    @SuppressWarnings({"unused", "try"})
+    @SuppressWarnings("unused")
     @CEntryPoint(name = "Java_org_graalvm_compiler_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls_pendingTransferToInterpreterOffset")
-    public static int pendingTransferToInterpreterOffset(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long handle) {
+    public static int pendingTransferToInterpreterOffset(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long handle, JObject hsCompilable) {
         try (JNILibGraalScope<TruffleToLibGraal.Id> scope = new JNILibGraalScope<>(PendingTransferToInterpreterOffset, env)) {
             HotSpotTruffleCompilerImpl compiler = LibGraalObjectHandles.resolve(handle, HotSpotTruffleCompilerImpl.class);
-            return compiler.pendingTransferToInterpreterOffset();
+            CompilableTruffleAST compilable = new HSCompilableTruffleAST(scope, hsCompilable);
+            return compiler.pendingTransferToInterpreterOffset(compilable);
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
             return 0;

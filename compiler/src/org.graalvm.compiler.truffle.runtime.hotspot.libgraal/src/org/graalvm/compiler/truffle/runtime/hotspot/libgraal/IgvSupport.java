@@ -136,7 +136,8 @@ final class IgvSupport extends LibGraalObject implements TruffleDebugContext {
     static IgvSupport create(LibGraalHotSpotTruffleCompiler compiler, Map<String, Object> options, LibGraalTruffleCompilation compilation) {
         byte[] encodedOptions = OptionsEncoder.encode(options);
         LibGraalScope scope = new LibGraalScope();
-        return new IgvSupport(scope, compiler, TruffleToLibGraalCalls.openDebugContext(getIsolateThread(), compiler.handle(), compilation == null ? 0 : compilation.getHandle(), encodedOptions));
+        return new IgvSupport(scope, compiler,
+                        TruffleToLibGraalCalls.openDebugContext(getIsolateThread(), LibGraalHotSpotTruffleCompiler.handle(), compilation == null ? 0 : compilation.getHandle(), encodedOptions));
     }
 
     private static final class IgvDumpChannel extends LibGraalObject implements WritableByteChannel {

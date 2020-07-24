@@ -54,6 +54,11 @@ public abstract class GeneratedInvocationPlugin implements InvocationPlugin {
     public abstract Class<? extends Annotation> getSource();
 
     @Override
+    public boolean inlineOnly() {
+        return true;
+    }
+
+    @Override
     public abstract boolean execute(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode[] args);
 
     @Override

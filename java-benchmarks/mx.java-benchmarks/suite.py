@@ -65,5 +65,10 @@ suite = {
       },
       "dependencies": ["JAXB_API_2.1", "ACTIVATION_1.1.1"]
     },
+    # https://github.com/smarr/are-we-fast-yet
+    "AWFY" : {
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/awfy/awfy-770c6649.jar"],
+      "sha1" : "f1bf1febd81ce7fbd83244682ddc79e74fec0076",
+    },
   }
 }

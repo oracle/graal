@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -102,22 +102,30 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         final Map<Class<?>, PolyglotValue> valueCache;
         final Thread.UncaughtExceptionHandler uncaughtExceptionHandler;
         final PolyglotLanguageInstance languageInstance;
-        final Map<String, LanguageInfo> accessibleInternalLanguages;
-        final Map<String, LanguageInfo> accessiblePublicLanguages;
+        @CompilationFinal Map<String, LanguageInfo> accessibleInternalLanguages;
+        @CompilationFinal Map<String, LanguageInfo> accessiblePublicLanguages;
         final Object internalFileSystemContext;
         final Object publicFileSystemContext;
 
         Lazy(PolyglotLanguageInstance languageInstance, PolyglotContextConfig config) {
+            /*
+             * Important anything that is initialized here must be properly patched in #patch.
+             */
             this.languageInstance = languageInstance;
             this.sourceCache = languageInstance.getSourceCache();
             this.activePolyglotThreads = new HashSet<>();
             this.polyglotGuestBindings = new PolyglotBindings(PolyglotLanguageContext.this);
             this.uncaughtExceptionHandler = new PolyglotUncaughtExceptionHandler();
             this.valueCache = new ConcurrentHashMap<>();
-            this.accessibleInternalLanguages = computeAccessibleLanguages(config, true);
-            this.accessiblePublicLanguages = computeAccessibleLanguages(config, false);
+            this.computeAccessPermissions(config);
+            // file systems are patched after preinitialization internally using a delegate field
             this.publicFileSystemContext = EngineAccessor.LANGUAGE.createFileSystemContext(PolyglotLanguageContext.this, config.fileSystem);
             this.internalFileSystemContext = EngineAccessor.LANGUAGE.createFileSystemContext(PolyglotLanguageContext.this, config.internalFileSystem);
+        }
+
+        void computeAccessPermissions(PolyglotContextConfig config) {
+            this.accessibleInternalLanguages = computeAccessibleLanguages(config, true);
+            this.accessiblePublicLanguages = computeAccessibleLanguages(config, false);
         }
 
         private Map<String, LanguageInfo> computeAccessibleLanguages(PolyglotContextConfig config, boolean internal) {
@@ -620,8 +628,9 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     boolean patch(PolyglotContextConfig newConfig) {
         if (isCreated()) {
             try {
-                final OptionValuesImpl newOptionValues = newConfig.getOptionValues(language);
-                final Env newEnv = LANGUAGE.patchEnvContext(env, newConfig.out, newConfig.err, newConfig.in,
+                OptionValuesImpl newOptionValues = newConfig.getOptionValues(language);
+                lazy.computeAccessPermissions(newConfig);
+                Env newEnv = LANGUAGE.patchEnvContext(env, newConfig.out, newConfig.err, newConfig.in,
                                 Collections.emptyMap(), newOptionValues, newConfig.getApplicationArguments(language));
                 if (newEnv != null) {
                     env = newEnv;
@@ -636,7 +645,9 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                     throw t;
                 }
                 LOG.log(Level.FINE, "Exception during patching context of language: {0}", this.language.getId());
-                throw PolyglotImpl.guestToHostException(this, t);
+                // The conversion to the host exception happens in the
+                // PolyglotEngineImpl.createContext
+                throw GuestToHostRootNode.silenceException(RuntimeException.class, t);
             }
         } else {
             return true;
@@ -888,7 +899,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         } else if (PolyglotImpl.isGuestPrimitive(hostValue)) {
             return hostValue;
         } else if (hostValue instanceof Proxy) {
-            return PolyglotProxy.toProxyGuestObject(this, (Proxy) hostValue);
+            return PolyglotProxy.toProxyGuestObject((Proxy) hostValue);
         } else if (hostValue instanceof TruffleObject) {
             return hostValue;
         } else if (hostValue instanceof Class) {
@@ -912,7 +923,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         } else if (HostObject.isInstance(value)) {
             return ((HostObject) value).withContext(this);
         } else if (PolyglotProxy.isProxyGuestObject(value)) {
-            return PolyglotProxy.withContext(this, value);
+            return value;
         } else if (valueContext == null) {
             /*
              * The only way this can happen is with Value.asValue(TruffleObject). If it happens

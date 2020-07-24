@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -75,6 +75,7 @@ public class TruffleTypes {
     public static final String CompilerDirectives_CompilationFinal_Name = "com.oracle.truffle.api.CompilerDirectives.CompilationFinal";
     public static final String CompilerDirectives_Name = "com.oracle.truffle.api.CompilerDirectives";
     public static final String CompilerDirectives_TruffleBoundary_Name = "com.oracle.truffle.api.CompilerDirectives.TruffleBoundary";
+    public static final String EncapsulatingNodeReference_Name = "com.oracle.truffle.api.nodes.EncapsulatingNodeReference";
     public static final String ExplodeLoop_Name = "com.oracle.truffle.api.nodes.ExplodeLoop";
     public static final String Frame_Name = "com.oracle.truffle.api.frame.Frame";
     public static final String FinalBitSet_Name = "com.oracle.truffle.api.utilities.FinalBitSet";
@@ -99,12 +100,14 @@ public class TruffleTypes {
     public static final String TruffleOptions_Name = "com.oracle.truffle.api.TruffleOptions";
     public static final String UnexpectedResultException_Name = "com.oracle.truffle.api.nodes.UnexpectedResultException";
     public static final String VirtualFrame_Name = "com.oracle.truffle.api.frame.VirtualFrame";
+    public static final String HostLanguage_Name = "com.oracle.truffle.polyglot.HostLanguage";
 
     public final DeclaredType Assumption = c.getDeclaredType(Assumption_Name);
     public final DeclaredType CompilerAsserts = c.getDeclaredType(CompilerAsserts_Name);
     public final DeclaredType CompilerDirectives = c.getDeclaredType(CompilerDirectives_Name);
     public final DeclaredType CompilerDirectives_CompilationFinal = c.getDeclaredType(CompilerDirectives_CompilationFinal_Name);
     public final DeclaredType CompilerDirectives_TruffleBoundary = c.getDeclaredType(CompilerDirectives_TruffleBoundary_Name);
+    public final DeclaredType EncapsulatingNodeReference = c.getDeclaredType(EncapsulatingNodeReference_Name);
     public final DeclaredType ExplodeLoop = c.getDeclaredType(ExplodeLoop_Name);
     public final DeclaredType Frame = c.getDeclaredType(Frame_Name);
     public final DeclaredType FinalBitSet = c.getDeclaredType(FinalBitSet_Name);
@@ -127,6 +130,7 @@ public class TruffleTypes {
     public final DeclaredType TruffleOptions = c.getDeclaredType(TruffleOptions_Name);
     public final DeclaredType UnexpectedResultException = c.getDeclaredType(UnexpectedResultException_Name);
     public final DeclaredType VirtualFrame = c.getDeclaredType(VirtualFrame_Name);
+    public final DeclaredType HostLanguage = c.getDeclaredTypeOptional(HostLanguage_Name);
 
     // DSL API
     public static final String Bind_Name = "com.oracle.truffle.api.dsl.Bind";

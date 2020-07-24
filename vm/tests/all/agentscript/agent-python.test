@@ -3,8 +3,6 @@
 > graalpython --insight=agent-python.py --experimental-options ${TMP_DIR}/test.py
 Python: Insight version 0.6 is launching
 Python: Hooks are ready!
-Python: observed loading of site.py
-Python: observed loading of _sitebuiltins.py
 Python: observed loading of test.py
 Ahoj
 > js --polyglot --insight=agent-python.py --experimental-options agent-fib.js

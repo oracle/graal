@@ -116,7 +116,7 @@ public class DeletedMethod extends CustomSubstitutionMethod {
 
         String msg = AnnotationSubstitutionProcessor.deleteErrorMessage(method, message, false);
         ValueNode msgNode = ConstantNode.forConstant(SubstrateObjectConstant.forObject(msg), providers.getMetaAccess(), graph);
-        ValueNode exceptionNode = kit.createInvokeWithExceptionAndUnwind(providers.getMetaAccess().lookupJavaMethod(reportErrorMethod), InvokeKind.Static, state, bci++, bci++, msgNode);
+        ValueNode exceptionNode = kit.createInvokeWithExceptionAndUnwind(providers.getMetaAccess().lookupJavaMethod(reportErrorMethod), InvokeKind.Static, state, bci++, msgNode);
         kit.append(new UnwindNode(exceptionNode));
 
         return kit.finalizeGraph();

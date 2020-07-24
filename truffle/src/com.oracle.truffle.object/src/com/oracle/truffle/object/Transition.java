@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -137,15 +137,17 @@ public abstract class Transition {
 
     /** @since 0.17 or earlier */
     public static final class RemovePropertyTransition extends PropertyTransition {
-        /** @since 0.17 or earlier */
-        public RemovePropertyTransition(Property property) {
+        private final boolean direct;
+
+        public RemovePropertyTransition(Property property, boolean direct) {
             super(property);
+            this.direct = direct;
         }
 
         /** @since 0.17 or earlier */
         @Override
         public boolean isDirect() {
-            return false;
+            return direct;
         }
 
         /** @since 0.17 or earlier */

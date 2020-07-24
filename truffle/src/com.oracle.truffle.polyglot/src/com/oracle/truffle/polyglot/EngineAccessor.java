@@ -53,8 +53,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -80,12 +80,13 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Scope;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLogger;
-import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.impl.Accessor;
 import com.oracle.truffle.api.impl.TruffleLocator;
@@ -215,6 +216,10 @@ final class EngineAccessor extends Accessor {
         @Override
         public CallTarget parseForLanguage(Object sourceLanguageContext, Source source, String[] argumentNames, boolean allowInternal) {
             PolyglotLanguageContext sourceContext = (PolyglotLanguageContext) sourceLanguageContext;
+            if (PolyglotContextImpl.currentNotEntered() != sourceContext.context) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw PolyglotEngineException.illegalState("The context is not entered.");
+            }
             PolyglotLanguage targetLanguage = sourceContext.context.engine.findLanguage(sourceContext, source.getLanguage(), source.getMimeType(), true, allowInternal);
             PolyglotLanguageContext targetContext = sourceContext.context.getContextInitialized(targetLanguage, sourceContext.language);
             targetContext.checkAccess(sourceContext.getLanguageInstance().language);
@@ -257,7 +262,14 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public <T> Iterable<T> loadServices(Class<T> type) {
-            Map<Class<?>, T> found = new HashMap<>();
+            Map<Class<?>, T> found = new LinkedHashMap<>();
+            // Library providers exported by Truffle are not on the GuestLangToolsLoader path.
+            if (type.getClassLoader() == Truffle.class.getClassLoader()) {
+                for (T service : ServiceLoader.load(type, type.getClassLoader())) {
+                    found.putIfAbsent(service.getClass(), service);
+                }
+            }
+            // Search guest languages and tools.
             for (AbstractClassLoaderSupplier loaderSupplier : EngineAccessor.locatorOrDefaultLoaders()) {
                 ClassLoader loader = loaderSupplier.get();
                 if (seesTheSameClass(loader, type)) {
@@ -750,7 +762,9 @@ final class EngineAccessor extends Accessor {
                 PolyglotContextImpl innerContext = (PolyglotContextImpl) innerContextImpl;
                 threadContext = innerContext.getContext(threadContext.language);
             }
-            return new PolyglotThread(threadContext, runnable, group, stackSize);
+            PolyglotThread newThread = new PolyglotThread(threadContext, runnable, group, stackSize);
+            threadContext.context.checkMultiThreadedAccess(newThread);
+            return newThread;
         }
 
         @Override
@@ -1082,7 +1096,7 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public String getPreinitializedRelativePathInLanguageHome(TruffleFile truffleFile) {
+        public String getRelativePathInLanguageHome(TruffleFile truffleFile) {
             return FileSystems.getRelativePathInLanguageHome(truffleFile);
         }
 
@@ -1122,6 +1136,16 @@ final class EngineAccessor extends Accessor {
                 throw notAccessible;
             }
             return targetLanguageContext.ensureInitialized(accessingPolyglotLanguage);
+        }
+
+        @Override
+        public boolean isHostToGuestRootNode(RootNode rootNode) {
+            return rootNode instanceof HostToGuestRootNode;
+        }
+
+        @Override
+        public AssertionError invalidSharingError(Object polyglotEngine) throws AssertionError {
+            return PolyglotReferences.invalidSharingError((PolyglotEngineImpl) polyglotEngine);
         }
     }
 

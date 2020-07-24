@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1449,7 +1449,9 @@ public abstract class Launcher {
             System.out.println("Native VM options:");
             SortedMap<String, OptionDescriptor> sortedOptions = new TreeMap<>();
             for (OptionDescriptor descriptor : getVMOptions()) {
-                sortedOptions.put(descriptor.getName(), descriptor);
+                if (!descriptor.isDeprecated()) {
+                    sortedOptions.put(descriptor.getName(), descriptor);
+                }
             }
             for (Entry<String, OptionDescriptor> entry : sortedOptions.entrySet()) {
                 OptionDescriptor descriptor = entry.getValue();
@@ -1481,7 +1483,9 @@ public abstract class Launcher {
             System.out.println("Compiler options:");
             SortedMap<String, OptionDescriptor> sortedOptions = new TreeMap<>();
             for (OptionDescriptor descriptor : getCompilerOptions()) {
-                sortedOptions.put(descriptor.getName(), descriptor);
+                if (!descriptor.isDeprecated()) {
+                    sortedOptions.put(descriptor.getName(), descriptor);
+                }
             }
             for (Entry<String, OptionDescriptor> entry : sortedOptions.entrySet()) {
                 OptionDescriptor descriptor = entry.getValue();

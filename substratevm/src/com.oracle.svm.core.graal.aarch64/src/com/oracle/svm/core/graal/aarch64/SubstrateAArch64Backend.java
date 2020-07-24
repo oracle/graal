@@ -572,6 +572,10 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             if (frameSize != 0) {
                 crb.recordMark(SubstrateMarkId.EPILOGUE_INCD_RSP);
             }
+        }
+
+        @Override
+        public void returned(CompilationResultBuilder crb) {
             crb.recordMark(SubstrateMarkId.EPILOGUE_END);
         }
 

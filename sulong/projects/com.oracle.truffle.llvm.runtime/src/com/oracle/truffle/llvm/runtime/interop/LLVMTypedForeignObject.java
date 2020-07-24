@@ -30,11 +30,6 @@
 package com.oracle.truffle.llvm.runtime.interop;
 
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
-import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.dsl.CachedContext;
-import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -42,22 +37,17 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
-import com.oracle.truffle.llvm.spi.ReferenceLibrary;
 
 @ValueType
 @ExportLibrary(value = InteropLibrary.class, delegateTo = "foreign")
 @ExportLibrary(LLVMManagedReadLibrary.class)
 @ExportLibrary(LLVMManagedWriteLibrary.class)
-@ExportLibrary(ReferenceLibrary.class)
 @ExportLibrary(NativeTypeLibrary.class)
 @ExportLibrary(LLVMAsForeignLibrary.class)
 public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject {
@@ -203,46 +193,6 @@ public final class LLVMTypedForeignObject extends LLVMInternalTruffleObject {
     @ExportMessage
     public void writePointer(long offset, LLVMPointer value, @CachedLibrary("this.foreign") LLVMManagedWriteLibrary writeLibrary) {
         writeLibrary.writePointer(foreign, offset, value);
-    }
-
-    @GenerateUncached
-    abstract static class CompareForeignNode extends LLVMNode {
-
-        protected abstract boolean execute(Object a, Object b);
-
-        @Specialization(guards = {"ctx.getEnv().isHostObject(a)", "ctx.getEnv().isHostObject(b)"})
-        static boolean doHostObjects(Object a, Object b,
-                        @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
-            Env env = ctx.getEnv();
-            return env.asHostObject(a) == env.asHostObject(b);
-        }
-
-        @Specialization(limit = "3", guards = "!ctx.getEnv().isHostObject(a) || !ctx.getEnv().isHostObject(b)")
-        static boolean doOther(Object a, Object b,
-                        @SuppressWarnings("unused") @CachedContext(LLVMLanguage.class) LLVMContext ctx,
-                        @CachedLibrary("a") ReferenceLibrary lib) {
-            return lib.isSame(a, b);
-        }
-    }
-
-    @ExportMessage
-    static class IsSame {
-
-        @Specialization
-        static boolean doTyped(LLVMTypedForeignObject receiver, LLVMTypedForeignObject other,
-                        @Shared("compare") @Cached CompareForeignNode compare) {
-            return compare.execute(receiver.getForeign(), other.foreign.delegate);
-        }
-
-        static boolean isNotLLVMTypedForeignObject(Object o) {
-            return !(o instanceof LLVMTypedForeignObject);
-        }
-
-        @Specialization(guards = "isNotLLVMTypedForeignObject(other)")
-        static boolean doGeneric(LLVMTypedForeignObject receiver, Object other,
-                        @Shared("compare") @Cached CompareForeignNode compare) {
-            return compare.execute(receiver.getForeign(), other);
-        }
     }
 
     @ExportMessage
