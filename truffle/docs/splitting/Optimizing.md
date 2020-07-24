@@ -263,37 +263,6 @@ com.oracle.truffle.js.nodes.control.WhileNode$WhileDoRepeatingNode.executeRepeat
 ...
 ```
 
-`--engine.SpecializationStatistics` prints detailed histograms about Node classes and their usage of Truffle DSL specializations.
-Note that specialization statistics require a recompilation of the interpeter. 
-See [`SpecializationStatistics.md`](SpecializationHistogram.md) on a tutorial on how to use it.
-
-
-```
-Name                                                                           Instances          Executions     Executions per instance
-  JSWriteCurrentFrameSlotNodeGen                                             240 (16%)     122796654 (16%)        Min=         1 Avg=   511652.73 Max   15963816  MaxNode octane-richards.js~309-311:9907-9997
-    doBoolean <boolean>                                                          5 (2%)              5 (0%)         Min=         1 Avg=        1.00 Max          1  MaxNode <internal>~1:0
-    doInt <int>                                                                 53 (22%)      12722053 (10%)        Min=         1 Avg=   240038.74 Max    3473712  MaxNode octane-richards.js~244:8257-8271
-    doSafeIntegerInt                                                             0 (0%)              0 (0%)         Min=         0 Avg=        0.00 Max          0  MaxNode  -
-    doSafeInteger                                                                0 (0%)              0 (0%)         Min=         0 Avg=        0.00 Max          0  MaxNode  -
-    doLong                                                                       0 (0%)              0 (0%)         Min=         0 Avg=        0.00 Max          0  MaxNode  -
-    doDouble <double>                                                           10 (4%)           1544 (0%)         Min=         1 Avg=      154.40 Max       1496  MaxNode harness.js~553:20394-20421
-    doObject                                                                   174 (73%)     110073052 (90%)        Min=         1 Avg=   632603.75 Max   15963816  MaxNode octane-richards.js~309-311:9907-9997
-      <String>                                                                    12 (7%)             39 (0%)         Min=         1 Avg=        3.25 Max         14  MaxNode <internal>~1:0
-      <DynamicObjectBasic>                                                       156 (90%)     110072988 (100%)       Min=         1 Avg=   705596.08 Max   15963816  MaxNode octane-richards.js~309-311:9907-9997
-      <Dead>                                                                       4 (2%)              4 (0%)         Min=         1 Avg=        1.00 Max          1  MaxNode harness.js~465-496:17157-18504
-      <Boolean>                                                                    4 (2%)             10 (0%)         Min=         1 Avg=        2.50 Max          7  MaxNode <internal>~1:0
-      <Integer>                                                                    2 (1%)             11 (0%)         Min=         3 Avg=        5.50 Max          8  MaxNode <internal>~1:0
-Name                                                                           Instances          Executions     Executions per instance
-  JSReadCurrentFrameSlotNodeGen                                              561 (38%)     372361607 (48%)        Min=         1 Avg=   663746.18 Max   15965312  MaxNode octane-richards.js~190:6689-6692
-    doBoolean <no-args>                                                          4 (1%)              4 (0%)         Min=         1 Avg=        1.00 Max          1  MaxNode harness.js~51:2515-2522
-    doInt <no-args>                                                             93 (17%)      18317171 (5%)         Min=         1 Avg=   196958.83 Max    3473712  MaxNode octane-richards.js~244:8257-8273
-    doDouble <no-args>                                                          12 (2%)           1587 (0%)         Min=         1 Avg=      132.25 Max       1535  MaxNode harness.js~551:20338-20344
-    doObject <no-args>                                                         454 (81%)     354042845 (95%)        Min=         1 Avg=   779830.06 Max   15965312  MaxNode octane-richards.js~190:6689-6692
-    doSafeInteger                                                                0 (0%)              0 (0%)         Min=         0 Avg=        0.00 Max          0  MaxNode  -
-```
-
-
-
 `--vm.XX:+TraceDeoptimization` prints deoptimization events, whether code compiled by Truffle or conventional compilers. The output of HotSpot and native images may vary for this flag.
 
 ```

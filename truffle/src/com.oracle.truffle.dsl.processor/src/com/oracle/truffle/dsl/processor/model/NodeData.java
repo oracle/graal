@@ -80,7 +80,8 @@ public class NodeData extends Template implements Comparable<NodeData> {
     private final boolean generateFactory;
 
     private TypeMirror frameType;
-    private boolean reflectable;
+    private boolean generateIntrospection;
+    private boolean generateStatistics; // TODO should not be default
 
     private boolean reportPolymorphism;
     private boolean isUncachable;
@@ -100,6 +101,14 @@ public class NodeData extends Template implements Comparable<NodeData> {
         this.thisExecution.getChild().setNode(this);
         this.generateFactory = generateFactory;
         this.generateUncached = generateUncached;
+    }
+
+    public void setGenerateStatistics(boolean generateStatistics) {
+        this.generateStatistics = generateStatistics;
+    }
+
+    public boolean isGenerateStatistics() {
+        return generateStatistics;
     }
 
     public Map<CacheExpression, String> getSharedCaches() {
@@ -156,12 +165,12 @@ public class NodeData extends Template implements Comparable<NodeData> {
         return thisExecution;
     }
 
-    public boolean isReflectable() {
-        return reflectable;
+    public boolean isGenerateIntrospection() {
+        return generateIntrospection;
     }
 
-    public void setReflectable(boolean reflectable) {
-        this.reflectable = reflectable;
+    public void setGenerateIntrospection(boolean reflectable) {
+        this.generateIntrospection = reflectable;
     }
 
     public boolean isFallbackReachable() {

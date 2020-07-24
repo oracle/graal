@@ -102,8 +102,8 @@ final class PolyglotLoggers {
         return false;
     }
 
-    static Supplier<TruffleLogger> createCompilerLoggerProvider(PolyglotEngineImpl engine) {
-        return new CompilerLoggerProvider(engine);
+    static Supplier<TruffleLogger> createEngineLoggerProvider(PolyglotEngineImpl engine) {
+        return new EngineLoggerProvider(engine);
     }
 
     /**
@@ -481,12 +481,12 @@ final class PolyglotLoggers {
         }
     }
 
-    private static final class CompilerLoggerProvider implements Supplier<TruffleLogger> {
+    private static final class EngineLoggerProvider implements Supplier<TruffleLogger> {
 
         private final PolyglotEngineImpl engine;
         private volatile Object loggers;
 
-        CompilerLoggerProvider(PolyglotEngineImpl engine) {
+        EngineLoggerProvider(PolyglotEngineImpl engine) {
             this.engine = engine;
         }
 
