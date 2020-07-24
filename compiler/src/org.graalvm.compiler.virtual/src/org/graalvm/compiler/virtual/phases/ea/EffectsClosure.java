@@ -472,7 +472,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
 
     static class EffecsClosureOverflowException extends RuntimeException {
 
-        private static final long serialVersionUID = 6449215372268666381L;
+        private static final long serialVersionUID = 1;
     }
 
     @SuppressWarnings("unused")
