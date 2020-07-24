@@ -24,7 +24,8 @@
  */
 package org.graalvm.compiler.truffle.runtime.debug;
 
-import com.oracle.truffle.api.TruffleLogger;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -34,12 +35,15 @@ import java.util.IntSummaryStatistics;
 import java.util.List;
 import java.util.LongSummaryStatistics;
 import java.util.Map;
+import java.util.Objects;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.function.Function;
+import java.util.logging.Level;
 
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.CompilationResultInfo;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener.GraphInfo;
+import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.AbstractGraalTruffleRuntimeListener;
 import org.graalvm.compiler.truffle.runtime.EngineData;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
@@ -49,14 +53,12 @@ import org.graalvm.compiler.truffle.runtime.TruffleInlining;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining.CallTreeNodeVisitor;
 import org.graalvm.compiler.truffle.runtime.TruffleInliningDecision;
 
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.util.logging.Level;
 
 public final class StatisticsListener extends AbstractGraalTruffleRuntimeListener {
 
@@ -65,48 +67,58 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
     private int compilations;
     private int invalidations;
     private int failures;
+    private int temporaryBailouts;
+    private int permanentBailouts;
     private int success;
     private int queues;
     private int dequeues;
     private int splits;
 
-    private final LongSummaryStatistics timeToQueue = new LongSummaryStatistics();
-    private final LongSummaryStatistics timeToCompilation = new LongSummaryStatistics();
+    private final IdentityStatistics<String> temporaryBailoutReasons = new IdentityStatistics<>();
+    private final IdentityStatistics<String> permanentBailoutReasons = new IdentityStatistics<>();
+    private final IdentityStatistics<String> failureReasons = new IdentityStatistics<>();
+    private final IdentityStatistics<String> invalidatedReasons = new IdentityStatistics<>();
+    private final IdentityStatistics<String> dequeuedReasons = new IdentityStatistics<>();
 
-    private final IntSummaryStatistics nodeCount = new IntSummaryStatistics();
-    private final IntSummaryStatistics nodeCountTrivial = new IntSummaryStatistics();
-    private final IntSummaryStatistics nodeCountNonTrivial = new IntSummaryStatistics();
-    private final IntSummaryStatistics nodeCountMonomorphic = new IntSummaryStatistics();
-    private final IntSummaryStatistics nodeCountPolymorphic = new IntSummaryStatistics();
-    private final IntSummaryStatistics nodeCountMegamorphic = new IntSummaryStatistics();
+    private final TargetLongStatistics timeToQueue = new TargetLongStatistics();
+    private final TargetLongStatistics timeInQueue = new TargetLongStatistics();
+
+    private final TargetIntStatistics nodeCount = new TargetIntStatistics();
+    private final TargetIntStatistics nodeCountTrivial = new TargetIntStatistics();
+    private final TargetIntStatistics nodeCountNonTrivial = new TargetIntStatistics();
+    private final TargetIntStatistics nodeCountMonomorphic = new TargetIntStatistics();
+    private final TargetIntStatistics nodeCountPolymorphic = new TargetIntStatistics();
+    private final TargetIntStatistics nodeCountMegamorphic = new TargetIntStatistics();
     private final IdentityStatistics<Class<?>> nodeStatistics = new IdentityStatistics<>();
 
-    private final IntSummaryStatistics callCount = new IntSummaryStatistics();
-    private final IntSummaryStatistics callCountIndirect = new IntSummaryStatistics();
-    private final IntSummaryStatistics callCountDirect = new IntSummaryStatistics();
-    private final IntSummaryStatistics callCountDirectDispatched = new IntSummaryStatistics();
-    private final IntSummaryStatistics callCountDirectInlined = new IntSummaryStatistics();
-    private final IntSummaryStatistics callCountDirectCloned = new IntSummaryStatistics();
-    private final IntSummaryStatistics callCountDirectNotCloned = new IntSummaryStatistics();
-    private final IntSummaryStatistics loopCount = new IntSummaryStatistics();
+    private final TargetIntStatistics callCount = new TargetIntStatistics();
+    private final TargetIntStatistics callCountIndirect = new TargetIntStatistics();
+    private final TargetIntStatistics callCountDirect = new TargetIntStatistics();
+    private final TargetIntStatistics callCountDirectDispatched = new TargetIntStatistics();
+    private final TargetIntStatistics callCountDirectInlined = new TargetIntStatistics();
+    private final TargetIntStatistics callCountDirectCloned = new TargetIntStatistics();
+    private final TargetIntStatistics callCountDirectNotCloned = new TargetIntStatistics();
+    private final TargetIntStatistics loopCount = new TargetIntStatistics();
 
-    private final LongSummaryStatistics compilationTime = new LongSummaryStatistics();
-    private final LongSummaryStatistics compilationTimeTruffleTier = new LongSummaryStatistics();
-    private final LongSummaryStatistics compilationTimeGraalTier = new LongSummaryStatistics();
-    private final LongSummaryStatistics compilationTimeCodeInstallation = new LongSummaryStatistics();
+    private final TargetLongStatistics compilationTime = new TargetLongStatistics();
+    private final TargetLongStatistics compilationTimeTruffleTier = new TargetLongStatistics();
+    private final TargetLongStatistics compilationTimeGraalTier = new TargetLongStatistics();
+    private final TargetLongStatistics compilationTimeCodeInstallation = new TargetLongStatistics();
 
-    private final IntSummaryStatistics truffleTierNodeCount = new IntSummaryStatistics();
+    private final TargetIntStatistics truffleTierNodeCount = new TargetIntStatistics();
     private final IdentityStatistics<String> truffleTierNodeStatistics = new IdentityStatistics<>();
-    private final IntSummaryStatistics graalTierNodeCount = new IntSummaryStatistics();
+    private final TargetIntStatistics graalTierNodeCount = new TargetIntStatistics();
     private final IdentityStatistics<String> graalTierNodeStatistics = new IdentityStatistics<>();
 
-    private final IntSummaryStatistics compilationResultCodeSize = new IntSummaryStatistics();
-    private final IntSummaryStatistics compilationResultExceptionHandlers = new IntSummaryStatistics();
-    private final IntSummaryStatistics compilationResultInfopoints = new IntSummaryStatistics();
+    private final TargetIntStatistics compilationResultCodeSize = new TargetIntStatistics();
+    private final TargetIntStatistics compilationResultExceptionHandlers = new TargetIntStatistics();
+    private final TargetIntStatistics compilationResultInfopoints = new TargetIntStatistics();
     private final IdentityStatistics<String> compilationResultInfopointStatistics = new IdentityStatistics<>();
-    private final IntSummaryStatistics compilationResultMarks = new IntSummaryStatistics();
-    private final IntSummaryStatistics compilationResultTotalFrameSize = new IntSummaryStatistics();
-    private final IntSummaryStatistics compilationResultDataPatches = new IntSummaryStatistics();
+    private final TargetIntStatistics compilationResultMarks = new TargetIntStatistics();
+    private final TargetIntStatistics compilationResultTotalFrameSize = new TargetIntStatistics();
+    private final TargetIntStatistics compilationResultDataPatches = new TargetIntStatistics();
+
+    private final Map<OptimizedCallTarget, Long> timeQueued = new HashMap<>();
 
     private StatisticsListener(GraalTruffleRuntime runtime) {
         super(runtime);
@@ -133,23 +145,28 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
     @Override
     public synchronized void onCompilationQueued(OptimizedCallTarget target) {
         queues++;
+        long currentTime = System.nanoTime();
         if (firstCompilation == 0) {
-            firstCompilation = System.nanoTime();
+            firstCompilation = currentTime;
         }
+        timeQueued.put(target, currentTime);
         long timeStamp = target.getInitializedTimestamp();
         if (timeStamp != 0) {
-            timeToQueue.accept(System.nanoTime() - timeStamp);
+            timeToQueue.accept(currentTime - timeStamp, target);
         }
     }
 
     @Override
     public synchronized void onCompilationDequeued(OptimizedCallTarget target, Object source, CharSequence reason) {
         dequeues++;
+        dequeuedReasons.accept(Arrays.asList(Objects.toString(reason)), target);
+        timeQueued.remove(target);
     }
 
     @Override
     public synchronized void onCompilationInvalidated(OptimizedCallTarget target, Object source, CharSequence reason) {
         invalidations++;
+        invalidatedReasons.accept(Arrays.asList(Objects.toString(reason)), target);
     }
 
     @Override
@@ -157,38 +174,39 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
         compilations++;
         final Times times = new Times();
         compilationTimes.set(times);
-        long timeStamp = target.getInitializedTimestamp();
-        if (timeStamp != 0) {
-            timeToCompilation.accept(times.compilationStarted - timeStamp);
+        Long timeStamp = timeQueued.get(target);
+        if (timeStamp != null) {
+            timeInQueue.accept(times.compilationStarted - timeStamp, target);
         }
+        timeQueued.remove(target);
     }
 
     @Override
     public synchronized void onCompilationTruffleTierFinished(OptimizedCallTarget target, TruffleInlining inliningDecision, GraphInfo graph) {
         final Times times = compilationTimes.get();
         times.truffleTierFinished = System.nanoTime();
-        nodeStatistics.accept(nodeClasses(target, inliningDecision));
+        nodeStatistics.accept(nodeClasses(target, inliningDecision), target);
 
         CallTargetNodeStatistics callTargetStat = new CallTargetNodeStatistics(target, inliningDecision);
-        nodeCount.accept(callTargetStat.getNodeCount());
-        nodeCountTrivial.accept(callTargetStat.getNodeCountTrivial());
-        nodeCountNonTrivial.accept(callTargetStat.getNodeCountNonTrivial());
-        nodeCountMonomorphic.accept(callTargetStat.getNodeCountMonomorphic());
-        nodeCountPolymorphic.accept(callTargetStat.getNodeCountPolymorphic());
-        nodeCountMegamorphic.accept(callTargetStat.getNodeCountMegamorphic());
+        nodeCount.accept(callTargetStat.getNodeCount(), target);
+        nodeCountTrivial.accept(callTargetStat.getNodeCountTrivial(), target);
+        nodeCountNonTrivial.accept(callTargetStat.getNodeCountNonTrivial(), target);
+        nodeCountMonomorphic.accept(callTargetStat.getNodeCountMonomorphic(), target);
+        nodeCountPolymorphic.accept(callTargetStat.getNodeCountPolymorphic(), target);
+        nodeCountMegamorphic.accept(callTargetStat.getNodeCountMegamorphic(), target);
 
-        callCount.accept(callTargetStat.getCallCount());
-        callCountIndirect.accept(callTargetStat.getCallCountIndirect());
-        callCountDirect.accept(callTargetStat.getCallCountDirect());
-        callCountDirectDispatched.accept(callTargetStat.getCallCountDirectDispatched());
-        callCountDirectInlined.accept(callTargetStat.getCallCountDirectInlined());
-        callCountDirectCloned.accept(callTargetStat.getCallCountDirectCloned());
-        callCountDirectNotCloned.accept(callTargetStat.getCallCountDirectNotCloned());
-        loopCount.accept(callTargetStat.getLoopCount());
+        callCount.accept(callTargetStat.getCallCount(), target);
+        callCountIndirect.accept(callTargetStat.getCallCountIndirect(), target);
+        callCountDirect.accept(callTargetStat.getCallCountDirect(), target);
+        callCountDirectDispatched.accept(callTargetStat.getCallCountDirectDispatched(), target);
+        callCountDirectInlined.accept(callTargetStat.getCallCountDirectInlined(), target);
+        callCountDirectCloned.accept(callTargetStat.getCallCountDirectCloned(), target);
+        callCountDirectNotCloned.accept(callTargetStat.getCallCountDirectNotCloned(), target);
+        loopCount.accept(callTargetStat.getLoopCount(), target);
 
-        truffleTierNodeCount.accept(graph.getNodeCount());
+        truffleTierNodeCount.accept(graph.getNodeCount(), target);
         if (target.engine.callTargetStatisticDetails) {
-            truffleTierNodeStatistics.accept(Arrays.asList(graph.getNodeTypes(true)));
+            truffleTierNodeStatistics.accept(Arrays.asList(graph.getNodeTypes(true)), target);
         }
     }
 
@@ -206,9 +224,9 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
     public synchronized void onCompilationGraalTierFinished(OptimizedCallTarget target, GraphInfo graph) {
         final Times times = compilationTimes.get();
         times.graalTierFinished = System.nanoTime();
-        graalTierNodeCount.accept(graph.getNodeCount());
+        graalTierNodeCount.accept(graph.getNodeCount(), target);
         if (target.engine.callTargetStatisticDetails) {
-            graalTierNodeStatistics.accept(Arrays.asList(graph.getNodeTypes(true)));
+            graalTierNodeStatistics.accept(Arrays.asList(graph.getNodeTypes(true)), target);
         }
     }
 
@@ -219,25 +237,36 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
 
         Times times = compilationTimes.get();
 
-        compilationTime.accept(compilationDone - times.compilationStarted);
-        compilationTimeTruffleTier.accept(times.truffleTierFinished - times.compilationStarted);
-        compilationTimeGraalTier.accept(times.graalTierFinished - times.truffleTierFinished);
-        compilationTimeCodeInstallation.accept(compilationDone - times.graalTierFinished);
+        compilationTime.accept(compilationDone - times.compilationStarted, target);
+        compilationTimeTruffleTier.accept(times.truffleTierFinished - times.compilationStarted, target);
+        compilationTimeGraalTier.accept(times.graalTierFinished - times.truffleTierFinished, target);
+        compilationTimeCodeInstallation.accept(compilationDone - times.graalTierFinished, target);
 
-        compilationResultCodeSize.accept(result.getTargetCodeSize());
-        compilationResultTotalFrameSize.accept(result.getTotalFrameSize());
-        compilationResultExceptionHandlers.accept(result.getExceptionHandlersCount());
-        compilationResultInfopoints.accept(result.getInfopointsCount());
-        compilationResultInfopointStatistics.accept(Arrays.asList(result.getInfopoints()));
-        compilationResultMarks.accept(result.getMarksCount());
-        compilationResultDataPatches.accept(result.getDataPatchesCount());
+        compilationResultCodeSize.accept(result.getTargetCodeSize(), target);
+        compilationResultTotalFrameSize.accept(result.getTotalFrameSize(), target);
+        compilationResultExceptionHandlers.accept(result.getExceptionHandlersCount(), target);
+        compilationResultInfopoints.accept(result.getInfopointsCount(), target);
+        compilationResultInfopointStatistics.accept(Arrays.asList(result.getInfopoints()), target);
+        compilationResultMarks.accept(result.getMarksCount(), target);
+        compilationResultDataPatches.accept(result.getDataPatchesCount(), target);
     }
 
     @Override
     public void onCompilationFailed(OptimizedCallTarget target, String reason, boolean bailout, boolean permanentBailout) {
-        failures++;
+        if (bailout) {
+            if (permanentBailout) {
+                permanentBailouts++;
+                permanentBailoutReasons.accept(Arrays.asList(reason), target);
+            } else {
+                temporaryBailouts++;
+                temporaryBailoutReasons.accept(Arrays.asList(reason), target);
+            }
+        } else {
+            failures++;
+            failureReasons.accept(Arrays.asList(reason), target);
+        }
         final Times times = compilationTimes.get();
-        compilationTime.accept(System.nanoTime() - times.compilationStarted);
+        compilationTime.accept(System.nanoTime() - times.compilationStarted, target);
     }
 
     @Override
@@ -253,39 +282,49 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
             out.print("Truffle runtime statistics for engine " + runtimeData.id);
             printStatistic(out, "Compilations", compilations);
             printStatistic(out, "  Success", success);
+            printStatistic(out, "  Temporary Bailouts", temporaryBailouts);
+            temporaryBailoutReasons.printStatistics(out, String::toString, true, false);
+            printStatistic(out, "  Permanent Bailouts", permanentBailouts);
+            permanentBailoutReasons.printStatistics(out, String::toString, true, false);
             printStatistic(out, "  Failed", failures);
-            printStatistic(out, "  Interrupted", compilations - (success + failures));
+            failureReasons.printStatistics(out, String::toString, true, false);
+            printStatistic(out, "  Interrupted", compilations - (success + failures + temporaryBailouts + permanentBailouts));
             printStatistic(out, "Invalidated", invalidations);
+            invalidatedReasons.printStatistics(out, String::toString, true, false);
             printStatistic(out, "Queues", queues);
             printStatistic(out, "Dequeues", dequeues);
+            dequeuedReasons.printStatistics(out, String::toString, true, false);
             printStatistic(out, "Splits", splits);
             printStatistic(out, "Compilation Accuracy", 1.0 - invalidations / (double) compilations);
             printStatistic(out, "Queue Accuracy", 1.0 - dequeues / (double) queues);
             printStatistic(out, "Compilation Utilization", compilationTime.getSum() / (double) (endTime - firstCompilation));
             printStatistic(out, "Remaining Compilation Queue", rt.getCompilationQueueSize());
             printStatisticTime(out, "Time to queue", timeToQueue);
-            printStatisticTime(out, "Time to compilation", timeToCompilation);
-
-            printStatisticTime(out, "Compilation time", compilationTime);
+            printStatisticTime(out, "Time waiting in queue", timeInQueue);
+            printStatisticTime(out, "Time for compilation", compilationTime);
             printStatisticTime(out, "  Truffle Tier", compilationTimeTruffleTier);
             printStatisticTime(out, "  Graal Tier", compilationTimeGraalTier);
             printStatisticTime(out, "  Code Installation", compilationTimeCodeInstallation);
 
-            printStatistic(out, "Truffle node count", nodeCount);
-            printStatistic(out, "  Trivial", nodeCountTrivial);
-            printStatistic(out, "  Non Trivial", nodeCountNonTrivial);
-            printStatistic(out, "    Monomorphic", nodeCountMonomorphic);
-            printStatistic(out, "    Polymorphic", nodeCountPolymorphic);
-            printStatistic(out, "    Megamorphic", nodeCountMegamorphic);
-            printStatistic(out, "Truffle call count", callCount);
-            printStatistic(out, "  Indirect", callCountIndirect);
-            printStatistic(out, "  Direct", callCountDirect);
-            printStatistic(out, "    Dispatched", callCountDirectDispatched);
-            printStatistic(out, "    Inlined", callCountDirectInlined);
-            printStatistic(out, "    ----------");
-            printStatistic(out, "    Cloned", callCountDirectCloned);
-            printStatistic(out, "    Not Cloned", callCountDirectNotCloned);
-            printStatistic(out, "Truffle loops", loopCount);
+            // GR-25014 Truffle node count statistics are broken with language agnostic inlining
+            if (!runtimeData.getEngineOptions().get(PolyglotCompilerOptions.LanguageAgnosticInlining)) {
+                printStatistic(out, "Truffle node count", nodeCount);
+                printStatistic(out, "  Trivial", nodeCountTrivial);
+                printStatistic(out, "  Non Trivial", nodeCountNonTrivial);
+                printStatistic(out, "    Monomorphic", nodeCountMonomorphic);
+                printStatistic(out, "    Polymorphic", nodeCountPolymorphic);
+                printStatistic(out, "    Megamorphic", nodeCountMegamorphic);
+                printStatistic(out, "Truffle call count", callCount);
+                printStatistic(out, "  Indirect", callCountIndirect);
+                printStatistic(out, "  Direct", callCountDirect);
+                printStatistic(out, "    Dispatched", callCountDirectDispatched);
+                printStatistic(out, "    Inlined", callCountDirectInlined);
+                printStatistic(out, "    ----------");
+                printStatistic(out, "    Cloned", callCountDirectCloned);
+                printStatistic(out, "    Not Cloned", callCountDirectNotCloned);
+                printStatistic(out, "Truffle loops", loopCount);
+            }
+
             printStatistic(out, "Graal node count");
             printStatistic(out, "  After Truffle Tier", truffleTierNodeCount);
             printStatistic(out, "  After Graal Tier", graalTierNodeCount);
@@ -295,17 +334,20 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
             printStatistic(out, "  Total frame size", compilationResultTotalFrameSize);
             printStatistic(out, "  Exception handlers", compilationResultExceptionHandlers);
             printStatistic(out, "  Infopoints", compilationResultInfopoints);
-            compilationResultInfopointStatistics.printStatistics(out, Function.identity());
+            compilationResultInfopointStatistics.printStatistics(out, Function.identity(), false, true);
             printStatistic(out, "  Marks", compilationResultMarks);
             printStatistic(out, "  Data references", compilationResultDataPatches);
 
             if (runtimeData.callTargetStatisticDetails) {
-                printStatistic(out, "Truffle nodes");
-                nodeStatistics.printStatistics(out, Class::getSimpleName);
+                // GR-25014 Truffle node count statistics are broken with language agnostic inlining
+                if (!runtimeData.getEngineOptions().get(PolyglotCompilerOptions.LanguageAgnosticInlining)) {
+                    printStatistic(out, "Truffle nodes");
+                    nodeStatistics.printStatistics(out, Class::getSimpleName, false, true);
+                }
                 printStatistic(out, "Graal nodes after Truffle tier");
-                truffleTierNodeStatistics.printStatistics(out, Function.identity());
+                truffleTierNodeStatistics.printStatistics(out, Function.identity(), false, true);
                 printStatistic(out, "Graal nodes after Graal tier");
-                graalTierNodeStatistics.printStatistics(out, Function.identity());
+                graalTierNodeStatistics.printStatistics(out, Function.identity(), false, true);
             }
         }
         TruffleLogger logger = runtimeData.getLogger();
@@ -316,7 +358,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
         out.printf("%n  %-50s:", label);
     }
 
-    private static void printStatistic(PrintWriter out, String label, int value) {
+    private static void printStatistic(PrintWriter out, String label, long value) {
         out.printf("%n  %-50s: %d", label, value);
     }
 
@@ -324,29 +366,110 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
         out.printf("%n  %-50s: %f", label, value);
     }
 
-    private static void printStatistic(PrintWriter out, String label, IntSummaryStatistics value) {
-        out.printf("%n  %-50s: count=%4d, sum=%8d, min=%8d, average=%12.2f, max=%8d", label, value.getCount(), value.getSum(), value.getMin(), value.getAverage(), value.getMax());
+    private static void printStatistic(PrintWriter out, String label, TargetIntStatistics value) {
+        out.printf("%n  %-50s: count=%4d, sum=%8d, min=%8d, average=%12.2f, max=%8d, maxTarget=%s", label, value.getCount(), value.getSum(), value.getMin(), value.getAverage(), value.getMax(),
+                        value.getMaxName());
     }
 
-    private static void printStatisticTime(PrintWriter out, String label, LongSummaryStatistics value) {
-        out.printf("%n  %-50s: count=%4d, sum=%8d, min=%8d, average=%12.2f, max=%8d (milliseconds)", label, value.getCount(), value.getSum() / 1000000, value.getMin() / 1000000,
-                        value.getAverage() / 1e6, value.getMax() / 1000000);
+    private static void printStatisticTime(PrintWriter out, String label, TargetLongStatistics value) {
+        out.printf("%n  %-50s: count=%4d, sum=%8d, min=%8d, average=%12.2f, max=%8d (milliseconds), maxTarget=%s", label, value.getCount(), value.getSum() / 1000000, value.getMin() / 1000000,
+                        value.getAverage() / 1e6, value.getMax() / 1000000, value.getMaxName());
+    }
+
+    private static final class TargetIntStatistics extends IntSummaryStatistics {
+
+        private String maxName;
+
+        public void accept(int value, OptimizedCallTarget target) {
+            if (value > getMax() && target != null) {
+                maxName = target.getName();
+            }
+            super.accept(value);
+        }
+
+        public String getMaxName() {
+            return maxName;
+        }
+
+        @Deprecated
+        @Override
+        public void accept(int value) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Deprecated
+        @Override
+        public void combine(IntSummaryStatistics other) {
+            throw new UnsupportedOperationException();
+        }
+
+    }
+
+    private static final class TargetLongStatistics extends LongSummaryStatistics {
+
+        private String maxName;
+
+        public void accept(long value, OptimizedCallTarget target) {
+            if (value > getMax()) {
+                maxName = target.getName();
+            }
+            super.accept(value);
+        }
+
+        public String getMaxName() {
+            return maxName;
+        }
+
+        @Deprecated
+        @Override
+        public void accept(long value) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Deprecated
+        @Override
+        public void combine(LongSummaryStatistics other) {
+            throw new UnsupportedOperationException();
+        }
+
     }
 
     private static final class IdentityStatistics<T> {
 
-        final Map<T, IntSummaryStatistics> types = new HashMap<>();
+        final Map<T, TargetIntStatistics> types = new HashMap<>();
 
-        public void printStatistics(PrintWriter out, Function<T, String> toStringFunction) {
+        private int elementCount;
 
+        public void printStatistics(PrintWriter out, Function<T, String> toStringFunction, boolean onlyCount, boolean normalize) {
+            if (normalize) {
+                normalize();
+            }
             SortedSet<T> sortedSet = new TreeSet<>(Comparator.comparing((T c) -> -types.get(c).getSum()));
             sortedSet.addAll(types.keySet());
             sortedSet.forEach(c -> {
-                printStatistic(out, String.format("    %s", toStringFunction.apply(c)), types.get(c));
+                String label = String.format("    %s", toStringFunction.apply(c));
+                TargetIntStatistics statistic = types.get(c);
+                if (onlyCount) {
+                    printStatistic(out, label, statistic.getCount());
+                } else {
+                    printStatistic(out, label, statistic);
+                }
             });
         }
 
-        public void accept(Collection<T> elements) {
+        private void normalize() {
+            /*
+             * We also want to include the number of times an element had zero elements.
+             */
+            for (TargetIntStatistics stat : types.values()) {
+                while (stat.getCount() < elementCount) {
+                    stat.accept(0, null);
+                }
+            }
+        }
+
+        public void accept(Collection<T> elements, OptimizedCallTarget target) {
+            this.elementCount++;
             /* First compute the histogram. */
             HashMap<T, Integer> histogram = new HashMap<>();
             for (T e : elements) {
@@ -357,7 +480,7 @@ public final class StatisticsListener extends AbstractGraalTruffleRuntimeListene
             for (Map.Entry<T, Integer> entry : histogram.entrySet()) {
                 T element = entry.getKey();
                 Integer count = entry.getValue();
-                types.computeIfAbsent(element, key -> new IntSummaryStatistics()).accept(count.intValue());
+                types.computeIfAbsent(element, key -> new TargetIntStatistics()).accept(count.intValue(), target);
             }
         }
     }
