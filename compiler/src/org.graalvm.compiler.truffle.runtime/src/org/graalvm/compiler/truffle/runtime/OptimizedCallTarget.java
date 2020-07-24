@@ -487,7 +487,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         // this is partially evaluated so the second part should fold to a constant.
         int firstTierCallThreshold = ++callCount;
         if (firstTierCallThreshold >= engine.callThresholdInFirstTier && !isSubmittedForCompilation() && !compilationFailed) {
-            // return lastTierCompile(this);
+            return lastTierCompile(this);
         }
         return false;
     }
