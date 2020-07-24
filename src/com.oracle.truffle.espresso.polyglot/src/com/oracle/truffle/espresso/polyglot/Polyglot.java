@@ -40,8 +40,8 @@ package com.oracle.truffle.espresso.polyglot;
  * </ul>
  * Casting to abstract classes is not supported.
  * <p>
- * NB: if Espresso is running on GraalVM, the method implementations of this class are substituted.
- * Otherwise multi-language environment is not available.
+ * NB: for Java code running on Espresso, these methods will be intrinsified. Otherwise
+ * multi-language environment is not available.
  */
 public final class Polyglot {
     private Polyglot() {
