@@ -418,6 +418,8 @@ suite = {
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
       "jacoco" : "include",
+      # warnings in generated code
+      "javac.lint.overrides" : "none",
     },
 
     "com.oracle.truffle.llvm.parser.factories" : {
