@@ -181,6 +181,7 @@ public class TraceCompilationTest extends TestWithPolyglotOptions {
                 // a sub-process.
                 return !vmArg.contains("LogFile") &&
                                 !vmArg.contains("graal.DumpOnError") &&
+                                !vmArg.contains("polyglot.log.file") &&
                                 !vmArg.contains("polyglot.engine.TraceCompilation") &&
                                 !vmArg.contains("polyglot.engine.TraceCompilationDetails");
             }

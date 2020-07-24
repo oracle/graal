@@ -832,7 +832,8 @@ final class EngineAccessor extends Accessor {
         public <T> T getOrCreateRuntimeData(Object polyglotEngine, BiFunction<OptionValues, Supplier<TruffleLogger>, T> constructor) {
             if (polyglotEngine == null) {
                 OptionValues engineOptionValues = PolyglotEngineImpl.getEngineOptionsWithNoEngine();
-                return constructor.apply(engineOptionValues, PolyglotLoggers.createEngineLoggerProvider(null));
+                String defaultLogFile = System.getProperty(OptionValuesImpl.SYSTEM_PROPERTY_PREFIX + PolyglotEngineImpl.LOG_FILE_OPTION);
+                return constructor.apply(engineOptionValues, PolyglotLoggers.createCompilerLoggerProvider(defaultLogFile));
             }
 
             final PolyglotEngineImpl engine = (PolyglotEngineImpl) polyglotEngine;

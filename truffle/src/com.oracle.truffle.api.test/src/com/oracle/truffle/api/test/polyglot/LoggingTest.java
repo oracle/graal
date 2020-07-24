@@ -82,6 +82,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.GCUtils;
+import org.junit.Assume;
 
 public class LoggingTest {
 
@@ -442,6 +443,7 @@ public class LoggingTest {
 
     @Test
     public void testPolyglotLogHandler() {
+        Assume.assumeTrue(System.getProperty("polyglot.log.file") == null);
         CloseableByteArrayOutputStream err = new CloseableByteArrayOutputStream();
         testLogToStream(newContextBuilder().err(err), err, false);
     }
@@ -896,6 +898,7 @@ public class LoggingTest {
 
     @Test
     public void testErrorStream() {
+        Assume.assumeTrue(System.getProperty("polyglot.log.file") == null);
         ByteArrayOutputStream errConsumer = new ByteArrayOutputStream();
         ProxyInstrument delegate = new ProxyInstrument();
         delegate.setOnCreate(new Consumer<TruffleInstrument.Env>() {
