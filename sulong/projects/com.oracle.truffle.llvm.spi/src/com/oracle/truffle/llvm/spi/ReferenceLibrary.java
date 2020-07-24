@@ -38,7 +38,6 @@ import com.oracle.truffle.api.library.GenerateLibrary.Abstract;
 import com.oracle.truffle.api.library.GenerateLibrary.DefaultExport;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryFactory;
-import com.oracle.truffle.llvm.spi.ReferenceLibrary.InteropFallback;
 
 /**
  * Library for objects that have reference semantics. Pointer equality comparisons will use that
@@ -48,7 +47,7 @@ import com.oracle.truffle.llvm.spi.ReferenceLibrary.InteropFallback;
  */
 @GenerateLibrary
 @Deprecated
-@DefaultExport(InteropFallback.class)
+@DefaultExport(ReferenceLibrary.InteropFallback.class)
 @SuppressWarnings("deprecation")
 public abstract class ReferenceLibrary extends Library {
 

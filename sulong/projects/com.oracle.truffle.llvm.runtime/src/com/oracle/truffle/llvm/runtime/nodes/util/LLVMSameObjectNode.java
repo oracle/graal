@@ -39,7 +39,6 @@ import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMAddressEqualsNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
-import com.oracle.truffle.llvm.spi.ReferenceLibrary;
 
 /**
  * Helper node to determine whether two managed objects are reference equal.
@@ -108,14 +107,14 @@ public abstract class LLVMSameObjectNode extends LLVMNode {
         // for backwards compatibility
         @Specialization(limit = "3", guards = {"a != b", "references.isSame(a, b)"})
         boolean doReferenceLibrary(Object a, Object b,
-                        @CachedLibrary("a") ReferenceLibrary references) {
+                        @CachedLibrary("a") com.oracle.truffle.llvm.spi.ReferenceLibrary references) {
             assert references.isSame(a, b);
             return true;
         }
 
         @Specialization(limit = "3", guards = {"a != b", "!references.isSame(a, b)"})
         boolean doIdentical(Object a, Object b,
-                        @CachedLibrary("a") ReferenceLibrary references,
+                        @CachedLibrary("a") com.oracle.truffle.llvm.spi.ReferenceLibrary references,
                         @CachedLibrary("a") InteropLibrary aInterop,
                         @CachedLibrary("b") InteropLibrary bInterop) {
             assert !references.isSame(a, b);

@@ -36,7 +36,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.llvm.spi.ReferenceLibrary;
 import com.oracle.truffle.llvm.tests.interop.values.NativeValue;
 import com.oracle.truffle.tck.TruffleRunner;
 import org.junit.Assert;
@@ -49,7 +48,7 @@ import org.junit.runner.RunWith;
 public class DeprecatedPointerCompareTest extends InteropTestBase {
 
     static final InteropLibrary INTEROP = InteropLibrary.getUncached();
-    static final ReferenceLibrary REFERENCES = ReferenceLibrary.getFactory().getUncached();
+    static final com.oracle.truffle.llvm.spi.ReferenceLibrary REFERENCES = com.oracle.truffle.llvm.spi.ReferenceLibrary.getFactory().getUncached();
 
     static Object testPointerAdd;
 
@@ -59,7 +58,7 @@ public class DeprecatedPointerCompareTest extends InteropTestBase {
         testPointerAdd = INTEROP.readMember(testLibrary, "test_pointer_add");
     }
 
-    @ExportLibrary(ReferenceLibrary.class)
+    @ExportLibrary(com.oracle.truffle.llvm.spi.ReferenceLibrary.class)
     @ExportLibrary(InteropLibrary.class)
     @SuppressWarnings("deprecation") // tests backwards compatibility to deprecated ReferenceLibrary
     static class ReferenceEqualObject implements TruffleObject {

@@ -54,10 +54,9 @@ import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignGetMemberPointe
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignReadNode;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignWriteNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMAddressEqualsNode;
-import com.oracle.truffle.llvm.spi.ReferenceLibrary;
 
 @ExportLibrary(value = InteropLibrary.class, receiverType = LLVMPointerImpl.class)
-@ExportLibrary(value = ReferenceLibrary.class, receiverType = LLVMPointerImpl.class)
+@ExportLibrary(value = com.oracle.truffle.llvm.spi.ReferenceLibrary.class, receiverType = LLVMPointerImpl.class)
 @SuppressWarnings({"static-method", "deprecation"})
 // implements deprecated ReferenceLibrary for backwards compatibility
 abstract class CommonPointerLibraries {
