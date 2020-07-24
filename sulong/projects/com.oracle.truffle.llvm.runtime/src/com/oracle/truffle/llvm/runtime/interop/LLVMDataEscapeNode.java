@@ -169,6 +169,12 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
     @GenerateUncached
     public abstract static class LLVMI16DataEscapeNode extends LLVMDataEscapeNode {
 
+        public final short executeWithTargetI16(Object escapingValue) {
+            return executeWithTypeI16(escapingValue, null);
+        }
+
+        public abstract short executeWithTypeI16(Object escapingValue, LLVMInteropType.Structured type);
+
         @Specialization
         static short escapingPrimitive(short escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
             return escapingValue;
@@ -177,6 +183,12 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
 
     @GenerateUncached
     public abstract static class LLVMI32DataEscapeNode extends LLVMDataEscapeNode {
+
+        public final int executeWithTargetI32(Object escapingValue) {
+            return executeWithTypeI32(escapingValue, null);
+        }
+
+        public abstract int executeWithTypeI32(Object escapingValue, LLVMInteropType.Structured type);
 
         @Specialization
         static int escapingPrimitive(int escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
@@ -191,6 +203,12 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
 
     @GenerateUncached
     public abstract static class LLVMI64DataEscapeNode extends LLVMDataEscapeNode {
+
+        public final long executeWithTargetI64(Object escapingValue) {
+            return executeWithTypeI64(escapingValue, null);
+        }
+
+        public abstract long executeWithTypeI64(Object escapingValue, LLVMInteropType.Structured type);
 
         @Specialization
         static long escapingPrimitive(long escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
