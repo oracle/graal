@@ -144,6 +144,18 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
          */
         rci.rerunInitialization(clazz(access, "sun.security.ssl.SSLContextImpl$DefaultManagersHolder"), "for reading properties at run time");
 
+        /*
+         * SSL debug logging enabled by javax.net.debug system property is setup during the class
+         * initialization of either sun.security.ssl.Debug or sun.security.ssl.SSLLogger. (In JDK 8
+         * this was implemented in sun.security.ssl.Debug, the logic was moved to
+         * sun.security.ssl.SSLLogger in JDK11 but not yet backported to all JDKs. See JDK-8196584
+         * for details.) We cannot prevent these classes from being initialized at image build time,
+         * so we have to reinitialize them at run time to honour the run time passed value for the
+         * javax.net.debug system property.
+         */
+        optionalClazz(access, "sun.security.ssl.Debug").ifPresent(c -> rci.rerunInitialization(c, "for reading properties at run time"));
+        optionalClazz(access, "sun.security.ssl.SSLLogger").ifPresent(c -> rci.rerunInitialization(c, "for reading properties at run time"));
+
         if (SubstrateOptions.EnableAllSecurityServices.getValue()) {
             /* Prepare SunEC native library access. */
             prepareSunEC();
