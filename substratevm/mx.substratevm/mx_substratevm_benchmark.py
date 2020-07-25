@@ -67,7 +67,7 @@ _RENAISSANCE_EXTRA_AGENT_ARGS = [
 RENAISSANCE_EXTRA_PROFILE_ARGS = [
     # extra-profile-run-arg is used to pass a number of instrumentation image run iterations
     '-Dnative-image.benchmark.extra-profile-run-arg=-r',
-    '-Dnative-image.benchmark.extra-profile-run-arg=5',
+    '-Dnative-image.benchmark.extra-profile-run-arg=10',
     # extra-agent-profile-run-arg is used to pass a number of agent runs to provide profiles
     '-Dnative-image.benchmark.extra-agent-profile-run-arg=-r',
     '-Dnative-image.benchmark.extra-agent-profile-run-arg=5'
@@ -332,7 +332,7 @@ _DACAPO_EXTRA_AGENT_ARGS = [
 _DACAPO_EXTRA_PROFILE_ARGS = [
     # extra-profile-run-arg is used to pass a number of instrumentation image run iterations
     '-Dnative-image.benchmark.extra-profile-run-arg=-n',
-    '-Dnative-image.benchmark.extra-profile-run-arg=5',
+    '-Dnative-image.benchmark.extra-profile-run-arg=10',
     # extra-agent-profile-run-arg is used to pass a number of agent runs to provide profiles
     '-Dnative-image.benchmark.extra-agent-profile-run-arg=-n',
     '-Dnative-image.benchmark.extra-agent-profile-run-arg=5'
