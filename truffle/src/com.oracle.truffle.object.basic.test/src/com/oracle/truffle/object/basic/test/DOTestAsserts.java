@@ -40,12 +40,15 @@
  */
 package com.oracle.truffle.object.basic.test;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -53,6 +56,7 @@ import org.junit.Assert;
 import org.junit.Assume;
 
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
@@ -132,5 +136,25 @@ public abstract class DOTestAsserts {
         sb.append("}");
 
         return sb.toString();
+    }
+
+    public static Map<Object, Object> archive(DynamicObject object) {
+        DynamicObjectLibrary lib = DynamicObjectLibrary.getFactory().getUncached(object);
+        Map<Object, Object> archive = new HashMap<>();
+        for (Property property : lib.getPropertyArray(object)) {
+            archive.put(property.getKey(), lib.getOrDefault(object, property.getKey(), null));
+        }
+        return archive;
+    }
+
+    public static boolean verifyValues(DynamicObject object, Map<Object, Object> archive) {
+        DynamicObjectLibrary lib = DynamicObjectLibrary.getFactory().getUncached(object);
+        for (Property property : lib.getPropertyArray(object)) {
+            Object key = property.getKey();
+            Object before = archive.get(key);
+            Object after = lib.getOrDefault(object, key, null);
+            assertEquals("before != after for key: " + key, after, before);
+        }
+        return true;
     }
 }
