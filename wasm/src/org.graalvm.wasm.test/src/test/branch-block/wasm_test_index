@@ -1,4 +1,5 @@
 br_if-return
+dynamic_br_table
 multiple_br_if_in_loop
 multiple_br_if_in_loop_with_block
 simple_br_before_add
