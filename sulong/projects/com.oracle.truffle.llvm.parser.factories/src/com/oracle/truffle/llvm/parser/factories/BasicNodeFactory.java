@@ -346,7 +346,7 @@ public class BasicNodeFactory implements NodeFactory {
     protected final LLVMContext context;
     protected DataLayout dataLayout;
 
-    private final Type vaListType;
+    protected final Type vaListType;
 
     public BasicNodeFactory(LLVMContext context, DataLayout dataLayout) {
         this.context = context;

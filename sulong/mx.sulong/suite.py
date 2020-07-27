@@ -997,6 +997,9 @@ suite = {
         "CLANG": "<toolchainGetToolPath:native,CC>",
         "SRC_DIR": "<path:com.oracle.truffle.llvm.tests.va.native>",
       },
+      "buildDependencies" : [
+        "AMD64_SUPPORT",
+      ],
       "dependencies" : [
         "SULONG_TEST",
         "SULONG_TOOLCHAIN_LAUNCHERS",

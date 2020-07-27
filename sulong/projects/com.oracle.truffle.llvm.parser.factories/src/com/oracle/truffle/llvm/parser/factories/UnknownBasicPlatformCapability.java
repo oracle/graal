@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.llvm.runtime.LLVMSyscallEntry;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMUnsupportedSyscallNode;
@@ -47,6 +48,7 @@ final class UnknownBasicPlatformCapability extends BasicPlatformCapability<Unkno
         /* DUMMY */;
         @Override
         public int value() {
+            CompilerDirectives.transferToInterpreter();
             throw new UnsupportedOperationException();
         }
     }
@@ -62,22 +64,26 @@ final class UnknownBasicPlatformCapability extends BasicPlatformCapability<Unkno
 
     @Override
     protected LLVMSyscallOperationNode createSyscallNode(UnknownSyscalls syscall) {
+        CompilerDirectives.transferToInterpreter();
         throw new UnsupportedOperationException("Should not reach.");
     }
 
     @Override
     public Object createVAListStorage() {
+        CompilerDirectives.transferToInterpreter();
         throw new UnsupportedOperationException("Should not reach.");
     }
 
     @Override
     public Type getVAListType() {
-        throw new UnsupportedOperationException();
+        CompilerDirectives.transferToInterpreter();
+        throw new UnsupportedOperationException("Should not reach.");
     }
 
     @Override
     public Object createNativeVAListWrapper(LLVMNativePointer vaListPtr) {
-        throw new UnsupportedOperationException();
+        CompilerDirectives.transferToInterpreter();
+        throw new UnsupportedOperationException("Should not reach.");
     }
 
 }
