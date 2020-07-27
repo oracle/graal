@@ -292,6 +292,7 @@ import com.oracle.truffle.espresso.nodes.quick.CheckCastNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.InstanceOfNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.GetFieldNodeGen;
+import com.oracle.truffle.espresso.nodes.quick.interop.PutFieldNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InlinedGetterNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InlinedSetterNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeDynamicCallSiteNode;
@@ -1011,7 +1012,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                     case GETSTATIC: // fall through
                     case GETFIELD: top += getField(frame, top, resolveField(curOpcode, bs.readCPI(curBCI)), curBCI, curOpcode, statementIndex); break;
                     case PUTSTATIC: // fall through
-                    case PUTFIELD: top += putField(frame, top, resolveField(curOpcode, bs.readCPI(curBCI)), curOpcode, statementIndex); break;
+                    case PUTFIELD: top += putField(frame, top, resolveField(curOpcode, bs.readCPI(curBCI)), curBCI, curOpcode, statementIndex); break;
 
                     case INVOKEVIRTUAL: // fall through
                     case INVOKESPECIAL: // fall through
@@ -1557,6 +1558,20 @@ public final class BytecodeNode extends EspressoMethodNode {
         return getField.execute(frame);
     }
 
+    public int quickenPutField(final VirtualFrame frame, int top, int curBCI, int opcode, Field field) {
+        CompilerDirectives.transferToInterpreter();
+        assert opcode == PUTFIELD;
+        QuickNode putField;
+        synchronized (this) {
+            if (bs.currentBC(curBCI) == QUICK) {
+                putField = nodes[bs.readCPI(curBCI)];
+            } else {
+                putField = injectQuick(curBCI, PutFieldNodeGen.create(top, curBCI, field));
+            }
+        }
+        return putField.execute(frame);
+    }
+
     private QuickNode dispatchQuickened(int top, int curBCI, int opcode, Method resolutionSeed, boolean allowFieldAccessInlining) {
         assert !allowFieldAccessInlining || getContext().InlineFieldAccessors;
         QuickNode invoke;
@@ -1920,7 +1935,7 @@ public final class BytecodeNode extends EspressoMethodNode {
      *   curBCI = bs.next(curBCI);
      * </pre>
      */
-    private int putField(final VirtualFrame frame, int top, Field field, int opcode, int statementIndex) {
+    private int putField(final VirtualFrame frame, int top, Field field, int curBCI, int opcode, int statementIndex) {
         assert opcode == PUTFIELD || opcode == PUTSTATIC;
 
         if (opcode == PUTFIELD) {
@@ -1963,9 +1978,20 @@ public final class BytecodeNode extends EspressoMethodNode {
 
         assert field.isStatic() == (opcode == PUTSTATIC);
 
+        int slot = top - field.getKind().getSlotCount() - 1; // -receiver
         StaticObject receiver = field.isStatic()
                         ? field.getDeclaringKlass().tryInitializeAndGetStatics()
-                        : nullCheck(peekAndReleaseObject(frame, top - field.getKind().getSlotCount() - 1)); // -receiver
+                        // Do not release the object, it might be read again in PutFieldNode
+                        : nullCheck(peekObject(frame, slot));
+
+        if (!noForeignObjects.isValid() && opcode == PUTFIELD) {
+            if (receiver.isForeignObject()) {
+                return quickenPutField(frame, top, curBCI, opcode, field);
+            } else {
+                // Release the object
+                putObject(frame, slot, null);
+            }
+        }
 
         switch (field.getKind()) {
             case Boolean:
