@@ -167,20 +167,20 @@ public abstract class LLVMInteropWriteNode extends LLVMNode {
 
         @Specialization(guards = "writeType.getSizeInBytes() == 2")
         long doI16(Object value, @SuppressWarnings("unused") ForeignToLLVMType writeType,
-                        @Cached(parameters = "I16") LLVMDataEscapeNode dataEscape) {
-            return (Short) dataEscape.executeWithTarget(value);
+                        @Cached LLVMDataEscapeNode.LLVMI16DataEscapeNode dataEscape) {
+            return dataEscape.executeWithTargetI16(value);
         }
 
         @Specialization(guards = "writeType.getSizeInBytes() == 4")
         long doI32(Object value, @SuppressWarnings("unused") ForeignToLLVMType writeType,
-                        @Cached(parameters = "I32") LLVMDataEscapeNode dataEscape) {
-            return (Integer) dataEscape.executeWithTarget(value);
+                        @Cached LLVMDataEscapeNode.LLVMI32DataEscapeNode dataEscape) {
+            return dataEscape.executeWithTargetI32(value);
         }
 
         @Specialization(guards = "writeType.getSizeInBytes() == 8")
         long doI64(Object value, @SuppressWarnings("unused") ForeignToLLVMType writeType,
-                        @Cached(parameters = "I64") LLVMDataEscapeNode dataEscape) {
-            return (Long) dataEscape.executeWithTarget(value);
+                        @Cached LLVMDataEscapeNode.LLVMI64DataEscapeNode dataEscape) {
+            return dataEscape.executeWithTargetI64(value);
         }
 
         @Fallback
