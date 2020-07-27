@@ -67,13 +67,16 @@ public final class InvokeDynamicCallSiteNode extends QuickNode {
             args[args.length - 1] = appendix;
         }
         Object result = callNode.call(args);
-        int resultAt = top - Signatures.slotsForParameters(parsedSignature); // no receiver
-        return (resultAt - top) + root.putKind(frame, resultAt, unbasic(result, returnType), returnKind);
+        return (getResultAt() - top) + root.putKind(frame, getResultAt(), unbasic(result, returnType), returnKind);
+    }
+
+    private int getResultAt() {
+        return top - Signatures.slotsForParameters(parsedSignature); // no receiver
     }
 
     @Override
     public boolean producedForeignObject(VirtualFrame frame) {
-        return false;
+        return returnKind.isObject() && getBytecodesNode().peekObject(frame, getResultAt()).isForeignObject();
     }
 
     // Transforms ints to sub-words
