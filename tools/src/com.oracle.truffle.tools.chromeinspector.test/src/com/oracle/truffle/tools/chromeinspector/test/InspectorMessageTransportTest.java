@@ -241,6 +241,39 @@ public class InspectorMessageTransportTest extends EnginesGCedTest {
     }
 
     @Test
+    public void inspectorContextClosedTest() throws IOException, InterruptedException {
+        Session session = new Session(null);
+        DebuggerEndpoint endpoint = new DebuggerEndpoint("simplePath" + SecureInspectorPathGenerator.getToken(), null);
+        endpoint.setOpenCountLimit(1);
+        try (Context context = endpoint.onOpenContext(session)) {
+            addContextReference(context);
+            Value result = context.eval("sl", "function main() {\n  x = 1;\n  return x;\n}");
+            Assert.assertEquals("Result", "1", result.toString());
+
+            MessageEndpoint peerEndpoint = endpoint.peer;
+            peerEndpoint.sendClose();
+            // Execution goes on after close:
+            result = context.eval("sl", "function main() {\n  x = 2;\n  debugger;\n  return x;\n}");
+            Assert.assertEquals("Result", "2", result.toString());
+            try (Context context2 = endpoint.onOpenContext(session)) {
+                addContextReference(context2);
+                result = context2.eval("sl", "function main() {\n  x = 3;\n  debugger;  return x;\n}");
+                Assert.assertEquals("Result", "3", result.toString());
+                int expectedNumMessages = MESSAGES_TO_BACKEND.length + MESSAGES_TO_CLIENT.length;
+                synchronized (session.messages) {
+                    while (session.messages.size() < expectedNumMessages) {
+                        // The reply messages are sent asynchronously. We need to wait for them.
+                        session.messages.wait();
+                    }
+                }
+
+                Assert.assertEquals(session.messages.toString(), expectedNumMessages, session.messages.size());
+                assertMessages(session.messages, MESSAGES_TO_BACKEND.length, MESSAGES_TO_CLIENT.length);
+            }
+        }
+    }
+
+    @Test
     public void inspectorVetoedTest() {
         Engine.Builder engineBuilder = Engine.newBuilder().serverTransport(new MessageTransport() {
 
@@ -351,33 +384,7 @@ public class InspectorMessageTransportTest extends EnginesGCedTest {
 
         public Engine onOpen(final Session session) {
             assert this != null;
-            Engine.Builder engineBuilder = Engine.newBuilder().serverTransport(new MessageTransport() {
-                @Override
-                public MessageEndpoint open(URI requestURI, MessageEndpoint peerEndpoint) throws IOException, MessageTransport.VetoException {
-                    Assert.assertEquals("Invalid protocol", "ws", requestURI.getScheme());
-                    DebuggerEndpoint.this.peer = peerEndpoint;
-                    String uriStr = requestURI.toString();
-                    if (path == null) {
-                        Assert.assertTrue(uriStr, URI_PATTERN.matcher(uriStr).matches());
-                    } else {
-                        Assert.assertTrue(uriStr, uriStr.startsWith("ws://"));
-                        String absolutePath = path.startsWith("/") ? path : "/" + path;
-                        Assert.assertTrue(uriStr, uriStr.endsWith(":" + PORT + absolutePath));
-                    }
-                    boolean closed = false;
-                    if (openCountLimit == 0) {
-                        closed = true;
-                        peerEndpoint.sendClose();
-                    } else if (openCountLimit > 0) {
-                        openCountLimit--;
-                    }
-                    MessageEndpoint ourEndpoint = new ChromeDebuggingProtocolMessageHandler(session, requestURI, peerEndpoint, closed);
-                    if (rc != null) {
-                        rc.waitTillClientDataAreSent();
-                    }
-                    return ourEndpoint;
-                }
-            }).option("inspect", PORT);
+            Engine.Builder engineBuilder = Engine.newBuilder().serverTransport(new EndpointMessageTransport(session)).option("inspect", PORT);
             if (path != null) {
                 engineBuilder.option("inspect.Path", path);
             }
@@ -386,11 +393,56 @@ public class InspectorMessageTransportTest extends EnginesGCedTest {
             return engine;
         }
 
+        public Context onOpenContext(final Session session) {
+            assert this != null;
+            Context.Builder contextBuilder = Context.newBuilder().serverTransport(new EndpointMessageTransport(session)).option("inspect", PORT);
+            if (path != null) {
+                contextBuilder.option("inspect.Path", path);
+            }
+            Context context = contextBuilder.build();
+            addEngineReference(context.getEngine());
+            return context;
+        }
+
         public void onClose(Session session) {
             Assert.assertNotNull(session);
             assert this != null;
         }
 
+        private final class EndpointMessageTransport implements MessageTransport {
+
+            private final Session session;
+
+            EndpointMessageTransport(Session session) {
+                this.session = session;
+            }
+
+            @Override
+            public MessageEndpoint open(URI requestURI, MessageEndpoint peerEndpoint) throws IOException, MessageTransport.VetoException {
+                Assert.assertEquals("Invalid protocol", "ws", requestURI.getScheme());
+                DebuggerEndpoint.this.peer = peerEndpoint;
+                String uriStr = requestURI.toString();
+                if (path == null) {
+                    Assert.assertTrue(uriStr, URI_PATTERN.matcher(uriStr).matches());
+                } else {
+                    Assert.assertTrue(uriStr, uriStr.startsWith("ws://"));
+                    String absolutePath = path.startsWith("/") ? path : "/" + path;
+                    Assert.assertTrue(uriStr, uriStr.endsWith(":" + PORT + absolutePath));
+                }
+                boolean closed = false;
+                if (openCountLimit == 0) {
+                    closed = true;
+                    peerEndpoint.sendClose();
+                } else if (openCountLimit > 0) {
+                    openCountLimit--;
+                }
+                MessageEndpoint ourEndpoint = new ChromeDebuggingProtocolMessageHandler(session, requestURI, peerEndpoint, closed);
+                if (rc != null) {
+                    rc.waitTillClientDataAreSent();
+                }
+                return ourEndpoint;
+            }
+        }
     }
 
     private static final class ChromeDebuggingProtocolMessageHandler implements MessageEndpoint {

@@ -288,7 +288,7 @@ public final class InspectorTester {
         @Override
         public void run() {
             Engine engine = Engine.newBuilder().err(err).build();
-            gcCheck.addEngineReference(engine);
+            gcCheck.addReference(engine);
             Instrument testInstrument = engine.getInstruments().get(InspectorTestInstrument.ID);
             InspectSessionInfoProvider sessionInfoProvider = testInstrument.lookup(InspectSessionInfoProvider.class);
             InspectSessionInfo sessionInfo = sessionInfoProvider.getSessionInfo(suspend, inspectInternal, inspectInitialization, sourcePath);
