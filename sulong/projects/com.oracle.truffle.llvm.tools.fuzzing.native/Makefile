@@ -35,7 +35,7 @@ QUIET_REDIRECT$(MX_VERBOSE)  = > /dev/null
 default: ${LLVM_STRESS} ${LLVM_REDUCE}
 
 ifeq ($(OS), darwin)
-CLANG_PREFIX=/usr/bin/xcrun --sdk macosx
+CLANG_PREFIX=/usr/bin/xcrun
 LDFLAGS+=-lz
 else
 CLANG_PREFIX=
