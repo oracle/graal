@@ -61,12 +61,12 @@ src/%.cpp: %.diff
 
 bin/%.o: src/%.cpp
 	@mkdir -p $(dir $@)
-	$(QUIETLY) $(CXX_PREFIX) $(CXX) -c ${CXXFLAGS} ${CPPFLAGS} -o $@ $<
+	$(QUIETLY) $(CLANG_PREFIX) $(CXX) -c ${CXXFLAGS} ${CPPFLAGS} -o $@ $<
 
 ${LLVM_REDUCE}: bin/llvm-reduce.o
 	@mkdir -p $(dir $@)
-	$(QUIETLY) $(CXX_PREFIX) $(CXX) ${LDFLAGS} ${CXXFLAGS} -o $@ $< $(LIBS)
+	$(QUIETLY) $(CLANG_PREFIX) $(CXX) ${LDFLAGS} ${CXXFLAGS} -o $@ $< $(LIBS)
 
 ${LLVM_STRESS}: bin/llvm-stress.o
 	@mkdir -p $(dir $@)
-	$(QUIETLY) $(CXX_PREFIX) $(CXX) ${LDFLAGS} ${CXXFLAGS} -o $@ $< $(LIBS)
+	$(QUIETLY) $(CLANG_PREFIX) $(CXX) ${LDFLAGS} ${CXXFLAGS} -o $@ $< $(LIBS)
