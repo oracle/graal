@@ -29,7 +29,7 @@ package com.oracle.truffle.espresso.polyglot;
  * different language, {@link #importObject importing} symbols, exported by other languages and
  * making Espresso objects available to other languages by {@link #exportObject exporting} them.
  * <p>
- * Foreign objects, obtained from {@link Polyglot#eval} or {@link Polyglot#importObject}, are
+ * Foreign values, obtained from {@link Polyglot#eval} or {@link Polyglot#importObject}, are
  * returned as {@link Object}. There are two options to make their members accessible from Espresso:
  * <ul>
  * <li>{@link Polyglot#cast Polyglot.cast} the object to a Java interface. In this case, method
@@ -40,7 +40,7 @@ package com.oracle.truffle.espresso.polyglot;
  * </ul>
  * Casting to abstract classes is not supported.
  * <p>
- * NB: for Java code running on Espresso, these methods will be intrinsified. Otherwise
+ * NB: for Java code running in Espresso, these methods will be intrinsified. Otherwise
  * multi-language environment is not available.
  */
 public final class Polyglot {
@@ -48,7 +48,7 @@ public final class Polyglot {
     }
 
     /**
-     * Tests if an object is a foreign object, i.e. originates from a different Truffle language.
+     * Tests if an object is a foreign value, i.e. originates from a different Truffle language.
      */
     @SuppressWarnings("unused")
     public static boolean isForeignObject(Object object) {
@@ -65,7 +65,7 @@ public final class Polyglot {
      * as a {@code targetClass}.
      * <li>if {@code targetClass} is an interface, returns the foreign object as a
      * {@code targetClass}. The existence of methods, defined in {@code targetClass}, is not
-     * verified and if a method does not exist, an exception will be thrown only when this method is
+     * verified and if a method does not exist, an exception will be thrown only when the method is
      * invoked.
      * </ul>
      * <p>
@@ -91,7 +91,7 @@ public final class Polyglot {
      * Evaluates the given code in the given language.
      *
      * @param languageId the id of one of the Truffle languages
-     * @param sourceCode the source code in the {@code language}
+     * @param sourceCode the source code in the language, identified by {@code languageId}
      *
      * @return the result of the evaluation as {@link Object}.
      *
@@ -106,7 +106,7 @@ public final class Polyglot {
      */
     @SuppressWarnings("unused")
     public static Object eval(String languageId, String sourceCode) {
-        throw new UnsupportedOperationException("Polyglot is not available. Run Espresso on GraalVM to interact with other Truffle languages.");
+        throw new UnsupportedOperationException("Polyglot is not available. Use Espresso to interact with other Truffle languages.");
     }
 
     /**
@@ -133,7 +133,7 @@ public final class Polyglot {
      */
     @SuppressWarnings("unused")
     public static Object importObject(String name) {
-        throw new UnsupportedOperationException("Polyglot is not available. Run Espresso on GraalVM to interact with other Truffle languages.");
+        throw new UnsupportedOperationException("Polyglot is not available. Use Espresso to interact with other Truffle languages.");
     }
 
     /**
@@ -143,7 +143,7 @@ public final class Polyglot {
      * See {@link Polyglot#cast} for the details of casting.
      *
      */
-    public static <T> T importObject(String name, Class<? extends T> targetClass) {
+    public static <T> T importObject(String name, Class<? extends T> targetClass) throws ClassCastException {
         return cast(targetClass, importObject(name));
     }
 
@@ -152,6 +152,6 @@ public final class Polyglot {
      */
     @SuppressWarnings("unused")
     public static void exportObject(String name, Object value) {
-        throw new UnsupportedOperationException("Polyglot is not available. Run Espresso on GraalVM to interact with other Truffle languages.");
+        throw new UnsupportedOperationException("Polyglot is not available. Use Espresso to interact with other Truffle languages.");
     }
 }
