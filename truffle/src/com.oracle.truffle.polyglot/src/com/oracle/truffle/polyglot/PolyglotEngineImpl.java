@@ -265,7 +265,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         parseOptions(options, useSystemProperties, originalEngineOptions, languagesOptions, instrumentsOptions, logOptions);
         this.logLevels = logOptions.logLevels;
         this.logHandler = logHandler != null ? logHandler
-                        : logOptions.logFile != null ? PolyglotLoggers.getFileHandler(logOptions.logFile) : PolyglotLoggers.createDefaultHandler(INSTRUMENT.getOut(this.err));
+                        : ALLOW_IO && logOptions.logFile != null ? PolyglotLoggers.getFileHandler(logOptions.logFile) : PolyglotLoggers.createDefaultHandler(INSTRUMENT.getOut(this.err));
 
         boolean useAllowExperimentalOptions = allowExperimentalOptions || Boolean.parseBoolean(EngineAccessor.RUNTIME.getSavedProperty(PROP_ALLOW_EXPERIMENTAL_OPTIONS));
         this.engineOptionValues.putAll(originalEngineOptions, useAllowExperimentalOptions);
@@ -442,7 +442,7 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
         parseOptions(newOptions, newUseSystemProperties, originalEngineOptions, languagesOptions, instrumentsOptions, logOptions);
         logLevels = logOptions.logLevels;
         this.logHandler = newLogHandler != null ? newLogHandler
-                        : logOptions.logFile != null ? PolyglotLoggers.getFileHandler(logOptions.logFile) : PolyglotLoggers.createDefaultHandler(INSTRUMENT.getOut(this.err));
+                        : ALLOW_IO && logOptions.logFile != null ? PolyglotLoggers.getFileHandler(logOptions.logFile) : PolyglotLoggers.createDefaultHandler(INSTRUMENT.getOut(this.err));
         boolean useAllowExperimentalOptions = newAllowExperimentalOptions || Boolean.parseBoolean(EngineAccessor.RUNTIME.getSavedProperty(PROP_ALLOW_EXPERIMENTAL_OPTIONS));
         this.engineOptionValues.putAll(originalEngineOptions, useAllowExperimentalOptions);
 

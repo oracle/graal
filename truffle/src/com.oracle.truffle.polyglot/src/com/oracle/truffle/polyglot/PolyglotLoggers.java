@@ -537,7 +537,12 @@ final class PolyglotLoggers {
                             spi = LoggerCacheImpl.newEngineLoggerCache(useHandler, engine, false, Level.INFO);
                             levels = engine.logLevels;
                         } else {
-                            Handler useHandler = logFile != null ? getFileHandler(logFile) : createDefaultHandler(PolyglotEngineImpl.ALLOW_IO ? System.err : new NullOutputStream());
+                            Handler useHandler;
+                            if (PolyglotEngineImpl.ALLOW_IO && logFile != null) {
+                                useHandler = getFileHandler(logFile);
+                            } else {
+                                useHandler = createDefaultHandler(System.err);
+                            }
                             spi = LoggerCacheImpl.newFallBackLoggerCache(useHandler);
                             levels = Collections.emptyMap();
                         }
@@ -584,17 +589,6 @@ final class PolyglotLoggers {
         @Override
         public void close() throws SecurityException {
             delegate.close();
-        }
-    }
-
-    private static final class NullOutputStream extends OutputStream {
-
-        @Override
-        public void write(int b) throws IOException {
-        }
-
-        @Override
-        public void write(byte[] array, int off, int len) throws IOException {
         }
     }
 
