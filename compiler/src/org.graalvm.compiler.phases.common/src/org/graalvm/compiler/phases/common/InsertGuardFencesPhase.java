@@ -24,9 +24,9 @@
  */
 package org.graalvm.compiler.phases.common;
 
-import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.NonDeoptGuardTargets;
-import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.Options.MitigateSpeculativeExecutionAttacks;
-import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.Options.UseIndexMasking;
+import static org.graalvm.compiler.core.common.SpectrePHTMitigations.NonDeoptGuardTargets;
+import static org.graalvm.compiler.core.common.SpectrePHTMitigations.Options.SpectrePHTBarriers;
+import static org.graalvm.compiler.core.common.SpectrePHTMitigations.Options.SpectrePHTIndexMasking;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -60,13 +60,13 @@ public class InsertGuardFencesPhase extends Phase {
     protected void run(StructuredGraph graph) {
         for (AbstractBeginNode beginNode : graph.getNodes(AbstractBeginNode.TYPE)) {
             if (hasGuardUsages(beginNode)) {
-                if (MitigateSpeculativeExecutionAttacks.getValue(graph.getOptions()) == NonDeoptGuardTargets) {
+                if (SpectrePHTBarriers.getValue(graph.getOptions()) == NonDeoptGuardTargets) {
                     if (isDeoptGuard(beginNode)) {
                         graph.getDebug().log(DebugContext.VERBOSE_LEVEL, "Skipping deoptimizing guard speculation fence at %s", beginNode);
                         continue;
                     }
                 }
-                if (UseIndexMasking.getValue(graph.getOptions())) {
+                if (SpectrePHTIndexMasking.getValue(graph.getOptions())) {
                     if (isBoundsCheckGuard(beginNode)) {
                         graph.getDebug().log(DebugContext.VERBOSE_LEVEL, "Skipping bounds-check speculation fence at %s", beginNode);
                         continue;
