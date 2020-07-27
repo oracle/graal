@@ -465,7 +465,7 @@ public class CheckGraalIntrinsics extends GraalTest {
                             "sun/misc/Unsafe.getAndSet" + oopName + "(Ljava/lang/Object;JLjava/lang/Object;)Ljava/lang/Object;");
 
             if (isJDK9OrHigher()) {
-                if (!(arch instanceof AArch64)) {
+                if (isSPARC(arch)) {
                     add(toBeInvestigated,
                                     "java/lang/StringLatin1.compareTo([B[B)I",
                                     "java/lang/StringLatin1.compareToUTF16([B[B)I",
@@ -475,19 +475,19 @@ public class CheckGraalIntrinsics extends GraalTest {
                                     "jdk/internal/misc/Unsafe.getAndAddLong(Ljava/lang/Object;JJ)J",
                                     "jdk/internal/misc/Unsafe.getAndSetInt(Ljava/lang/Object;JI)I",
                                     "jdk/internal/misc/Unsafe.getAndSetLong(Ljava/lang/Object;JJ)J",
-                                    "jdk/internal/misc/Unsafe.getAndSet" + oopName + "(Ljava/lang/Object;JLjava/lang/Object;)Ljava/lang/Object;");
+                                    "jdk/internal/misc/Unsafe.getAndSet" + oopName + "(Ljava/lang/Object;JLjava/lang/Object;)Ljava/lang/Object;",
+                                    "jdk/internal/misc/Unsafe.getCharUnaligned(Ljava/lang/Object;J)C",
+                                    "jdk/internal/misc/Unsafe.getIntUnaligned(Ljava/lang/Object;J)I",
+                                    "jdk/internal/misc/Unsafe.getLongUnaligned(Ljava/lang/Object;J)J",
+                                    "jdk/internal/misc/Unsafe.getShortUnaligned(Ljava/lang/Object;J)S",
+                                    "jdk/internal/misc/Unsafe.putCharUnaligned(Ljava/lang/Object;JC)V",
+                                    "jdk/internal/misc/Unsafe.putIntUnaligned(Ljava/lang/Object;JI)V",
+                                    "jdk/internal/misc/Unsafe.putLongUnaligned(Ljava/lang/Object;JJ)V",
+                                    "jdk/internal/misc/Unsafe.putShortUnaligned(Ljava/lang/Object;JS)V");
                 }
                 add(toBeInvestigated,
                                 "java/lang/Thread.onSpinWait()V",
-                                "java/util/ArraysSupport.vectorizedMismatch(Ljava/lang/Object;JLjava/lang/Object;JII)I",
-                                "jdk/internal/misc/Unsafe.getCharUnaligned(Ljava/lang/Object;J)C",
-                                "jdk/internal/misc/Unsafe.getIntUnaligned(Ljava/lang/Object;J)I",
-                                "jdk/internal/misc/Unsafe.getLongUnaligned(Ljava/lang/Object;J)J",
-                                "jdk/internal/misc/Unsafe.getShortUnaligned(Ljava/lang/Object;J)S",
-                                "jdk/internal/misc/Unsafe.putCharUnaligned(Ljava/lang/Object;JC)V",
-                                "jdk/internal/misc/Unsafe.putIntUnaligned(Ljava/lang/Object;JI)V",
-                                "jdk/internal/misc/Unsafe.putLongUnaligned(Ljava/lang/Object;JJ)V",
-                                "jdk/internal/misc/Unsafe.putShortUnaligned(Ljava/lang/Object;JS)V");
+                                "java/util/ArraysSupport.vectorizedMismatch(Ljava/lang/Object;JLjava/lang/Object;JII)I");
             }
             if (isJDK10OrHigher()) {
                 add(toBeInvestigated,

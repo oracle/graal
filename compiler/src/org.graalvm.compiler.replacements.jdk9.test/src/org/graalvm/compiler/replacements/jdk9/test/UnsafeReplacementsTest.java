@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,6 +40,8 @@ import java.lang.reflect.Field;
 @AddExports("java.base/jdk.internal.misc")
 public class UnsafeReplacementsTest extends MethodSubstitutionTest {
 
+    private static final TargetDescription target = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getTarget();
+
     static class Container {
         public volatile boolean booleanField;
         public volatile byte byteField = 17;
@@ -49,6 +51,7 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
         public volatile long longField = 0xdedababafafaL;
         public volatile float floatField = 0.125f;
         public volatile double doubleField = 0.125;
+        public byte[] byteArrayField = new byte[16];
     }
 
     static jdk.internal.misc.Unsafe unsafe = jdk.internal.misc.Unsafe.getUnsafe();
@@ -62,6 +65,7 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
     static long longOffset;
     static long floatOffset;
     static long doubleOffset;
+    static long byteArrayBaseOffset;
 
     static {
         try {
@@ -73,6 +77,7 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
             longOffset = unsafe.objectFieldOffset(Container.class.getDeclaredField("longField"));
             floatOffset = unsafe.objectFieldOffset(Container.class.getDeclaredField("floatField"));
             doubleOffset = unsafe.objectFieldOffset(Container.class.getDeclaredField("doubleField"));
+            byteArrayBaseOffset = unsafe.arrayBaseOffset(byte[].class);
         } catch (NoSuchFieldException e) {
             throw new RuntimeException(e);
         }
@@ -160,7 +165,6 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
 
     @Test
     public void testCompareAndSet() {
-        TargetDescription target = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getTarget();
         if (target.arch instanceof AMD64) {
             testGraph("unsafeCompareAndSetBoolean");
             testGraph("unsafeCompareAndSetByte");
@@ -224,7 +228,6 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
 
     @Test
     public void testGetAndAdd() {
-        TargetDescription target = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getTarget();
         if (target.arch instanceof AMD64) {
             testGraph("unsafeGetAndAddByte");
             testGraph("unsafeGetAndAddChar");
@@ -273,7 +276,6 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
 
     @Test
     public void testGetAndSet() {
-        TargetDescription target = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getTarget();
         if (target.arch instanceof AMD64) {
             testGraph("unsafeGetAndSetBoolean");
             testGraph("unsafeGetAndSetByte");
@@ -680,6 +682,36 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
         return unsafe.getDoubleVolatile(container, doubleOffset);
     }
 
+    public static short unsafeGetPutShortUnaligned() {
+        Container container = new Container();
+        unsafe.putShortUnaligned(container.byteArrayField, byteArrayBaseOffset + 1, (short) 0x1234);
+        return unsafe.getShortUnaligned(container.byteArrayField, byteArrayBaseOffset + 1);
+    }
+
+    public static char unsafeGetPutCharUnaligned() {
+        Container container = new Container();
+        unsafe.putCharUnaligned(container.byteArrayField, byteArrayBaseOffset + 1, 'x');
+        return unsafe.getCharUnaligned(container.byteArrayField, byteArrayBaseOffset + 1);
+    }
+
+    public static int unsafeGetPutIntUnaligned() {
+        Container container = new Container();
+        unsafe.putIntUnaligned(container.byteArrayField, byteArrayBaseOffset + 1, 0x01234567);
+        unsafe.putIntUnaligned(container.byteArrayField, byteArrayBaseOffset + 3, 0x01234567);
+        return unsafe.getIntUnaligned(container.byteArrayField, byteArrayBaseOffset + 1) +
+                        unsafe.getIntUnaligned(container.byteArrayField, byteArrayBaseOffset + 3);
+    }
+
+    public static long unsafeGetPutLongUnaligned() {
+        Container container = new Container();
+        unsafe.putLongUnaligned(container.byteArrayField, byteArrayBaseOffset + 1, 0x01234567890ABCDEFL);
+        unsafe.putLongUnaligned(container.byteArrayField, byteArrayBaseOffset + 3, 0x01234567890ABCDEFL);
+        unsafe.putLongUnaligned(container.byteArrayField, byteArrayBaseOffset + 7, 0x01234567890ABCDEFL);
+        return unsafe.getLongUnaligned(container.byteArrayField, byteArrayBaseOffset + 1) +
+                        unsafe.getLongUnaligned(container.byteArrayField, byteArrayBaseOffset + 3) +
+                        unsafe.getLongUnaligned(container.byteArrayField, byteArrayBaseOffset + 7);
+    }
+
     @Test
     public void testUnsafeGetPutPlain() {
         testGraph("unsafeGetPutBoolean");
@@ -762,5 +794,20 @@ public class UnsafeReplacementsTest extends MethodSubstitutionTest {
         test("unsafeGetPutLongVolatile");
         test("unsafeGetPutFloatVolatile");
         test("unsafeGetPutDoubleVolatile");
+    }
+
+    @Test
+    public void testUnsafeGetPutUnaligned() {
+        if (target.arch instanceof AMD64 || target.arch instanceof AArch64) {
+            testGraph("unsafeGetPutShortUnaligned");
+            testGraph("unsafeGetPutCharUnaligned");
+            testGraph("unsafeGetPutIntUnaligned");
+            testGraph("unsafeGetPutLongUnaligned");
+        }
+
+        test("unsafeGetPutShortUnaligned");
+        test("unsafeGetPutCharUnaligned");
+        test("unsafeGetPutIntUnaligned");
+        test("unsafeGetPutLongUnaligned");
     }
 }
