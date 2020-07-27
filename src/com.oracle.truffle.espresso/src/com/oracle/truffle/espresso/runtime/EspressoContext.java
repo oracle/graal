@@ -343,7 +343,7 @@ public final class EspressoContext {
                         }
 
                         meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), prev.getGuestReference());
-                        updateReferencePendingList(prev, lock);
+                        updateReferencePendingList(head, prev, lock);
                     } finally {
                         lock.getLock().unlock();
                     }
@@ -355,7 +355,7 @@ public final class EspressoContext {
         }
 
         @SuppressWarnings("rawtypes")
-        protected abstract void updateReferencePendingList(EspressoReference prev, StaticObject lock);
+        protected abstract void updateReferencePendingList(EspressoReference head, EspressoReference prev, StaticObject lock);
     }
 
     private void spawnVM() {
@@ -400,8 +400,8 @@ public final class EspressoContext {
             this.hostToGuestReferenceDrainThread = getEnv().createThread(new ReferenceDrain() {
                 @SuppressWarnings("rawtypes")
                 @Override
-                protected void updateReferencePendingList(EspressoReference prev, StaticObject lock) {
-                    StaticObject obj = meta.java_lang_ref_Reference_pending.getAndSetObject(meta.java_lang_ref_Reference.getStatics(), prev.getGuestReference());
+                protected void updateReferencePendingList(EspressoReference head, EspressoReference prev, StaticObject lock) {
+                    StaticObject obj = meta.java_lang_ref_Reference_pending.getAndSetObject(meta.java_lang_ref_Reference.getStatics(), head.getGuestReference());
                     meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), obj);
                     getVM().JVM_MonitorNotify(lock, profiler);
 
@@ -414,10 +414,10 @@ public final class EspressoContext {
             this.hostToGuestReferenceDrainThread = getEnv().createThread(new ReferenceDrain() {
                 @SuppressWarnings("rawtypes")
                 @Override
-                protected void updateReferencePendingList(EspressoReference prev, StaticObject lock) {
+                protected void updateReferencePendingList(EspressoReference head, EspressoReference prev, StaticObject lock) {
                     synchronized (pendingLock) {
                         StaticObject obj = referencePendingList;
-                        referencePendingList = prev.getGuestReference();
+                        referencePendingList = head.getGuestReference();
                         meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), obj);
                         getVM().JVM_MonitorNotify(lock, profiler);
                         pendingLock.notifyAll();
