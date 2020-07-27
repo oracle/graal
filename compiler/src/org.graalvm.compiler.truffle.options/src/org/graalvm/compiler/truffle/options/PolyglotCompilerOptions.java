@@ -252,7 +252,7 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<Boolean> MultiTier = new OptionKey<>(false);
 
     @Option(help = "Whether to use inlining for the first tier compilations.", category = OptionCategory.EXPERT)
-    public static final OptionKey<Boolean> FirstTierInlining = new OptionKey<>(true);
+    public static final OptionKey<Boolean> FirstTierInlining = new OptionKey<>(false);
 
     @Option(help = "Minimum number of invocations or loop iterations needed to compile a guest language root in low tier mode.",
             category = OptionCategory.EXPERT)
@@ -260,6 +260,9 @@ public final class PolyglotCompilerOptions {
 
     @Option(help = "Minimum number of calls before a call target is compiled in the first tier.", category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> FirstTierMinInvokeThreshold = new OptionKey<>(1);
+
+    @Option(help = "Whether to use the economy configuration in the first-tier compilations.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Boolean> FirstTierUseEconomy = new OptionKey<>(true);
 
     // Failed compilation behavior
 

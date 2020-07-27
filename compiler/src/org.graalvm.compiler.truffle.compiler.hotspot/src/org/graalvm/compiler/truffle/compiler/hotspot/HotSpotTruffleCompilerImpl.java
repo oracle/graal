@@ -108,9 +108,6 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         // @formatter:off
         @Option(help = "Select a compiler configuration for Truffle compilation (default: use Graal system compiler configuration).")
         public static final OptionKey<String> TruffleCompilerConfiguration = new OptionKey<>(null);
-
-        @Option(help = "Whether to use the economy configuration in the first-tier compilations.")
-        public static final OptionKey<Boolean> FirstTierUseEconomy = new OptionKey<>(true);
         // @formatter:on
     }
 
@@ -130,23 +127,14 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
         SnippetReflectionProvider snippetReflection = hotspotGraalRuntime.getRequiredCapability(SnippetReflectionProvider.class);
 
         // Create low tier suites.
-        Suites firstTierSuites;
-        LIRSuites firstTierLirSuites;
-        Providers firstTierProviders;
-        if (Options.FirstTierUseEconomy.getValue(options)) {
-            CompilerConfigurationFactory lowTierCompilerConfigurationFactory = new EconomyCompilerConfigurationFactory();
-            CompilerConfiguration compilerConfiguration = lowTierCompilerConfigurationFactory.createCompilerConfiguration();
-            HotSpotBackendFactory backendFactory = lowTierCompilerConfigurationFactory.createBackendMap().getBackendFactory(backend.getTarget().arch);
-            HotSpotBackend firstTierBackend = backendFactory.createBackend(hotspotGraalRuntime, compilerConfiguration, HotSpotJVMCIRuntime.runtime(), null);
-            firstTierSuites = firstTierBackend.getSuites().getDefaultSuites(options);
-            firstTierLirSuites = firstTierBackend.getSuites().getDefaultLIRSuites(options);
-            firstTierProviders = firstTierBackend.getProviders();
-            firstTierBackend.completeInitialization(HotSpotJVMCIRuntime.runtime(), options);
-        } else {
-            firstTierSuites = suites;
-            firstTierLirSuites = lirSuites;
-            firstTierProviders = backend.getProviders();
-        }
+        CompilerConfigurationFactory lowTierCompilerConfigurationFactory = new EconomyCompilerConfigurationFactory();
+        CompilerConfiguration compilerConfiguration = lowTierCompilerConfigurationFactory.createCompilerConfiguration();
+        HotSpotBackendFactory backendFactory = lowTierCompilerConfigurationFactory.createBackendMap().getBackendFactory(backend.getTarget().arch);
+        HotSpotBackend firstTierBackend = backendFactory.createBackend(hotspotGraalRuntime, compilerConfiguration, HotSpotJVMCIRuntime.runtime(), null);
+        Suites firstTierSuites = firstTierBackend.getSuites().getDefaultSuites(options);
+        LIRSuites firstTierLirSuites = firstTierBackend.getSuites().getDefaultLIRSuites(options);
+        Providers firstTierProviders = firstTierBackend.getProviders();
+        firstTierBackend.completeInitialization(HotSpotJVMCIRuntime.runtime(), options);
 
         return new HotSpotTruffleCompilerImpl(hotspotGraalRuntime, runtime, plugins, suites, lirSuites, backend, firstTierSuites, firstTierLirSuites, firstTierProviders, snippetReflection);
     }

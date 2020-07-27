@@ -892,10 +892,22 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     public final Map<String, Object> getDebugProperties(TruffleInlining inlining) {
         Map<String, Object> properties = new LinkedHashMap<>();
         GraalTruffleRuntimeListener.addASTSizeProperty(this, inlining, properties);
-        String callsThreshold = String.format("%7d/%5d", getCallCount(), engine.callThresholdInInterpreter);
-        String loopsThreshold = String.format("%7d/%5d", getCallAndLoopCount(), engine.callAndLoopThresholdInInterpreter);
-        properties.put("Calls/Thres", callsThreshold);
-        properties.put("CallsAndLoop/Thres", loopsThreshold);
+        String callsThresholdInInterpreter = String.format("%7d/%5d", getCallCount(), engine.callThresholdInInterpreter);
+        String loopsThresholdInInterpreter = String.format("%7d/%5d", getCallAndLoopCount(), engine.callAndLoopThresholdInInterpreter);
+        if (engine.multiTier) {
+            if (isValidLastTier()) {
+                String callsThresholdInFirstTier = String.format("%7d/%5d", getCallCount(), engine.callThresholdInFirstTier);
+                properties.put("Calls/Thres", callsThresholdInFirstTier);
+                properties.put("IsLastTier", true);
+            } else {
+                properties.put("Calls/Thres", callsThresholdInInterpreter);
+                properties.put("CallsAndLoop/Thres", loopsThresholdInInterpreter);
+                properties.put("IsLastTier", false);
+            }
+        } else {
+            properties.put("Calls/Thres", callsThresholdInInterpreter);
+            properties.put("CallsAndLoop/Thres", loopsThresholdInInterpreter);
+        }
         return properties;
     }
 
