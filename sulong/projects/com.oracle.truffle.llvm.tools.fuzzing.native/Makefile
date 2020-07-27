@@ -43,7 +43,7 @@ endif
 
 LIBS+=$(shell ${LLVM_CONFIG} --libs)
 LDFLAGS+=$(shell ${LLVM_CONFIG} --ldflags) -rpath $(shell ${LLVM_CONFIG} --libdir)
-CXXFLAGS+=$(shell ${LLVM_CONFIG} --cxxflags) -std=c++14
+CXXFLAGS+=$(shell ${LLVM_CONFIG} --cxxflags)
 CPPFLAGS+=$(shell ${LLVM_CONFIG} --cppflags)
 
 src/llvm-stress.cpp: ${LLVM_ORG_SRC}/llvm/tools/llvm-stress/llvm-stress.cpp

@@ -118,7 +118,7 @@
 +  Strategies.emplace_back(new InstReducerIRStrategy());
  
 -  return writeModule(*M, Data, MaxSize);
-+  return std::make_unique<IRMutator>(std::move(Types), std::move(Strategies));
++  return llvm::make_unique<IRMutator>(std::move(Types), std::move(Strategies));
  }
  
  extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
