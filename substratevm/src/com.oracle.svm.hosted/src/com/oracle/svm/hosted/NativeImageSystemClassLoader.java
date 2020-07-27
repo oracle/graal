@@ -73,6 +73,11 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
 
     public void setNativeImageClassLoader(ClassLoader nativeImageClassLoader) {
         if (nativeImageClassLoader == null && this.nativeImageClassLoader != null) {
+            /*
+             * If the active nativeImageClassLoader gets uninstalled (by setting null) remember it
+             * in the disallowedClassLoaders map to allow checking for left-over instances from
+             * previous builds. See {@code SVMHost.checkType}.
+             */
             disallowedClassLoaders.put(this.nativeImageClassLoader, Boolean.TRUE);
         }
         this.nativeImageClassLoader = nativeImageClassLoader;
