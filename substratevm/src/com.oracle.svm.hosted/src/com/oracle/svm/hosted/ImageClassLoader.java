@@ -32,54 +32,22 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
-import java.nio.channels.ClosedByInterruptException;
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
-import java.nio.file.FileVisitResult;
-import java.nio.file.FileVisitor;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.Enumeration;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
-import java.util.TreeSet;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.util.InterruptImageBuilding;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.ModuleSupport;
-
 public final class ImageClassLoader {
-
-    /*
-     * This cannot be a HostedOption because all Subclasses of OptionDescriptors from inside builtin
-     * modules need to be initialized prior to option parsing so that they can be found.
-     */
-    public static final String PROPERTY_IMAGEINCLUDEBUILTINMODULES = "substratevm.ImageIncludeBuiltinModules";
-
-    private static final String CLASS_EXTENSION = ".class";
-    private static final int CLASS_EXTENSION_LENGTH = CLASS_EXTENSION.length();
 
     /*
      * This cannot be a HostedOption because the option parsing already relies on the list of loaded
@@ -96,116 +64,27 @@ public final class ImageClassLoader {
         Word.ensureInitialized();
     }
 
-    final Platform platform;
-    private final NativeImageClassLoader classLoader;
+    public final Platform platform;
+    final NativeImageClassLoaderSupport classLoaderSupport;
+
     private final EconomicSet<Class<?>> applicationClasses = EconomicSet.create();
     private final EconomicSet<Class<?>> hostedOnlyClasses = EconomicSet.create();
     private final EconomicSet<Method> systemMethods = EconomicSet.create();
     private final EconomicSet<Field> systemFields = EconomicSet.create();
 
-    private ImageClassLoader(Platform platform, NativeImageClassLoader classLoader) {
+    ImageClassLoader(Platform platform, NativeImageClassLoaderSupport classLoaderSupport) {
         this.platform = platform;
-        this.classLoader = classLoader;
+        this.classLoaderSupport = classLoaderSupport;
     }
 
-    public static ImageClassLoader create(Platform platform, NativeImageClassLoader classLoader) {
-        /*
-         * Iterating all classes can already trigger class initialization: We need annotation
-         * information, which triggers class initialization of annotation classes and enum classes
-         * referenced by annotations. Therefore, we need to have the system properties that indicate
-         * "during image build" set up already at this time.
-         */
-        NativeImageGenerator.setSystemPropertiesForImageEarly();
-
-        ImageClassLoader result = new ImageClassLoader(platform, classLoader);
-        result.initAllClasses();
-        return result;
-    }
-
-    private static Path toRealPath(Path p) {
-        try {
-            return p.toRealPath();
-        } catch (IOException e) {
-            throw VMError.shouldNotReachHere("Path.toRealPath failed for " + p, e);
-        }
-    }
-
-    private static void addOptionalModule(Set<String> modules, String name) {
-        if (ModuleSupport.hasSystemModule(name)) {
-            modules.add(name);
-        }
-    }
-
-    private void initAllClasses() {
+    public void initAllClasses() {
         final ForkJoinPool executor = new ForkJoinPool(Math.min(Runtime.getRuntime().availableProcessors(), CLASS_LOADING_MAX_SCALING));
-
-        if (JavaVersionUtil.JAVA_SPEC > 8) {
-            Set<String> modules = new HashSet<>();
-            modules.add("jdk.internal.vm.ci");
-
-            addOptionalModule(modules, "org.graalvm.sdk");
-            addOptionalModule(modules, "jdk.internal.vm.compiler");
-            addOptionalModule(modules, "com.oracle.graal.graal_enterprise");
-
-            String includeModulesStr = System.getProperty(PROPERTY_IMAGEINCLUDEBUILTINMODULES);
-            if (includeModulesStr != null) {
-                modules.addAll(Arrays.asList(includeModulesStr.split(",")));
-            }
-
-            for (String moduleResource : ModuleSupport.getModuleResources(modules)) {
-                if (moduleResource.endsWith(CLASS_EXTENSION)) {
-                    executor.execute(() -> handleClassFileName(moduleResource, '/'));
-                }
-            }
-        }
-
-        Set<Path> uniquePaths = new TreeSet<>(Comparator.comparing(ImageClassLoader::toRealPath));
-        uniquePaths.addAll(classpath());
-        uniquePaths.parallelStream().forEach(path -> loadClassesFromPath(executor, path));
-
+        classLoaderSupport.initAllClasses(executor, this);
         boolean completed = executor.awaitQuiescence(CLASS_LOADING_TIMEOUT_IN_MINUTES, TimeUnit.MINUTES);
         if (!completed) {
             throw shouldNotReachHere("timed out while initializing classes");
         }
         executor.shutdownNow();
-    }
-
-    private static Set<Path> excludeDirectories = getExcludeDirectories();
-
-    private static Set<Path> getExcludeDirectories() {
-        Path root = Paths.get("/");
-        return Arrays.asList("dev", "sys", "proc", "etc", "var", "tmp", "boot", "lost+found")
-                        .stream().map(root::resolve).collect(Collectors.toSet());
-    }
-
-    private void loadClassesFromPath(ForkJoinPool executor, Path path) {
-        if (Files.exists(path)) {
-            if (Files.isRegularFile(path)) {
-                try {
-                    URI jarURI = new URI("jar:" + path.toAbsolutePath().toUri());
-                    FileSystem probeJarFileSystem;
-                    try {
-                        probeJarFileSystem = FileSystems.newFileSystem(jarURI, Collections.emptyMap());
-                    } catch (UnsupportedOperationException e) {
-                        /* Silently ignore invalid jar-files on image-classpath */
-                        probeJarFileSystem = null;
-                    }
-                    if (probeJarFileSystem != null) {
-                        try (FileSystem jarFileSystem = probeJarFileSystem) {
-                            initAllClasses(jarFileSystem.getPath("/"), Collections.emptySet(), executor);
-                        }
-                    }
-                } catch (ClosedByInterruptException ignored) {
-                    throw new InterruptImageBuilding();
-                } catch (IOException e) {
-                    throw shouldNotReachHere(e);
-                } catch (URISyntaxException e) {
-                    throw shouldNotReachHere(e);
-                }
-            } else {
-                initAllClasses(path, excludeDirectories, executor);
-            }
-        }
     }
 
     private void findSystemElements(Class<?> systemClass) {
@@ -258,7 +137,6 @@ public final class ImageClassLoader {
     }
 
     /**
-     *
      * @param element The element to check
      * @return Returns true if and only if the the {@code element} has any annotations present and
      *         the {@link AnnotatedElement#getAnnotations()} did not throw any error.
@@ -274,92 +152,11 @@ public final class ImageClassLoader {
     }
 
     @SuppressWarnings("unused")
-    private static void handleClassLoadingError(Throwable t) {
+    static void handleClassLoadingError(Throwable t) {
         /* we ignore class loading errors due to incomplete paths that people often have */
     }
 
-    private void handleClassFileName(String unversionedClassFileName, char fileSystemSeparatorChar) {
-        String unversionedClassFileNameWithoutSuffix = unversionedClassFileName.substring(0, unversionedClassFileName.length() - CLASS_EXTENSION_LENGTH);
-        if (unversionedClassFileNameWithoutSuffix.equals("module-info")) {
-            return;
-        }
-        String className = unversionedClassFileNameWithoutSuffix.replace(fileSystemSeparatorChar, '.');
-
-        Class<?> clazz = null;
-        try {
-            clazz = forName(className);
-        } catch (Throwable t) {
-            handleClassLoadingError(t);
-        }
-        if (clazz != null) {
-            handleClass(clazz);
-        }
-    }
-
-    private void initAllClasses(final Path root, Set<Path> excludes, ForkJoinPool executor) {
-        FileVisitor<Path> visitor = new SimpleFileVisitor<Path>() {
-            private final char fileSystemSeparatorChar = root.getFileSystem().getSeparator().charAt(0);
-
-            @Override
-            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-                if (excludes.contains(dir)) {
-                    return FileVisitResult.SKIP_SUBTREE;
-                }
-                return super.preVisitDirectory(dir, attrs);
-            }
-
-            @Override
-            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                if (excludes.contains(file.getParent())) {
-                    return FileVisitResult.SKIP_SIBLINGS;
-                }
-                String fileName = root.relativize(file).toString();
-                if (fileName.endsWith(CLASS_EXTENSION)) {
-                    executor.execute(() -> handleClassFileName(unversionedFileName(fileName), fileSystemSeparatorChar));
-                }
-                return FileVisitResult.CONTINUE;
-            }
-
-            @Override
-            public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
-                /* Silently ignore inaccessible files or directories. */
-                return FileVisitResult.CONTINUE;
-            }
-
-            /**
-             * Take a file name from a possibly-multi-versioned jar file and remove the versioning
-             * information. See https://docs.oracle.com/javase/9/docs/api/java/util/jar/JarFile.html
-             * for the specification of the versioning strings.
-             *
-             * Then, depend on the JDK class loading mechanism to prefer the appropriately-versioned
-             * class when the class is loaded. The same class name be loaded multiple times, but
-             * each request will return the same appropriately-versioned class. If a
-             * higher-versioned class is not available in a lower-versioned JDK, a
-             * ClassNotFoundException will be thrown, which will be handled appropriately.
-             */
-            private String unversionedFileName(String fileName) {
-                final String versionedPrefix = "META-INF/versions/";
-                final String versionedSuffix = "/";
-                String result = fileName;
-                if (fileName.startsWith(versionedPrefix)) {
-                    final int versionedSuffixIndex = fileName.indexOf(versionedSuffix, versionedPrefix.length());
-                    if (versionedSuffixIndex >= 0) {
-                        result = fileName.substring(versionedSuffixIndex + versionedSuffix.length());
-                    }
-                }
-                return result;
-            }
-
-        };
-
-        try {
-            Files.walkFileTree(root, visitor);
-        } catch (IOException ex) {
-            throw shouldNotReachHere(ex);
-        }
-    }
-
-    private void handleClass(Class<?> clazz) {
+    void handleClass(Class<?> clazz) {
         boolean inPlatform = true;
         boolean isHostedOnly = false;
 
@@ -417,11 +214,11 @@ public final class ImageClassLoader {
     }
 
     public Enumeration<URL> findResourcesByName(String resource) throws IOException {
-        return classLoader.getResources(resource);
+        return classLoaderSupport.getClassLoader().getResources(resource);
     }
 
     public InputStream findResourceAsStreamByName(String resource) {
-        return classLoader.getResourceAsStream(resource);
+        return classLoaderSupport.getClassLoader().getResourceAsStream(resource);
     }
 
     public Class<?> findClassByName(String name) {
@@ -461,8 +258,8 @@ public final class ImageClassLoader {
         }
     }
 
-    private Class<?> forName(String name) throws ClassNotFoundException {
-        return Class.forName(name, false, classLoader);
+    Class<?> forName(String name) throws ClassNotFoundException {
+        return Class.forName(name, false, classLoaderSupport.getClassLoader());
     }
 
     /**
@@ -476,7 +273,19 @@ public final class ImageClassLoader {
     }
 
     public List<Path> classpath() {
-        return Stream.concat(classLoader.buildcp.stream(), classLoader.imagecp.stream()).collect(Collectors.toList());
+        return classLoaderSupport.classpath();
+    }
+
+    public List<Path> modulepath() {
+        return classLoaderSupport.modulepath();
+    }
+
+    public List<Path> applicationClassPath() {
+        return classLoaderSupport.applicationClassPath();
+    }
+
+    public List<Path> applicationModulePath() {
+        return classLoaderSupport.applicationModulePath();
     }
 
     public <T> List<Class<? extends T>> findSubclasses(Class<T> baseClass, boolean includeHostedOnly) {
@@ -576,8 +385,11 @@ public final class ImageClassLoader {
         return result;
     }
 
-    public NativeImageClassLoader getClassLoader() {
-        return classLoader;
+    public ClassLoader getClassLoader() {
+        return classLoaderSupport.getClassLoader();
     }
 
+    public Class<?> loadClassFromModule(Object module, String className) throws ClassNotFoundException {
+        return classLoaderSupport.loadClassFromModule(module, className);
+    }
 }

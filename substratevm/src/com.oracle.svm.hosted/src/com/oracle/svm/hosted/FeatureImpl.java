@@ -135,7 +135,7 @@ public class FeatureImpl {
 
         @Override
         public List<Path> getApplicationClassPath() {
-            return imageClassLoader.getClassLoader().imagecp;
+            return imageClassLoader.applicationClassPath();
         }
 
         @Override
@@ -144,7 +144,7 @@ public class FeatureImpl {
              * GR-16855: The image generator does not yet support a module path. This method will
              * return the proper module path when module support gets implemented.
              */
-            return Collections.emptyList();
+            return imageClassLoader.applicationModulePath();
         }
 
         @Override

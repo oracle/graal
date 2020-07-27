@@ -1048,7 +1048,7 @@ class GraalArchiveParticipant:
                         services = self.services.setdefault(int(version), {})
                         services.setdefault(service, []).append(provider)
             return True
-        elif arcname.endswith('_OptionDescriptors.class'):
+        elif arcname.endswith('_OptionDescriptors.class') and not arcname.startswith('META-INF/'):
             if self.isTest:
                 mx.warn('@Option defined in test code will be ignored: ' + arcname)
             else:
