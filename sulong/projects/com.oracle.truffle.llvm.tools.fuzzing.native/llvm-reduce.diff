@@ -29,7 +29,7 @@
 #
 --- a/llvm-reduce.cpp
 +++ b/llvm-reduce.cpp
-@@ -18,9 +6,13 @@
+@@ -18,9 +18,13 @@
  #include "llvm/FuzzMutate/FuzzerCLI.h"
  #include "llvm/FuzzMutate/IRMutator.h"
  #include "llvm/FuzzMutate/Operations.h"
@@ -43,7 +43,7 @@
  #include "llvm/IR/Module.h"
  #include "llvm/IR/Verifier.h"
  #include "llvm/IRReader/IRReader.h"
-@@ -30,6 +22,7 @@
+@@ -30,6 +34,7 @@
  #include "llvm/Support/TargetRegistry.h"
  #include "llvm/Support/TargetSelect.h"
  #include "llvm/Target/TargetMachine.h"
@@ -51,7 +51,7 @@
  
  #define DEBUG_TYPE "isel-fuzzer"
  
-@@ -45,36 +38,50 @@
+@@ -45,38 +50,52 @@
  
  static cl::opt<std::string>
  TargetTriple("mtriple", cl::desc("Override target triple for module"));
@@ -100,10 +100,11 @@
 -  Strategies.emplace_back(
 -      new InjectorIRStrategy(InjectorIRStrategy::getDefaultOps()));
 -  Strategies.emplace_back(new InstDeleterIRStrategy());
--
--  return llvm::make_unique<IRMutator>(std::move(Types), std::move(Strategies));
--}
--
++  Strategies.emplace_back(new InstReducerIRStrategy());
+ 
+   return llvm::make_unique<IRMutator>(std::move(Types), std::move(Strategies));
+ }
+ 
 -extern "C" LLVM_ATTRIBUTE_USED size_t LLVMFuzzerCustomMutator(
 -    uint8_t *Data, size_t Size, size_t MaxSize, unsigned int Seed) {
 -  LLVMContext Context;
@@ -115,14 +116,14 @@
 -    M = parseModule(Data, Size, Context);
 -
 -  Mutator->mutateModule(*M, Seed, Size, MaxSize);
-+  Strategies.emplace_back(new InstReducerIRStrategy());
- 
+-
 -  return writeModule(*M, Data, MaxSize);
-+  return std::make_unique<IRMutator>(std::move(Types), std::move(Strategies));
- }
- 
+-}
+-
  extern "C" int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
-@@ -89,23 +96,30 @@
+   if (Size <= 1)
+     // We get bogus data given an empty corpus - ignore it.
+@@ -89,23 +108,30 @@
      return 0;
    }
  
@@ -164,7 +165,7 @@
    dbgs() << "LLVM ERROR: " << Message << "\n"
           << "Aborting to trigger fuzzer exit handling.\n";
    abort();
-@@ -164,6 +177,11 @@
+@@ -164,6 +190,11 @@
    install_fatal_error_handler(handleLLVMFatalError, nullptr);
  
    // Finally, create our mutator.

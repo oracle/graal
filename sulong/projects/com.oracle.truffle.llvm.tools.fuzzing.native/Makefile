@@ -35,7 +35,7 @@ QUIET_REDIRECT$(MX_VERBOSE)  = > /dev/null
 default: ${LLVM_STRESS} ${LLVM_REDUCE}
 
 ifeq ($(OS), darwin)
-CLANG_PREFIX=/usr/bin/xcrun --sdk macosx
+CLANG_PREFIX=/usr/bin/xcrun
 LDFLAGS+=-lz
 else
 CLANG_PREFIX=
@@ -43,7 +43,7 @@ endif
 
 LIBS+=$(shell ${LLVM_CONFIG} --libs)
 LDFLAGS+=$(shell ${LLVM_CONFIG} --ldflags) -rpath $(shell ${LLVM_CONFIG} --libdir)
-CXXFLAGS+=$(shell ${LLVM_CONFIG} --cxxflags) -std=c++14
+CXXFLAGS+=$(shell ${LLVM_CONFIG} --cxxflags)
 CPPFLAGS+=$(shell ${LLVM_CONFIG} --cppflags)
 
 src/llvm-stress.cpp: ${LLVM_ORG_SRC}/llvm/tools/llvm-stress/llvm-stress.cpp
@@ -61,12 +61,12 @@ src/%.cpp: %.diff
 
 bin/%.o: src/%.cpp
 	@mkdir -p $(dir $@)
-	$(QUIETLY) $(CXX_PREFIX) $(CXX) -c ${CXXFLAGS} ${CPPFLAGS} -o $@ $<
+	$(QUIETLY) $(CLANG_PREFIX) $(CXX) -c ${CXXFLAGS} ${CPPFLAGS} -o $@ $<
 
 ${LLVM_REDUCE}: bin/llvm-reduce.o
 	@mkdir -p $(dir $@)
-	$(QUIETLY) $(CXX_PREFIX) $(CXX) ${LDFLAGS} ${CXXFLAGS} -o $@ $< $(LIBS)
+	$(QUIETLY) $(CLANG_PREFIX) $(CXX) ${LDFLAGS} ${CXXFLAGS} -o $@ $< $(LIBS)
 
 ${LLVM_STRESS}: bin/llvm-stress.o
 	@mkdir -p $(dir $@)
-	$(QUIETLY) $(CXX_PREFIX) $(CXX) ${LDFLAGS} ${CXXFLAGS} -o $@ $< $(LIBS)
+	$(QUIETLY) $(CLANG_PREFIX) $(CXX) ${LDFLAGS} ${CXXFLAGS} -o $@ $< $(LIBS)

@@ -44,7 +44,7 @@ LDFLAGS+=-m64
 endif
 
 ifeq ($(OS), darwin)
-CXX_PREFIX=/usr/bin/xcrun --sdk macosx
+CXX_PREFIX=/usr/bin/xcrun
 else
 CXX_PREFIX=
 endif
