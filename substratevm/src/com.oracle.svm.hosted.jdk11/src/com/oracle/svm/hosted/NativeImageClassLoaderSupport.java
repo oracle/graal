@@ -95,9 +95,9 @@ public class NativeImageClassLoaderSupport extends AbstractNativeImageClassLoade
     }
 
     @Override
-    public Class<?> loadClassFromModule(Object module, String className) throws ClassNotFoundException {
+    Class<?> loadClassFromModule(Object module, String className) throws ClassNotFoundException {
         if (module == null) {
-            return super.loadClassFromModule(module, className);
+            return Class.forName(className, false, classPathClassLoader);
         }
         if (!(module instanceof Module)) {
             throw new IllegalArgumentException("Argument `module` is not an instance of java.lang.Module");

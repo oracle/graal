@@ -90,17 +90,11 @@ public abstract class AbstractNativeImageClassLoaderSupport {
         return imagecp;
     }
 
-    Class<?> loadClassFromModule(Object module, String className) throws ClassNotFoundException {
-        if (module != null) {
-            throw new ClassNotFoundException(className,
-                            new UnsupportedOperationException("NativeImageClassLoader for Java 8 does not support modules"));
-        }
-        return Class.forName(className, false, classPathClassLoader);
-    }
-
     ClassLoader getClassLoader() {
         return classPathClassLoader;
     }
+
+    abstract Class<?> loadClassFromModule(Object module, String className) throws ClassNotFoundException;
 
     abstract List<Path> modulepath();
 
