@@ -641,6 +641,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_lang_management_MemoryPoolMXBean = StaticSymbols.putType(java.lang.management.MemoryPoolMXBean.class);
         public static final Symbol<Type> java_lang_management_GarbageCollectorMXBean = StaticSymbols.putType(java.lang.management.GarbageCollectorMXBean.class);
         public static final Symbol<Type> sun_management_ManagementFactory = StaticSymbols.putType("Lsun/management/ManagementFactory;");
+        public static final Symbol<Type> sun_management_ManagementFactoryHelper = StaticSymbols.putType("Lsun/management/ManagementFactoryHelper;");
         public static final Symbol<Type> java_lang_management_MemoryUsage = StaticSymbols.putType(java.lang.management.MemoryUsage.class);
         public static final Symbol<Type> java_lang_management_ThreadInfo = StaticSymbols.putType(java.lang.management.ThreadInfo.class);
     }

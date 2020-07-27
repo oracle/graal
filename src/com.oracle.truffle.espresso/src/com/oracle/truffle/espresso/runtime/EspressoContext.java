@@ -433,6 +433,7 @@ public final class EspressoContext {
             modulesInitialized = true;
             meta.java_lang_System_initPhase3.invokeDirect(null);
         }
+        meta.postSystemInit();
 
         // System exceptions.
         for (Symbol<Type> type : Arrays.asList(

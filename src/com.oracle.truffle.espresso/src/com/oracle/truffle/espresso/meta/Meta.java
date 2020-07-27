@@ -462,18 +462,18 @@ public final class Meta implements ContextAccess {
 
         java_lang_invoke_MethodHandleNatives_linkCallSite11 = java_lang_invoke_MethodHandleNatives.lookupDeclaredMethod(Name.linkCallSite,
                         Signature.MemberName_Object_int_Object_Object_Object_Object_Object_array);
+    }
 
+    public void postSystemInit() {
         // these classes are in module java.management. These become known after modules
         // initialization.
-        // TODO: Have them lazily loaded after modules initialization, and only if management is
-        // enabled.
 
         // java.management
         java_lang_management_MemoryUsage = knownKlass(Type.java_lang_management_MemoryUsage);
 
         java_lang_management_ThreadInfo = knownKlass(Type.java_lang_management_ThreadInfo);
 
-        sun_management_ManagementFactory = knownKlass(Type.sun_management_ManagementFactory);
+        sun_management_ManagementFactory = knownKlassDiffVersion(Type.sun_management_ManagementFactory, Type.sun_management_ManagementFactoryHelper);
         if (sun_management_ManagementFactory != null) {
             // MemoryPoolMXBean createMemoryPool(String var0, boolean var1, long var2, long var4)
             sun_management_ManagementFactory_createMemoryPool = sun_management_ManagementFactory.lookupDeclaredMethod(Name.createMemoryPool, Signature.MemoryPoolMXBean_String_boolean_long_long);
@@ -852,12 +852,12 @@ public final class Meta implements ContextAccess {
     public final Field java_lang_ref_ReferenceQueue_NULL;
     public final Method sun_reflect_Reflection_getCallerClass;
 
-    public final ObjectKlass java_lang_management_MemoryUsage;
-    public final ObjectKlass sun_management_ManagementFactory;
-    public final Method sun_management_ManagementFactory_createMemoryPool;
-    public final Method sun_management_ManagementFactory_createMemoryManager;
-    public final Method sun_management_ManagementFactory_createGarbageCollector;
-    public final ObjectKlass java_lang_management_ThreadInfo;
+    @CompilationFinal public ObjectKlass java_lang_management_MemoryUsage;
+    @CompilationFinal public ObjectKlass sun_management_ManagementFactory;
+    @CompilationFinal public Method sun_management_ManagementFactory_createMemoryPool;
+    @CompilationFinal public Method sun_management_ManagementFactory_createMemoryManager;
+    @CompilationFinal public Method sun_management_ManagementFactory_createGarbageCollector;
+    @CompilationFinal public ObjectKlass java_lang_management_ThreadInfo;
 
     @CompilationFinal(dimensions = 1) //
     public final ObjectKlass[] ARRAY_SUPERINTERFACES;
