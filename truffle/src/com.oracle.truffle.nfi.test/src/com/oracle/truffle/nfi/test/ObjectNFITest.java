@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -96,13 +96,13 @@ public class ObjectNFITest extends NFITest {
 
     @BeforeClass
     public static void initEnv() {
-        TruffleObject createNewObject = new TestCallback(0, (args) -> new TestObject());
-        TruffleObject readIntField = new TestCallback(2, (args) -> {
+        Object createNewObject = new TestCallback(0, (args) -> new TestObject());
+        Object readIntField = new TestCallback(2, (args) -> {
             Assert.assertThat("args[0]", args[0], is(instanceOf(TestObject.class)));
             Assert.assertThat("args[1]", args[1], is(instanceOf(String.class)));
             return ((TestObject) args[0]).readField((String) args[1]);
         });
-        TruffleObject writeIntField = new TestCallback(3, (args) -> {
+        Object writeIntField = new TestCallback(3, (args) -> {
             Assert.assertThat("args[0]", args[0], is(instanceOf(TestObject.class)));
             Assert.assertThat("args[1]", args[1], is(instanceOf(String.class)));
             Assert.assertThat("args[2]", args[2], is(instanceOf(Integer.class)));
@@ -110,7 +110,7 @@ public class ObjectNFITest extends NFITest {
             return null;
         });
 
-        TruffleObject initializeAPI = lookupAndBind("initialize_api", "( env, ():object, (object,string):sint32, (object,string,sint32):void ) : pointer");
+        Object initializeAPI = lookupAndBind("initialize_api", "( env, ():object, (object,string):sint32, (object,string,sint32):void ) : pointer");
         try {
             nativeAPI = UNCACHED_INTEROP.execute(initializeAPI, createNewObject, readIntField, writeIntField);
         } catch (InteropException ex) {
@@ -120,7 +120,7 @@ public class ObjectNFITest extends NFITest {
 
     @AfterClass
     public static void deleteAPI() {
-        TruffleObject deleteAPI = lookupAndBind("delete_api", "(env, pointer):void");
+        Object deleteAPI = lookupAndBind("delete_api", "(env, pointer):void");
         try {
             UNCACHED_INTEROP.execute(deleteAPI, nativeAPI);
             nativeAPI = null;
@@ -152,9 +152,9 @@ public class ObjectNFITest extends NFITest {
 
     public class TestKeepObjectNode extends NFITestRootNode {
 
-        final TruffleObject keepExistingObject = lookupAndBind("keep_existing_object", "(env, object):pointer");
-        final TruffleObject freeAndGetObject = lookupAndBind("free_and_get_object", "(env, pointer):object");
-        final TruffleObject freeAndGetContent = lookupAndBind("free_and_get_content", "(env, pointer, pointer):sint32");
+        final Object keepExistingObject = lookupAndBind("keep_existing_object", "(env, object):pointer");
+        final Object freeAndGetObject = lookupAndBind("free_and_get_object", "(env, pointer):object");
+        final Object freeAndGetContent = lookupAndBind("free_and_get_content", "(env, pointer, pointer):sint32");
 
         @Child InteropLibrary keepExistingObjectInterop = getInterop(keepExistingObject);
         @Child InteropLibrary freeAndGetObjectInterop = getInterop(freeAndGetObject);
@@ -194,8 +194,8 @@ public class ObjectNFITest extends NFITest {
 
     public static class TestKeepNewObjectNode extends NFITestRootNode {
 
-        final TruffleObject keepNewObject = lookupAndBind("keep_new_object", "(pointer):pointer");
-        final TruffleObject freeAndGetObject = lookupAndBind("free_and_get_object", "(env, pointer):object");
+        final Object keepNewObject = lookupAndBind("keep_new_object", "(pointer):pointer");
+        final Object freeAndGetObject = lookupAndBind("free_and_get_object", "(env, pointer):object");
 
         @Child InteropLibrary keepNewObjectInterop = getInterop(keepNewObject);
         @Child InteropLibrary freeAndGetObjectInterop = getInterop(freeAndGetObject);
@@ -217,8 +217,8 @@ public class ObjectNFITest extends NFITest {
 
     public class TestCompareObjectNode extends NFITestRootNode {
 
-        final TruffleObject keepExistingObject = lookupAndBind("keep_existing_object", "(env, object):pointer");
-        final TruffleObject compareExistingObject = lookupAndBind("compare_existing_object", "(env, pointer, pointer):sint32");
+        final Object keepExistingObject = lookupAndBind("keep_existing_object", "(env, object):pointer");
+        final Object compareExistingObject = lookupAndBind("compare_existing_object", "(env, pointer, pointer):sint32");
 
         @Child InteropLibrary keepExistingObjectInterop = getInterop(keepExistingObject);
         @Child InteropLibrary compareExistingObjectInterop = getInterop(compareExistingObject);

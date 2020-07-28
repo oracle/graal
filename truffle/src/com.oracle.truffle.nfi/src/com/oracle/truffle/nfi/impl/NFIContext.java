@@ -47,7 +47,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.nfi.impl.LibFFIType.ClosureType;
 import com.oracle.truffle.nfi.impl.LibFFIType.EnvType;
 import com.oracle.truffle.nfi.impl.NativeAllocation.FreeDestructor;
@@ -166,7 +165,7 @@ class NFIContext {
     }
 
     // called from native
-    TruffleObject getClosureObject(long codePointer) {
+    Object getClosureObject(long codePointer) {
         return LibFFIClosure.newClosureWrapper(getClosureNativePointer(codePointer));
     }
 
@@ -290,7 +289,7 @@ class NFIContext {
         return executePrimitive(nativeContext, cif, functionPointer, primArgs, patchCount, patchOffsets, objArgs);
     }
 
-    TruffleObject executeObject(long cif, long functionPointer, byte[] primArgs, int patchCount, int[] patchOffsets, Object[] objArgs) {
+    Object executeObject(long cif, long functionPointer, byte[] primArgs, int patchCount, int[] patchOffsets, Object[] objArgs) {
         return executeObject(nativeContext, cif, functionPointer, primArgs, patchCount, patchOffsets, objArgs);
     }
 
@@ -301,7 +300,7 @@ class NFIContext {
     private static native long executePrimitive(long nativeContext, long cif, long functionPointer, byte[] primArgs, int patchCount, int[] patchOffsets, Object[] objArgs);
 
     @TruffleBoundary
-    private static native TruffleObject executeObject(long nativeContext, long cif, long functionPointer, byte[] primArgs, int patchCount, int[] patchOffsets, Object[] objArgs);
+    private static native Object executeObject(long nativeContext, long cif, long functionPointer, byte[] primArgs, int patchCount, int[] patchOffsets, Object[] objArgs);
 
     private static native long loadLibrary(long nativeContext, String name, int flags);
 
