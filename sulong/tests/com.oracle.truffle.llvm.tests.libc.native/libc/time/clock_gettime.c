@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -38,11 +38,22 @@
 
 #define measure_diff(clk_id) measure_diff_impl(clk_id, #clk_id)
 
+int array[] = { 0x43, 0x3, 0x17, 0x72, 0x10 };
+
+int cmp(const void *a, const void *b) {
+    return *(int *) a - *(int *) b;
+}
+
+void do_work() {
+    qsort(array, 5, sizeof(int), &cmp);
+}
+
 void measure_diff_impl(clockid_t clk_id, const char *clock_name) {
     struct timespec start = {}, finish = {};
     clock_gettime(clk_id, &start);
 
-    sleep(1);
+    // sleep(1); // not fully supported [GR-25210]
+    do_work();
 
     int res = clock_gettime(clk_id, &finish);
     if (res != 0) {
