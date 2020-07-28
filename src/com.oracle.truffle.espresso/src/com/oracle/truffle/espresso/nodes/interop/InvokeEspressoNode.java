@@ -37,12 +37,23 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
 @GenerateUncached
 public abstract class InvokeEspressoNode extends Node {
     static final int LIMIT = 4;
 
-    public abstract Object execute(Method method, Object receiver, Object[] arguments) throws ArityException, UnsupportedMessageException, UnsupportedTypeException;
+    public Object execute(Method method, Object receiver, Object[] arguments) throws ArityException, UnsupportedMessageException, UnsupportedTypeException {
+        Object result = executeMethod(method, receiver, arguments);
+        /*
+         * Unwrap foreign objects (invariant: foreign objects are always wrapped when coming in
+         * Espresso and unwrapped when going out)
+         */
+        if (result instanceof StaticObject && ((StaticObject) result).isForeignObject()) {
+            return ((StaticObject) result).rawForeignObject();
+        }
+        return result;
+    }
 
     static ToEspressoNode[] createToEspresso(long argsLength) {
         ToEspressoNode[] toEspresso = new ToEspressoNode[(int) argsLength];
@@ -55,6 +66,8 @@ public abstract class InvokeEspressoNode extends Node {
     static DirectCallNode createDirectCallNode(CallTarget callTarget) {
         return DirectCallNode.create(callTarget);
     }
+
+    abstract Object executeMethod(Method method, Object receiver, Object[] arguments) throws ArityException, UnsupportedMessageException, UnsupportedTypeException;
 
     @ExplodeLoop
     @Specialization(guards = "method == cachedMethod", limit = "LIMIT")
