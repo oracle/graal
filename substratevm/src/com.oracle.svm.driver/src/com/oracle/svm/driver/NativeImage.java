@@ -1039,12 +1039,10 @@ public class NativeImage {
             addPlainImageBuilderArg(NativeImage.oR + enablePrintFlagsWithExtraHelp + printFlagsWithExtraHelpOptionQuery);
         }
 
-        /* If no customImageClasspath was specified put "." on classpath */
-        if (!config.buildFallbackImage() && customImageClasspath.isEmpty() && printFlagsOptionQuery == null && printFlagsWithExtraHelpOptionQuery == null) {
+        if (shouldAddCWDToCP()) {
             addImageClasspath(Paths.get("."));
-        } else {
-            imageClasspath.addAll(customImageClasspath);
         }
+        imageClasspath.addAll(customImageClasspath);
 
         /* Perform JavaArgs consolidation - take the maximum of -Xmx, minimum of -Xms */
         Long xmxValue = consolidateArgs(imageBuilderJavaArgs, oXmx, SubstrateOptionsParser::parseLong, String::valueOf, () -> 0L, Math::max);
@@ -1158,6 +1156,21 @@ public class NativeImage {
             return 2;
         }
         return buildImage(imageBuilderJavaArgs, imageBuilderBootClasspath, imageBuilderClasspath, imageBuilderArgs, finalImageClasspath);
+    }
+
+    private boolean shouldAddCWDToCP() {
+        if (config.buildFallbackImage() || printFlagsOptionQuery != null || printFlagsWithExtraHelpOptionQuery != null) {
+            return false;
+        }
+
+        Optional<EnabledOption> explicitMacroOption = optionRegistry.getEnabledOptions(MacroOptionKind.Macro).stream().filter(EnabledOption::isEnabledFromCommandline).findAny();
+        /* If we have any explicit macro options, we do not put "." on classpath */
+        if (explicitMacroOption.isPresent()) {
+            return false;
+        }
+
+        /* If no customImageClasspath was specified put "." on classpath */
+        return customImageClasspath.isEmpty();
     }
 
     private boolean traceClassInitialization() {
