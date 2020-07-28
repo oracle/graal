@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2019, Arm Limited and affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -109,17 +109,17 @@ public final class AArch64ZeroMemoryOp extends AArch64LIRInstruction {
 
                 masm.tbz(alignmentBits, 0, baseAlignedTo2Bytes);
                 masm.sub(64, size, size, 1);
-                masm.str(8, zr, AArch64Address.createPostIndexedImmediateAddress(base, 1));
+                masm.str(8, zr, AArch64Address.createImmediateAddress(8, AArch64Address.AddressingMode.IMMEDIATE_POST_INDEXED, base, 1));
                 masm.bind(baseAlignedTo2Bytes);
 
                 masm.tbz(alignmentBits, 1, baseAlignedTo4Bytes);
                 masm.sub(64, size, size, 2);
-                masm.str(16, zr, AArch64Address.createPostIndexedImmediateAddress(base, 2));
+                masm.str(16, zr, AArch64Address.createImmediateAddress(16, AArch64Address.AddressingMode.IMMEDIATE_POST_INDEXED, base, 2));
                 masm.bind(baseAlignedTo4Bytes);
 
                 masm.tbz(alignmentBits, 2, baseAlignedTo8Bytes);
                 masm.sub(64, size, size, 4);
-                masm.str(32, zr, AArch64Address.createPostIndexedImmediateAddress(base, 4));
+                masm.str(32, zr, AArch64Address.createImmediateAddress(32, AArch64Address.AddressingMode.IMMEDIATE_POST_INDEXED, base, 4));
                 masm.bind(baseAlignedTo8Bytes);
                 // At this point base is 8-byte aligned.
             }
@@ -149,7 +149,7 @@ public final class AArch64ZeroMemoryOp extends AArch64LIRInstruction {
 
                 masm.align(crb.target.wordSize * 2);
                 masm.bind(preLoop);
-                masm.str(64, zr, AArch64Address.createPostIndexedImmediateAddress(base, 8));
+                masm.str(64, zr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_POST_INDEXED, base, 8));
                 masm.bind(preCheck);
                 masm.subs(64, alignmentBits, alignmentBits, 8);
                 masm.branchConditionally(AArch64Assembler.ConditionFlag.GE, preLoop);
@@ -172,7 +172,7 @@ public final class AArch64ZeroMemoryOp extends AArch64LIRInstruction {
 
                 masm.align(crb.target.wordSize * 2);
                 masm.bind(postLoop);
-                masm.str(64, zr, AArch64Address.createPostIndexedImmediateAddress(base, 8));
+                masm.str(64, zr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_POST_INDEXED, base, 8));
                 masm.bind(postCheck);
                 masm.subs(64, size, size, 8);
                 masm.branchConditionally(AArch64Assembler.ConditionFlag.GE, postLoop);
@@ -193,13 +193,13 @@ public final class AArch64ZeroMemoryOp extends AArch64LIRInstruction {
 
                 masm.tbz(base, 3, mainCheck);
                 masm.sub(64, size, size, 8);
-                masm.str(64, zr, AArch64Address.createPostIndexedImmediateAddress(base, 8));
+                masm.str(64, zr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_POST_INDEXED, base, 8));
                 masm.jmp(mainCheck);
 
                 // The STP loop that zeros 16 bytes in each iteration.
                 masm.align(crb.target.wordSize * 2);
                 masm.bind(mainLoop);
-                masm.stp(64, zr, zr, AArch64Address.createPostIndexedImmediateAddress(base, 2));
+                masm.stp(64, zr, zr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, base, 2 * 8));
                 masm.bind(mainCheck);
                 masm.subs(64, size, size, 16);
                 masm.branchConditionally(AArch64Assembler.ConditionFlag.GE, mainLoop);
@@ -207,7 +207,7 @@ public final class AArch64ZeroMemoryOp extends AArch64LIRInstruction {
                 // We may need to zero the tail 8 bytes of the memory chunk.
                 masm.add(64, size, size, 16);
                 masm.tbz(size, 3, tail);
-                masm.str(64, zr, AArch64Address.createPostIndexedImmediateAddress(base, 8));
+                masm.str(64, zr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_POST_INDEXED, base, 8));
 
                 if (!isAligned) {
                     // Adjust size for tail zeroing
@@ -223,7 +223,7 @@ public final class AArch64ZeroMemoryOp extends AArch64LIRInstruction {
                 // We have to ensure size > 0 when entering the following loop
                 masm.align(crb.target.wordSize * 2);
                 masm.bind(perByteZeroingLoop);
-                masm.str(8, zr, AArch64Address.createPostIndexedImmediateAddress(base, 1));
+                masm.str(8, zr, AArch64Address.createImmediateAddress(8, AArch64Address.AddressingMode.IMMEDIATE_POST_INDEXED, base, 1));
                 masm.subs(64, size, size, 1);
                 masm.branchConditionally(AArch64Assembler.ConditionFlag.NE, perByteZeroingLoop);
             }

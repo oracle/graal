@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -152,8 +152,8 @@ public final class AArch64ArrayCompareToOp extends AArch64LIRInstruction {
         }
 
         // Load array base addresses.
-        masm.lea(array1, AArch64Address.createUnscaledImmediateAddress(asRegister(array1Value), array1BaseOffset));
-        masm.lea(array2, AArch64Address.createUnscaledImmediateAddress(asRegister(array2Value), array2BaseOffset));
+        masm.lea(array1, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED, asRegister(array1Value), array1BaseOffset));
+        masm.lea(array2, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED, asRegister(array2Value), array2BaseOffset));
 
         // Calculate minimal length in chars for different kind cases.
         // Conditions could be squashed but let's keep it readable.
@@ -234,12 +234,14 @@ public final class AArch64ArrayCompareToOp extends AArch64LIRInstruction {
         masm.bind(COMPARE_SHORT_LABEL);
         for (int i = 0; i < VECTOR_SIZE_BYTES; i += CHAR_SIZE_BYTES) {
             if (isLU || isUL) {
-                masm.ldr(8, temp, AArch64Address.createUnscaledImmediateAddress(array1, i / 2));
+                masm.ldr(8, temp, AArch64Address.createImmediateAddress(8, AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED, array1, i / 2));
             } else {
-                masm.ldr(8 * CHAR_SIZE_BYTES, temp, AArch64Address.createUnscaledImmediateAddress(array1, i));
+                int transferSize = 8 * CHAR_SIZE_BYTES;
+                masm.ldr(transferSize, temp, AArch64Address.createImmediateAddress(transferSize, AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED, array1, i));
             }
 
-            masm.ldr(8 * CHAR_SIZE_BYTES, result, AArch64Address.createUnscaledImmediateAddress(array2, i));
+            int transferSize = 8 * CHAR_SIZE_BYTES;
+            masm.ldr(transferSize, result, AArch64Address.createImmediateAddress(transferSize, AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED, array2, i));
 
             if (isUL) {
                 // UL's input has been swapped in AArch64StringUTF16Substitutions.compareToLatin1.

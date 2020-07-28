@@ -63,7 +63,7 @@ public final class AArch64CGlobalDataLoadAddressOp extends AArch64LIRInstruction
             Register resultRegister = asRegister(result);
             if (dataInfo.isSymbolReference()) {
                 // Pure symbol reference: the data contains the symbol's address, load it
-                AArch64Address address = AArch64Address.createScaledImmediateAddress(resultRegister, 0x0);
+                AArch64Address address = AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, resultRegister, 0x0);
                 masm.adrpLdr(64, resultRegister, address);
             } else {
                 // Data: load its address

@@ -186,14 +186,14 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
             crb.blockComment("[method prologue]");
 
             try (ScratchRegister sc = masm.getScratchRegister()) {
-                int wordSize = crb.target.arch.getWordSize();
+                int wordSize = 8;
                 Register rscratch1 = sc.getRegister();
                 assert totalFrameSize > 0;
                 if (frameSize < 1 << 9) {
                     masm.sub(64, sp, sp, totalFrameSize);
-                    masm.stp(64, fp, lr, AArch64Address.createScaledImmediateAddress(sp, frameSize / wordSize));
+                    masm.stp(64, fp, lr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_SIGNED_SCALED, sp, frameSize));
                 } else {
-                    masm.stp(64, fp, lr, AArch64Address.createPreIndexedImmediateAddress(sp, -2));
+                    masm.stp(64, fp, lr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_PRE_INDEXED, sp, -2 * wordSize));
                     if (frameSize < 1 << 12) {
                         masm.sub(64, sp, sp, totalFrameSize - 2 * wordSize);
                     } else {
@@ -210,7 +210,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
                     Register scratch = sc.getRegister();
                     int longSize = 8;
                     masm.mov(64, scratch, sp);
-                    AArch64Address address = AArch64Address.createPostIndexedImmediateAddress(scratch, longSize);
+                    AArch64Address address = AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_POST_INDEXED, scratch, longSize);
                     try (ScratchRegister sc2 = masm.getScratchRegister()) {
                         Register value = sc2.getRegister();
                         masm.mov(value, 0xBADDECAFFC0FFEEL);
@@ -232,12 +232,12 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
 
             crb.blockComment("[method epilogue]");
             try (ScratchRegister sc = masm.getScratchRegister()) {
-                int wordSize = crb.target.arch.getWordSize();
+                int wordSize = 8;
                 Register rscratch1 = sc.getRegister();
                 final int frameSize = frameMap.frameSize();
                 assert totalFrameSize > 0;
                 if (frameSize < 1 << 9) {
-                    masm.ldp(64, fp, lr, AArch64Address.createScaledImmediateAddress(sp, frameSize / wordSize));
+                    masm.ldp(64, fp, lr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_SIGNED_SCALED, sp, frameSize));
                     masm.add(64, sp, sp, totalFrameSize);
                 } else {
                     if (frameSize < 1 << 12) {
@@ -246,7 +246,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
                         masm.mov(rscratch1, totalFrameSize - 2 * wordSize);
                         masm.add(64, sp, sp, rscratch1);
                     }
-                    masm.ldp(64, fp, lr, AArch64Address.createPostIndexedImmediateAddress(sp, 2));
+                    masm.ldp(64, fp, lr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, sp, 2 * wordSize));
                 }
             }
 

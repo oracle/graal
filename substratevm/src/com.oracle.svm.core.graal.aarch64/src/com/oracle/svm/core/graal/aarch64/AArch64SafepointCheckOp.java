@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,7 +38,6 @@ import com.oracle.svm.core.nodes.SafepointCheckNode;
 import com.oracle.svm.core.thread.Safepoint;
 import com.oracle.svm.core.thread.ThreadingSupportImpl;
 
-import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
 
 /**
@@ -56,8 +55,9 @@ public class AArch64SafepointCheckOp extends AArch64LIRInstruction {
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
         assert SubstrateOptions.MultiThreaded.getValue();
         SubstrateRegisterConfig threadRegister = (SubstrateRegisterConfig) crb.codeCache.getRegisterConfig();
-        AArch64Address safepointAddress = AArch64Address.createUnscaledImmediateAddress(threadRegister.getThreadRegister(), Math.toIntExact(Safepoint.getThreadLocalSafepointRequestedOffset()));
-        int safepointSize = AArch64Kind.QWORD.getSizeInBytes() * 8;
+        int safepointSize = 32; // safepoint is an integer
+        AArch64Address safepointAddress = AArch64Address.createImmediateAddress(safepointSize, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, threadRegister.getThreadRegister(),
+                        Math.toIntExact(Safepoint.getThreadLocalSafepointRequestedOffset()));
         try (ScratchRegister scratchRegister = masm.getScratchRegister()) {
             Register scratch = scratchRegister.getRegister();
             masm.ldr(safepointSize, scratch, safepointAddress);
