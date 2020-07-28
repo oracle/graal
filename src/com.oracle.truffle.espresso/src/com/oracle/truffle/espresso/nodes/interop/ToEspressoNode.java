@@ -44,7 +44,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 @GenerateUncached
-abstract class ToEspressoNode extends Node {
+public abstract class ToEspressoNode extends Node {
     static final int LIMIT = 2;
 
     public abstract Object execute(Object value, Klass targetType) throws UnsupportedMessageException, UnsupportedTypeException;
