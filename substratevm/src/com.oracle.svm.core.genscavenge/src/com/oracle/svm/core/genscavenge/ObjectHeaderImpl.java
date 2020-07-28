@@ -252,7 +252,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     public long encodeAsImageHeapObjectHeader(ImageHeapObject obj, long hubOffsetFromHeapBase) {
         long header = hubOffsetFromHeapBase;
         assert (header & MASK_HEADER_BITS.rawValue()) == 0 : "Object header bits must be zero initially";
-        if (HeapImpl.usesImageHeapRememberedSets()) {
+        if (HeapImpl.usesImageHeapCardMarking()) {
             if (obj.getPartition() instanceof ChunkedImageHeapPartition) {
                 ChunkedImageHeapPartition partition = (ChunkedImageHeapPartition) obj.getPartition();
                 if (partition.isWritable()) {
