@@ -51,6 +51,7 @@ import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceBasicType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceClassLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceMemberType;
+import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceMethodType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourcePointerType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStructLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
@@ -583,7 +584,8 @@ public abstract class LLVMInteropType implements TruffleObject {
                 ret.members[i] = new StructMember(ret, member.getName(), startOffset, endOffset, get(memberType));
             }
             for (int i = 0; i < ret.methods.length; i++) {
-                ret.methods[i] = convertMethod(type.getMethodName(i), type.getMethodLinkageName(i), type.getMethod(i), ret);
+                LLVMSourceMethodType llvmSourceMethodType = type.getMethod(i);
+                ret.methods[i] = convertMethod(llvmSourceMethodType.getMethodName(), llvmSourceMethodType.getMethodLinkageName(), llvmSourceMethodType.getFunction(), ret);
             }
             return ret;
         }

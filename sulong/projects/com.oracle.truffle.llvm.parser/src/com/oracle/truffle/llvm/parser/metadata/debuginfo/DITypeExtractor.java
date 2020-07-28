@@ -205,11 +205,7 @@ final class DITypeExtractor implements MetadataVisitor {
 
                     } else if (member instanceof LLVMSourceStaticMemberType) {
                         type.addStaticMember((LLVMSourceStaticMemberType) member);
-                    } /*
-                       * else if (member instanceof LLVMSourceFunctionType) {
-                       * type.addMethod((LLVMSourceFunctionType) member); }
-                       */
-
+                    }
                 }
                 MDBaseNode mdMembers = mdType.getMembers();
                 if (mdMembers instanceof MDNode) {
@@ -225,8 +221,11 @@ final class DITypeExtractor implements MetadataVisitor {
                                     type.addMethod(methodName, methodLinkageName, llvmSourceFunctionType);
                                 }
                             } catch (ClassCastException cce) {
-                                // TODO (pichristoph) deal with exception in a nice way, or do
-                                // 'instanceof' checks in try block
+                                /*
+                                 * if "mdSubprogram.get...Name" returns MDVoid or if parsedTypes
+                                 * does not return an LLVMSourceFunctionType: do not add the method
+                                 * and continue
+                                 */
                             }
                         }
                     }

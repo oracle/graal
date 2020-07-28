@@ -39,42 +39,30 @@ import java.util.function.Supplier;
 
 public final class LLVMSourceClassLikeType extends LLVMSourceStructLikeType {
 
-    /*
-     * TODO (pichristoph): currently, the order in these lists is really important, because the n-th
-     * entry in each of them refers to the same method. Maybe boxing into a LLVMSourceMethodType
-     * makes sense.
-     */
-    private final List<LLVMSourceFunctionType> methods;
-    private final List<String> methodLinkageNames;
-    private final List<String> methodNames;
+    private final List<LLVMSourceMethodType> methods;
 
     @TruffleBoundary
     public LLVMSourceClassLikeType(String name, long size, long align, long offset, LLVMSourceLocation location) {
         super(name, size, align, offset, location);
         this.methods = new ArrayList<>();
-        this.methodLinkageNames = new ArrayList<>();
-        this.methodNames = new ArrayList<>();
     }
 
     private LLVMSourceClassLikeType(Supplier<String> name, long size, long align, long offset, List<LLVMSourceMemberType> dynamicMembers, LLVMSourceStaticMemberType.CollectionType staticMembers,
-                    List<LLVMSourceFunctionType> methods, List<String> methodLinkageNames, List<String> methodNames, LLVMSourceLocation location) {
+                    List<LLVMSourceMethodType> methods, LLVMSourceLocation location) {
         super(name, size, align, offset, dynamicMembers, staticMembers, location);
         this.methods = methods;
-        this.methodLinkageNames = methodLinkageNames;
-        this.methodNames = methodNames;
     }
 
     @TruffleBoundary
     public void addMethod(String name, String linkageName, LLVMSourceFunctionType method) {
         CompilerAsserts.neverPartOfCompilation();
-        methodNames.add(name);
-        methodLinkageNames.add(linkageName);
-        methods.add(method);
+        final LLVMSourceMethodType llvmSourceMethodType = new LLVMSourceMethodType(method, name, linkageName);
+        methods.add(llvmSourceMethodType);
     }
 
     @Override
     public LLVMSourceType getOffset(long newOffset) {
-        return new LLVMSourceClassLikeType(this::getName, getSize(), getAlign(), newOffset, dynamicMembers, staticMembers, methods, methodLinkageNames, methodNames, getLocation());
+        return new LLVMSourceClassLikeType(this::getName, getSize(), getAlign(), newOffset, dynamicMembers, staticMembers, methods, getLocation());
     }
 
     @Override
@@ -86,16 +74,8 @@ public final class LLVMSourceClassLikeType extends LLVMSourceStructLikeType {
         return methods.size();
     }
 
-    public LLVMSourceFunctionType getMethod(int i) {
+    public LLVMSourceMethodType getMethod(int i) {
         return methods.get(i);
-    }
-
-    public String getMethodName(int i) {
-        return methodNames.get(i);
-    }
-
-    public String getMethodLinkageName(int i) {
-        return methodLinkageNames.get(i);
     }
 
     @Override
@@ -125,7 +105,7 @@ public final class LLVMSourceClassLikeType extends LLVMSourceStructLikeType {
             index -= dynamicMembers.size();
         }
         if (0 <= index && index < methods.size()) {
-            return methods.get(index).getName();
+            return methods.get(index).getFunction().getName();
         }
         return null;
     }
@@ -138,9 +118,9 @@ public final class LLVMSourceClassLikeType extends LLVMSourceStructLikeType {
                 return member.getName();
             }
         }
-        for (LLVMSourceFunctionType method : methods) {
-            if (method.getOffset() == offset) {
-                return method.getName();
+        for (LLVMSourceMethodType method : methods) {
+            if (method.getFunction().getOffset() == offset) {
+                return method.getFunction().getName();
             }
         }
         return null;
@@ -163,7 +143,7 @@ public final class LLVMSourceClassLikeType extends LLVMSourceStructLikeType {
             index -= dynamicMembers.size();
         }
         if (0 <= index && index < methods.size()) {
-            return methods.get(index).getReturnType();
+            return methods.get(index).getFunction().getReturnType();
         }
         return null;
     }
@@ -179,12 +159,19 @@ public final class LLVMSourceClassLikeType extends LLVMSourceStructLikeType {
                 return member.getOffsetElementType();
             }
         }
-        int idx = methodLinkageNames.indexOf(name);
-        if (idx < 0) {
-            idx = methodNames.indexOf(name);
+        int idx = -1;
+        for (int i = 0; i < methods.size() && idx < 0; i++) {
+            if (name.equals(methods.get(i).getMethodLinkageName())) {
+                idx = i;
+            }
+        }
+        for (int i = 0; i < methods.size() && idx < 0; i++) {
+            if (name.equals(methods.get(i).getMethodName())) {
+                idx = i;
+            }
         }
         if (idx >= 0) {
-            return methods.get(idx).getReturnType();
+            return methods.get(idx).getFunction().getReturnType();
         }
         if (LLVMSourceStaticMemberType.CollectionType.MEMBERNAME.equals(name)) {
             return staticMembers;
@@ -210,7 +197,7 @@ public final class LLVMSourceClassLikeType extends LLVMSourceStructLikeType {
             index -= dynamicMembers.size();
         }
         if (0 <= index && index < methods.size()) {
-            return methods.get(index).getLocation();
+            return methods.get(index).getFunction().getLocation();
         }
         return null;
     }
@@ -226,12 +213,19 @@ public final class LLVMSourceClassLikeType extends LLVMSourceStructLikeType {
                 return member.getLocation();
             }
         }
-        int idx = methodLinkageNames.indexOf(name);
-        if (idx < 0) {
-            idx = methodNames.indexOf(name);
+        int idx = -1;
+        for (int i = 0; i < methods.size() && idx < 0; i++) {
+            if (name.equals(methods.get(i).getMethodLinkageName())) {
+                idx = i;
+            }
+        }
+        for (int i = 0; i < methods.size() && idx < 0; i++) {
+            if (name.equals(methods.get(i).getMethodName())) {
+                idx = i;
+            }
         }
         if (idx >= 0) {
-            return methods.get(idx).getLocation();
+            return methods.get(idx).getFunction().getLocation();
         }
         if (LLVMSourceStaticMemberType.CollectionType.MEMBERNAME.equals(name)) {
             return staticMembers.getLocation();
