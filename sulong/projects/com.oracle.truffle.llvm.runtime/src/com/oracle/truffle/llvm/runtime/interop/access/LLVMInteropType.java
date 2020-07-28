@@ -313,6 +313,10 @@ public abstract class LLVMInteropType implements TruffleObject {
             return null;
         }
 
+        public Clazz getSuperclass() {
+            return superclass;
+        }
+
         @TruffleBoundary
         public Method findMethod(String memberName, Object[] arguments) throws ArityException {
             boolean methodFound = false;
