@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.concurrent.Callable;
 
 @TruffleInstrument.Registration(id = JDWPInstrument.ID, name = "Java debug wire protocol", services = DebuggerController.class)
 public final class JDWPInstrument extends TruffleInstrument implements Runnable {
@@ -126,8 +127,17 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
         // connection established with handshake. Prepare to process commands from debugger
         connection = new DebuggerConnection(socketConnection, controller);
         controller.getEventListener().setConnection(socketConnection);
-        controller.getEventListener().vmStarted(suspend);
-        connection.doProcessCommands(suspend, activeThreads);
+        // The VM started event must be sent when we're ready to process commands
+        // doProcessCommands method will control when events can be fired without
+        // causing races, so pass on a Callable
+        Callable<Void> vmStartedJob = new Callable<Void>() {
+            @Override
+            public Void call() {
+                controller.getEventListener().vmStarted(suspend);
+                return null;
+            }
+        };
+        connection.doProcessCommands(suspend, activeThreads, vmStartedJob);
     }
 
     @Override
