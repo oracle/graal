@@ -205,9 +205,7 @@ public abstract class LLVMForeignCallNode extends RootNode {
         this.callNode = DirectCallNode.create(getCallTarget(function));
         this.callNode.forceInlining();
         this.prepareValueForEscape = LLVMDataEscapeNode.create(escapeType);
-        final Type[] argArray = function.getLLVMFunction().getType().getArgumentTypes().toArray(new Type[0]);
         this.packArguments = PackForeignArgumentsNodeGen.create(function.getLLVMFunction().getType(), interopType, sourceType);
-
     }
 
     @Override
