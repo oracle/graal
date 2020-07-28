@@ -118,6 +118,9 @@ for %%f in (%to_build%) do (
     echo Should not reach here
     exit /b 1
   )
+  if defined custom_args (
+    set "cmd_line=!cmd_line! !custom_args!"
+  )
   echo Building %%f...
   if defined verbose echo !cmd_line!
   call !cmd_line!
@@ -138,9 +141,6 @@ goto :eof
 
 :common cmd_line
   setlocal
-  if defined custom_args (
-    set "cmd_line=%cmd_line% %custom_args%"
-  )
   for /f "tokens=* usebackq" %%l in (`"%graalvm_home%\bin\native-image" --help-extra`) do (
     set "line=%%l"
     if not "!line:--no-server=!"=="!line!" (
