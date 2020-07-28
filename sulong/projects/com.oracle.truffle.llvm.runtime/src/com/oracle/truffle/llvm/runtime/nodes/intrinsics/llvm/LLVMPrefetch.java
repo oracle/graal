@@ -40,10 +40,10 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 public abstract class LLVMPrefetch extends LLVMBuiltin {
 
     /**
-     * @param address
-     * @param rw
-     * @param locality
-     * @param cacheType
+     * @param address @NodeChild
+     * @param rw @NodeChild
+     * @param locality @NodeChild
+     * @param cacheType @NodeChild
      * @see LLVMPrefetch
      */
     @Specialization

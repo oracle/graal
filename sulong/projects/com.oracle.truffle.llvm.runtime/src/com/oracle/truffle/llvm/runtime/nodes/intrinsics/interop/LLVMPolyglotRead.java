@@ -80,8 +80,8 @@ public abstract class LLVMPolyglotRead extends LLVMIntrinsic {
         }
 
         /**
-         * @param value
-         * @param id
+         * @param value @NodeChild
+         * @param id @NodeChild
          * @see LLVMPolyglotGetMember
          */
         @Fallback
@@ -119,8 +119,8 @@ public abstract class LLVMPolyglotRead extends LLVMIntrinsic {
         }
 
         /**
-         * @param value
-         * @param id
+         * @param value @NodeChild
+         * @param id @NodeChild
          * @see LLVMPolyglotGetArrayElement
          */
         @Fallback

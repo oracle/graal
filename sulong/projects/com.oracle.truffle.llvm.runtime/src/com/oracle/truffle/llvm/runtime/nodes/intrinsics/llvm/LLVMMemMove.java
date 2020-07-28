@@ -50,7 +50,10 @@ public abstract class LLVMMemMove {
         }
 
         /**
-         * @param isVolatile
+         * @param dest @NodeChild
+         * @param source @NodeChild
+         * @param length @NodeChild
+         * @param isVolatile @NodeChild
          * @see LLVMMemMoveI64
          */
         @Specialization

@@ -120,8 +120,8 @@ public abstract class LLVMPolyglotInvoke extends LLVMIntrinsic {
     }
 
     /**
-     * @param object
-     * @param name
+     * @param object @NodeChild
+     * @param name @NodeChild
      * @see LLVMPolyglotInvoke
      */
     @Fallback

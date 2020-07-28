@@ -49,7 +49,7 @@ public abstract class LLVMReadCharsetNode extends LLVMNode {
     public abstract Object execute(VirtualFrame frame);
 
     /**
-     * @param pointer
+     * @param pointer @NodeChild
      * @see LLVMReadCharsetNode
      */
     @Specialization(guards = "cachedPointer.isSame(pointer)")
@@ -60,7 +60,7 @@ public abstract class LLVMReadCharsetNode extends LLVMNode {
     }
 
     /**
-     * @param address
+     * @param address @NodeChild
      * @see LLVMReadCharsetNode
      */
     @Specialization(guards = "address == cachedAddress")

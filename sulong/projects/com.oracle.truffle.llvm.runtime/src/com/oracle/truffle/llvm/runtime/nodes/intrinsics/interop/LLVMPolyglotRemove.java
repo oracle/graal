@@ -73,8 +73,8 @@ public final class LLVMPolyglotRemove {
         }
 
         /**
-         * @param value
-         * @param id
+         * @param value @NodeChild
+         * @param id @NodeChild
          * @see LLVMPolyglotRemoveMember
          */
         @Fallback
@@ -108,8 +108,8 @@ public final class LLVMPolyglotRemove {
         }
 
         /**
-         * @param value
-         * @param id
+         * @param value @NodeChild
+         * @param id @NodeChild
          * @see LLVMPolyglotRemoveArrayElement
          */
         @Fallback

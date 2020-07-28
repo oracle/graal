@@ -48,7 +48,7 @@ public abstract class LLVMPolyglotIsValue extends LLVMIntrinsic {
     }
 
     /**
-     * @param str
+     * @param str @NodeChild
      * @see LLVMPolyglotIsValue
      */
     @Specialization
@@ -57,7 +57,7 @@ public abstract class LLVMPolyglotIsValue extends LLVMIntrinsic {
     }
 
     /**
-     * @param object
+     * @param object @NodeChild
      * @see LLVMPolyglotIsValue
      */
     @Fallback

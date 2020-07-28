@@ -60,7 +60,7 @@ public abstract class LLVMPolyglotGetStringSize extends LLVMIntrinsic {
     }
 
     /**
-     * @param value
+     * @param value @NodeChild
      * @see LLVMPolyglotGetStringSize
      */
     @Fallback

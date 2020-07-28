@@ -48,7 +48,10 @@ public abstract class LLVMMemSet extends LLVMBuiltin {
     }
 
     /**
-     * @param isVolatile
+     * @param address @NodeChild
+     * @param value @NodeChild
+     * @param length @NodeChild
+     * @param isVolatile @NodeChild
      * @see LLVMMemSet
      */
     @Specialization

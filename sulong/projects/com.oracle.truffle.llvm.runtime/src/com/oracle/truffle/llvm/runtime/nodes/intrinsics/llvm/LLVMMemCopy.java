@@ -53,7 +53,10 @@ public abstract class LLVMMemCopy extends LLVMBuiltin {
     }
 
     /**
-     * @param isVolatile
+     * @param target @NodeChild
+     * @param source @NodeChild
+     * @param length @NodeChild
+     * @param isVolatile @NodeChild
      * @see LLVMMemCopy
      */
     @Specialization
