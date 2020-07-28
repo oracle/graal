@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.runtime.interop.nfi;
 
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.llvm.runtime.interop.nfi.LLVMNativeConvertNodeFactory.I1FromNativeToLLVMNodeGen;
@@ -79,7 +78,7 @@ public abstract class LLVMNativeConvertNode extends LLVMNode {
     protected static class VoidToNative extends LLVMNativeConvertNode {
 
         @Override
-        public TruffleObject executeConvert(Object arg) {
+        public Object executeConvert(Object arg) {
             assert LLVMPointer.isInstance(arg) && LLVMPointer.cast(arg).isNull();
             return LLVMNativePointer.createNull();
         }
@@ -103,13 +102,13 @@ public abstract class LLVMNativeConvertNode extends LLVMNode {
         }
 
         @Specialization(guards = "interop.isPointer(address)", limit = "3", rewriteOn = UnsupportedMessageException.class)
-        protected LLVMNativePointer doPointer(TruffleObject address,
+        protected LLVMNativePointer doPointer(Object address,
                         @CachedLibrary("address") InteropLibrary interop) throws UnsupportedMessageException {
             return LLVMNativePointer.create(interop.asPointer(address));
         }
 
         @Specialization(guards = "!interop.isPointer(address)", limit = "3")
-        protected LLVMManagedPointer doFunction(TruffleObject address,
+        protected LLVMManagedPointer doFunction(Object address,
                         @CachedLibrary("address") @SuppressWarnings("unused") InteropLibrary interop) {
             /*
              * If the NFI returns an object that's not a pointer, it's probably a callback function.
@@ -120,7 +119,7 @@ public abstract class LLVMNativeConvertNode extends LLVMNode {
         }
 
         @Specialization(limit = "3", replaces = {"doPointer", "doFunction"})
-        protected LLVMPointer doGeneric(TruffleObject address,
+        protected LLVMPointer doGeneric(Object address,
                         @CachedLibrary("address") InteropLibrary interop) {
             if (interop.isPointer(address)) {
                 try {

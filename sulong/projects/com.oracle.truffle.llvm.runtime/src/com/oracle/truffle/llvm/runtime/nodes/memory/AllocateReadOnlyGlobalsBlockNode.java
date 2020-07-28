@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.runtime.nodes.memory;
 
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
@@ -49,7 +48,7 @@ public final class AllocateReadOnlyGlobalsBlockNode extends LLVMNode implements 
     @Child InteropLibrary interop;
     @Child LLVMToNativeNode toNative;
 
-    private final TruffleObject allocateGlobalsBlock;
+    private final Object allocateGlobalsBlock;
 
     public AllocateReadOnlyGlobalsBlockNode(LLVMContext context, StructureType type, DataLayout dataLayout) throws TypeOverflowException {
         this.size = type.getSize(dataLayout);

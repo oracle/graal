@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.runtime.interop;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNodeFactory.LLVMDoubleDataEscapeNodeGen;
@@ -275,7 +274,7 @@ public abstract class LLVMDataEscapeNode extends LLVMNode {
         }
 
         @Specialization
-        static TruffleObject escapingType(LLVMInteropType escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
+        static Object escapingType(LLVMInteropType escapingValue, @SuppressWarnings("unused") LLVMInteropType.Structured type) {
             return escapingValue;
         }
 
