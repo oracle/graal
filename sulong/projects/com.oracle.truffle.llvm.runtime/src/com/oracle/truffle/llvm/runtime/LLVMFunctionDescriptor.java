@@ -265,7 +265,6 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
 
     @ExportMessage
     boolean isInstantiable() {
-        // TODO pichristoph: check if llvmFunction is constructor
         return true;
     }
 

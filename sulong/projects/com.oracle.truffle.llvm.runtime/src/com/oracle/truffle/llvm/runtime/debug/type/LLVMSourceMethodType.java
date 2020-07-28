@@ -27,23 +27,29 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include<stdio.h>
-#include<stdlib.h>
-#include<polyglot.h>
+package com.oracle.truffle.llvm.runtime.debug.type;
 
-void hello() {
-	printf("hello() is being called in testfile membersTest.cc");
+public class LLVMSourceMethodType {
+    private final LLVMSourceFunctionType function;
+    private final String methodName;
+    private final String methodLinkageName;
+
+    public LLVMSourceMethodType(LLVMSourceFunctionType function, String methodName, String methodLinkageName) {
+        this.function = function;
+        this.methodName = methodName;
+        this.methodLinkageName = methodLinkageName;
+    }
+
+    public LLVMSourceFunctionType getFunction() {
+        return function;
+    }
+
+    public String getMethodName() {
+        return methodName;
+    }
+
+    public String getMethodLinkageName() {
+        return methodLinkageName;
+    }
+
 }
-
-void bye() {
-	printf("bye() is being called in testfile membersTest.cc");
-}
-
-int gcd(int a, int b) {
-	if(a==0) {return b;}
-	else if(b==0) {return a;}
-	else if(a<0) {return gcd(-a, b);}
-	else if(b<0) {return gcd(a, -b);}
-	else {return gcd(b, a%b);}
-}
-

@@ -161,6 +161,17 @@ public class CxxMethodsTest extends InteropTestBase {
         }
     }
 
+    @Test(expected = IllegalArgumentException.class)
+    public void testWrongArityMethodCall() {
+        Value point = allocPoint.execute();
+        try {
+            point.invokeMember("getX", 3, 4);
+            // getX does not expect any parameters
+        } finally {
+            freePoint.execute(point);
+        }
+    }
+
     @Test
     public void testInheritedMethodsFromSuperclass() {
         Value xPoint = allocXtendPoint.execute();
@@ -175,7 +186,7 @@ public class CxxMethodsTest extends InteropTestBase {
     }
 
     @Test
-    public void testConstructor() {
+    public void testConstructorMethod() {
         Value point = allocPoint.execute();
         try {
             constructor.execute(point);
