@@ -81,7 +81,7 @@ public class NodeData extends Template implements Comparable<NodeData> {
 
     private TypeMirror frameType;
     private boolean generateIntrospection;
-    private boolean generateStatistics; // TODO should not be default
+    private boolean generateStatistics;
 
     private boolean reportPolymorphism;
     private boolean isUncachable;
