@@ -1,19 +1,22 @@
 # LLI Command Options
 
+The syntax to execute programs in LLVM bitcode format with GraalVM is:
 ```
-$GRAALVM_HOME/bin/lli [options] <bitcode file> [program args]
+lli [LLI Options] [GraalVM Options] [Polyglot Options] filename [program args]
 ```
+where `filename` is a single executable that contains LLVM bitcode.
 
-`--llvm.managed` enable a managed execution mode for LLVM IR code, which means memory
-allocations from LLVM bitcode are done on the managed heap (EE only).
-[This article](https://medium.com/graalvm/safe-and-sandboxed-execution-of-native-code-f6096b35c360)
-explains the managed execution in every detail.
+The following options to `lli` are available:
 
-`--print-toolchain-path`: print the path of the LLVM toolchain bundled with GraalVM.
+* `--llvm.managed` enable a managed execution mode for LLVM IR code, which means memory
+allocations from LLVM bitcode are done on the managed heap. Learn more from [Limitations and Differences to Native Execution](native-execution.md).
+Note: Managed execution mode for LLVM IR code is possible with GraalVM Enterprise only.
+
+* `--print-toolchain-path`: print the path of the LLVM toolchain bundled with GraalVM.
 This directory contains compilers and tools that can be used to compile C/C++ programs
-to LLVM bitcode for execution with GraalVM (see [COMPILING](COMPILING.md))
+to LLVM bitcode for execution with GraalVM.
 
-`--print-toolchain-api-tool <tool>`: print the path of a tool from the LLVM toolchain.
+* `--print-toolchain-api-tool <tool>`: print the path of a tool from the LLVM toolchain.
 Valid values for `<tool>` are `CC`, `CXX`, `LD`, `AR`, `NM`, `OBJCOPY`, `OBJDUMP`,
 `RANLIB`, `READELF`, `READOBJ` or `STRIP`.
 
@@ -36,6 +39,6 @@ to `llvm.libraryPath`. Entries are delimited by `:`.
 
 `--version:graalvm` prints GraalVM version information and exit.
 
-## Expert and Diagnostic Options
+### Expert and Diagnostic Options
 
 Use `--help` and `--help:<topic>` to get a full list of options.
