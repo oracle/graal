@@ -59,13 +59,18 @@ public abstract class LookupDeclaredMethod extends Node {
 
     @Specialization(replaces = "doCached")
     Method doGeneric(Klass klass, String methodName, boolean publicOnly, boolean isStatic, int arity) {
+        Method result = null;
         for (Method m : klass.getDeclaredMethods()) {
             if (m.isPublic() == publicOnly && m.isStatic() == isStatic && m.getName().toString().equals(methodName)) {
                 if (m.getParameterCount() == arity) {
-                    return m;
+                    /* Multiple methods with the same name and arity, cannot disambiguate */
+                    if (result != null) {
+                        return null;
+                    }
+                    result = m;
                 }
             }
         }
-        return null;
+        return result;
     }
 }
