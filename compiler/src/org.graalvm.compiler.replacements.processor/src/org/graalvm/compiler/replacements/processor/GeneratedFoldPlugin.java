@@ -169,7 +169,6 @@ public class GeneratedFoldPlugin extends GeneratedPlugin {
         out.printf("        ConstantNode node = ConstantNode.forConstant(constant, %s, %s);\n", deps.use(processor, WellKnownDependency.META_ACCESS),
                         deps.use(processor, WellKnownDependency.STRUCTURED_GRAPH));
         out.printf("        b.push(JavaKind.%s, node);\n", getReturnKind(intrinsicMethod));
-        out.printf("        b.notifyReplacedCall(targetMethod, node);\n");
         out.printf("        return true;\n");
     }
 

@@ -85,7 +85,6 @@ import com.oracle.svm.util.ImageGeneratorThreadMarker;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 
@@ -206,12 +205,6 @@ public abstract class BigBang {
     public MethodTypeFlowBuilder createMethodTypeFlowBuilder(BigBang bb, MethodTypeFlow methodFlow) {
         return new MethodTypeFlowBuilder(bb, methodFlow);
     }
-
-    /** Associates a JavaConstant with a root. */
-    public abstract boolean addRoot(JavaConstant constant, Object root);
-
-    /** Retrieves a root associated with a JavaConstant. */
-    public abstract Object getRoot(JavaConstant constant);
 
     public void registerUnsafeLoad(AbstractUnsafeLoadTypeFlow unsafeLoad) {
         unsafeLoads.putIfAbsent(unsafeLoad, true);
