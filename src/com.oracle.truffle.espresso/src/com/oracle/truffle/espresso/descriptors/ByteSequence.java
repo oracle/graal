@@ -155,7 +155,7 @@ public abstract class ByteSequence {
     public int lastIndexOf(byte b) {
         for (int i = length() - 1; i >= offset(); i--) {
             if (byteAt(i) == b) {
-                return i - offset();
+                return i;
             }
         }
         return -1;
