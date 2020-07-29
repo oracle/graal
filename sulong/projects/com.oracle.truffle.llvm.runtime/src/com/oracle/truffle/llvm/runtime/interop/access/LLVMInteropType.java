@@ -303,7 +303,7 @@ public abstract class LLVMInteropType implements TruffleObject {
                 if (method.getName().equals(memberName)) {
                     // check parameters to resolve overloaded methods
                     LLVMInteropType[] types = method.parameterTypes;
-                    if (types.length == arguments.length) {
+                    if (types.length + 1 == arguments.length) {
                         return method;
                     } else {
                         expectedArgCount = types.length;
@@ -315,7 +315,7 @@ public abstract class LLVMInteropType implements TruffleObject {
             if (superclass != null) {
                 return superclass.findMethod(memberName, arguments);
             } else if (expectedArgCount >= 0) {
-                throw ArityException.create(expectedArgCount - 1, arguments.length - 1);
+                throw ArityException.create(expectedArgCount, arguments.length - 1);
             }
             return null;
         }
