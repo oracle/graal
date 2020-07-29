@@ -45,6 +45,7 @@ package com.oracle.truffle.espresso.polyglot;
  */
 public final class Polyglot {
     private Polyglot() {
+        throw new RuntimeException("No instance of Polyglot can be created");
     }
 
     /**
