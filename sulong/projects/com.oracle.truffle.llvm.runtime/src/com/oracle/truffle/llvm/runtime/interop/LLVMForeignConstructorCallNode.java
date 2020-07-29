@@ -41,6 +41,7 @@ import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 
 public class LLVMForeignConstructorCallNode extends LLVMForeignCallNode {
+
     private final LanguageReference<LLVMLanguage> languageReference;
 
     public static LLVMForeignConstructorCallNode create(LLVMLanguage language, LLVMFunctionDescriptor function, LLVMInteropType interopType, LLVMSourceFunctionType sourceType,
