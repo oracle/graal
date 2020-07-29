@@ -35,6 +35,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -47,8 +48,13 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
 import com.oracle.truffle.llvm.runtime.interop.LLVMForeignCallNode;
+import com.oracle.truffle.llvm.runtime.interop.LLVMForeignConstructorCallNode;
+import com.oracle.truffle.llvm.runtime.interop.LLVMForeignFunctionCallNode;
 import com.oracle.truffle.llvm.runtime.interop.LLVMInternalTruffleObject;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Function;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Structured;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Value;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
 
 /**
@@ -83,8 +89,26 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
             CompilerDirectives.transferToInterpreter();
             LLVMSourceFunctionType sourceType = functionCode.getFunction().getSourceType();
             LLVMInteropType interopType = context.getInteropType(sourceType);
-            LLVMForeignCallNode foreignCall = new LLVMForeignCallNode(context.getLanguage(), this, interopType, sourceType);
+            LLVMForeignCallNode foreignCall = LLVMForeignFunctionCallNode.create(context.getLanguage(), this, interopType, sourceType);
             foreignCallTarget = Truffle.getRuntime().createCallTarget(foreignCall);
+            assert foreignCallTarget != null;
+        }
+        return foreignCallTarget;
+    }
+
+    CallTarget getForeignConstructorCallTarget() {
+        if (foreignCallTarget == null) {
+            CompilerDirectives.transferToInterpreter();
+            LLVMSourceFunctionType sourceType = functionCode.getFunction().getSourceType();
+            LLVMInteropType interopType = context.getInteropType(sourceType);
+            assert (interopType instanceof Function);
+            LLVMInteropType extractedType = ((Function) interopType).getParameter(0);
+            if (extractedType instanceof Value) {
+                Structured structured = ((Value) extractedType).getBaseType();
+                LLVMForeignCallNode foreignCall = LLVMForeignConstructorCallNode.create(
+                                context.getLanguage(), this, interopType, sourceType, structured);
+                foreignCallTarget = Truffle.getRuntime().createCallTarget(foreignCall);
+            }
             assert foreignCallTarget != null;
         }
         return foreignCallTarget;
@@ -242,5 +266,19 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
         } else {
             throw UnknownIdentifierException.create(member);
         }
+    }
+
+    @ExportMessage
+    boolean isInstantiable() {
+        return true;
+    }
+
+    @ExportMessage
+    Object instantiate(Object[] arguments, @Exclusive @Cached IndirectCallNode call) {
+        final Object[] newArgs = new Object[arguments.length + 1];
+        for (int i = 0; i < arguments.length; i++) {
+            newArgs[i + 1] = arguments[i];
+        }
+        return call.call(getForeignConstructorCallTarget(), newArgs);
     }
 }

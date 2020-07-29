@@ -49,17 +49,19 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
 import com.oracle.truffle.llvm.runtime.interop.LLVMForeignCallNodeFactory.PackForeignArgumentsNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Structured;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 import com.oracle.truffle.llvm.runtime.types.Type;
+import com.oracle.truffle.llvm.runtime.types.Type.TypeOverflowException;
 
 /**
  * Used when an LLVM bitcode method is called from another language.
  */
-public class LLVMForeignCallNode extends RootNode {
+public abstract class LLVMForeignCallNode extends RootNode {
 
     abstract static class PackForeignArgumentsNode extends LLVMNode {
 
@@ -195,12 +197,12 @@ public class LLVMForeignCallNode extends RootNode {
     @Child LLVMDataEscapeNode prepareValueForEscape;
     @Child PackForeignArgumentsNode packArguments;
 
-    public LLVMForeignCallNode(LLVMLanguage language, LLVMFunctionDescriptor function, LLVMInteropType interopType, LLVMSourceFunctionType sourceType) {
+    protected LLVMForeignCallNode(LLVMLanguage language, LLVMFunctionDescriptor function, LLVMInteropType interopType, LLVMSourceFunctionType sourceType, Structured returnBaseType, Type escapeType) {
         super(language);
-        this.returnBaseType = getReturnBaseType(interopType);
+        this.returnBaseType = returnBaseType;
         this.getStack = LLVMGetStackFromThreadNode.create();
         this.callNode = DirectCallNode.create(getCallTarget(function));
-        this.prepareValueForEscape = LLVMDataEscapeNode.create(function.getLLVMFunction().getType().getReturnType());
+        this.prepareValueForEscape = LLVMDataEscapeNode.create(escapeType);
         this.packArguments = PackForeignArgumentsNodeGen.create(function.getLLVMFunction().getType(), interopType, sourceType);
     }
 
@@ -224,12 +226,16 @@ public class LLVMForeignCallNode extends RootNode {
         LLVMThreadingStack threadingStack = ctxRef.get().getThreadingStack();
         LLVMStack stack = getStack.executeWithTarget(threadingStack, Thread.currentThread());
         try {
-            result = callNode.call(packArguments.execute(frame.getArguments(), stack));
+            result = doCall(frame, stack);
         } catch (ArityException ex) {
+            throw silenceException(RuntimeException.class, ex);
+        } catch (TypeOverflowException ex) {
             throw silenceException(RuntimeException.class, ex);
         }
         return prepareValueForEscape.executeWithType(result, returnBaseType);
     }
+
+    protected abstract Object doCall(VirtualFrame frame, LLVMStack stack) throws ArityException, TypeOverflowException;
 
     private static LLVMInteropType.Structured getReturnBaseType(LLVMInteropType functionType) {
         if (functionType instanceof LLVMInteropType.Function) {

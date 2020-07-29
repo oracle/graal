@@ -174,6 +174,17 @@ public class CxxMethodsTest extends InteropTestBase {
         }
     }
 
+    @Test(expected = IllegalArgumentException.class)
+    public void testWrongArity() {
+        Value point = allocPoint.execute();
+        try {
+            constructor.execute(point);
+            point.invokeMember("setX", 6, 9, 4);
+        } finally {
+            freePoint.execute(point);
+        }
+    }
+
     @Test
     public void testConstructor() {
         Value point = allocPoint.execute();
