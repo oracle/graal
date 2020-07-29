@@ -26,6 +26,7 @@ import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.StringJoiner;
 
@@ -71,6 +72,10 @@ public final class Utils {
             list.add(Paths.get(p));
         }
         return list;
+    }
+
+    public static List<String> parseStrings(String strings) {
+        return new ArrayList<>(Arrays.asList(strings.split(File.pathSeparator)));
     }
 
     public static String stringify(List<Path> paths) {

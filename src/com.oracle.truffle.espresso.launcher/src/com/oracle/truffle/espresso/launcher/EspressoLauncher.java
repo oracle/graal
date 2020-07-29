@@ -29,6 +29,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiFunction;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
 
@@ -67,6 +68,22 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
                     } else {
                         throw abort("Error: " + arg + " requires class path specification");
                     }
+                    break;
+                case "-p":
+                case "--module-path":
+                    parseSpecifiedOption(arguments, ++i, arg, "java.ModulePath", "module path");
+                    break;
+                case "--add-modules":
+                    parseNumberedOption(arguments, ++i, arg, "java.AddModules", "module");
+                    break;
+                case "--add-exports":
+                    parseNumberedOption(arguments, ++i, arg, "java.AddExports", "module");
+                    break;
+                case "--add-opens":
+                    parseNumberedOption(arguments, ++i, arg, "java.AddOpens", "module");
+                    break;
+                case "--add-reads":
+                    parseNumberedOption(arguments, ++i, arg, "java.AddReads", "module");
                     break;
                 case "-jar":
                     i += 1;
@@ -199,6 +216,27 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
         espressoOptions.put("java.Classpath", classpath);
 
         return unrecognized;
+    }
+
+    private void parseNumberedOption(List<String> arguments, int index, String arg, String property, String type) {
+        if (index < arguments.size()) {
+            espressoOptions.merge(property, arguments.get(index), new BiFunction<String, String, String>() {
+                @Override
+                public String apply(String a, String b) {
+                    return a + File.pathSeparator + b;
+                }
+            });
+        } else {
+            throw abort("Error: " + arg + " requires " + type + " specification");
+        }
+    }
+
+    private void parseSpecifiedOption(List<String> arguments, int index, String arg, String property, String type) {
+        if (index < arguments.size()) {
+            espressoOptions.put(property, arguments.get(index));
+        } else {
+            throw abort("Error: " + arg + " requires " + type + " specification");
+        }
     }
 
     private static String usage() {

@@ -991,6 +991,13 @@ public final class VM extends NativeEnv implements ContextAccess {
         setProperty.invokeWithConversions(properties, "sun.boot.library.path", Utils.stringify(props.bootLibraryPath()));
         setProperty.invokeWithConversions(properties, "java.ext.dirs", Utils.stringify(props.extDirs()));
 
+        // Modules properties.
+        setProperty.invokeWithConversions(properties, "jdk.module.path", Utils.stringify(options.get(EspressoOptions.ModulePath)));
+        setNumberedProperty(setProperty, properties, "jdk.module.addreads", options.get(EspressoOptions.AddReads));
+        setNumberedProperty(setProperty, properties, "jdk.module.addexports", options.get(EspressoOptions.AddExports));
+        setNumberedProperty(setProperty, properties, "jdk.module.addopens", options.get(EspressoOptions.AddOpens));
+        setNumberedProperty(setProperty, properties, "jdk.module.addmods", options.get(EspressoOptions.AddModules));
+
         // Set VM information.
         setProperty.invokeWithConversions(properties, "java.vm.specification.version", EspressoLanguage.VM_SPECIFICATION_VERSION);
         setProperty.invokeWithConversions(properties, "java.vm.specification.name", EspressoLanguage.VM_SPECIFICATION_NAME);
@@ -1001,6 +1008,13 @@ public final class VM extends NativeEnv implements ContextAccess {
         setProperty.invokeWithConversions(properties, "java.vm.info", EspressoLanguage.VM_INFO);
 
         return properties;
+    }
+
+    private static void setNumberedProperty(Method setProperty, StaticObject properties, String property, List<String> values) {
+        int count = 0;
+        for (String value : values) {
+            setProperty.invokeWithConversions(properties, property + "." + count++, value);
+        }
     }
 
     @VmImpl

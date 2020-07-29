@@ -61,6 +61,18 @@ public final class EspressoOptions {
                         }
                     });
 
+    private static final OptionType<List<String>> STRINGS_OPTION_TYPE = new OptionType<>("Strings",
+                    new Function<String, List<String>>() {
+                        @Override
+                        public List<String> apply(String strings) {
+                            try {
+                                return Collections.unmodifiableList(Utils.parseStrings(strings));
+                            } catch (InvalidPathException e) {
+                                throw new IllegalArgumentException(e);
+                            }
+                        }
+                    });
+
     private static final OptionType<Path> PATH_OPTION_TYPE = new OptionType<>("Path",
                     new Function<String, Path>() {
                         @Override
@@ -80,6 +92,26 @@ public final class EspressoOptions {
     @Option(help = "A \" + java.io.File.pathSeparator + \" separated list of directories, JAR archives, and ZIP archives to search for class files.", //
                     category = OptionCategory.USER, stability = OptionStability.STABLE) //
     public static final OptionKey<List<Path>> Classpath = new OptionKey<>(Collections.emptyList(), PATHS_OPTION_TYPE);
+
+    @Option(help = "A \" + java.io.File.pathSeparator + \" separated list of directories to search for modules.", //
+                    category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    public static final OptionKey<List<Path>> ModulePath = new OptionKey<>(Collections.emptyList(), PATHS_OPTION_TYPE);
+
+    @Option(help = "A comma-separated list of root modules beyond the initial module.", //
+                    category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    public static final OptionKey<List<String>> AddModules = new OptionKey<>(Collections.emptyList(), STRINGS_OPTION_TYPE);
+
+    @Option(help = "A comma-separated list of root modules beyond the initial module.", //
+                    category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    public static final OptionKey<List<String>> AddReads = new OptionKey<>(Collections.emptyList(), STRINGS_OPTION_TYPE);
+
+    @Option(help = "A comma-separated list of root modules beyond the initial module.", //
+                    category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    public static final OptionKey<List<String>> AddExports = new OptionKey<>(Collections.emptyList(), STRINGS_OPTION_TYPE);
+
+    @Option(help = "A comma-separated list of root modules beyond the initial module.", //
+                    category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    public static final OptionKey<List<String>> AddOpens = new OptionKey<>(Collections.emptyList(), STRINGS_OPTION_TYPE);
 
     @Option(help = "Installation directory for Java Runtime Environment (JRE)", //
                     category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
