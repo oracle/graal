@@ -1063,7 +1063,7 @@ public abstract class ShapeImpl extends Shape {
         ObjectTypeTransition transition = new ObjectTypeTransition(newObjectType);
         ShapeImpl cachedShape = queryTransition(transition);
         if (cachedShape != null) {
-            return layout.getStrategy().ensureValid(cachedShape);
+            return cachedShape;
         }
 
         ShapeImpl newShape = createShape(layout, sharedData, this, newObjectType, propertyMap, transition, allocator(), flags);
@@ -1082,7 +1082,7 @@ public abstract class ShapeImpl extends Shape {
         ObjectFlagsTransition transition = new ObjectFlagsTransition(newShapeFlags);
         ShapeImpl cachedShape = queryTransition(transition);
         if (cachedShape != null) {
-            return layout.getStrategy().ensureValid(cachedShape);
+            return cachedShape;
         }
 
         int newFlags = newShapeFlags | (flags & ~OBJECT_FLAGS_MASK);
@@ -1170,7 +1170,7 @@ public abstract class ShapeImpl extends Shape {
         Transition transition = new ShareShapeTransition();
         ShapeImpl cachedShape = queryTransition(transition);
         if (cachedShape != null) {
-            return layout.getStrategy().ensureValid(cachedShape);
+            return cachedShape;
         }
 
         ShapeImpl newShape = createShape(layout, sharedData, this, objectType, propertyMap, transition, allocator(), flags | FLAG_SHARED_SHAPE);
