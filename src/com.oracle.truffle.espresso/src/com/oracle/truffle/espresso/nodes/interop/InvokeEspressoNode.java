@@ -43,7 +43,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 public abstract class InvokeEspressoNode extends Node {
     static final int LIMIT = 4;
 
-    public Object execute(Method method, Object receiver, Object[] arguments) throws ArityException, UnsupportedMessageException, UnsupportedTypeException {
+    public final Object execute(Method method, Object receiver, Object[] arguments) throws ArityException, UnsupportedMessageException, UnsupportedTypeException {
         Object result = executeMethod(method, receiver, arguments);
         /*
          * Unwrap foreign objects (invariant: foreign objects are always wrapped when coming in
