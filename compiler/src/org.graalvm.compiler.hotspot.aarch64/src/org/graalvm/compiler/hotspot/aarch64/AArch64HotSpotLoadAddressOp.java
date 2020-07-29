@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -70,7 +70,7 @@ public final class AArch64HotSpotLoadAddressOp extends AArch64LIRInstruction {
         }
         if (crb.compilationResult.isImmutablePIC()) {
             Register dst = asRegister(result);
-            masm.addressOf(dst);
+            masm.adrpAdd(dst);
             masm.ldr(size, dst, AArch64Address.createBaseRegisterOnlyAddress(dst));
         } else {
             masm.ldr(size, asRegister(result), masm.getPlaceholder(-1));

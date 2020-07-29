@@ -355,7 +355,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
                 crb.recordInlineDataInCodeWithNote(new HotSpotSentinelConstant(LIRKind.value(AArch64Kind.QWORD), JavaKind.Long), HotSpotConstantLoadAction.MAKE_NOT_ENTRANT);
                 try (ScratchRegister sc = masm.getScratchRegister()) {
                     Register scratch = sc.getRegister();
-                    masm.addressOf(scratch);
+                    masm.adrpAdd(scratch);
                     masm.ldr(64, scratch, AArch64Address.createBaseRegisterOnlyAddress(scratch));
                     Label noCall = new Label();
                     masm.cbz(64, scratch, noCall);

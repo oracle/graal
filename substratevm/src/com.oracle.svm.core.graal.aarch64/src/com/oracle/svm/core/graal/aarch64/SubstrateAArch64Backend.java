@@ -253,7 +253,9 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
                 Register statusValueRegister = scratch1.getRegister();
                 Register statusAddressRegister = scratch2.getRegister();
                 masm.mov(statusValueRegister, newThreadStatus);
-                masm.add(64, statusAddressRegister, runtimeConfiguration.getThreadRegister(), runtimeConfiguration.getVMThreadStatusOffset());
+                AArch64Address statusAddress = AArch64Address.createImmediateAddress(32, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, runtimeConfiguration.getThreadRegister(),
+                                runtimeConfiguration.getVMThreadStatusOffset());
+                masm.loadAddress(statusAddressRegister, statusAddress, 4);
                 masm.stlr(32, statusValueRegister, statusAddressRegister);
             }
         }
@@ -738,7 +740,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             } else {
                 crb.recordDataReferenceInCode(inputConstant, referenceSize);
                 int srcSize = referenceSize * 8;
-                masm.adrpLdr(srcSize, resultReg, AArch64Address.createImmediateAddress(srcSize, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, resultReg, 0x0));
+                masm.adrpLdr(srcSize, resultReg, resultReg);
             }
             if (!constant.isCompressed()) { // the result is expected to be uncompressed
                 Register baseReg = getBaseRegister(crb);
