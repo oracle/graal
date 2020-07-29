@@ -109,9 +109,8 @@ public abstract class LLVMNativeConvertNode extends LLVMNode {
         }
 
         @Specialization(guards = "!interop.isPointer(address)", limit = "3")
-        @SuppressWarnings("unused")
         protected LLVMManagedPointer doFunction(TruffleObject address,
-                        @CachedLibrary("address") InteropLibrary interop) {
+                        @CachedLibrary("address") @SuppressWarnings("unused") InteropLibrary interop) {
             /*
              * If the NFI returns an object that's not a pointer, it's probably a callback function.
              * In that case, don't eagerly force TO_NATIVE. If we just call it immediately, we

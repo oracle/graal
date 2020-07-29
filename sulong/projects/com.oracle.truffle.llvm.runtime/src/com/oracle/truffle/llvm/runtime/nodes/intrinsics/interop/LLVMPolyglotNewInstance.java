@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -88,6 +88,7 @@ public abstract class LLVMPolyglotNewInstance extends LLVMIntrinsic {
         return threadingStack;
     }
 
+    @SuppressWarnings("try")
     @Specialization
     @ExplodeLoop
     protected Object doNew(VirtualFrame frame, LLVMManagedPointer value,
@@ -120,8 +121,11 @@ public abstract class LLVMPolyglotNewInstance extends LLVMIntrinsic {
         }
     }
 
+    /**
+     * @param value @NodeChild
+     * @see LLVMPolyglotNewInstance
+     */
     @Fallback
-    @SuppressWarnings("unused")
     public Object fallback(Object value) {
         CompilerDirectives.transferToInterpreter();
         throw new LLVMPolyglotException(this, "Non-polyglot value passed to polyglot_new_instance.");

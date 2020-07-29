@@ -54,10 +54,9 @@ import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignGetMemberPointe
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignReadNode;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignWriteNode;
 import com.oracle.truffle.llvm.runtime.nodes.op.LLVMAddressEqualsNode;
-import com.oracle.truffle.llvm.spi.ReferenceLibrary;
 
 @ExportLibrary(value = InteropLibrary.class, receiverType = LLVMPointerImpl.class)
-@ExportLibrary(value = ReferenceLibrary.class, receiverType = LLVMPointerImpl.class)
+@ExportLibrary(value = com.oracle.truffle.llvm.spi.ReferenceLibrary.class, receiverType = LLVMPointerImpl.class)
 @SuppressWarnings({"static-method", "deprecation"})
 // implements deprecated ReferenceLibrary for backwards compatibility
 abstract class CommonPointerLibraries {
@@ -67,8 +66,12 @@ abstract class CommonPointerLibraries {
         return receiver.getExportType() instanceof LLVMInteropType.Struct;
     }
 
+    /**
+     * @param receiver
+     * @param includeInternal
+     * @see InteropLibrary#getMembers(Object, boolean)
+     */
     @ExportMessage
-    @SuppressWarnings("unused")
     static Object getMembers(LLVMPointerImpl receiver, boolean includeInternal,
                     @Shared("isObject") @Cached ConditionProfile isObject) throws UnsupportedMessageException {
         if (isObject.profile(receiver.getExportType() instanceof LLVMInteropType.Struct)) {
@@ -116,8 +119,12 @@ abstract class CommonPointerLibraries {
         }
     }
 
+    /**
+     * @param receiver
+     * @param ident
+     * @see InteropLibrary#isMemberInsertable(Object, String)
+     */
     @ExportMessage
-    @SuppressWarnings("unused")
     static boolean isMemberInsertable(LLVMPointerImpl receiver, String ident) {
         return false;
     }
@@ -181,8 +188,12 @@ abstract class CommonPointerLibraries {
         }
     }
 
+    /**
+     * @param receiver
+     * @param idx
+     * @see InteropLibrary#isArrayElementInsertable(Object, long)
+     */
     @ExportMessage
-    @SuppressWarnings("unused")
     static boolean isArrayElementInsertable(LLVMPointerImpl receiver, long idx) {
         // native arrays have fixed size, new elements can't be inserted
         return false;
@@ -241,15 +252,21 @@ abstract class CommonPointerLibraries {
             return equals.executeWithTarget(receiver, other);
         }
 
+        /**
+         * @param receiver
+         * @param other
+         */
         @Fallback
-        @SuppressWarnings("unused")
         static boolean doOther(LLVMPointerImpl receiver, Object other) {
             return false;
         }
     }
 
+    /**
+     * @param receiver
+     * @see InteropLibrary#hasLanguage(Object)
+     */
     @ExportMessage
-    @SuppressWarnings("unused")
     static boolean hasLanguage(LLVMPointerImpl receiver) {
         return true;
     }

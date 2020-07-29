@@ -51,6 +51,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -501,7 +502,7 @@ public final class OrganizedImports {
                         DeclaredType declared = (DeclaredType) type;
                         String declaredName = ElementUtils.getDeclaredName(declared, false);
                         String enclosedQualifiedName = ElementUtils.getEnclosedQualifiedName(declared);
-                        registerSymbol(classImportUsage, enclosedQualifiedName, declaredName);
+                        registerSymbol(classImportUsage, enclosedQualifiedName, declaredName, type);
                         if (!needsImport(enclosedType, type)) {
                             noImportSymbols.putIfAbsent(declaredName, Boolean.FALSE);
                         } else {
@@ -532,7 +533,19 @@ public final class OrganizedImports {
             }
         }
 
-        private void registerSymbol(Map<String, String> symbolUsage, String elementQualifiedName, String elementName) {
+        private boolean isImportDeprecated(TypeMirror type) {
+            Optional<TypeElement> optional = Optional.ofNullable(ElementUtils.castTypeElement(type));
+            while (optional.isPresent()) {
+                TypeElement element = optional.get();
+                if (ElementUtils.isDeprecated(element)) {
+                    return true;
+                }
+                optional = ElementUtils.findParentEnclosingType(element);
+            }
+            return false;
+        }
+
+        private void registerSymbol(Map<String, String> symbolUsage, String elementQualifiedName, String elementName, TypeMirror type) {
             if (symbolUsage.containsKey(elementName)) {
                 String otherQualifiedName = symbolUsage.get(elementName);
                 if (otherQualifiedName == null) {
@@ -542,6 +555,8 @@ public final class OrganizedImports {
                 if (!otherQualifiedName.equals(elementQualifiedName)) {
                     symbolUsage.put(elementName, null);
                 }
+            } else if (isImportDeprecated(type)) {
+                symbolUsage.put(elementName, null);
             } else {
                 symbolUsage.put(elementName, elementQualifiedName);
             }

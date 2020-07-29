@@ -52,7 +52,11 @@ public abstract class LLVMStructStoreNode extends LLVMStoreNodeCommon {
         this.memMove = memMove;
     }
 
-    @SuppressWarnings("unused")
+    /**
+     * @param address
+     * @param value
+     * @see #executeWithTarget(Object, Object)
+     */
     @Specialization(guards = "getStructSize() == 0")
     protected void noCopy(Object address, Object value) {
         // nothing to do

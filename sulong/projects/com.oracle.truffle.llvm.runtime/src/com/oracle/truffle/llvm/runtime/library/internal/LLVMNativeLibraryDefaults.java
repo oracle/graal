@@ -48,15 +48,22 @@ abstract class LLVMNativeLibraryDefaults {
     static class DefaultLibrary {
 
         @ExportMessage
-        @SuppressWarnings("unused")
         static class IsPointer {
 
+            /**
+             * @param receiver
+             * @see InteropLibrary#isPointer(Object)
+             */
             @Specialization(guards = "interop.isPointer(receiver)")
             static boolean doPointer(Object receiver,
-                            @CachedLibrary("receiver") InteropLibrary interop) {
+                            @CachedLibrary("receiver") @SuppressWarnings("unused") InteropLibrary interop) {
                 return true;
             }
 
+            /**
+             * @param receiver
+             * @see InteropLibrary#isPointer(Object)
+             */
             @Specialization(guards = "!interop.isPointer(receiver)")
             static boolean doOther(Object receiver,
                             @CachedLibrary("receiver") InteropLibrary interop) {
@@ -97,12 +104,15 @@ abstract class LLVMNativeLibraryDefaults {
         }
 
         @ExportMessage
-        @SuppressWarnings("unused")
         static class ToNativePointer {
 
+            /**
+             * @param receiver
+             * @see LLVMNativeLibrary#toNativePointer(Object)
+             */
             @Specialization(guards = "interop.isNull(receiver)")
             static LLVMNativePointer doNull(Object receiver,
-                            @CachedLibrary("receiver") InteropLibrary interop) {
+                            @CachedLibrary("receiver") @SuppressWarnings("unused") InteropLibrary interop) {
                 return LLVMNativePointer.createNull();
             }
 
@@ -125,8 +135,11 @@ abstract class LLVMNativeLibraryDefaults {
     @ExportLibrary(value = LLVMNativeLibrary.class, receiverType = Long.class)
     static class LongLibrary {
 
+        /**
+         * @param receiver
+         * @see LLVMNativeLibrary#isPointer(Object)
+         */
         @ExportMessage
-        @SuppressWarnings("unused")
         static boolean isPointer(Long receiver) {
             return true;
         }
@@ -143,14 +156,21 @@ abstract class LLVMNativeLibraryDefaults {
     }
 
     @ExportLibrary(value = LLVMNativeLibrary.class, receiverType = int[].class)
-    @SuppressWarnings("unused")
     static class ArrayLibrary {
 
+        /**
+         * @param receiver
+         * @see LLVMNativeLibrary#isPointer(Object)
+         */
         @ExportMessage
         static boolean isPointer(int[] receiver) {
             return false;
         }
 
+        /**
+         * @param receiver
+         * @see LLVMNativeLibrary#asPointer(Object)
+         */
         @ExportMessage
         static long asPointer(int[] receiver) throws UnsupportedMessageException {
             throw UnsupportedMessageException.create();

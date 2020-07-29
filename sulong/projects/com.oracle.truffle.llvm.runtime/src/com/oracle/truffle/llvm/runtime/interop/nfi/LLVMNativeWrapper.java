@@ -109,8 +109,12 @@ public final class LLVMNativeWrapper implements TruffleObject {
             }
         }
 
+        /**
+         * @param function
+         * @param args
+         * @see #execute(LLVMFunctionDescriptor, Object[])
+         */
         @Specialization(replaces = "doCached")
-        @SuppressWarnings("unused")
         Object doGeneric(LLVMFunctionDescriptor function, Object[] args) {
             /*
              * This should never happen. This node is only called from the NFI, and the NFI creates

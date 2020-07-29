@@ -45,7 +45,15 @@ public abstract class LLVMAMD64SyscallMmapNode extends LLVMSyscallOperationNode 
 
     private final ConditionProfile mapAnonymousProfile = ConditionProfile.createCountingProfile();
 
-    @SuppressWarnings("unused")
+    /**
+     * @param addr
+     * @param len
+     * @param prot
+     * @param flags
+     * @param fildes
+     * @param off
+     * @see #execute(Object, Object, Object, Object, Object, Object)
+     */
     @Specialization
     protected long doOp(LLVMNativePointer addr, long len, long prot, long flags, long fildes, long off,
                     @CachedLanguage LLVMLanguage language) {

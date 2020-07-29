@@ -15,8 +15,6 @@ suite = {
     ],
   },
 
-  "javac.lint.overrides" : "none",
-
   "libraries" : {
     "LLVM_TEST_SUITE" : {
       "packedResource" : True,
@@ -167,6 +165,8 @@ suite = {
       "license" : "BSD-new",
       "testProject" : True,
       "jacoco" : "exclude",
+      # TODO Remove deprecated ReferenceLibrary. [GR-24632]
+      "javac.lint.overrides" : "-deprecation",
     },
     "com.oracle.truffle.llvm.tests.native" : {
       "subDir" : "tests",
@@ -303,6 +303,8 @@ suite = {
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
       "jacoco" : "include",
+      # TODO Remove deprecated ReferenceLibrary. [GR-24632]
+      "javac.lint.overrides" : "-deprecation",
     },
 
     "com.oracle.truffle.llvm.parser" : {
@@ -427,6 +429,8 @@ suite = {
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
       "jacoco" : "include",
+      # warnings in generated code
+      "javac.lint.overrides" : "none",
     },
 
     "com.oracle.truffle.llvm.parser.factories" : {

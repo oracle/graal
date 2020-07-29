@@ -50,7 +50,6 @@ public abstract class LLVMWriteSymbolNode extends LLVMNode {
 
     public abstract void execute(LLVMPointer pointer, LLVMSymbol descriptor);
 
-    @SuppressWarnings("unused")
     @Specialization
     void doWrite(LLVMPointer pointer, LLVMGlobal global,
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
@@ -67,7 +66,6 @@ public abstract class LLVMWriteSymbolNode extends LLVMNode {
         }
     }
 
-    @SuppressWarnings("unused")
     @Specialization
     void doWrite(LLVMPointer pointer, LLVMFunction function,
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {
@@ -84,7 +82,6 @@ public abstract class LLVMWriteSymbolNode extends LLVMNode {
         }
     }
 
-    @SuppressWarnings("unused")
     @Specialization
     void doWrite(LLVMPointer pointer, LLVMAlias alias,
                     @CachedContext(LLVMLanguage.class) LLVMContext context) {

@@ -48,18 +48,24 @@ public abstract class LLVMReadCharsetNode extends LLVMNode {
 
     public abstract Object execute(VirtualFrame frame);
 
+    /**
+     * @param pointer @NodeChild
+     * @see LLVMReadCharsetNode
+     */
     @Specialization(guards = "cachedPointer.isSame(pointer)")
-    @SuppressWarnings("unused")
     protected LLVMCharset doCachedPointer(LLVMPointer pointer,
-                    @Cached("pointer") LLVMPointer cachedPointer,
+                    @Cached("pointer") @SuppressWarnings("unused") LLVMPointer cachedPointer,
                     @Cached("doGeneric(cachedPointer)") LLVMCharset cachedCharset) {
         return cachedCharset;
     }
 
+    /**
+     * @param address @NodeChild
+     * @see LLVMReadCharsetNode
+     */
     @Specialization(guards = "address == cachedAddress")
-    @SuppressWarnings("unused")
     protected LLVMCharset doCachedOther(Object address,
-                    @Cached("address") Object cachedAddress,
+                    @Cached("address") @SuppressWarnings("unused") Object cachedAddress,
                     @Cached("doGeneric(cachedAddress)") LLVMCharset cachedCharset) {
         return cachedCharset;
     }

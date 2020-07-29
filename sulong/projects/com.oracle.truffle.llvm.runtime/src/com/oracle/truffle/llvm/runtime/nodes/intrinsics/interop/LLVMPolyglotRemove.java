@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -72,9 +72,13 @@ public final class LLVMPolyglotRemove {
             }
         }
 
+        /**
+         * @param value @NodeChild
+         * @param id @NodeChild
+         * @see LLVMPolyglotRemoveMember
+         */
         @Fallback
         @TruffleBoundary
-        @SuppressWarnings("unused")
         public boolean error(Object value, Object id) {
             throw new LLVMPolyglotException(this, "Invalid argument to polyglot builtin.");
         }
@@ -103,9 +107,13 @@ public final class LLVMPolyglotRemove {
             }
         }
 
+        /**
+         * @param value @NodeChild
+         * @param id @NodeChild
+         * @see LLVMPolyglotRemoveArrayElement
+         */
         @Fallback
         @TruffleBoundary
-        @SuppressWarnings("unused")
         public boolean fallback(Object value, Object id) {
             throw new LLVMPolyglotException(this, "Invalid argument to polyglot builtin.");
         }

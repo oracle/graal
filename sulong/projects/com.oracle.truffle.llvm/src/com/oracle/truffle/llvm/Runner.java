@@ -952,7 +952,7 @@ final class Runner {
             return !ctx.isScopeLoaded(fileScope);
         }
 
-        @SuppressWarnings("unchecked")
+        @SuppressWarnings({"unchecked", "rawtypes"})
         public void initializeSymbolTable(LLVMContext context) {
             context.registerSymbolTable(bitcodeID, new AssumedValue[globalLength]);
             context.registerScope(fileScope);

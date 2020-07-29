@@ -105,7 +105,7 @@ public abstract class LLVMInteropType implements TruffleObject {
     }
 
     @ExportMessage
-    @SuppressWarnings({"unused", "static-method"})
+    @SuppressWarnings("static-method")
     final boolean hasLanguage() {
         return true;
     }
