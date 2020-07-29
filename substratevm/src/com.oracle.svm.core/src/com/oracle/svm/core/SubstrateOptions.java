@@ -25,8 +25,8 @@
 package com.oracle.svm.core;
 
 import static org.graalvm.compiler.core.common.GraalOptions.TrackNodeSourcePosition;
-import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.None;
-import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.Options.MitigateSpeculativeExecutionAttacks;
+import static org.graalvm.compiler.core.common.SpectrePHTMitigations.None;
+import static org.graalvm.compiler.core.common.SpectrePHTMitigations.Options.SpectrePHTBarriers;
 import static org.graalvm.compiler.options.OptionType.Expert;
 import static org.graalvm.compiler.options.OptionType.User;
 
@@ -399,7 +399,7 @@ public class SubstrateOptions {
                 /*
                  * The LLVM backend doesn't support speculative execution attack mitigation
                  */
-                MitigateSpeculativeExecutionAttacks.update(values, None);
+                SpectrePHTBarriers.update(values, None);
             }
         }
     };
