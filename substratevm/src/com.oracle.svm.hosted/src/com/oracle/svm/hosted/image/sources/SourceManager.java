@@ -110,6 +110,9 @@ public class SourceManager {
      * @return the file name or null if it the class cannot be associated with a source file
      */
     private static String computeBaseName(ResolvedJavaType resolvedType) {
+        if (resolvedType.isPrimitive()) {
+            return null;
+        }
         String fileName = resolvedType.getSourceFileName();
         if (fileName == null) {
             /* ok, try to construct it from the class name */
