@@ -73,5 +73,4 @@ public class LLVMForeignConstructorCallNode extends LLVMForeignCallNode {
          */
         return arguments[1];
     }
-
 }
