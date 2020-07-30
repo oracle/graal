@@ -1017,8 +1017,7 @@ public class SubstrateGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode classNode) {
                 Class<?> key = constantObjectParameter(b, snippetReflection, targetMethod, 0, Class.class, classNode);
                 boolean result = ImageSingletons.contains(key);
-
-                b.notifyReplacedCall(targetMethod, b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(result)));
+                b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(result));
                 return true;
             }
         });
@@ -1027,8 +1026,7 @@ public class SubstrateGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode classNode) {
                 Class<?> key = constantObjectParameter(b, snippetReflection, targetMethod, 0, Class.class, classNode);
                 Object result = ImageSingletons.lookup(key);
-
-                b.notifyReplacedCall(targetMethod, b.addPush(JavaKind.Object, ConstantNode.forConstant(snippetReflection.forObject(result), b.getMetaAccess())));
+                b.addPush(JavaKind.Object, ConstantNode.forConstant(snippetReflection.forObject(result), b.getMetaAccess()));
                 return true;
             }
         });
@@ -1042,8 +1040,7 @@ public class SubstrateGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode classNode) {
                 Class<? extends Platform> platform = constantObjectParameter(b, snippetReflection, targetMethod, 0, Class.class, classNode);
                 boolean result = Platform.includedIn(platform);
-
-                b.notifyReplacedCall(targetMethod, b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(result)));
+                b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(result));
                 return true;
             }
         });
@@ -1057,8 +1054,7 @@ public class SubstrateGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode classNode) {
                 Class<? extends PointerBase> clazz = constantObjectParameter(b, snippetReflection, targetMethod, 0, Class.class, classNode);
                 int result = SizeOf.get(clazz);
-
-                b.notifyReplacedCall(targetMethod, b.addPush(JavaKind.Int, ConstantNode.forInt(result)));
+                b.addPush(JavaKind.Int, ConstantNode.forInt(result));
                 return true;
             }
         });
@@ -1068,8 +1064,7 @@ public class SubstrateGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode classNode) {
                 Class<? extends PointerBase> clazz = constantObjectParameter(b, snippetReflection, targetMethod, 0, Class.class, classNode);
                 UnsignedWord result = SizeOf.unsigned(clazz);
-
-                b.notifyReplacedCall(targetMethod, b.addPush(JavaKind.Object, ConstantNode.forConstant(snippetReflection.forObject(result), b.getMetaAccess())));
+                b.addPush(JavaKind.Object, ConstantNode.forConstant(snippetReflection.forObject(result), b.getMetaAccess()));
                 return true;
             }
         });
