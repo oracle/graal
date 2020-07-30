@@ -554,7 +554,7 @@ suite = {
       ],
       "headers" : [
         "include/graalvm/llvm/polyglot.h",
-        "include/llvm/api/toolchain.h",
+        "include/graalvm/llvm/toolchain-api.h",
       ],
       "buildDependencies" : [
         "sdk:LLVM_TOOLCHAIN",
@@ -1248,7 +1248,9 @@ suite = {
         "./include/" : [
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/include/*"
         ],
-        "./include/polyglot.h" : "link:graalvm/llvm/polyglot.h" # for source compatibility
+        # for source compatibility
+        "./include/polyglot.h" : "link:graalvm/llvm/polyglot.h",
+        "./include/llvm/api/toolchain.h" : "link:../../graalvm/llvm/toolchain-api.h",
       },
       "dependencies" : [
         "com.oracle.truffle.llvm.libraries.bitcode",

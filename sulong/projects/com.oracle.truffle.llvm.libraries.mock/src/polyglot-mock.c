@@ -28,8 +28,8 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <llvm/api/toolchain.h>
 #include <graalvm/llvm/polyglot.h>
+#include <graalvm/llvm/toolchain-api.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -38,7 +38,7 @@ static void should_not_reach() {
     abort();
 }
 
-// llvm/api/toolchain.h
+// graalvm/llvm/toolchain-api.h
 void *toolchain_api_tool(const void *name) {
     should_not_reach();
 }

@@ -28,8 +28,8 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef LLVM_API_TOOLCHAIN_H
-#define LLVM_API_TOOLCHAIN_H
+#ifndef GRAALVM_LLVM_TOOLCHAIN_API_H
+#define GRAALVM_LLVM_TOOLCHAIN_API_H
 
 /**
  * \defgroup toolchain LLVM Toolchain API
@@ -44,7 +44,7 @@
  *
  * @see <a href="https://github.com/oracle/graal/blob/master/sulong/projects/com.oracle.truffle.llvm.api/src/com/oracle/truffle/llvm/api/Toolchain.java">Toolchain.java</a>
  *
- * @file llvm/api/toolchain.h
+ * @file graalvm/llvm/toolchain-api.h
  */
 
 #if defined(__cplusplus)
