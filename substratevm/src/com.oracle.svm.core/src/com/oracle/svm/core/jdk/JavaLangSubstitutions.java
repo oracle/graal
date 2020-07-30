@@ -569,6 +569,8 @@ final class Target_java_lang_ClassValue {
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = JavaLangSubstitutions.ClassValueInitializer.class)//
     private final ConcurrentMap<Class<?>, Object> values;
 
+    private static final Object dummyNull = new Object();
+
     @Substitute
     private Target_java_lang_ClassValue() {
         values = new ConcurrentHashMap<>();
@@ -586,8 +588,16 @@ final class Target_java_lang_ClassValue {
         Object result = values.get(type);
         if (result == null) {
             Object newValue = computeValue(type);
+            if (newValue == null) {
+                /* values can't store null, replace with dummyNull */
+                newValue = dummyNull;
+            }
             Object oldValue = values.putIfAbsent(type, newValue);
             result = oldValue != null ? oldValue : newValue;
+        }
+        if (result == dummyNull) {
+            /* replace dummyNull back to real null */
+            result = null;
         }
         return result;
     }
