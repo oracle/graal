@@ -186,7 +186,8 @@ final class Runner {
     }
 
     /**
-     * Prepare the source for parsing, by creating the external library from the source and retrieving the bytes from the source.
+     * Prepare the source for parsing, by creating the external library from the source and
+     * retrieving the bytes from the source.
      */
     private CallTarget parseWithDependencies(Source source) {
         ByteSequence bytes;
@@ -1934,15 +1935,12 @@ final class Runner {
         }
     }
 
-    /*static byte[] decodeBase64(CharSequence charSequence) {
-        byte[] result = new byte[charSequence.length()];
-        for (int i = 0; i < result.length; i++) {
-            char ch = charSequence.charAt(i);
-            assert ch >= 0 && ch <= Byte.MAX_VALUE;
-            result[i] = (byte) ch;
-        }
-        return Base64.getDecoder().decode(result);
-    }*/
+    /*
+     * static byte[] decodeBase64(CharSequence charSequence) { byte[] result = new
+     * byte[charSequence.length()]; for (int i = 0; i < result.length; i++) { char ch =
+     * charSequence.charAt(i); assert ch >= 0 && ch <= Byte.MAX_VALUE; result[i] = (byte) ch; }
+     * return Base64.getDecoder().decode(result); }
+     */
 
     // name, single parserResult, list of dependencies (list of sources)
     private CallTarget createLibraryCallTarget(String name, LLVMParserResult parserResult, List<Source> sources, Source source) {
