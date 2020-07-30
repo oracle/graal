@@ -380,7 +380,7 @@ class NativeImageVM(GraalVm):
             final_image_name = executable_name + '-' + self.config_name()
             stages = NativeImageVM.Stages(config, out, err, final_image_name, self.is_gate, True if self.is_gate else nonZeroIsFatal, os.path.abspath(cwd if cwd else os.getcwd()))
 
-            bench_suite = mx.suite('vm-enterprise')
+            bench_suite = mx.suite('vm')
             root_dir = config.benchmark_output_dir if config.benchmark_output_dir else mx.join(bench_suite.dir, 'mxbuild')
             config.output_dir = mx.join(os.path.abspath(root_dir), 'native-image-bench-' + executable_name + '-' + self.config_name())
             if not os.path.exists(config.output_dir):

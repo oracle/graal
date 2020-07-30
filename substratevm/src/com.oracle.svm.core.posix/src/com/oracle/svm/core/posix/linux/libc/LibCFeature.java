@@ -24,18 +24,19 @@
  */
 package com.oracle.svm.core.posix.linux.libc;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.c.libc.LibCBase;
-import com.oracle.svm.core.c.libc.TemporaryBuildDirectoryProvider;
-import com.oracle.svm.core.option.HostedOptionKey;
 import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionType;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.c.libc.LibCBase;
+import com.oracle.svm.core.option.APIOption;
+import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.util.UserError;
+
 @AutomaticFeature
-public class AlternativeLibCFeature implements Feature {
+public class LibCFeature implements Feature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -43,25 +44,28 @@ public class AlternativeLibCFeature implements Feature {
     }
 
     public static class LibCOptions {
-        @Option(help = "file:doc-files/UseMuslCHelp.txt", type = OptionType.Expert)//
-        public static final HostedOptionKey<String> UseMuslC = new HostedOptionKey<>(null);
-
-        @Option(help = "When set to true, sets the internally used libc to Bionic. Note that this does not currently download and link against Bionic libc, but serves as a workaround that makes it possible externally", type = OptionType.Expert)//
-        public static final HostedOptionKey<Boolean> UseBionicC = new HostedOptionKey<>(false);
+        @APIOption(name = "libc")//
+        @Option(help = "Selects the libc implementation to use. Available implementations: glibc, musl")//
+        public static final HostedOptionKey<String> UseLibC = new HostedOptionKey<>("glibc");
     }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        TemporaryBuildDirectoryProvider tempDirectoryProvider = ImageSingletons.lookup(TemporaryBuildDirectoryProvider.class);
         LibCBase libc;
-        if (LibCOptions.UseMuslC.hasBeenSet()) {
-            libc = new MuslLibC();
-        } else if (LibCOptions.UseBionicC.hasBeenSet()) {
-            libc = new BionicLibC();
-        } else {
-            libc = new GLibC();
+        String targetLibC = LibCOptions.UseLibC.getValue();
+        switch (targetLibC) {
+            case GLibC.NAME:
+                libc = new GLibC();
+                break;
+            case MuslLibC.NAME:
+                libc = new MuslLibC();
+                break;
+            case BionicLibC.NAME:
+                libc = new BionicLibC();
+                break;
+            default:
+                throw UserError.abort("Unknown libc " + targetLibC + " selected. Please use one of the available libc implementations.");
         }
-        libc.prepare(tempDirectoryProvider.getTemporaryBuildDirectory());
         ImageSingletons.add(LibCBase.class, libc);
     }
 }

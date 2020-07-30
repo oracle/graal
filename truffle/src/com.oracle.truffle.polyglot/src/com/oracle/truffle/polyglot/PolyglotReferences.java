@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -97,7 +97,7 @@ final class PolyglotReferences {
         return new MultiLanguageSupplier(language);
     }
 
-    private static AssertionError invalidSharingError(PolyglotEngineImpl usedEngine) throws AssertionError {
+    static AssertionError invalidSharingError(PolyglotEngineImpl usedEngine) throws AssertionError {
         Exception e = new Exception();
         StringBuilder stack = new StringBuilder();
         Exception exceptionCreating = null;
@@ -135,7 +135,7 @@ final class PolyglotReferences {
         if (exceptionCreating != null) {
             error.addSuppressed(exceptionCreating);
         }
-        return error;
+        throw error;
     }
 
     static StackTraceElement createJavaStackFrame(PolyglotLanguage language, String rootName, SourceSection sourceLocation) {

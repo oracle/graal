@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,17 +27,39 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#include <time.h>
-#include <stdint.h>
-#include <unistd.h>
-#include <sys/syscall.h>
+package com.oracle.truffle.llvm.tests.bitcode;
 
-#ifdef __linux__
-int __clock_gettime(clockid_t clk_id, struct timespec *tp) {
-    return syscall(SYS_clock_gettime, clk_id, tp);
-}
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Path;
 
-int clock_gettime(clockid_t clk_id, struct timespec *tp) {
-    return __clock_gettime(clk_id, tp);
+import org.graalvm.polyglot.PolyglotException;
+import org.junit.ClassRule;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.ExpectedException;
+
+import com.oracle.truffle.llvm.tests.options.TestOptions;
+import com.oracle.truffle.tck.TruffleRunner;
+
+/**
+ * Tests that big endian data layouts cause an error. Only little endian is supported.
+ */
+public class BigEndianTest {
+
+    private static final Path TEST_DIR = new File(TestOptions.LL_TEST_SUITE_PATH, "other").toPath();
+    private static final String FILENAME = "O0.bc";
+
+    @ClassRule public static TruffleRunner.RunWithPolyglotRule runWithPolyglot = new TruffleRunner.RunWithPolyglotRule();
+
+    @Rule public ExpectedException exception = ExpectedException.none();
+
+    @Test
+    public void testBitEndianDataLayout() throws IOException {
+        File file = TEST_DIR.resolve("big_endian.ll.dir").resolve(FILENAME).toFile();
+        org.graalvm.polyglot.Source source = org.graalvm.polyglot.Source.newBuilder("llvm", file).build();
+        exception.expect(PolyglotException.class);
+        exception.expectMessage("Byte order BIG_ENDIAN");
+        runWithPolyglot.getPolyglotContext().eval(source);
+    }
 }
-#endif

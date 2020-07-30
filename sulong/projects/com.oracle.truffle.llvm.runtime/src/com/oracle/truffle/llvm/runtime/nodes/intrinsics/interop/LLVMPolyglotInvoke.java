@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -89,6 +89,7 @@ public abstract class LLVMPolyglotInvoke extends LLVMIntrinsic {
         return threadingStack;
     }
 
+    @SuppressWarnings("try")
     @ExplodeLoop
     private Object doInvoke(VirtualFrame frame, Object value, String id, ContextReference<LLVMContext> ctxRef,
                     LLVMGetStackNode getStack) {
@@ -118,8 +119,12 @@ public abstract class LLVMPolyglotInvoke extends LLVMIntrinsic {
         return doInvoke(frame, foreign, readStr.executeWithTarget(id), context, getStack);
     }
 
+    /**
+     * @param object @NodeChild
+     * @param name @NodeChild
+     * @see LLVMPolyglotInvoke
+     */
     @Fallback
-    @SuppressWarnings("unused")
     public Object fallback(Object object, Object name) {
         throw new LLVMPolyglotException(this, "Invalid argument to polyglot builtin.");
     }

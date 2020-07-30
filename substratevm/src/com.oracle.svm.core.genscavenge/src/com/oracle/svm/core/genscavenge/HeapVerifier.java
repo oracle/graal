@@ -30,10 +30,12 @@ import org.graalvm.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.genscavenge.CardTable.ReferenceToYoungObjectReferenceVisitor;
 import com.oracle.svm.core.genscavenge.CardTable.ReferenceToYoungObjectVisitor;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
+import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.InteriorObjRefWalker;
@@ -51,6 +53,7 @@ public final class HeapVerifier {
 
     private final SpaceVerifier spaceVerifier = new SpaceVerifier();
     private final ReferenceToYoungObjectVisitor referenceToYoungObjectVisitor = new ReferenceToYoungObjectVisitor(new ReferenceToYoungObjectReferenceVisitor());
+    private final ImageHeapRegionVerifier imageHeapRegionVerifier = new ImageHeapRegionVerifier();
     private final Log witnessLog = Log.log();
 
     private String currentCause = "Too soon to tell";
@@ -173,7 +176,7 @@ public final class HeapVerifier {
         setCurrentCause(cause);
         ThreadLocalAllocation.disableAndFlushForAllThreads();
         boolean result = true;
-        if (!verifyBootImageObjects()) {
+        if (!verifyImageHeapObjects()) {
             getWitnessLog().string("[HeapVerifier.verify:").string("  native image fails to verify").string("]").newline();
             result = false;
         }
@@ -205,52 +208,65 @@ public final class HeapVerifier {
         return witnessLog;
     }
 
-    private boolean verifyBootImageObjects() {
-        ImageHeapInfo info = HeapImpl.getImageHeapInfo();
-        boolean ropResult = verifyBootImageObjects(info.firstReadOnlyPrimitiveObject, info.lastReadOnlyPrimitiveObject, true);
-        boolean rorResult = verifyBootImageObjects(info.firstReadOnlyReferenceObject, info.lastReadOnlyReferenceObject, true);
-        boolean rolResult = verifyBootImageObjects(info.firstReadOnlyRelocatableObject, info.lastReadOnlyRelocatableObject, true);
-        boolean rwpResult = verifyBootImageObjects(info.firstWritablePrimitiveObject, info.lastWritablePrimitiveObject, true);
-        boolean rwrResult = verifyBootImageObjects(info.firstWritableReferenceObject, info.lastWritableReferenceObject, true);
-        boolean rwhResult = verifyBootImageObjects(info.firstWritableHugeObject, info.lastWritableHugeObject, false);
-        boolean rohResult = verifyBootImageObjects(info.firstReadOnlyHugeObject, info.lastReadOnlyHugeObject, false);
-        return ropResult && rorResult && rolResult && rwpResult && rwrResult && rwhResult && rohResult;
+    private boolean verifyImageHeapObjects() {
+        imageHeapRegionVerifier.reset();
+        ImageHeapWalker.walkRegions(HeapImpl.getImageHeapInfo(), imageHeapRegionVerifier);
+        return imageHeapRegionVerifier.verifyResult;
     }
 
-    private boolean verifyBootImageObjects(Object firstObject, Object lastObject, boolean alignedChunks) {
-        Log trace = getTraceLog();
-        trace.string("[HeapVerifier.verifyBootImageObjects:").newline();
+    class ImageHeapRegionVerifier implements MemoryWalker.ImageHeapRegionVisitor {
+        private final ImageHeapObjectVerifier objectVerifier = new ImageHeapObjectVerifier();
+        boolean verifyResult;
 
-        Pointer firstPointer = Word.objectToUntrackedPointer(firstObject);
-        Pointer lastPointer = Word.objectToUntrackedPointer(lastObject);
-        trace.string("  [ firstPointer: ").hex(firstPointer).string("  .. lastPointer: ").hex(lastPointer).string(" ]").newline();
-
-        if ((firstObject == null) || (lastObject == null)) {
-            trace.string("  returns: true because boundary object is null").string("]").newline();
-            return true;
+        void reset() {
+            verifyResult = true;
         }
-        boolean result = true;
-        Pointer currentPointer = firstPointer;
-        while (currentPointer.belowOrEqual(lastPointer)) {
-            Object currentObject = currentPointer.toObject();
+
+        @Override
+        public <T> boolean visitNativeImageHeapRegion(T region, MemoryWalker.NativeImageHeapRegionAccess<T> access) {
+            Log trace = getTraceLog();
+            trace.string("[ImageHeapRegionVerifier:").newline();
+            Pointer regionStart = (Pointer) access.getStart(region);
+            Pointer regionEnd = regionStart.add(access.getSize(region));
+            trace.string("  [ regionStart: ").hex(regionStart).string("  .. regionEnd: ").hex(regionEnd).string(" ]").newline();
+            objectVerifier.reset(regionStart, regionEnd);
+            boolean visitResult = access.visitObjects(region, objectVerifier);
+            verifyResult = verifyResult && objectVerifier.verifyResult;
+            trace.string("  returns: ").bool(verifyResult).string("]").newline();
+            return visitResult;
+        }
+    }
+
+    class ImageHeapObjectVerifier implements ObjectVisitor {
+        boolean verifyResult;
+        Pointer regionStart;
+        Pointer regionEnd;
+
+        void reset(Pointer start, Pointer end) {
+            this.verifyResult = true;
+            this.regionStart = start;
+            this.regionEnd = end;
+        }
+
+        @Override
+        public boolean visitObject(Object currentObject) {
+            Word currentPointer = Word.objectToUntrackedPointer(currentObject);
             if (!HeapImpl.getHeapImpl().isInImageHeap(currentObject)) {
-                result = false;
+                verifyResult = false;
                 try (Log witness = getWitnessLog()) {
-                    witness.string("[HeapVerifier.verifyBootImageObjects:").string("  [ firstPointer: ").hex(firstPointer).string("  .. lastPointer: ").hex(lastPointer).string(" ]");
-                    witness.string("  current: ").hex(currentPointer).string("  object is not NonHeapAllocated").string("]").newline();
+                    witness.string("[ImageHeapObjectVerifier:").string("  [ regionStart: ").hex(regionStart).string("  .. regionEnd: ").hex(regionEnd).string(" ]");
+                    witness.string("  current: ").hex(currentPointer).string("  object is not considered to be in image heap").string("]").newline();
                 }
             }
             if (!verifyObjectAt(currentPointer)) {
-                result = false;
+                verifyResult = false;
                 try (Log witness = getWitnessLog()) {
-                    witness.string("[HeapVerifier.verifyBootImageObjects:").string("  [ firstPointer: ").hex(firstPointer).string("  .. lastPointer: ").hex(lastPointer).string(" ]");
+                    witness.string("[ImageHeapObjectVerifier:").string("  [ regionStart: ").hex(regionStart).string("  .. regionEnd: ").hex(regionEnd).string(" ]");
                     witness.string("  current: ").hex(currentPointer).string("  object does not verify").string("]").newline();
                 }
             }
-            currentPointer = HeapImpl.getNextObjectInImageHeapPartition(currentObject, alignedChunks);
+            return true;
         }
-        trace.string("  returns: ").bool(result).string("]").newline();
-        return result;
     }
 
     private static boolean verifyYoungGeneration(Occasion occasion) {
@@ -415,18 +431,18 @@ public final class HeapVerifier {
         AlignedHeapChunk.AlignedHeader aChunk = space.getFirstAlignedHeapChunk();
         while (aChunk.isNonNull()) {
             Pointer start = AlignedHeapChunk.getObjectsStart(aChunk);
-            if (start.belowOrEqual(p) && p.belowThan(aChunk.getTop())) {
+            if (start.belowOrEqual(p) && p.belowThan(HeapChunk.getTopPointer(aChunk))) {
                 return true;
             }
-            aChunk = aChunk.getNext();
+            aChunk = HeapChunk.getNext(aChunk);
         }
         UnalignedHeapChunk.UnalignedHeader uChunk = space.getFirstUnalignedHeapChunk();
         while (uChunk.isNonNull()) {
             Pointer start = UnalignedHeapChunk.getObjectStart(uChunk);
-            if (start.belowOrEqual(p) && p.belowThan(uChunk.getTop())) {
+            if (start.belowOrEqual(p) && p.belowThan(HeapChunk.getTopPointer(uChunk))) {
                 return true;
             }
-            uChunk = uChunk.getNext();
+            uChunk = HeapChunk.getNext(uChunk);
         }
         return false;
     }

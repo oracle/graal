@@ -46,7 +46,7 @@ import org.junit.runner.RunWith;
 @RunWith(TruffleRunner.class)
 public class PointerArithmeticDerefTest extends InteropTestBase {
 
-    static TruffleObject testLibrary;
+    static Object testLibrary;
 
     @BeforeClass
     public static void loadLibrary() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,26 +22,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.core.common;
+package com.oracle.svm.core.c.struct;
 
-import org.graalvm.compiler.options.EnumOptionKey;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionStability;
-import org.graalvm.compiler.options.OptionType;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.nativeimage.c.struct.RawStructure;
+import org.graalvm.word.PointerBase;
+import org.graalvm.word.UnsignedWord;
+import org.graalvm.word.WordFactory;
 
-public enum SpeculativeExecutionAttacksMitigations {
-    None,
-    AllTargets,
-    GuardTargets,
-    NonDeoptGuardTargets;
+/**
+ * Supplies static methods that provide access to the offset of fields of {@link CStruct} and
+ * {@link RawStructure} structures.
+ */
+public final class OffsetOf {
+    public interface Support {
+        int offsetOf(Class<? extends PointerBase> clazz, String fieldName);
+    }
 
-    public static class Options {
-        // @formatter:off
-        @Option(help = "file:doc-files/MitigateSpeculativeExecutionAttacksHelp.txt")
-        public static final EnumOptionKey<SpeculativeExecutionAttacksMitigations> MitigateSpeculativeExecutionAttacks = new EnumOptionKey<>(None);
-        @Option(help = "Use index masking after bounds check to mitigate speculative execution attacks.", type = OptionType.User, stability = OptionStability.STABLE)
-        public static final OptionKey<Boolean> UseIndexMasking = new OptionKey<>(false);
-        // @formatter:on
+    private OffsetOf() {
+    }
+
+    public static int get(Class<? extends PointerBase> clazz, String fieldName) {
+        return ImageSingletons.lookup(Support.class).offsetOf(clazz, fieldName);
+    }
+
+    public static UnsignedWord unsigned(Class<? extends PointerBase> clazz, String fieldName) {
+        return WordFactory.unsigned(get(clazz, fieldName));
     }
 }

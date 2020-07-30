@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -100,6 +100,7 @@ public class TruffleTypes {
     public static final String TruffleOptions_Name = "com.oracle.truffle.api.TruffleOptions";
     public static final String UnexpectedResultException_Name = "com.oracle.truffle.api.nodes.UnexpectedResultException";
     public static final String VirtualFrame_Name = "com.oracle.truffle.api.frame.VirtualFrame";
+    public static final String HostLanguage_Name = "com.oracle.truffle.polyglot.HostLanguage";
 
     public final DeclaredType Assumption = c.getDeclaredType(Assumption_Name);
     public final DeclaredType CompilerAsserts = c.getDeclaredType(CompilerAsserts_Name);
@@ -129,6 +130,7 @@ public class TruffleTypes {
     public final DeclaredType TruffleOptions = c.getDeclaredType(TruffleOptions_Name);
     public final DeclaredType UnexpectedResultException = c.getDeclaredType(UnexpectedResultException_Name);
     public final DeclaredType VirtualFrame = c.getDeclaredType(VirtualFrame_Name);
+    public final DeclaredType HostLanguage = c.getDeclaredTypeOptional(HostLanguage_Name);
 
     // DSL API
     public static final String Bind_Name = "com.oracle.truffle.api.dsl.Bind";

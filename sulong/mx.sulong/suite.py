@@ -15,8 +15,6 @@ suite = {
     ],
   },
 
-  "javac.lint.overrides" : "none",
-
   "libraries" : {
     "LLVM_TEST_SUITE" : {
       "packedResource" : True,
@@ -167,6 +165,8 @@ suite = {
       "license" : "BSD-new",
       "testProject" : True,
       "jacoco" : "exclude",
+      # TODO Remove deprecated ReferenceLibrary. [GR-24632]
+      "javac.lint.overrides" : "-deprecation",
     },
     "com.oracle.truffle.llvm.tests.native" : {
       "subDir" : "tests",
@@ -235,6 +235,16 @@ suite = {
       "testProject" : True,
       "jacoco" : "exclude",
     },
+    "com.oracle.truffle.llvm.toolchain.config" : {
+      "description" : "Provide constants from llvm-config",
+      "subDir" : "projects",
+      "sourceDirs" : ["src"],
+      "checkstyle" : "com.oracle.truffle.llvm.runtime",
+      "javaCompliance" : "1.8+",
+      "workingSets" : "Truffle, LLVM",
+      "license" : "BSD-new",
+      "jacoco" : "exclude",
+    },
     "com.oracle.truffle.llvm.api" : {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
@@ -283,6 +293,7 @@ suite = {
         "truffle:TRUFFLE_API",
         "com.oracle.truffle.llvm.api",
         "com.oracle.truffle.llvm.spi",
+        "com.oracle.truffle.llvm.toolchain.config",
         "truffle:ANTLR4",
       ],
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
@@ -292,6 +303,8 @@ suite = {
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
       "jacoco" : "include",
+      # TODO Remove deprecated ReferenceLibrary. [GR-24632]
+      "javac.lint.overrides" : "-deprecation",
     },
 
     "com.oracle.truffle.llvm.parser" : {
@@ -416,6 +429,8 @@ suite = {
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
       "jacoco" : "include",
+      # warnings in generated code
+      "javac.lint.overrides" : "none",
     },
 
     "com.oracle.truffle.llvm.parser.factories" : {
@@ -431,6 +446,32 @@ suite = {
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
       "jacoco" : "include",
+    },
+
+    "com.oracle.truffle.llvm.tools.fuzzing.native" : {
+      "subDir" : "projects",
+      "native" : True,
+      "vpath" : True,
+      "headers" : ["src/fuzzmain.c"],
+      "results" : [
+        "bin/<exe:llvm-reduce>",
+        "bin/<exe:llvm-stress>",
+      ],
+      "buildDependencies" : [
+        "sdk:LLVM_TOOLCHAIN_FULL",
+      ],
+      "buildEnv" : {
+        "LLVM_CONFIG" : "<path:LLVM_TOOLCHAIN_FULL>/bin/llvm-config",
+        "CXX" : "<path:LLVM_TOOLCHAIN_FULL>/bin/clang++",
+        "LLVM_REDUCE" :"bin/<exe:llvm-reduce>",
+        "LLVM_STRESS" :"bin/<exe:llvm-stress>",
+        "LLVM_ORG_SRC" : "<path:LLVM_ORG_SRC>",
+        "OS" : "<os>",
+      },
+      "checkstyle" : "com.oracle.truffle.llvm.runtime",
+      "license" : "BSD-new",
+      "testProject" : True,
+      "jacoco" : "exclude",
     },
 
     "com.oracle.truffle.llvm.tests.pipe" : {
@@ -841,9 +882,8 @@ suite = {
     "com.oracle.truffle.llvm.tests.libc.native" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
-      "variants" : ["O0"],
+      "variants" : ["O0_OUT"],
       "buildEnv" : {
-        "SUITE_LDFLAGS" : "-lm",
         "OS" : "<os>",
       },
       "dependencies" : [
@@ -851,6 +891,22 @@ suite = {
       ],
       "testProject" : True,
       "defaultBuild" : False,
+      "os_arch" : {
+        "darwin": {
+          "<other>" : {
+            "buildEnv" : {
+              "SUITE_LDFLAGS" : "-lm",
+            },
+          },
+        },
+        "<others>": {
+          "<others>" : {
+            "buildEnv" : {
+              "SUITE_LDFLAGS" : "-lm -lrt",
+            },
+          },
+        },
+      },
     },
     "inlineassemblytests" : {
       "subDir" : "tests",
@@ -1103,6 +1159,7 @@ suite = {
         "truffle:ANTLR4",
         "SULONG_HOME",
         "SULONG_API",
+        "SULONG_TOOLCHAIN_CONFIG",
       ],
       "javaProperties" : {
         "org.graalvm.language.llvm.home": "<sulong_home>",
@@ -1118,6 +1175,13 @@ suite = {
       ],
       "distDependencies" : [
         "truffle:TRUFFLE_API",
+      ],
+      "license" : "BSD-new",
+    },
+    "SULONG_TOOLCHAIN_CONFIG" : {
+      "subDir" : "projects",
+      "dependencies" : [
+        "com.oracle.truffle.llvm.toolchain.config",
       ],
       "license" : "BSD-new",
     },
@@ -1196,6 +1260,15 @@ suite = {
       "license": "BSD-new",
     },
 
+    "SULONG_TOOLS": {
+      "native": True,
+      "relpath": False,
+      "platformDependent": True,
+      "layout": {
+        "./": "dependency:com.oracle.truffle.llvm.tools.fuzzing.native/*",
+      },
+      "license": "BSD-new",
+    },
 
     "SULONG_TEST" : {
       "subDir" : "tests",

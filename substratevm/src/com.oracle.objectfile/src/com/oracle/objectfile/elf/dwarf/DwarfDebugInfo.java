@@ -59,8 +59,9 @@ public class DwarfDebugInfo extends DebugInfoBase {
      * Define all the abbrev section codes we need for our DIEs.
      */
     @SuppressWarnings("unused") public static final int DW_ABBREV_CODE_null = 0;
-    public static final int DW_ABBREV_CODE_compile_unit = 1;
-    public static final int DW_ABBREV_CODE_subprogram = 2;
+    public static final int DW_ABBREV_CODE_compile_unit_1 = 1;
+    public static final int DW_ABBREV_CODE_compile_unit_2 = 2;
+    public static final int DW_ABBREV_CODE_subprogram = 3;
 
     /*
      * Define all the Dwarf tags we need for our DIEs.

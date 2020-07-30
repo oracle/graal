@@ -216,7 +216,7 @@ final class ReferenceObjectProcessing {
 
     private static boolean willSurviveThisCollection(Object obj) {
         HeapChunk.Header<?> chunk = HeapChunk.getEnclosingHeapChunk(obj);
-        Space space = chunk.getSpace();
+        Space space = HeapChunk.getSpace(chunk);
         return !space.isFromSpace();
     }
 

@@ -24,30 +24,13 @@
  */
 package com.oracle.svm.core.jdk;
 
-import com.oracle.svm.core.annotate.NeverInline;
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
+import java.util.function.BooleanSupplier;
 
-@TargetClass(className = "java.lang.StringConcatHelper", onlyWith = JDK11OrLater.class)
-final class Target_java_lang_StringConcatHelper {
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
-    /**
-     * The original implementation allocates the OutOfMemoryError in this method. This is OK with
-     * JIT compilation, but bad for AOT compilation because there is no profiling information that
-     * replaces the allocation with a deopt.
-     */
-    @Substitute
-    private static int checkOverflow(int len) {
-        if (len < 0) {
-            throw StringConcatHelperSupport.throwOutOfMemoryError();
-        }
-        return len;
-    }
-}
-
-class StringConcatHelperSupport {
-    @NeverInline("slow path")
-    static OutOfMemoryError throwOutOfMemoryError() {
-        throw new OutOfMemoryError("Overflow: String length out of range");
+public class JDK15OrEarlier implements BooleanSupplier {
+    @Override
+    public boolean getAsBoolean() {
+        return JavaVersionUtil.JAVA_SPEC <= 15;
     }
 }

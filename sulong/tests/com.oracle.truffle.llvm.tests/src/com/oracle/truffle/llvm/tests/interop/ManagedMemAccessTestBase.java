@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.tests.interop;
 
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.tests.interop.values.TestCallback;
 import com.oracle.truffle.llvm.tests.interop.values.TestCallback.Function;
 import java.lang.reflect.Array;
@@ -40,7 +39,7 @@ import org.junit.BeforeClass;
 
 public class ManagedMemAccessTestBase extends InteropTestBase {
 
-    protected static TruffleObject testLibrary;
+    protected static Object testLibrary;
 
     protected enum TestType {
         I8(1, false) {

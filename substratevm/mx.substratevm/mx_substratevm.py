@@ -53,7 +53,6 @@ import mx_substratevm_benchmark  # pylint: disable=unused-import
 from mx_compiler import GraalArchiveParticipant
 from mx_gate import Task
 from mx_unittest import _run_tests, _VMLauncher
-from mx_urlrewrites import rewriteurl
 
 import sys
 
@@ -120,6 +119,17 @@ def svmbuild_dir(suite=None):
     if not suite:
         suite = svm_suite()
     return join(suite.dir, 'svmbuild')
+
+
+def is_musl_gcc_wrapper_on_path():
+    mx.logv('Probing if musl-gcc exists on path.')
+    throwaway_capture = mx.LinesOutputCapture()
+    try:
+        ret_code = mx.run(['musl-gcc', '-v'], nonZeroIsFatal=False, out=throwaway_capture, err=throwaway_capture)
+        return ret_code == 0
+    except OSError as _:
+        return False
+
 
 def is_musl_supported():
     jdk = mx.get_jdk(tag='default')
@@ -202,11 +212,7 @@ _graalvm_skip_libraries = ['native-image-agent']
 _graalvm_exclude_components = ['gu'] if mx.is_windows() else []  # gu does not work on Windows atm
 
 def _graalvm_config():
-    return GraalVMConfig(primary_suite_dir=svm_suite().dir,
-                         disable_libpolyglot=True,
-                         force_bash_launchers=_graalvm_force_bash_launchers,
-                         skip_libraries=_graalvm_skip_libraries,
-                         exclude_components=_graalvm_exclude_components)
+    return GraalVMConfig(primary_suite_dir=svm_suite().dir)
 
 def _graalvm_jvm_config():
     return GraalVMConfig(primary_suite_dir=svm_suite().dir,
@@ -260,7 +266,6 @@ GraalTags = Tags([
     'js',
     'build',
     'benchmarktest',
-    'relocations',
     "nativeimagehelp",
     'muslcbuild'
 ])
@@ -276,47 +281,12 @@ def vm_executable_path(executable, config):
     return join(_vm_home(config), 'bin', executable)
 
 
-def get_muslc_compilation_arg(bundle_url=None, bundle_sha1=None, bundle_download_dir=None):
-    """
-    Forms an argument that can be passed to native-image to link the resulting image against musl.
-    This function ensures that the necessary bundle exists, downloading it if missing.
-    :return An argument that can be passed to native-image:
-    """
-    if bundle_url is None:
-        bundle_url = "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jdk-static-libs/musl-zlib-libstdcpp-static.tar.gz"
-        bundle_sha1 = "3d893a0ceea4b3c4eacb02445c30a771b50b8acb"
-    elif bundle_sha1 is None:
-        mx.abort("When passing a musl bundle url, you must also pass in the bundle sha1.")
-
-    if bundle_download_dir is None:
-        bundle_download_dir = join(svmbuild_dir(), "musl-static-libs-bundle")
-
-    bundle_download_dir = os.path.abspath(bundle_download_dir)
-    bundle_name = bundle_url.rsplit('/', 1)[-1]
-    bundle_url = rewriteurl(bundle_url)
-    bundle_root = join(bundle_download_dir, "bundle")
-
-    if not exists(bundle_root):
-        with mx.TempDir() as temp_dir:
-            bundle_download_location = join(temp_dir, bundle_name)
-            mx.download_file_with_sha1(bundle_name, bundle_download_location, [bundle_url], bundle_sha1, bundle_download_location + ".sha1", True, True, sources=False)
-            extractor = mx.TarExtractor(bundle_download_location)
-            extractor.extract(join(temp_dir))
-            mx.rmtree(bundle_download_location)
-            mx.rmtree(bundle_download_location + ".sha1")
-            bundle_extracted_root = join(temp_dir, "bundle")
-            if exists(bundle_extracted_root):
-                mx.atomic_file_move_with_fallback(bundle_extracted_root, bundle_root)
-            else:
-                mx.abort("Musl libc, zlib and libstdc++ bundle layout requires a `bundle` folder in the top level. Please update the bundle archive accordingly.")
-
-    native_image_muslc_flag = "-H:UseMuslC="
-    return native_image_muslc_flag + os.path.abspath(bundle_root)
-
-
 def run_musl_basic_tests():
     if is_musl_supported():
-        helloworld(['--output-path', svmbuild_dir(), '--static', get_muslc_compilation_arg()])
+        if is_musl_gcc_wrapper_on_path():
+            helloworld(['--output-path', svmbuild_dir(), '--static', '--libc=musl'])
+        else:
+            mx.abort('Attempted to run musl tests without a musl-gcc wrapper.')
 
 
 @contextmanager
@@ -380,10 +350,11 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
         image = join(path, name)
         if not has_server and '--no-server' in all_args:
             all_args = [arg for arg in all_args if arg != '--no-server']
+
         _native_image(all_args, **kwargs)
         return image
     try:
-        if exists(native_image_cmd) and has_server:
+        if exists(native_image_cmd) and has_server and server_use:
             _native_image(['--server-wipe'])
         yield native_image_func
     finally:
@@ -454,43 +425,6 @@ def svm_gate_body(args, tasks):
                                         '-H:+RemoveSaturatedTypeFlows', '-H:+TruffleCheckBlackListedMethods',
                                         '--run-args', testlib, '--very-verbose', '--enable-timing']
                 native_unittest(native_unittest_args)
-
-        with Task('Relocations in generated object file on Linux', tasks, tags=[GraalTags.relocations]) as t:
-            if t:
-                if mx.get_os() == 'linux':
-                    reloc_test_path = join(svmbuild_dir(), 'reloctest')
-                    mkpath(reloc_test_path)
-                    try:
-                        def reloctest(arguments):
-                            temp_dir = join(reloc_test_path, '__build_tmp')
-                            if exists(temp_dir):
-                                remove_tree(temp_dir)
-                            mkpath(temp_dir)
-                            helloworld(['--output-path', reloc_test_path, '-H:TempDirectory=' + temp_dir] + arguments)
-                            files = [f for f in os.listdir(temp_dir) if re.match(r'SVM-*', f)]
-                            if len(files) != 1:
-                                raise Exception('Expected 1 SVM temporary directory. Found: ' + str(len(files)) + '. Perhaps the temporary directory name pattern has changed?')
-
-                            svm_temp_dir = join(temp_dir, files[0])
-                            obj_file = join(svm_temp_dir, 'helloworld.o')
-                            lib_output = join(svm_temp_dir, 'libhello.so')
-                            if not os.path.isfile(obj_file):
-                                raise Exception('Expected helloworld.o output file from HelloWorld image. Has the helloworld native image function changed?')
-                            mx.run(["cc", "--shared", obj_file, "-o", lib_output])
-
-                            def procOutput(output):
-                                if '(TEXTREL)' in output:
-                                    mx.log_error('Detected TEXTREL in the output object file after native-image generation. This means that a change has introduced relocations in a read-only section.')
-                                    mx.log_error('Arguments to the native-image which caused the error: ' + ','.join(arguments))
-                                    raise Exception()
-                            mx.run(["readelf", "--dynamic", lib_output], out=procOutput)
-
-                        reloctest(['-H:+SpawnIsolates', '-H:+UseOnlyWritableBootImageHeap'])
-                        reloctest(['-H:-SpawnIsolates', '-H:+UseOnlyWritableBootImageHeap'])
-                    finally:
-                        remove_tree(reloc_test_path)
-                else:
-                    mx.log('Skipping relocations test. Reason: Only tested on Linux.')
 
             with Task('Musl static hello world and JVMCI version check', tasks, tags=[GraalTags.muslcbuild]) as t:
                 if t:
@@ -1043,7 +977,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
 def _native_image_configure_extra_jvm_args():
     if svm_java8():
         return []
-    packages = ['jdk.internal.vm.compiler/org.graalvm.compiler.phases.common', 'jdk.internal.vm.ci/jdk.vm.ci.meta', 'org.graalvm.compiler.core.common.util']
+    packages = ['jdk.internal.vm.compiler/org.graalvm.compiler.phases.common', 'jdk.internal.vm.ci/jdk.vm.ci.meta', 'jdk.internal.vm.compiler/org.graalvm.compiler.core.common.util']
     args = ['--add-exports=' + packageName + '=ALL-UNNAMED' for packageName in packages]
     if not mx_sdk_vm.jdk_enables_jvmci_by_default(mx.get_jdk(tag='default')):
         args.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'])
@@ -1699,23 +1633,10 @@ def javac_image(args):
     )
 
 if is_musl_supported():
-    doc_string = "Downloads a muslc static library bundle and prints the native-image arguments required to use it."
-    @mx.command(suite.name, command_name='muslc-ni-args', usage_msg='[options]', doc_function=lambda: doc_string)
-    def mx_muslc_native_image_args(args):
-        parser = ArgumentParser(prog='mx muslc-ni-args', description=doc_string)
-        parser.add_argument('--bundle-url', action='store', required=False, help='Bundle archive URL location.')
-        parser.add_argument('--bundle-sha1', action='store', required=False, help='Bundle archive SHA1 signature.')
-        parser.add_argument('bundle_download_location', action='store', help='Bundle download location.')
-        parsed_args = parser.parse_args(args)
-        if parsed_args.bundle_url is None and parsed_args.bundle_sha1 is not None:
-            mx.abort("When using --bundle-url, you must also supply the bundle SHA1 signature.")
-        muslc_argument = get_muslc_compilation_arg(parsed_args.bundle_url, parsed_args.bundle_sha1, parsed_args.bundle_download_location)
-        print("Add the following to the native-image command line: --static " + muslc_argument)
-
     doc_string = "Runs a musl based Hello World static native-image with custom build arguments."
     @mx.command(suite.name, command_name='muslhelloworld', usage_msg='[options]', doc_function=lambda: doc_string)
     def musl_helloworld(args, config=None):
-        musl_arg = get_muslc_compilation_arg()
-        args.append("--static")
-        args.append(musl_arg)
-        run_helloworld_command(args, config, 'muslhelloworld')
+        if not is_musl_gcc_wrapper_on_path():
+            mx.abort('musl-gcc wrapper not detected on path. Cannot run musl helloworld. Please consult substratevm/STATIC-IMAGES.md')
+        final_args = ['--static', '--libc=musl'] + args
+        run_helloworld_command(final_args, config, 'muslhelloworld')

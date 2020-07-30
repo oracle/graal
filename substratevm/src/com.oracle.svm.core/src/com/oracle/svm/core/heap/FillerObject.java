@@ -26,4 +26,9 @@ package com.oracle.svm.core.heap;
 
 /** The smallest possible instance object, for filling in gaps in the heap. */
 public final class FillerObject {
+    /**
+     * This field is registered as accessed with the analysis and ensures that the class is
+     * considered reachable and is available during image heap construction.
+     */
+    static final Class<FillerObject> CLASS_OBJECT = FillerObject.class;
 }

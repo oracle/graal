@@ -88,6 +88,7 @@ public class AnalysisUniverse implements Universe {
     private final ConcurrentMap<Signature, WrappedSignature> signatures = new ConcurrentHashMap<>(ESTIMATED_METHODS_PER_TYPE * ESTIMATED_NUMBER_OF_TYPES);
     private final ConcurrentMap<ConstantPool, WrappedConstantPool> constantPools = new ConcurrentHashMap<>(ESTIMATED_NUMBER_OF_TYPES);
     private final ConcurrentHashMap<JavaConstant, BytecodePosition> embeddedRoots = new ConcurrentHashMap<>(ESTIMATED_EMBEDDED_ROOTS);
+    private final ConcurrentMap<AnalysisField, Boolean> unsafeAccessedStaticFields = new ConcurrentHashMap<>();
 
     private boolean sealed;
 
@@ -505,6 +506,14 @@ public class AnalysisUniverse implements Universe {
      */
     public void registerEmbeddedRoot(JavaConstant root, BytecodePosition position) {
         this.embeddedRoots.put(root, position);
+    }
+
+    public void registerUnsafeAccessedStaticField(AnalysisField field) {
+        unsafeAccessedStaticFields.put(field, true);
+    }
+
+    public Set<AnalysisField> getUnsafeAccessedStaticFields() {
+        return unsafeAccessedStaticFields.keySet();
     }
 
     public void registerObjectReplacer(Function<Object, Object> replacer) {

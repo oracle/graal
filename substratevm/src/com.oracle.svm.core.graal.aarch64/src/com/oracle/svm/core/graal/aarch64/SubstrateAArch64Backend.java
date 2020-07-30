@@ -235,10 +235,12 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             // Save PC
             masm.adr(tempRegister, 4); // Read PC + 4
             crb.recordIndirectCall(startPos, masm.position(), null, state);
-            masm.str(64, tempRegister, AArch64Address.createPairUnscaledImmediateAddress(anchor, runtimeConfiguration.getJavaFrameAnchorLastIPOffset()));
+            masm.str(64, tempRegister,
+                            AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, anchor, runtimeConfiguration.getJavaFrameAnchorLastIPOffset()));
             // Save SP
             masm.mov(64, tempRegister, sp);
-            masm.str(64, tempRegister, AArch64Address.createPairUnscaledImmediateAddress(anchor, runtimeConfiguration.getJavaFrameAnchorLastSPOffset()));
+            masm.str(64, tempRegister,
+                            AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, anchor, runtimeConfiguration.getJavaFrameAnchorLastSPOffset()));
         }
 
         if (SubstrateOptions.MultiThreaded.getValue()) {
@@ -251,7 +253,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
                 Register statusValueRegister = scratch1.getRegister();
                 Register statusAddressRegister = scratch2.getRegister();
                 masm.mov(statusValueRegister, newThreadStatus);
-                masm.lea(statusAddressRegister, AArch64Address.createUnscaledImmediateAddress(runtimeConfiguration.getThreadRegister(), runtimeConfiguration.getVMThreadStatusOffset()));
+                masm.add(64, statusAddressRegister, runtimeConfiguration.getThreadRegister(), runtimeConfiguration.getVMThreadStatusOffset());
                 masm.stlr(32, statusValueRegister, statusAddressRegister);
             }
         }
@@ -506,14 +508,14 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             crb.blockComment("[method prologue]");
 
             try (ScratchRegister sc = masm.getScratchRegister()) {
-                int wordSize = crb.target.arch.getWordSize();
+                int wordSize = 8;
                 Register rscratch1 = sc.getRegister();
                 assert totalFrameSize > 0;
                 if (frameSize < 1 << 9) {
                     masm.sub(64, sp, sp, totalFrameSize);
-                    masm.stp(64, r29, lr, AArch64Address.createScaledImmediateAddress(sp, frameSize / wordSize));
+                    masm.stp(64, r29, lr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_SIGNED_SCALED, sp, frameSize));
                 } else {
-                    masm.stp(64, r29, lr, AArch64Address.createPreIndexedImmediateAddress(sp, -2));
+                    masm.stp(64, r29, lr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_PRE_INDEXED, sp, -2 * wordSize));
                     if (frameSize < 1 << 12) {
                         masm.sub(64, sp, sp, totalFrameSize - 2 * wordSize);
                     } else {
@@ -527,7 +529,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
                     Register scratch = sc.getRegister();
                     int longSize = 8;
                     masm.mov(64, scratch, sp);
-                    AArch64Address address = AArch64Address.createPostIndexedImmediateAddress(scratch, longSize);
+                    AArch64Address address = AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_POST_INDEXED, scratch, longSize);
                     try (ScratchRegister sc2 = masm.getScratchRegister()) {
                         Register value = sc2.getRegister();
                         masm.mov(value, 0xBADDECAFFC0FFEEL);
@@ -553,11 +555,11 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
 
             crb.blockComment("[method epilogue]");
             try (ScratchRegister sc = masm.getScratchRegister()) {
-                int wordSize = crb.target.arch.getWordSize();
+                int wordSize = 8;
                 Register rscratch1 = sc.getRegister();
                 assert totalFrameSize > 0;
                 if (frameSize < 1 << 9) {
-                    masm.ldp(64, r29, lr, AArch64Address.createScaledImmediateAddress(sp, frameSize / wordSize));
+                    masm.ldp(64, r29, lr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_SIGNED_SCALED, sp, frameSize));
                     masm.add(64, sp, sp, totalFrameSize);
                 } else {
                     if (frameSize < 1 << 12) {
@@ -566,7 +568,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
                         masm.mov(rscratch1, totalFrameSize - 2 * wordSize);
                         masm.add(64, sp, sp, rscratch1);
                     }
-                    masm.ldp(64, r29, lr, AArch64Address.createPostIndexedImmediateAddress(sp, 2));
+                    masm.ldp(64, r29, lr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, sp, 2 * wordSize));
                 }
             }
             if (frameSize != 0) {
@@ -595,11 +597,11 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             AArch64MacroAssembler asm = (AArch64MacroAssembler) tasm.asm;
 
             // Move the DeoptimizedFrame into r1
-            asm.ldr(64, r1, AArch64Address.createUnscaledImmediateAddress(sp, 0));
+            asm.ldr(64, r1, AArch64Address.createBaseRegisterOnlyAddress(sp));
 
             // Store the original return value registers
             int scratchOffset = DeoptimizedFrame.getScratchSpaceOffset();
-            asm.str(64, r0, AArch64Address.createUnscaledImmediateAddress(r1, scratchOffset));
+            asm.str(64, r0, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, r1, scratchOffset));
 
             // Move DeoptimizedFrame into the first argument register (static method)
             asm.mov(64, r0, r1);
@@ -631,7 +633,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
 
             // Restore the return value registers (the DeoptimizedFrame is in r1).
             int scratchOffset = DeoptimizedFrame.getScratchSpaceOffset();
-            asm.ldr(64, r0, AArch64Address.createUnscaledImmediateAddress(r0, scratchOffset));
+            asm.ldr(64, r0, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, r0, scratchOffset));
         }
     }
 
@@ -735,8 +737,8 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
                 masm.mov(resultReg, 0xDEADDEADDEADDEADL, true);
             } else {
                 crb.recordDataReferenceInCode(inputConstant, referenceSize);
-                AArch64Address address = AArch64Address.createScaledImmediateAddress(resultReg, 0x0);
-                masm.adrpLdr(referenceSize * 8, resultReg, address);
+                int srcSize = referenceSize * 8;
+                masm.adrpLdr(srcSize, resultReg, AArch64Address.createImmediateAddress(srcSize, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, resultReg, 0x0));
             }
             if (!constant.isCompressed()) { // the result is expected to be uncompressed
                 Register baseReg = getBaseRegister(crb);
@@ -860,11 +862,11 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         try (ScratchRegister scratch = asm.getScratchRegister()) {
             Register scratchRegister = scratch.getRegister();
             if (SubstrateOptions.SpawnIsolates.getValue()) { // method id is offset from heap base
-                asm.ldr(64, scratchRegister, AArch64Address.createUnscaledImmediateAddress(threadArg.getRegister(), threadIsolateOffset));
+                asm.ldr(64, scratchRegister, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, threadArg.getRegister(), threadIsolateOffset));
                 asm.add(64, scratchRegister, scratchRegister, methodIdArg.getRegister());
-                asm.ldr(64, scratchRegister, AArch64Address.createUnscaledImmediateAddress(scratchRegister, methodObjEntryPointOffset));
+                asm.ldr(64, scratchRegister, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, scratchRegister, methodObjEntryPointOffset));
             } else { // method id is address of method object
-                asm.ldr(64, scratchRegister, AArch64Address.createUnscaledImmediateAddress(methodIdArg.getRegister(), methodObjEntryPointOffset));
+                asm.ldr(64, scratchRegister, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, methodIdArg.getRegister(), methodObjEntryPointOffset));
             }
             asm.jmp(scratchRegister);
         }

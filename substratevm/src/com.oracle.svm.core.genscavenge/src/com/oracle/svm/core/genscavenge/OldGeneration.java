@@ -71,14 +71,14 @@ final class OldGeneration extends Generation {
     public Object promoteObject(Object original, UnsignedWord header) {
         if (ObjectHeaderImpl.isAlignedHeader(original, header)) {
             AlignedHeapChunk.AlignedHeader chunk = AlignedHeapChunk.getEnclosingChunk(original);
-            Space originalSpace = chunk.getSpace();
+            Space originalSpace = HeapChunk.getSpace(chunk);
             if (originalSpace.isFromSpace()) {
                 return promoteAlignedObject(original, originalSpace);
             }
         } else {
             assert ObjectHeaderImpl.isUnalignedHeader(original, header);
             UnalignedHeapChunk.UnalignedHeader chunk = UnalignedHeapChunk.getEnclosingChunk(original);
-            Space originalSpace = chunk.getSpace();
+            Space originalSpace = HeapChunk.getSpace(chunk);
             if (originalSpace.isFromSpace()) {
                 promoteUnalignedChunk(chunk, originalSpace);
             }

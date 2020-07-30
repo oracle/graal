@@ -46,7 +46,6 @@ import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.WasmCodeEntry;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.constants.TargetOffset;
 
 public abstract class WasmNode extends Node implements WasmNodeInterface {
     // TODO: We should not cache the module in the nodes, only the symbol table.
@@ -74,7 +73,7 @@ public abstract class WasmNode extends Node implements WasmNodeInterface {
      *         greater than or equal to 0 means that the execution engine has to branch n levels up
      *         the block execution stack.
      */
-    public abstract TargetOffset execute(WasmContext context, VirtualFrame frame);
+    public abstract int execute(WasmContext context, VirtualFrame frame);
 
     public abstract byte returnTypeId();
 

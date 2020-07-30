@@ -34,21 +34,24 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.posix.LLVMPosixCallNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.posix.LLVMPosixCallNodeGen;
 
-public class LLVMUnknownSyscallNode extends LLVMSyscallOperationNode {
+/**
+ * Performs a native syscall.
+ */
+public class LLVMNativeSyscallNode extends LLVMSyscallOperationNode {
 
     private final long nr;
     private final LLVMSyscallEntry syscallValue;
     @Child private LLVMPosixCallNode syscall;
 
-    public LLVMUnknownSyscallNode(long nr) {
+    public LLVMNativeSyscallNode(long nr) {
         this(nr, null);
     }
 
-    public LLVMUnknownSyscallNode(LLVMSyscallEntry syscall) {
+    public LLVMNativeSyscallNode(LLVMSyscallEntry syscall) {
         this(syscall.value(), syscall);
     }
 
-    private LLVMUnknownSyscallNode(long nr, LLVMSyscallEntry syscallValue) {
+    private LLVMNativeSyscallNode(long nr, LLVMSyscallEntry syscallValue) {
         this.nr = nr;
         this.syscallValue = syscallValue;
         this.syscall = LLVMPosixCallNodeGen.create("syscall", "(SINT64, POINTER, POINTER, POINTER, POINTER, POINTER, POINTER):SINT64");
@@ -59,7 +62,7 @@ public class LLVMUnknownSyscallNode extends LLVMSyscallOperationNode {
         if (syscallValue != null) {
             return syscallValue.toString();
         }
-        return "unknown(" + nr + ")";
+        return "native_syscall(" + nr + ")";
     }
 
     @Override

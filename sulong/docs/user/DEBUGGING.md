@@ -32,35 +32,11 @@ source-level statement being executed. When doing so, GraalVM will instead execu
 reaches a call to `__builtin_debugtrap()` before invoking the debugger. To enable this behaviour you need
 pass the arguments `lli --inspect.Suspend=false --inspect.WaitAttached=true`.
 
-## FAQ
+## Locating source files
 
-### I am compiling my bitcode files on another system. Can the source-level debugger find the sources on my system?
+Debug information in LLVM bitcode files contains absolute search paths to identify the
+location of source code. If the source didn't move, it should be found automatically.
 
-In general, debug information in LLVM bitcode files contains absolute search paths to identify the
-location of source code. Alternatively, a search path for source files can be specified using
-the `--inspect.SourcePath=<path>` option (multiple paths can be specified separated by `:`).
-
-### Can I also debug my program on LLVM-IR level?
-
-GraalVM also contains preliminary support for debugging program on the level of LLVM IR.
-This feature is only in the early stages and may be incomplete. To use it, you need to
-replace add the option `--experimental-options --llvm.llDebug`.
-
-Also, to debug on LLVM-IR level you need to use `llvm-dis` to disassemble the bitcode
-that you want to execute. GraalVM expects a file with the same name as the bitcode module but
-with the `.ll` extension in the same directory as the bitcode module it executes.
-
-You can also specify a separate location for the `*.ll` file corresponding to a bitcode
-file using the `--llvm.llDebug.Sources` argument. When using this option you need to specify
-the path of both the `*.ll` and the bitcode file which it describes. While the option
-itself can only be specified once, you can pass it an arbitrary number of path mappings.
-
-```
---llvm.llDebug.Sources=<path to *.bc file>=<path to *.ll file>[:<path to *.bc file>=<path to *.ll file>]*
-```
-
-### How can I generate a trace of how GraalVM executes my program?
-
-GraalVM can produce an LLVM IR-level trace of its program execution. You can enable
-this feature by passing the `--experimental-options --llvm.traceIR=<...>` option to `lli`.
-See `lli --help:languages --help:expert` for more information.
+If the source files moved, or were compiled on a different machine, a search path can be
+specified using the `--inspect.SourcePath=<path>` option (multiple paths can be separated
+by `:`).

@@ -98,7 +98,11 @@ public class AArch64CPUFeatureAccess implements CPUFeatureAccess {
             features.add(AArch64.CPUFeature.A53MAC);
         }
         if (cpuFeatures.fDMBATOMICS()) {
-            features.add(AArch64.CPUFeature.DMB_ATOMICS);
+            try {
+                features.add(AArch64.CPUFeature.valueOf("DMB_ATOMICS"));
+            } catch (IllegalArgumentException e) {
+                // This JVMCI CPU feature is not available in all JDKs (JDK-8243339)
+            }
         }
 
         return features;

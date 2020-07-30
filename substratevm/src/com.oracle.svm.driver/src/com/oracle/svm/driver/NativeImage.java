@@ -86,7 +86,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.driver.MacroOption.EnabledOption;
 import com.oracle.svm.driver.MacroOption.MacroOptionKind;
 import com.oracle.svm.driver.MacroOption.Registry;
-import com.oracle.svm.hosted.ImageClassLoader;
+import com.oracle.svm.hosted.AbstractNativeImageClassLoaderSupport;
 import com.oracle.svm.hosted.NativeImageSystemClassLoader;
 import com.oracle.svm.util.ModuleSupport;
 
@@ -1059,7 +1059,7 @@ public class NativeImage {
         imageBuilderJavaArgs.add("-Djdk.internal.lambda.eagerlyInitialize=false");
         imageBuilderJavaArgs.add("-Djava.lang.invoke.InnerClassLambdaMetafactory.initializeLambdas=false");
         if (!imageIncludeBuiltinModules.isEmpty()) {
-            imageBuilderJavaArgs.add("-D" + ImageClassLoader.PROPERTY_IMAGEINCLUDEBUILTINMODULES + "=" + String.join(",", imageIncludeBuiltinModules));
+            imageBuilderJavaArgs.add("-D" + AbstractNativeImageClassLoaderSupport.PROPERTY_IMAGEINCLUDEBUILTINMODULES + "=" + String.join(",", imageIncludeBuiltinModules));
         }
 
         /* After JavaArgs consolidation add the user provided JavaArgs */
