@@ -83,6 +83,13 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMMemIntrinsicFactor
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMMemIntrinsicFactory.LLVMLibcMemsetNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMSignalNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMSyscall;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.handles.GraalVMCreateDerefHandleNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.handles.GraalVMCreateHandleNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.handles.GraalVMIsHandleNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.handles.GraalVMPointsToHandleSpaceNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.handles.GraalVMReleaseHandleNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.handles.GraalVMResolveHandleNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.handles.LLVMTruffleCannotBeHandle;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotAsPrimitive;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotAsString;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotBoxedPredicateNodeGen;
@@ -103,14 +110,8 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotRemo
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotRemoveFactory.LLVMPolyglotRemoveMemberNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotWriteFactory.LLVMPolyglotPutMemberNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotWriteFactory.LLVMPolyglotSetArrayElementNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMTruffleCannotBeHandleNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMTruffleDecorateFunctionNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMTruffleDerefHandleToManagedNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMTruffleHandleToManagedNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMTruffleIsHandleToManagedNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMTruffleManagedMallocNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMTruffleManagedToHandleNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMTruffleReleaseHandleNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMTruffleWriteManagedToSymbolNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMVirtualMallocNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.typed.LLVMArrayTypeIDNode;
@@ -455,13 +456,18 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
     }
 
     private static void registerManagedAllocationIntrinsics() {
+        // handle functions (first name is official, second name is deprecated and for compatibility
+        add("create_handle", "truffle_handle_for_managed", (args, nodeFactory) -> GraalVMCreateHandleNodeGen.create(args.get(1)));
+        add("resolve_handle", "truffle_managed_from_handle", (args, nodeFactory) -> GraalVMResolveHandleNodeGen.create(args.get(1)));
+        add("release_handle", "truffle_release_handle", (args, nodeFactory) -> GraalVMReleaseHandleNodeGen.create(args.get(1)));
+        add("create_deref_handle", "truffle_deref_handle_for_managed", (args, nodeFactory) -> GraalVMCreateDerefHandleNodeGen.create(args.get(1)));
+        add("is_handle", "truffle_is_handle_to_managed", (args, nodeFactory) -> GraalVMIsHandleNodeGen.create(args.get(1)));
+        add("points_to_handle_space", (args, nodeFactory) -> GraalVMPointsToHandleSpaceNodeGen.create(args.get(1)));
+
+        // deprecated
+        add("truffle_cannot_be_handle", (args, nodeFactory) -> LLVMTruffleCannotBeHandle.create(args.get(1)));
+
         add("truffle_managed_malloc", (args, nodeFactory) -> LLVMTruffleManagedMallocNodeGen.create(args.get(1)));
-        add("truffle_handle_for_managed", (args, nodeFactory) -> LLVMTruffleManagedToHandleNodeGen.create(args.get(1)));
-        add("truffle_deref_handle_for_managed", (args, nodeFactory) -> LLVMTruffleDerefHandleToManagedNodeGen.create(args.get(1)));
-        add("truffle_release_handle", (args, nodeFactory) -> LLVMTruffleReleaseHandleNodeGen.create(args.get(1)));
-        add("truffle_managed_from_handle", (args, nodeFactory) -> LLVMTruffleHandleToManagedNodeGen.create(args.get(1)));
-        add("truffle_is_handle_to_managed", (args, nodeFactory) -> LLVMTruffleIsHandleToManagedNodeGen.create(args.get(1)));
-        add("truffle_cannot_be_handle", (args, nodeFactory) -> LLVMTruffleCannotBeHandleNodeGen.create(args.get(1)));
         add("truffle_assign_managed", (args, nodeFactory) -> LLVMTruffleWriteManagedToSymbolNodeGen.create(args.get(1), args.get(2)));
         add("truffle_virtual_malloc", (args, nodeFactory) -> LLVMVirtualMallocNodeGen.create(args.get(1)));
     }

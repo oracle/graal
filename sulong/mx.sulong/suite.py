@@ -553,6 +553,7 @@ suite = {
         "bin/<lib:sulong++>",
       ],
       "headers" : [
+        "include/graalvm/llvm/handles.h",
         "include/graalvm/llvm/polyglot.h",
         "include/graalvm/llvm/toolchain-api.h",
       ],

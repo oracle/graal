@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,36 +27,45 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop;
+package com.oracle.truffle.llvm.runtime.nodes.intrinsics.handles;
 
-import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.CachedLanguage;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @NodeChild(type = LLVMExpressionNode.class)
-public abstract class LLVMTruffleHandleToManaged extends LLVMIntrinsic {
+public abstract class GraalVMIsHandle extends LLVMIntrinsic {
 
     @Specialization
-    protected LLVMManagedPointer doIntrinsic(Object rawHandle,
-                    @CachedContext(LLVMLanguage.class) LLVMContext context,
-                    @Cached("createToNativeWithTarget()") LLVMToNativeNode forceAddressNode,
+    protected boolean doLongCase(long address,
                     @CachedLanguage LLVMLanguage language,
-                    @Cached ConditionProfile isDerefProfile) {
-        long address = forceAddressNode.executeWithTarget(rawHandle).asNative();
-        if (!language.getNoDerefHandleAssumption().isValid() && isDerefProfile.profile(LLVMNativeMemory.isDerefHandleMemory(address))) {
-            return context.getDerefHandleContainer().getValue(this, address).copy();
-        } else {
-            return context.getHandleContainer().getValue(this, address).copy();
+                    @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> context) {
+        if (!language.getNoDerefHandleAssumption().isValid() && LLVMNativeMemory.isDerefHandleMemory(address)) {
+            return context.get().getDerefHandleContainer().isHandle(address);
+        } else if (!language.getNoCommonHandleAssumption().isValid() && LLVMNativeMemory.isCommonHandleMemory(address)) {
+            return context.get().getHandleContainer().isHandle(address);
         }
+        return false;
+    }
+
+    @Specialization
+    protected boolean doPointerCase(LLVMNativePointer a,
+                    @CachedLanguage LLVMLanguage language,
+                    @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> context) {
+        return doLongCase(a.asNative(), language, context);
+    }
+
+    @Fallback
+    protected boolean doGeneric(@SuppressWarnings("unused") Object object) {
+        return false;
     }
 }

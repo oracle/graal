@@ -28,6 +28,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <graalvm/llvm/handles.h>
 #include <graalvm/llvm/polyglot.h>
 #include <graalvm/llvm/toolchain-api.h>
 #include <stdio.h>
@@ -38,6 +39,25 @@ static void should_not_reach() {
     abort();
 }
 
+// graalvm/llvm/handles.h
+void *create_handle(void *managedObject) {
+    should_not_reach();
+}
+void *resolve_handle(void *nativeHandle) {
+    should_not_reach();
+}
+void release_handle(void *nativeHandle) {
+    should_not_reach();
+}
+void *create_deref_handle(void *managedObject) {
+    should_not_reach();
+}
+bool is_handle(void *nativeHandle) {
+    return false;
+}
+bool points_to_handle_space(void *nativeHandle) {
+    return false;
+}
 // graalvm/llvm/toolchain-api.h
 void *toolchain_api_tool(const void *name) {
     should_not_reach();
