@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,17 +27,54 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include <stdio.h>
+#include <errno.h>
 #include <time.h>
-#include <stdint.h>
+#include <stdlib.h>
+#include <assert.h>
+#include <sys/time.h>
+#include <sys/resource.h>
 #include <unistd.h>
-#include <sys/syscall.h>
 
-#ifdef __linux__
-int __clock_gettime(clockid_t clk_id, struct timespec *tp) {
-    return syscall(SYS_clock_gettime, clk_id, tp);
+#define measure_diff(clk_id) measure_diff_impl(clk_id, #clk_id)
+
+int array[] = { 0x43, 0x3, 0x17, 0x72, 0x10 };
+
+int cmp(const void *a, const void *b) {
+    return *(int *) a - *(int *) b;
 }
 
-int clock_gettime(clockid_t clk_id, struct timespec *tp) {
-    return __clock_gettime(clk_id, tp);
+void do_work() {
+    qsort(array, 5, sizeof(int), &cmp);
 }
-#endif
+
+void measure_diff_impl(clockid_t clk_id, const char *clock_name) {
+    struct timespec start = {}, finish = {};
+    clock_gettime(clk_id, &start);
+
+    // sleep(1); // not fully supported [GR-25210]
+    do_work();
+
+    int res = clock_gettime(clk_id, &finish);
+    if (res != 0) {
+        fprintf(stderr, "Error clock_gettime(%s): %s\n", clock_name, strerror(errno));
+        assert(res == 0);
+    }
+
+    long seconds = finish.tv_sec - start.tv_sec;
+    long ns = finish.tv_nsec - start.tv_nsec;
+    long total = (double) seconds + (double) ns / (double) 1000000000;
+    assert(total >= 0);
+}
+
+int main() {
+    measure_diff(CLOCK_REALTIME);
+    measure_diff(CLOCK_MONOTONIC);
+    // Other clocks are not supported
+    //measure_diff(CLOCK_REALTIME_COARSE);
+    //measure_diff(CLOCK_MONOTONIC_COARSE);
+    //measure_diff(CLOCK_MONOTONIC_RAW);
+    //measure_diff(CLOCK_BOOTTIME);
+    //measure_diff(CLOCK_PROCESS_CPUTIME_ID);
+    //measure_diff(CLOCK_THREAD_CPUTIME_ID);
+}

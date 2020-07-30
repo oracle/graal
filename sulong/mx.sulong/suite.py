@@ -882,9 +882,8 @@ suite = {
     "com.oracle.truffle.llvm.tests.libc.native" : {
       "subDir" : "tests",
       "class" : "SulongTestSuite",
-      "variants" : ["O0"],
+      "variants" : ["O0_OUT"],
       "buildEnv" : {
-        "SUITE_LDFLAGS" : "-lm",
         "OS" : "<os>",
       },
       "dependencies" : [
@@ -892,6 +891,22 @@ suite = {
       ],
       "testProject" : True,
       "defaultBuild" : False,
+      "os_arch" : {
+        "darwin": {
+          "<other>" : {
+            "buildEnv" : {
+              "SUITE_LDFLAGS" : "-lm",
+            },
+          },
+        },
+        "<others>": {
+          "<others>" : {
+            "buildEnv" : {
+              "SUITE_LDFLAGS" : "-lm -lrt",
+            },
+          },
+        },
+      },
     },
     "inlineassemblytests" : {
       "subDir" : "tests",
