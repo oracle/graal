@@ -131,6 +131,17 @@ abstract class LLVMInteropAccessNode extends LLVMNode {
         throw new IllegalStateException("invalid struct access");
     }
 
+    static StructMember findMember(LLVMInteropType.Struct struct, String name) {
+        for (StructMember m : struct.members) {
+            if (m.name.contentEquals(name)) {
+                return m;
+            }
+        }
+
+        CompilerDirectives.transferToInterpreter();
+        throw new IllegalStateException("invalid struct access");
+    }
+
     @GenerateUncached
     abstract static class MakeAccessLocation extends LLVMNode {
 
