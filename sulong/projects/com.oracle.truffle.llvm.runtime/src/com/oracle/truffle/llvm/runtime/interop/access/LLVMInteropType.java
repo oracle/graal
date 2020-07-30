@@ -304,6 +304,19 @@ public abstract class LLVMInteropType implements TruffleObject {
             return null;
         }
 
+        @Override
+        public StructMember findMember(String memberName) {
+            for (StructMember member : members) {
+                if (member.name.equals(memberName)) {
+                    return member;
+                }
+            }
+            if (superclass != null) {
+                return superclass.findMember(memberName);
+            }
+            return null;
+        }
+
         @TruffleBoundary
         public Method findMethodByArgumentsWithSelf(String memberName, Object[] arguments) throws ArityException {
             int expectedArgCount = -1;
