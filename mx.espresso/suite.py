@@ -154,6 +154,13 @@ suite = {
             "javaCompliance": "1.8+",
         },
 
+        "com.oracle.truffle.espresso.playground.jdk11": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "jniHeaders": True,
+            "javaCompliance": "11",
+        },
+
         "com.oracle.truffle.espresso.playground.native": {
             "subDir": "src",
             "native": "shared_lib",
@@ -210,12 +217,13 @@ suite = {
                 "com.oracle.truffle.espresso",
                 "truffle:TRUFFLE_TCK",
                 "mx:JUNIT",
-                "tools:AGENTSCRIPT"
+                "mx:ASM_COMMONS_7.1",
+                "tools:AGENTSCRIPT",
             ],
             # JTT unit tests run both on the host JVM and on Espresso, so they must be compiled with a version compatible with Espresso (8).
             # Espresso itself can be compiled with Java 11 and the unit tests (compiled to 8) should run on a JVM 11.
-            "javaCompliance": "8",
-            "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+            "javaCompliance": "1.8+",
+            "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "checkstyle": "com.oracle.truffle.espresso",
         },
 
@@ -224,10 +232,21 @@ suite = {
             "sourceDirs": ["src"],
             "testProject": True,
             "dependencies": [
-                "com.oracle.truffle.espresso.test"
+                "com.oracle.truffle.espresso.test",
             ],
-            "overlayTarget": "com.oracle.truffle.espresso.test",
             "javaCompliance": "8",
+            "checkstyle": "com.oracle.truffle.espresso",
+        },
+
+        "com.oracle.truffle.espresso.test.jdk11": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "testProject": True,
+            "dependencies": [
+                "com.oracle.truffle.espresso.test",
+            ],
+            "javaCompliance": "11",
+            "checkstyle": "com.oracle.truffle.espresso",
         },
 
         # Native library for tests
@@ -331,6 +350,28 @@ suite = {
             "testDistribution": True,
         },
 
+        "ESPRESSO_TESTS_8": {
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.truffle.espresso.test.jdk8",
+            ],
+            "distDependencies": [
+                "espresso:ESPRESSO_TESTS",
+            ],
+            "testDistribution": True,
+        },
+
+        "ESPRESSO_TESTS_11": {
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.truffle.espresso.test.jdk11",
+            ],
+            "distDependencies": [
+                "espresso:ESPRESSO_TESTS",
+            ],
+            "testDistribution": True,
+        },
+
         "ESPRESSO_LAUNCHER": {
             "subDir": "src",
             "dependencies": [
@@ -377,6 +418,17 @@ suite = {
             "subDir": "src",
             "dependencies": [
                 "com.oracle.truffle.espresso.playground"
+            ],
+            "description": "Espresso experiments",
+            "javaProperties": {
+                "playground.library": "<path:ESPRESSO_PLAYGROUND_NATIVE>/<lib:playground>"
+            },
+        },
+
+        "ESPRESSO_PLAYGROUND_11": {
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.truffle.espresso.playground.jdk11"
             ],
             "description": "Espresso experiments",
             "javaProperties": {

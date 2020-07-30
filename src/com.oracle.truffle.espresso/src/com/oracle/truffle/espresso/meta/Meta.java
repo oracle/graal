@@ -74,6 +74,7 @@ public final class Meta implements ContextAccess {
         HIDDEN_SIGNERS = java_lang_Class.lookupHiddenField(Name.HIDDEN_SIGNERS);
         java_lang_String = knownKlass(Type.java_lang_String);
         java_lang_Class_array = java_lang_Class.array();
+        java_lang_Class_getName = java_lang_Class.lookupDeclaredMethod(Name.getName, Signature.String);
         java_lang_Class_forName_String = java_lang_Class.lookupDeclaredMethod(Name.forName, Signature.Class_String);
         java_lang_Class_forName_String_boolean_ClassLoader = java_lang_Class.lookupDeclaredMethod(Name.forName, Signature.Class_String_boolean_ClassLoader);
         HIDDEN_PROTECTION_DOMAIN = java_lang_Class.lookupHiddenField(Name.HIDDEN_PROTECTION_DOMAIN);
@@ -167,9 +168,18 @@ public final class Meta implements ContextAccess {
         java_lang_Throwable_backtrace = java_lang_Throwable.lookupField(Name.backtrace, Type.java_lang_Object);
         java_lang_Throwable_detailMessage = java_lang_Throwable.lookupField(Name.detailMessage, Type.java_lang_String);
         java_lang_Throwable_cause = java_lang_Throwable.lookupField(Name.cause, Type.java_lang_Throwable);
+        java_lang_Throwable_depth = java_lang_Throwable.lookupField(Name.depth, Type._int);
 
         java_lang_StackTraceElement = knownKlass(Type.java_lang_StackTraceElement);
         java_lang_StackTraceElement_init = java_lang_StackTraceElement.lookupDeclaredMethod(Name._init_, Signature._void_String_String_String_int);
+        java_lang_StackTraceElement_declaringClassObject = java_lang_StackTraceElement.lookupDeclaredField(Name.declaringClassObject, Type.java_lang_Class);
+        java_lang_StackTraceElement_classLoaderName = java_lang_StackTraceElement.lookupDeclaredField(Name.classLoaderName, Type.java_lang_String);
+        java_lang_StackTraceElement_moduleName = java_lang_StackTraceElement.lookupDeclaredField(Name.moduleName, Type.java_lang_String);
+        java_lang_StackTraceElement_moduleVersion = java_lang_StackTraceElement.lookupDeclaredField(Name.moduleVersion, Type.java_lang_String);
+        java_lang_StackTraceElement_declaringClass = java_lang_StackTraceElement.lookupDeclaredField(Name.declaringClass, Type.java_lang_String);
+        java_lang_StackTraceElement_methodName = java_lang_StackTraceElement.lookupDeclaredField(Name.methodName, Type.java_lang_String);
+        java_lang_StackTraceElement_fileName = java_lang_StackTraceElement.lookupDeclaredField(Name.fileName, Type.java_lang_String);
+        java_lang_StackTraceElement_lineNumber = java_lang_StackTraceElement.lookupDeclaredField(Name.lineNumber, Type._int);
 
         java_lang_Exception = knownKlass(Type.java_lang_Exception);
         java_lang_reflect_InvocationTargetException = knownKlass(Type.java_lang_reflect_InvocationTargetException);
@@ -229,6 +239,7 @@ public final class Meta implements ContextAccess {
         java_lang_ClassLoader_getSystemClassLoader = java_lang_ClassLoader.lookupDeclaredMethod(Name.getSystemClassLoader, Signature.ClassLoader);
         java_lang_ClassLoader_parent = java_lang_ClassLoader.lookupDeclaredField(Name.parent, Type.java_lang_ClassLoader);
         java_lang_ClassLoader_unnamedModule = java_lang_ClassLoader.lookupDeclaredField(Name.unnamedModule, Type.java_lang_Module);
+        java_lang_ClassLoader_name = java_lang_ClassLoader.lookupDeclaredField(Name.name, Type.java_lang_String);
         HIDDEN_CLASS_LOADER_REGISTRY = java_lang_ClassLoader.lookupHiddenField(Name.HIDDEN_CLASS_LOADER_REGISTRY);
 
         // Guest reflection.
@@ -402,13 +413,13 @@ public final class Meta implements ContextAccess {
 
         java_lang_Class_classLoader = java_lang_Class.lookupField(Name.classLoader, Type.java_lang_ClassLoader);
 
-        if (getContext().getJavaVersion().java9OrLater()) {
+        if (getJavaVersion().java9OrLater()) {
             jdk_internal_loader_ClassLoaders$PlatformClassLoader = knownKlass(Type.jdk_internal_loader_ClassLoaders$PlatformClassLoader);
         } else {
             jdk_internal_loader_ClassLoaders$PlatformClassLoader = null;
         }
 
-        if (getContext().getJavaVersion().modulesEnabled()) {
+        if (getJavaVersion().modulesEnabled()) {
             java_lang_Module = knownKlass(Type.java_lang_Module);
             java_lang_Module_name = java_lang_Module.lookupField(Name.name, Type.java_lang_String);
             java_lang_Module_loader = java_lang_Module.lookupField(Name.loader, Type.java_lang_ClassLoader);
@@ -442,27 +453,27 @@ public final class Meta implements ContextAccess {
         sun_reflect_ConstantPool = knownKlassDiffVersion(Type.sun_reflect_ConstantPool, Type.jdk_internal_reflect_ConstantPool);
         sun_reflect_ConstantPool_constantPoolOop = sun_reflect_ConstantPool.lookupDeclaredField(Name.constantPoolOop, Type.java_lang_Object);
 
-        sun_misc_Cleaner = knownKlassDiffVersion(Type.sun_misc_Cleaner, Type.jdk_internal_Cleaner);
+        sun_misc_Cleaner = knownKlassDiffVersion(Type.sun_misc_Cleaner, Type.jdk_internal_ref_Cleaner);
 
         java_lang_ref_Reference_pending = java_lang_ref_Reference.lookupDeclaredField(Name.pending, Type.java_lang_ref_Reference);
-        java_lang_ref_Reference_lock = java_lang_ref_Reference.lookupDeclaredField(Name.lock, Type.java_lang_ref_Reference$Lock);
+        java_lang_ref_Reference_lock = lookupFieldDiffVersion(java_lang_ref_Reference, Name.lock, Type.java_lang_ref_Reference$Lock, Name.processPendingLock, Type.java_lang_Object);
 
         sun_reflect_Reflection_getCallerClass = knownKlassDiffVersion(Type.sun_reflect_Reflection, Type.jdk_internal_reflect_Reflection).lookupDeclaredMethod(Name.getCallerClass, Signature.Class);
 
         java_lang_invoke_MethodHandleNatives_linkCallSite11 = java_lang_invoke_MethodHandleNatives.lookupDeclaredMethod(Name.linkCallSite,
                         Signature.MemberName_Object_int_Object_Object_Object_Object_Object_array);
+    }
 
+    public void postSystemInit() {
         // these classes are in module java.management. These become known after modules
         // initialization.
-        // TODO: Have them lazily loaded after modules initialization, and only if management is
-        // enabled.
 
         // java.management
         java_lang_management_MemoryUsage = knownKlass(Type.java_lang_management_MemoryUsage);
 
         java_lang_management_ThreadInfo = knownKlass(Type.java_lang_management_ThreadInfo);
 
-        sun_management_ManagementFactory = knownKlass(Type.sun_management_ManagementFactory);
+        sun_management_ManagementFactory = knownKlassDiffVersion(Type.sun_management_ManagementFactory, Type.sun_management_ManagementFactoryHelper);
         if (sun_management_ManagementFactory != null) {
             // MemoryPoolMXBean createMemoryPool(String var0, boolean var1, long var2, long var4)
             sun_management_ManagementFactory_createMemoryPool = sun_management_ManagementFactory.lookupDeclaredMethod(Name.createMemoryPool, Signature.MemoryPoolMXBean_String_boolean_long_long);
@@ -482,9 +493,9 @@ public final class Meta implements ContextAccess {
     }
 
     private Field lookupFieldDiffVersion(ObjectKlass klass, Symbol<Name> n1, Symbol<Type> t1, Symbol<Name> n2, Symbol<Type> t2) {
-        if (getContext().getJavaVersion().java8OrEarlier()) {
+        if (getJavaVersion().java8OrEarlier()) {
             return klass.lookupDeclaredField(n1, t1);
-        } else if (getContext().getJavaVersion().java9OrLater()) {
+        } else if (getJavaVersion().java9OrLater()) {
             return klass.lookupDeclaredField(n2, t2);
         } else {
             throw EspressoError.shouldNotReachHere();
@@ -492,9 +503,9 @@ public final class Meta implements ContextAccess {
     }
 
     private ObjectKlass knownKlassDiffVersion(Symbol<Type> t1, Symbol<Type> t2) {
-        if (getContext().getJavaVersion().java8OrEarlier()) {
+        if (getJavaVersion().java8OrEarlier()) {
             return knownKlass(t1);
-        } else if (getContext().getJavaVersion().java9OrLater()) {
+        } else if (getJavaVersion().java9OrLater()) {
             return knownKlass(t2);
         } else {
             throw EspressoError.shouldNotReachHere();
@@ -515,6 +526,7 @@ public final class Meta implements ContextAccess {
     public final Field java_lang_Class_classLoader;
     public final Field sun_reflect_ConstantPool_constantPoolOop;
     public final ArrayKlass java_lang_Class_array;
+    public final Method java_lang_Class_getName;
     public final Method java_lang_Class_forName_String;
     public final Method java_lang_Class_forName_String_boolean_ClassLoader;
 
@@ -580,6 +592,7 @@ public final class Meta implements ContextAccess {
     public final ObjectKlass java_lang_ClassLoader;
     public final Field java_lang_ClassLoader_parent;
     public final Field java_lang_ClassLoader_unnamedModule;
+    public final Field java_lang_ClassLoader_name;
     public final ObjectKlass java_lang_ClassLoader$NativeLibrary;
     public final Method java_lang_ClassLoader$NativeLibrary_getFromClass;
     public final Method java_lang_ClassLoader_findNative;
@@ -679,6 +692,7 @@ public final class Meta implements ContextAccess {
     public final Field java_lang_Throwable_backtrace;
     public final Field java_lang_Throwable_detailMessage;
     public final Field java_lang_Throwable_cause;
+    public final Field java_lang_Throwable_depth;
 
     public final ObjectKlass java_lang_Error;
     public final ObjectKlass java_lang_NoSuchFieldError;
@@ -689,6 +703,14 @@ public final class Meta implements ContextAccess {
 
     public final ObjectKlass java_lang_StackTraceElement;
     public final Method java_lang_StackTraceElement_init;
+    public final Field java_lang_StackTraceElement_declaringClassObject;
+    public final Field java_lang_StackTraceElement_classLoaderName;
+    public final Field java_lang_StackTraceElement_moduleName;
+    public final Field java_lang_StackTraceElement_moduleVersion;
+    public final Field java_lang_StackTraceElement_declaringClass;
+    public final Field java_lang_StackTraceElement_methodName;
+    public final Field java_lang_StackTraceElement_fileName;
+    public final Field java_lang_StackTraceElement_lineNumber;
 
     public final ObjectKlass java_security_PrivilegedActionException;
     public final Method java_security_PrivilegedActionException_init_Exception;
@@ -830,12 +852,12 @@ public final class Meta implements ContextAccess {
     public final Field java_lang_ref_ReferenceQueue_NULL;
     public final Method sun_reflect_Reflection_getCallerClass;
 
-    public final ObjectKlass java_lang_management_MemoryUsage;
-    public final ObjectKlass sun_management_ManagementFactory;
-    public final Method sun_management_ManagementFactory_createMemoryPool;
-    public final Method sun_management_ManagementFactory_createMemoryManager;
-    public final Method sun_management_ManagementFactory_createGarbageCollector;
-    public final ObjectKlass java_lang_management_ThreadInfo;
+    @CompilationFinal public ObjectKlass java_lang_management_MemoryUsage;
+    @CompilationFinal public ObjectKlass sun_management_ManagementFactory;
+    @CompilationFinal public Method sun_management_ManagementFactory_createMemoryPool;
+    @CompilationFinal public Method sun_management_ManagementFactory_createMemoryManager;
+    @CompilationFinal public Method sun_management_ManagementFactory_createGarbageCollector;
+    @CompilationFinal public ObjectKlass java_lang_management_ThreadInfo;
 
     @CompilationFinal(dimensions = 1) //
     public final ObjectKlass[] ARRAY_SUPERINTERFACES;
@@ -1026,7 +1048,7 @@ public final class Meta implements ContextAccess {
         ObjectKlass k = loadKlassWithBootClassLoader(type);
         if (k == null) {
             // TODO: rework loading of classes with differences according to version.
-            getContext().getLogger().log(Level.WARNING, "Failed loading known class: " + type + ", discovered java version: " + getContext().getJavaVersion());
+            getContext().getLogger().log(Level.WARNING, "Failed loading known class: " + type + ", discovered java version: " + getJavaVersion());
         }
         return k;
     }
@@ -1150,7 +1172,7 @@ public final class Meta implements ContextAccess {
             return null;
         }
         Meta meta = str.getKlass().getMeta();
-        if (meta.getContext().getJavaVersion().compactStringsEnabled()) {
+        if (meta.getJavaVersion().compactStringsEnabled()) {
             StaticObject wrappedChars = (StaticObject) meta.java_lang_String_toCharArray.invokeDirect(str);
             return HostJava.createString(wrappedChars.unwrap());
         }
@@ -1166,7 +1188,7 @@ public final class Meta implements ContextAccess {
         final char[] value = HostJava.getStringValue(hostString);
         final int hash = HostJava.getStringHash(hostString);
         StaticObject guestString = java_lang_String.allocateInstance();
-        if (getContext().getJavaVersion().compactStringsEnabled()) {
+        if (getJavaVersion().compactStringsEnabled()) {
             // TODO(garcia): avoid expensive array copies
             byte[] bytes = null;
             byte coder = LATIN1;

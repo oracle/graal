@@ -530,6 +530,21 @@ public final class ObjectKlass extends Klass {
         return false;
     }
 
+    @Override
+    public Klass[] getNestMembers() {
+        NestMembersAttribute nestMembers = (NestMembersAttribute) getAttribute(NestMembersAttribute.NAME);
+        if (nestMembers == null || nestMembers.getClasses().length == 0) {
+            return EMPTY_ARRAY;
+        }
+        RuntimeConstantPool pool = getConstantPool();
+        Klass[] result = new Klass[nestMembers.getClasses().length];
+        for (int i = 0; i < result.length; i++) {
+            int index = nestMembers.getClasses()[i];
+            result[i] = pool.resolvedKlassAt(this, index);
+        }
+        return result;
+    }
+
     Field lookupFieldTableImpl(int slot) {
         assert slot >= 0 && slot < fieldTable.length && !fieldTable[slot].isHidden();
         return fieldTable[slot];

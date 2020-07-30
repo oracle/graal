@@ -1003,7 +1003,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                     case INVOKEINTERFACE: top += quickenInvoke(frame, top, curBCI, curOpcode); break;
 
                     case NEW: putObject(frame, top, InterpreterToVM.newObject(resolveType(curOpcode, bs.readCPI(curBCI)), true)); break;
-                    case NEWARRAY: putObject(frame, top - 1, InterpreterToVM.allocatePrimitiveArray(bs.readByte(curBCI), peekInt(frame, top - 1))); break;
+                    case NEWARRAY: putObject(frame, top - 1, InterpreterToVM.allocatePrimitiveArray(bs.readByte(curBCI), peekInt(frame, top - 1), getMeta())); break;
                     case ANEWARRAY: putObject(frame, top - 1, allocateArray(resolveType(curOpcode, bs.readCPI(curBCI)), peekInt(frame, top - 1))); break;
                     case ARRAYLENGTH: putInt(frame, top - 1, InterpreterToVM.arrayLength(nullCheck(peekAndReleaseObject(frame, top - 1)))); break;
 
@@ -1528,9 +1528,10 @@ public final class BytecodeNode extends EspressoMethodNode {
                 }
                 break;
             case INVOKEINTERFACE:
-                // Otherwise, if the resolved method is static or private, the invokeinterface
-                // instruction throws an IncompatibleClassChangeError.
-                if (resolved.isStatic() || resolved.isPrivate()) {
+                // Otherwise, if the resolved method is static or (jdk8 or earlier) private, the
+                // invokeinterface instruction throws an IncompatibleClassChangeError.
+                if (resolved.isStatic() ||
+                                (getContext().getJavaVersion().java8OrEarlier() && resolved.isPrivate())) {
                     CompilerDirectives.transferToInterpreter();
                     throw Meta.throwException(getMeta().java_lang_IncompatibleClassChangeError);
                 }
@@ -1592,8 +1593,14 @@ public final class BytecodeNode extends EspressoMethodNode {
         } else if (resolved.isPolySignatureIntrinsic()) {
             invoke = new InvokeHandleNode(resolved, getMethod().getDeclaringKlass(), top, curBCI);
         } else if (opcode == INVOKEINTERFACE && resolved.getITableIndex() < 0) {
-            // Can happen in old classfiles that calls j.l.Object on interfaces.
-            invoke = InvokeVirtualNodeGen.create(resolved, top, curBCI);
+            if (resolved.isPrivate()) {
+                assert getJavaVersion().java9OrLater();
+                // Interface private methods do not appear in itables.
+                invoke = new InvokeSpecialNode(resolved, top, curBCI);
+            } else {
+                // Can happen in old classfiles that calls j.l.Object on interfaces.
+                invoke = InvokeVirtualNodeGen.create(resolved, top, curBCI);
+            }
         } else if (opcode == INVOKEVIRTUAL && (resolved.isFinalFlagSet() || resolved.getDeclaringKlass().isFinalFlagSet() || resolved.isPrivate())) {
             invoke = new InvokeSpecialNode(resolved, top, curBCI);
         } else {
@@ -1679,7 +1686,7 @@ public final class BytecodeNode extends EspressoMethodNode {
         StaticObject methodType = signatureToMethodType(parsedInvokeSignature, accessingKlass, getMeta());
         StaticObject appendix = StaticObject.createArray(meta.java_lang_Object_array, new StaticObject[1]);
         StaticObject memberName;
-        if (getContext().getJavaVersion().varHandlesEnabled()) {
+        if (getJavaVersion().varHandlesEnabled()) {
             memberName = (StaticObject) meta.java_lang_invoke_MethodHandleNatives_linkCallSite11.invokeDirect(
                             null,
                             accessingKlass.mirror(),
