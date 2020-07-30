@@ -8,7 +8,7 @@ behaviour of the `lli` interpreter tool used to directly execute programs
 in LLVM bitcode format differs between native and managed modes. The
 difference lies in safety guarantees and cross-language interoperability.
 
-Note: Native code execution in a managed mode is possible with GraalVM Enterprise only.
+Note: Managed execution mode for LLVM IR code is possible with GraalVM Enterprise only.
 
 In the default configuration, cross-language interoperability requires bitcode
 to be compiled with the debug information enabled (`-g`), and the `-mem2reg`
