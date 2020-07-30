@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,7 +52,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.nfi.test.interop.BoxedPrimitive;
 import com.oracle.truffle.nfi.test.interop.TestCallback;
@@ -85,9 +84,9 @@ public class StringNFITest extends NFITest {
 
     public static class NativeStringArgNode extends NFITestRootNode {
 
-        final TruffleObject function = lookupAndBind("string_arg", "(string):sint32");
-        final TruffleObject strdup = lookupAndBindDefault("strdup", "(string):string");
-        final TruffleObject free = lookupAndBindDefault("free", "(pointer):void");
+        final Object function = lookupAndBind("string_arg", "(string):sint32");
+        final Object strdup = lookupAndBindDefault("strdup", "(string):string");
+        final Object free = lookupAndBindDefault("free", "(pointer):void");
 
         @Child InteropLibrary functionInterop = getInterop(function);
         @Child InteropLibrary strdupInterop = getInterop(strdup);
@@ -118,10 +117,7 @@ public class StringNFITest extends NFITest {
 
     @Test
     public void testStringRetConst(@Inject(StringRetConstNode.class) CallTarget callTarget) throws UnsupportedMessageException {
-        Object ret = callTarget.call();
-
-        Assert.assertThat("return value", ret, is(instanceOf(TruffleObject.class)));
-        TruffleObject obj = (TruffleObject) ret;
+        Object obj = callTarget.call();
 
         Assert.assertTrue("isString", UNCACHED_INTEROP.isString(obj));
         Assert.assertEquals("return value", "Hello, World!", UNCACHED_INTEROP.asString(obj));
@@ -129,8 +125,8 @@ public class StringNFITest extends NFITest {
 
     public static class StringRetDynamicNode extends NFITestRootNode {
 
-        final TruffleObject function = lookupAndBind("string_ret_dynamic", "(sint32):string");
-        final TruffleObject free = lookupAndBind("free_dynamic_string", "(pointer):sint32");
+        final Object function = lookupAndBind("string_ret_dynamic", "(sint32):string");
+        final Object free = lookupAndBind("free_dynamic_string", "(pointer):sint32");
 
         @Child InteropLibrary functionInterop = getInterop(function);
         @Child InteropLibrary freeInterop = getInterop(free);
@@ -152,10 +148,7 @@ public class StringNFITest extends NFITest {
         }
 
         @TruffleBoundary
-        private static void checkRet(Object ret) throws UnsupportedMessageException {
-            Assert.assertThat("return value", ret, is(instanceOf(TruffleObject.class)));
-            TruffleObject obj = (TruffleObject) ret;
-
+        private static void checkRet(Object obj) throws UnsupportedMessageException {
             Assert.assertTrue("isString", UNCACHED_INTEROP.isString(obj));
             Assert.assertEquals("return value", "42", UNCACHED_INTEROP.asString(obj));
         }
@@ -177,12 +170,12 @@ public class StringNFITest extends NFITest {
     private String expectedArg;
     private Object callbackRet;
 
-    private final TruffleObject strArgCallback = new TestCallback(1, (args) -> {
+    private final Object strArgCallback = new TestCallback(1, (args) -> {
         Assert.assertEquals("string argument", expectedArg, args[0]);
         return 42;
     });
 
-    private final TruffleObject strRetCallback = new TestCallback(0, (args) -> {
+    private final Object strRetCallback = new TestCallback(0, (args) -> {
         return callbackRet;
     });
 
@@ -213,8 +206,8 @@ public class StringNFITest extends NFITest {
 
     public class NativeStringCallbackNode extends NFITestRootNode {
 
-        final TruffleObject stringRetConst = lookupAndBind("string_ret_const", "():string");
-        final TruffleObject nativeStringCallback = lookupAndBind("native_string_callback", "(():string) : string");
+        final Object stringRetConst = lookupAndBind("string_ret_const", "():string");
+        final Object nativeStringCallback = lookupAndBind("native_string_callback", "(():string) : string");
 
         @Child InteropLibrary stringRetConstInterop = getInterop(stringRetConst);
         @Child InteropLibrary nativeStringCallbackInterop = getInterop(nativeStringCallback);
@@ -228,10 +221,7 @@ public class StringNFITest extends NFITest {
 
     @Test
     public void testNativeStringCallback(@Inject(NativeStringCallbackNode.class) CallTarget target) throws UnsupportedMessageException {
-        Object ret = target.call();
-
-        Assert.assertThat("return value", ret, is(instanceOf(TruffleObject.class)));
-        TruffleObject obj = (TruffleObject) ret;
+        Object obj = target.call();
 
         Assert.assertTrue("isString", UNCACHED_INTEROP.isString(obj));
         Assert.assertEquals("return value", "same", UNCACHED_INTEROP.asString(obj));

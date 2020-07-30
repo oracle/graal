@@ -170,7 +170,7 @@ public class LLVMScope implements TruffleObject {
         register(symbol);
     }
 
-    public TruffleObject getKeys() {
+    public Object getKeys() {
         return new Keys(this);
     }
 

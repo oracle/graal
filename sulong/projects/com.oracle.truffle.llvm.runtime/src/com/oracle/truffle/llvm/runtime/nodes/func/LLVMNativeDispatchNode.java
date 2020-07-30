@@ -39,7 +39,6 @@ import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -68,7 +67,7 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
     public abstract Object executeDispatch(Object function, Object[] arguments);
 
     @TruffleBoundary
-    protected TruffleObject identityFunction() {
+    protected Object identityFunction() {
         LLVMContext context = lookupContextReference(LLVMLanguage.class).get();
         NFIContextExtension nfiContextExtension = context.getContextExtension(NFIContextExtension.class);
         String signature;

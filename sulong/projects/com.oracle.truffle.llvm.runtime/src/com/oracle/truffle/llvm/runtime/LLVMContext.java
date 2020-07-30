@@ -401,13 +401,13 @@ public final class LLVMContext {
                 result[i] = mainArguments[i - 1].toString();
             }
         }
-        return toTruffleObjects(result);
+        return toManagedObjects(result);
     }
 
     @TruffleBoundary
     private static LLVMManagedPointer getEnvironmentVariables() {
         String[] result = System.getenv().entrySet().stream().map((e) -> e.getKey() + "=" + e.getValue()).toArray(String[]::new);
-        return toTruffleObjects(result);
+        return toManagedObjects(result);
     }
 
     @TruffleBoundary
@@ -421,7 +421,7 @@ public final class LLVMContext {
         return new SecureRandom();
     }
 
-    public static LLVMManagedPointer toTruffleObjects(String[] values) {
+    public static LLVMManagedPointer toManagedObjects(String[] values) {
         LLVMArgumentBuffer[] result = new LLVMArgumentBuffer[values.length];
         for (int i = 0; i < values.length; i++) {
             result[i] = new LLVMArgumentBuffer(values[i]);

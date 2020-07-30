@@ -71,7 +71,7 @@ public final class LLVMFunctionDescriptor extends LLVMInternalTruffleObject impl
     private final LLVMFunction llvmFunction;
     private final LLVMFunctionCode functionCode;
 
-    @CompilationFinal private TruffleObject nativeWrapper;
+    @CompilationFinal private Object nativeWrapper;
     @CompilationFinal private long nativePointer;
 
     // used for calls from foreign languages

@@ -94,7 +94,7 @@ public class WritePolyglotArrayTest extends WritePolyglotArrayTestBase {
     /**
      * Object representing an arbitrary "pointer".
      */
-    private static final TruffleObject A_POINTER = new TruffleObject() {
+    private static final Object A_POINTER = new TruffleObject() {
     };
 
     /**

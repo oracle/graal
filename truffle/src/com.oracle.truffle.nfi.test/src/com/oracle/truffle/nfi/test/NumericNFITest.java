@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.nfi.test;
 
-import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.core.Is.is;
 
 import java.util.ArrayList;
@@ -58,7 +57,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.nfi.spi.types.NativeSimpleType;
 import com.oracle.truffle.nfi.test.interop.BoxedPrimitive;
@@ -224,7 +222,7 @@ public class NumericNFITest extends NFITest {
         }
     }
 
-    private final TruffleObject callback = new TestCallback(1, (args) -> {
+    private final Object callback = new TestCallback(1, (args) -> {
         Assert.assertThat("argument", args[0], is(number(42 + 1)));
         return unboxNumber(args[0]) + 5;
     });
@@ -235,7 +233,7 @@ public class NumericNFITest extends NFITest {
         Assert.assertThat("return", ret, is(number((42 + 6) * 2)));
     }
 
-    private final TruffleObject negCallback = new TestCallback(1, (args) -> {
+    private final Object negCallback = new TestCallback(1, (args) -> {
         Assert.assertThat("argument", args[0], is(number(fixSign(-42 + 1))));
         return unboxNumber(args[0]) + 5;
     });
@@ -251,7 +249,7 @@ public class NumericNFITest extends NFITest {
      */
     public class TestCallbackRetNode extends NFITestRootNode {
 
-        final TruffleObject getIncrement = lookupAndBind("callback_ret_" + type, String.format("() : (%s):%s", type, type));
+        final Object getIncrement = lookupAndBind("callback_ret_" + type, String.format("() : (%s):%s", type, type));
 
         @Child InteropLibrary getIncrementInterop = getInterop(getIncrement);
         @Child InteropLibrary closureInterop = getInterop();
@@ -291,10 +289,9 @@ public class NumericNFITest extends NFITest {
         }
     }
 
-    private final TruffleObject wrap = new TestCallback(1, (args) -> {
-        Assert.assertThat("argument", args[0], is(instanceOf(TruffleObject.class)));
-        TruffleObject fn = (TruffleObject) args[0];
-        TruffleObject wrapped = new TestCallback(1, (innerArgs) -> {
+    private final Object wrap = new TestCallback(1, (args) -> {
+        Object fn = args[0];
+        Object wrapped = new TestCallback(1, (innerArgs) -> {
             Assert.assertThat("argument", innerArgs[0], is(number(6)));
             try {
                 return UNCACHED_INTEROP.execute(fn, unboxNumber(innerArgs[0]) * 3);

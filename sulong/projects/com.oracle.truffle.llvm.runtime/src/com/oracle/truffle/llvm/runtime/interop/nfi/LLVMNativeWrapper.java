@@ -68,10 +68,6 @@ public final class LLVMNativeWrapper implements TruffleObject {
         this.descriptor = descriptor;
     }
 
-    static boolean isInstance(TruffleObject obj) {
-        return obj instanceof LLVMNativeWrapper;
-    }
-
     @Override
     public String toString() {
         return descriptor.toString();

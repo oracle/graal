@@ -1033,8 +1033,11 @@ final class Runner {
         return global.getAlign() > 0 ? 1 << (global.getAlign() - 1) : type.getAlignment(dataLayout);
     }
 
+    /**
+     * Globals of pointer type need to be handles specially because they can potentially contain a
+     * foreign object.
+     */
     private static boolean isSpecialGlobalSlot(Type type) {
-        // globals of pointer type can potentially contain a TruffleObject
         return type instanceof PointerType;
     }
 

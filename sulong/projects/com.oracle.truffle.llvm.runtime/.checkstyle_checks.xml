@@ -204,6 +204,9 @@
       <property name="format" value="^unused$"/>
       <property name="tokens" value="CLASS_DEF,INTERFACE_DEF,ENUM_DEF,ANNOTATION_DEF,ANNOTATION_FIELD_DEF,ENUM_CONSTANT_DEF,METHOD_DEF,CTOR_DEF"/>
     </module>
+    <module name="IllegalType">
+      <property name="illegalClassNames" value="TruffleObject"/>
+    </module>
   </module>
   <module name="FileTabCharacter">
     <property name="severity" value="error"/>
