@@ -56,7 +56,7 @@ public final class GuardPhiNode extends PhiNode implements GuardingNode {
     }
 
     @Override
-    public PhiNode patchPhi(AbstractMergeNode newMerge) {
+    public PhiNode duplicateOn(AbstractMergeNode newMerge) {
         return graph().addWithoutUnique(new GuardPhiNode(newMerge));
     }
 }

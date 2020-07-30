@@ -57,7 +57,7 @@ public final class GuardProxyNode extends ProxyNode implements GuardingNode {
     }
 
     @Override
-    public ProxyNode patchProxy(LoopExitNode newProxyPoint, ValueNode newOriginalNode) {
+    public ProxyNode duplicateOn(LoopExitNode newProxyPoint, ValueNode newOriginalNode) {
         assert newOriginalNode instanceof GuardNode;
         return graph().addWithoutUnique(new GuardProxyNode((GuardingNode) newOriginalNode, newProxyPoint));
     }

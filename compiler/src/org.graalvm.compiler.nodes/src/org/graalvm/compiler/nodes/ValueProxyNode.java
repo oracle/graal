@@ -99,7 +99,7 @@ public final class ValueProxyNode extends ProxyNode implements Canonicalizable, 
     }
 
     @Override
-    public ProxyNode patchProxy(LoopExitNode newProxyPoint, ValueNode newOriginalNode) {
+    public ProxyNode duplicateOn(LoopExitNode newProxyPoint, ValueNode newOriginalNode) {
         return graph().addWithoutUnique(new ValueProxyNode(newOriginalNode, newProxyPoint));
     }
 }

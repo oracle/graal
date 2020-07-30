@@ -251,5 +251,5 @@ public abstract class PhiNode extends FloatingNode implements Canonicalizable {
      *
      * @param newMerge the merge to use for the newly created phi
      */
-    public abstract PhiNode patchPhi(AbstractMergeNode newMerge);
+    public abstract PhiNode duplicateOn(AbstractMergeNode newMerge);
 }

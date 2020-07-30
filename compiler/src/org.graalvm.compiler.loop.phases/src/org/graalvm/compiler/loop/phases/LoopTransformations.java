@@ -278,8 +278,8 @@ public abstract class LoopTransformations {
     // be updated to produce vector alignment if applicable.
 
     public static LoopBeginNode insertPrePostLoops(LoopEx loop) {
-        final int loopExitCount = loop.loopBegin().loopExits().count();
-        assert loopExitCount <= 1 : "Can only partial unroll loops with at most 1 exit, exits seen:" + loopExitCount;
+        assert loop.loopBegin().loopExits().isEmpty() ||
+                        loop.counted().getCountedExit() instanceof LoopExitNode : "Can only unroll loops, if they have exits, if the counted exit is a regular loop exit " + loop;
         StructuredGraph graph = loop.loopBegin().graph();
         graph.getDebug().log("LoopTransformations.insertPrePostLoops %s", loop);
 
@@ -469,7 +469,6 @@ public abstract class LoopTransformations {
 
     private static void rewirePhi(PhiNode currentPhi, PhiNode outGoingPhi, LoopExitNode exitToProxy) {
         if (currentPhi.graph().hasValueProxies()) {
-            LoopExitNode mainExit = ((LoopBeginNode) currentPhi.merge()).loopExits().first();
             List<ProxyNode> proxyUsages = currentPhi.usages().filter(ProxyNode.class).snapshot();
             ValueNode set = null;
             for (ProxyNode proxy : proxyUsages) {

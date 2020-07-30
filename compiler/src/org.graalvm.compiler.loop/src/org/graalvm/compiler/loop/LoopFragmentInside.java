@@ -308,20 +308,22 @@ public class LoopFragmentInside extends LoopFragment {
      * Pre-Main-Post creation will merge them.
      */
     private void mergeEarlyLoopExits(StructuredGraph graph, LoopBeginNode mainLoopBegin, CountedLoopInfo mainCounted, EconomicMap<Node, Node> new2OldPhis, LoopEx loop) {
-        if (graph.hasValueProxies()) {
-            // rewire non-counted exits with the follow nodes: merges or sinks
-            for (LoopExitNode exit : mainLoopBegin.loopExits().snapshot()) {
-                // regular path along we unroll
-                if (exit == mainCounted.getCountedExit()) {
-                    continue;
-                }
-                FixedNode next = exit.next();
-                AbstractBeginNode begin = getDuplicatedNode(exit);
-                if (next instanceof EndNode) {
-                    mergeRegularEarlyExit(next, begin, exit, mainLoopBegin, graph, new2OldPhis, loop);
-                } else {
-                    GraalError.shouldNotReachHere("Can only unroll loops where the early exits which merge " + next);
-                }
+        if (mainLoopBegin.loopExits().count() <= 1) {
+            return;
+        }
+        assert graph.hasValueProxies() : "Unrolling with multiple exits requires proxies";
+        // rewire non-counted exits with the follow nodes: merges or sinks
+        for (LoopExitNode exit : mainLoopBegin.loopExits().snapshot()) {
+            // regular path along we unroll
+            if (exit == mainCounted.getCountedExit()) {
+                continue;
+            }
+            FixedNode next = exit.next();
+            AbstractBeginNode begin = getDuplicatedNode(exit);
+            if (next instanceof EndNode) {
+                mergeRegularEarlyExit(next, begin, exit, mainLoopBegin, graph, new2OldPhis, loop);
+            } else {
+                GraalError.shouldNotReachHere("Can only unroll loops where the early exits which merge " + next);
             }
         }
     }
@@ -381,7 +383,7 @@ public class LoopFragmentInside extends LoopFragment {
                         // create a new proxy for this value
                         ValueNode replacement = getNodeInExitPathFromUnrolledSegment(originalProxy, new2OldPhis);
                         assert replacement != null : originalProxy;
-                        p.set(from, originalProxy.patchProxy(lex, replacement));
+                        p.set(from, originalProxy.duplicateOn(lex, replacement));
                     }
                 } else {
                     if (original().contains(to)) {
@@ -570,7 +572,7 @@ public class LoopFragmentInside extends LoopFragment {
             }
             // create a new phi (we don't patch the old one since some usages of the old one may
             // still be valid)
-            PhiNode newPhi = phi.patchPhi(loopBegin);
+            PhiNode newPhi = phi.duplicateOn(loopBegin);
             newPhi.addInput(first);
             for (LoopEndNode end : loopBegin.orderedLoopEnds()) {
                 newPhi.addInput(phi.valueAt(end));
@@ -721,7 +723,7 @@ public class LoopFragmentInside extends LoopFragment {
                 if (phi.hasNoUsages()) {
                     continue;
                 }
-                final PhiNode firstPhi = phi.patchPhi(newExitMerge);
+                final PhiNode firstPhi = phi.duplicateOn(newExitMerge);
                 for (AbstractEndNode end : newExitMerge.forwardEnds()) {
                     LoopEndNode loopEnd = reverseEnds.get(end);
                     ValueNode prim = prim(phi.valueAt(loopEnd));

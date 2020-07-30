@@ -78,7 +78,7 @@ public final class MemoryPhiNode extends PhiNode implements SingleMemoryKill {
     }
 
     @Override
-    public PhiNode patchPhi(AbstractMergeNode newMerge) {
+    public PhiNode duplicateOn(AbstractMergeNode newMerge) {
         return graph().addWithoutUnique(new MemoryPhiNode(newMerge, getLocationIdentity()));
     }
 }
