@@ -340,13 +340,27 @@ _MVN_DEPENDENCIES = {
         {'groupId':'org.graalvm.truffle', 'artifactId':'truffle-tck-tests', 'required':False},
     ],
     'TCK' : [
-        {'groupId':'org.graalvm.sdk', 'artifactId':'polyglot-tck', 'required':True},
-        {'groupId':'org.graalvm.truffle', 'artifactId':'truffle-tck-common', 'required':True},
+        {'groupId':'org.graalvm.sdk', 'artifactId':'polyglot-tck', 'required':True}
+    ],
+    'COMMON' : [
+        {'groupId':'org.graalvm.truffle', 'artifactId':'truffle-tck-common', 'required':True}
     ],
     'INSTRUMENTS' : [
         {'groupId':'org.graalvm.truffle', 'artifactId':'truffle-tck-instrumentation', 'required':True},
     ]
 }
+
+def _is_modular_jvm(java_home):
+    release_file = os.path.join(java_home, 'release')
+    if os.path.isfile(release_file) and os.access(release_file, os.R_OK):
+        p = re.compile(r'JAVA_VERSION="(.*)"')
+        with open(release_file) as f:
+            for l in f.readlines():
+                m = p.match(l)
+                if m:
+                    version = m.group(1)
+                    return not (version.startswith('1.8.') or version.startswith('8.'))
+    return True
 
 def _main(argv):
 
@@ -406,9 +420,14 @@ def _main(argv):
         if parsed_args.tck_values:
             values = parsed_args.tck_values.split(',')
         os.mkdir(cache_folder)
-        boot = [_MvnClassPathEntry(e['groupId'], e['artifactId'], e['version'] if 'version' in e else parsed_args.tck_version, e['required']) for e in _MVN_DEPENDENCIES['TCK']]
+        boot = [_MvnClassPathEntry(e['groupId'], e['artifactId'], e['version'] if 'version' in e else parsed_args.tck_version, e['required']) for e in _MVN_DEPENDENCIES['COMMON']]
         cp = [_MvnClassPathEntry(e['groupId'], e['artifactId'], e['version'] if 'version' in e else parsed_args.tck_version, e['required']) for e in _MVN_DEPENDENCIES['TESTS']]
         truffle_cp = [_MvnClassPathEntry(e['groupId'], e['artifactId'], e['version'] if 'version' in e else parsed_args.tck_version, e['required']) for e in _MVN_DEPENDENCIES['INSTRUMENTS']]
+        tck = [_MvnClassPathEntry(e['groupId'], e['artifactId'], e['version'] if 'version' in e else parsed_args.tck_version, e['required']) for e in _MVN_DEPENDENCIES['TCK']]
+        if _is_modular_jvm(parsed_args.graalvm_home):
+            cp.extend(tck)
+        else:
+            boot.extend(tck)
         if parsed_args.class_path:
             for e in parsed_args.class_path.split(os.pathsep):
                 cp.append(_ClassPathEntry(os.path.abspath(e)))
