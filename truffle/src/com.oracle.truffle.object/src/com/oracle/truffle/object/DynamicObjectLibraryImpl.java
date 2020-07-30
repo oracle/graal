@@ -54,6 +54,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.locks.Lock;
 
+import org.graalvm.collections.EconomicSet;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -214,6 +216,11 @@ abstract class DynamicObjectLibraryImpl {
                     @Shared("cachedShape") @Cached(value = "object.getShape()", allowUncached = true) Shape cachedShape,
                     @Shared("keyCache") @Cached("create(object.getShape(), key)") KeyCacheNode keyCache) {
         return keyCache.setPropertyFlags(object, cachedShape, key, propertyFlags);
+    }
+
+    @TruffleBoundary
+    static ShapeImpl changePropertyFlags(ShapeImpl shape, PropertyImpl cachedProperty, int propertyFlags) {
+        return shape.replaceProperty(cachedProperty, cachedProperty.copyWithFlags(propertyFlags));
     }
 
     @TruffleBoundary
@@ -560,6 +567,10 @@ abstract class DynamicObjectLibraryImpl {
             return put(object, cachedShape, key, value, putFlags);
         }
 
+        boolean isIdentity() {
+            return false;
+        }
+
         static KeyCacheNode create(Shape cachedShape, Object key) {
             if (key == null) {
                 return getUncached();
@@ -680,9 +691,11 @@ abstract class DynamicObjectLibraryImpl {
                 return false;
             }
             if (existingProperty.getFlags() != propertyFlags) {
-                Shape newShape = oldShape.replaceProperty(existingProperty, ((PropertyImpl) existingProperty).copyWithFlags(propertyFlags));
+                updateShapeImpl(object);
+                Shape newShape = changePropertyFlags(oldShape, (PropertyImpl) existingProperty, propertyFlags);
                 if (newShape != oldShape) {
                     ACCESS.setShape(object, newShape);
+                    updateShapeImpl(object);
                 }
             }
             return true;
@@ -708,7 +721,7 @@ abstract class DynamicObjectLibraryImpl {
         }
 
         public static KeyCacheNode create(Object key, Shape cachedShape) {
-            return new AnyKey(SpecificKey.create(key, cachedShape, null));
+            return new AnyKey(SpecificKey.create(key, cachedShape, null, true));
         }
 
         @ExplodeLoop
@@ -890,6 +903,7 @@ abstract class DynamicObjectLibraryImpl {
                 KeyCacheEntry tail = this.keyCache;
                 int cachedCount = 0;
                 boolean generic = false;
+                boolean useIdentity = true;
 
                 for (KeyCacheEntry c = tail; c != null; c = c.next) {
                     if (c == KeyCacheNode.getUncached()) {
@@ -900,6 +914,19 @@ abstract class DynamicObjectLibraryImpl {
                         if (c.acceptsKey(key)) {
                             return c;
                         }
+                        if (!c.isIdentity()) {
+                            useIdentity = false;
+                        }
+                    }
+                }
+
+                if (cachedCount > 1 && useIdentity) {
+                    // if we have duplicate keys in the cache due to identity comparison,
+                    // clear the cache and compare keys with equals() from now on.
+                    if (hasDuplicateCacheKeys(tail, key)) {
+                        tail = null;
+                        cachedCount = 0;
+                        useIdentity = false;
                     }
                 }
 
@@ -915,7 +942,7 @@ abstract class DynamicObjectLibraryImpl {
                     reportPolymorphicSpecialize();
                 }
 
-                SpecificKey newEntry = SpecificKey.create(key, cachedShape, tail);
+                SpecificKey newEntry = SpecificKey.create(key, cachedShape, tail, useIdentity);
                 insert(newEntry);
                 this.keyCache = newEntry;
                 return this;
@@ -923,26 +950,39 @@ abstract class DynamicObjectLibraryImpl {
                 lock.unlock();
             }
         }
+
+        private static boolean hasDuplicateCacheKeys(KeyCacheEntry tail, Object key) {
+            EconomicSet<Object> keySet = EconomicSet.create();
+            for (KeyCacheEntry c = tail; c != null; c = c.next) {
+                if (c instanceof SpecificKey) {
+                    SpecificKey cacheEntry = (SpecificKey) c;
+                    if (!keySet.add(cacheEntry.cachedKey)) {
+                        return true;
+                    }
+                }
+            }
+            return !keySet.add(key);
+        }
     }
 
     abstract static class SpecificKey extends KeyCacheEntry {
         final Object cachedKey;
 
-        @CompilationFinal PutCacheData cache;
+        @CompilationFinal MutateCacheData cache;
 
         SpecificKey(Object key, KeyCacheEntry next) {
             super(next);
             this.cachedKey = key;
         }
 
-        static SpecificKey create(Object key, Shape shape, KeyCacheEntry next) {
+        static SpecificKey create(Object key, Shape shape, KeyCacheEntry next, boolean useIdentity) {
             if (key != null) {
                 Property property = shape.getProperty(key);
                 if (property != null) {
-                    return new SpecificKey.ExistingKey(key, property, next);
+                    return useIdentity ? new SpecificKey.ExistingKeyIdentity(key, property, next) : new SpecificKey.ExistingKey(key, property, next);
                 }
             }
-            return new SpecificKey.MissingKey(key, next);
+            return useIdentity ? new SpecificKey.MissingKeyIdentity(key, next) : new SpecificKey.MissingKey(key, next);
         }
 
         protected final boolean assertCachedKeyAndShapeForRead(DynamicObject object, Shape cachedShape, Object key) {
@@ -1064,19 +1104,7 @@ abstract class DynamicObjectLibraryImpl {
             public boolean setPropertyFlags(DynamicObject object, Shape cachedShape, Object key, int propertyFlags) {
                 CompilerAsserts.partialEvaluationConstant(cachedShape);
                 assert assertCachedKeyAndShapeForWrite(object, cachedShape, key);
-                if (cachedProperty.getFlags() != propertyFlags) {
-                    ShapeImpl oldShape = (ShapeImpl) cachedShape;
-                    ShapeImpl newShape = changePropertyFlags(oldShape, (PropertyImpl) cachedProperty, propertyFlags);
-                    if (newShape != oldShape) {
-                        ACCESS.setShape(object, newShape);
-                    }
-                }
-                return true;
-            }
-
-            @TruffleBoundary
-            private static ShapeImpl changePropertyFlags(ShapeImpl shape, PropertyImpl cachedProperty, int propertyFlags) {
-                return shape.replaceProperty(cachedProperty, cachedProperty.copyWithFlags(propertyFlags));
+                return setPropertyFlagsImpl(object, cachedShape, key, propertyFlags, cachedProperty);
             }
         }
 
@@ -1169,18 +1197,50 @@ abstract class DynamicObjectLibraryImpl {
             }
         }
 
+        static class ExistingKeyIdentity extends ExistingKey {
+            ExistingKeyIdentity(Object key, Property property, KeyCacheEntry next) {
+                super(key, property, next);
+            }
+
+            @Override
+            public boolean acceptsKey(Object key) {
+                return cachedKey == key;
+            }
+
+            @Override
+            boolean isIdentity() {
+                return true;
+            }
+        }
+
+        static class MissingKeyIdentity extends MissingKey {
+            MissingKeyIdentity(Object key, KeyCacheEntry next) {
+                super(key, next);
+            }
+
+            @Override
+            public boolean acceptsKey(Object key) {
+                return cachedKey == key;
+            }
+
+            @Override
+            boolean isIdentity() {
+                return true;
+            }
+        }
+
         @ExplodeLoop
         protected boolean putImpl(DynamicObject object, Shape cachedShape, Object key, Object value, long putFlags, Property oldProperty) {
             Shape oldShape = cachedShape;
-            PutCacheData start = cache;
-            if (start == PutCacheData.GENERIC || !cachedShape.isValid()) {
+            MutateCacheData start = cache;
+            if (start == MutateCacheData.GENERIC || !cachedShape.isValid()) {
                 return putUncached(object, key, value, putFlags);
             }
-            for (PutCacheData c = start; c != null; c = c.next) {
+            for (MutateCacheData c = start; c != null; c = c.next) {
                 if (!c.isValid()) {
                     break;
-                } else if (c.putFlags == putFlags) {
-                    Property newProperty = c.property;
+                } else if (c instanceof PutCacheData && ((PutCacheData) c).putFlags == putFlags) {
+                    Property newProperty = ((PutCacheData) c).property;
                     if (newProperty == null) {
                         assert Flags.isSetExisting(putFlags);
                         return false;
@@ -1212,15 +1272,15 @@ abstract class DynamicObjectLibraryImpl {
         @ExplodeLoop
         protected boolean putIntImpl(DynamicObject object, Shape cachedShape, Object key, int value, long putFlags, Property oldProperty) {
             Shape oldShape = cachedShape;
-            PutCacheData start = cache;
-            if (start == PutCacheData.GENERIC || !cachedShape.isValid()) {
+            MutateCacheData start = cache;
+            if (start == MutateCacheData.GENERIC || !cachedShape.isValid()) {
                 return putUncached(object, key, value, putFlags);
             }
-            for (PutCacheData c = start; c != null; c = c.next) {
+            for (MutateCacheData c = start; c != null; c = c.next) {
                 if (!c.isValid()) {
                     break;
-                } else if (c.putFlags == putFlags) {
-                    Property newProperty = c.property;
+                } else if (c instanceof PutCacheData && ((PutCacheData) c).putFlags == putFlags) {
+                    Property newProperty = ((PutCacheData) c).property;
                     if (newProperty == null) {
                         assert Flags.isSetExisting(putFlags);
                         return false;
@@ -1291,13 +1351,13 @@ abstract class DynamicObjectLibraryImpl {
         @ExplodeLoop
         protected boolean putLongImpl(DynamicObject object, Shape cachedShape, Object key, long value, long putFlags, Property oldProperty) {
             Shape oldShape = cachedShape;
-            PutCacheData start = cache;
-            if (start == PutCacheData.GENERIC) {
+            MutateCacheData start = cache;
+            if (start == MutateCacheData.GENERIC) {
                 return putUncached(object, key, value, putFlags);
             }
-            for (PutCacheData c = start; c != null; c = c.next) {
-                if (c.putFlags == putFlags) {
-                    Property newProperty = c.property;
+            for (MutateCacheData c = start; c != null; c = c.next) {
+                if (c instanceof PutCacheData && ((PutCacheData) c).putFlags == putFlags) {
+                    Property newProperty = ((PutCacheData) c).property;
                     if (newProperty == null) {
                         assert Flags.isSetExisting(putFlags);
                         return false;
@@ -1343,13 +1403,13 @@ abstract class DynamicObjectLibraryImpl {
         @ExplodeLoop
         protected boolean putDoubleImpl(DynamicObject object, Shape cachedShape, Object key, double value, long putFlags, Property oldProperty) {
             Shape oldShape = cachedShape;
-            PutCacheData start = cache;
-            if (start == PutCacheData.GENERIC) {
+            MutateCacheData start = cache;
+            if (start == MutateCacheData.GENERIC) {
                 return putUncached(object, key, value, putFlags);
             }
-            for (PutCacheData c = start; c != null; c = c.next) {
-                if (c.putFlags == putFlags) {
-                    Property newProperty = c.property;
+            for (MutateCacheData c = start; c != null; c = c.next) {
+                if (c instanceof PutCacheData && ((PutCacheData) c).putFlags == putFlags) {
+                    Property newProperty = ((PutCacheData) c).property;
                     if (newProperty == null) {
                         assert Flags.isSetExisting(putFlags);
                         return false;
@@ -1395,13 +1455,13 @@ abstract class DynamicObjectLibraryImpl {
         @ExplodeLoop
         protected boolean putBooleanImpl(DynamicObject object, Shape cachedShape, Object key, boolean value, long putFlags, Property oldProperty) {
             Shape oldShape = cachedShape;
-            PutCacheData start = cache;
-            if (start == PutCacheData.GENERIC) {
+            MutateCacheData start = cache;
+            if (start == MutateCacheData.GENERIC) {
                 return putUncached(object, key, value, putFlags);
             }
-            for (PutCacheData c = start; c != null; c = c.next) {
-                if (c.putFlags == putFlags) {
-                    Property newProperty = c.property;
+            for (MutateCacheData c = start; c != null; c = c.next) {
+                if (c instanceof PutCacheData && ((PutCacheData) c).putFlags == putFlags) {
+                    Property newProperty = ((PutCacheData) c).property;
                     if (newProperty == null) {
                         assert Flags.isSetExisting(putFlags);
                         return false;
@@ -1438,7 +1498,7 @@ abstract class DynamicObjectLibraryImpl {
             Lock lock = getLock();
             lock.lock();
             try {
-                PutCacheData tail = filterValid(this.cache);
+                MutateCacheData tail = filterValid(this.cache);
 
                 ShapeImpl oldShape = (ShapeImpl) cachedShape;
                 ShapeImpl newShape = getNewShape(object, value, putFlags, property, oldShape);
@@ -1459,7 +1519,7 @@ abstract class DynamicObjectLibraryImpl {
                 }
 
                 Assumption newShapeValid = getShapeValidAssumption(oldShape, newShape);
-                this.cache = new PutCacheData(putFlags, newShape, newProperty, newShapeValid, tail);
+                this.cache = new PutCacheData(putFlags, newShape, newShapeValid, newProperty, tail);
                 return this;
             } finally {
                 lock.unlock();
@@ -1500,6 +1560,70 @@ abstract class DynamicObjectLibraryImpl {
                 // set existing
                 assert location.canSet(value);
                 return oldShape;
+            }
+        }
+
+        @ExplodeLoop
+        protected boolean setPropertyFlagsImpl(DynamicObject object, Shape cachedShape, Object key, int propertyFlags, Property cachedProperty) {
+            Shape oldShape = cachedShape;
+            MutateCacheData start = cache;
+            if (start == MutateCacheData.GENERIC || !cachedShape.isValid()) {
+                return Generic.instance().setPropertyFlags(object, cachedShape, key, propertyFlags);
+            }
+            for (MutateCacheData c = start; c != null; c = c.next) {
+                if (!c.isValid()) {
+                    break;
+                } else if (c instanceof SetPropertyFlagsCacheData && ((SetPropertyFlagsCacheData) c).property.getFlags() == propertyFlags) {
+                    if (cachedProperty == null) {
+                        return false;
+                    }
+                    if (cachedProperty.getFlags() != propertyFlags) {
+                        Shape newShape = c.newShape;
+                        if (newShape != oldShape) {
+                            ACCESS.setShape(object, newShape);
+                            c.maybeUpdateShape(object);
+                        }
+                    }
+                    return true;
+                }
+            }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            KeyCacheNode impl = insertIntoSetPropertyFlagsCache(cachedShape, propertyFlags, cachedProperty);
+            return impl.setPropertyFlags(object, cachedShape, key, propertyFlags);
+        }
+
+        protected KeyCacheNode insertIntoSetPropertyFlagsCache(Shape cachedShape, int propertyFlags, Property cachedProperty) {
+            CompilerAsserts.neverPartOfCompilation();
+            if (!cachedShape.isValid()) {
+                return Generic.instance();
+            }
+            Lock lock = getLock();
+            lock.lock();
+            try {
+                MutateCacheData tail = filterValid(this.cache);
+
+                ShapeImpl oldShape = (ShapeImpl) cachedShape;
+                ShapeImpl newShape = changePropertyFlags(oldShape, (PropertyImpl) cachedProperty, propertyFlags);
+
+                if (!oldShape.isValid()) {
+                    // If shape was invalidated, other locations may have changed, too,
+                    // so we need to update the object's shape first.
+                    // Cache entries with an invalid cache entry directly go to the slow path.
+                    return Generic.instance();
+                }
+
+                Property newProperty;
+                if (newShape == oldShape) {
+                    newProperty = cachedProperty;
+                } else {
+                    newProperty = newShape.getProperty(cachedKey);
+                }
+
+                Assumption newShapeValid = getShapeValidAssumption(oldShape, newShape);
+                this.cache = new SetPropertyFlagsCacheData(newShape, newShapeValid, newProperty, tail);
+                return this;
+            } finally {
+                lock.unlock();
             }
         }
 
@@ -1546,19 +1670,15 @@ abstract class DynamicObjectLibraryImpl {
         protected abstract T withNext(T newNext);
     }
 
-    static class PutCacheData extends CacheData<PutCacheData> {
-        static final PutCacheData GENERIC = new PutCacheData(0, null, null, null, null);
+    static class MutateCacheData extends CacheData<MutateCacheData> {
+        static final MutateCacheData GENERIC = new MutateCacheData(null, null, null);
 
-        final long putFlags;
         final Shape newShape;
-        final Property property;
         final Assumption newShapeValidAssumption;
 
-        PutCacheData(long putFlags, Shape newShape, Property property, Assumption newShapeValidAssumption, PutCacheData next) {
+        MutateCacheData(MutateCacheData next, Shape newShape, Assumption newShapeValidAssumption) {
             super(next);
-            this.putFlags = putFlags;
             this.newShape = newShape;
-            this.property = property;
             this.newShapeValidAssumption = newShapeValidAssumption;
         }
 
@@ -1574,8 +1694,40 @@ abstract class DynamicObjectLibraryImpl {
         }
 
         @Override
-        protected PutCacheData withNext(PutCacheData newNext) {
-            return new PutCacheData(putFlags, newShape, property, newShapeValidAssumption, newNext);
+        protected MutateCacheData withNext(MutateCacheData newNext) {
+            return new MutateCacheData(next, newShape, newShapeValidAssumption);
+        }
+    }
+
+    static class PutCacheData extends MutateCacheData {
+
+        final long putFlags;
+        final Property property;
+
+        PutCacheData(long putFlags, Shape newShape, Assumption newShapeValidAssumption, Property property, MutateCacheData next) {
+            super(next, newShape, newShapeValidAssumption);
+            this.putFlags = putFlags;
+            this.property = property;
+        }
+
+        @Override
+        protected MutateCacheData withNext(MutateCacheData newNext) {
+            return new PutCacheData(putFlags, newShape, newShapeValidAssumption, property, newNext);
+        }
+    }
+
+    static class SetPropertyFlagsCacheData extends MutateCacheData {
+
+        final Property property;
+
+        SetPropertyFlagsCacheData(Shape newShape, Assumption newShapeValidAssumption, Property property, MutateCacheData next) {
+            super(next, newShape, newShapeValidAssumption);
+            this.property = property;
+        }
+
+        @Override
+        protected MutateCacheData withNext(MutateCacheData newNext) {
+            return new SetPropertyFlagsCacheData(newShape, newShapeValidAssumption, property, newNext);
         }
     }
 

@@ -729,6 +729,61 @@ public class DynamicObjectLibraryTest extends AbstractParametrizedLibraryTest {
         assertEquals(42, node.execute(o2));
     }
 
+    @Test
+    public void testPropertyAndShapeFlags() {
+        DynamicObject o1 = createEmpty();
+        fillObjectWithProperties(o1, false);
+        updateAllFlags(o1, 3);
+        DynamicObject o2 = createEmpty();
+        fillObjectWithProperties(o2, true);
+        DynamicObject o3 = createEmpty();
+        fillObjectWithProperties(o3, false);
+        DynamicObjectLibrary.getUncached().put(o1, "k13", false);
+        updateAllFlags(o2, 3);
+        updateAllFlags(o3, 3);
+        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, o1);
+        assertEquals(1, library.getOrDefault(o3, "k13", null));
+    }
+
+    private void fillObjectWithProperties(DynamicObject obj, boolean b) {
+        DynamicObjectLibrary library = createLibrary(DynamicObjectLibrary.class, obj);
+
+        for (int i = 0; i < 20; i++) {
+            Object value;
+            if (i % 2 == 0) {
+                if (i == 14) {
+                    value = "string";
+                } else {
+                    value = new ArrayList<>();
+                }
+            } else {
+                if (b && i == 13) {
+                    value = new ArrayList<>();
+                } else {
+                    value = 1;
+                }
+            }
+            int flags = (i == 17 || i == 13) ? 1 : 3;
+            library.putWithFlags(obj, "k" + i, value, flags);
+        }
+    }
+
+    private void updateAllFlags(DynamicObject obj, int flags) {
+        DynamicObjectLibrary propertyFlags = createLibrary(DynamicObjectLibrary.class, obj);
+
+        for (Property property : propertyFlags.getPropertyArray(obj)) {
+            int oldFlags = property.getFlags();
+            int newFlags = oldFlags | flags;
+            if (newFlags != oldFlags) {
+                Object key = property.getKey();
+                propertyFlags.setPropertyFlags(obj, key, newFlags);
+            }
+        }
+
+        DynamicObjectLibrary shapeFlags = createLibrary(DynamicObjectLibrary.class, obj);
+        shapeFlags.setShapeFlags(obj, flags);
+    }
+
     private static void uncachedPut(DynamicObject obj, Object key, Object value) {
         DynamicObjectLibrary.getUncached().put(obj, key, value);
     }
