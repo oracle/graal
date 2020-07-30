@@ -47,6 +47,7 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
 
     private final ArrayList<String> mainClassArgs = new ArrayList<>();
     private String mainClassName = null;
+    private LaunchMode launchMode = LaunchMode.LM_CLASS;
     private boolean pauseOnExit = false;
     private VersionAction versionAction = VersionAction.None;
     private final Map<String, String> espressoOptions = new HashMap<>();
@@ -84,6 +85,18 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
                     break;
                 case "--add-reads":
                     parseNumberedOption(arguments, ++i, arg, "java.AddReads", "module");
+                    break;
+                case "-m":
+                case "--module":
+                    /* This arguments specifies in which module we find the main class. */
+                    i += 1;
+                    if (i < arguments.size()) {
+                        mainClassName = arguments.get(i);
+                        espressoOptions.put("java.Module", mainClassName);
+                        launchMode = LaunchMode.LM_MODULE;
+                    } else {
+                        throw abort("Error: " + arg + " requires class path specification");
+                    }
                     break;
                 case "-jar":
                     i += 1;
@@ -242,15 +255,31 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
     private static String usage() {
         String nl = System.lineSeparator();
         // @formatter:off
-        return "Usage: java [-options] <mainclass> [args...]" + nl +
+        return "Usage: java [options] <mainclass> [args...]" + nl +
                "           (to execute a class)" + nl +
-               "   or  java [-options] -jar jarfile [args...]" + nl +
+               "   or  java [options] -jar <jarfile> [args...]" + nl +
                "           (to execute a jar file)" + nl +
-               "where options include:" + nl +
+               "   or  java [options] -m <module>[/<mainclass>] [args...]" + nl +
+               "       java [options] --module <module>[/<mainclass>] [args...]" + nl +
+               "           (to execute the main class in a module)" + nl +
+               "   or  java [options] <sourcefile> [args]" + nl +
+               "           (to execute a single source-file program)" + nl + nl +
+               " Arguments following the main class, source file, -jar <jarfile>," + nl +
+               " -m or --module <module>/<mainclass> are passed as the arguments to" + nl +
+               " main class." + nl + nl +
+               " where options include:" + nl +
                "    -cp <class search path of directories and zip/jar files>" + nl +
                "    -classpath <class search path of directories and zip/jar files>" + nl +
                "                  A " + File.pathSeparator + " separated list of directories, JAR archives," + nl +
                "                  and ZIP archives to search for class files." + nl +
+               "    -p <module path>" + nl +
+               "    --module-path <module path>..." + nl +
+               "                  A : separated list of directories, each directory" + nl +
+               "                  is a directory of modules." + nl +
+               "    --add-modules <module name>[,<module name>...]" + nl +
+               "                  root modules to resolve in addition to the initial module." + nl +
+               "                  <module name> can also be ALL-DEFAULT, ALL-SYSTEM," + nl +
+               "                  ALL-MODULE-PATH." + nl +
                "    -D<name>=<value>" + nl +
                "                  set a system property" + nl +
                "    -version      print product version and exit" + nl +
@@ -298,7 +327,7 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
         LM_UNKNOWN,
         LM_CLASS,
         LM_JAR,
-        // LM_MODULE,
+        LM_MODULE,
         // LM_SOURCE
     }
 
@@ -331,7 +360,7 @@ public class EspressoLauncher extends AbstractLanguageLauncher {
             try {
                 Value launcherHelper = context.eval("java", "sun.launcher.LauncherHelper");
                 Value mainKlass = launcherHelper //
-                                .invokeMember("checkAndLoadMain", true, LaunchMode.LM_CLASS.ordinal(), mainClassName) //
+                                .invokeMember("checkAndLoadMain", true, launchMode.ordinal(), mainClassName) //
                                 .getMember("static");
                 mainKlass.invokeMember("main", (Object) mainClassArgs.toArray(new String[0]));
                 if (pauseOnExit) {

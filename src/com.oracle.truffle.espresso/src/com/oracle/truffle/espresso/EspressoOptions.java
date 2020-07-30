@@ -93,6 +93,10 @@ public final class EspressoOptions {
                     category = OptionCategory.USER, stability = OptionStability.STABLE) //
     public static final OptionKey<List<Path>> Classpath = new OptionKey<>(Collections.emptyList(), PATHS_OPTION_TYPE);
 
+    @Option(help = "Specifies in which module the main class is located. Can also specify the main class name by appending it after a \\\"/\\\". Example: module/classname", //
+                    category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    public static final OptionKey<String> Module = new OptionKey<>("");
+
     @Option(help = "A \" + java.io.File.pathSeparator + \" separated list of directories to search for modules.", //
                     category = OptionCategory.USER, stability = OptionStability.STABLE) //
     public static final OptionKey<List<Path>> ModulePath = new OptionKey<>(Collections.emptyList(), PATHS_OPTION_TYPE);
