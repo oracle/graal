@@ -232,10 +232,7 @@ public final class LibGraalScope implements AutoCloseable {
             if (shared.detachAction == DetachAction.DETACH) {
                 detachThreadFrom(shared.isolateThread);
             } else {
-                boolean isolateDestroyed = LibGraal.detachCurrentThread(shared.detachAction == DetachAction.DETACH_RUNTIME_AND_RELEASE);
-                if (isolateDestroyed) {
-                    LibGraalIsolate.remove(shared.isolate);
-                }
+                LibGraal.detachCurrentThread(shared.detachAction == DetachAction.DETACH_RUNTIME_AND_RELEASE);
             }
         }
         currentScope.set(parent);
