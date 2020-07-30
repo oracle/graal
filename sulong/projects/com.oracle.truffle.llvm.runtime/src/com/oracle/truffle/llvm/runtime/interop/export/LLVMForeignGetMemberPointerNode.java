@@ -45,6 +45,16 @@ public abstract class LLVMForeignGetMemberPointerNode extends LLVMNode {
 
     public abstract LLVMPointer execute(LLVMInteropType type, LLVMPointer pointer, String ident) throws UnsupportedMessageException, UnknownIdentifierException;
 
+    @Specialization
+    static LLVMPointer doClazzGeneric(LLVMInteropType.Clazz clazz, LLVMPointer pointer, String ident, @Cached BranchProfile exception) throws UnknownIdentifierException {
+        LLVMInteropType.StructMember member = clazz.findMember(ident);
+        if (member == null) {
+            exception.enter();
+            throw UnknownIdentifierException.create(ident);
+        }
+        return pointer.increment(member.getStartOffset()).export(member.getType());
+    }
+
     @Specialization(guards = {"cachedMember != null", "cachedMember.getStruct() == struct", "cachedIdent.equals(ident)"})
     LLVMPointer doCached(@SuppressWarnings("unused") LLVMInteropType.Struct struct, LLVMPointer pointer, @SuppressWarnings("unused") String ident,
                     @Cached("ident") @SuppressWarnings("unused") String cachedIdent,
