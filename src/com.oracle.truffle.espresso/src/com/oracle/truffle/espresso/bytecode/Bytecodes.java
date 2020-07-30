@@ -596,8 +596,8 @@ public final class Bytecodes {
         def(GETFIELD            , "getfield"        , "bjj"  , -1, TRAP | FIELD_READ | RECEIVE_FOREIGN | PRODUCE_FOREIGN);
         def(PUTFIELD            , "putfield"        , "bjj"  , -1, TRAP | FIELD_WRITE | RECEIVE_FOREIGN);
 
-        def(INVOKEVIRTUAL       , "invokevirtual"   , "bjj"  , -1, TRAP | INVOKE | RECEIVE_FOREIGN | PRODUCE_FOREIGN);
-        def(INVOKESPECIAL       , "invokespecial"   , "bjj"  , -1, TRAP | INVOKE | RECEIVE_FOREIGN | PRODUCE_FOREIGN);
+        def(INVOKEVIRTUAL       , "invokevirtual"   , "bjj"  , -1, TRAP | INVOKE | PRODUCE_FOREIGN);
+        def(INVOKESPECIAL       , "invokespecial"   , "bjj"  , -1, TRAP | INVOKE | PRODUCE_FOREIGN);
         def(INVOKESTATIC        , "invokestatic"    , "bjj"  ,  0, TRAP | INVOKE | PRODUCE_FOREIGN);
         def(INVOKEINTERFACE     , "invokeinterface" , "bjja_", -1, TRAP | INVOKE | RECEIVE_FOREIGN | PRODUCE_FOREIGN);
         def(INVOKEDYNAMIC       , "invokedynamic"   , "bjjjj",  0, TRAP | INVOKE | PRODUCE_FOREIGN);
