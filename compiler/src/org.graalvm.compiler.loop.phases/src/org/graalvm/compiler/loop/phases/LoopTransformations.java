@@ -287,7 +287,8 @@ public abstract class LoopTransformations {
     // be updated to produce vector alignment if applicable.
 
     public static LoopBeginNode insertPrePostLoops(LoopEx loop) {
-        assert loop.loopBegin().loopExits().count() == 1 : "Can only partial unroll loops with 1 exit";
+        final int loopExitCount = loop.loopBegin().loopExits().count();
+        assert loopExitCount <= 1 : "Can only partial unroll loops with at most 1 exit, exits seen:" + loopExitCount;
         StructuredGraph graph = loop.loopBegin().graph();
         graph.getDebug().log("LoopTransformations.insertPrePostLoops %s", loop);
 
@@ -600,8 +601,7 @@ public abstract class LoopTransformations {
     }
 
     public static boolean isUnrollableLoop(LoopEx loop) {
-        if (!loop.isCounted() || !loop.counted().getCounter().isConstantStride() || !loop.loop().getChildren().isEmpty() || loop.loopBegin().loopEnds().count() != 1 ||
-                        loop.loopBegin().loopExits().count() != 1) {
+        if (!loop.isCounted() || !loop.counted().getCounter().isConstantStride() || !loop.loop().getChildren().isEmpty() || loop.loopBegin().loopEnds().count() != 1) {
             return false;
         }
         assert loop.counted().getDirection() != null;
