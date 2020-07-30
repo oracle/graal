@@ -133,8 +133,9 @@ public final class LibGraalScope implements AutoCloseable {
             long[] isolateBox = {0};
             boolean firstAttach = LibGraal.attachCurrentThread(false, isolateBox);
             long isolateAddress = isolateBox[0];
-            LibGraalIsolate isolate = LibGraalIsolate.forAddress(isolateAddress);
             long isolateThread = getIsolateThreadIn(isolateAddress);
+            long isolateId = getIsolateId(isolateThread);
+            LibGraalIsolate isolate = LibGraalIsolate.forIsolateId(isolateId);
             shared = new Shared(firstAttach ? detachAction : null, isolate, isolateThread);
         } else {
             shared = parent.shared;
@@ -168,7 +169,8 @@ public final class LibGraalScope implements AutoCloseable {
             } else {
                 alreadyAttached = true;
             }
-            LibGraalIsolate isolate = LibGraalIsolate.forAddress(isolateAddress);
+            long isolateId = getIsolateId(isolateThread);
+            LibGraalIsolate isolate = LibGraalIsolate.forIsolateId(isolateId);
             shared = new Shared(alreadyAttached ? null : DetachAction.DETACH, isolate, isolateThread);
         } else {
             shared = parent.shared;
@@ -201,6 +203,14 @@ public final class LibGraalScope implements AutoCloseable {
     // com.oracle.svm.graal.hotspot.libgraal.LibGraalEntryPoints.getIsolateThreadIn
     @SuppressWarnings("unused")
     static native long getIsolateThreadIn(long isolateAddress);
+
+    /**
+     * Gets an unique identifier for the current thread's isolate. The returned value is guaranteed
+     * to be unique for the first {@code 2^64 - 1} isolates in the process.
+     */
+    // Implementation:
+    // com.oracle.svm.graal.hotspot.libgraal.LibGraalEntryPoints.getIsolateId
+    private static native long getIsolateId(long isolateThreadAddress);
 
     /**
      * Gets the isolate associated with this scope.

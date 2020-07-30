@@ -39,16 +39,16 @@ import java.util.function.Supplier;
  */
 public final class LibGraalIsolate {
 
-    final long address;
+    private final long id;
 
     private static final Map<Long, LibGraalIsolate> isolates = new HashMap<>();
 
-    static synchronized LibGraalIsolate forAddress(long isolateAddress) {
-        return isolates.computeIfAbsent(isolateAddress, a -> new LibGraalIsolate(a));
+    static synchronized LibGraalIsolate forIsolateId(long isolateId) {
+        return isolates.computeIfAbsent(isolateId, a -> new LibGraalIsolate(a));
     }
 
-    private LibGraalIsolate(long address) {
-        this.address = address;
+    private LibGraalIsolate(long isolateId) {
+        this.id = isolateId;
     }
 
     /**
@@ -101,7 +101,7 @@ public final class LibGraalIsolate {
         while ((cleaner = (Cleaner) cleanersQueue.poll()) != null) {
             cleaners.remove(cleaner);
             if (!cleaner.clean()) {
-                new Exception(String.format("Error releasing handle %d in isolate 0x%x", cleaner.handle, address)).printStackTrace(System.out);
+                new Exception(String.format("Error releasing handle %d in isolate %d", cleaner.handle, id)).printStackTrace(System.out);
             }
         }
     }
@@ -131,13 +131,13 @@ public final class LibGraalIsolate {
      */
     static synchronized void remove(LibGraalIsolate isolate) {
         isolate.destroyed = true;
-        LibGraalIsolate removed = isolates.remove(isolate.address);
+        LibGraalIsolate removed = isolates.remove(isolate.id);
         assert removed == isolate : "isolate already removed or overwritten: " + isolate;
     }
 
     @Override
     public String toString() {
-        return String.format("%s[0x%x]", getClass().getSimpleName(), address);
+        return String.format("%s[%d]", getClass().getSimpleName(), id);
     }
 
     private boolean destroyed;
