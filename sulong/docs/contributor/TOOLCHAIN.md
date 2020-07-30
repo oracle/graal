@@ -93,7 +93,7 @@ need to be accessed via the `polyglot_*` API function:
 
 ```C
 #include <stdio.h>
-#include <polyglot.h>
+#include <graalvm/llvm/polyglot.h>
 #include <llvm/api/toolchain.h>
 
 #define BUFFER_SIZE 1024

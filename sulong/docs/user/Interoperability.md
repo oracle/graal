@@ -17,7 +17,7 @@ Let us define a C struct for points and implement allocation functions:
 
 ```c
 // cpart.c
-#include <polyglot.h>
+#include <graalvm/llvm/polyglot.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -105,13 +105,13 @@ Point<17.000000,42.000000>
 
 There are also lower level API functions for directly accessing polyglot values
 from C. See the [Polyglot Programming](https://www.graalvm.org/reference-manual/polyglot-programming/) reference
-and the documentation comments in `polyglot.h` for more details.
+and the documentation comments in `graalvm/llvm/polyglot.h` for more details.
 
 For example, this program allocates and accesses a Java array from C:
 
 ```c
 #include <stdio.h>
-#include <polyglot.h>
+#include <graalvm/llvm/polyglot.h>
 
 int main() {
     void *arrayType = polyglot_java_type("int[]");

@@ -553,7 +553,7 @@ suite = {
         "bin/<lib:sulong++>",
       ],
       "headers" : [
-        "include/polyglot.h",
+        "include/graalvm/llvm/polyglot.h",
         "include/llvm/api/toolchain.h",
       ],
       "buildDependencies" : [
@@ -1247,7 +1247,8 @@ suite = {
         ],
         "./include/" : [
           "dependency:com.oracle.truffle.llvm.libraries.bitcode/include/*"
-        ]
+        ],
+        "./include/polyglot.h" : "link:graalvm/llvm/polyglot.h" # for source compatibility
       },
       "dependencies" : [
         "com.oracle.truffle.llvm.libraries.bitcode",

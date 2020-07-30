@@ -29,7 +29,7 @@
  */
 
 #include <llvm/api/toolchain.h>
-#include <polyglot.h>
+#include <graalvm/llvm/polyglot.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -48,7 +48,7 @@ void *toolchain_api_paths(const void *name) {
 void *toolchain_api_identifier(void) {
     should_not_reach();
 }
-// polyglot.h
+// graalvm/llvm/polyglot.h
 void *polyglot_import(const char *name) {
     should_not_reach();
 }

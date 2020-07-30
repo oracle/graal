@@ -28,8 +28,8 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef POLYGLOT_H
-#define POLYGLOT_H
+#ifndef GRAALVM_LLVM_POLYGLOT_H
+#define GRAALVM_LLVM_POLYGLOT_H
 
 /**
  * \defgroup polyglot LLVM Polyglot API
@@ -49,7 +49,7 @@
  *
  * The functions in this module can be used to access polyglot values explicitly.
  *
- * @file polyglot.h
+ * @file graalvm/llvm/polyglot.h
  */
 
 #if defined(__cplusplus)
