@@ -413,8 +413,13 @@ final class LanguageAccessor extends Accessor {
 
             newEnv.initialized = env.initialized;
             newEnv.context = env.context;
-            env.valid = false;
-            return env.getSpi().patchContext(env.context, newEnv) ? newEnv : null;
+            boolean success = env.getSpi().patchContext(env.context, newEnv);
+            if (success) {
+                env.valid = false;
+                return newEnv;
+            } else {
+                return null;
+            }
         }
 
         @Override
