@@ -901,10 +901,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         if (engine.multiTier) {
             if (isValidLastTier()) {
                 String callsThresholdInFirstTier = String.format("%7d/%5d", getCallCount(), engine.callThresholdInFirstTier);
-                properties.put("LastTier", true);
+                properties.put("Tier", "Last");
                 properties.put("Calls/Thres", callsThresholdInFirstTier);
             } else {
-                properties.put("LastTier", false);
+                properties.put("Tier", "First");
                 properties.put("Calls/Thres", callsThresholdInInterpreter);
                 properties.put("CallsAndLoop/Thres", loopsThresholdInInterpreter);
             }
