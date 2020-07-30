@@ -68,7 +68,7 @@ public class CxxInheritedFieldsTest extends InteropTestBase {
         Value bObj = createB.execute();
 
         Assert.assertTrue(bObj.hasMember("a"));
-        Assert.assertEquals(2, bObj.getMember("a").asInt());
+        Assert.assertEquals(3, bObj.getMember("a").asInt());
     }
 
     @Test
