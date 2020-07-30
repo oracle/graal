@@ -459,8 +459,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         this.callAndLoopCount = intAndLoopCallCount == Integer.MAX_VALUE ? intAndLoopCallCount : ++intAndLoopCallCount;
 
         // Check if call target is hot enough to compile
-        if (intCallCount >= engine.firstTierCallThreshold //
-                        && intAndLoopCallCount >= engine.firstTierCallAndLoopThreshold //
+        if (intCallCount >= engine.callThresholdInInterpreter //
+                        && intAndLoopCallCount >= engine.callAndLoopThresholdInInterpreter //
                         && !compilationFailed //
                         && !isSubmittedForCompilation()) {
             return compile(!engine.multiTier);
@@ -486,7 +486,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     public final boolean firstTierCall() {
         // this is partially evaluated so the second part should fold to a constant.
         int firstTierCallThreshold = ++callCount;
-        if (firstTierCallThreshold >= engine.lastTierCallThreshold && !isSubmittedForCompilation() && !compilationFailed) {
+        if (firstTierCallThreshold >= engine.callThresholdInFirstTier && !isSubmittedForCompilation() && !compilationFailed) {
             return lastTierCompile(this);
         }
         return false;
@@ -896,10 +896,22 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     public final Map<String, Object> getDebugProperties(TruffleInlining inlining) {
         Map<String, Object> properties = new LinkedHashMap<>();
         GraalTruffleRuntimeListener.addASTSizeProperty(this, inlining, properties);
-        String callsThreshold = String.format("%7d/%5d", getCallCount(), engine.firstTierCallThreshold);
-        String loopsThreshold = String.format("%7d/%5d", getCallAndLoopCount(), engine.firstTierCallAndLoopThreshold);
-        properties.put("Calls/Thres", callsThreshold);
-        properties.put("CallsAndLoop/Thres", loopsThreshold);
+        String callsThresholdInInterpreter = String.format("%7d/%5d", getCallCount(), engine.callThresholdInInterpreter);
+        String loopsThresholdInInterpreter = String.format("%7d/%5d", getCallAndLoopCount(), engine.callAndLoopThresholdInInterpreter);
+        if (engine.multiTier) {
+            if (isValidLastTier()) {
+                String callsThresholdInFirstTier = String.format("%7d/%5d", getCallCount(), engine.callThresholdInFirstTier);
+                properties.put("Tier", "Last");
+                properties.put("Calls/Thres", callsThresholdInFirstTier);
+            } else {
+                properties.put("Tier", "First");
+                properties.put("Calls/Thres", callsThresholdInInterpreter);
+                properties.put("CallsAndLoop/Thres", loopsThresholdInInterpreter);
+            }
+        } else {
+            properties.put("Calls/Thres", callsThresholdInInterpreter);
+            properties.put("CallsAndLoop/Thres", loopsThresholdInInterpreter);
+        }
         return properties;
     }
 

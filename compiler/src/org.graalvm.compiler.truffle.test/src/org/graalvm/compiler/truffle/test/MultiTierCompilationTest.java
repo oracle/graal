@@ -58,7 +58,7 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
                 return "callee:first-tier";
             }
             if (CompilerDirectives.inCompilationRoot()) {
-                return "callee:compiled";
+                return "callee:second-tier-root";
             }
             return "callee:inlined";
         }
@@ -82,25 +82,111 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
         }
     }
 
+    private static class MultiTierWithFrequentCalleeRootNode extends RootNode {
+        @Child private DirectCallNode callNode;
+        private int frequency;
+
+        MultiTierWithFrequentCalleeRootNode(CallTarget target, int frequency) {
+            super(null);
+            this.callNode = Truffle.getRuntime().createDirectCallNode(target);
+            this.frequency = frequency;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            if (CompilerDirectives.inInterpreter()) {
+                return "root:interpreter";
+            }
+            boundary();
+            for (int i = 0; i < frequency; i++) {
+                callNode.call(frame.getArguments());
+            }
+            return callNode.call(frame.getArguments());
+        }
+    }
+
     @CompilerDirectives.TruffleBoundary
     private static void boundary() {
     }
 
     @SuppressWarnings("try")
     @Test
-    public void testCompilationTiers() {
+    public void testDefault() {
         setupContext(Context.newBuilder().allowExperimentalOptions(true).option("engine.CompileImmediately", "false").option("engine.BackgroundCompilation", "false").option("engine.MultiTier",
-                        "true").option("engine.Splitting", "false").build());
+                        "true").option("engine.FirstTierInlining", "false").option("engine.Splitting", "false").option("engine.FirstTierCompilationThreshold", "100").option(
+                                        "engine.CompilationThreshold", "1000").build());
 
         OptimizedCallTarget calleeTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(new MultiTierCalleeNode());
+        OptimizedCallTarget multiTierTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(new MultiTierRootNode(calleeTarget));
         final int firstTierCompilationThreshold = TruffleRuntimeOptions.getPolyglotOptionValue(calleeTarget.getOptionValues(), FirstTierCompilationThreshold);
         final int compilationThreshold = TruffleRuntimeOptions.getPolyglotOptionValue(calleeTarget.getOptionValues(), CompilationThreshold);
-        OptimizedCallTarget multiTierTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(new MultiTierRootNode(calleeTarget));
 
+        Assert.assertEquals("root:interpreter", multiTierTarget.call());
         for (int i = 0; i < firstTierCompilationThreshold; i++) {
             multiTierTarget.call();
         }
         Assert.assertEquals("callee:interpreter", multiTierTarget.call());
+        for (int i = 0; i < firstTierCompilationThreshold; i++) {
+            multiTierTarget.call();
+        }
+        Assert.assertEquals("callee:first-tier", multiTierTarget.call());
+        for (int i = 0; i < compilationThreshold; i++) {
+            multiTierTarget.call();
+        }
+        Assert.assertEquals("callee:inlined", multiTierTarget.call());
+    }
+
+    @SuppressWarnings("try")
+    @Test
+    public void testFirstTierInlining() {
+        setupContext(Context.newBuilder().allowExperimentalOptions(true).option("engine.CompileImmediately", "false").option("engine.BackgroundCompilation", "false").option("engine.MultiTier",
+                        "true").option("engine.FirstTierInlining", "true").option("engine.Splitting", "false").option("engine.FirstTierCompilationThreshold", "100").option(
+                                        "engine.CompilationThreshold", "1000").build());
+
+        OptimizedCallTarget calleeTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(new MultiTierCalleeNode());
+        OptimizedCallTarget multiTierTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(new MultiTierRootNode(calleeTarget));
+        final int firstTierCompilationThreshold = TruffleRuntimeOptions.getPolyglotOptionValue(calleeTarget.getOptionValues(), FirstTierCompilationThreshold);
+        final int compilationThreshold = TruffleRuntimeOptions.getPolyglotOptionValue(calleeTarget.getOptionValues(), CompilationThreshold);
+
+        Assert.assertEquals("root:interpreter", multiTierTarget.call());
+        for (int i = 0; i < firstTierCompilationThreshold; i++) {
+            multiTierTarget.call();
+        }
+        Assert.assertEquals("callee:first-tier", multiTierTarget.call());
+        for (int i = 0; i < compilationThreshold; i++) {
+            multiTierTarget.call();
+        }
+        Assert.assertEquals("callee:inlined", multiTierTarget.call());
+    }
+
+    @SuppressWarnings("try")
+    @Test
+    public void testWhenCalleeCompiledFirst() {
+        setupContext(Context.newBuilder().allowExperimentalOptions(true).option("engine.CompileImmediately", "false").option("engine.BackgroundCompilation", "false").option("engine.MultiTier",
+                        "true").option("engine.FirstTierInlining", "false").option("engine.Splitting", "false").option("engine.FirstTierCompilationThreshold", "100").option(
+                                        "engine.CompilationThreshold", "1000").build());
+
+        OptimizedCallTarget calleeTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(new MultiTierCalleeNode());
+        final int firstTierCompilationThreshold = TruffleRuntimeOptions.getPolyglotOptionValue(calleeTarget.getOptionValues(), FirstTierCompilationThreshold);
+        final int compilationThreshold = TruffleRuntimeOptions.getPolyglotOptionValue(calleeTarget.getOptionValues(), CompilationThreshold);
+        OptimizedCallTarget multiTierTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(new MultiTierWithFrequentCalleeRootNode(calleeTarget, firstTierCompilationThreshold));
+
+        Assert.assertEquals("root:interpreter", multiTierTarget.call());
+        for (int i = 0; i < firstTierCompilationThreshold - 2; i++) {
+            // Callee starts getting called only in the last iteration of this loop, after the root
+            // is first-tier compiled.
+            // The last root-node call triggers the callee's first-tier compilation.
+            // multiTierTarget.call();
+            Assert.assertEquals("iteration: " + i, "root:interpreter", multiTierTarget.call());
+        }
+        Assert.assertEquals("callee:first-tier", multiTierTarget.call());
+        Assert.assertEquals(10, compilationThreshold / firstTierCompilationThreshold);
+        // The following loop will trigger the callee's last-tier compilation.
+        for (int i = 0; i < compilationThreshold / firstTierCompilationThreshold; i++) {
+            multiTierTarget.call();
+        }
+        Assert.assertEquals("callee:second-tier-root", multiTierTarget.call());
+        // The following loop will trigger the root's last-tier compilation.
         for (int i = 0; i < compilationThreshold; i++) {
             multiTierTarget.call();
         }
