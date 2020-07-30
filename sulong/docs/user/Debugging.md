@@ -28,7 +28,7 @@ functions in LLVM bitcode files only when they are first being executed. To inst
 eagerly and be able to set breakpoints also in functions not yet executed you can use the option
 `lli --llvm.lazyParsing=false`.
 
-## Program-defined breakpoints using `__builtin_debugtrap()`
+### Program-defined breakpoints using `__builtin_debugtrap()`
 
 Program-defined breakpoints using the `__builtin_debugtrap` function enables you to mark locations in the program at which you explicitly want GraalVM to halt the program and switch to the debugger. The debugger automatically halts at each call
 to this function as if a breakpoint were set on the call. You can use this feature to quickly reach the
@@ -38,7 +38,7 @@ source-level statement being executed. When doing so, GraalVM will instead execu
 reaches a call to `__builtin_debugtrap()` before invoking the debugger. To enable this behaviour you need
 pass the arguments `lli --inspect.Suspend=false --inspect.WaitAttached=true`.
 
-## Locating source files
+### Locating source files
 
 Debug information in LLVM bitcode files contains absolute search paths to identify the
 location of source code. If the source didn't move, it should be found automatically.

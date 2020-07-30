@@ -40,5 +40,4 @@ to `llvm.libraryPath`. Entries are delimited by `:`.
 `--version:graalvm` prints GraalVM version information and exit.
 
 ### Expert and Diagnostic Options
-
 Use `--help` and `--help:<topic>` to get a full list of options.

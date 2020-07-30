@@ -23,5 +23,5 @@ recommended to compile the bitcode with optimization level `-O1`.
 
 Cross-language interoperability will only work when the bitcode is compiled
 with debug information enabled (`-g`), and the `-mem2reg` optimization is
-performed on the bitcode (compiled with at least `-O1`, or explicitly using the
+performed on the bitcode (compiled with at least `-O1` or explicitly using the
 `opt` tool).

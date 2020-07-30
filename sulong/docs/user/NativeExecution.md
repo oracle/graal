@@ -24,7 +24,6 @@ There are certain limitations and differences to the native execution depending 
 Consider them respectively.
 
 ### Limitations and Differences to Native Execution on Top of GraalVM Community
-
 The LLVM interpreter in GraalVM Community Edition environment allows executing LLVM bitcode within a
 multilingual context. Even though it aspires to be a generic LLVM runtime, there
 are certain fundamental and/or implementational limitations that users need to

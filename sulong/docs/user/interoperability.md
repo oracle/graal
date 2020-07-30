@@ -51,6 +51,7 @@ void printPoint(struct Point *p) {
 Make sure `LLVM_TOOLCHAIN` resolves to the GraalVM LLVM toolchain (`lli --print-toolchain-path`),
 then compile _cpart.c_ with (the polyglot-mock library defines the polyglot
 API functions used in the example):
+
 ```shell
 $ $LLVM_TOOLCHAIN/clang -shared cpart.c -lpolyglot-mock -o cpart.so
 ```
