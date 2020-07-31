@@ -883,8 +883,12 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 acceptsBuilder.string(name);
             }
         } else {
-            if (libraryExports.isFinalReceiver()) {
-                acceptsBuilder.string(receiverName, " instanceof ").type(exportReceiverType);
+            if (libraryExports.isFinalReceiver() || (!cached && libraryExports.getLibrary().isDynamicDispatch())) {
+                if (ElementUtils.isObject(exportReceiverType)) {
+                    acceptsBuilder.string("true");
+                } else {
+                    acceptsBuilder.string(receiverName, " instanceof ").type(exportReceiverType);
+                }
             } else {
                 TypeMirror receiverType = libraryExports.getReceiverType();
                 TypeMirror receiverClassType = new CodeTypeMirror.DeclaredCodeTypeMirror(context.getTypeElement(Class.class),
