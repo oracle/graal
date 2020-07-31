@@ -524,7 +524,7 @@ public class SymbolTable {
         context.linker().resolveFunctionExport(module, functionIndex, exportName);
     }
 
-    Map<String, WasmFunction> exportedFunctions() {
+    public Map<String, WasmFunction> exportedFunctions() {
         return exportedFunctions;
     }
 
@@ -537,7 +537,7 @@ public class SymbolTable {
         return function;
     }
 
-    List<WasmFunction> importedFunctions() {
+    public List<WasmFunction> importedFunctions() {
         return importedFunctions;
     }
 
@@ -592,7 +592,7 @@ public class SymbolTable {
         globalAddresses[globalIndex] = address;
     }
 
-    LinkedHashMap<Integer, ImportDescriptor> importedGlobals() {
+    public LinkedHashMap<Integer, ImportDescriptor> importedGlobals() {
         return importedGlobals;
     }
 
@@ -631,7 +631,7 @@ public class SymbolTable {
         return (globalTypes[index] & GLOBAL_INITIALIZED_BIT) != 0;
     }
 
-    Map<String, Integer> exportedGlobals() {
+    public Map<String, Integer> exportedGlobals() {
         return exportedGlobals;
     }
 
@@ -714,7 +714,7 @@ public class SymbolTable {
         return tableExists() ? 1 : 0;
     }
 
-    ImportDescriptor importedTable() {
+    public ImportDescriptor importedTable() {
         return importedTableDescriptor;
     }
 
@@ -722,7 +722,7 @@ public class SymbolTable {
         importedTableDescriptor = descriptor;
     }
 
-    String exportedTable() {
+    public String exportedTable() {
         return exportedTable;
     }
 
@@ -780,11 +780,11 @@ public class SymbolTable {
         return memoryExists() ? 1 : 0;
     }
 
-    ImportDescriptor importedMemory() {
+    public ImportDescriptor importedMemory() {
         return importedMemoryDescriptor;
     }
 
-    String exportedMemory() {
+    public String exportedMemory() {
         return exportedMemory;
     }
 }
