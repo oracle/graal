@@ -176,17 +176,20 @@ class BuildStackTraceVisitor extends JavaStackFrameVisitor {
 
 class GetCallerClassVisitor extends JavaStackFrameVisitor {
     private int depth;
-    private boolean ignoreNext;
+    private boolean ignoreFirst;
     Class<?> result;
 
     GetCallerClassVisitor(int depth, boolean ignoreFirst) {
-        this.ignoreNext = ignoreFirst;
+        this.ignoreFirst = ignoreFirst;
         this.depth = depth;
+        assert depth >= 0;
     }
 
     @Override
     public boolean visitFrame(FrameInfoQueryResult frameInfo) {
-        if (ignoreNext) {
+        assert depth >= 0;
+
+        if (ignoreFirst) {
             /*
              * Skip the frame that contained the invocation of getCallerFrame() and continue the
              * stack walk. Note that this could be a frame related to reflection, but we still must
@@ -196,7 +199,7 @@ class GetCallerClassVisitor extends JavaStackFrameVisitor {
              * does not count as as frame (handled by the shouldShowFrame check below because this
              * path was already taken for the constructor frame).
              */
-            ignoreNext = false;
+            ignoreFirst = false;
             return true;
 
         } else if (!StackTraceUtils.shouldShowFrame(frameInfo, true, false, false)) {
@@ -210,14 +213,12 @@ class GetCallerClassVisitor extends JavaStackFrameVisitor {
             /* Skip the number of frames specified by "depth". */
             depth--;
             return true;
-        }
 
-        if (depth == 0) {
-            /* Found the caller frame. */
+        } else {
+            /* Found the caller frame, remember it and end the stack walk. */
             result = frameInfo.getSourceClass();
+            return false;
         }
-        /* We found the caller or the depth is invalid, stop. */
-        return false;
     }
 }
 
