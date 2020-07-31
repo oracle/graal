@@ -884,7 +884,11 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
             }
         } else {
             if (libraryExports.isFinalReceiver() || (!cached && libraryExports.getLibrary().isDynamicDispatch())) {
-                acceptsBuilder.string(receiverName, " instanceof ").type(exportReceiverType);
+                if (ElementUtils.isObject(exportReceiverType)) {
+                    acceptsBuilder.string("true");
+                } else {
+                    acceptsBuilder.string(receiverName, " instanceof ").type(exportReceiverType);
+                }
             } else {
                 TypeMirror receiverType = libraryExports.getReceiverType();
                 TypeMirror receiverClassType = new CodeTypeMirror.DeclaredCodeTypeMirror(context.getTypeElement(Class.class),
