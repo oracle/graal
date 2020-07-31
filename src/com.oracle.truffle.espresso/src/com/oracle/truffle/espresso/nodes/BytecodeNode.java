@@ -293,6 +293,7 @@ import com.oracle.truffle.espresso.nodes.quick.InstanceOfNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.QuickenedPutFieldNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.QuickenedGetFieldNode;
+import com.oracle.truffle.espresso.nodes.quick.interop.ArrayLengthNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InlinedGetterNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InlinedSetterNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeDynamicCallSiteNode;
@@ -1027,7 +1028,15 @@ public final class BytecodeNode extends EspressoMethodNode {
                     case NEW: putObject(frame, top, InterpreterToVM.newObject(resolveType(curOpcode, bs.readCPI(curBCI)), true)); break;
                     case NEWARRAY: putObject(frame, top - 1, InterpreterToVM.allocatePrimitiveArray(bs.readByte(curBCI), peekInt(frame, top - 1), getMeta())); break;
                     case ANEWARRAY: putObject(frame, top - 1, allocateArray(resolveType(curOpcode, bs.readCPI(curBCI)), peekInt(frame, top - 1))); break;
-                    case ARRAYLENGTH: putInt(frame, top - 1, InterpreterToVM.arrayLength(nullCheck(peekAndReleaseObject(frame, top - 1)))); break;
+                    case ARRAYLENGTH:
+                        StaticObject array = nullCheck(peekObject(frame, top - 1));
+                        if (noForeignObjects.isValid() || !array.isForeignObject()) {
+                            releaseObject(frame, top - 1);
+                            putInt(frame, top - 1, InterpreterToVM.arrayLength(array));
+                        } else {
+                            quickenArrayLength(frame, top, curBCI);
+                        }
+                        break;
 
                     case ATHROW: throw Meta.throwException(nullCheck(peekAndReleaseObject(frame, top - 1)));
 
@@ -1570,6 +1579,19 @@ public final class BytecodeNode extends EspressoMethodNode {
             }
         }
         return putField.execute(frame) - Bytecodes.stackEffectOf(opcode);
+    }
+
+    private void quickenArrayLength(final VirtualFrame frame, int top, int curBCI) {
+        CompilerDirectives.transferToInterpreter();
+        QuickNode arrayLengthNode;
+        synchronized (this) {
+            if (bs.currentBC(curBCI) == QUICK) {
+                arrayLengthNode = nodes[curBCI];
+            } else {
+                arrayLengthNode = injectQuick(curBCI, ArrayLengthNodeGen.create(top, curBCI));
+            }
+        }
+        arrayLengthNode.execute(frame);
     }
 
     private QuickNode dispatchQuickened(int top, int curBCI, int opcode, int statementIndex, Method resolutionSeed, boolean allowFieldAccessInlining) {
