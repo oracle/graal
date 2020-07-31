@@ -60,7 +60,7 @@ extern "C" {
  * reference counted, the resulting handle will need to be released separately for each time it was
  * created.
  */
-void *create_handle(void *managedObject);
+static void *create_handle(void *managedObject);
 
 /**
  * Resolve a handle back to the managed pointer.
@@ -69,14 +69,14 @@ void *create_handle(void *managedObject);
  * {@link create_deref_handle}. This function will return the managedObject pointer that was passed
  * to the handle creation function.
  */
-void *resolve_handle(void *nativeHandle);
+static void *resolve_handle(void *nativeHandle);
 
 /**
  * Release a handle allocated by {@link create_handle} or {@link create_deref_handle}.
  *
  * Using the handle after it has been reselased is undefined behaviour.
  */
-void release_handle(void *nativeHandle);
+static void release_handle(void *nativeHandle);
 
 /**
  * Create a special handle that can be dereferenced by managed code.
@@ -93,7 +93,7 @@ void release_handle(void *nativeHandle);
  *
  * @see create_handle
  */
-void *create_deref_handle(void *managedObject);
+static void *create_deref_handle(void *managedObject);
 
 /**
  * Check whether a pointer is a valid handle.
@@ -101,7 +101,7 @@ void *create_deref_handle(void *managedObject);
  * @return true for handles created with {@link create_handle} or {@link create_deref_handle},
  *         false for all other values
  */
-bool is_handle(void *nativeHandle);
+static bool is_handle(void *nativeHandle);
 
 /**
  * Check whether a pointer points to the special memory area reserved for handles.
@@ -119,7 +119,50 @@ bool is_handle(void *nativeHandle);
  * It can *not* be used to distinguish between handles and random other values, and it can also not
  * be used to distinguish between valid and invalid/released handles. Use {@link is_handle} for that.
  */
-bool points_to_handle_space(void *nativeHandle);
+static bool points_to_handle_space(void *nativeHandle);
+
+/*
+ * Everything below here is implementation details, and can change without notice even in minor releases.
+ */
+
+__attribute__((noinline)) void *_graalvm_llvm_create_handle(void *managedObject);
+__attribute__((noinline)) void *_graalvm_llvm_resolve_handle(void *nativeHandle);
+__attribute__((noinline)) void _graalvm_llvm_release_handle(void *nativeHandle);
+__attribute__((noinline)) void *_graalvm_llvm_create_deref_handle(void *managedObject);
+__attribute__((noinline)) bool _graalvm_llvm_is_handle(void *nativeHandle);
+__attribute__((noinline)) bool _graalvm_llvm_points_to_handle_space(void *nativeHandle);
+
+
+__attribute__((always_inline))
+static inline void *create_handle(void *managedObject) {
+    return _graalvm_llvm_create_handle(managedObject);
+}
+
+__attribute__((always_inline))
+static inline void *resolve_handle(void *nativeHandle) {
+    return _graalvm_llvm_resolve_handle(nativeHandle);
+}
+
+__attribute__((always_inline))
+static inline void release_handle(void *nativeHandle) {
+    _graalvm_llvm_release_handle(nativeHandle);
+}
+
+__attribute__((always_inline))
+static inline void *create_deref_handle(void *managedObject) {
+    return _graalvm_llvm_create_deref_handle(managedObject);
+}
+
+__attribute__((always_inline))
+static inline bool is_handle(void *nativeHandle) {
+    return _graalvm_llvm_is_handle(nativeHandle);
+}
+
+__attribute__((always_inline))
+static inline bool points_to_handle_space(void *nativeHandle) {
+    return _graalvm_llvm_points_to_handle_space(nativeHandle);
+}
+
 
 #if defined(__cplusplus)
 }

@@ -40,22 +40,22 @@ static void should_not_reach() {
 }
 
 // graalvm/llvm/handles.h
-void *create_handle(void *managedObject) {
+void *_graalvm_llvm_create_handle(void *managedObject) {
     should_not_reach();
 }
-void *resolve_handle(void *nativeHandle) {
+void *_graalvm_llvm_resolve_handle(void *nativeHandle) {
     should_not_reach();
 }
-void release_handle(void *nativeHandle) {
+void _graalvm_llvm_release_handle(void *nativeHandle) {
     should_not_reach();
 }
-void *create_deref_handle(void *managedObject) {
+void *_graalvm_llvm_create_deref_handle(void *managedObject) {
     should_not_reach();
 }
-bool is_handle(void *nativeHandle) {
+bool _graalvm_llvm_is_handle(void *nativeHandle) {
     return false;
 }
-bool points_to_handle_space(void *nativeHandle) {
+bool _graalvm_llvm_points_to_handle_space(void *nativeHandle) {
     return false;
 }
 // graalvm/llvm/toolchain-api.h

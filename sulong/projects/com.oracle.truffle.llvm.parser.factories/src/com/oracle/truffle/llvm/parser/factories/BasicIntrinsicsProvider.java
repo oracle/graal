@@ -457,12 +457,12 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
 
     private static void registerManagedAllocationIntrinsics() {
         // handle functions (first name is official, second name is deprecated and for compatibility
-        add("create_handle", "truffle_handle_for_managed", (args, nodeFactory) -> GraalVMCreateHandleNodeGen.create(args.get(1)));
-        add("resolve_handle", "truffle_managed_from_handle", (args, nodeFactory) -> GraalVMResolveHandleNodeGen.create(args.get(1)));
-        add("release_handle", "truffle_release_handle", (args, nodeFactory) -> GraalVMReleaseHandleNodeGen.create(args.get(1)));
-        add("create_deref_handle", "truffle_deref_handle_for_managed", (args, nodeFactory) -> GraalVMCreateDerefHandleNodeGen.create(args.get(1)));
-        add("is_handle", "truffle_is_handle_to_managed", (args, nodeFactory) -> GraalVMIsHandleNodeGen.create(args.get(1)));
-        add("points_to_handle_space", (args, nodeFactory) -> GraalVMPointsToHandleSpaceNodeGen.create(args.get(1)));
+        add("_graalvm_llvm_create_handle", "truffle_handle_for_managed", (args, nodeFactory) -> GraalVMCreateHandleNodeGen.create(args.get(1)));
+        add("_graalvm_llvm_resolve_handle", "truffle_managed_from_handle", (args, nodeFactory) -> GraalVMResolveHandleNodeGen.create(args.get(1)));
+        add("_graalvm_llvm_release_handle", "truffle_release_handle", (args, nodeFactory) -> GraalVMReleaseHandleNodeGen.create(args.get(1)));
+        add("_graalvm_llvm_create_deref_handle", "truffle_deref_handle_for_managed", (args, nodeFactory) -> GraalVMCreateDerefHandleNodeGen.create(args.get(1)));
+        add("_graalvm_llvm_is_handle", "truffle_is_handle_to_managed", (args, nodeFactory) -> GraalVMIsHandleNodeGen.create(args.get(1)));
+        add("_graalvm_llvm_points_to_handle_space", (args, nodeFactory) -> GraalVMPointsToHandleSpaceNodeGen.create(args.get(1)));
 
         // deprecated
         add("truffle_cannot_be_handle", (args, nodeFactory) -> LLVMTruffleCannotBeHandle.create(args.get(1)));
