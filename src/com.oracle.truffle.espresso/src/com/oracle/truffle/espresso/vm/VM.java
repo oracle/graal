@@ -992,8 +992,8 @@ public final class VM extends NativeEnv implements ContextAccess {
         setProperty.invokeWithConversions(properties, "java.ext.dirs", Utils.stringify(props.extDirs()));
 
         // Modules properties.
-        setProperty.invokeWithConversions(properties, "jdk.module.main", getModuleMain(options));
-        setProperty.invokeWithConversions(properties, "jdk.module.path", Utils.stringify(options.get(EspressoOptions.ModulePath)));
+        setPropertyIfExists(properties, setProperty, "jdk.module.main", getModuleMain(options));
+        setPropertyIfExists(properties, setProperty, "jdk.module.path", Utils.stringify(options.get(EspressoOptions.ModulePath)));
         setNumberedProperty(setProperty, properties, "jdk.module.addreads", options.get(EspressoOptions.AddReads));
         setNumberedProperty(setProperty, properties, "jdk.module.addexports", options.get(EspressoOptions.AddExports));
         setNumberedProperty(setProperty, properties, "jdk.module.addopens", options.get(EspressoOptions.AddOpens));
@@ -1009,6 +1009,12 @@ public final class VM extends NativeEnv implements ContextAccess {
         setProperty.invokeWithConversions(properties, "java.vm.info", EspressoLanguage.VM_INFO);
 
         return properties;
+    }
+
+    public static void setPropertyIfExists(@Host(Properties.class) StaticObject properties, Method setProperty, String propertyName, String value) {
+        if (value != null && value.length() > 0) {
+            setProperty.invokeWithConversions(properties, propertyName, value);
+        }
     }
 
     private static String getModuleMain(OptionValues options) {
@@ -2486,7 +2492,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         try (EntryTable.BlockLock block = packageTable.write()) {
             for (String str : packages) {
                 // Extract the package symbols. Also checks for duplicates.
-                if (!loaderIsBootOrPlatform && str.startsWith("java/")) {
+                if (!loaderIsBootOrPlatform && (str.equals("java") || str.startsWith("java/"))) {
                     // Only modules defined to either the boot or platform class loader, can define
                     // a "java/" package.
                     profiler.profile(14);
