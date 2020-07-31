@@ -1047,7 +1047,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                         throw EspressoError.unimplemented(Bytecodes.nameOf(curOpcode) + " not supported.");
 
                     case INVOKEDYNAMIC: top += quickenInvokeDynamic(frame, top, curBCI, curOpcode); break;
-                    case QUICK: top += nodes[bs.readCPI(curBCI)].execute(frame); break;
+                    case QUICK: top += nodes[curBCI].execute(frame); break;
 
                     default:
                         CompilerDirectives.transferToInterpreter();
@@ -1149,7 +1149,7 @@ public final class BytecodeNode extends EspressoMethodNode {
             }
             // This check includes newly rewritten QUICK nodes, not just curOpcode == quick
             if (noForeignObjects.isValid() && bs.currentBC(curBCI) == QUICK) {
-                QuickNode quickNode = nodes[bs.readCPI(curBCI)];
+                QuickNode quickNode = nodes[curBCI];
                 if (quickNode.producedForeignObject(frame)) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     noForeignObjects.invalidate();
@@ -1444,28 +1444,24 @@ public final class BytecodeNode extends EspressoMethodNode {
 
     // region Bytecode quickening
 
-    private char addQuickNode(QuickNode node) {
+    private void addQuickNode(QuickNode node, int curBCI) {
         CompilerAsserts.neverPartOfCompilation();
         Objects.requireNonNull(node);
-        nodes = Arrays.copyOf(nodes, nodes.length + 1);
-        int nodeIndex = nodes.length - 1; // latest empty slot
-        nodes[nodeIndex] = insert(node);
-        return (char) nodeIndex;
+        if (nodes == QuickNode.EMPTY_ARRAY) {
+            nodes = new QuickNode[getMethod().getCode().length];
+        }
+        nodes[curBCI] = insert(node);
     }
 
-    private void patchBci(int bci, byte opcode, char nodeIndex) {
+    private void patchBci(int bci, byte opcode) {
         CompilerAsserts.neverPartOfCompilation();
         assert Bytecodes.isQuickened(opcode);
         byte[] code = getMethodVersion().getCodeAttribute().getCode();
 
         int oldBC = code[bci];
-        assert Bytecodes.lengthOf(oldBC) >= 3 : "cannot patch slim bc";
         code[bci] = opcode;
-        code[bci + 1] = (byte) ((nodeIndex >> 8) & 0xFF);
-        code[bci + 2] = (byte) ((nodeIndex) & 0xFF);
-
         // NOP-padding.
-        for (int i = 3; i < Bytecodes.lengthOf(oldBC); ++i) {
+        for (int i = 1; i < Bytecodes.lengthOf(oldBC); ++i) {
             code[bci + i] = (byte) NOP;
         }
     }
@@ -1473,8 +1469,8 @@ public final class BytecodeNode extends EspressoMethodNode {
     private QuickNode injectQuick(int curBCI, QuickNode quick) {
         QUICKENED_BYTECODES.inc();
         CompilerAsserts.neverPartOfCompilation();
-        int nodeIndex = addQuickNode(quick);
-        patchBci(curBCI, (byte) QUICK, (char) nodeIndex);
+        addQuickNode(quick, curBCI);
+        patchBci(curBCI, (byte) Bytecodes.QUICK);
         return quick;
     }
 
