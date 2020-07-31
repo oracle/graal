@@ -1,15 +1,29 @@
-Name                                                  Instances          Executions     Executions per instance 
-  SpecializationStatisticTestNodeGen.Uncached         1 (33%)             1 (9%)         Min=         1 Avg=        1.00 Max          1  MaxNode N/A 
-    s0                                                  0 (0%)              0 (0%)         Min=         0 Avg=        0.00 Max          0  MaxNode  -  
-    s1                                                  0 (0%)              0 (0%)         Min=         0 Avg=        0.00 Max          0  MaxNode  -  
-    s2                                                  0 (0%)              0 (0%)         Min=         0 Avg=        0.00 Max          0  MaxNode  -  
-    s3 <String>                                         1 (100%)            1 (100%)       Min=         1 Avg=        1.00 Max          1  MaxNode N/A 
-Name                                                  Instances          Executions     Executions per instance 
-  SpecializationStatisticTestNodeGen                  2 (67%)            10 (91%)        Min=         3 Avg=        5.00 Max          7  MaxNode testLangFile0.file~1:0 
-    s0 <int>                                            1 (50%)             3 (30%)        Min=         3 Avg=        3.00 Max          3  MaxNode testLangFile0.file~1:0 
-    s1 <int>                                            1 (50%)             1 (10%)        Min=         1 Avg=        1.00 Max          1  MaxNode testLangFile0.file~1:0 
-    s2 <String>                                         2 (100%)            4 (40%)        Min=         1 Avg=        2.00 Max          3  MaxNode testLangFile1.file~1:0 
-    s3                                                  1 (50%)             2 (20%)        Min=         2 Avg=        2.00 Max          2  MaxNode testLangFile0.file~1:0 
-      <String>                                            1 (100%)            1 (50%)        Min=         1 Avg=        1.00 Max          1  MaxNode testLangFile0.file~1:0 
-      <StringBuilder>                                     1 (100%)            1 (50%)        Min=         1 Avg=        1.00 Max          1  MaxNode testLangFile0.file~1:0 
+ ----------------------------------------------------------------------------------------------------------------------------------------------
+| Name                                                Instances          Executions     Executions per instance 
+ ----------------------------------------------------------------------------------------------------------------------------------------------
+| SpecializationStatisticTestNodeGen.Uncached         1 (33%)             1 (9%)         Min=         1 Avg=        1.00 Max=          1  MaxNode= N/A 
+|   s0                                                  0 (0%)              0 (0%)         Min=         0 Avg=        0.00 Max=          0  MaxNode=  -  
+|   s1                                                  0 (0%)              0 (0%)         Min=         0 Avg=        0.00 Max=          0  MaxNode=  -  
+|   s2                                                  0 (0%)              0 (0%)         Min=         0 Avg=        0.00 Max=          0  MaxNode=  -  
+|   s3 <String>                                         1 (100%)            1 (100%)       Min=         1 Avg=        1.00 Max=          1  MaxNode= N/A 
+|   -------------------------------------------------------------------------------------------------------------------------------------------
+|   [s3]                                                1 (100%)            1 (100%)       Min=         1 Avg=        1.00 Max=          1  MaxNode= N/A 
+ ----------------------------------------------------------------------------------------------------------------------------------------------
+| Name                                                Instances          Executions     Executions per instance 
+ ----------------------------------------------------------------------------------------------------------------------------------------------
+| SpecializationStatisticTestNodeGen                  2 (67%)            10 (91%)        Min=         3 Avg=        5.00 Max=          7  MaxNode= testLangFile0.file~1:0 
+|   s0 <int>                                            1 (50%)             3 (30%)        Min=         3 Avg=        3.00 Max=          3  MaxNode= testLangFile0.file~1:0 
+|   s1 <int>                                            1 (50%)             1 (10%)        Min=         1 Avg=        1.00 Max=          1  MaxNode= testLangFile0.file~1:0 
+|   s2 <String>                                         2 (100%)            4 (40%)        Min=         1 Avg=        2.00 Max=          3  MaxNode= testLangFile1.file~1:0 
+|   s3                                                  1 (50%)             2 (20%)        Min=         2 Avg=        2.00 Max=          2  MaxNode= testLangFile0.file~1:0 
+|     <String>                                            1 (100%)            1 (50%)        Min=         1 Avg=        1.00 Max=          1  MaxNode= testLangFile0.file~1:0 
+|     <StringBuilder>                                     1 (100%)            1 (50%)        Min=         1 Avg=        1.00 Max=          1  MaxNode= testLangFile0.file~1:0 
+|   -------------------------------------------------------------------------------------------------------------------------------------------
+|   [s0, s1, s2, s3]                                    1 (50%)             7 (70%)        Min=         7 Avg=        7.00 Max=          7  MaxNode= testLangFile0.file~1:0 
+|     s0                                                  1 (100%)            3 (43%)        Min=         3 Avg=        3.00 Max=          3  MaxNode= testLangFile0.file~1:0 
+|     s1                                                  1 (100%)            1 (14%)        Min=         1 Avg=        1.00 Max=          1  MaxNode= testLangFile0.file~1:0 
+|     s2                                                  1 (100%)            1 (14%)        Min=         1 Avg=        1.00 Max=          1  MaxNode= testLangFile0.file~1:0 
+|     s3                                                  1 (100%)            2 (29%)        Min=         2 Avg=        2.00 Max=          2  MaxNode= testLangFile0.file~1:0 
+|   [s2]                                                1 (50%)             3 (30%)        Min=         3 Avg=        3.00 Max=          3  MaxNode= testLangFile1.file~1:0 
+ ----------------------------------------------------------------------------------------------------------------------------------------------
 

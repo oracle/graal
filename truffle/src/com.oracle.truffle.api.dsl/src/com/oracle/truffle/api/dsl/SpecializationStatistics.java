@@ -52,14 +52,17 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.IntSummaryStatistics;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -141,6 +144,7 @@ public final class SpecializationStatistics {
         }
         width = Math.min(width, 80);
 
+        NodeClassHistogram.printLine(writer, " ", width);
         for (NodeClassHistogram histogram : histograms) {
             if (histogram.getNodeStat().getSum() == 0) {
                 continue;
@@ -327,6 +331,8 @@ public final class SpecializationStatistics {
         private final IntStatistics nodeStat;
         private final IntStatistics[] specializationStat;
         private final List<Map<TypeCombination, IntStatistics>> typeCombinationStat;
+        private final Map<BitSet, IntStatistics[]> specializationCombinationStat;
+        private final Map<BitSet, IntStatistics> specializationCombinationSumStat;
 
         @SuppressWarnings("unchecked")
         NodeClassHistogram(Class<?> nodeClass, String[] specializationNames) {
@@ -339,6 +345,8 @@ public final class SpecializationStatistics {
                 typeCombinationStat.add(new LinkedHashMap<>());
                 specializationStat[i] = new IntStatistics();
             }
+            this.specializationCombinationStat = new HashMap<>();
+            this.specializationCombinationSumStat = new HashMap<>();
         }
 
         Class<?> getNodeClass() {
@@ -356,6 +364,8 @@ public final class SpecializationStatistics {
         void accept(EnabledNodeStatistics statistics) {
             int nodeSum = 0;
             SourceSection sourceSection = statistics.getSourceSection();
+            BitSet enabledBitSet = new BitSet();
+
             for (int i = 0; i < statistics.specializations.length; i++) {
                 TypeCombination combination = statistics.specializations[i];
                 int specializationSum = 0;
@@ -368,9 +378,34 @@ public final class SpecializationStatistics {
                 }
                 nodeSum += specializationSum;
                 if (specializationSum != 0) {
+                    enabledBitSet.set(i);
                     specializationStat[i].accept(specializationSum, sourceSection);
                 }
             }
+            if (nodeSum == 0) {
+                // not actually executed
+                return;
+            }
+            IntStatistics combinationSumStat = specializationCombinationSumStat.computeIfAbsent(enabledBitSet, (b) -> new IntStatistics());
+            IntStatistics[] combinationSpecializations = specializationCombinationStat.computeIfAbsent(enabledBitSet, (b) -> new IntStatistics[specializationNames.length]);
+            int combinationSum = 0;
+            for (int i = 0; i < statistics.specializations.length; i++) {
+                TypeCombination combination = statistics.specializations[i];
+                int specializationSum = 0;
+                while (combination != null) {
+                    specializationSum += combination.executionCount;
+                    combination = combination.next;
+                }
+                if (specializationSum != 0) {
+                    combinationSum += specializationSum;
+                    if (combinationSpecializations[i] == null) {
+                        combinationSpecializations[i] = new IntStatistics();
+                    }
+                    combinationSpecializations[i].accept(specializationSum, sourceSection);
+                }
+            }
+            combinationSumStat.accept(combinationSum, sourceSection);
+
             if (nodeSum != 0) {
                 nodeStat.accept(nodeSum, sourceSection);
             }
@@ -394,25 +429,76 @@ public final class SpecializationStatistics {
             if (nodeStat.getCount() == 0) {
                 return;
             }
-
-            stream.printf("%-" + width + "s           Instances          Executions     Executions per instance %n", "Name");
+            stream.printf("| %-" + width + "s         Instances          Executions     Executions per instance %n", "Name");
+            printLine(stream, " ", width);
 
             String className = getDisplayName();
 
-            printStats(stream, "  ", className, width, nodeStat, parentCount, parentSum);
+            printStats(stream, "| ", className, width, nodeStat, parentCount, parentSum);
             for (int i = 0; i < specializationNames.length; i++) {
                 int size = typeCombinationStat.get(i).size();
                 String specializationLabel = specializationNames[i];
                 if (size == 1) {
                     specializationLabel += " " + typeCombinationStat.get(i).keySet().iterator().next().getDisplayName();
                 }
-                printStats(stream, "    ", specializationLabel, width, specializationStat[i], nodeStat.getCount(), nodeStat.getSum());
+                printStats(stream, "|   ", specializationLabel, width, specializationStat[i], nodeStat.getCount(), nodeStat.getSum());
                 if (size > 1) {
                     for (Entry<TypeCombination, IntStatistics> entry : typeCombinationStat.get(i).entrySet()) {
-                        printStats(stream, "      ", entry.getKey().getDisplayName(), width, entry.getValue(), specializationStat[i].getCount(), specializationStat[i].getSum());
+                        printStats(stream, "|     ", entry.getKey().getDisplayName(), width, entry.getValue(), specializationStat[i].getCount(), specializationStat[i].getSum());
                     }
                 }
             }
+
+            printLine(stream, "|   ", width);
+
+            Set<BitSet> printedCombinations = new HashSet<>();
+            for (int specialization = 0; specialization < specializationNames.length; specialization++) {
+                for (BitSet specializations : specializationCombinationStat.keySet()) {
+                    if (printedCombinations.contains(specializations)) {
+                        continue;
+                    }
+                    // trying to order them by index. First print all combinations with the first
+                    // specialization then all with the second and so on.
+                    if (!specializations.get(specialization)) {
+                        continue;
+                    }
+                    IntStatistics statistics = specializationCombinationSumStat.get(specializations);
+                    IntStatistics[] specializationStatistics = specializationCombinationStat.get(specializations);
+                    int specializationIndex = 0;
+                    StringBuilder label = new StringBuilder("[");
+                    String sep = "";
+                    int bits = 0;
+                    while ((specializationIndex = specializations.nextSetBit(specializationIndex)) != -1) {
+                        label.append(sep);
+                        label.append(specializationNames[specializationIndex]);
+                        sep = ", ";
+                        specializationIndex++; // exclude previous bit.
+                        bits++;
+                    }
+                    label.append("]");
+                    printStats(stream, "|   ", label.toString(), width, statistics, nodeStat.getCount(), nodeStat.getSum());
+
+                    if (bits > 1) {
+                        specializationIndex = 0;
+                        while ((specializationIndex = specializations.nextSetBit(specializationIndex)) != -1) {
+                            printStats(stream, "|     ", specializationNames[specializationIndex], width, specializationStatistics[specializationIndex], statistics.getCount(), statistics.getSum());
+                            specializationIndex++; // exclude previous bit.
+                        }
+                    }
+
+                    printedCombinations.add(specializations);
+                }
+            }
+
+            printLine(stream, " ", width);
+        }
+
+        static void printLine(PrintWriter stream, String indent, int width) {
+            stream.print(indent);
+            for (int i = 0; i < width + 100 - indent.length(); i++) {
+                stream.print('-');
+            }
+            stream.print(System.lineSeparator());
         }
 
         private String getDisplayName() {
@@ -443,7 +529,7 @@ public final class SpecializationStatistics {
         private static void printStats(PrintWriter stream, String indent, String label, int labelWidth, IntStatistics nodeStats, long parentCount, long parentSum) {
             String countPercent = String.format("(%.0f%%)", ((double) nodeStats.getCount() / (double) parentCount) * 100);
             String sumPercent = String.format("(%.0f%%)", ((double) nodeStats.getSum() / (double) parentSum) * 100);
-            stream.printf("%s%-" + labelWidth + "s  %8d %-6s %12d %-6s       Min=%10d Avg=%12.2f Max %10d  MaxNode %s %n",
+            stream.printf("%s%-" + labelWidth + "s  %8d %-6s %12d %-6s       Min=%10d Avg=%12.2f Max= %10d  MaxNode= %s %n",
                             indent, label,
                             nodeStats.getCount(), countPercent,
                             nodeStats.getSum(), sumPercent,

@@ -267,29 +267,43 @@ com.oracle.truffle.js.nodes.control.WhileNode$WhileDoRepeatingNode.executeRepeat
 Note that specialization statistics require a recompilation of the interpeter. 
 See [`SpecializationStatistics.md`](SpecializationHistogram.md) on a tutorial on how to use it.
 
-
 ```
-Name                                                                           Instances          Executions     Executions per instance
-  JSWriteCurrentFrameSlotNodeGen                                             240 (16%)     122796654 (16%)        Min=         1 Avg=   511652.73 Max   15963816  MaxNode octane-richards.js~309-311:9907-9997
-    doBoolean <boolean>                                                          5 (2%)              5 (0%)         Min=         1 Avg=        1.00 Max          1  MaxNode <internal>~1:0
-    doInt <int>                                                                 53 (22%)      12722053 (10%)        Min=         1 Avg=   240038.74 Max    3473712  MaxNode octane-richards.js~244:8257-8271
-    doSafeIntegerInt                                                             0 (0%)              0 (0%)         Min=         0 Avg=        0.00 Max          0  MaxNode  -
-    doSafeInteger                                                                0 (0%)              0 (0%)         Min=         0 Avg=        0.00 Max          0  MaxNode  -
-    doLong                                                                       0 (0%)              0 (0%)         Min=         0 Avg=        0.00 Max          0  MaxNode  -
-    doDouble <double>                                                           10 (4%)           1544 (0%)         Min=         1 Avg=      154.40 Max       1496  MaxNode harness.js~553:20394-20421
-    doObject                                                                   174 (73%)     110073052 (90%)        Min=         1 Avg=   632603.75 Max   15963816  MaxNode octane-richards.js~309-311:9907-9997
-      <String>                                                                    12 (7%)             39 (0%)         Min=         1 Avg=        3.25 Max         14  MaxNode <internal>~1:0
-      <DynamicObjectBasic>                                                       156 (90%)     110072988 (100%)       Min=         1 Avg=   705596.08 Max   15963816  MaxNode octane-richards.js~309-311:9907-9997
-      <Dead>                                                                       4 (2%)              4 (0%)         Min=         1 Avg=        1.00 Max          1  MaxNode harness.js~465-496:17157-18504
-      <Boolean>                                                                    4 (2%)             10 (0%)         Min=         1 Avg=        2.50 Max          7  MaxNode <internal>~1:0
-      <Integer>                                                                    2 (1%)             11 (0%)         Min=         3 Avg=        5.50 Max          8  MaxNode <internal>~1:0
-Name                                                                           Instances          Executions     Executions per instance
-  JSReadCurrentFrameSlotNodeGen                                              561 (38%)     372361607 (48%)        Min=         1 Avg=   663746.18 Max   15965312  MaxNode octane-richards.js~190:6689-6692
-    doBoolean <no-args>                                                          4 (1%)              4 (0%)         Min=         1 Avg=        1.00 Max          1  MaxNode harness.js~51:2515-2522
-    doInt <no-args>                                                             93 (17%)      18317171 (5%)         Min=         1 Avg=   196958.83 Max    3473712  MaxNode octane-richards.js~244:8257-8273
-    doDouble <no-args>                                                          12 (2%)           1587 (0%)         Min=         1 Avg=      132.25 Max       1535  MaxNode harness.js~551:20338-20344
-    doObject <no-args>                                                         454 (81%)     354042845 (95%)        Min=         1 Avg=   779830.06 Max   15965312  MaxNode octane-richards.js~190:6689-6692
-    doSafeInteger                                                                0 (0%)              0 (0%)         Min=         0 Avg=        0.00 Max          0  MaxNode  -
+ -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+| Name                                                                         Instances          Executions     Executions per instance
+ -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+| JSWriteCurrentFrameSlotNodeGen                                               8 (17%)            18 (12%)        Min=         1 Avg=        2.25 Max=          5  MaxNode= test.js~5-7:76-128
+|   doBoolean <boolean>                                                          1 (13%)             1 (6%)         Min=         1 Avg=        1.00 Max=          1  MaxNode= test.js~4:52-71
+|   doInt <int>                                                                  1 (13%)             1 (6%)         Min=         1 Avg=        1.00 Max=          1  MaxNode= test.js~5-7:76-128
+|   doSafeIntegerInt                                                             0 (0%)              0 (0%)         Min=         0 Avg=        0.00 Max=          0  MaxNode=  -
+|   doSafeInteger                                                                0 (0%)              0 (0%)         Min=         0 Avg=        0.00 Max=          0  MaxNode=  -
+|   doLong                                                                       0 (0%)              0 (0%)         Min=         0 Avg=        0.00 Max=          0  MaxNode=  -
+|   doDouble                                                                     0 (0%)              0 (0%)         Min=         0 Avg=        0.00 Max=          0  MaxNode=  -
+|   doObject                                                                     7 (88%)            16 (89%)        Min=         1 Avg=        2.29 Max=          5  MaxNode= test.js~5-7:76-128
+|     <DynamicObjectBasic>                                                         6 (86%)            12 (75%)        Min=         1 Avg=        2.00 Max=          5  MaxNode= test.js~5-7:76-128
+|     <IteratorRecord>                                                             1 (14%)             1 (6%)         Min=         1 Avg=        1.00 Max=          1  MaxNode= test.js~1-8:16-130
+|     <String>                                                                     2 (29%)             2 (13%)        Min=         1 Avg=        1.00 Max=          1  MaxNode= test.js~5-7:76-128
+|     <Integer>                                                                    1 (14%)             1 (6%)         Min=         1 Avg=        1.00 Max=          1  MaxNode= test.js~6:105-123
+|   --------------------------------------------------------------------------------------------------------------------------------------------------------------------
+|   [doBoolean]                                                                  1 (13%)             1 (6%)         Min=         1 Avg=        1.00 Max=          1  MaxNode= test.js~4:52-71
+|   [doInt, doObject]                                                            1 (13%)             4 (22%)        Min=         4 Avg=        4.00 Max=          4  MaxNode= test.js~5-7:76-128
+|     doInt                                                                        1 (100%)            1 (25%)        Min=         1 Avg=        1.00 Max=          1  MaxNode= test.js~5-7:76-128
+|     doObject                                                                     1 (100%)            3 (75%)        Min=         3 Avg=        3.00 Max=          3  MaxNode= test.js~5-7:76-128
+|   [doObject]                                                                   6 (75%)            13 (72%)        Min=         1 Avg=        2.17 Max=          5  MaxNode= test.js~5-7:76-128
+ -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+| Name                                                                         Instances          Executions     Executions per instance
+ -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+| JSReadCurrentFrameSlotNodeGen                                                8 (17%)            25 (17%)        Min=         1 Avg=        3.13 Max=          5  MaxNode= test.js~5-7:76-128
+|   doBoolean                                                                    0 (0%)              0 (0%)         Min=         0 Avg=        0.00 Max=          0  MaxNode=  -
+|   doInt <no-args>                                                              1 (13%)             1 (4%)         Min=         1 Avg=        1.00 Max=          1  MaxNode= test.js~5:81-87
+|   doDouble                                                                     0 (0%)              0 (0%)         Min=         0 Avg=        0.00 Max=          0  MaxNode=  -
+|   doObject <no-args>                                                           8 (100%)           24 (96%)        Min=         1 Avg=        3.00 Max=          5  MaxNode= test.js~5-7:76-128
+|   doSafeInteger                                                                0 (0%)              0 (0%)         Min=         0 Avg=        0.00 Max=          0  MaxNode=  -
+|   --------------------------------------------------------------------------------------------------------------------------------------------------------------------
+|   [doInt, doObject]                                                            1 (13%)             4 (16%)        Min=         4 Avg=        4.00 Max=          4  MaxNode= test.js~5:81-87
+|     doInt                                                                        1 (100%)            1 (25%)        Min=         1 Avg=        1.00 Max=          1  MaxNode= test.js~5:81-87
+|     doObject                                                                     1 (100%)            3 (75%)        Min=         3 Avg=        3.00 Max=          3  MaxNode= test.js~5:81-87
+|   [doObject]                                                                   7 (88%)            21 (84%)        Min=         1 Avg=        3.00 Max=          5  MaxNode= test.js~5-7:76-128
+ -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ```
 
 
