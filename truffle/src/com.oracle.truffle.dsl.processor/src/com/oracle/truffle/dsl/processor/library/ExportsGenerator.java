@@ -883,7 +883,7 @@ public class ExportsGenerator extends CodeTypeElementFactory<ExportsData> {
                 acceptsBuilder.string(name);
             }
         } else {
-            if (libraryExports.isFinalReceiver()) {
+            if (libraryExports.isFinalReceiver() || (!cached && libraryExports.getLibrary().isDynamicDispatch())) {
                 acceptsBuilder.string(receiverName, " instanceof ").type(exportReceiverType);
             } else {
                 TypeMirror receiverType = libraryExports.getReceiverType();
