@@ -73,7 +73,7 @@ public final class LanguageRegistrationProcessor extends AbstractRegistrationPro
 
     // also update list in PolyglotEngineImpl#RESERVED_IDS
     private static final Set<String> RESERVED_IDS = new HashSet<>(
-                    Arrays.asList("host", "graal", "truffle", "language", "instrument", "graalvm", "context", "polyglot", "compiler", "vm",
+                    Arrays.asList("host", "graal", "truffle", "language", "instrument", "graalvm", "context", "polyglot", "compiler", "vm", "file",
                                     "engine", "log", "image-build-time"));
 
     @SuppressWarnings("deprecation")

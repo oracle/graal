@@ -160,7 +160,7 @@ final class PolyglotLoggers {
                     handler = new SharedFileHandler(absolutePath);
                     fileHandlers.put(absolutePath, handler);
                 } catch (IOException ioe) {
-                    throw PolyglotEngineException.illegalArgument("The log file " + path + " is not writable. " + ioe.getMessage());
+                    throw PolyglotEngineException.illegalArgument("Cannot open log file " + path + " for writing, IO error: " + (ioe.getMessage() != null ? ioe.getMessage() : null));
                 }
             }
             return handler.retain();
