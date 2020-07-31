@@ -35,6 +35,7 @@ import com.oracle.svm.configure.json.JsonPrintable;
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.core.util.UserError;
 
+import com.oracle.svm.core.util.json.JSONParserException;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaUtil;
 

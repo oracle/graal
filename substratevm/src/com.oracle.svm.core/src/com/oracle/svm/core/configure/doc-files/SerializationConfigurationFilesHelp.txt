@@ -1,0 +1,19 @@
+One or several (comma-separated) paths to JSON files that specify lists of serialization configurations that define Java SerializationConstructorAccessor classes.
+The structure is an array of elements specifying the parameters of method
+
+    sun.reflect.MethodAccessorGenerator.generateSerializationConstructor(Class<?> declaringClass,
+                                     Class<?>[] parameterTypes,
+                                     Class<?>[] checkedExceptions,
+                                     int modifiers,
+                                     Class<?> targetConstructorClass)
+
+Example:
+
+    [
+        {"name":"java.lang.ArrayList",
+         "parameterTypes":[],
+         "checkedExceptions":[],
+         "modifiers":"4",
+         "targetConstructorClass":"AbstractList"
+        }
+    ]

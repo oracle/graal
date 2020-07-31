@@ -212,6 +212,21 @@ public final class JNIFunctionPointerTypes {
         CCharPointer invoke(JNIEnvironment env, JNIObjectHandle byteArray, CCharPointer elements, int mode);
     }
 
+    public interface CallObjectMethod0FunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JNIObjectHandle invoke(JNIEnvironment env, JNIObjectHandle objOrClass, JNIMethodId methodID);
+    }
+
+    public interface CallIntMethodFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        int invoke(JNIEnvironment env, JNIObjectHandle objOrClass, JNIMethodId methodID);
+    }
+
+    public interface GetObjectFieldFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JNIObjectHandle invoke(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId);
+    }
+
     private JNIFunctionPointerTypes() {
     }
 }

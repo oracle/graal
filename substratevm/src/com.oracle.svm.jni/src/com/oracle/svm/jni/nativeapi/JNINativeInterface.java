@@ -52,6 +52,7 @@ import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.GetFieldIDFunctionPo
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.GetMethodIDFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.GetObjectArrayElementFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.GetObjectClassFunctionPointer;
+import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.GetObjectFieldFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.GetStringUTFCharsFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.GetSuperclassFunctionPointer;
 import com.oracle.svm.jni.nativeapi.JNIFunctionPointerTypes.IsAssignableFromFunctionPointer;
@@ -264,7 +265,7 @@ public interface JNINativeInterface extends PointerBase {
     void setGetMethodID(GetMethodIDFunctionPointer p);
 
     @CField
-    CFunctionPointer getCallObjectMethod();
+    <T extends CFunctionPointer> T getCallObjectMethod();
 
     @CField
     void setCallObjectMethod(CFunctionPointer p);
@@ -354,7 +355,7 @@ public interface JNINativeInterface extends PointerBase {
     void setCallShortMethodA(CFunctionPointer p);
 
     @CField
-    CFunctionPointer getCallIntMethod();
+    <T extends JNIFunctionPointerTypes.CallIntMethodFunctionPointer> T getCallIntMethod();
 
     @CField
     void setCallIntMethod(CFunctionPointer p);
@@ -630,10 +631,10 @@ public interface JNINativeInterface extends PointerBase {
     void setGetFieldID(GetFieldIDFunctionPointer p);
 
     @CField
-    CFunctionPointer getGetObjectField();
+    GetObjectFieldFunctionPointer getGetObjectField();
 
     @CField
-    void setGetObjectField(CFunctionPointer p);
+    void setGetObjectField(GetObjectFieldFunctionPointer p);
 
     @CField
     CFunctionPointer getGetBooleanField();

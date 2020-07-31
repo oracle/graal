@@ -71,4 +71,11 @@ public abstract class ConfigurationParser {
         }
         throw new JSONParserException("Invalid boolean value '" + value + "' for element '" + propertyName + "'");
     }
+
+    protected static int asInteger(Object value, String propertyName) {
+        if (value instanceof Integer) {
+            return (int) value;
+        }
+        throw new JSONParserException("Invalid int value '" + value + "' for element '" + propertyName + "'");
+    }
 }

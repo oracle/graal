@@ -24,18 +24,18 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.io.Closeable;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.concurrent.locks.ReentrantLock;
-
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.hub.DynamicHub;
+
+import java.io.Closeable;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.concurrent.locks.ReentrantLock;
 
 @TargetClass(java.io.FileDescriptor.class)
 final class Target_java_io_FileDescriptor {
@@ -47,30 +47,27 @@ final class Target_java_io_FileDescriptor {
 @TargetClass(java.io.ObjectInputStream.class)
 @SuppressWarnings({"static-method"})
 final class Target_java_io_ObjectInputStream {
-
+    /**
+     * Private method latestUserDefinedLoader is called by
+     * java.io.ObjectInputStream.resolveProxyClass and java.io.ObjectInputStream.resolveClass. The
+     * returned classloader is eventually used in Class.forName and Proxy.getProxyClass0 which are
+     * substituted by Substrate VM and the classloader is ignored. Therefore, this substitution is
+     * safe.
+     *
+     * @return The only classloader in native image
+     */
     @Substitute
-    private Object readObject() {
-        throw VMError.unsupportedFeature("ObjectInputStream.readObject()");
-    }
-
-    @Substitute
-    private Object readUnshared() {
-        throw VMError.unsupportedFeature("ObjectInputStream.readUnshared()");
+    private static ClassLoader latestUserDefinedLoader() {
+        return Target_java_io_ObjectInputStream.class.getClassLoader();
     }
 }
 
-@TargetClass(java.io.ObjectOutputStream.class)
-@SuppressWarnings({"static-method", "unused"})
-final class Target_java_io_ObjectOutputStream {
+@TargetClass(java.io.ObjectStreamClass.class)
+final class Target_java_io_ObjectStreamClass {
 
     @Substitute
-    private void writeObject(Object obj) {
-        throw VMError.unsupportedFeature("ObjectOutputStream.writeObject()");
-    }
-
-    @Substitute
-    private void writeUnshared(Object obj) {
-        throw VMError.unsupportedFeature("ObjectOutputStream.writeUnshared()");
+    private static boolean hasStaticInitializer(Class<?> cl) {
+        return DynamicHub.fromClass(cl).getClassInitializationInfo().isHasOriginalInitializer();
     }
 }
 

@@ -24,15 +24,29 @@
  */
 package com.oracle.svm.core.jdk;
 
-import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.serialize.SerializationRegistry;
+import org.graalvm.nativeimage.ImageSingletons;
 
-@Delete
 @TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "AccessorGenerator")
 public final class Target_jdk_internal_reflect_AccessorGenerator {
 }
 
-@Delete
 @TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "MethodAccessorGenerator")
 final class Target_jdk_internal_reflect_MethodAccessorGenerator {
+    @Substitute
+    public Target_SerializationConstructorAccessorImpl generateSerializationConstructor(Class<?> declaringClass,
+                    Class<?>[] parameterTypes,
+                    Class<?>[] checkedExceptions,
+                    int modifiers,
+                    Class<?> targetConstructorClass) {
+        SerializationRegistry serializationRegistry = ImageSingletons.lookup(SerializationRegistry.class);
+        return (Target_SerializationConstructorAccessorImpl) serializationRegistry.getSerializationConstructorAccessorClass(declaringClass, parameterTypes,
+                        checkedExceptions, modifiers, targetConstructorClass);
+    }
+}
+
+@TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "SerializationConstructorAccessorImpl")
+final class Target_SerializationConstructorAccessorImpl {
 }

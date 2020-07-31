@@ -53,6 +53,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
+import com.oracle.svm.agent.restrict.SerializationAccessVerifier;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.nativeimage.ProcessProperties;
 
@@ -92,6 +93,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
     private static final String oHReflectionConfigurationResources = oH(ConfigurationFiles.Options.ReflectionConfigurationResources);
     private static final String oHDynamicProxyConfigurationResources = oH(ConfigurationFiles.Options.DynamicProxyConfigurationResources);
     private static final String oHResourceConfigurationResources = oH(ConfigurationFiles.Options.ResourceConfigurationResources);
+    private static final String oHSerializationConfigurationResources = oH(ConfigurationFiles.Options.SerializationConfigurationResources);
     private static final String oHConfigurationResourceRoots = oH(ConfigurationFiles.Options.ConfigurationResourceRoots);
 
     private static <T> String oH(OptionKey<T> option) {
@@ -256,7 +258,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                 // They should use the same filter sets, however.
                 AccessAdvisor advisor = createAccessAdvisor(builtinHeuristicFilter, callerFilter, accessFilter);
                 TraceProcessor processor = new TraceProcessor(advisor, mergeConfigs.loadJniConfig(handler), mergeConfigs.loadReflectConfig(handler),
-                                mergeConfigs.loadProxyConfig(handler), mergeConfigs.loadResourceConfig(handler));
+                                mergeConfigs.loadProxyConfig(handler), mergeConfigs.loadResourceConfig(handler), mergeConfigs.loadSerializationConfig(handler));
                 traceWriter = new TraceProcessorWriterAdapter(processor);
             } catch (Throwable t) {
                 System.err.println(MESSAGE_PREFIX + t);
@@ -298,7 +300,11 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
             if (!restrictConfigs.getResourceConfigPaths().isEmpty()) {
                 resourceVerifier = new ResourceAccessVerifier(restrictConfigs.loadResourceConfig(ConfigurationSet.FAIL_ON_EXCEPTION), accessAdvisor);
             }
-            BreakpointInterceptor.onLoad(jvmti, callbacks, traceWriter, verifier, proxyVerifier, resourceVerifier, this, experimentalClassLoaderSupport);
+            SerializationAccessVerifier serializationAccessVerifier = null;
+            if (!restrictConfigs.getSerializationConfigPaths().isEmpty()) {
+                serializationAccessVerifier = new SerializationAccessVerifier(restrictConfigs.loadSerializationConfig(ConfigurationSet.FAIL_ON_EXCEPTION), accessAdvisor);
+            }
+            BreakpointInterceptor.onLoad(jvmti, callbacks, traceWriter, verifier, proxyVerifier, resourceVerifier, serializationAccessVerifier, this, experimentalClassLoaderSupport);
         } catch (Throwable t) {
             System.err.println(MESSAGE_PREFIX + t);
             return 3;
@@ -439,12 +445,15 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                         addURI.add(restrictConfigs.getProxyConfigPaths(), cpEntry, optionParts[1]);
                     } else if (oHResourceConfigurationResources.equals(argName)) {
                         addURI.add(restrictConfigs.getResourceConfigPaths(), cpEntry, optionParts[1]);
+                    } else if (oHSerializationConfigurationResources.equals(argName)) {
+                        addURI.add(restrictConfigs.getSerializationConfigPaths(), cpEntry, optionParts[1]);
                     } else if (oHConfigurationResourceRoots.equals(argName)) {
                         String resourceLocation = optionParts[1];
                         addURI.add(restrictConfigs.getJniConfigPaths(), cpEntry, resourceLocation + "/" + ConfigurationFiles.JNI_NAME);
                         addURI.add(restrictConfigs.getReflectConfigPaths(), cpEntry, resourceLocation + "/" + ConfigurationFiles.REFLECTION_NAME);
                         addURI.add(restrictConfigs.getProxyConfigPaths(), cpEntry, resourceLocation + "/" + ConfigurationFiles.DYNAMIC_PROXY_NAME);
                         addURI.add(restrictConfigs.getResourceConfigPaths(), cpEntry, resourceLocation + "/" + ConfigurationFiles.RESOURCES_NAME);
+                        addURI.add(restrictConfigs.getSerializationConfigPaths(), cpEntry, resourceLocation + "/" + ConfigurationFiles.SERIALIZATION_NAME);
                     }
                 }
             });
@@ -557,6 +566,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
             allConfigFiles.put(ConfigurationFiles.JNI_NAME, p.getJniConfiguration());
             allConfigFiles.put(ConfigurationFiles.DYNAMIC_PROXY_NAME, p.getProxyConfiguration());
             allConfigFiles.put(ConfigurationFiles.RESOURCES_NAME, p.getResourceConfiguration());
+            allConfigFiles.put(ConfigurationFiles.SERIALIZATION_NAME, p.getSerializationConfiguration());
 
             for (Map.Entry<String, JsonPrintable> configFile : allConfigFiles.entrySet()) {
                 Path tempPath = tempDirectory.resolve(configFile.getKey());
