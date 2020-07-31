@@ -187,6 +187,7 @@ public class NativeImage {
     final String oHDynamicProxyConfigurationFiles = oH(ConfigurationFiles.Options.DynamicProxyConfigurationFiles);
     final String oHResourceConfigurationFiles = oH(ConfigurationFiles.Options.ResourceConfigurationFiles);
     final String oHJNIConfigurationFiles = oH(ConfigurationFiles.Options.JNIConfigurationFiles);
+    final String oHSerializationConfigurationFiles = oH(ConfigurationFiles.Options.SerializationConfigurationFiles);
 
     final String oHInspectServerContentPath = oH(PointstoOptions.InspectServerContentPath);
     final String oHDeadlockWatchdogInterval = oH(SubstrateOptions.DeadlockWatchdogInterval);
@@ -863,7 +864,8 @@ public class NativeImage {
         JniConfiguration(ConfigurationFiles.Options.JNIConfigurationResources, ConfigurationFiles.JNI_NAME),
         ReflectConfiguration(ConfigurationFiles.Options.ReflectionConfigurationResources, ConfigurationFiles.REFLECTION_NAME),
         ResourceConfiguration(ConfigurationFiles.Options.ResourceConfigurationResources, ConfigurationFiles.RESOURCES_NAME),
-        ProxyConfiguration(ConfigurationFiles.Options.DynamicProxyConfigurationResources, ConfigurationFiles.DYNAMIC_PROXY_NAME);
+        ProxyConfiguration(ConfigurationFiles.Options.DynamicProxyConfigurationResources, ConfigurationFiles.DYNAMIC_PROXY_NAME),
+        SerializationConfiguration(ConfigurationFiles.Options.SerializationConfigurationResources, ConfigurationFiles.SERIALIZATION_NAME);
 
         final OptionKey<?> optionKey;
         final String fileName;
@@ -1095,6 +1097,7 @@ public class NativeImage {
         consolidateListArgs(imageBuilderArgs, oHJNIConfigurationFiles, ",", canonicalizedPathStr);
         consolidateListArgs(imageBuilderArgs, oHTraceClassInitialization, ",", Function.identity());
         consolidateListArgs(imageBuilderArgs, oHTraceObjectInstantiation, ",", Function.identity());
+        consolidateListArgs(imageBuilderArgs, oHSerializationConfigurationFiles, ",", canonicalizedPathStr);
 
         imageBuilderJavaArgs.addAll(getAgentArguments());
 

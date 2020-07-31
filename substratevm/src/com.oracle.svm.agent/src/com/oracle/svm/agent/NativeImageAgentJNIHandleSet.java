@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.agent;
 
+import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
+
+import com.oracle.svm.jni.nativeapi.JNIFieldId;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
@@ -33,6 +36,7 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
 
     final JNIObjectHandle javaLangClass;
     final JNIMethodId javaLangClassForName3;
+    final JNIMethodId javaUtilEnumerationNextElement;
     final JNIMethodId javaLangClassGetDeclaredMethod;
     final JNIMethodId javaLangClassGetDeclaredConstructor;
     final JNIMethodId javaLangClassGetDeclaredField;
@@ -53,6 +57,15 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
     final JNIMethodId javaLangInvokeMemberNameIsField;
 
     private JNIMethodId javaUtilResourceBundleGetBundleImplSLCC;
+
+    // Lazily look for serialization classes
+    private JNIMethodId javaIoObjectStreamClassComputeDefaultSUID;
+    private JNIMethodId javaIoObjectStreamClassForClass;
+    private JNIMethodId javaIoObjectStreamClassGetClassDataLayout0;
+    private JNIObjectHandle javaIOObjectStreamClassClassDataSlot;
+    private JNIFieldId javaIOObjectStreamClassClassDataSlotDesc;
+    private JNIFieldId javaIOObjectStreamClassClassDataSlotHasData;
+
     private boolean queriedJavaUtilResourceBundleGetBundleImplSLCC;
 
     NativeImageAgentJNIHandleSet(JNIEnvironment env) {
@@ -70,6 +83,7 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
 
         JNIObjectHandle javaUtilEnumeration = findClass(env, "java/util/Enumeration");
         javaUtilEnumerationHasMoreElements = getMethodId(env, javaUtilEnumeration, "hasMoreElements", "()Z", false);
+        javaUtilEnumerationNextElement = getMethodId(env, javaUtilEnumeration, "nextElement", "()Ljava/lang/Object;", false);
 
         javaLangClassLoader = newClassGlobalRef(env, "java/lang/ClassLoader");
 
@@ -90,5 +104,47 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
             queriedJavaUtilResourceBundleGetBundleImplSLCC = true;
         }
         return javaUtilResourceBundleGetBundleImplSLCC;
+    }
+
+    JNIMethodId getJavaIoObjectStreamClassComputeDefaultSUID(JNIEnvironment env, JNIObjectHandle javaIoObjectStreamClass) {
+        if (javaIoObjectStreamClassComputeDefaultSUID.equal(nullHandle())) {
+            javaIoObjectStreamClassComputeDefaultSUID = getMethodId(env, javaIoObjectStreamClass, "computeDefaultSUID", "(Ljava/lang/Class;)J", true);
+        }
+        return javaIoObjectStreamClassComputeDefaultSUID;
+    }
+
+    JNIMethodId getJavaIoObjectStreamClassForClass(JNIEnvironment env, JNIObjectHandle javaIoObjectStreamClass) {
+        if (javaIoObjectStreamClassForClass.equal(nullHandle())) {
+            javaIoObjectStreamClassForClass = getMethodId(env, javaIoObjectStreamClass, "forClass", "()Ljava/lang/Class;", false);
+        }
+        return javaIoObjectStreamClassForClass;
+    }
+
+    JNIMethodId getJavaIoObjectStreamClassGetClassDataLayout0(JNIEnvironment env, JNIObjectHandle javaIoObjectStreamClass) {
+        if (javaIoObjectStreamClassGetClassDataLayout0.equal(nullHandle())) {
+            javaIoObjectStreamClassGetClassDataLayout0 = getMethodId(env, javaIoObjectStreamClass, "getClassDataLayout0", "()[Ljava/io/ObjectStreamClass$ClassDataSlot;", false);
+        }
+        return javaIoObjectStreamClassGetClassDataLayout0;
+    }
+
+    JNIObjectHandle getJavaIOObjectStreamClassClassDataSlot(JNIEnvironment env) {
+        if (javaIOObjectStreamClassClassDataSlot.equal(nullHandle())) {
+            javaIOObjectStreamClassClassDataSlot = newClassGlobalRef(env, "java/io/ObjectStreamClass$ClassDataSlot");
+        }
+        return javaIOObjectStreamClassClassDataSlot;
+    }
+
+    JNIFieldId getJavaIOObjectStreamClassClassDataSlotDesc(JNIEnvironment env) {
+        if (javaIOObjectStreamClassClassDataSlotDesc.equal(nullHandle())) {
+            javaIOObjectStreamClassClassDataSlotDesc = getFieldId(env, getJavaIOObjectStreamClassClassDataSlot(env), "desc", "Ljava/io/ObjectStreamClass;", false);
+        }
+        return javaIOObjectStreamClassClassDataSlotDesc;
+    }
+
+    JNIFieldId getJavaIOObjectStreamClassClassDataSlotHasData(JNIEnvironment env) {
+        if (javaIOObjectStreamClassClassDataSlotHasData.equal(nullHandle())) {
+            javaIOObjectStreamClassClassDataSlotHasData = getFieldId(env, getJavaIOObjectStreamClassClassDataSlot(env), "hasData", "Z", false);
+        }
+        return javaIOObjectStreamClassClassDataSlotHasData;
     }
 }

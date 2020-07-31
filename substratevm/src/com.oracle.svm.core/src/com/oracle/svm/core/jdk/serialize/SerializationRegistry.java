@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Alibaba Group Holding Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,28 +23,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core.jdk.serialize;
 
-import java.util.function.Function;
+public interface SerializationRegistry {
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+    Object getSerializationConstructorAccessorClass(Class<?> serializationTargetClass, String targetConstructorClass);
 
-import com.oracle.svm.core.annotate.TargetClass;
-
-@Platforms(Platform.HOSTED_ONLY.class)
-public class Package_jdk_internal_reflect implements Function<TargetClass, String> {
-    @Override
-    public String apply(TargetClass annotation) {
-        return getQualifiedName() + "." + annotation.className();
-    }
-
-    public static String getQualifiedName() {
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            return "sun.reflect";
-        } else {
-            return "jdk.internal.reflect";
-        }
-    }
 }

@@ -26,6 +26,7 @@ package com.oracle.svm.agent;
 
 import static com.oracle.svm.core.util.VMError.guarantee;
 import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
+import static com.oracle.svm.jvmtiagentbase.Support.callObjectMethod;
 import static com.oracle.svm.jvmtiagentbase.Support.check;
 import static com.oracle.svm.jvmtiagentbase.Support.checkJni;
 import static com.oracle.svm.jvmtiagentbase.Support.checkNoException;
@@ -39,11 +40,13 @@ import static com.oracle.svm.jvmtiagentbase.Support.getCallerMethod;
 import static com.oracle.svm.jvmtiagentbase.Support.getClassNameOr;
 import static com.oracle.svm.jvmtiagentbase.Support.getClassNameOrNull;
 import static com.oracle.svm.jvmtiagentbase.Support.getDirectCallerClass;
+import static com.oracle.svm.jvmtiagentbase.Support.getObjectField;
 import static com.oracle.svm.jvmtiagentbase.Support.getMethodDeclaringClass;
 import static com.oracle.svm.jvmtiagentbase.Support.getObjectArgument;
 import static com.oracle.svm.jvmtiagentbase.Support.jniFunctions;
 import static com.oracle.svm.jvmtiagentbase.Support.jvmtiEnv;
 import static com.oracle.svm.jvmtiagentbase.Support.jvmtiFunctions;
+import static com.oracle.svm.jvmtiagentbase.Support.newObjectL;
 import static com.oracle.svm.jvmtiagentbase.Support.testException;
 import static com.oracle.svm.jvmtiagentbase.Support.toCString;
 import static com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEvent.JVMTI_EVENT_BREAKPOINT;
@@ -61,6 +64,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReentrantLock;
 
+import com.oracle.svm.util.SerializationChecksumCalculator;
+import com.oracle.svm.jni.nativeapi.JNIFieldId;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.UnmanagedMemory;
@@ -76,6 +81,7 @@ import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.nativeimage.c.type.CTypeConversion.CCharPointerHolder;
 import org.graalvm.nativeimage.c.type.WordPointer;
+import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.c.function.CEntryPointOptions;
@@ -831,6 +837,121 @@ final class BreakpointInterceptor {
         return true;
     }
 
+    static class CheckSumCalculator extends SerializationChecksumCalculator.JVMCIAgentCalculator {
+        private JNIEnvironment jni;
+        private Breakpoint bp;
+
+        CheckSumCalculator(JNIEnvironment jni, Breakpoint bp) {
+            this.jni = jni;
+            this.bp = bp;
+        }
+
+        @Override
+        protected WordBase getSuperClass(WordBase clazz) {
+            return jniFunctions().getGetSuperclass().invoke(jni, (JNIObjectHandle) clazz);
+        }
+
+        @Override
+        public Long calculateFromComputeDefaultSUID(WordBase clazz) {
+            JNIMethodId computeDefaultSUIDMId = agent.handles().getJavaIoObjectStreamClassComputeDefaultSUID(jni, bp.clazz);
+            JNIValue args = StackValue.get(1, JNIValue.class);
+            args.setObject((JNIObjectHandle) clazz);
+            return jniFunctions().getCallStaticLongMethodA().invoke(jni, bp.clazz, computeDefaultSUIDMId, args);
+        }
+
+        @Override
+        protected boolean isClassAbstract(WordBase clazz) {
+            CIntPointer modifiers = StackValue.get(CIntPointer.class);
+            if (jvmtiFunctions().GetClassModifiers().invoke(jvmtiEnv(), (JNIObjectHandle) clazz, modifiers) != JvmtiError.JVMTI_ERROR_NONE) {
+                return false;
+            }
+            // Checkstyle: allow reflection
+            return (modifiers.read() & java.lang.reflect.Modifier.ABSTRACT) != 0;
+        }
+
+        @Override
+        public String getClassName(WordBase clazz) {
+            return getClassNameOrNull(jni, (JNIObjectHandle) clazz);
+        }
+    }
+
+    private static boolean objectStreamClassConstructor(JNIEnvironment jni, Breakpoint bp) {
+        JNIObjectHandle serializeTargetClass = getObjectArgument(1);
+        String serializeTargetClassName = getClassNameOrNull(jni, serializeTargetClass);
+        long checksum = 0;
+        List<SerializationInfo> traceCandidates = new ArrayList<>();
+        CheckSumCalculator checkSumCalculator = new CheckSumCalculator(jni, bp);
+        JNIObjectHandle objectStreamClassInstance = newObjectL(jni, bp.clazz, bp.method, serializeTargetClass);
+        Object result = nullHandle().notEqual(objectStreamClassInstance);
+        if (clearException(jni)) {
+            result = false;
+        }
+        // Skip Lambda class serialization
+        if (serializeTargetClassName.contains("$$Lambda$")) {
+            return true;
+        }
+        if (result.equals(true)) {
+            checksum = checkSumCalculator.calculateChecksum(getConsClassName(jni, bp.clazz, objectStreamClassInstance), serializeTargetClassName, serializeTargetClass);
+        }
+        traceCandidates.add(new SerializationInfo(serializeTargetClassName, checksum));
+
+        /**
+         * When the ObjectStreamClass instance is created for the given serializeTargetClass, some
+         * additional ObjectStreamClass instances (usually the super classes) are created
+         * recursively. Call ObjectStreamClass.getClassDataLayout0() can get all of them.
+         */
+        JNIMethodId getClassDataLayout0MId = agent.handles().getJavaIoObjectStreamClassGetClassDataLayout0(jni, bp.clazz);
+        JNIObjectHandle dataLayoutArray = callObjectMethod(jni, objectStreamClassInstance, getClassDataLayout0MId);
+        if (!clearException(jni) && nullHandle().notEqual(dataLayoutArray)) {
+            int length = jniFunctions().getGetArrayLength().invoke(jni, dataLayoutArray);
+            // If only 1 element is got from getClassDataLayout0(). it is base ObjectStreamClass
+            // instance itself.
+            if (!clearException(jni) && length > 1) {
+                JNIFieldId hasDataFId = agent.handles().getJavaIOObjectStreamClassClassDataSlotHasData(jni);
+                JNIFieldId descFId = agent.handles().getJavaIOObjectStreamClassClassDataSlotDesc(jni);
+                JNIMethodId javaIoObjectStreamClassForClassMId = agent.handles().getJavaIoObjectStreamClassForClass(jni, bp.clazz);
+                for (int i = 0; i < length; i++) {
+                    JNIObjectHandle classDataSlot = jniFunctions().getGetObjectArrayElement().invoke(jni, dataLayoutArray, i);
+                    boolean hasData = jniFunctions().getGetBooleanField().invoke(jni, classDataSlot, hasDataFId);
+                    if (hasData) {
+                        JNIObjectHandle oscInstanceInSlot = jniFunctions().getGetObjectField().invoke(jni, classDataSlot, descFId);
+                        if (!jniFunctions().getIsSameObject().invoke(jni, oscInstanceInSlot, objectStreamClassInstance)) {
+                            JNIObjectHandle oscClazz = callObjectMethod(jni, oscInstanceInSlot, javaIoObjectStreamClassForClassMId);
+                            String oscClassName = getClassNameOrNull(jni, oscClazz);
+                            traceCandidates.add(new SerializationInfo(oscClassName,
+                                            checkSumCalculator.calculateChecksum(getConsClassName(jni,
+                                                            bp.clazz, oscInstanceInSlot), oscClassName, oscClazz)));
+                        }
+                    }
+                }
+            }
+        }
+        for (SerializationInfo serializationInfo : traceCandidates) {
+            if (traceWriter != null) {
+                traceWriter.traceCall("serialization",
+                                "ObjectStreamClass.<init>",
+                                null,
+                                null,
+                                null,
+                                result,
+                                // serializeTargetClassName, checksum);
+                                serializationInfo.className, serializationInfo.checksum);
+                guarantee(!testException(jni));
+            }
+        }
+        return true;
+    }
+
+    private static String getConsClassName(JNIEnvironment jni, JNIObjectHandle objectStreamClassClazz, JNIObjectHandle objectStreamClassInstance) {
+        JNIObjectHandle cons = getObjectField(jni, objectStreamClassClazz, objectStreamClassInstance, "cons", "Ljava/lang/reflect/Constructor;");
+        String targetConstructorClassName = "";
+        if (nullHandle().notEqual(cons)) {
+            // Compute hashcode from the first unserializable superclass
+            targetConstructorClassName = getClassNameOrNull(jni, callObjectMethod(jni, cons, agent.handles().javaLangReflectMemberGetDeclaringClass));
+        }
+        return targetConstructorClassName;
+    }
+
     @CEntryPoint
     @CEntryPointOptions(prologue = AgentIsolate.Prologue.class)
     private static void onBreakpoint(@SuppressWarnings("unused") JvmtiEnv jvmti, JNIEnvironment jni,
@@ -1135,6 +1256,7 @@ final class BreakpointInterceptor {
                     brk("java/lang/reflect/Proxy", "newProxyInstance",
                                     "(Ljava/lang/ClassLoader;[Ljava/lang/Class;Ljava/lang/reflect/InvocationHandler;)Ljava/lang/Object;", BreakpointInterceptor::newProxyInstance),
 
+                    brk("java/io/ObjectStreamClass", "<init>", "(Ljava/lang/Class;)V", BreakpointInterceptor::objectStreamClassConstructor),
                     optionalBrk("java/util/ResourceBundle",
                                     "getBundleImpl",
                                     "(Ljava/lang/String;Ljava/util/Locale;Ljava/lang/ClassLoader;Ljava/util/ResourceBundle$Control;)Ljava/util/ResourceBundle;",
@@ -1261,6 +1383,16 @@ final class BreakpointInterceptor {
         @Override
         public int hashCode() {
             return 31 * Long.hashCode(method.rawValue()) + bci;
+        }
+    }
+
+    private static final class SerializationInfo {
+        private String className;
+        private long checksum;
+
+        SerializationInfo(String serializeTargetClassName, long checksum) {
+            this.className = serializeTargetClassName;
+            this.checksum = checksum;
         }
     }
 

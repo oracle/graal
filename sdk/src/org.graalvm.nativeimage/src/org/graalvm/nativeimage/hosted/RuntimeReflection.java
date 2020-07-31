@@ -108,6 +108,21 @@ public final class RuntimeReflection {
     }
 
     /**
+     * Makes the provided fields available for reflection at run time. The fields will be returned
+     * by {@link Class#getField}, {@link Class#getFields},and all the other methods on {@link Class}
+     * that return a single or a list of fields.
+     *
+     * @param finalIsWritable for all of the passed fields which are marked {@code final}, indicates
+     *            whether it should be possible to change their value using reflection.
+     * @param allowUnsafeAccess for all of the passed fields, indicates whether it should be
+     *            possible to access by unsafe operations.
+     * @since 21.0
+     */
+    public static void register(boolean finalIsWritable, boolean allowUnsafeAccess, Field... fields) {
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).register(finalIsWritable, allowUnsafeAccess, fields);
+    }
+
+    /**
      * Makes the provided classes available for reflective instantiation by
      * {@link Class#newInstance}. This is equivalent to registering the nullary constructors of the
      * classes.

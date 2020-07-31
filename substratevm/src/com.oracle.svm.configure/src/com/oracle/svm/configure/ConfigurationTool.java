@@ -189,6 +189,12 @@ public class ConfigurationTool {
                     set.getResourceConfigPaths().add(requirePathUri(current, value));
                     break;
 
+                case "--serialization-input":
+                    set = inputSet; // fall through
+                case "--serialization-output":
+                    set.getSerializationConfigPaths().add(requirePathUri(current, value));
+                    break;
+
                 case "--trace-input":
                     traceInputs.add(requirePathUri(current, value));
                     break;
@@ -249,7 +255,8 @@ public class ConfigurationTool {
         TraceProcessor p;
         try {
             p = new TraceProcessor(advisor, inputSet.loadJniConfig(ConfigurationSet.FAIL_ON_EXCEPTION), inputSet.loadReflectConfig(ConfigurationSet.FAIL_ON_EXCEPTION),
-                            inputSet.loadProxyConfig(ConfigurationSet.FAIL_ON_EXCEPTION), inputSet.loadResourceConfig(ConfigurationSet.FAIL_ON_EXCEPTION));
+                            inputSet.loadProxyConfig(ConfigurationSet.FAIL_ON_EXCEPTION), inputSet.loadResourceConfig(ConfigurationSet.FAIL_ON_EXCEPTION),
+                            inputSet.loadSerializationConfig(ConfigurationSet.FAIL_ON_EXCEPTION));
         } catch (IOException e) {
             throw e;
         } catch (Throwable t) {
@@ -285,6 +292,11 @@ public class ConfigurationTool {
         for (URI uri : outputSet.getResourceConfigPaths()) {
             try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
                 p.getResourceConfiguration().printJson(writer);
+            }
+        }
+        for (URI uri : outputSet.getSerializationConfigPaths()) {
+            try (JsonWriter writer = new JsonWriter(Paths.get(uri))) {
+                p.getSerializationConfiguration().printJson(writer);
             }
         }
     }

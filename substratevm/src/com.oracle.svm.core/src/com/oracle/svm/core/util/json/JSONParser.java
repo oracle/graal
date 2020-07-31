@@ -278,6 +278,7 @@ public class JSONParser {
     }
 
     private Number parseNumber() {
+        boolean isFloating = false;
         final int start = pos;
         int c = next();
 
@@ -294,6 +295,7 @@ public class JSONParser {
 
         // fraction
         if (peek() == '.') {
+            isFloating = true;
             pos++;
             if (!isDigit(next())) {
                 throw numberError(pos - 1);
@@ -315,13 +317,17 @@ public class JSONParser {
             skipDigits();
         }
 
-        final double d = Double.parseDouble(source.substring(start, pos));
-        if ((int) d == d) {
-            return (int) d;
-        } else if ((long) d == d) {
-            return (long) d;
+        String literalValue = source.substring(start, pos);
+        if (isFloating) {
+            return Double.parseDouble(literalValue);
+        } else {
+            final long l = Long.parseLong(literalValue);
+            if ((int) l == l) {
+                return (int) l;
+            } else {
+                return l;
+            }
         }
-        return d;
     }
 
     private Object parseKeyword(final String keyword, final Object value) {
