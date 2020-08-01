@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.runtime.interop.nfi;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -46,10 +45,9 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMGetStackNode;
+import com.oracle.truffle.llvm.runtime.LLVMGetStackFromThreadNode;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
-import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
 
@@ -93,16 +91,15 @@ public final class LLVMNativeWrapper implements TruffleObject {
         @Specialization(guards = "function == cachedFunction")
         Object doCached(@SuppressWarnings("unused") LLVMFunctionDescriptor function, Object[] args,
                         @Cached("function") @SuppressWarnings("unused") LLVMFunctionDescriptor cachedFunction,
-                        @Cached LLVMGetStackNode getStack,
-                        @CachedContext(LLVMLanguage.class) ContextReference<LLVMContext> ctxRef,
+                        @Cached LLVMGetStackFromThreadNode getStack,
+                        @CachedContext(LLVMLanguage.class) LLVMContext ctx,
                         @Cached("createCallNode(cachedFunction)") DirectCallNode call,
                         @Cached("createFromNativeNodes(cachedFunction.getLLVMFunction().getType())") LLVMNativeConvertNode[] convertArgs,
                         @Cached("createToNative(cachedFunction.getLLVMFunction().getType().getReturnType())") LLVMNativeConvertNode convertRet) {
-            try (StackPointer stackPointer = newStackFrame(getStack, ctxRef)) {
-                Object[] preparedArgs = prepareCallbackArguments(stackPointer, args, convertArgs);
-                Object ret = call.call(preparedArgs);
-                return convertRet.executeConvert(ret);
-            }
+            LLVMStack stack = getStack.executeWithTarget(ctx.getThreadingStack(), Thread.currentThread());
+            Object[] preparedArgs = prepareCallbackArguments(stack, args, convertArgs);
+            Object ret = call.call(preparedArgs);
+            return convertRet.executeConvert(ret);
         }
 
         /**
@@ -134,11 +131,6 @@ public final class LLVMNativeWrapper implements TruffleObject {
             return DirectCallNode.create(callTarget);
         }
 
-        private StackPointer newStackFrame(LLVMGetStackNode getStack, ContextReference<LLVMContext> ctxRef) {
-            LLVMThreadingStack threadingStack = ctxRef.get().getThreadingStack();
-            return getStack.executeWithTarget(threadingStack, Thread.currentThread()).newFrame();
-        }
-
         protected static LLVMNativeConvertNode[] createFromNativeNodes(FunctionType type) {
             LLVMNativeConvertNode[] ret = new LLVMNativeConvertNode[type.getNumberOfArguments()];
             for (int i = 0; i < type.getNumberOfArguments(); i++) {
@@ -148,9 +140,9 @@ public final class LLVMNativeWrapper implements TruffleObject {
         }
 
         @ExplodeLoop
-        private static Object[] prepareCallbackArguments(StackPointer stackPointer, Object[] arguments, LLVMNativeConvertNode[] fromNative) {
+        private static Object[] prepareCallbackArguments(LLVMStack stack, Object[] arguments, LLVMNativeConvertNode[] fromNative) {
             Object[] callbackArgs = new Object[fromNative.length + 1];
-            callbackArgs[0] = stackPointer;
+            callbackArgs[0] = stack;
             for (int i = 0; i < fromNative.length; i++) {
                 callbackArgs[i + 1] = fromNative[i].executeConvert(arguments[i]);
             }

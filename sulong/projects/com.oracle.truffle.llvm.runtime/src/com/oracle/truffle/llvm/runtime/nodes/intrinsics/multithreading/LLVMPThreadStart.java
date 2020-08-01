@@ -39,6 +39,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMGetStackFromFrameNodeGen;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -133,7 +134,7 @@ public final class LLVMPThreadStart {
             this.callNode = CommonNodeFactory.createFunctionCall(
                             CommonNodeFactory.createFrameRead(PointerType.VOID, functionSlot),
                             new LLVMExpressionNode[]{
-                                            CommonNodeFactory.createFrameRead(PointerType.VOID, spSlot),
+                                            LLVMGetStackFromFrameNodeGen.create(spSlot),
                                             CommonNodeFactory.createFrameRead(PointerType.VOID, argSlot)
                             },
                             FunctionType.create(PointerType.VOID, PointerType.VOID, false));

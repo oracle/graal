@@ -44,14 +44,13 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
-import com.oracle.truffle.llvm.runtime.LLVMGetStackNode;
+import com.oracle.truffle.llvm.runtime.LLVMGetStackFromThreadNode;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceFunctionType;
 import com.oracle.truffle.llvm.runtime.interop.LLVMForeignCallNodeFactory.PackForeignArgumentsNodeGen;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -64,7 +63,7 @@ public class LLVMForeignCallNode extends RootNode {
 
     abstract static class PackForeignArgumentsNode extends LLVMNode {
 
-        abstract Object[] execute(Object[] arguments, StackPointer stackPointer) throws ArityException;
+        abstract Object[] execute(Object[] arguments, LLVMStack stack) throws ArityException;
 
         @Children final LLVMGetInteropParamNode[] toLLVM;
         final int numberOfSourceArguments;
@@ -173,14 +172,14 @@ public class LLVMForeignCallNode extends RootNode {
 
         @Specialization
         @ExplodeLoop
-        Object[] packNonVarargs(Object[] arguments, StackPointer stackPointer, @Cached BranchProfile exceptionProfile) throws ArityException {
+        Object[] packNonVarargs(Object[] arguments, LLVMStack stack, @Cached BranchProfile exceptionProfile) throws ArityException {
             if (arguments.length < numberOfSourceArguments) {
                 exceptionProfile.enter();
                 throw ArityException.create(numberOfSourceArguments, arguments.length);
             }
 
             final Object[] packedArguments = new Object[1 + toLLVM.length];
-            packedArguments[0] = stackPointer;
+            packedArguments[0] = stack;
             for (int i = 0; i < toLLVM.length; i++) {
                 packedArguments[i + 1] = toLLVM[i].execute(arguments);
             }
@@ -191,7 +190,7 @@ public class LLVMForeignCallNode extends RootNode {
     @CompilationFinal private ContextReference<LLVMContext> ctxRef;
     private final LLVMInteropType.Structured returnBaseType;
 
-    @Child LLVMGetStackNode getStack;
+    @Child LLVMGetStackFromThreadNode getStack;
     @Child DirectCallNode callNode;
     @Child LLVMDataEscapeNode prepareValueForEscape;
     @Child PackForeignArgumentsNode packArguments;
@@ -199,7 +198,7 @@ public class LLVMForeignCallNode extends RootNode {
     public LLVMForeignCallNode(LLVMLanguage language, LLVMFunctionDescriptor function, LLVMInteropType interopType, LLVMSourceFunctionType sourceType) {
         super(language);
         this.returnBaseType = getReturnBaseType(interopType);
-        this.getStack = LLVMGetStackNode.create();
+        this.getStack = LLVMGetStackFromThreadNode.create();
         this.callNode = DirectCallNode.create(getCallTarget(function));
         this.callNode.forceInlining();
         this.prepareValueForEscape = LLVMDataEscapeNode.create(function.getLLVMFunction().getType().getReturnType());
@@ -220,8 +219,8 @@ public class LLVMForeignCallNode extends RootNode {
         }
         LLVMThreadingStack threadingStack = ctxRef.get().getThreadingStack();
         LLVMStack stack = getStack.executeWithTarget(threadingStack, Thread.currentThread());
-        try (StackPointer stackPointer = stack.newFrame()) {
-            result = callNode.call(packArguments.execute(frame.getArguments(), stackPointer));
+        try {
+            result = callNode.call(packArguments.execute(frame.getArguments(), stack));
         } catch (ArityException ex) {
             throw silenceException(RuntimeException.class, ex);
         }

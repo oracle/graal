@@ -38,10 +38,10 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
 @GenerateUncached
-public abstract class LLVMGetStackNode extends LLVMNode {
+public abstract class LLVMGetStackFromThreadNode extends LLVMNode {
 
-    public static LLVMGetStackNode create() {
-        return LLVMGetStackNodeGen.create();
+    public static LLVMGetStackFromThreadNode create() {
+        return LLVMGetStackFromThreadNodeGen.create();
     }
 
     public abstract LLVMStack executeWithTarget(LLVMThreadingStack threadingStack, Thread currentThread);
