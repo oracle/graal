@@ -101,7 +101,7 @@ public class Module extends Dictionary {
         return new Sequence<>(list);
     }
 
-    public Sequence<ArrayBuffer> customSections(Object sectionName) {
+    public Sequence<ByteArrayBuffer> customSections(Object sectionName) {
         String name = (String) sectionName;
         // TODO: Implement.
         return null;

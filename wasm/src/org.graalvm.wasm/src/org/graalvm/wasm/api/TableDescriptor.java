@@ -41,57 +41,22 @@
 package org.graalvm.wasm.api;
 
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
-
-import static com.oracle.truffle.api.CompilerDirectives.transferToInterpreter;
 
 @ExportLibrary(InteropLibrary.class)
-public class ArrayBuffer {
-    private final byte[] data;
+public class TableDescriptor extends Dictionary {
+    private final TableKind kind;
+    private final Long initial;
+    private final Long maximum;
 
-    public ArrayBuffer(byte[] data) {
-        this.data = data;
-    }
-
-    @SuppressWarnings({"unused"})
-    @ExportMessage
-    boolean hasArrayElements() {
-        return true;
-    }
-
-    @SuppressWarnings({"unused"})
-    @ExportMessage
-    long getArraySize() {
-        return data.length;
-    }
-
-    @SuppressWarnings({"unused"})
-    @ExportMessage
-    boolean isArrayElementReadable(long index) {
-        return index >= 0 && index < getArraySize();
-    }
-
-    @SuppressWarnings({"unused", "static-method"})
-    @ExportMessage
-    final boolean isArrayElementModifiable(long index) {
-        return false;
-    }
-
-    @SuppressWarnings({"unused", "static-method"})
-    @ExportMessage
-    final boolean isArrayElementInsertable(long index) {
-        return false;
-    }
-
-    @SuppressWarnings({"unused"})
-    @ExportMessage
-    public Object readArrayElement(long index) throws InvalidArrayIndexException {
-        if (!isArrayElementReadable(index)) {
-            transferToInterpreter();
-            throw InvalidArrayIndexException.create(index);
-        }
-        return data[(int) index];
+    public TableDescriptor(TableKind kind, Long initial, Long maximum) {
+        this.kind = kind;
+        this.initial = initial;
+        this.maximum = maximum;
+        addMembers(new Object[]{
+                        "element", this.kind.name(),
+                        "initial", this.initial,
+                        "maximum", this.maximum,
+        });
     }
 }

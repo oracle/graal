@@ -40,9 +40,11 @@
  */
 package org.graalvm.wasm.api;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
@@ -96,5 +98,16 @@ public class Sequence<T> implements TruffleObject {
             throw InvalidArrayIndexException.create(index);
         }
         return list.get((int) index);
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    private UnsupportedMessageException unsupported() {
+        return UnsupportedMessageException.create();
+    }
+
+    @SuppressWarnings({"unused"})
+    @ExportMessage
+    public final void writeArrayElement(long index, Object arg2) throws UnsupportedMessageException {
+        throw unsupported();
     }
 }

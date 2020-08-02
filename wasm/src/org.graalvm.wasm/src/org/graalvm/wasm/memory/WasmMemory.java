@@ -81,6 +81,10 @@ public abstract class WasmMemory implements TruffleObject {
 
     public abstract long maxPageSize();
 
+    public Long maxByteSize() {
+        return maxPageSize() * PAGE_SIZE;
+    }
+
     // Checkstyle: stop
     public abstract int load_i32(Node node, long address);
 

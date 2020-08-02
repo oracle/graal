@@ -57,7 +57,6 @@ import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.memory.WasmMemoryException;
 import org.graalvm.wasm.collection.ByteArrayList;
 
-import static org.graalvm.wasm.TableRegistry.Table;
 import static org.graalvm.wasm.WasmUtil.unsignedInt32ToLong;
 
 /**
@@ -225,7 +224,7 @@ public class SymbolTable {
      * In the current WebAssembly specification, a module can use at most one table. The value
      * {@code null} denotes that this module uses no table.
      */
-    @CompilationFinal private Table table;
+    @CompilationFinal private WasmTable table;
 
     /**
      * The table used in this module.
@@ -701,11 +700,11 @@ public class SymbolTable {
         context.linker().resolveTableExport(module, exportedTable);
     }
 
-    public Table table() {
+    public WasmTable table() {
         return table;
     }
 
-    void setTable(Table table) {
+    void setTable(WasmTable table) {
         checkNotLinked();
         this.table = table;
     }

@@ -42,20 +42,25 @@ package org.graalvm.wasm.api;
 
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
+import org.graalvm.wasm.GlobalRegistry;
 
 @ExportLibrary(InteropLibrary.class)
-public class Instance extends Dictionary {
-    private final Module module;
-    private final Dictionary importObject;
+public class Global extends Dictionary {
+    private final GlobalRegistry registry;
+    private final GlobalDescriptor descriptor;
 
-    public Instance(Module module, Dictionary importObject) {
-        this.module = module;
-        this.importObject = importObject;
+    public Global(GlobalRegistry registry, GlobalDescriptor descriptor) {
+        this.registry = registry;
+        this.descriptor = descriptor;
         addMembers(new Object[]{
-                "module", this.module,
-                "importObject", this.importObject,
-                "exports", new Executable(args -> this.module.exports()),
+                        "descriptor", this.descriptor,
+                        "valueOf", new Executable(args -> get()),
+                        "value", new Executable(args -> get()),
         });
     }
 
+    public Object get() {
+        // TODO: Get the value from the global registry.
+        return null;
+    }
 }

@@ -40,22 +40,37 @@
  */
 package org.graalvm.wasm.api;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
+import org.graalvm.wasm.exception.WasmExecutionException;
+import org.graalvm.wasm.memory.WasmMemory;
 
 @ExportLibrary(InteropLibrary.class)
-public class Instance extends Dictionary {
-    private final Module module;
-    private final Dictionary importObject;
+public class Memory extends Dictionary {
+    private final MemoryDescriptor descriptor;
+    private final WasmMemory memory;
 
-    public Instance(Module module, Dictionary importObject) {
-        this.module = module;
-        this.importObject = importObject;
+    public Memory(WasmMemory memory) {
+        this.descriptor = new MemoryDescriptor(memory.pageSize(), memory.maxPageSize());
+        this.memory = memory;
         addMembers(new Object[]{
-                "module", this.module,
-                "importObject", this.importObject,
-                "exports", new Executable(args -> this.module.exports()),
+                        "descriptor", this.descriptor,
+                        "grow", new Executable(args -> grow((Long) args[0])),
+                        "buffer", new Executable(args -> new MemoryArrayBuffer(memory)),
         });
     }
 
+    @TruffleBoundary
+    private WasmExecutionException rangeError() {
+        return new WasmExecutionException(null, "Range error.");
+    }
+
+    private final long grow(long delta) {
+        final long pageSize = memory.pageSize();
+        if (!memory.grow(delta)) {
+            throw rangeError();
+        }
+        return pageSize;
+    }
 }

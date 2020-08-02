@@ -47,14 +47,16 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
-import java.util.HashMap;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
 
 @ExportLibrary(InteropLibrary.class)
 public class Dictionary implements TruffleObject {
-    private final HashMap<String, Object> members;
+    private final LinkedHashMap<String, Object> members;
 
     public Dictionary() {
-        this.members = new HashMap<>();
+        this.members = new LinkedHashMap<>();
     }
 
     @SuppressWarnings({"unused"})
@@ -85,5 +87,19 @@ public class Dictionary implements TruffleObject {
             Object value = nameValuePairs[i + 1];
             members.put(name, value);
         }
+    }
+
+    @SuppressWarnings({"unused"})
+    @ExportMessage
+    @TruffleBoundary
+    public Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        final List<String> keys = Arrays.asList(members.keySet().toArray(new String[0]));
+        return new Sequence<>(keys);
+    }
+
+    @SuppressWarnings({"unused"})
+    @ExportMessage
+    final boolean isMemberReadable(String member) {
+        return true;
     }
 }

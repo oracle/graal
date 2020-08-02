@@ -40,22 +40,72 @@
  */
 package org.graalvm.wasm.api;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+
+import static com.oracle.truffle.api.CompilerDirectives.transferToInterpreter;
 
 @ExportLibrary(InteropLibrary.class)
-public class Instance extends Dictionary {
-    private final Module module;
-    private final Dictionary importObject;
+public class ByteArrayBuffer implements TruffleObject {
+    private final byte[] data;
 
-    public Instance(Module module, Dictionary importObject) {
-        this.module = module;
-        this.importObject = importObject;
-        addMembers(new Object[]{
-                "module", this.module,
-                "importObject", this.importObject,
-                "exports", new Executable(args -> this.module.exports()),
-        });
+    public ByteArrayBuffer(byte[] data) {
+        this.data = data;
     }
 
+    @SuppressWarnings({"unused"})
+    @ExportMessage
+    boolean hasArrayElements() {
+        return true;
+    }
+
+    @SuppressWarnings({"unused"})
+    @ExportMessage
+    long getArraySize() {
+        return data.length;
+    }
+
+    @SuppressWarnings({"unused"})
+    @ExportMessage
+    boolean isArrayElementReadable(long index) {
+        return index >= 0 && index < getArraySize();
+    }
+
+    @SuppressWarnings({"unused", "static-method"})
+    @ExportMessage
+    final boolean isArrayElementModifiable(long index) {
+        return false;
+    }
+
+    @SuppressWarnings({"unused", "static-method"})
+    @ExportMessage
+    final boolean isArrayElementInsertable(long index) {
+        return false;
+    }
+
+    @SuppressWarnings({"unused"})
+    @ExportMessage
+    public Object readArrayElement(long index) throws InvalidArrayIndexException {
+        if (!isArrayElementReadable(index)) {
+            transferToInterpreter();
+            throw InvalidArrayIndexException.create(index);
+        }
+        return data[(int) index];
+    }
+
+    @TruffleBoundary
+    private UnsupportedMessageException unsupported() {
+        return UnsupportedMessageException.create();
+    }
+
+    @SuppressWarnings({"unused"})
+    @ExportMessage
+    final void writeArrayElement(long index, Object arg2) throws UnsupportedMessageException {
+        throw unsupported();
+    }
 }

@@ -51,7 +51,6 @@ import static org.graalvm.wasm.Linker.ResolutionDag.ImportGlobalSym;
 import static org.graalvm.wasm.Linker.ResolutionDag.ImportTableSym;
 import static org.graalvm.wasm.Linker.ResolutionDag.InitializeGlobalSym;
 import static org.graalvm.wasm.Linker.ResolutionDag.NO_RESOLVE_ACTION;
-import static org.graalvm.wasm.TableRegistry.Table;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -368,7 +367,7 @@ public class Linker {
                     throw new WasmLinkerException(String.format("The imported module '%s' exports a table '%s', but module '%s' imports a table '%s'.",
                                     importedModuleName, exportedTableName, module.name(), importedTableName));
                 }
-                final Table table = importedModule.symbolTable().table();
+                final WasmTable table = importedModule.symbolTable().table();
                 final int declaredMaxSize = table.maxSize();
                 if (declaredMaxSize >= 0 && (initSize > declaredMaxSize || maxSize > declaredMaxSize)) {
                     // This requirement does not seem to be mentioned in the WebAssembly
@@ -397,7 +396,7 @@ public class Linker {
         Assert.assertTrue(module.symbolTable().tableExists(), String.format("No table declared or imported in the module '%s'", module.name()));
         final Runnable resolveAction = () -> {
             assert (offsetAddress != -1) ^ (offsetGlobalIndex != -1) : "Both an offset address and a offset global are specified for the elem segment.";
-            final Table table = module.symbolTable().table();
+            final WasmTable table = module.symbolTable().table();
             Assert.assertNotNull(table, String.format("No table declared or imported in the module '%s'", module.name()));
             int baseAddress;
             if (offsetGlobalIndex != -1) {
@@ -411,7 +410,7 @@ public class Linker {
             table.ensureSizeAtLeast(baseAddress + segmentLength);
             for (int index = 0; index != segmentLength; ++index) {
                 final WasmFunction function = functions[index];
-                table.set(baseAddress + index, function);
+                table.initialize(baseAddress + index, function);
             }
         };
         final ArrayList<Sym> dependencies = new ArrayList<>();

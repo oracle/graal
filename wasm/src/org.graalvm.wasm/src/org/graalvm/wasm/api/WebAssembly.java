@@ -40,22 +40,5 @@
  */
 package org.graalvm.wasm.api;
 
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.library.ExportLibrary;
-
-@ExportLibrary(InteropLibrary.class)
-public class Instance extends Dictionary {
-    private final Module module;
-    private final Dictionary importObject;
-
-    public Instance(Module module, Dictionary importObject) {
-        this.module = module;
-        this.importObject = importObject;
-        addMembers(new Object[]{
-                "module", this.module,
-                "importObject", this.importObject,
-                "exports", new Executable(args -> this.module.exports()),
-        });
-    }
-
+public class WebAssembly extends Dictionary {
 }
