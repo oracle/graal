@@ -85,8 +85,8 @@ public abstract class PutFieldNode extends QuickNode {
 
     @Specialization(guards = {"receiver.isForeignObject()", "fieldValue.isForeignObject()"}, limit = "1")
     protected void doForeignWithForeignField(StaticObject receiver, StaticObject fieldValue,
-                                             @CachedLibrary("receiver.rawForeignObject()") InteropLibrary interopLibrary,
-                                             @CachedContext(EspressoLanguage.class) EspressoContext context) {
+                    @CachedLibrary("receiver.rawForeignObject()") InteropLibrary interopLibrary,
+                    @CachedContext(EspressoLanguage.class) EspressoContext context) {
         assert field.getDeclaringKlass().isAssignableFrom(receiver.getKlass());
         try {
             interopLibrary.writeMember(receiver.rawForeignObject(), fieldName, fieldValue.rawForeignObject());
@@ -94,7 +94,7 @@ public abstract class PutFieldNode extends QuickNode {
             throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_NoSuchFieldError, "Foreign object has no writable field " + fieldName);
         } catch (UnsupportedTypeException e) {
             throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_ClassCastException,
-                    "Could not cast the value to the actual type of the foreign field " + fieldName);
+                            "Could not cast the value to the actual type of the foreign field " + fieldName);
         }
     }
 
