@@ -1,0 +1,75 @@
+package com.oracle.truffle.llvm.initialization;
+
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.llvm.parser.LLVMParserResult;
+import com.oracle.truffle.llvm.parser.model.GlobalSymbol;
+import com.oracle.truffle.llvm.parser.model.functions.FunctionSymbol;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
+import com.oracle.truffle.llvm.runtime.LLVMFunction;
+import com.oracle.truffle.llvm.runtime.LLVMLocalScope;
+import com.oracle.truffle.llvm.runtime.LLVMScope;
+import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
+import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMWriteSymbolNode;
+import com.oracle.truffle.llvm.runtime.nodes.others.LLVMWriteSymbolNodeGen;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+
+import java.util.ArrayList;
+
+/**
+ * Overwriting for defined symbols that will be resolved to the local scope instead of the file
+ * scope. If a defined symbol is required to be access via the local scope instead of it's file
+ * scope, then that symbol's entry in the symbol table will be that of the defined symbol from the
+ * local scope.
+ *
+ * @see InitializeSymbolsNode
+ * @see InitializeGlobalNode see Runner.InitializeModuleNode
+ * @see InitializeExternalNode
+ */
+public final class InitializeOverwriteNode extends LLVMNode {
+
+    @Children final AllocExternalSymbolNode[] allocExternalSymbols;
+    @Child LLVMWriteSymbolNode writeSymbols;
+
+    public InitializeOverwriteNode(LLVMParserResult result) {
+        this.writeSymbols = LLVMWriteSymbolNodeGen.create();
+        ArrayList<AllocExternalSymbolNode> allocExternaSymbolsList = new ArrayList<>();
+        LLVMScope fileScope = result.getRuntime().getFileScope();
+
+        // Rewrite all overridable functions and globals in the filescope from their respective
+        // function/global in the localscope.
+        for (FunctionSymbol symbol : result.getDefinedFunctions()) {
+            if (symbol.isOverridable()) {
+                LLVMFunction function = fileScope.getFunction(symbol.getName());
+                // Functions are overwritten by functions from the localScope
+                allocExternaSymbolsList.add(AllocExistingLocalSymbolsNodeGen.create(function));
+            }
+        }
+        for (GlobalSymbol symbol : result.getDefinedGlobals()) {
+            // Cannot override the reserved symbols CONSTRUCTORS_VARNAME and
+            // DECONSTRUCTORS_VARNAME
+            if (symbol.isOverridable() && !symbol.isIntrinsicGlobalVariable()) {
+                LLVMGlobal global = fileScope.getGlobalVariable(symbol.getName());
+                // Globals are overwritten by (non-hidden) global symbol of the same name in the
+                // globalscope
+                allocExternaSymbolsList.add(AllocExternalGlobalNodeGen.create(global));
+            }
+        }
+        this.allocExternalSymbols = allocExternaSymbolsList.toArray(AllocExternalSymbolNode.EMPTY);
+    }
+
+    @ExplodeLoop
+    public void execute(LLVMContext context, int id) {
+        LLVMScope globalScope = context.getGlobalScope();
+        LLVMLocalScope localScope = context.getLocalScope(id);
+        for (int i = 0; i < allocExternalSymbols.length; i++) {
+            AllocExternalSymbolNode allocSymbol = allocExternalSymbols[i];
+            LLVMPointer pointer = allocSymbol.execute(localScope, globalScope, null, null);
+            // skip allocating fallbacks
+            if (pointer == null) {
+                continue;
+            }
+            writeSymbols.execute(pointer, allocSymbol.symbol);
+        }
+    }
+}
