@@ -297,9 +297,16 @@ public final class NodeParser extends AbstractParser<NodeData> {
             return node;
         }
 
-        AnnotationMirror reflectable = findFirstAnnotation(lookupTypes, types.Introspectable);
-        if (reflectable != null) {
-            node.setReflectable(true);
+        AnnotationMirror introspectable = findFirstAnnotation(lookupTypes, types.Introspectable);
+        if (introspectable != null) {
+            node.setGenerateIntrospection(true);
+        }
+        String generateProperty = ProcessorContext.getInstance().getEnvironment().getOptions().get("truffle.dsl.GenerateSpecializationStatistics");
+        if (generateProperty != null) {
+            node.setGenerateStatistics(Boolean.parseBoolean(generateProperty));
+        }
+        if (findFirstAnnotation(lookupTypes, types.SpecializationStatistics_AlwaysEnabled) != null) {
+            node.setGenerateStatistics(true);
         }
 
         AnnotationMirror reportPolymorphism = findFirstAnnotation(lookupTypes, types.ReportPolymorphism);

@@ -439,6 +439,13 @@ public final class SpecializationData extends TemplateMethod {
         return index;
     }
 
+    public int getIntrospectionIndex() {
+        if (getMethod() == null) {
+            return -1;
+        }
+        return index - 1;
+    }
+
     public NodeData getNode() {
         return node;
     }

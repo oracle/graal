@@ -722,6 +722,19 @@ public class ElementUtils {
         return mirror != null && mirror.getKind().isPrimitive();
     }
 
+    public static boolean isFinal(TypeMirror mirror) {
+        if (isPrimitive(mirror) || isVoid(mirror)) {
+            return true;
+        }
+        if (mirror.getKind() == TypeKind.DECLARED) {
+            Element element = ((DeclaredType) mirror).asElement();
+            if (element.getKind().isClass() && element.getModifiers().contains(Modifier.FINAL)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static List<String> getQualifiedSuperTypeNames(TypeElement element) {
         List<TypeElement> types = getSuperTypes(element);
         List<String> qualifiedNames = new ArrayList<>();

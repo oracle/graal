@@ -158,6 +158,9 @@ public class TruffleTypes {
     public static final String ReportPolymorphism_Exclude_Name = "com.oracle.truffle.api.dsl.ReportPolymorphism.Exclude";
     public static final String ReportPolymorphism_Name = "com.oracle.truffle.api.dsl.ReportPolymorphism";
     public static final String Specialization_Name = "com.oracle.truffle.api.dsl.Specialization";
+    public static final String SpecializationStatistics_Name = "com.oracle.truffle.api.dsl.SpecializationStatistics";
+    public static final String SpecializationStatistics_AlwaysEnabled_Name = "com.oracle.truffle.api.dsl.SpecializationStatistics.AlwaysEnabled";
+    public static final String SpecializationStatistics_NodeStatistics_Name = "com.oracle.truffle.api.dsl.SpecializationStatistics.NodeStatistics";
     public static final String TypeCast_Name = "com.oracle.truffle.api.dsl.TypeCast";
     public static final String TypeCheck_Name = "com.oracle.truffle.api.dsl.TypeCheck";
     public static final String TypeSystem_Name = "com.oracle.truffle.api.dsl.TypeSystem";
@@ -189,6 +192,9 @@ public class TruffleTypes {
     public final DeclaredType ReportPolymorphism = c.getDeclaredType(ReportPolymorphism_Name);
     public final DeclaredType ReportPolymorphism_Exclude = c.getDeclaredType(ReportPolymorphism_Exclude_Name);
     public final DeclaredType Specialization = c.getDeclaredType(Specialization_Name);
+    public final DeclaredType SpecializationStatistics = c.getDeclaredType(SpecializationStatistics_Name);
+    public final DeclaredType SpecializationStatistics_NodeStatistics = c.getDeclaredType(SpecializationStatistics_NodeStatistics_Name);
+    public final DeclaredType SpecializationStatistics_AlwaysEnabled = c.getDeclaredType(SpecializationStatistics_AlwaysEnabled_Name);
     public final DeclaredType TypeCast = c.getDeclaredType(TypeCast_Name);
     public final DeclaredType TypeCheck = c.getDeclaredType(TypeCheck_Name);
     public final DeclaredType TypeSystem = c.getDeclaredType(TypeSystem_Name);

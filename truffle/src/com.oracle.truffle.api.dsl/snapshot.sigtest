@@ -181,6 +181,34 @@ meth public abstract !hasdefault java.lang.String[] assumptions()
 meth public abstract !hasdefault java.lang.String[] guards()
 meth public abstract !hasdefault java.lang.String[] replaces()
 
+CLSS public final com.oracle.truffle.api.dsl.SpecializationStatistics
+innr public abstract interface static !annotation AlwaysEnabled
+innr public abstract static NodeStatistics
+meth public boolean hasData()
+meth public com.oracle.truffle.api.dsl.SpecializationStatistics enter()
+meth public static com.oracle.truffle.api.dsl.SpecializationStatistics create()
+meth public void leave(com.oracle.truffle.api.dsl.SpecializationStatistics)
+meth public void printHistogram(java.io.PrintStream)
+meth public void printHistogram(java.io.PrintWriter)
+supr java.lang.Object
+hfds STATISTICS,classStatistics,uncachedStatistics
+hcls DisabledNodeStatistics,EnabledNodeStatistics,IntStatistics,NodeClassHistogram,NodeClassStatistics,TypeCombination,UncachedNodeStatistics
+
+CLSS public abstract interface static !annotation com.oracle.truffle.api.dsl.SpecializationStatistics$AlwaysEnabled
+ outer com.oracle.truffle.api.dsl.SpecializationStatistics
+ anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
+ anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
+intf java.lang.annotation.Annotation
+
+CLSS public abstract static com.oracle.truffle.api.dsl.SpecializationStatistics$NodeStatistics
+ outer com.oracle.truffle.api.dsl.SpecializationStatistics
+meth public abstract !varargs void acceptExecute(int,java.lang.Class<?>[])
+meth public abstract java.lang.Class<?> resolveValueClass(java.lang.Object)
+meth public abstract void acceptExecute(int,java.lang.Class<?>)
+meth public abstract void acceptExecute(int,java.lang.Class<?>,java.lang.Class<?>)
+meth public static com.oracle.truffle.api.dsl.SpecializationStatistics$NodeStatistics create(com.oracle.truffle.api.nodes.Node,java.lang.String[])
+supr java.lang.Object
+
 CLSS public abstract interface !annotation com.oracle.truffle.api.dsl.TypeCast
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=CLASS)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[METHOD])
