@@ -56,6 +56,6 @@ public final class SubstrateReflectionGetCallerClassNode extends ReflectionGetCa
 
     @Override
     protected boolean ignoredBySecurityStackWalk(ResolvedJavaMethod method) {
-        return !StackTraceUtils.shouldShowFrame(metaAccess, method, false, false);
+        return !StackTraceUtils.shouldShowFrame(metaAccess, method, true, false, false);
     }
 }
