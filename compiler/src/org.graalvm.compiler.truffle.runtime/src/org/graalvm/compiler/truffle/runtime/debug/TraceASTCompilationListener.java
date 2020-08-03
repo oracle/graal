@@ -60,7 +60,7 @@ public final class TraceASTCompilationListener extends AbstractGraalTruffleRunti
             try (PrintWriter out = new PrintWriter(logMessage)) {
                 printCompactTree(out, target, inliningDecision);
             }
-            runtime.logEvent(target, 0, "opt AST", target.toString(), target.getDebugProperties(inliningDecision), logMessage.toString());
+            runtime.logEvent(target, 0, "opt AST", target.toString(), target.getDebugProperties(), logMessage.toString());
         }
     }
 

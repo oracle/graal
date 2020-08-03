@@ -101,6 +101,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         addChildren(root, invokeToTruffleCallNode);
         root.state = State.Inlined;
         callTree.getPolicy().afterExpand(root);
+        callTree.frontierSize = root.children.size();
         return root;
     }
 
@@ -250,6 +251,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         updateChildInvokes(replacements);
         state = State.Inlined;
         getCallTree().inlined++;
+        getCallTree().frontierSize += children.size() - 1;
     }
 
     private void updateChildInvokes(UnmodifiableEconomicMap<Node, Node> replacements) {

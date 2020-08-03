@@ -537,7 +537,7 @@ public final class TruffleTreeDumper {
             root = makeCallTreeNode(target);
             inlined.nodes.add(root);
             root.properties.put("label", target.toString());
-            root.properties.putAll(((OptimizedCallTarget) target).getDebugProperties(null));
+            root.properties.putAll(((OptimizedCallTarget) target).getDebugProperties());
             build(target, root, inlining, this);
         }
 
@@ -572,7 +572,7 @@ public final class TruffleTreeDumper {
                         } else {
                             callTreeNode.properties.put("inlined", "false");
                             if (decision != null) {
-                                callTreeNode.properties.putAll(decision.getTarget().getDebugProperties(decision));
+                                callTreeNode.properties.putAll(decision.getTarget().getDebugProperties());
                             }
                             graph.notInlined.nodes.add(callTreeNode);
                         }
