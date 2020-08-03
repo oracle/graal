@@ -83,7 +83,7 @@ public abstract class BuiltinModule {
         // but this is just an optimization, and probably not very important,
         // since predefined modules have a relatively small size.
         final int typeIdx = module.symbolTable().allocateFunctionType(paramTypes, retTypes);
-        final WasmFunction function = module.symbolTable().declareExportedFunction(context, typeIdx, name);
+        final WasmFunction function = module.symbolTable().declareExportedFunction(typeIdx, name);
         RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
         function.setCallTarget(callTarget);
         return function;
@@ -99,28 +99,28 @@ public abstract class BuiltinModule {
     protected int defineTable(WasmContext context, WasmInstance module, String tableName, int initSize, int maxSize, byte type) {
         Assert.assertByteEqual(type, ReferenceTypes.FUNCREF, "Only function types are currently supported in tables.");
         module.symbolTable().allocateTable(context, initSize, maxSize);
-        module.symbolTable().exportTable(context, tableName);
+        module.symbolTable().exportTable(tableName);
         return 0;
     }
 
     protected WasmMemory defineMemory(WasmContext context, WasmInstance module, String memoryName, int initSize, int maxSize) {
         final WasmMemory memory = module.symbolTable().allocateMemory(context, initSize, maxSize);
-        module.symbolTable().exportMemory(context, memoryName);
+        module.symbolTable().exportMemory(memoryName);
         return memory;
     }
 
     protected void importFunction(WasmContext context, WasmInstance module, String importModuleName, String importFunctionName, byte[] paramTypes, byte[] retTypes, String exportName) {
         final int typeIdx = module.symbolTable().allocateFunctionType(paramTypes, retTypes);
-        final WasmFunction function = module.symbolTable().importFunction(context, importModuleName, importFunctionName, typeIdx);
-        module.symbolTable().exportFunction(context, function.index(), exportName);
+        final WasmFunction function = module.symbolTable().importFunction(importModuleName, importFunctionName, typeIdx);
+        module.symbolTable().exportFunction(function.index(), exportName);
     }
 
     protected void importMemory(WasmContext context, WasmInstance module, String importModuleName, String memoryName, int initSize, int maxSize) {
-        module.symbolTable().importMemory(context, importModuleName, memoryName, initSize, maxSize);
+        module.symbolTable().importMemory(importModuleName, memoryName, initSize, maxSize);
     }
 
     protected void exportMemory(WasmContext context, WasmInstance module, String memoryName) {
-        module.symbolTable().exportMemory(context, memoryName);
+        module.symbolTable().exportMemory(memoryName);
     }
 
     protected byte[] types(byte... args) {

@@ -193,7 +193,7 @@ public class BinaryParser extends BinaryStreamParser {
             switch (importType) {
                 case ImportIdentifier.FUNCTION: {
                     int typeIndex = readTypeIndex();
-                    module.symbolTable().importFunction(context, moduleName, memberName, typeIndex);
+                    module.symbolTable().importFunction(moduleName, memberName, typeIndex);
                     moduleFunctionIndex++;
                     break;
                 }
@@ -201,19 +201,19 @@ public class BinaryParser extends BinaryStreamParser {
                     byte elemType = readElemType();
                     Assert.assertIntEqual(elemType, ReferenceTypes.FUNCREF, "Invalid element type for table import");
                     readTableLimits(limitsResult);
-                    module.symbolTable().importTable(context, moduleName, memberName, limitsResult[0], limitsResult[1]);
+                    module.symbolTable().importTable(moduleName, memberName, limitsResult[0], limitsResult[1]);
                     break;
                 }
                 case ImportIdentifier.MEMORY: {
                     readMemoryLimits(limitsResult);
-                    module.symbolTable().importMemory(context, moduleName, memberName, limitsResult[0], limitsResult[1]);
+                    module.symbolTable().importMemory(moduleName, memberName, limitsResult[0], limitsResult[1]);
                     break;
                 }
                 case ImportIdentifier.GLOBAL: {
                     byte type = readValueType();
                     byte mutability = readMutability();
                     int index = module.symbolTable().maxGlobalIndex() + 1;
-                    module.symbolTable().importGlobal(context, moduleName, memberName, index, type, mutability);
+                    module.symbolTable().importGlobal(moduleName, memberName, index, type, mutability);
                     break;
                 }
                 default: {
@@ -1022,24 +1022,24 @@ public class BinaryParser extends BinaryStreamParser {
             switch (exportType) {
                 case ExportIdentifier.FUNCTION: {
                     int functionIndex = readDeclaredFunctionIndex();
-                    module.symbolTable().exportFunction(context, functionIndex, exportName);
+                    module.symbolTable().exportFunction(functionIndex, exportName);
                     break;
                 }
                 case ExportIdentifier.TABLE: {
                     int tableIndex = readTableIndex();
                     Assert.assertTrue(module.symbolTable().tableExists(), "No table was imported or declared, so cannot export a table");
                     Assert.assertIntEqual(tableIndex, 0, "Cannot export table index different than zero (only one table per module allowed)");
-                    module.symbolTable().exportTable(context, exportName);
+                    module.symbolTable().exportTable(exportName);
                     break;
                 }
                 case ExportIdentifier.MEMORY: {
                     readMemoryIndex();
-                    module.symbolTable().exportMemory(context, exportName);
+                    module.symbolTable().exportMemory(exportName);
                     break;
                 }
                 case ExportIdentifier.GLOBAL: {
                     int index = readGlobalIndex();
-                    module.symbolTable().exportGlobal(context, exportName, index);
+                    module.symbolTable().exportGlobal(exportName, index);
                     break;
                 }
                 default: {

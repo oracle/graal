@@ -421,10 +421,10 @@ public class SymbolTable {
         return function;
     }
 
-    public WasmFunction declareExportedFunction(WasmContext context, int typeIndex, String exportedName) {
+    public WasmFunction declareExportedFunction(int typeIndex, String exportedName) {
         checkNotLinked();
         final WasmFunction function = declareFunction(typeIndex);
-        exportFunction(context, function.index(), exportedName);
+        exportFunction(function.index(), exportedName);
         return function;
     }
 
@@ -515,24 +515,24 @@ public class SymbolTable {
         return new FunctionType(functionTypeArgumentTypes(index).toArray(), functionTypeReturnType(index));
     }
 
-    public void exportFunction(WasmContext context, int functionIndex, String exportName) {
+    public void exportFunction(int functionIndex, String exportName) {
         checkNotLinked();
         checkUniqueExport(exportName);
         exportedFunctions.put(exportName, functions[functionIndex]);
         exportedFunctionsByIndex.put(functionIndex, exportName);
-        module.addLinkAction(() -> context.linker().resolveFunctionExport(module, functionIndex, exportName));
+        module.addLinkAction(context -> context.linker().resolveFunctionExport(module, functionIndex, exportName));
     }
 
     public Map<String, WasmFunction> exportedFunctions() {
         return exportedFunctions;
     }
 
-    public WasmFunction importFunction(WasmContext context, String moduleName, String functionName, int typeIndex) {
+    public WasmFunction importFunction(String moduleName, String functionName, int typeIndex) {
         checkNotLinked();
         final ImportDescriptor importDescriptor = new ImportDescriptor(moduleName, functionName);
         WasmFunction function = allocateFunction(typeIndex, importDescriptor);
         importedFunctions.add(function);
-        module.addLinkAction(() -> context.linker().resolveFunctionImport(context, module, function));
+        module.addLinkAction(context -> context.linker().resolveFunctionImport(context, module, function));
         return function;
     }
 
@@ -580,10 +580,10 @@ public class SymbolTable {
         return address;
     }
 
-    void importGlobal(WasmContext context, String moduleName, String globalName, int index, byte valueType, byte mutability) {
+    void importGlobal(String moduleName, String globalName, int index, byte valueType, byte mutability) {
         importedGlobals.put(index, new ImportDescriptor(moduleName, globalName));
         allocateGlobal(index, valueType, mutability, UNINITIALIZED_GLOBAL_ADDRESS);
-        module.addLinkAction(() -> context.linker().resolveGlobalImport(context, module, new ImportDescriptor(moduleName, globalName), index, valueType, mutability));
+        module.addLinkAction(context -> context.linker().resolveGlobalImport(context, module, new ImportDescriptor(moduleName, globalName), index, valueType, mutability));
     }
 
     void setGlobalAddress(int globalIndex, int address) {
@@ -643,7 +643,7 @@ public class SymbolTable {
         return null;
     }
 
-    void exportGlobal(WasmContext context, String name, int index) {
+    void exportGlobal(String name, int index) {
         checkNotLinked();
         checkUniqueExport(name);
         if (globalExported(index)) {
@@ -651,13 +651,13 @@ public class SymbolTable {
         }
         globalTypes[index] |= GLOBAL_EXPORT_BIT;
         exportedGlobals.put(name, index);
-        module.addLinkAction(() -> context.linker().resolveGlobalExport(module, name, index));
+        module.addLinkAction(context -> context.linker().resolveGlobalExport(module, name, index));
     }
 
     public int declareExportedGlobal(WasmContext context, String name, int index, byte valueType, byte mutability) {
         checkNotLinked();
         int address = declareGlobal(context, index, valueType, mutability);
-        exportGlobal(context, name, index);
+        exportGlobal(name, index);
         return address;
     }
 
@@ -667,11 +667,11 @@ public class SymbolTable {
         table = context.tables().allocateTable(initSize, maxSize);
     }
 
-    void importTable(WasmContext context, String moduleName, String tableName, int initSize, int maxSize) {
+    void importTable(String moduleName, String tableName, int initSize, int maxSize) {
         checkNotLinked();
         validateSingleTable();
         importedTableDescriptor = new ImportDescriptor(moduleName, tableName);
-        module.addLinkAction(() -> context.linker().resolveTableImport(context, module, importedTableDescriptor, initSize, maxSize));
+        module.addLinkAction(context -> context.linker().resolveTableImport(context, module, importedTableDescriptor, initSize, maxSize));
     }
 
     private void validateSingleTable() {
@@ -687,7 +687,7 @@ public class SymbolTable {
         return importedTableDescriptor != null || table != null;
     }
 
-    public void exportTable(WasmContext context, String name) {
+    public void exportTable(String name) {
         checkNotLinked();
         checkUniqueExport(name);
         if (exportedTable != null) {
@@ -697,7 +697,7 @@ public class SymbolTable {
             throw new WasmValidationException("No table has been declared or imported, so a table cannot be exported.");
         }
         exportedTable = name;
-        module.addLinkAction(() -> context.linker().resolveTableExport(module, exportedTable));
+        module.addLinkAction(context -> context.linker().resolveTableExport(module, exportedTable));
     }
 
     public WasmTable table() {
@@ -733,11 +733,11 @@ public class SymbolTable {
         return memory;
     }
 
-    public void importMemory(WasmContext context, String moduleName, String memoryName, int initSize, int maxSize) {
+    public void importMemory(String moduleName, String memoryName, int initSize, int maxSize) {
         checkNotLinked();
         validateSingleMemory();
         importedMemoryDescriptor = new ImportDescriptor(moduleName, memoryName);
-        module.addLinkAction(() -> context.linker().resolveMemoryImport(context, module, importedMemoryDescriptor, initSize, maxSize));
+        module.addLinkAction(context -> context.linker().resolveMemoryImport(context, module, importedMemoryDescriptor, initSize, maxSize));
     }
 
     private void validateSingleMemory() {
@@ -753,7 +753,7 @@ public class SymbolTable {
         return importedMemoryDescriptor != null || memory != null;
     }
 
-    public void exportMemory(WasmContext context, String name) {
+    public void exportMemory(String name) {
         checkNotLinked();
         checkUniqueExport(name);
         if (exportedMemory != null) {
@@ -763,7 +763,7 @@ public class SymbolTable {
             throw new WasmValidationException("No memory has been declared or imported, so memory cannot be exported.");
         }
         exportedMemory = name;
-        module.addLinkAction(() -> context.linker().resolveMemoryExport(module, name));
+        module.addLinkAction(context -> context.linker().resolveMemoryExport(module, name));
     }
 
     public WasmMemory memory() {
