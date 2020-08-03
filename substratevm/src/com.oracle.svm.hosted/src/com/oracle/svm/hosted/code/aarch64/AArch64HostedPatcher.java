@@ -118,7 +118,7 @@ class AdrpLdrMacroInstructionHostedPatcher extends CompilationResult.CodeAnnotat
     public void relocate(Reference ref, RelocatableBuffer relocs, int compStart) {
         int siteOffset = compStart + macroInstruction.instructionPosition;
 
-        relocs.addRelocation(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADR_PREL_PG_HI21, 4, Long.valueOf(0), ref);
+        relocs.addRelocationWithAddend(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADR_PREL_PG_HI21, Long.valueOf(0), ref);
         siteOffset += 4;
         RelocationKind secondRelocation;
         switch (macroInstruction.srcSize) {
@@ -137,7 +137,7 @@ class AdrpLdrMacroInstructionHostedPatcher extends CompilationResult.CodeAnnotat
             default:
                 throw VMError.shouldNotReachHere("Unknown macro instruction src size of " + macroInstruction.srcSize);
         }
-        relocs.addRelocation(siteOffset, secondRelocation, 4, Long.valueOf(0), ref);
+        relocs.addRelocationWithAddend(siteOffset, secondRelocation, Long.valueOf(0), ref);
     }
 
     @Uninterruptible(reason = ".")
@@ -165,9 +165,9 @@ class AdrpAddMacroInstructionHostedPatcher extends CompilationResult.CodeAnnotat
     public void relocate(Reference ref, RelocatableBuffer relocs, int compStart) {
         int siteOffset = compStart + macroInstruction.instructionPosition;
 
-        relocs.addRelocation(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADR_PREL_PG_HI21, 4, Long.valueOf(0), ref);
+        relocs.addRelocationWithAddend(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADR_PREL_PG_HI21, Long.valueOf(0), ref);
         siteOffset += 4;
-        relocs.addRelocation(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADD_ABS_LO12_NC, 4, Long.valueOf(0), ref);
+        relocs.addRelocationWithAddend(siteOffset, RelocationKind.AARCH64_R_AARCH64_ADD_ABS_LO12_NC, Long.valueOf(0), ref);
     }
 
     @Uninterruptible(reason = ".")
@@ -225,9 +225,9 @@ class MovSequenceHostedPatcher extends CompilationResult.CodeAnnotation implemen
                     continue;
                 }
                 if (i == lastMovIndex) {
-                    relocs.addRelocation(siteOffset, relocations[i], 2, Long.valueOf(0), ref);
+                    relocs.addRelocationWithAddend(siteOffset, relocations[i], Long.valueOf(0), ref);
                 } else {
-                    relocs.addRelocation(siteOffset, noCheckRelocations[i], 2, Long.valueOf(0), ref);
+                    relocs.addRelocationWithAddend(siteOffset, noCheckRelocations[i], Long.valueOf(0), ref);
                 }
                 siteOffset = siteOffset + 4;
             }
@@ -237,7 +237,9 @@ class MovSequenceHostedPatcher extends CompilationResult.CodeAnnotation implemen
                     throw VMError.shouldNotReachHere("This mov action isn't handled by relocation currently.");
                 }
             }
-            relocs.addDirectRelocationWithoutAddend(siteOffset, annotation.includeSet.length * 2, ref);
+            assert annotation.includeSet.length == 2 || annotation.includeSet.length == 4;
+            // FIXME this will be changed soon
+            relocs.addRelocationWithoutAddend(siteOffset, annotation.includeSet.length == 4 ? RelocationKind.DIRECT_8 : RelocationKind.DIRECT_4, ref);
         } else {
             throw VMError.shouldNotReachHere("Unknown type of reference in code");
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -114,15 +114,15 @@ public class BasicProgbitsSectionImpl extends BasicElementImpl implements Progbi
     }
 
     @Override
-    public RelocationRecord markRelocationSite(int offset, int length, RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend) {
-        return ((RelocatableSectionImpl) getElement()).markRelocationSite(offset, length, ByteBuffer.wrap(getContent()).order(getOwner().getByteOrder()), k, symbolName, useImplicitAddend,
+    public RelocationRecord markRelocationSite(int offset, RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend) {
+        return ((RelocatableSectionImpl) getElement()).markRelocationSite(offset, ByteBuffer.wrap(getContent()).order(getOwner().getByteOrder()), k, symbolName, useImplicitAddend,
                         explicitAddend);
     }
 
     @Override
-    public final RelocationRecord markRelocationSite(int offset, int length, ByteBuffer bb, RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend) {
+    public final RelocationRecord markRelocationSite(int offset, ByteBuffer bb, RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend) {
         assert getContent() == null || bb.array() == getContent();
-        return ((RelocatableSectionImpl) getElement()).markRelocationSite(offset, length, bb, k, symbolName, useImplicitAddend, explicitAddend);
+        return ((RelocatableSectionImpl) getElement()).markRelocationSite(offset, bb, k, symbolName, useImplicitAddend, explicitAddend);
     }
 
     @Override
