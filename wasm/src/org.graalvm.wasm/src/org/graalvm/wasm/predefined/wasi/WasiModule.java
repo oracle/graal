@@ -55,7 +55,7 @@ public class WasiModule extends BuiltinModule {
     @Override
     protected WasmInstance createInstance(WasmLanguage language, WasmContext context, String name) {
         final WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy = WasmOptions.StoreConstantsPolicy.getValue(context.environment().getOptions());
-        WasmInstance module = new WasmInstance(new WasmModule(name, null), storeConstantsPolicy);
+        WasmInstance module = new WasmInstance(new WasmModule(name, null, storeConstantsPolicy), storeConstantsPolicy);
         importMemory(context, module, "main", "memory", 0, 0);
         defineFunction(context, module, "args_sizes_get", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiArgsSizesGetNode(language, module));
         defineFunction(context, module, "args_get", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiArgsGetNode(language, module));

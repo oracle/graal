@@ -555,7 +555,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     offset += offsetDelta;
                     // endregion
 
-                    WasmFunction function = module().symbolTable().function(functionIndex);
+                    WasmFunction function = instance().symbolTable().function(functionIndex);
                     byte returnType = function.returnType();
                     int numArgs = function.numArguments();
 
@@ -606,8 +606,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                 case CALL_INDIRECT: {
                     // Extract the function object.
                     stackPointer--;
-                    final SymbolTable symtab = module().symbolTable();
-                    final Object[] elements = symtab.table().elements();
+                    final SymbolTable symtab = instance().symbolTable();
+                    final Object[] elements = instance().table().elements();
                     final int elementIndex = popInt(frame, stackPointer);
                     if (elementIndex < 0 || elementIndex >= elements.length) {
                         throw new WasmTrap(this, "Element index '" + elementIndex + "' out of table bounds.");
@@ -638,14 +638,14 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         // seems to allow multiple definitions of the same type.
                         // We should refine the check.
                         throw new WasmTrap(this, Assert.format("Actual (type %d of function %s) and expected (type %d in module %s) types differ in the indirect call.",
-                                        function.typeIndex(), function.name(), expectedFunctionTypeIndex, module().name()));
+                                        function.typeIndex(), function.name(), expectedFunctionTypeIndex, instance().name()));
                     }
 
                     // Invoke the resolved function.
                     WasmIndirectCallNode callNode = (WasmIndirectCallNode) children[childrenOffset];
                     childrenOffset++;
 
-                    int numArgs = module().symbolTable().functionTypeArgumentCount(expectedFunctionTypeIndex);
+                    int numArgs = instance().symbolTable().functionTypeArgumentCount(expectedFunctionTypeIndex);
                     Object[] args = createArgumentsForCall(frame, function, numArgs, stackPointer);
                     stackPointer -= args.length;
 
@@ -655,7 +655,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     // At the moment, WebAssembly functions may return up to one value.
                     // As per the WebAssembly specification, this restriction may be lifted in the
                     // future.
-                    int returnType = module().symbolTable().functionTypeReturnType(expectedFunctionTypeIndex);
+                    int returnType = instance().symbolTable().functionTypeReturnType(expectedFunctionTypeIndex);
                     switch (returnType) {
                         case ValueTypes.I32_TYPE: {
                             pushInt(frame, stackPointer, (int) result);
@@ -855,10 +855,10 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     offset += offsetDelta;
                     // endregion
 
-                    byte type = module().symbolTable().globalValueType(index);
+                    byte type = instance().symbolTable().globalValueType(index);
                     switch (type) {
                         case ValueTypes.I32_TYPE: {
-                            int address = module().symbolTable().globalAddress(index);
+                            int address = instance().globalAddress(index);
                             int value = context.globals().loadAsInt(address);
                             pushInt(frame, stackPointer, value);
                             stackPointer++;
@@ -866,7 +866,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                             break;
                         }
                         case ValueTypes.I64_TYPE: {
-                            int address = module().symbolTable().globalAddress(index);
+                            int address = instance().globalAddress(index);
                             long value = context.globals().loadAsLong(address);
                             push(frame, stackPointer, value);
                             stackPointer++;
@@ -874,7 +874,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                             break;
                         }
                         case ValueTypes.F32_TYPE: {
-                            int address = module().symbolTable().globalAddress(index);
+                            int address = instance().globalAddress(index);
                             int value = context.globals().loadAsInt(address);
                             pushInt(frame, stackPointer, value);
                             stackPointer++;
@@ -882,7 +882,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                             break;
                         }
                         case ValueTypes.F64_TYPE: {
-                            int address = module().symbolTable().globalAddress(index);
+                            int address = instance().globalAddress(index);
                             long value = context.globals().loadAsLong(address);
                             push(frame, stackPointer, value);
                             stackPointer++;
@@ -904,7 +904,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     offset += offsetDelta;
                     // endregion
 
-                    byte type = module().symbolTable().globalValueType(index);
+                    byte type = instance().symbolTable().globalValueType(index);
                     // For global.set, we don't need to make sure that the referenced global is
                     // mutable.
                     // This is taken care of by validation during wat to wasm compilation.
@@ -912,7 +912,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         case ValueTypes.I32_TYPE: {
                             stackPointer--;
                             int value = popInt(frame, stackPointer);
-                            int address = module().symbolTable().globalAddress(index);
+                            int address = instance().globalAddress(index);
                             context.globals().storeInt(address, value);
                             trace("global.set %d, value = 0x%08X (%d) [i32]", index, value, value);
                             break;
@@ -920,7 +920,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         case ValueTypes.I64_TYPE: {
                             stackPointer--;
                             long value = pop(frame, stackPointer);
-                            int address = module().symbolTable().globalAddress(index);
+                            int address = instance().globalAddress(index);
                             context.globals().storeLong(address, value);
                             trace("global.set %d, value = 0x%016X (%d) [i64]", index, value, value);
                             break;
@@ -928,7 +928,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         case ValueTypes.F32_TYPE: {
                             stackPointer--;
                             int value = popInt(frame, stackPointer);
-                            int address = module().symbolTable().globalAddress(index);
+                            int address = instance().globalAddress(index);
                             context.globals().storeFloatWithInt(address, value);
                             trace("global.set %d, value = %f [f32]", index, Float.intBitsToFloat(value));
                             break;
@@ -936,7 +936,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         case ValueTypes.F64_TYPE: {
                             stackPointer--;
                             long value = pop(frame, stackPointer);
-                            int address = module().symbolTable().globalAddress(index);
+                            int address = instance().globalAddress(index);
                             context.globals().storeDoubleWithLong(address, value);
                             trace("global.set %d, value = %f [f64]", index, Double.longBitsToDouble(value));
                             break;
@@ -977,7 +977,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     stackPointer--;
                     int baseAddress = popInt(frame, stackPointer);
                     int address = baseAddress + memOffset;
-                    WasmMemory memory = module().symbolTable().memory();
+                    WasmMemory memory = instance().memory();
 
                     try {
                         switch (opcode) {
@@ -1083,7 +1083,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     offset += offsetDelta;
                     // endregion
 
-                    WasmMemory memory = module().symbolTable().memory();
+                    WasmMemory memory = instance().memory();
 
                     try {
                         switch (opcode) {
@@ -1182,7 +1182,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     // Skip the 0x00 constant.
                     offset++;
                     trace("memory_size");
-                    int pageSize = (int) (module().symbolTable().memory().pageSize());
+                    int pageSize = (int) (instance().memory().pageSize());
                     pushInt(frame, stackPointer, pageSize);
                     stackPointer++;
                     break;
@@ -1193,7 +1193,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     trace("memory_grow");
                     stackPointer--;
                     int extraSize = popInt(frame, stackPointer);
-                    final WasmMemory memory = module().symbolTable().memory();
+                    final WasmMemory memory = instance().memory();
                     int pageSize = (int) memory.pageSize();
                     if (memory.grow(extraSize)) {
                         pushInt(frame, stackPointer, pageSize);
@@ -2420,7 +2420,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
         int stackPointer = stackPointerOffset;
         for (int i = numArgs - 1; i >= 0; --i) {
             stackPointer--;
-            byte type = module().symbolTable().functionTypeArgumentTypeAt(function.typeIndex(), i);
+            byte type = instance().symbolTable().functionTypeArgumentTypeAt(function.typeIndex(), i);
             switch (type) {
                 case ValueTypes.I32_TYPE:
                     args[i] = popInt(frame, stackPointer);
@@ -2480,7 +2480,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     private int unsignedIntConstant(int offset, int intConstantOffset) {
-        switch (module().storeConstantsPolicy()) {
+        switch (instance().storeConstantsPolicy()) {
             case ALL:
                 return codeEntry().intConstant(intConstantOffset);
             case LARGE_ONLY:
@@ -2493,7 +2493,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     private int signedIntConstant(int offset, int intConstantOffset) {
-        switch (module().storeConstantsPolicy()) {
+        switch (instance().storeConstantsPolicy()) {
             case ALL:
                 return codeEntry().intConstant(intConstantOffset);
             case LARGE_ONLY:
@@ -2511,7 +2511,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     public long signedLongConstant(int offset, int longConstantOffset) {
-        switch (module().storeConstantsPolicy()) {
+        switch (instance().storeConstantsPolicy()) {
             case ALL:
                 return codeEntry().longConstant(longConstantOffset);
             case LARGE_ONLY:
@@ -2529,7 +2529,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     private int offsetDelta(int offset, int byteConstantOffset) {
-        switch (module().storeConstantsPolicy()) {
+        switch (instance().storeConstantsPolicy()) {
             case ALL:
                 return codeEntry().byteConstant(byteConstantOffset);
             case LARGE_ONLY:
@@ -2554,7 +2554,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     private int constantDelta(int offset) {
-        switch (module().storeConstantsPolicy()) {
+        switch (instance().storeConstantsPolicy()) {
             case ALL:
                 return 1;
             case LARGE_ONLY:

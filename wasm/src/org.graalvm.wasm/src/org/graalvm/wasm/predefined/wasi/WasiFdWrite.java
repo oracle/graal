@@ -91,7 +91,7 @@ public class WasiFdWrite extends WasmBuiltinRootNode {
 
         trace("WasiFdWrite EXECUTE");
 
-        WasmMemory memory = module.symbolTable().memory();
+        WasmMemory memory = instance.memory();
         int num = 0;
         for (int i = 0; i < iovcnt; i++) {
             int ptr = memory.load_i32(this, iov + (i * 8 + 0));

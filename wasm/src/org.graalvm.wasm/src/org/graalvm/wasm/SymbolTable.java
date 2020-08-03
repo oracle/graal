@@ -667,7 +667,7 @@ public abstract class SymbolTable {
         checkNotParsed();
         validateSingleTable();
         importedTableDescriptor = new ImportDescriptor(moduleName, tableName);
-        module().addLinkAction((context, instance) -> context.linker().resolveTableImport(context, module(), importedTableDescriptor, initSize, maxSize));
+        module().addLinkAction((context, instance) -> context.linker().resolveTableImport(context, instance, importedTableDescriptor, initSize, maxSize));
     }
 
     private void validateSingleTable() {
@@ -723,7 +723,7 @@ public abstract class SymbolTable {
         checkNotParsed();
         validateSingleMemory();
         importedMemoryDescriptor = new ImportDescriptor(moduleName, memoryName);
-        module().addLinkAction((context, instance) -> context.linker().resolveMemoryImport(context, module(), importedMemoryDescriptor, initSize, maxSize));
+        module().addLinkAction((context, instance) -> context.linker().resolveMemoryImport(context, instance, importedMemoryDescriptor, initSize, maxSize));
     }
 
     private void validateSingleMemory() {

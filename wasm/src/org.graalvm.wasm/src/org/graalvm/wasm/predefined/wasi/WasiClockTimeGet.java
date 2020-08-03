@@ -70,7 +70,7 @@ public class WasiClockTimeGet extends WasmBuiltinRootNode {
 
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        final WasmMemory memory = module.symbolTable().memory();
+        final WasmMemory memory = instance.memory();
         final int id = (int) frame.getArguments()[0];
         // Ignored for now
         // final long precision = (long) frame.getArguments()[1];

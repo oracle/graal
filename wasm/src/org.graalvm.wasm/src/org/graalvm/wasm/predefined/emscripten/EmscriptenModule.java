@@ -58,7 +58,7 @@ public class EmscriptenModule extends BuiltinModule {
     @Override
     protected WasmInstance createInstance(WasmLanguage language, WasmContext context, String name) {
         final WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy = WasmOptions.StoreConstantsPolicy.getValue(context.environment().getOptions());
-        WasmInstance module = new WasmInstance(new WasmModule(name, null), storeConstantsPolicy);
+        WasmInstance module = new WasmInstance(new WasmModule(name, null, storeConstantsPolicy), storeConstantsPolicy);
 
         final WasmInstance testutil = context.moduleInstances().get("testutil");
         if (testutil != null) {

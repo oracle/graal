@@ -58,7 +58,7 @@ public class EmscriptenGetHeapSize extends WasmBuiltinRootNode {
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
         trace("EmscriptenGetHeapSize EXECUTE");
 
-        WasmMemory memory = module.symbolTable().memory();
+        WasmMemory memory = instance.memory();
         final long byteSize = memory.byteSize();
         return (int) byteSize;
     }

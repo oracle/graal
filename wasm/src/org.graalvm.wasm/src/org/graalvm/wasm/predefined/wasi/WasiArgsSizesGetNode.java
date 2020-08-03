@@ -55,7 +55,7 @@ public class WasiArgsSizesGetNode extends WasmBuiltinRootNode {
 
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        WasmMemory memory = module.symbolTable().memory();
+        WasmMemory memory = instance.memory();
         int argcAddress = (int) frame.getArguments()[0];
         int argvBufSizeAddress = (int) frame.getArguments()[1];
 

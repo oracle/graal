@@ -320,7 +320,7 @@ public final class WasmInstance implements TruffleObject {
                 final int globalIndex = exportedGlobals.get((int) index);
                 return readGlobal(instance, symbolTable, globalIndex);
             }
-            return memory();
+            return instance.memory();
         }
     }
 
