@@ -247,7 +247,8 @@ public abstract class ClassRegistry implements ContextAccess {
     }
 
     public static boolean loaderIsBootOrPlatform(StaticObject loader, Meta meta) {
-        return StaticObject.isNull(loader) || meta.jdk_internal_loader_ClassLoaders$PlatformClassLoader.isAssignableFrom(loader.getKlass());
+        return StaticObject.isNull(loader) ||
+                        (meta.getJavaVersion().java9OrLater() && meta.jdk_internal_loader_ClassLoaders$PlatformClassLoader.isAssignableFrom(loader.getKlass()));
     }
 
     private ObjectKlass createAndPutKlass(Meta meta, ParserKlass parserKlass, Symbol<Type> type, Symbol<Type> superKlassType) {

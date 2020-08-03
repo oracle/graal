@@ -2673,6 +2673,23 @@ public final class VM extends NativeEnv implements ContextAccess {
          */
     }
 
+    private static final long ONE_BILLION = 1_000_000_000;
+    private static final long MAX_DIFF = 0x0100000000L;
+
+    @VmImpl
+    @JniImpl
+    @SuppressWarnings("unused")
+    public static long JVM_GetNanoTimeAdjustment(@Host(Class.class) StaticObject ignored, long offset) {
+        long nanos = System.nanoTime();
+        long secs = nanos / ONE_BILLION;
+        long nsecs = nanos % ONE_BILLION;
+        long diff = secs - offset;
+        if (diff > MAX_DIFF || diff < -MAX_DIFF) {
+            return -1;
+        }
+        return (diff * ONE_BILLION) + nsecs;
+    }
+
     @VmImpl
     @JniImpl
     @SuppressWarnings("unused")

@@ -228,6 +228,9 @@ public final class Target_java_lang_Thread {
                         Method dispatchUncaughtException = self.getKlass().lookupMethod(Name.dispatchUncaughtException, Signature._void_Throwable);
                         assert !dispatchUncaughtException.isStatic();
                         dispatchUncaughtException.invokeDirect(self, uncaught.getExceptionObject());
+                    } catch (EspressoExitException exit) {
+                        // TODO: initiate shutdown sequence from here.
+                        throw exit;
                     } finally {
                         setThreadStop(self, KillStatus.EXITING);
                         threadExit.call(self);
