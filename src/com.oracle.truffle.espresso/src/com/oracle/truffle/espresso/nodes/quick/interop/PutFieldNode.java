@@ -68,7 +68,7 @@ public abstract class PutFieldNode extends QuickNode {
 
     public abstract void executePutField(Object receiver, Object fieldValue);
 
-    @Specialization(guards = "receiver.isForeignObject()", limit = "1")
+    @Specialization(guards = {"receiver.isForeignObject()", "!isForeignObject(fieldValue)"}, limit = "1")
     protected void doForeign(StaticObject receiver, Object fieldValue,
                     @CachedLibrary("receiver.rawForeignObject()") InteropLibrary interopLibrary,
                     @CachedContext(EspressoLanguage.class) EspressoContext context) {
@@ -79,7 +79,22 @@ public abstract class PutFieldNode extends QuickNode {
             throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_NoSuchFieldError, "Foreign object has no writable field " + fieldName);
         } catch (UnsupportedTypeException e) {
             throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_ClassCastException,
-                            "Could not cast value" + fieldValue.toString() + "to the actual type of the foreign field " + fieldName);
+                            "Could not cast the value to the actual type of the foreign field " + fieldName);
+        }
+    }
+
+    @Specialization(guards = {"receiver.isForeignObject()", "fieldValue.isForeignObject()"}, limit = "1")
+    protected void doForeignWithForeignField(StaticObject receiver, StaticObject fieldValue,
+                                             @CachedLibrary("receiver.rawForeignObject()") InteropLibrary interopLibrary,
+                                             @CachedContext(EspressoLanguage.class) EspressoContext context) {
+        assert field.getDeclaringKlass().isAssignableFrom(receiver.getKlass());
+        try {
+            interopLibrary.writeMember(receiver.rawForeignObject(), fieldName, fieldValue.rawForeignObject());
+        } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+            throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_NoSuchFieldError, "Foreign object has no writable field " + fieldName);
+        } catch (UnsupportedTypeException e) {
+            throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_ClassCastException,
+                    "Could not cast the value to the actual type of the foreign field " + fieldName);
         }
     }
 
@@ -113,5 +128,9 @@ public abstract class PutFieldNode extends QuickNode {
                 CompilerDirectives.transferToInterpreter();
                 throw EspressoError.shouldNotReachHere("unexpected kind: " + field.getKind().toString());
         }
+    }
+
+    protected static boolean isForeignObject(Object value) {
+        return value instanceof StaticObject && ((StaticObject) value).isForeignObject();
     }
 }
