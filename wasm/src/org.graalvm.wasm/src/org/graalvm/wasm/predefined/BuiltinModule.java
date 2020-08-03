@@ -89,24 +89,22 @@ public abstract class BuiltinModule {
         return function;
     }
 
-    protected int defineGlobal(WasmContext context, WasmInstance module, String name, byte valueType, byte mutability, long value) {
-        int index = module.symbolTable().maxGlobalIndex() + 1;
-        int address = module.symbolTable().declareExportedGlobal(context, name, index, valueType, mutability);
-        context.globals().storeLong(address, value);
+    protected int defineGlobal(WasmContext context, WasmInstance instance, String name, byte valueType, byte mutability, long value) {
+        int index = instance.symbolTable().maxGlobalIndex() + 1;
+        instance.symbolTable().declareExportedGlobalWithValue(name, index, valueType, mutability, value);
         return index;
     }
 
     protected int defineTable(WasmContext context, WasmInstance module, String tableName, int initSize, int maxSize, byte type) {
         Assert.assertByteEqual(type, ReferenceTypes.FUNCREF, "Only function types are currently supported in tables.");
-        module.symbolTable().allocateTable(context, initSize, maxSize);
+        module.symbolTable().allocateTable(initSize, maxSize);
         module.symbolTable().exportTable(tableName);
         return 0;
     }
 
-    protected WasmMemory defineMemory(WasmContext context, WasmInstance module, String memoryName, int initSize, int maxSize) {
-        final WasmMemory memory = module.symbolTable().allocateMemory(context, initSize, maxSize);
+    protected void defineMemory(WasmContext context, WasmInstance module, String memoryName, int initSize, int maxSize) {
+        module.symbolTable().allocateMemory(initSize, maxSize);
         module.symbolTable().exportMemory(memoryName);
-        return memory;
     }
 
     protected void importFunction(WasmContext context, WasmInstance module, String importModuleName, String importFunctionName, byte[] paramTypes, byte[] retTypes, String exportName) {
