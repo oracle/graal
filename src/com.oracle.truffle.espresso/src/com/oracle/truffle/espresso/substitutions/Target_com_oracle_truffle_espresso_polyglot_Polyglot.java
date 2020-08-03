@@ -30,7 +30,6 @@ import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -72,10 +71,7 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                  * Check that the component of the (possibly multi-dimensional) array is either of a
                  * primitive type or of a concrete class
                  */
-                Klass componentKlass = ((ArrayKlass) targetKlass).getComponentType();
-                while (componentKlass.isArray()) {
-                    componentKlass = ((ArrayKlass) componentKlass).getComponentType();
-                }
+                Klass componentKlass = targetKlass.getElementalType();
                 if (!componentKlass.isPrimitive() && !componentKlass.isConcrete()) {
                     throw Meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Casting to an array with elements of an abstract type is not allowed");
                 }

@@ -235,10 +235,7 @@ public abstract class ToEspressoNode extends Node {
          * Check that the component of the (possibly multi-dimensional) array is either of a
          * primitive type or of a concrete class
          */
-        Klass componentKlass = klass.getComponentType();
-        while (componentKlass.isArray()) {
-            componentKlass = ((ArrayKlass) componentKlass).getComponentType();
-        }
+        Klass componentKlass = klass.getElementalType();
         if (!componentKlass.isPrimitive() && !componentKlass.isConcrete()) {
             throw UnsupportedTypeException.create(new Object[]{value}, "Casting to an array with elements of an abstract type is not allowed");
         }
