@@ -95,7 +95,7 @@ public abstract class AllocExternalSymbolNode extends LLVMNode {
  */
 abstract class AllocExistingLocalSymbolsNode extends AllocExternalSymbolNode {
 
-    public AllocExistingLocalSymbolsNode(LLVMSymbol symbol) {
+    AllocExistingLocalSymbolsNode(LLVMSymbol symbol) {
         super(symbol);
     }
 
@@ -155,7 +155,7 @@ abstract class AllocExistingLocalSymbolsNode extends AllocExternalSymbolNode {
  */
 abstract class AllocExistingGlobalSymbolsNode extends AllocExistingLocalSymbolsNode {
 
-    public AllocExistingGlobalSymbolsNode(LLVMSymbol symbol) {
+    AllocExistingGlobalSymbolsNode(LLVMSymbol symbol) {
         super(symbol);
     }
 
@@ -209,7 +209,7 @@ abstract class AllocExternalFunctionNode extends AllocExistingGlobalSymbolsNode 
 
     private final NodeFactory nodeFactory;
 
-    public AllocExternalFunctionNode(LLVMSymbol symbol, NodeFactory nodeFactory) {
+    AllocExternalFunctionNode(LLVMSymbol symbol, NodeFactory nodeFactory) {
         super(symbol);
         this.nodeFactory = nodeFactory;
     }
@@ -262,7 +262,7 @@ abstract class AllocExternalFunctionNode extends AllocExistingGlobalSymbolsNode 
  */
 abstract class AllocExternalGlobalNode extends AllocExistingGlobalSymbolsNode {
 
-    public AllocExternalGlobalNode(LLVMSymbol symbol) {
+    AllocExternalGlobalNode(LLVMSymbol symbol) {
         super(symbol);
     }
 

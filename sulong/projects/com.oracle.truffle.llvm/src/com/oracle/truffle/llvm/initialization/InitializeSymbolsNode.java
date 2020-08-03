@@ -82,7 +82,7 @@ public final class InitializeSymbolsNode extends LLVMNode {
     @Children final AllocSymbolNode[] allocFuncs;
 
     private final LLVMScope fileScope;
-    private NodeFactory nodeFactory;
+    private final NodeFactory nodeFactory;
 
     private final int bitcodeID;
     private final int globalLength;
@@ -232,7 +232,7 @@ public final class InitializeSymbolsNode extends LLVMNode {
         return global.getAlign() > 0 ? 1 << (global.getAlign() - 1) : type.getAlignment(dataLayout);
     }
 
-    final class DataSection {
+    static final class DataSection {
 
         final DataLayout dataLayout;
         final ArrayList<Type> types = new ArrayList<>();
@@ -269,7 +269,7 @@ public final class InitializeSymbolsNode extends LLVMNode {
         static final AllocSymbolNode[] EMPTY = {};
         final LLVMSymbol symbol;
 
-        public AllocSymbolNode(LLVMSymbol symbol) {
+        AllocSymbolNode(LLVMSymbol symbol) {
             this.symbol = symbol;
         }
 
@@ -281,9 +281,9 @@ public final class InitializeSymbolsNode extends LLVMNode {
      * LLVM bitcode function, and intrinsic function.
      *
      */
-    final class AllocLLVMFunctionNode extends AllocSymbolNode {
+    static final class AllocLLVMFunctionNode extends AllocSymbolNode {
 
-        public AllocLLVMFunctionNode(LLVMFunction function) {
+        AllocLLVMFunctionNode(LLVMFunction function) {
             super(function);
         }
 
@@ -299,9 +299,9 @@ public final class InitializeSymbolsNode extends LLVMNode {
         }
     }
 
-    final class AllocLLVMEagerFunctionNode extends AllocSymbolNode {
+    static final class AllocLLVMEagerFunctionNode extends AllocSymbolNode {
 
-        public AllocLLVMEagerFunctionNode(LLVMFunction function) {
+        AllocLLVMEagerFunctionNode(LLVMFunction function) {
             super(function);
         }
 
@@ -319,12 +319,12 @@ public final class InitializeSymbolsNode extends LLVMNode {
         }
     }
 
-    final class AllocIntrinsicFunctionNode extends AllocSymbolNode {
+    static final class AllocIntrinsicFunctionNode extends AllocSymbolNode {
 
-        private NodeFactory nodeFactory;
+        private final NodeFactory nodeFactory;
         LLVMIntrinsicProvider intrinsicProvider;
 
-        public AllocIntrinsicFunctionNode(LLVMFunction function, NodeFactory nodeFactory, LLVMIntrinsicProvider intrinsicProvider) {
+        AllocIntrinsicFunctionNode(LLVMFunction function, NodeFactory nodeFactory, LLVMIntrinsicProvider intrinsicProvider) {
             super(function);
             this.nodeFactory = nodeFactory;
             this.intrinsicProvider = intrinsicProvider;
