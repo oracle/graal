@@ -31,6 +31,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
@@ -42,8 +44,12 @@ import org.graalvm.compiler.graph.spi.Simplifiable;
 import org.graalvm.compiler.graph.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
+import org.graalvm.compiler.nodes.AbstractMergeNode;
+import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
+import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -182,6 +188,8 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
             return;
         } else if (switchTransformationOptimization(tool)) {
             return;
+        } else if (tryMergeCommonSuccessors()) {
+            return;
         }
     }
 
@@ -234,6 +242,93 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
                 }
             }
         }
+        return true;
+    }
+
+    /**
+     * Coallesces branches of the switch that trivially merges together.
+     */
+    public boolean tryMergeCommonSuccessors() {
+        /*-
+         *              |  SWITCH  |
+         *              |__________|
+         *               /    |    \
+         *              /     |     \
+         *           | B |  | B |  | B |
+         *             \      |      /
+         *              \     |     /
+         *              |   MERGE   |
+         *                    |
+         *                  | F |
+         *
+         *
+         *                    |
+         *                    v
+         *
+         *              |  SWITCH  |
+         *              |__________|
+         *                    |
+         *                    |
+         *                  | F |
+         *
+         */
+        List<KeyData> newKeyData = new ArrayList<>();
+        ArrayList<AbstractBeginNode> newSuccessors = new ArrayList<>();
+        EconomicMap<AbstractMergeNode, List<Integer>> mergeKeys = EconomicMap.create();
+        boolean canRewire = false;
+        for (int i = 0; i < keyCount(); i++) {
+            AbstractBeginNode begin = keySuccessor(i);
+            FixedNode next = begin.next();
+
+            if (next instanceof EndNode) {
+                AbstractMergeNode merge = ((EndNode) next).merge();
+                if (merge.phis().isEmpty()) {
+                    // Multiple keys wire to the same trivial merge.
+                    if (mergeKeys.containsKey(merge)) {
+                        canRewire = true;
+                        mergeKeys.get(merge).add(i);
+                    } else {
+                        List<Integer> indexes = new ArrayList<>();
+                        indexes.add(i);
+                        mergeKeys.put(merge, indexes);
+                    }
+                    continue;
+                }
+            }
+            newKeyData.add(new KeyData(keys[i], keyProbabilities[i], addNewSuccessor(keySuccessor(i), newSuccessors)));
+        }
+        if (!canRewire) {
+            // Nothing to do
+            return false;
+        }
+        MapCursor<AbstractMergeNode, List<Integer>> cursor = mergeKeys.getEntries();
+        canRewire = false;
+        while (cursor.advance()) {
+            if (cursor.getValue().size() > 1) {
+                if (cursor.getKey().forwardEndCount() != cursor.getValue().size()) {
+                    // Merge has an end that is not part of the switch.
+                    for (int i : cursor.getValue()) {
+                        newKeyData.add(new KeyData(keys[i], keyProbabilities[i], keySuccessors[i]));
+                    }
+                } else {
+                    canRewire = true;
+                    FixedNode next = cursor.getKey().next();
+                    cursor.getKey().setNext(null);
+                    AbstractBeginNode begin = BeginNode.begin(next);
+                    int successorIndex = addNewSuccessor(begin, newSuccessors);
+                    for (int index : cursor.getValue()) {
+                        newKeyData.add(new KeyData(keys[index], keyProbabilities[index], successorIndex));
+                    }
+                }
+            }
+        }
+        if (!canRewire) {
+            // Detected merges could not be coallesced.
+            return false;
+        }
+        int newDefaultSuccessor = addNewSuccessor(defaultSuccessor(), newSuccessors);
+        double newDefaultProbability = keyProbabilities[keyProbabilities.length - 1];
+        doReplace(value(), newKeyData, newSuccessors, newDefaultSuccessor, newDefaultProbability);
         return true;
     }
 

@@ -25,9 +25,19 @@
 
 package org.graalvm.compiler.core.test;
 
+import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.graph.iterators.NodeIterable;
+import org.graalvm.compiler.nodes.BeginNode;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.IfNode;
+import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.junit.Test;
+
+import jdk.vm.ci.meta.JavaConstant;
 
 public class SwitchFoldingTest extends GraalCompilerTest {
 
@@ -427,8 +437,8 @@ public class SwitchFoldingTest extends GraalCompilerTest {
             case 0:
                 return 4;
             case 1:
-                return 1;
             case 2:
+                GraalDirectives.deoptimize();
                 return 1;
             case 3:
                 return 6;
@@ -442,6 +452,7 @@ public class SwitchFoldingTest extends GraalCompilerTest {
             return 4;
         } else {
             if (a == 1 || a == 2) {
+                GraalDirectives.deoptimize();
                 return 1;
             } else {
                 switch (a) {
@@ -485,6 +496,43 @@ public class SwitchFoldingTest extends GraalCompilerTest {
         debug.dump(DebugContext.BASIC_LEVEL, graph, "Graph");
         createCanonicalizerPhase().apply(graph, getProviders());
         StructuredGraph referenceGraph = parseEager(ref, StructuredGraph.AllowAssumptions.YES);
-        assertEquals(referenceGraph, graph);
+        compareGraphs(referenceGraph, graph);
+    }
+
+    private boolean compareGraphs(StructuredGraph g1, StructuredGraph g2) {
+        NodeIterable<IntegerSwitchNode> switches1 = g1.getNodes().filter(IntegerSwitchNode.class);
+        NodeIterable<IntegerSwitchNode> switches2 = g2.getNodes().filter(IntegerSwitchNode.class);
+        assertTrue(switches1.count() == switches2.count() && switches1.count() == 1);
+        assertTrue(g1.getNodes().filter(BeginNode.class).count() == g2.getNodes().filter(BeginNode.class).count());
+        assertTrue(g1.getNodes().filter(IfNode.class).count() == g2.getNodes().filter(IfNode.class).count());
+        IntegerSwitchNode s1 = switches1.first();
+        IntegerSwitchNode s2 = switches2.first();
+        assertTrue(s1.keyCount() == s2.keyCount());
+
+        for (int i = 0; i < s1.keyCount(); i++) {
+            JavaConstant key = s1.keyAt(i);
+            int j = 0;
+            for (; j < s2.keyCount(); j++) {
+                if (s2.keyAt(j).equals(key)) {
+                    break;
+                }
+            }
+            assertTrue(j < s2.keyCount());
+            FixedNode b1 = s1.keySuccessor(i).next();
+            FixedNode b2 = s2.keySuccessor(i).next();
+            assertTrue(b1.getClass() == b2.getClass());
+            if (b1 instanceof ReturnNode) {
+                ReturnNode r1 = (ReturnNode) b1;
+                ReturnNode r2 = (ReturnNode) b2;
+                assertTrue(r1.result().getClass() == r2.result().getClass());
+                if (r1.result() instanceof ConstantNode) {
+                    if (r1.result().isJavaConstant() && r2.result().isJavaConstant()) {
+                        assertTrue(r1.result().asJavaConstant().equals(r2.result().asJavaConstant()));
+                    }
+                }
+            }
+        }
+
+        return true;
     }
 }
