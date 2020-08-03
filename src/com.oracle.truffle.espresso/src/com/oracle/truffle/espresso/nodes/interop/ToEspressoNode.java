@@ -26,6 +26,7 @@ import java.util.function.IntFunction;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -35,11 +36,15 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
+import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.impl.PrimitiveKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
@@ -134,17 +139,21 @@ public abstract class ToEspressoNode extends Node {
         return klass.getMeta().java_lang_String.array().equals(klass);
     }
 
+    @SuppressWarnings("unused")
+    @Specialization(guards = {"!isStaticObject(value)", "interop.isNull(value)", "!klass.isPrimitive()"})
+    Object doForeignNull(Object value, Klass klass,
+                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+        return StaticObject.createForeignNull(value);
+    }
+
     // TODO(goltsova): remove this when array bytecodes support foreign arrays
     @SuppressWarnings("unused")
-    @Specialization(guards = {"!isStaticObject(value)", "isStringArray(klass)"})
+    @Specialization(guards = {"!isStaticObject(value)", "!interop.isNull(value)", "isStringArray(klass)"})
     Object doArray(Object value,
                     ArrayKlass klass,
                     @Cached ToEspressoNode toEspressoNode,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop)
                     throws UnsupportedMessageException, UnsupportedTypeException {
-        if (interop.isNull(value)) {
-            return StaticObject.NULL; // coercion to Espresso NULL.
-        }
         int length = (int) interop.getArraySize(value);
         final Klass jlString = klass.getComponentType();
         return jlString.allocateReferenceArray(length, new IntFunction<StaticObject>() {
@@ -166,15 +175,12 @@ public abstract class ToEspressoNode extends Node {
         });
     }
 
-    @Specialization(guards = {"!isStaticObject(klass)", "isString(klass)"})
+    @Specialization(guards = {"!isStaticObject(value)", "!interop.isNull(value)", "isString(klass)"})
     Object doString(Object value,
                     ObjectKlass klass,
                     @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
                     @Cached BranchProfile exceptionProfile)
                     throws UnsupportedMessageException, UnsupportedTypeException {
-        if (interop.isNull(value)) {
-            return StaticObject.createForeignNull(value);
-        }
         if (interop.isString(value)) {
             return klass.getMeta().toGuestString(interop.asString(value));
         }
@@ -182,13 +188,40 @@ public abstract class ToEspressoNode extends Node {
         throw UnsupportedTypeException.create(new Object[]{value}, klass.getTypeAsString());
     }
 
-    // TODO(goltsova): remove !isStringArray(klass) once array bytecodes support foreign arrays
-    @Specialization(guards = {"!isStaticObject(klass)", "!klass.isPrimitive()", "!isString(klass)", "!isStringArray(klass)"})
-    Object doForeignClass(Object value, Klass klass, @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
-        if (interop.isNull(value)) {
-            return StaticObject.createForeignNull(value);
-        }
+    @Specialization(guards = {"!isStaticObject(value)", "!interop.isNull(value)", "!isString(klass)", "!klass.isAbstract()"})
+    Object doForeignClass(Object value, ObjectKlass klass,
+                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                    @CachedContext(EspressoLanguage.class) EspressoContext context) throws UnsupportedTypeException {
+        checkHasAllFieldsOrThrow(value, klass, interop, context.getMeta());
         return StaticObject.createForeign(klass, value, interop);
+    }
+
+/*
+ * TODO(goltsova): split this into abstract classes and interfaces once casting to interfaces is
+ * supported
+ */
+    @Specialization(guards = {"!isStaticObject(value)", "!interop.isNull(value)", "klass.isAbstract() || klass.isInterface()"})
+    Object doForeignAbstract(Object value, ObjectKlass klass,
+                    @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
+        throw UnsupportedTypeException.create(new Object[]{value}, klass.getTypeAsString());
+    }
+
+    // TODO(goltsova): remove !isStringArray(klass) once array bytecodes support foreign arrays
+    @Specialization(guards = {"!isStaticObject(value)", "!interop.isNull(value)", "!isStringArray(klass)"})
+    Object doForeignArray(Object value, ArrayKlass klass,
+                    @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) {
+        return StaticObject.createForeign(klass, value, interop);
+    }
+
+    private static void checkHasAllFieldsOrThrow(Object value, ObjectKlass klass, InteropLibrary interopLibrary, Meta meta) throws UnsupportedTypeException {
+        for (Field f : klass.getDeclaredFields()) {
+            if (!f.isStatic() && !interopLibrary.isMemberExisting(value, f.getNameAsString())) {
+                throw UnsupportedTypeException.create(new Object[]{value}, klass.getTypeAsString());
+            }
+        }
+        if (klass.getSuperClass() != null) {
+            checkHasAllFieldsOrThrow(value, klass.getSuperKlass(), interopLibrary, meta);
+        }
     }
 
     @SuppressWarnings("unchecked")
