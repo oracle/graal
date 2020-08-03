@@ -183,8 +183,8 @@ JNIEXPORT void JNICALL JVM_GC(void) {
 }
 
 JNIEXPORT jlong JNICALL JVM_MaxObjectInspectionAge(void) {
-  UNIMPLEMENTED(JVM_MaxObjectInspectionAge);
-  return 0;
+  IMPLEMENTED(JVM_MaxObjectInspectionAge);
+  return (*getEnv())->JVM_MaxObjectInspectionAge();
 }
 
 JNIEXPORT void JNICALL JVM_TraceInstructions(jboolean on) {

@@ -134,6 +134,8 @@ import com.oracle.truffle.espresso.substitutions.Target_java_lang_System;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread.State;
 
+import sun.misc.GC;
+
 /**
  * Espresso implementation of the VM interface (libjvm).
  * <p>
@@ -2688,6 +2690,12 @@ public final class VM extends NativeEnv implements ContextAccess {
             return -1;
         }
         return (diff * ONE_BILLION) + nsecs;
+    }
+
+    @VmImpl
+    @JniImpl
+    public static long JVM_MaxObjectInspectionAge() {
+        return GC.maxObjectInspectionAge();
     }
 
     @VmImpl
