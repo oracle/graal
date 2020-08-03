@@ -61,6 +61,9 @@ public final class Polyglot {
      * <ul>
      * <li>if {@code targetClass} is a primitive class, converts the foreign value to this type and
      * returns the result as a boxed type.
+     * <li>if {@code targetClass} is an array class, checks that the component type is either
+     * primitive or a concrete class and that the foreign value has array elements. Returns the
+     * forein value as {@code targetClass}.
      * <li>if {@code targetClass} is a (non-abstract) class, checks that all the instance fields
      * defined in the class or its ancestors exist in the foreign object. Returns the foreign object
      * as a {@code targetClass}.
@@ -79,6 +82,12 @@ public final class Polyglot {
      *             {@code targetClass}
      *             <li>if {@code value} is a foreign object, {@code targetClass} is a primitive type
      *             but {@code value} does not represent an object of this primitive type
+     *             <li>if {@code value} is a foreign object and {@code targetClass} is an array type
+     *             with abstract components
+     *             <li>if {@code value} is a foreign object, {@code targetClass} is an array type
+     *             but {@code value} does not have array elements
+     *             <li>if {@code value} is a foreign object and {@code targetClass} is an abstract
+     *             class
      *             <li>if {@code value} is a foreign object, {@code targetClass} is a class and a
      *             field of {@code targetClass} does not exist in the object
      *             <li>if {@code value} is a regular Espresso object and cannot be cast to
