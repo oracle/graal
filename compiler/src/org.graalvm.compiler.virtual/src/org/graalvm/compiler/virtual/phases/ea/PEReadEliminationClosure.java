@@ -100,6 +100,14 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
             return true;
         }
 
+        if (currentMode != EffectsClosureMode.REGULAR_VIRTUALIZATION) {
+            /*
+             * PEA closure decided it has to give up for this loop nest, do the same and stop
+             * processing nodes.
+             */
+            return false;
+        }
+
         if (node instanceof LoadFieldNode) {
             return processLoadField((LoadFieldNode) node, state, effects);
         } else if (node instanceof StoreFieldNode) {
@@ -334,7 +342,6 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
     @Override
     protected void processLoopExit(LoopExitNode exitNode, PEReadEliminationBlockState initialState, PEReadEliminationBlockState exitState, GraphEffectList effects) {
         super.processLoopExit(exitNode, initialState, exitState, effects);
-
         if (exitNode.graph().hasValueProxies()) {
             MapCursor<ReadCacheEntry, ValueNode> entry = exitState.getReadCache().getEntries();
             while (entry.advance()) {
