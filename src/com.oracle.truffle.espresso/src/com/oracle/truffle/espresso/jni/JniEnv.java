@@ -101,7 +101,8 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     public static final int JNI_COMMIT = 1;
     public static final int JNI_ABORT = 2;
 
-    public static final int JVM_INTERFACE_VERSION = 4;
+    public static final int JVM_INTERFACE_VERSION_8 = 4;
+    public static final int JVM_INTERFACE_VERSION_11 = 6;
     public static final int JNI_TRUE = 1;
     public static final int JNI_FALSE = 0;
 
@@ -1220,43 +1221,43 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     // region New*Array
 
     @JniImpl
-    public static @Host(boolean[].class) StaticObject NewBooleanArray(int len) {
-        return InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Boolean.getBasicType(), len);
+    public @Host(boolean[].class) StaticObject NewBooleanArray(int len) {
+        return InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Boolean.getBasicType(), len, getMeta());
     }
 
     @JniImpl
-    public static @Host(byte[].class) StaticObject NewByteArray(int len) {
-        return InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Byte.getBasicType(), len);
+    public @Host(byte[].class) StaticObject NewByteArray(int len) {
+        return InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Byte.getBasicType(), len, getMeta());
     }
 
     @JniImpl
-    public static @Host(char[].class) StaticObject NewCharArray(int len) {
-        return InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Char.getBasicType(), len);
+    public @Host(char[].class) StaticObject NewCharArray(int len) {
+        return InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Char.getBasicType(), len, getMeta());
     }
 
     @JniImpl
-    public static @Host(short[].class) StaticObject NewShortArray(int len) {
-        return InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Short.getBasicType(), len);
+    public @Host(short[].class) StaticObject NewShortArray(int len) {
+        return InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Short.getBasicType(), len, getMeta());
     }
 
     @JniImpl
-    public static @Host(int[].class) StaticObject NewIntArray(int len) {
-        return InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Int.getBasicType(), len);
+    public @Host(int[].class) StaticObject NewIntArray(int len) {
+        return InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Int.getBasicType(), len, getMeta());
     }
 
     @JniImpl
-    public static @Host(long[].class) StaticObject NewLongArray(int len) {
-        return InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Long.getBasicType(), len);
+    public @Host(long[].class) StaticObject NewLongArray(int len) {
+        return InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Long.getBasicType(), len, getMeta());
     }
 
     @JniImpl
-    public static @Host(float[].class) StaticObject NewFloatArray(int len) {
-        return InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Float.getBasicType(), len);
+    public @Host(float[].class) StaticObject NewFloatArray(int len) {
+        return InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Float.getBasicType(), len, getMeta());
     }
 
     @JniImpl
-    public static @Host(double[].class) StaticObject NewDoubleArray(int len) {
-        return InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Double.getBasicType(), len);
+    public @Host(double[].class) StaticObject NewDoubleArray(int len) {
+        return InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Double.getBasicType(), len, getMeta());
     }
 
     @JniImpl
@@ -1579,7 +1580,7 @@ public final class JniEnv extends NativeEnv implements ContextAccess {
     @JniImpl
     public void GetStringRegion(@Host(String.class) StaticObject str, int start, int len, @Pointer TruffleObject bufPtr) {
         char[] chars;
-        if (getContext().getJavaVersion().compactStringsEnabled()) {
+        if (getJavaVersion().compactStringsEnabled()) {
             chars = Meta.toHostString(str).toCharArray();
         } else {
             chars = ((StaticObject) getMeta().java_lang_String_value.get(str)).unwrap();

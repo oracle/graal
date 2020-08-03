@@ -224,7 +224,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         /* verifyLibrary = */ loadLibraryInternal(bootLibraryPath, "verify", false);
         TruffleObject libJava = loadLibraryInternal(bootLibraryPath, "java");
 
-        if (getContext().getJavaVersion().java9OrLater()) {
+        if (getJavaVersion().java9OrLater()) {
             return libJava;
         }
 
@@ -907,8 +907,12 @@ public final class VM extends NativeEnv implements ContextAccess {
     }
 
     @VmImpl
-    public static int JVM_GetInterfaceVersion() {
-        return JniEnv.JVM_INTERFACE_VERSION;
+    public int JVM_GetInterfaceVersion() {
+        if (getJavaVersion().java8OrEarlier()) {
+            return JniEnv.JVM_INTERFACE_VERSION_8;
+        } else {
+            return JniEnv.JVM_INTERFACE_VERSION_11;
+        }
     }
 
     public void dispose() {
@@ -2318,7 +2322,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         StaticObject threadIds = ids;
         if (StaticObject.isNull(threadIds)) {
             StaticObject[] activeThreads = getContext().getActiveThreads();
-            threadIds = InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Long.getBasicType(), activeThreads.length);
+            threadIds = InterpreterToVM.allocatePrimitiveArray((byte) JavaKind.Long.getBasicType(), activeThreads.length, getMeta());
             for (int j = 0; j < activeThreads.length; ++j) {
                 long tid = (long) getMeta().java_lang_Thread_tid.get(activeThreads[j]);
                 getInterpreterToVM().setArrayLong(tid, j, threadIds);
@@ -2578,17 +2582,129 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
-    public static StaticObject JVM_GetAndClearReferencePendingList() {
-        // TODO this
-        return StaticObject.NULL;
+    public static boolean JVM_AreNestMates(@Host(Class.class) StaticObject current, @Host(Class.class) StaticObject member) {
+        return current.getMirrorKlass().nest() == member.getMirrorKlass().nest();
     }
 
     @VmImpl
     @JniImpl
-    public static void JVM_WaitForReferencePendingList() {
-        // TODO this
-        return;
+    public static @Host(Class.class) StaticObject JVM_GetNestHost(@Host(Class.class) StaticObject current) {
+        return current.getMirrorKlass().nest().mirror();
     }
 
+    @VmImpl
+    @JniImpl
+    public @Host(Class[].class) StaticObject JVM_GetNestMembers(@Host(Class.class) StaticObject current) {
+        Klass k = current.getMirrorKlass();
+        Klass[] nestMembers = k.getNestMembers();
+        StaticObject[] array = new StaticObject[nestMembers.length];
+        for (int i = 0; i < nestMembers.length; i++) {
+            array[i] = nestMembers[i].mirror();
+        }
+        StaticObject result = StaticObject.createArray(getMeta().java_lang_Class_array, array);
+        return result;
+    }
+
+    @VmImpl
+    @JniImpl
+    public StaticObject JVM_GetAndClearReferencePendingList() {
+        return getContext().getAndClearReferencePendingList();
+    }
+
+    @VmImpl
+    @JniImpl
+    public void JVM_WaitForReferencePendingList() {
+        getContext().waitForReferencePendingList();
+    }
+
+    @VmImpl
+    @JniImpl
+    public boolean JVM_HasReferencePendingList() {
+        return getContext().hasReferencePendingList();
+    }
+
+    @VmImpl
+    @JniImpl
+    @SuppressWarnings("unused")
+    public void JVM_InitializeFromArchive(@Host(Class.class) StaticObject cls) {
+        /*
+         * Used to reduce boot time of certain initializations through CDS (/ex: module
+         * initialization). Currently unsupported.
+         */
+    }
+
+    @VmImpl
+    @JniImpl
+    public void JVM_BeforeHalt() {
+        /*
+         * currently nop
+         */
+    }
+
+    @VmImpl
+    @JniImpl
+    @SuppressWarnings("unused")
+    public void JVM_InitStackTraceElement(@Host(StackTraceElement.class) StaticObject element, @Host(typeName = "Ljava/lang/StackFrameInfo;") StaticObject info) {
+        // TODO: this
+    }
+
+    @VmImpl
+    @JniImpl
+    public void JVM_InitStackTraceElementArray(@Host(StackTraceElement[].class) StaticObject elements, @Host(Throwable.class) StaticObject throwable,
+                    @GuestCall(target = "java_lang_Class_getName") DirectCallNode classGetName,
+                    @InjectProfile SubstitutionProfiler profiler) {
+        if (StaticObject.isNull(elements) || StaticObject.isNull(throwable)) {
+            profiler.profile(0);
+            throw getMeta().throwNullPointerException();
+        }
+        assert elements.isArray();
+        VM.StackTrace stackTrace = (VM.StackTrace) throwable.getHiddenField(getMeta().HIDDEN_FRAMES);
+        if (elements.length() != stackTrace.size) {
+            profiler.profile(1);
+            throw Meta.throwException(getMeta().java_lang_IndexOutOfBoundsException);
+        }
+        for (int i = 0; i < stackTrace.size; i++) {
+            if (StaticObject.isNull(elements.get(i))) {
+                profiler.profile(2);
+                throw getMeta().throwNullPointerException();
+            }
+            fillInElement(elements.get(i), stackTrace.trace[i], classGetName);
+        }
+    }
+
+    private void fillInElement(@Host(StackTraceElement.class) StaticObject ste, VM.StackElement element,
+                    DirectCallNode classGetName) {
+        Method m = element.getMethod();
+        Klass k = m.getDeclaringKlass();
+        StaticObject guestClass = k.mirror();
+        StaticObject loader = k.getDefiningClassLoader();
+        ModuleEntry module = k.module();
+
+        // Fill in class name
+        ste.setField(getMeta().java_lang_StackTraceElement_declaringClass, classGetName.call(guestClass));
+        ste.setField(getMeta().java_lang_StackTraceElement_declaringClassObject, guestClass);
+
+        // Fill in loader name
+        if (!StaticObject.isNull(loader)) {
+            StaticObject loaderName = loader.getField(getMeta().java_lang_ClassLoader_name);
+            if (!StaticObject.isNull(loader)) {
+                ste.setField(getMeta().java_lang_StackTraceElement_classLoaderName, loaderName);
+            }
+        }
+
+        // Fill in method name
+        Symbol<Name> mname = m.getName();
+        ste.setField(getMeta().java_lang_StackTraceElement_methodName, getMeta().toGuestString(mname));
+
+        // Fill in module
+        if (module.isNamed()) {
+            ste.setField(getMeta().java_lang_StackTraceElement_moduleName, getMeta().toGuestString(module.getName()));
+            // TODO: module version
+        }
+
+        // Fill in source information
+        ste.setField(getMeta().java_lang_StackTraceElement_fileName, getMeta().toGuestString(m.getSourceFile()));
+        ste.setIntField(getMeta().java_lang_StackTraceElement_lineNumber, m.bciToLineNumber(element.getBCI()));
+    }
     // Checkstyle: resume method name check
 }

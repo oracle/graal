@@ -1289,8 +1289,8 @@ JNIEXPORT void JNICALL JVM_AddReadsModule(JNIEnv *env, jobject from_module, jobj
 }
 
 JNIEXPORT jboolean JNICALL JVM_AreNestMates(JNIEnv *env, jclass current, jclass member) {
-  UNIMPLEMENTED(JVM_AreNestMates);
-  return 0;
+  IMPLEMENTED(JVM_AreNestMates);
+  return (*getEnv())->JVM_AreNestMates(env, current, member);
 }
 
 JNIEXPORT void JNICALL JVM_BeforeHalt() {
@@ -1343,13 +1343,13 @@ JNIEXPORT jlong JNICALL JVM_GetNanoTimeAdjustment(JNIEnv *env, jclass ignored, j
 }
 
 JNIEXPORT jclass JNICALL JVM_GetNestHost(JNIEnv *env, jclass current) {
-  UNIMPLEMENTED(JVM_GetNestHost);
-  return NULL;
+  IMPLEMENTED(JVM_GetNestHost);
+  return (*getEnv())->JVM_GetNestHost(env, current);
 }
 
 JNIEXPORT jobjectArray JNICALL JVM_GetNestMembers(JNIEnv *env, jclass current) {
-  UNIMPLEMENTED(JVM_GetNestMembers);
-  return NULL;
+  IMPLEMENTED(JVM_GetNestMembers);
+  return (*getEnv())->JVM_GetNestMembers(env, current);
 }
 
 JNIEXPORT jstring JNICALL JVM_GetSimpleBinaryName(JNIEnv *env, jclass ofClass) {
@@ -1373,17 +1373,20 @@ JNIEXPORT jstring JNICALL JVM_InitClassName(JNIEnv *env, jclass cls) {
 }
 
 JNIEXPORT void JNICALL JVM_InitializeFromArchive(JNIEnv* env, jclass cls) {
-  UNIMPLEMENTED(JVM_InitializeFromArchive);
+  IMPLEMENTED(JVM_InitializeFromArchive);
+  (*getEnv())->JVM_InitializeFromArchive(env, cls);
   return;
 }
 
 JNIEXPORT void JNICALL JVM_InitStackTraceElement(JNIEnv* env, jobject element, jobject stackFrameInfo){
-  UNIMPLEMENTED(JVM_InitStackTraceElement);
+  IMPLEMENTED(JVM_InitStackTraceElement);
+  (*getEnv())->JVM_InitStackTraceElement(env, element, stackFrameInfo);
   return;
 }
 
 JNIEXPORT void JNICALL JVM_InitStackTraceElementArray(JNIEnv *env, jobjectArray elements, jobject throwable) {
-  UNIMPLEMENTED(JVM_InitStackTraceElementArray);
+  IMPLEMENTED(JVM_InitStackTraceElementArray);
+  (*getEnv())->JVM_InitStackTraceElementArray(env, elements, throwable);
   return;
 }
 

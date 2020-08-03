@@ -428,4 +428,10 @@ public final class Target_java_lang_invoke_MethodHandleNatives {
     static final int MN_SEARCH_INTERFACES = 0x00200000;
     static final int ALL_KINDS = MN_IS_CONSTRUCTOR | MN_IS_FIELD | MN_IS_METHOD | MN_IS_TYPE;
 
+    @Substitution
+    @SuppressWarnings("unused")
+    public static void clearCallSiteContext(@Host(typeName = "Ljava/lang/invoke/MethodHandleNatives$CallSiteContext;") StaticObject context) {
+        /* nop */
+    }
+
 }
