@@ -44,6 +44,7 @@ import static org.graalvm.wasm.ValueTypes.F64_TYPE;
 import static org.graalvm.wasm.ValueTypes.I32_TYPE;
 
 import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmOptions;
@@ -55,11 +56,11 @@ import org.graalvm.wasm.predefined.wasi.WasiFdWrite;
 
 public class EmscriptenModule extends BuiltinModule {
     @Override
-    protected WasmModule createModule(WasmLanguage language, WasmContext context, String name) {
+    protected WasmInstance createInstance(WasmLanguage language, WasmContext context, String name) {
         final WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy = WasmOptions.StoreConstantsPolicy.getValue(context.environment().getOptions());
-        WasmModule module = new WasmModule(name, null, storeConstantsPolicy);
+        WasmInstance module = new WasmInstance(new WasmModule(name, null), storeConstantsPolicy);
 
-        final WasmModule testutil = context.modules().get("testutil");
+        final WasmInstance testutil = context.moduleInstances().get("testutil");
         if (testutil != null) {
             // Emscripten only allows extern symbols through the 'env' module, so we need to
             // re-export some symbols from the testutil module.

@@ -282,7 +282,7 @@ public class SymbolTable {
 
     private void checkNotLinked() {
         // The symbol table must be read-only after the module gets linked.
-        if (module.isLinked()) {
+        if (module.isParsed()) {
             throw new WasmValidationException("The engine tried to modify the symbol table after parsing.");
         }
     }
@@ -520,7 +520,7 @@ public class SymbolTable {
         checkUniqueExport(exportName);
         exportedFunctions.put(exportName, functions[functionIndex]);
         exportedFunctionsByIndex.put(functionIndex, exportName);
-        context.linker().resolveFunctionExport(module, functionIndex, exportName);
+        module.addLinkAction(() -> context.linker().resolveFunctionExport(module, functionIndex, exportName));
     }
 
     public Map<String, WasmFunction> exportedFunctions() {
@@ -532,7 +532,7 @@ public class SymbolTable {
         final ImportDescriptor importDescriptor = new ImportDescriptor(moduleName, functionName);
         WasmFunction function = allocateFunction(typeIndex, importDescriptor);
         importedFunctions.add(function);
-        context.linker().resolveFunctionImport(context, module, function);
+        module.addLinkAction(() -> context.linker().resolveFunctionImport(context, module, function));
         return function;
     }
 
@@ -583,7 +583,7 @@ public class SymbolTable {
     void importGlobal(WasmContext context, String moduleName, String globalName, int index, byte valueType, byte mutability) {
         importedGlobals.put(index, new ImportDescriptor(moduleName, globalName));
         allocateGlobal(index, valueType, mutability, UNINITIALIZED_GLOBAL_ADDRESS);
-        context.linker().resolveGlobalImport(context, module, new ImportDescriptor(moduleName, globalName), index, valueType, mutability);
+        module.addLinkAction(() -> context.linker().resolveGlobalImport(context, module, new ImportDescriptor(moduleName, globalName), index, valueType, mutability));
     }
 
     void setGlobalAddress(int globalIndex, int address) {
@@ -651,7 +651,7 @@ public class SymbolTable {
         }
         globalTypes[index] |= GLOBAL_EXPORT_BIT;
         exportedGlobals.put(name, index);
-        context.linker().resolveGlobalExport(module, name, index);
+        module.addLinkAction(() -> context.linker().resolveGlobalExport(module, name, index));
     }
 
     public int declareExportedGlobal(WasmContext context, String name, int index, byte valueType, byte mutability) {
@@ -671,7 +671,7 @@ public class SymbolTable {
         checkNotLinked();
         validateSingleTable();
         importedTableDescriptor = new ImportDescriptor(moduleName, tableName);
-        context.linker().resolveTableImport(context, module, importedTableDescriptor, initSize, maxSize);
+        module.addLinkAction(() -> context.linker().resolveTableImport(context, module, importedTableDescriptor, initSize, maxSize));
     }
 
     private void validateSingleTable() {
@@ -697,7 +697,7 @@ public class SymbolTable {
             throw new WasmValidationException("No table has been declared or imported, so a table cannot be exported.");
         }
         exportedTable = name;
-        context.linker().resolveTableExport(module, exportedTable);
+        module.addLinkAction(() -> context.linker().resolveTableExport(module, exportedTable));
     }
 
     public WasmTable table() {
@@ -737,7 +737,7 @@ public class SymbolTable {
         checkNotLinked();
         validateSingleMemory();
         importedMemoryDescriptor = new ImportDescriptor(moduleName, memoryName);
-        context.linker().resolveMemoryImport(context, module, importedMemoryDescriptor, initSize, maxSize);
+        module.addLinkAction(() -> context.linker().resolveMemoryImport(context, module, importedMemoryDescriptor, initSize, maxSize));
     }
 
     private void validateSingleMemory() {
@@ -763,7 +763,7 @@ public class SymbolTable {
             throw new WasmValidationException("No memory has been declared or imported, so memory cannot be exported.");
         }
         exportedMemory = name;
-        context.linker().resolveMemoryExport(module, name);
+        module.addLinkAction(() -> context.linker().resolveMemoryExport(module, name));
     }
 
     public WasmMemory memory() {

@@ -112,16 +112,19 @@ public class Linker {
         // We therefore check the link state again.
         if (linkState == LinkState.notLinked) {
             linkState = LinkState.inProgress;
-            Map<String, WasmModule> modules = WasmContext.getCurrent().modules();
-            // TODO: Once topological linking starts handling all the import kinds,
-            // remove the previous loop.
+            Map<String, WasmInstance> instances = WasmContext.getCurrent().moduleInstances();
+            for (WasmInstance instance : instances.values()) {
+                for (Runnable action : instance.module().linkActions()) {
+                    action.run();
+                }
+            }
             linkTopologically();
             assignTypeEquivalenceClasses();
-            for (WasmModule module : modules.values()) {
-                module.setLinked();
+            for (WasmInstance instance : instances.values()) {
+                instance.module().setParsed();
             }
-            for (WasmModule module : modules.values()) {
-                final WasmFunction start = module.symbolTable().startFunction();
+            for (WasmInstance instance : instances.values()) {
+                final WasmFunction start = instance.symbolTable().startFunction();
                 if (start != null) {
                     start.resolveCallTarget().call(new Object[0]);
                 }
@@ -139,11 +142,11 @@ public class Linker {
     }
 
     private static void assignTypeEquivalenceClasses() {
-        final Map<String, WasmModule> modules = WasmContext.getCurrent().modules();
+        final Map<String, WasmInstance> instances = WasmContext.getCurrent().moduleInstances();
         final Map<FunctionType, Integer> equivalenceClasses = new HashMap<>();
         int nextEquivalenceClass = SymbolTable.FIRST_EQUIVALENCE_CLASS;
-        for (WasmModule module : modules.values()) {
-            final SymbolTable symtab = module.symbolTable();
+        for (WasmInstance instance : instances.values()) {
+            final SymbolTable symtab = instance.symbolTable();
             for (int index = 0; index < symtab.typeCount(); index++) {
                 FunctionType type = symtab.typeAt(index);
                 Integer equivalenceClass = equivalenceClasses.get(type);
@@ -166,8 +169,8 @@ public class Linker {
      *
      * The intent is to use this functionality only in the test suite and the benchmark suite.
      */
-    public void resetModuleState(WasmContext context, WasmModule module, byte[] data, boolean zeroMemory) {
-        final BinaryParser reader = new BinaryParser(language, module, context, data);
+    public void resetModuleState(WasmContext context, WasmInstance instance, byte[] data, boolean zeroMemory) {
+        final BinaryParser reader = new BinaryParser(language, instance, context, data);
         reader.resetGlobalState();
         reader.resetMemoryState(zeroMemory);
     }
@@ -176,7 +179,7 @@ public class Linker {
         final String importedGlobalName = importDescriptor.memberName;
         final String importedModuleName = importDescriptor.moduleName;
         final Runnable resolveAction = () -> {
-            final WasmModule importedModule = context.modules().get(importedModuleName);
+            final WasmInstance importedModule = context.moduleInstances().get(importedModuleName);
 
             if (importedModule == null) {
                 throw new WasmLinkerException("Module '" + importedModuleName + "', referenced in the import of global variable '" +
@@ -219,13 +222,13 @@ public class Linker {
         resolutionDag.resolveLater(new ExportGlobalSym(module.name(), globalName), dependencies, ResolutionDag.NO_RESOLVE_ACTION);
     }
 
-    void resolveGlobalInitialization(WasmModule module, int globalIndex) {
+    void resolveGlobalInitialization(WasmInstance module, int globalIndex) {
         module.symbolTable().initializeGlobal(globalIndex);
         final Sym[] dependencies = ResolutionDag.NO_DEPENDENCIES;
         resolutionDag.resolveLater(new InitializeGlobalSym(module.name(), globalIndex), dependencies, NO_RESOLVE_ACTION);
     }
 
-    void resolveGlobalInitialization(WasmContext context, WasmModule module, int globalIndex, int sourceGlobalIndex) {
+    void resolveGlobalInitialization(WasmContext context, WasmInstance module, int globalIndex, int sourceGlobalIndex) {
         final Runnable resolveAction = () -> {
             final int sourceAddress = module.symbolTable().globalAddress(sourceGlobalIndex);
             final long sourceValue = context.globals().loadAsLong(sourceAddress);
@@ -239,7 +242,7 @@ public class Linker {
 
     void resolveFunctionImport(WasmContext context, WasmModule module, WasmFunction function) {
         final Runnable resolveAction = () -> {
-            final WasmModule importedModule = context.modules().get(function.importedModuleName());
+            final WasmInstance importedModule = context.moduleInstances().get(function.importedModuleName());
             if (importedModule == null) {
                 throw new WasmLinkerException("The module '" + function.importedModuleName() + "', referenced by the import '" + function.importedFunctionName() + "' in the module '" + module.name() +
                                 "', does not exist.");
@@ -266,23 +269,23 @@ public class Linker {
         resolutionDag.resolveLater(new ExportFunctionSym(module.name(), exportedFunctionName), dependencies, NO_RESOLVE_ACTION);
     }
 
-    void resolveCallsite(WasmModule module, WasmBlockNode block, int controlTableOffset, WasmFunction function) {
+    void resolveCallsite(WasmInstance instance, WasmBlockNode block, int controlTableOffset, WasmFunction function) {
         final Runnable resolveAction = () -> {
             block.resolveCallNode(controlTableOffset);
         };
-        final Sym[] dependencies = new Sym[]{function.isImported() ? new ImportFunctionSym(module.name(), function.importDescriptor()) : new CodeEntrySym(module.name(), function.index())};
-        resolutionDag.resolveLater(new CallsiteSym(module.name(), block.startOfset(), controlTableOffset), dependencies, resolveAction);
+        final Sym[] dependencies = new Sym[]{function.isImported() ? new ImportFunctionSym(instance.name(), function.importDescriptor()) : new CodeEntrySym(instance.name(), function.index())};
+        resolutionDag.resolveLater(new CallsiteSym(instance.name(), block.startOfset(), controlTableOffset), dependencies, resolveAction);
     }
 
-    void resolveCodeEntry(WasmModule module, int functionIndex) {
-        resolutionDag.resolveLater(new CodeEntrySym(module.name(), functionIndex), ResolutionDag.NO_DEPENDENCIES, NO_RESOLVE_ACTION);
+    void resolveCodeEntry(WasmInstance instance, int functionIndex) {
+        resolutionDag.resolveLater(new CodeEntrySym(instance.name(), functionIndex), ResolutionDag.NO_DEPENDENCIES, NO_RESOLVE_ACTION);
     }
 
     void resolveMemoryImport(WasmContext context, WasmModule module, ImportDescriptor importDescriptor, int initSize, int maxSize) {
         String importedModuleName = importDescriptor.moduleName;
         String importedMemoryName = importDescriptor.memberName;
         final Runnable resolveAction = () -> {
-            final WasmModule importedModule = context.modules().get(importedModuleName);
+            final WasmInstance importedModule = context.moduleInstances().get(importedModuleName);
             if (importedModule == null) {
                 throw new WasmLinkerException(String.format("The module '%s', referenced in the import of memory '%s' in module '%s', does not exist",
                                 importedModuleName, importedMemoryName, module.name()));
@@ -316,17 +319,17 @@ public class Linker {
         resolutionDag.resolveLater(new ExportMemorySym(module.name(), exportedMemoryName), dependencies, NO_RESOLVE_ACTION);
     }
 
-    void resolveDataSegment(WasmContext context, WasmModule module, int dataSegmentId, int offsetAddress, int offsetGlobalIndex, int byteLength, byte[] data, boolean priorDataSectionsResolved) {
-        Assert.assertTrue(module.symbolTable().memoryExists(), String.format("No memory declared or imported in the module '%s'", module.name()));
+    void resolveDataSegment(WasmContext context, WasmInstance instance, int dataSegmentId, int offsetAddress, int offsetGlobalIndex, int byteLength, byte[] data, boolean priorDataSectionsResolved) {
+        Assert.assertTrue(instance.symbolTable().memoryExists(), String.format("No memory declared or imported in the module '%s'", instance.name()));
         final Runnable resolveAction = () -> {
             assert (offsetAddress != -1) ^ (offsetGlobalIndex != -1) : "Both an offset address and a offset global are specified for the data segment.";
-            WasmMemory memory = module.symbolTable().memory();
-            Assert.assertNotNull(memory, String.format("No memory declared or imported in the module '%s'", module.name()));
+            WasmMemory memory = instance.symbolTable().memory();
+            Assert.assertNotNull(memory, String.format("No memory declared or imported in the module '%s'", instance.name()));
             long baseAddress;
             if (offsetGlobalIndex != -1) {
-                final int offsetGlobalAddress = module.symbolTable().globalAddress(offsetGlobalIndex);
+                final int offsetGlobalAddress = instance.symbolTable().globalAddress(offsetGlobalIndex);
                 Assert.assertTrue(offsetGlobalAddress != -1, "The global variable '" + offsetGlobalIndex + "' for the offset of the data segment " +
-                                dataSegmentId + " in module '" + module.name() + "' was not initialized.");
+                                dataSegmentId + " in module '" + instance.name() + "' was not initialized.");
                 baseAddress = context.globals().loadAsInt(offsetGlobalAddress);
             } else {
                 baseAddress = offsetAddress;
@@ -338,21 +341,21 @@ public class Linker {
             }
         };
         final ArrayList<Sym> dependencies = new ArrayList<>();
-        if (module.symbolTable().importedMemory() != null) {
-            dependencies.add(new ImportMemorySym(module.name(), module.symbolTable().importedMemory()));
+        if (instance.symbolTable().importedMemory() != null) {
+            dependencies.add(new ImportMemorySym(instance.name(), instance.symbolTable().importedMemory()));
         }
         if (!priorDataSectionsResolved) {
-            dependencies.add(new DataSym(module.name(), dataSegmentId - 1));
+            dependencies.add(new DataSym(instance.name(), dataSegmentId - 1));
         }
         if (offsetGlobalIndex != -1) {
-            dependencies.add(new InitializeGlobalSym(module.name(), offsetGlobalIndex));
+            dependencies.add(new InitializeGlobalSym(instance.name(), offsetGlobalIndex));
         }
-        resolutionDag.resolveLater(new DataSym(module.name(), dataSegmentId), dependencies.toArray(new Sym[dependencies.size()]), resolveAction);
+        resolutionDag.resolveLater(new DataSym(instance.name(), dataSegmentId), dependencies.toArray(new Sym[dependencies.size()]), resolveAction);
     }
 
     void resolveTableImport(WasmContext context, WasmModule module, ImportDescriptor importDescriptor, int initSize, int maxSize) {
         final Runnable resolveAction = () -> {
-            final WasmModule importedModule = context.modules().get(importDescriptor.moduleName);
+            final WasmInstance importedModule = context.moduleInstances().get(importDescriptor.moduleName);
             final String importedModuleName = importDescriptor.moduleName;
             if (importedModule == null) {
                 throw new WasmLinkerException(String.format("Imported module '%s', referenced in module '%s', does not exist.", importedModuleName, module.name()));
@@ -392,7 +395,7 @@ public class Linker {
         resolutionDag.resolveLater(new ExportTableSym(module.name(), exportedTableName), dependencies, NO_RESOLVE_ACTION);
     }
 
-    void resolveElemSegment(WasmContext context, WasmModule module, int elemSegmentId, int offsetAddress, int offsetGlobalIndex, int segmentLength, WasmFunction[] functions) {
+    void resolveElemSegment(WasmContext context, WasmInstance module, int elemSegmentId, int offsetAddress, int offsetGlobalIndex, int segmentLength, WasmFunction[] functions) {
         Assert.assertTrue(module.symbolTable().tableExists(), String.format("No table declared or imported in the module '%s'", module.name()));
         final Runnable resolveAction = () -> {
             assert (offsetAddress != -1) ^ (offsetGlobalIndex != -1) : "Both an offset address and a offset global are specified for the elem segment.";

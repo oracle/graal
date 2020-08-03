@@ -79,7 +79,7 @@ public class BinaryParser extends BinaryStreamParser {
     private static final long MEMORY_MAX_PAGES = 1 << 16;
 
     private final WasmLanguage language;
-    private final WasmModule module;
+    private final WasmInstance module;
     private final WasmContext context;
     private final int[] limitsResult;
 
@@ -93,7 +93,7 @@ public class BinaryParser extends BinaryStreamParser {
     // to track the current largest function index.
     private int moduleFunctionIndex;
 
-    BinaryParser(WasmLanguage language, WasmModule module, WasmContext context, byte[] data) {
+    BinaryParser(WasmLanguage language, WasmInstance module, WasmContext context, byte[] data) {
         super(data);
         this.language = language;
         this.module = module;
@@ -102,7 +102,7 @@ public class BinaryParser extends BinaryStreamParser {
         this.moduleFunctionIndex = 0;
     }
 
-    WasmModule readModule() {
+    WasmInstance readModule() {
         validateMagicNumberAndVersion();
         readSections();
         return module;
@@ -1370,7 +1370,7 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     public boolean mustPoolLeb128() {
-        return mustPoolLeb128(data, offset, module.storeConstantsPolicy);
+        return mustPoolLeb128(data, offset, module.storeConstantsPolicy());
     }
 
     private boolean tryJumpToSection(int targetSectionId) {

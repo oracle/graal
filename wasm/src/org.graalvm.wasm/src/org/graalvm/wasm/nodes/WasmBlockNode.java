@@ -234,8 +234,8 @@ import org.graalvm.wasm.ValueTypes;
 import org.graalvm.wasm.WasmCodeEntry;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunction;
+import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.exception.WasmExecutionException;
 import org.graalvm.wasm.exception.WasmTrap;
 import org.graalvm.wasm.memory.WasmMemory;
@@ -278,10 +278,10 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     @CompilationFinal private ContextReference<WasmContext> rawContextReference;
     @Children private Node[] children;
 
-    public WasmBlockNode(WasmModule wasmModule, WasmCodeEntry codeEntry, int startOffset, byte returnTypeId, byte continuationTypeId, int initialStackPointer,
-                    int initialByteConstantOffset, int initialIntConstantOffset, int initialLongConstantOffset, int initialBranchTableOffset,
-                    int initialProfileOffset) {
-        super(wasmModule, codeEntry, -1);
+    public WasmBlockNode(WasmInstance wasmInstance, WasmCodeEntry codeEntry, int startOffset, byte returnTypeId, byte continuationTypeId, int initialStackPointer,
+                         int initialByteConstantOffset, int initialIntConstantOffset, int initialLongConstantOffset, int initialBranchTableOffset,
+                         int initialProfileOffset) {
+        super(wasmInstance, codeEntry, -1);
         this.startOffset = startOffset;
         this.returnTypeId = returnTypeId;
         this.continuationTypeId = continuationTypeId;
@@ -2480,7 +2480,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     private int unsignedIntConstant(int offset, int intConstantOffset) {
-        switch (module().storeConstantsPolicy) {
+        switch (module().storeConstantsPolicy()) {
             case ALL:
                 return codeEntry().intConstant(intConstantOffset);
             case LARGE_ONLY:
@@ -2493,7 +2493,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     private int signedIntConstant(int offset, int intConstantOffset) {
-        switch (module().storeConstantsPolicy) {
+        switch (module().storeConstantsPolicy()) {
             case ALL:
                 return codeEntry().intConstant(intConstantOffset);
             case LARGE_ONLY:
@@ -2511,7 +2511,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     public long signedLongConstant(int offset, int longConstantOffset) {
-        switch (module().storeConstantsPolicy) {
+        switch (module().storeConstantsPolicy()) {
             case ALL:
                 return codeEntry().longConstant(longConstantOffset);
             case LARGE_ONLY:
@@ -2529,7 +2529,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     private int offsetDelta(int offset, int byteConstantOffset) {
-        switch (module().storeConstantsPolicy) {
+        switch (module().storeConstantsPolicy()) {
             case ALL:
                 return codeEntry().byteConstant(byteConstantOffset);
             case LARGE_ONLY:
@@ -2554,7 +2554,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     }
 
     private int constantDelta(int offset) {
-        switch (module().storeConstantsPolicy) {
+        switch (module().storeConstantsPolicy()) {
             case ALL:
                 return 1;
             case LARGE_ONLY:

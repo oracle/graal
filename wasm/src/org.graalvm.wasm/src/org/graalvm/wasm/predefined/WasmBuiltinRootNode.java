@@ -41,13 +41,13 @@
 package org.graalvm.wasm.predefined;
 
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.nodes.WasmRootNode;
 
 public abstract class WasmBuiltinRootNode extends WasmRootNode {
-    protected final WasmModule module;
+    protected final WasmInstance module;
 
-    public WasmBuiltinRootNode(WasmLanguage language, WasmModule module) {
+    public WasmBuiltinRootNode(WasmLanguage language, WasmInstance module) {
         super(language, null);
 
         this.module = module;

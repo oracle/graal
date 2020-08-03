@@ -54,7 +54,8 @@ public class Instance extends Dictionary {
         addMembers(new Object[]{
                 "module", this.module,
                 "importObject", this.importObject,
-                "exports", new Executable(args -> this.module.exports()),
+                // TODO: Return a sequence of exported functions.
+                "exports", new Executable(args -> null),
         });
     }
 

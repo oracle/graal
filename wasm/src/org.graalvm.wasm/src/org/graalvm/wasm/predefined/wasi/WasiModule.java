@@ -41,6 +41,7 @@
 package org.graalvm.wasm.predefined.wasi;
 
 import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmOptions;
@@ -52,9 +53,9 @@ import static org.graalvm.wasm.ValueTypes.I64_TYPE;
 
 public class WasiModule extends BuiltinModule {
     @Override
-    protected WasmModule createModule(WasmLanguage language, WasmContext context, String name) {
+    protected WasmInstance createInstance(WasmLanguage language, WasmContext context, String name) {
         final WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy = WasmOptions.StoreConstantsPolicy.getValue(context.environment().getOptions());
-        WasmModule module = new WasmModule(name, null, storeConstantsPolicy);
+        WasmInstance module = new WasmInstance(new WasmModule(name, null), storeConstantsPolicy);
         importMemory(context, module, "main", "memory", 0, 0);
         defineFunction(context, module, "args_sizes_get", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiArgsSizesGetNode(language, module));
         defineFunction(context, module, "args_get", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiArgsGetNode(language, module));

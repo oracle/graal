@@ -67,13 +67,13 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
         isFirst = false;
         final byte[] data = request.getSource().getBytes().toByteArray();
         final WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy = WasmOptions.StoreConstantsPolicy.getValue(context.environment().getOptions());
-        final WasmModule module = new WasmModule(moduleName, data, storeConstantsPolicy);
+        final WasmInstance module = new WasmInstance(new WasmModule(moduleName, data), storeConstantsPolicy);
         readModule(context, module, data);
         context.registerModule(module);
         return Truffle.getRuntime().createCallTarget(new WasmEmptyRootNode(this));
     }
 
-    private void readModule(WasmContext context, WasmModule module, byte[] data) {
+    private void readModule(WasmContext context, WasmInstance module, byte[] data) {
         int binarySize = data.length;
         final int asyncParsingBinarySize = WasmOptions.AsyncParsingBinarySize.getValue(context.environment().getOptions());
         if (binarySize < asyncParsingBinarySize) {
@@ -104,7 +104,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
         }
     }
 
-    private void readModuleSynchronously(WasmContext context, WasmModule module, byte[] data) {
+    private void readModuleSynchronously(WasmContext context, WasmInstance module, byte[] data) {
         final BinaryParser reader = new BinaryParser(this, module, context, data);
         reader.readModule();
     }

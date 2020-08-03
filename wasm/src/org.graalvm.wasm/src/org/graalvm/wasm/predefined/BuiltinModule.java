@@ -50,8 +50,8 @@ import org.graalvm.wasm.Assert;
 import org.graalvm.wasm.ReferenceTypes;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunction;
+import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.exception.WasmValidationException;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.emscripten.EmscriptenModule;
@@ -68,17 +68,17 @@ public abstract class BuiltinModule {
         pm.put("wasi_snapshot_preview1", new WasiModule());
     }
 
-    public static WasmModule createBuiltinModule(WasmLanguage language, WasmContext context, String name, String predefinedModuleName) {
+    public static WasmInstance createBuiltinModule(WasmLanguage language, WasmContext context, String name, String predefinedModuleName) {
         final BuiltinModule builtinModule = predefinedModules.get(predefinedModuleName);
         if (builtinModule == null) {
             throw new WasmValidationException("Unknown predefined module: " + predefinedModuleName);
         }
-        return builtinModule.createModule(language, context, name);
+        return builtinModule.createInstance(language, context, name);
     }
 
-    protected abstract WasmModule createModule(WasmLanguage language, WasmContext context, String name);
+    protected abstract WasmInstance createInstance(WasmLanguage language, WasmContext context, String name);
 
-    protected WasmFunction defineFunction(WasmContext context, WasmModule module, String name, byte[] paramTypes, byte[] retTypes, RootNode rootNode) {
+    protected WasmFunction defineFunction(WasmContext context, WasmInstance module, String name, byte[] paramTypes, byte[] retTypes, RootNode rootNode) {
         // We could check if the same function type had already been allocated,
         // but this is just an optimization, and probably not very important,
         // since predefined modules have a relatively small size.
@@ -89,37 +89,37 @@ public abstract class BuiltinModule {
         return function;
     }
 
-    protected int defineGlobal(WasmContext context, WasmModule module, String name, byte valueType, byte mutability, long value) {
+    protected int defineGlobal(WasmContext context, WasmInstance module, String name, byte valueType, byte mutability, long value) {
         int index = module.symbolTable().maxGlobalIndex() + 1;
         int address = module.symbolTable().declareExportedGlobal(context, name, index, valueType, mutability);
         context.globals().storeLong(address, value);
         return index;
     }
 
-    protected int defineTable(WasmContext context, WasmModule module, String tableName, int initSize, int maxSize, byte type) {
+    protected int defineTable(WasmContext context, WasmInstance module, String tableName, int initSize, int maxSize, byte type) {
         Assert.assertByteEqual(type, ReferenceTypes.FUNCREF, "Only function types are currently supported in tables.");
         module.symbolTable().allocateTable(context, initSize, maxSize);
         module.symbolTable().exportTable(context, tableName);
         return 0;
     }
 
-    protected WasmMemory defineMemory(WasmContext context, WasmModule module, String memoryName, int initSize, int maxSize) {
+    protected WasmMemory defineMemory(WasmContext context, WasmInstance module, String memoryName, int initSize, int maxSize) {
         final WasmMemory memory = module.symbolTable().allocateMemory(context, initSize, maxSize);
         module.symbolTable().exportMemory(context, memoryName);
         return memory;
     }
 
-    protected void importFunction(WasmContext context, WasmModule module, String importModuleName, String importFunctionName, byte[] paramTypes, byte[] retTypes, String exportName) {
+    protected void importFunction(WasmContext context, WasmInstance module, String importModuleName, String importFunctionName, byte[] paramTypes, byte[] retTypes, String exportName) {
         final int typeIdx = module.symbolTable().allocateFunctionType(paramTypes, retTypes);
         final WasmFunction function = module.symbolTable().importFunction(context, importModuleName, importFunctionName, typeIdx);
         module.symbolTable().exportFunction(context, function.index(), exportName);
     }
 
-    protected void importMemory(WasmContext context, WasmModule module, String importModuleName, String memoryName, int initSize, int maxSize) {
+    protected void importMemory(WasmContext context, WasmInstance module, String importModuleName, String memoryName, int initSize, int maxSize) {
         module.symbolTable().importMemory(context, importModuleName, memoryName, initSize, maxSize);
     }
 
-    protected void exportMemory(WasmContext context, WasmModule module, String memoryName) {
+    protected void exportMemory(WasmContext context, WasmInstance module, String memoryName) {
         module.symbolTable().exportMemory(context, memoryName);
     }
 
