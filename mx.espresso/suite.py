@@ -21,7 +21,7 @@
 # questions.
 #
 suite = {
-    "mxversion": "5.268.1",
+    "mxversion": "5.269.1",
     "name": "espresso",
 
     # ------------- licenses
@@ -42,7 +42,7 @@ suite = {
                 "name": "truffle",
                 "subdir": True,
                 # Custom changes in Truffle (NFI) for Espresso (branch slimbeans).
-                "version": "ea20e11c3272219406d44bb8be20cc34b795a390",
+                "version": "3d08d89d48d806b421384e9324101029b4698cea",
                 "urls": [
                     {"url": "https://github.com/graalvm/graal", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -52,7 +52,7 @@ suite = {
                 "name": "tools",
                 "subdir": True,
                 # Custom changes in Truffle (NFI) for Espresso (branch slimbeans).
-                "version": "ea20e11c3272219406d44bb8be20cc34b795a390",
+                "version": "3d08d89d48d806b421384e9324101029b4698cea",
                 "urls": [
                     {"url": "https://github.com/graalvm/graal", "kind": "git"},
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
@@ -60,7 +60,7 @@ suite = {
             },
             {
                 "name": "truffleruby",
-                "version": "cb774a0c04ff1f63f95180ef335e1f173ce78152",
+                "version": "4acd2a83701ab13d68c2b39531052d7409968bd7",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
@@ -166,6 +166,13 @@ suite = {
             "javaCompliance": "1.8+",
         },
 
+        "com.oracle.truffle.espresso.playground.jdk11": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "jniHeaders": True,
+            "javaCompliance": "11",
+        },
+
         "com.oracle.truffle.espresso.playground.native": {
             "subDir": "src",
             "native": "shared_lib",
@@ -223,12 +230,13 @@ suite = {
                 "espresso:POLYGLOT",
                 "truffle:TRUFFLE_TCK",
                 "mx:JUNIT",
-                "tools:AGENTSCRIPT"
+                "mx:ASM_COMMONS_7.1",
+                "tools:AGENTSCRIPT",
             ],
             # JTT unit tests run both on the host JVM and on Espresso, so they must be compiled with a version compatible with Espresso (8).
             # Espresso itself can be compiled with Java 11 and the unit tests (compiled to 8) should run on a JVM 11.
-            "javaCompliance": "8",
-            "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+            "javaCompliance": "1.8+",
+            "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "checkstyle": "com.oracle.truffle.espresso",
         },
 
@@ -237,10 +245,21 @@ suite = {
             "sourceDirs": ["src"],
             "testProject": True,
             "dependencies": [
-                "com.oracle.truffle.espresso.test"
+                "com.oracle.truffle.espresso.test",
             ],
-            "overlayTarget": "com.oracle.truffle.espresso.test",
             "javaCompliance": "8",
+            "checkstyle": "com.oracle.truffle.espresso",
+        },
+
+        "com.oracle.truffle.espresso.test.jdk11": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "testProject": True,
+            "dependencies": [
+                "com.oracle.truffle.espresso.test",
+            ],
+            "javaCompliance": "11",
+            "checkstyle": "com.oracle.truffle.espresso",
         },
 
         # Native library for tests
@@ -345,6 +364,28 @@ suite = {
             "testDistribution": True,
         },
 
+        "ESPRESSO_TESTS_8": {
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.truffle.espresso.test.jdk8",
+            ],
+            "distDependencies": [
+                "espresso:ESPRESSO_TESTS",
+            ],
+            "testDistribution": True,
+        },
+
+        "ESPRESSO_TESTS_11": {
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.truffle.espresso.test.jdk11",
+            ],
+            "distDependencies": [
+                "espresso:ESPRESSO_TESTS",
+            ],
+            "testDistribution": True,
+        },
+
         "ESPRESSO_LAUNCHER": {
             "subDir": "src",
             "dependencies": [
@@ -394,6 +435,17 @@ suite = {
             ],
             "dependencies": [
                 "com.oracle.truffle.espresso.playground"
+            ],
+            "description": "Espresso experiments",
+            "javaProperties": {
+                "playground.library": "<path:ESPRESSO_PLAYGROUND_NATIVE>/<lib:playground>"
+            },
+        },
+
+        "ESPRESSO_PLAYGROUND_11": {
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.truffle.espresso.playground.jdk11"
             ],
             "description": "Espresso experiments",
             "javaProperties": {

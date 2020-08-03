@@ -39,6 +39,7 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -263,6 +264,99 @@ public final class EspressoContext {
     }
 
     private final ReferenceQueue<StaticObject> referenceQueue = new ReferenceQueue<>();
+    private volatile StaticObject referencePendingList = StaticObject.NULL;
+    private final Object pendingLock = new Object() {
+    };
+
+    public StaticObject getAndClearReferencePendingList() {
+        // Should be under guest lock
+        synchronized (pendingLock) {
+            StaticObject res = referencePendingList;
+            referencePendingList = StaticObject.NULL;
+            return res;
+        }
+    }
+
+    public boolean hasReferencePendingList() {
+        return !StaticObject.isNull(referencePendingList);
+    }
+
+    public void waitForReferencePendingList() {
+        if (hasReferencePendingList()) {
+            return;
+        }
+        doWaitForReferencePendingList();
+    }
+
+    @TruffleBoundary
+    private void doWaitForReferencePendingList() {
+        try {
+            synchronized (pendingLock) {
+                // Wait until the reference drain updates the list.
+                while (!hasReferencePendingList()) {
+                    pendingLock.wait();
+                }
+            }
+        } catch (InterruptedException e) {
+            /*
+             * The guest handler thread will attempt emptying the reference list by re-obtaining it.
+             * If the list is not null, then everything will proceed as normal. In the case it is
+             * empty, the guest handler will simply loop back into waiting. This looping back into
+             * waiting done in guest code gives us a chance to reach an espresso safe point (a back
+             * edge), thus giving us the possibility to stop this thread when tearing down the VM.
+             */
+        }
+    }
+
+    private abstract class ReferenceDrain implements Runnable {
+        SubstitutionProfiler profiler = new SubstitutionProfiler();
+
+        @SuppressWarnings("rawtypes")
+        @Override
+        public void run() {
+            final StaticObject lock = (StaticObject) meta.java_lang_ref_Reference_lock.get(meta.java_lang_ref_Reference.tryInitializeAndGetStatics());
+            while (!Thread.currentThread().isInterrupted()) {
+                try {
+                    // Based on HotSpot's ReferenceProcessor::enqueue_discovered_reflist.
+                    // HotSpot's "new behavior": Walk down the list, self-looping the next field
+                    // so that the References are not considered active.
+                    EspressoReference head;
+                    do {
+                        head = (EspressoReference) referenceQueue.remove();
+                        assert head != null;
+                    } while (StaticObject.notNull((StaticObject) meta.java_lang_ref_Reference_next.get(head.getGuestReference())));
+
+                    lock.getLock().lock();
+                    try {
+                        assert Target_java_lang_Thread.holdsLock(lock, meta) : "must hold Reference.lock at the guest level";
+                        casNextIfNullAndMaybeClear(head);
+
+                        EspressoReference prev = head;
+                        EspressoReference ref;
+                        while ((ref = (EspressoReference) referenceQueue.poll()) != null) {
+                            if (StaticObject.notNull((StaticObject) meta.java_lang_ref_Reference_next.get(ref.getGuestReference()))) {
+                                continue;
+                            }
+                            meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), ref.getGuestReference());
+                            casNextIfNullAndMaybeClear(ref);
+                            prev = ref;
+                        }
+
+                        meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), prev.getGuestReference());
+                        updateReferencePendingList(head, prev, lock);
+                    } finally {
+                        lock.getLock().unlock();
+                    }
+                } catch (InterruptedException e) {
+                    // ignore
+                    return;
+                }
+            }
+        }
+
+        @SuppressWarnings("rawtypes")
+        protected abstract void updateReferencePendingList(EspressoReference head, EspressoReference prev, StaticObject lock);
+    }
 
     private void spawnVM() {
 
@@ -301,61 +395,36 @@ public final class EspressoContext {
 
         initializeKnownClass(Type.java_lang_ref_Finalizer);
 
-        // Initialize ReferenceQueues
-        this.hostToGuestReferenceDrainThread = getEnv().createThread(new Runnable() {
-            SubstitutionProfiler profiler = new SubstitutionProfiler();
-
-            @SuppressWarnings("rawtypes")
-            @Override
-            public void run() {
-                final StaticObject lock = (StaticObject) meta.java_lang_ref_Reference_lock.get(meta.java_lang_ref_Reference.tryInitializeAndGetStatics());
-                while (!Thread.currentThread().isInterrupted()) {
-                    try {
-                        // Based on HotSpot's ReferenceProcessor::enqueue_discovered_reflist.
-                        // HotSpot's "new behavior": Walk down the list, self-looping the next field
-                        // so that the References are not considered active.
-                        EspressoReference head;
-                        do {
-                            head = (EspressoReference) referenceQueue.remove();
-                            assert head != null;
-                        } while (StaticObject.notNull((StaticObject) meta.java_lang_ref_Reference_next.get(head.getGuestReference())));
-
-                        lock.getLock().lock();
-                        try {
-                            assert Target_java_lang_Thread.holdsLock(lock, meta) : "must hold Reference.lock at the guest level";
-                            casNextIfNullAndMaybeClear(head);
-
-                            EspressoReference prev = head;
-                            EspressoReference ref;
-                            while ((ref = (EspressoReference) referenceQueue.poll()) != null) {
-                                if (StaticObject.notNull((StaticObject) meta.java_lang_ref_Reference_next.get(ref.getGuestReference()))) {
-                                    continue;
-                                }
-                                meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), ref.getGuestReference());
-                                casNextIfNullAndMaybeClear(ref);
-                                prev = ref;
-                            }
-
-                            meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), prev.getGuestReference());
-                            StaticObject obj = meta.java_lang_ref_Reference_pending.getAndSetObject(meta.java_lang_ref_Reference.getStatics(), head.getGuestReference());
-                            meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), obj);
-
-                            getVM().JVM_MonitorNotify(lock, profiler);
-                        } finally {
-                            lock.getLock().unlock();
-                        }
-                    } catch (InterruptedException e) {
-                        // ignore
-                        return;
-                    }
-                }
-            }
-        });
-
         if (getJavaVersion().java8OrEarlier()) {
+            // Initialize reference queue
+            this.hostToGuestReferenceDrainThread = getEnv().createThread(new ReferenceDrain() {
+                @SuppressWarnings("rawtypes")
+                @Override
+                protected void updateReferencePendingList(EspressoReference head, EspressoReference prev, StaticObject lock) {
+                    StaticObject obj = meta.java_lang_ref_Reference_pending.getAndSetObject(meta.java_lang_ref_Reference.getStatics(), head.getGuestReference());
+                    meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), obj);
+                    getVM().JVM_MonitorNotify(lock, profiler);
+
+                }
+            });
             meta.java_lang_System_initializeSystemClass.invokeDirect(null);
         }
         if (getJavaVersion().java9OrLater()) {
+            // Initialize reference queue
+            this.hostToGuestReferenceDrainThread = getEnv().createThread(new ReferenceDrain() {
+                @SuppressWarnings("rawtypes")
+                @Override
+                protected void updateReferencePendingList(EspressoReference head, EspressoReference prev, StaticObject lock) {
+                    synchronized (pendingLock) {
+                        StaticObject obj = referencePendingList;
+                        referencePendingList = head.getGuestReference();
+                        meta.java_lang_ref_Reference_discovered.set(prev.getGuestReference(), obj);
+                        getVM().JVM_MonitorNotify(lock, profiler);
+                        pendingLock.notifyAll();
+                    }
+                }
+            });
+            // Call guest initialization
             meta.java_lang_System_initPhase1.invokeDirect(null);
             int e = (int) meta.java_lang_System_initPhase2.invokeDirect(null, false, false);
             if (e != 0) {
@@ -364,6 +433,7 @@ public final class EspressoContext {
             modulesInitialized = true;
             meta.java_lang_System_initPhase3.invokeDirect(null);
         }
+        meta.postSystemInit();
 
         // System exceptions.
         for (Symbol<Type> type : Arrays.asList(
@@ -497,9 +567,10 @@ public final class EspressoContext {
                         Target_java_lang_Thread.killThread(guest);
                         Target_java_lang_Thread.interrupt0(guest);
                         t.join(10);
-                        if (t.isAlive()) {
+                        while (t.isAlive()) {
                             Target_java_lang_Thread.setThreadStop(guest, Target_java_lang_Thread.KillStatus.DISSIDENT);
-                            t.join();
+                            Target_java_lang_Thread.interrupt0(guest);
+                            t.join(10);
                         }
                     } else {
                         Target_java_lang_Thread.interrupt0(guest);

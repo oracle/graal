@@ -28,6 +28,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public class ModuleTable extends EntryTable<ModuleTable.ModuleEntry, ClassRegistry> {
@@ -53,6 +54,7 @@ public class ModuleTable extends EntryTable<ModuleTable.ModuleEntry, ClassRegist
 
     public static class ModuleEntry extends EntryTable.NamedEntry {
 
+        // TODO: module versions.
         ModuleEntry(Symbol<Name> name, ClassRegistry data) {
             super(name);
             this.registry = data;
@@ -68,16 +70,10 @@ public class ModuleTable extends EntryTable<ModuleTable.ModuleEntry, ClassRegist
             return result;
         }
 
-        @Override
-        public Symbol<Name> getName() {
-            return name;
-        }
-
         private final ClassRegistry registry;
         private StaticObject module = StaticObject.NULL;
         private boolean isOpen = false;
 
-        @SuppressWarnings("unused") // For later use.
         private boolean canReadAllUnnamed = false;
 
         private ArrayList<ModuleEntry> reads;
@@ -104,15 +100,15 @@ public class ModuleTable extends EntryTable<ModuleTable.ModuleEntry, ClassRegist
             }
         }
 
-        public boolean canRead(ModuleEntry from) {
-            if (!from.isNamed() || from.isJavaBase()) {
+        public boolean canRead(ModuleEntry m, EspressoContext context) {
+            if (!isNamed() || m.isJavaBase(context)) {
                 return true;
             }
             synchronized (this) {
                 if (!hasReads()) {
                     return false;
                 } else {
-                    return contains(from);
+                    return contains(m);
                 }
             }
         }
@@ -133,6 +129,10 @@ public class ModuleTable extends EntryTable<ModuleTable.ModuleEntry, ClassRegist
             canReadAllUnnamed = true;
         }
 
+        public boolean canReadAllUnnamed() {
+            return canReadAllUnnamed;
+        }
+
         public boolean isOpen() {
             return isOpen;
         }
@@ -141,8 +141,8 @@ public class ModuleTable extends EntryTable<ModuleTable.ModuleEntry, ClassRegist
             return getName() != null;
         }
 
-        public boolean isJavaBase() {
-            return false;
+        public boolean isJavaBase(EspressoContext context) {
+            return this == context.getRegistries().getJavaBaseModule();
         }
 
         public boolean hasReads() {

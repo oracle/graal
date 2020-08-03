@@ -89,12 +89,12 @@ public final class ModulesHelperVM {
         if (packageEntry == null) {
             profiler.profile(11);
             throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException,
-                            cat("package ", pkg, " cannot be found in ", fromModuleEntry.getName()));
+                            cat("package ", pkg, " cannot be found in ", fromModuleEntry.getNameAsString()));
         }
         if (packageEntry.module() != fromModuleEntry) {
             profiler.profile(12);
             throw Meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException,
-                            cat("package ", pkg, " found in ", packageEntry.module().getName(), ", not in ", fromModuleEntry.getName()));
+                            cat("package ", pkg, " found in ", packageEntry.module().getNameAsString(), ", not in ", fromModuleEntry.getNameAsString()));
         }
         return packageEntry;
     }
