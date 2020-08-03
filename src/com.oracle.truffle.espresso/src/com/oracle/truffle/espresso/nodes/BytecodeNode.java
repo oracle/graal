@@ -468,6 +468,10 @@ public final class BytecodeNode extends EspressoMethodNode {
         return (StaticObject) result;
     }
 
+    private void releaseObject(VirtualFrame frame, int slot) {
+        putObject(frame, slot, null);
+    }
+
     // Boxed value.
     public Object peekValue(VirtualFrame frame, int slot) {
         return frame.getValue(stackSlots[slot]);
@@ -1988,8 +1992,7 @@ public final class BytecodeNode extends EspressoMethodNode {
             if (receiver.isForeignObject()) {
                 return quickenPutField(frame, top, curBCI, opcode, field);
             } else {
-                // Release the object
-                putObject(frame, slot, null);
+                releaseObject(frame, slot);
             }
         }
 
@@ -2107,8 +2110,7 @@ public final class BytecodeNode extends EspressoMethodNode {
             if (receiver.isForeignObject()) {
                 return quickenGetField(frame, top, curBCI, opcode, field);
             } else {
-                // Release the object
-                putObject(frame, slot, null);
+                releaseObject(frame, slot);
             }
         }
 

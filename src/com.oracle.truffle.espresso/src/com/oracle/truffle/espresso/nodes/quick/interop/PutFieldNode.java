@@ -41,12 +41,14 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public abstract class PutFieldNode extends QuickNode {
-    protected Field field;
+    protected final Field field;
+    protected final String fieldName;
 
     protected PutFieldNode(int top, int callerBCI, Field field) {
         super(top, callerBCI);
         assert !field.isStatic();
         this.field = field;
+        this.fieldName = field.getNameAsString();
     }
 
     @Override
@@ -59,16 +61,22 @@ public abstract class PutFieldNode extends QuickNode {
         return -field.getKind().getSlotCount();
     }
 
+    @Override
+    public final boolean producedForeignObject(VirtualFrame frame) {
+        return false;
+    }
+
     public abstract void executePutField(Object receiver, Object fieldValue);
 
     @Specialization(guards = "receiver.isForeignObject()", limit = "1")
-    protected void doForeign(StaticObject receiver, Object fieldValue, @CachedLibrary("receiver.rawForeignObject()") InteropLibrary interopLibrary,
+    protected void doForeign(StaticObject receiver, Object fieldValue,
+                    @CachedLibrary("receiver.rawForeignObject()") InteropLibrary interopLibrary,
                     @CachedContext(EspressoLanguage.class) EspressoContext context) {
-        String fieldName = field.getNameAsString();
+        assert field.getDeclaringKlass().isAssignableFrom(receiver.getKlass());
         try {
             interopLibrary.writeMember(receiver.rawForeignObject(), fieldName, fieldValue);
         } catch (UnsupportedMessageException | UnknownIdentifierException e) {
-            throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_NoSuchFieldError, "Foreign object has no readable field " + fieldName);
+            throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_NoSuchFieldError, "Foreign object has no writable field " + fieldName);
         } catch (UnsupportedTypeException e) {
             throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_ClassCastException,
                             "Could not cast value" + fieldValue.toString() + "to the actual type of the foreign field " + fieldName);
@@ -84,7 +92,7 @@ public abstract class PutFieldNode extends QuickNode {
         BytecodeNode root = getBytecodesNode();
         switch (field.getKind()) {
             case Boolean:
-                return root.peekInt(frame, top - 1) == 1;
+                return root.peekInt(frame, top - 1) != 0;
             case Byte:
                 return (byte) root.peekInt(frame, top - 1);
             case Char:
@@ -105,10 +113,5 @@ public abstract class PutFieldNode extends QuickNode {
                 CompilerDirectives.transferToInterpreter();
                 throw EspressoError.shouldNotReachHere("unexpected kind: " + field.getKind().toString());
         }
-    }
-
-    @Override
-    public boolean producedForeignObject(VirtualFrame frame) {
-        return false;
     }
 }

@@ -42,11 +42,13 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public abstract class GetFieldNode extends QuickNode {
     protected final Field field;
+    protected final String fieldName;
 
     public GetFieldNode(int top, int callerBCI, Field field) {
         super(top, callerBCI);
         assert !field.isStatic();
         this.field = field;
+        this.fieldName = field.getNameAsString();
     }
 
     @Override
@@ -59,16 +61,18 @@ public abstract class GetFieldNode extends QuickNode {
     }
 
     @Override
-    public boolean producedForeignObject(VirtualFrame frame) {
+    public final boolean producedForeignObject(VirtualFrame frame) {
         return field.getKind().isObject() && getBytecodesNode().peekObject(frame, top).isForeignObject();
     }
 
     protected abstract Object executeGetField(StaticObject receiver);
 
     @Specialization(guards = "receiver.isForeignObject()", limit = "1")
-    protected Object doForeign(StaticObject receiver, @CachedLibrary("receiver.rawForeignObject()") InteropLibrary interopLibrary,
-                    @Cached ToEspressoNode toEspressoNode, @CachedContext(EspressoLanguage.class) EspressoContext context) {
-        String fieldName = field.getNameAsString();
+    protected Object doForeign(StaticObject receiver,
+                    @CachedLibrary("receiver.rawForeignObject()") InteropLibrary interopLibrary,
+                    @Cached ToEspressoNode toEspressoNode,
+                    @CachedContext(EspressoLanguage.class) EspressoContext context) {
+        assert field.getDeclaringKlass().isAssignableFrom(receiver.getKlass());
         Object value;
         try {
             value = interopLibrary.readMember(receiver.rawForeignObject(), fieldName);
@@ -79,7 +83,7 @@ public abstract class GetFieldNode extends QuickNode {
         try {
             return toEspressoNode.execute(value, field.resolveTypeKlass());
         } catch (UnsupportedMessageException | UnsupportedTypeException e) {
-            throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_ClassCastException, "Field " + fieldName + " cannot be cast to type " + field.getTypeAsString());
+            throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_ClassCastException, "Foreign field " + fieldName + " cannot be cast to type " + field.getTypeAsString());
         }
     }
 
