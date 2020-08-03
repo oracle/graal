@@ -47,16 +47,16 @@ import com.oracle.truffle.api.library.ExportLibrary;
 public class ModuleImportDescriptor extends Dictionary {
     private final String module;
     private final String name;
-    private final String kind;
+    private final ImportExportKind kind;
 
     public ModuleImportDescriptor(String module, String name, String kind) {
         this.module = module;
         this.name = name;
-        this.kind = kind;
+        this.kind = ImportExportKind.parse(kind);
         addMembers(new Object[]{
                         "module", this.module,
                         "name", this.name,
-                        "kind", this.kind,
+                        "kind", this.kind.name(),
         });
     }
 }

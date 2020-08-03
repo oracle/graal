@@ -49,8 +49,8 @@ public class TableDescriptor extends Dictionary {
     private final Long initial;
     private final Long maximum;
 
-    public TableDescriptor(TableKind kind, Long initial, Long maximum) {
-        this.kind = kind;
+    public TableDescriptor(String kind, Long initial, Long maximum) {
+        this.kind = TableKind.parse(kind);
         this.initial = initial;
         this.maximum = maximum;
         addMembers(new Object[]{

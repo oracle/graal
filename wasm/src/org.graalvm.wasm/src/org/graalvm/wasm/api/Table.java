@@ -52,9 +52,10 @@ public class Table extends Dictionary {
     private final TableDescriptor descriptor;
     private final WasmTable table;
 
-    public Table(WasmTable table) {
-        this.descriptor = new TableDescriptor(TableKind.anyfunc, (long) table.size(), (long) table.maxSize());
-        this.table = table;
+    public Table(TableDescriptor descriptor) {
+        this.descriptor = descriptor;
+        // TODO: Instantiate the table.
+        this.table = null;
         addMembers(new Object[]{
                         "descriptor", this.descriptor,
                         "grow", new Executable(args -> grow((Long) args[0])),

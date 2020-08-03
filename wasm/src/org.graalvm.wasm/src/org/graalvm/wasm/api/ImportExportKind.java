@@ -40,9 +40,16 @@
  */
 package org.graalvm.wasm.api;
 
+import com.oracle.truffle.api.CompilerDirectives;
+
 public enum ImportExportKind {
     function,
     table,
     memory,
-    global
+    global;
+
+    @CompilerDirectives.TruffleBoundary
+    public static ImportExportKind parse(String name) {
+        return valueOf(name);
+    }
 }

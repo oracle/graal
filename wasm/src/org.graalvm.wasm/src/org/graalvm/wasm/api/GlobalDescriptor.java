@@ -48,8 +48,8 @@ public class GlobalDescriptor extends Dictionary {
     private final ValueType valueType;
     private final Boolean mutable;
 
-    public GlobalDescriptor(ValueType valueType, Boolean mutable) {
-        this.valueType = valueType;
+    public GlobalDescriptor(String valueType, Boolean mutable) {
+        this.valueType = ValueType.valueOf(valueType);
         this.mutable = mutable;
         addMembers(new Object[]{
                         "value", this.valueType.name(),

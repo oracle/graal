@@ -54,8 +54,9 @@ import static org.graalvm.wasm.api.ImportExportKind.table;
 public class Module extends Dictionary {
     private final WasmModule module;
 
-    public Module(WasmModule module) {
-        this.module = module;
+    public Module(byte[] source) {
+        // TODO: Parse the source into the module.
+        this.module = null;
         addMembers(new Object[]{
                         "exports", new Executable(args -> exports()),
                         "imports", new Executable(args -> imports()),

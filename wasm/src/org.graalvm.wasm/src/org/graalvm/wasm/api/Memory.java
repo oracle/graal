@@ -51,9 +51,10 @@ public class Memory extends Dictionary {
     private final MemoryDescriptor descriptor;
     private final WasmMemory memory;
 
-    public Memory(WasmMemory memory) {
-        this.descriptor = new MemoryDescriptor(memory.pageSize(), memory.maxPageSize());
-        this.memory = memory;
+    public Memory(MemoryDescriptor descriptor) {
+        this.descriptor = descriptor;
+        // TODO: Instantiate.
+        this.memory = null;
         addMembers(new Object[]{
                         "descriptor", this.descriptor,
                         "grow", new Executable(args -> grow((Long) args[0])),

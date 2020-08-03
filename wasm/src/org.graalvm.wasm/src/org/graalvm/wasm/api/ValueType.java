@@ -40,9 +40,16 @@
  */
 package org.graalvm.wasm.api;
 
+import com.oracle.truffle.api.CompilerDirectives;
+
 public enum ValueType {
     i32,
     i64,
     f32,
-    f64
+    f64;
+
+    @CompilerDirectives.TruffleBoundary
+    public static ValueType parse(String name) {
+        return valueOf(name);
+    }
 }

@@ -40,13 +40,16 @@
  */
 package org.graalvm.wasm.api;
 
-import com.oracle.truffle.api.CompilerDirectives;
+public class WebAssemblyInstantiatedSource extends Dictionary {
+    private final Module module;
+    private final Instance instance;
 
-public enum TableKind {
-    anyfunc;
-
-    @CompilerDirectives.TruffleBoundary
-    public static TableKind parse(String name) {
-        return valueOf(name);
+    public WebAssemblyInstantiatedSource(Module module, Instance instance) {
+        this.module = module;
+        this.instance = instance;
+        addMembers(new Object[]{
+                "module", this.module,
+                "instance", this.instance,
+        });
     }
 }

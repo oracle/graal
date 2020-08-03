@@ -42,15 +42,12 @@ package org.graalvm.wasm.api;
 
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
-import org.graalvm.wasm.GlobalRegistry;
 
 @ExportLibrary(InteropLibrary.class)
 public class Global extends Dictionary {
-    private final GlobalRegistry registry;
     private final GlobalDescriptor descriptor;
 
-    public Global(GlobalRegistry registry, GlobalDescriptor descriptor) {
-        this.registry = registry;
+    public Global(GlobalDescriptor descriptor) {
         this.descriptor = descriptor;
         addMembers(new Object[]{
                         "descriptor", this.descriptor,

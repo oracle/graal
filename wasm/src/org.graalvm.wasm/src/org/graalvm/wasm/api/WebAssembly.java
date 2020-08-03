@@ -41,4 +41,22 @@
 package org.graalvm.wasm.api;
 
 public class WebAssembly extends Dictionary {
+    public WebAssemblyInstantiatedSource instantiate(byte[] source, Dictionary importObject) {
+        final Module module = compile(source);
+        final Instance instance = new Instance(module, importObject);
+        return new WebAssemblyInstantiatedSource(module, instance);
+    }
+
+    public WebAssemblyInstantiatedSource instantiateStreaming(byte[] source, Dictionary importObject) {
+        return instantiate(source, importObject);
+    }
+
+    public Module compile(byte[] source) {
+        // TODO: Implement.
+        return null;
+    }
+
+    public Module compileStreaming(byte[] source) {
+        return compile(source);
+    }
 }

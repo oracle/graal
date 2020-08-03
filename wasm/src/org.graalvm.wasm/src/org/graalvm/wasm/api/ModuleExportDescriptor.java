@@ -46,14 +46,14 @@ import com.oracle.truffle.api.library.ExportLibrary;
 @ExportLibrary(InteropLibrary.class)
 public class ModuleExportDescriptor extends Dictionary {
     private final String name;
-    private final String kind;
+    private final ImportExportKind kind;
 
     public ModuleExportDescriptor(String name, String kind) {
         this.name = name;
-        this.kind = kind;
+        this.kind = ImportExportKind.parse(kind);
         addMembers(new Object[]{
                         "name", this.name,
-                        "kind", this.kind,
+                        "kind", this.kind.name(),
         });
     }
 }
