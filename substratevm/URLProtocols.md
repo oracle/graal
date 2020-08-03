@@ -1,5 +1,4 @@
-URL Protocols on Substrate VM
------------------------------
+# URL Protocols on Substrate VM
 
 On Substrate VM URL protocols can be divided in three classes:
 
@@ -20,7 +19,7 @@ Alternatively `http` and `https` can be enabled using the `--enable-http` and `-
 Support for the `https` URL protocol relies on the Java Cryptography Architecture (JCA) framework.
 Thus when `https` is enabled `--enable-all-security-services` is set by default.
 This adds to the generated image the code required by the JCA, including statically linking native libraries that the JCA may depend on.
-See the [documentation on security services](JCA-SECURITY-SERVICES.md) for more details.
+See the [documentation on security services](JCASecurityServices.md) for more details.
 
 ### Not tested
 No other URL protocols are currently tested.

@@ -2,14 +2,14 @@
 
 Substrate VM supports logging out-of-the box using the `java.util.logging.*` API.
 
-## Default logging configuration
+## Default Logging configuration
 
 The logging configuration built in the image by default is based on the `logging.properties` file found in the JDK.
 This configures a `java.util.logging.ConsoleHandler` which will only shows messages at the `INFO` and above levels.
 Custom logging configuration can be loaded either at image build time or at run time as described below.
-An important detail is that if additional logging handlers are used the corresponding classes need to be registerd for reflection.
+An important detail is that if additional logging handlers are used the corresponding classes need to be registered for reflection.
 For example if `java.util.logging.FileHandler` is used then the following reflection config is necessary:
-```
+```json
 {
     "name" : "java.util.logging.FileHandler",
     "methods" : [
@@ -17,13 +17,13 @@ For example if `java.util.logging.FileHandler` is used then the following reflec
     ]
   }
 ```
-(See the [reflection support documentation](REFLECTION.md) for more details.)
+See the [Reflection Support](Reflection.md) guide for more details.
 
 
-## Build time logger initialization
+## Build Time Logger Initialization
 
 The logger can be initialized at image build time with a custom `logging.properties` config, as in the code below:
-```
+```java
 public class BuildTimeLoggerInit {
   private static final Logger LOGGER;
   static {
@@ -42,9 +42,9 @@ The `LoggerHolder.LOGGER` is also initialized at image build time and is readily
 Unless the application needs to process a custom `logging.properties` configuration at run time this approach is recommended.
 
 
-## Run time logger initialization
+## Runtime Logger Initialization
 
-The logger can also be initialized at run time, as in the code below:
+The logger can also be initialized at runtime, as in the code below:
 
 ```
 public class RuntimeLoggerInit {
@@ -58,4 +58,4 @@ public class RuntimeLoggerInit {
 ```
 
 In this case the `logging.properties` file needs to be available for run time processing and it must be included in the image via the `-H:IncludeResources=logging.properties` option.
-(See the documentation on [accessing resources at run time](RESOURCES.md) for more details on this option.)
+See the information about [accessing resources at runtime](Resources.md) for more details on this option.

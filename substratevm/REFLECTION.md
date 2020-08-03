@@ -1,5 +1,4 @@
 # Reflection on Substrate VM
-(See also the [guide on assisted configuration of Java reflection and other dynamic features](CONFIGURE.md))
 
 Java reflection support (the `java.lang.reflect.*` API) enables Java code to examine its own classes, methods and fields and their properties at runtime.
 
@@ -10,7 +9,9 @@ Examining and accessing program elements through `java.lang.reflect.*` or loadin
 SubstrateVM tries to resolve the target elements through a static analysis that detects calls to the reflection API.
 Where the analysis fails the program elements reflectively accessed at run time must be specified using a manual configuration.
 
-## Automatic detection
+See also the [guide on assisted configuration of Java resources and other dynamic features](Configure.md).
+
+## Automatic Detection
 
 The analysis intercepts calls to `Class.forName(String)`, `Class.forName(String, ClassLoader)`, `Class.getDeclaredField(String)`, `Class.getField(String)`, `Class.getDeclaredMethod(String, Class[])`, `Class.getMethod(String, Class[])`, `Class.getDeclaredConstructor(Class[])` and `Class.getConstructor(Class[])`.
 If the arguments to these calls can be reduced to a constant we try to resolve the target elements.
@@ -66,45 +67,45 @@ Integer.class.getMethod("parseInt", params2);
 If a call cannot be processed it is simply skipped.
 For these situations a manual configuration as described below can be provided.
 
-## Manual configuration
+## Manual Configuration
 
 A configuration that specifies the program elements that will be accessed reflectively can be provided during the image build as follows:
-
-    -H:ReflectionConfigurationFiles=/path/to/reflectconfig
-
+```
+-H:ReflectionConfigurationFiles=/path/to/reflectconfig
+```
 where `reflectconfig` is a JSON file in the following format (use `--expert-options` for more details):
-
-	[
-	  {
-	    "name" : "java.lang.Class",
-	    "allDeclaredConstructors" : true,
-	    "allPublicConstructors" : true,
-	    "allDeclaredMethods" : true,
-	    "allPublicMethods" : true,
-	    "allDeclaredClasses" : true,
-	    "allPublicClasses" : true
-	  },
-	  {
-	    "name" : "java.lang.String",
-	    "fields" : [
-	      { "name" : "value", "allowWrite" : true },
-	      { "name" : "hash" }
-	    ],
-	    "methods" : [
-	      { "name" : "<init>", "parameterTypes" : [] },
-	      { "name" : "<init>", "parameterTypes" : ["char[]"] },
-	      { "name" : "charAt" },
-	      { "name" : "format", "parameterTypes" : ["java.lang.String", "java.lang.Object[]"] }
-	    ]
-	  },
-      {
-        "name" : "java.lang.String$CaseInsensitiveComparator",
-        "methods" : [
-          { "name" : "compare" }
-        ]
-      }
-	]
-
+```json
+[
+  {
+    "name" : "java.lang.Class",
+    "allDeclaredConstructors" : true,
+    "allPublicConstructors" : true,
+    "allDeclaredMethods" : true,
+    "allPublicMethods" : true,
+    "allDeclaredClasses" : true,
+    "allPublicClasses" : true
+  },
+  {
+    "name" : "java.lang.String",
+    "fields" : [
+      { "name" : "value", "allowWrite" : true },
+      { "name" : "hash" }
+    ],
+    "methods" : [
+      { "name" : "<init>", "parameterTypes" : [] },
+      { "name" : "<init>", "parameterTypes" : ["char[]"] },
+      { "name" : "charAt" },
+      { "name" : "format", "parameterTypes" : ["java.lang.String", "java.lang.Object[]"] }
+    ]
+  },
+    {
+      "name" : "java.lang.String$CaseInsensitiveComparator",
+      "methods" : [
+        { "name" : "compare" }
+      ]
+    }
+]
+```
 The image build generates reflection metadata for all classes, methods and fields referenced in that file.
 The `allPublicConstructors`, `allDeclaredConstructors`, `allPublicMethods`, `allDeclaredMethods`, `allPublicFields`, `allDeclaredFields`, `allPublicClasses` and `allDeclaredClasses` attributes can be used to automatically include an entire set of members of a class.
 However, `allPublicClasses` and `allDeclaredClasses` don't automatically register the inner classes for reflective access.
@@ -115,33 +116,32 @@ However, code accessing final fields might not observe changes of final field va
 More than one configuration can be used by specifying multiple paths for `ReflectionConfigurationFiles` and separating them with `,`.
 Also, `-H:ReflectionConfigurationResources` can be specified to load one or several configuration files from the native image build's class path, such as from a JAR file.
 
-Alternatively, a custom `Feature` implementation can register program elements before and during the analysis phase of the native image build using the `RuntimeReflection` class.
-For example:
+Alternatively, a custom `Feature` implementation can register program elements before and during the analysis phase of the native image build using the `RuntimeReflection` class. For example:
+```java
+@AutomaticFeature
+class RuntimeReflectionRegistrationFeature implements Feature {
+  public void beforeAnalysis(BeforeAnalysisAccess access) {
+    try {
+      RuntimeReflection.register(String.class);
+      RuntimeReflection.register(/* finalIsWritable: */ true, String.class.getDeclaredField("value"));
+      RuntimeReflection.register(String.class.getDeclaredField("hash"));
+      RuntimeReflection.register(String.class.getDeclaredConstructor(char[].class));
+      RuntimeReflection.register(String.class.getDeclaredMethod("charAt", int.class));
+      RuntimeReflection.register(String.class.getDeclaredMethod("format", String.class, Object[].class));
+      RuntimeReflection.register(String.CaseInsensitiveComparator.class);
+      RuntimeReflection.register(String.CaseInsensitiveComparator.class.getDeclaredMethod("compare", String.class, String.class));
+    } catch (NoSuchMethodException | NoSuchFieldException e) { ... }
+  }
+}
 
-    @AutomaticFeature
-    class RuntimeReflectionRegistrationFeature implements Feature {
-      public void beforeAnalysis(BeforeAnalysisAccess access) {
-        try {
-          RuntimeReflection.register(String.class);
-          RuntimeReflection.register(/* finalIsWritable: */ true, String.class.getDeclaredField("value"));
-          RuntimeReflection.register(String.class.getDeclaredField("hash"));
-          RuntimeReflection.register(String.class.getDeclaredConstructor(char[].class));
-          RuntimeReflection.register(String.class.getDeclaredMethod("charAt", int.class));
-          RuntimeReflection.register(String.class.getDeclaredMethod("format", String.class, Object[].class));
-          RuntimeReflection.register(String.CaseInsensitiveComparator.class);
-          RuntimeReflection.register(String.CaseInsensitiveComparator.class.getDeclaredMethod("compare", String.class, String.class));
-        } catch (NoSuchMethodException | NoSuchFieldException e) { ... }
-      }
-    }
-
-
-## Use during Native Image Generation
+```
+### Use Reflection during Native Image Generation
 Reflection can be used without restrictions during native image generation, for example in static initializers.
 At this point, code can collect information about methods and fields and store them in own data structures, which are then reflection-free at run time.
 
-## Unsafe accesses
+### Unsafe accesses
 The `Unsafe` class, although its use is discouraged, provides direct access to memory of Java objects. The `Unsafe.objectFieldOffset()` method provides the offset of a field within a Java object. This information is not available by default, but can be enabled with the `allowUnsafeAccess` attribute in the reflection configuration, for example:
-```
+```json
 "fields" : [ { "name" : "hash", "allowUnsafeAccess" : true }, ... ]
 ```
 

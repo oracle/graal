@@ -13,7 +13,7 @@ For developer documentation on how to define and use options, read the package d
 
 ## List of Useful Options
 
-### Graal Graph Dumping
+### Graph Dumping
 
 Substrate VM re-used the Graal options for graph dumping, logging, counters, and everything else of the Graal debug environment.
 These Graal options can be used both as hosted options (if you want to dump graphs of the boot image generator) and runtime options (if you want to dump graphs during dynamic compilation at run time).
