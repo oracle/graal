@@ -40,16 +40,9 @@
  */
 package com.oracle.truffle.api.dsl.test;
 
-import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.net.URL;
-import java.net.URLConnection;
-import java.nio.charset.StandardCharsets;
-import java.util.stream.Collectors;
 
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
@@ -68,6 +61,35 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 public class SpecializationStatisticsTest {
+
+    private static final String EXPECTED = " ----------------------------------------------------------------------------------------------------------------------------------------------%n" +
+                    "| Name                                                Instances          Executions     Executions per instance %n" +
+                    " ----------------------------------------------------------------------------------------------------------------------------------------------%n" +
+                    "| SpecializationStatisticTestNodeGen.Uncached         1 (33%)             1 (9%)         Min=         1 Avg=        1.00 Max=          1  MaxNode= N/A %n" +
+                    "|   s0                                                  0 (0%)              0 (0%)         Min=         0 Avg=        0.00 Max=          0  MaxNode=  -  %n" +
+                    "|   s1                                                  0 (0%)              0 (0%)         Min=         0 Avg=        0.00 Max=          0  MaxNode=  -  %n" +
+                    "|   s2                                                  0 (0%)              0 (0%)         Min=         0 Avg=        0.00 Max=          0  MaxNode=  -  %n" +
+                    "|   s3 <String>                                         1 (100%)            1 (100%)       Min=         1 Avg=        1.00 Max=          1  MaxNode= N/A %n" +
+                    "|   -------------------------------------------------------------------------------------------------------------------------------------------%n" +
+                    "|   [s3]                                                1 (100%)            1 (100%)       Min=         1 Avg=        1.00 Max=          1  MaxNode= N/A %n" +
+                    " ----------------------------------------------------------------------------------------------------------------------------------------------%n" +
+                    "| Name                                                Instances          Executions     Executions per instance %n" +
+                    " ----------------------------------------------------------------------------------------------------------------------------------------------%n" +
+                    "| SpecializationStatisticTestNodeGen                  2 (67%)            10 (91%)        Min=         3 Avg=        5.00 Max=          7  MaxNode= testLangFile0.file~1:0 %n" +
+                    "|   s0 <int>                                            1 (50%)             3 (30%)        Min=         3 Avg=        3.00 Max=          3  MaxNode= testLangFile0.file~1:0 %n" +
+                    "|   s1 <int>                                            1 (50%)             1 (10%)        Min=         1 Avg=        1.00 Max=          1  MaxNode= testLangFile0.file~1:0 %n" +
+                    "|   s2 <String>                                         2 (100%)            4 (40%)        Min=         1 Avg=        2.00 Max=          3  MaxNode= testLangFile1.file~1:0 %n" +
+                    "|   s3                                                  1 (50%)             2 (20%)        Min=         2 Avg=        2.00 Max=          2  MaxNode= testLangFile0.file~1:0 %n" +
+                    "|     <String>                                            1 (100%)            1 (50%)        Min=         1 Avg=        1.00 Max=          1  MaxNode= testLangFile0.file~1:0 %n" +
+                    "|     <StringBuilder>                                     1 (100%)            1 (50%)        Min=         1 Avg=        1.00 Max=          1  MaxNode= testLangFile0.file~1:0 %n" +
+                    "|   -------------------------------------------------------------------------------------------------------------------------------------------%n" +
+                    "|   [s0, s1, s2, s3]                                    1 (50%)             7 (70%)        Min=         7 Avg=        7.00 Max=          7  MaxNode= testLangFile0.file~1:0 %n" +
+                    "|     s0                                                  1 (100%)            3 (43%)        Min=         3 Avg=        3.00 Max=          3  MaxNode= testLangFile0.file~1:0 %n" +
+                    "|     s1                                                  1 (100%)            1 (14%)        Min=         1 Avg=        1.00 Max=          1  MaxNode= testLangFile0.file~1:0 %n" +
+                    "|     s2                                                  1 (100%)            1 (14%)        Min=         1 Avg=        1.00 Max=          1  MaxNode= testLangFile0.file~1:0 %n" +
+                    "|     s3                                                  1 (100%)            2 (29%)        Min=         2 Avg=        2.00 Max=          2  MaxNode= testLangFile0.file~1:0 %n" +
+                    "|   [s2]                                                1 (50%)             3 (30%)        Min=         3 Avg=        3.00 Max=          3  MaxNode= testLangFile1.file~1:0 %n" +
+                    " ----------------------------------------------------------------------------------------------------------------------------------------------%n";
 
     @GenerateUncached
     @NodeField(name = "index", type = int.class)
@@ -113,7 +135,7 @@ public class SpecializationStatisticsTest {
     }
 
     @Test
-    public void testCustomEnterLeave() throws IOException {
+    public void testCustomEnterLeave() {
         SpecializationStatistics statistics = SpecializationStatistics.create();
         SpecializationStatistics prev = statistics.enter();
 
@@ -129,14 +151,8 @@ public class SpecializationStatisticsTest {
         statistics.leave(prev);
     }
 
-    private static String readExpectedOutput() throws IOException {
-        URL url = SpecializationStatisticsTest.class.getResource("SpecializationStatisticsTest.out");
-        String contents;
-        URLConnection conn = url.openConnection();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
-            contents = reader.lines().collect(Collectors.joining(System.lineSeparator()));
-        }
-        return contents;
+    private static String readExpectedOutput() {
+        return EXPECTED.replaceAll("%n", System.lineSeparator());
     }
 
     private static void createAndExecuteNodes() {
@@ -159,7 +175,7 @@ public class SpecializationStatisticsTest {
     }
 
     @Test
-    public void testWithContextEnabled() throws IOException {
+    public void testWithContextEnabled() {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         try (Context context = Context.newBuilder().allowExperimentalOptions(true).option("engine.SpecializationStatistics", "true").logHandler(out).build()) {
             context.enter();
