@@ -85,7 +85,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * @see #parse
  */
-final class Runner {
+final class ParserDriver {
 
     /**
      * Parses a {@code source} and all its (explicit and implicit) dependencies.
@@ -94,14 +94,14 @@ final class Runner {
      *         constructors, etc.) the module represented by {@code source} and all dependencies.
      */
     public static CallTarget parse(LLVMContext context, AtomicInteger bitcodeID, Source source) {
-        return new Runner(context, bitcodeID).parseWithDependencies(source);
+        return new ParserDriver(context, bitcodeID).parseWithDependencies(source);
     }
 
     private final LLVMContext context;
     private final LLVMLanguage language;
     private final AtomicInteger nextFreeBitcodeID;
 
-    private Runner(LLVMContext context, AtomicInteger moduleID) {
+    private ParserDriver(LLVMContext context, AtomicInteger moduleID) {
         this.context = context;
         this.language = context.getLanguage();
         this.nextFreeBitcodeID = moduleID;
@@ -166,12 +166,10 @@ final class Runner {
             if (libraryName.equals("libsulong")) {
                 context.addLibsulongDataLayout(result.getDataLayout());
             }
-        }
 
-        // Need to do the renaming here, it is only for internal libraries.
-        if (isInternalLibrary) {
             // renaming is attempted only for internal libraries.
             resolveRenamedSymbols(result, language, context);
+
         }
 
         addExternalSymbolsToScopes(result);
