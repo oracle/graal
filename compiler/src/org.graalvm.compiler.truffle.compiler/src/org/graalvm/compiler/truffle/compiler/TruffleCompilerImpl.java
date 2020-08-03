@@ -282,7 +282,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         if (!initialized) {
             synchronized (this) {
                 if (!initialized) {
-                	try (TTY.Filter ttyFilter = new TTY.Filter(new LogStream(new PolyglotLoggerPrintStream(compilable)))) {
+                    try (TTY.Filter ttyFilter = new TTY.Filter(new LogStream(new PolyglotLoggerPrintStream(compilable)))) {
                         final org.graalvm.options.OptionValues options = TruffleCompilerOptions.getOptionsForCompiler(optionsMap);
                         partialEvaluator.initialize(options);
                         if (firstInitialization) {

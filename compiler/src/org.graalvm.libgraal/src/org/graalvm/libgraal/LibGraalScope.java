@@ -135,7 +135,7 @@ public final class LibGraalScope implements AutoCloseable {
             long isolateAddress = isolateBox[0];
             long isolateThread = getIsolateThreadIn(isolateAddress);
             long isolateId = getIsolateId(isolateThread);
-            LibGraalIsolate isolate = LibGraalIsolate.forIsolateId(isolateId);
+            LibGraalIsolate isolate = LibGraalIsolate.forIsolateId(isolateId, isolateAddress);
             shared = new Shared(firstAttach ? detachAction : null, isolate, isolateThread);
         } else {
             shared = parent.shared;
@@ -170,7 +170,7 @@ public final class LibGraalScope implements AutoCloseable {
                 alreadyAttached = true;
             }
             long isolateId = getIsolateId(isolateThread);
-            LibGraalIsolate isolate = LibGraalIsolate.forIsolateId(isolateId);
+            LibGraalIsolate isolate = LibGraalIsolate.forIsolateId(isolateId, isolateAddress);
             shared = new Shared(alreadyAttached ? null : DetachAction.DETACH, isolate, isolateThread);
         } else {
             shared = parent.shared;

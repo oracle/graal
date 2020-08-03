@@ -2,6 +2,10 @@
 
 This changelog summarizes major changes between GraalVM SDK versions. The main focus is on APIs exported by GraalVM SDK.
 
+## Version 20.3.0
+* Added a `log.file` engine option to redirect the Truffle logging into a file. The `log.file` option has a lower precedence than `Engine.Builder.logHandler`, if both the `log.file` option and `Builder.logHandler` are specified the `Builder.logHandler` is used.
+* The Truffle engine logger no more inherits the Graal `LogFile` option.
+
 ## Version 20.2.0
 * Added `-Dpolyglot.engine.AllowExperimentalOptions=true` to allow experimental options for all polyglot engines of a host VM. This system property is intended to be used for testing only and should not be enabled in production environments.
 * Added [a factory method](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/io/FileSystem.html#newDefaultFileSystem--) creating a FileSystem based on the host Java NIO. The obtained instance can be used as a delegate in a decorating filesystem.

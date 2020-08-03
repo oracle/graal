@@ -500,7 +500,8 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
     /**
      * Substituted by
      * {@code com.oracle.svm.graal.hotspot.libgraal.Target_org_graalvm_compiler_hotspot_HotSpotGraalRuntime}
-     * to call {@code org.graalvm.nativeimage.VMRuntime.shutdown()}.
+     * to notify {@code org.graalvm.libgraal.LibGraalIsolate} and call
+     * {@code org.graalvm.nativeimage.VMRuntime.shutdown()}.
      */
     @SuppressWarnings("unused")
     private static void shutdownLibGraal(HotSpotGraalRuntime runtime) {

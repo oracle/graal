@@ -68,6 +68,7 @@ import java.util.logging.StreamHandler;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import java.io.PrintStream;
 
 final class PolyglotLoggers {
 
@@ -148,7 +149,7 @@ final class PolyglotLoggers {
      * @param out the {@link OutputStream} to print log messages into
      */
     static Handler createDefaultHandler(final OutputStream out) {
-        return new PolyglotStreamHandler(out, false, true, true);
+        return new PolyglotStreamHandler(new RedirectNotificationOutputStream(out), false, true, true);
     }
 
     static Handler getFileHandler(String path) {
@@ -618,6 +619,51 @@ final class PolyglotLoggers {
                 }
             }
         }
+    }
 
+    private static final class RedirectNotificationOutputStream extends OutputStream {
+
+        private static final String REDIRECT_FORMAT = "[To redirect Truffle log output to a file use one of the following options:%n" +
+                        "* '--log.file=<path>' if the option is passed using a guest language launcher.%n" +
+                        "* '-Dpolyglot.log.file=<path>' if the option is passed using the host Java launcher.%n" +
+                        "* Configure logging using the polyglot embedding API.]%n";
+
+        private final OutputStream delegate;
+        private volatile boolean notificationPrinted;
+
+        RedirectNotificationOutputStream(OutputStream delegate) {
+            this.delegate = Objects.requireNonNull(delegate, "Delegate must be non null.");
+        }
+
+        @Override
+        public void write(int b) throws IOException {
+            printNotification();
+            delegate.write(b);
+        }
+
+        @Override
+        public void write(byte[] b, int off, int len) throws IOException {
+            printNotification();
+            delegate.write(b, off, len);
+        }
+
+        private void printNotification() {
+            if (notificationPrinted) {
+                return;
+            }
+            synchronized (this) {
+                if (!notificationPrinted) {
+                    PrintStream ps = new PrintStream(delegate);
+                    ps.printf(REDIRECT_FORMAT);
+                    ps.flush();
+                    notificationPrinted = true;
+                }
+            }
+        }
+
+        @Override
+        public void close() throws IOException {
+            delegate.close();
+        }
     }
 }

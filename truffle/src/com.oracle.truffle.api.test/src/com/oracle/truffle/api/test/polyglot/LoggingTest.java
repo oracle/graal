@@ -83,6 +83,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.GCUtils;
 import java.io.File;
+import java.lang.reflect.Field;
 import java.nio.file.Files;
 import org.junit.Assume;
 
@@ -447,7 +448,7 @@ public class LoggingTest {
     public void testPolyglotLogHandler() {
         Assume.assumeTrue(System.getProperty("polyglot.log.file") == null);
         CloseableByteArrayOutputStream err = new CloseableByteArrayOutputStream();
-        testLogToStream(newContextBuilder().err(err), err, false);
+        testLogToStream(newContextBuilder().err(err), err, false, true);
     }
 
     @Test
@@ -496,16 +497,16 @@ public class LoggingTest {
     @Test
     public void testLogToStream() {
         CloseableByteArrayOutputStream stream = new CloseableByteArrayOutputStream();
-        testLogToStream(newContextBuilder().logHandler(stream), stream, true);
+        testLogToStream(newContextBuilder().logHandler(stream), stream, true, false);
         stream = new CloseableByteArrayOutputStream();
         try (Engine engine = newEngineBuilder().logHandler(stream).build()) {
-            testLogToStream(newContextBuilder().engine(engine), stream, false);
+            testLogToStream(newContextBuilder().engine(engine), stream, false, false);
             stream.clear();
             CloseableByteArrayOutputStream innerStream = new CloseableByteArrayOutputStream();
-            testLogToStream(newContextBuilder().engine(engine).logHandler(innerStream), innerStream, true);
+            testLogToStream(newContextBuilder().engine(engine).logHandler(innerStream), innerStream, true, false);
             Assert.assertFalse(stream.isClosed());
             Assert.assertEquals(0, stream.toByteArray().length);
-            testLogToStream(newContextBuilder().engine(engine), stream, false);
+            testLogToStream(newContextBuilder().engine(engine), stream, false, false);
         }
         Assert.assertTrue(stream.isClosed());
     }
@@ -1064,7 +1065,8 @@ public class LoggingTest {
         };
     }
 
-    private static void testLogToStream(Context.Builder contextBuilder, CloseableByteArrayOutputStream stream, boolean expectStreamClosed) {
+    private static void testLogToStream(Context.Builder contextBuilder, CloseableByteArrayOutputStream stream,
+                    boolean expectStreamClosed, boolean expectRedirectMessage) {
         AbstractLoggingLanguage.action = createCustomLogging(
                         new String[]{LoggingLanguageFirst.ID, LoggingLanguageFirst.ID},
                         new String[]{null, "package.class"},
@@ -1073,7 +1075,12 @@ public class LoggingTest {
             ctx.eval(LoggingLanguageFirst.ID, "");
         }
         Assert.assertEquals(expectStreamClosed, stream.isClosed());
-        final String output = new String(stream.toByteArray());
+        String output = new String(stream.toByteArray());
+        if (expectRedirectMessage) {
+            String redirectMessage = getRedirectMessage();
+            Assert.assertTrue(output.startsWith(redirectMessage));
+            output = output.substring(redirectMessage.length());
+        }
         final Pattern p = Pattern.compile("\\[(.*)\\]\\sWARNING:\\s(.*)");
         for (String line : output.split("\n")) {
             final Matcher m = p.matcher(line.trim());
@@ -1081,6 +1088,18 @@ public class LoggingTest {
             final String loggerName = m.group(1);
             final String message = m.group(2);
             Assert.assertEquals(message, loggerName);
+        }
+    }
+
+    private static String getRedirectMessage() {
+        try {
+            Class<?> clz = Class.forName("com.oracle.truffle.polyglot.PolyglotLoggers$RedirectNotificationOutputStream");
+            Field fld = clz.getDeclaredField("REDIRECT_FORMAT");
+            fld.setAccessible(true);
+            String format = (String) fld.get(null);
+            return String.format(format);
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError("Cannot read redirect log message.", e);
         }
     }
 
