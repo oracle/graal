@@ -993,6 +993,11 @@ public class BinaryParser extends BinaryStreamParser {
             final int currentElemSegmentId = elemSegmentId;
             final int currentOffsetAddress = offsetAddress;
             final int currentOffsetGlobalIndex = offsetGlobalIndex;
+            final int[] functionIndices = new int[segmentLength];
+            for (int index = 0; index != segmentLength; ++index) {
+                final int functionIndex = readDeclaredFunctionIndex();
+                functionIndices[index] = functionIndex;
+            }
             module.addLinkAction((context, instance) -> {
                 final WasmTable table = instance.table();
                 if (table == null || currentOffsetGlobalIndex == -1) {
@@ -1005,7 +1010,7 @@ public class BinaryParser extends BinaryStreamParser {
                     // or anything in the spec about that).
                     WasmFunction[] elements = new WasmFunction[segmentLength];
                     for (int index = 0; index != segmentLength; ++index) {
-                        final int functionIndex = readDeclaredFunctionIndex();
+                        final int functionIndex = functionIndices[index];
                         final WasmFunction function = symbolTable.function(functionIndex);
                         elements[index] = function;
                     }
@@ -1013,7 +1018,7 @@ public class BinaryParser extends BinaryStreamParser {
                 } else {
                     table.ensureSizeAtLeast(currentOffsetAddress + segmentLength);
                     for (int index = 0; index != segmentLength; ++index) {
-                        final int functionIndex = readDeclaredFunctionIndex();
+                        final int functionIndex = functionIndices[index];
                         final WasmFunction function = symbolTable.function(functionIndex);
                         table.initialize(currentOffsetAddress + index, function);
                     }
