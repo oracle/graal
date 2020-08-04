@@ -854,7 +854,15 @@ public abstract class Launcher {
             throw abort(String.format("Invalid argument %s specified. %s'", arg, e.getMessage()));
         }
         if (descriptor.isDeprecated()) {
-            warn("Option '" + descriptor.getName() + "' is deprecated and might be removed from future versions.");
+            String messageFormat = "Option '%s' is deprecated and might be removed from future versions.";
+            String deprecationMessage = descriptor.getDeprecationMessage();
+            String message;
+            if (deprecationMessage != null) {
+                message = String.format(messageFormat + "%n%s", descriptor.getName(), deprecationMessage);
+            } else {
+                message = String.format(messageFormat, descriptor.getName());
+            }
+            warn(message);
         }
         if (!experimentalOptions && descriptor.getStability() == OptionStability.EXPERIMENTAL) {
             throw abort(String.format("Option '%s' is experimental and must be enabled via '--experimental-options'%n" +

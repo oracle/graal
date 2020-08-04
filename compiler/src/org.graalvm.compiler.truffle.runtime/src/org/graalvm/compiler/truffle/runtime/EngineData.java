@@ -72,7 +72,6 @@ import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.EngineModeEnum;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExceptionAction;
 import org.graalvm.compiler.truffle.runtime.debug.StatisticsListener;
-import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -288,16 +287,6 @@ public final class EngineData {
     private void validateOptions() {
         if (compilationFailureAction == ExceptionAction.Throw && backgroundCompilation) {
             getLogger().log(Level.WARNING, "The 'Throw' value of the 'engine.CompilationFailureAction' option requires the 'engine.BackgroundCompilation' option to be set to 'false'.");
-        }
-        for (OptionDescriptor descriptor : PolyglotCompilerOptions.getDescriptors()) {
-            if (descriptor.isDeprecated() && engineOptions.hasBeenSet(descriptor.getKey())) {
-                String optionName = descriptor.getName();
-                String deprecationMessage = descriptor.getDeprecationMessage();
-                if (deprecationMessage.isEmpty()) {
-                    deprecationMessage = "Will be removed with no replacement.";
-                }
-                getLogger().log(Level.WARNING, String.format("The option '%s' is deprecated.%n%s", optionName, deprecationMessage));
-            }
         }
     }
 
