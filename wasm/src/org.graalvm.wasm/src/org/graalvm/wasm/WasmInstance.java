@@ -106,9 +106,9 @@ public final class WasmInstance implements TruffleObject {
 
     public WasmInstance(WasmModule module, WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy) {
         this.module = module;
-        ensureGlobalsCapacity(module.maxGlobalIndex());
         this.storeConstantsPolicy = storeConstantsPolicy;
         this.globalAddresses = new int[INITIAL_GLOBALS_SIZE];
+        ensureGlobalsCapacity(module.maxGlobalIndex());
     }
 
     public SymbolTable symbolTable() {
