@@ -121,48 +121,7 @@ static bool is_handle(void *nativeHandle);
  */
 static bool points_to_handle_space(void *nativeHandle);
 
-/*
- * Everything below here is implementation details, and can change without notice even in minor releases.
- */
-
-__attribute__((noinline)) void *_graalvm_llvm_create_handle(void *managedObject);
-__attribute__((noinline)) void *_graalvm_llvm_resolve_handle(void *nativeHandle);
-__attribute__((noinline)) void _graalvm_llvm_release_handle(void *nativeHandle);
-__attribute__((noinline)) void *_graalvm_llvm_create_deref_handle(void *managedObject);
-__attribute__((noinline)) bool _graalvm_llvm_is_handle(void *nativeHandle);
-__attribute__((noinline)) bool _graalvm_llvm_points_to_handle_space(void *nativeHandle);
-
-
-__attribute__((always_inline))
-static inline void *create_handle(void *managedObject) {
-    return _graalvm_llvm_create_handle(managedObject);
-}
-
-__attribute__((always_inline))
-static inline void *resolve_handle(void *nativeHandle) {
-    return _graalvm_llvm_resolve_handle(nativeHandle);
-}
-
-__attribute__((always_inline))
-static inline void release_handle(void *nativeHandle) {
-    _graalvm_llvm_release_handle(nativeHandle);
-}
-
-__attribute__((always_inline))
-static inline void *create_deref_handle(void *managedObject) {
-    return _graalvm_llvm_create_deref_handle(managedObject);
-}
-
-__attribute__((always_inline))
-static inline bool is_handle(void *nativeHandle) {
-    return _graalvm_llvm_is_handle(nativeHandle);
-}
-
-__attribute__((always_inline))
-static inline bool points_to_handle_space(void *nativeHandle) {
-    return _graalvm_llvm_points_to_handle_space(nativeHandle);
-}
-
+#include <graalvm/llvm/internal/handles-impl.h>
 
 #if defined(__cplusplus)
 }

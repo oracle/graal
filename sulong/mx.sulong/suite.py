@@ -583,6 +583,8 @@ suite = {
         "include/graalvm/llvm/handles.h",
         "include/graalvm/llvm/polyglot.h",
         "include/graalvm/llvm/toolchain-api.h",
+        "include/graalvm/llvm/internal/handles-impl.h",
+        "include/graalvm/llvm/internal/polyglot-impl.h",
       ],
       "buildDependencies" : [
         "SULONG_TOOLCHAIN_LAUNCHERS",
