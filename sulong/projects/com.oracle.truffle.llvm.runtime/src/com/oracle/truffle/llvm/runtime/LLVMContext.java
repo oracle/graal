@@ -260,10 +260,9 @@ public final class LLVMContext {
                 assert !ctx.cleanupNecessary;
                 ctx.initialized = true;
                 ctx.cleanupNecessary = true;
-                try (StackPointer sp = ((StackPointer) FrameUtil.getObjectSafe(frame, stackPointer)).newFrame()) {
-                    Object[] args = new Object[]{sp, ctx.getApplicationArguments(), getEnvironmentVariables(), getRandomValues()};
-                    initContext.call(args);
-                }
+                StackPointer sp = (StackPointer) FrameUtil.getObjectSafe(frame, this.stackPointer);
+                Object[] args = new Object[]{sp.getLLVMStack(), ctx.getApplicationArguments(), getEnvironmentVariables(), getRandomValues()};
+                initContext.call(args);
             }
         }
     }
@@ -467,9 +466,8 @@ public final class LLVMContext {
                 if (LLVMManagedPointer.isInstance(pointer)) {
                     LLVMFunctionDescriptor functionDescriptor = (LLVMFunctionDescriptor) LLVMManagedPointer.cast(pointer).getObject();
                     RootCallTarget disposeContext = functionDescriptor.getFunctionCode().getLLVMIRFunctionSlowPath();
-                    try (StackPointer stackPointer = threadingStack.getStack().newFrame()) {
-                        disposeContext.call(stackPointer);
-                    }
+                    LLVMStack stack = threadingStack.getStack();
+                    disposeContext.call(stack);
                 } else {
                     throw new IllegalStateException("Context cannot be disposed: " + SULONG_DISPOSE_CONTEXT + " is not a function or enclosed inside a LLVMManagedPointer");
                 }

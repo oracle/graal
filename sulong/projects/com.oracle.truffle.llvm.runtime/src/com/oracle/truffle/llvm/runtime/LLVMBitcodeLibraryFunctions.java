@@ -61,7 +61,7 @@ public final class LLVMBitcodeLibraryFunctions {
             super(context, "sulong_eh_canCatch");
         }
 
-        public int canCatch(LLVMStack.StackPointer stack, Object unwindHeader, LLVMPointer catchType) {
+        public int canCatch(LLVMStack stack, Object unwindHeader, LLVMPointer catchType) {
             return (int) execute(stack, unwindHeader, catchType.copy());
         }
     }

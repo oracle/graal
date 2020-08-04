@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,49 +27,30 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm;
+package com.oracle.truffle.llvm.runtime;
 
-import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameUtil;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
-/**
- * This class is the entry point for every intrinsified (substituted) function.
- */
-public abstract class LLVMIntrinsicRootNode extends RootNode {
+public abstract class LLVMGetStackPointerFromFrameNode extends LLVMExpressionNode {
 
-    private final String name;
-
-    LLVMIntrinsicRootNode(LLVMLanguage language, String name) {
-        super(language, new FrameDescriptor());
-        this.name = name;
+    public static LLVMGetStackPointerFromFrameNode create(FrameSlot frameSlot) {
+        return LLVMGetStackPointerFromFrameNodeGen.create(frameSlot);
     }
 
-    public abstract LLVMExpressionNode getNode();
+    private final FrameSlot llvmStackSlot;
 
-    @Override
-    public boolean isInternal() {
-        return true;
+    LLVMGetStackPointerFromFrameNode(FrameSlot llvmStackSlot) {
+        this.llvmStackSlot = llvmStackSlot;
     }
 
-    @Override
-    public String toString() {
-        return name;
+    @Specialization
+    StackPointer getLLVMStack(VirtualFrame frame) {
+        return (StackPointer) FrameUtil.getObjectSafe(frame, llvmStackSlot);
     }
 
-    @NodeChild(type = LLVMExpressionNode.class, value = "node")
-    public abstract static class LLVMIntrinsicExpressionNode extends LLVMIntrinsicRootNode {
-
-        public LLVMIntrinsicExpressionNode(LLVMLanguage language, String name) {
-            super(language, name);
-        }
-
-        @Specialization
-        protected Object doOp(Object val) {
-            return val;
-        }
-    }
 }
