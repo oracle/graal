@@ -24,14 +24,36 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.io.File;
 import java.util.function.BooleanSupplier;
+import java.util.zip.ZipFile;
 
-import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
-public class JDK11BeforeUpdate8 implements BooleanSupplier {
+/**
+ * JDK-8233234 changed the signature of a substituted constructor in
+ * {@code java.util.ZipFile.CleanableResource} in some JDK 11 implementations. This predicate
+ * matches one of the variations of the substituted constructor.
+ */
+public class JDK11CleanableResource_Version1 implements BooleanSupplier {
     @Override
     public boolean getAsBoolean() {
-        return JavaVersionUtil.JAVA_SPEC == 11 && GraalServices.getJavaUpdateVersion() < 8;
+        return JavaVersionUtil.JAVA_SPEC == 11 && hasConstructor(ZipFile.class, File.class, int.class);
+    }
+
+    /**
+     * Determines if {@code java.util.zip.ZipFile$CleanableResource} has a constructor with a
+     * signature matching {@code parameterTypes}.
+     */
+    static boolean hasConstructor(Class<?>... parameterTypes) {
+        try {
+            // Checkstyle: stop
+            Class<?> c = Class.forName("java.util.zip.ZipFile$CleanableResource");
+            c.getDeclaredConstructor(parameterTypes);
+            return true;
+            // Checkstyle: resume
+        } catch (Exception e) {
+            return false;
+        }
     }
 }

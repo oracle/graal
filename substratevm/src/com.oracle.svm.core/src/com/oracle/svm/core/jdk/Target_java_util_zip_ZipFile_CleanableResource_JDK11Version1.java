@@ -32,26 +32,23 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
-@TargetClass(className = "java.util.zip.ZipFile", innerClass = "CleanableResource", onlyWith = {JDK11Update8OrLater.class})
-public final class Target_java_util_zip_ZipFile_CleanableResource_JDK11Update8OrLater {
+@TargetClass(className = "java.util.zip.ZipFile", innerClass = "CleanableResource", onlyWith = {JDK11CleanableResource_Version1.class})
+public final class Target_java_util_zip_ZipFile_CleanableResource_JDK11Version1 {
 
     @SuppressWarnings({"unused"})
     @Alias
-    Target_java_util_zip_ZipFile_CleanableResource_JDK11Update8OrLater(ZipFile zf, File file, int mode, boolean registerCleaner) throws IOException {
+    Target_java_util_zip_ZipFile_CleanableResource_JDK11Version1(ZipFile zf, File file, int mode) throws IOException {
     }
 
     @Substitute
-    static Target_java_util_zip_ZipFile_CleanableResource_JDK11Update8OrLater get(ZipFile zf, File file, int mode)
+    static Target_java_util_zip_ZipFile_CleanableResource_JDK11Version1 get(ZipFile zf, File file, int mode)
                     throws IOException {
         /*
          * The JavaDoc comment of ZipFile.CleanableResource#get states that its finalizer-based
          * cleanup mechanism (ZipFile.CleanableResource.FinalizableResource) will be removed once
          * ZipFile#finalize() is removed. Since we anyway do not support finalization we have to
          * substitute that away.
-         *
-         * This substitution is only necessary for JDK 11. Changes made in JDK 14 removed the use of
-         * finalizers and the get method.
          */
-        return new Target_java_util_zip_ZipFile_CleanableResource_JDK11Update8OrLater(zf, file, mode, true);
+        return new Target_java_util_zip_ZipFile_CleanableResource_JDK11Version1(zf, file, mode);
     }
 }
