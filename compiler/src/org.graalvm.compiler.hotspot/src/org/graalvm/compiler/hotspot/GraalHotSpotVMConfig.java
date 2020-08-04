@@ -890,6 +890,10 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final boolean deoptimizationSupportLargeAccessByteArrayVirtualization = //
                     getConstant("Deoptimization::_support_large_access_byte_array_virtualization", Boolean.class, false, JVMCI || JDK >= 15);
 
+    public static final boolean JDK_8245443 = ((JDK == 11 && JDK_UPDATE >= 8) || JDK >= 15);
+    public static final boolean JDK_8246347 = false;
+    public static final boolean JDK_8209961 = false;
+
     // Checkstyle: stop
     public final int VMINTRINSIC_FIRST_MH_SIG_POLY = getConstant("vmIntrinsics::FIRST_MH_SIG_POLY", Integer.class, -1, (JVMCI ? jvmciGE(JVMCI_20_2_b01) : false));
     public final int VMINTRINSIC_LAST_MH_SIG_POLY = getConstant("vmIntrinsics::LAST_MH_SIG_POLY", Integer.class, -1, (JVMCI ? jvmciGE(JVMCI_20_2_b01) : false));
