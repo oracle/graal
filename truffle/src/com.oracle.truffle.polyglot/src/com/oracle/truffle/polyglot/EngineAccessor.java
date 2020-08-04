@@ -833,7 +833,7 @@ final class EngineAccessor extends Accessor {
             if (polyglotEngine == null) {
                 OptionValues engineOptionValues = PolyglotEngineImpl.getEngineOptionsWithNoEngine();
                 String defaultLogFile = System.getProperty(OptionValuesImpl.SYSTEM_PROPERTY_PREFIX + PolyglotEngineImpl.LOG_FILE_OPTION);
-                return constructor.apply(engineOptionValues, PolyglotLoggers.createCompilerLoggerProvider(defaultLogFile));
+                return constructor.apply(engineOptionValues, PolyglotLoggers.createEngineLoggerProvider(defaultLogFile));
             }
 
             final PolyglotEngineImpl engine = (PolyglotEngineImpl) polyglotEngine;

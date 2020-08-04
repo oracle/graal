@@ -113,8 +113,8 @@ final class PolyglotLoggers {
         return new EngineLoggerProvider(engine);
     }
 
-    static Supplier<TruffleLogger> createCompilerLoggerProvider(String defaultLogFile) {
-        return new CompilerLoggerProvider(defaultLogFile);
+    static Supplier<TruffleLogger> createEngineLoggerProvider(String defaultLogFile) {
+        return new EngineLoggerProvider(defaultLogFile);
     }
 
     /**
@@ -519,7 +519,7 @@ final class PolyglotLoggers {
             this.logFile = null;
         }
 
-        CompilerLoggerProvider(String logFile) {
+        EngineLoggerProvider(String logFile) {
             this.engine = null;
             this.logFile = logFile;
         }
