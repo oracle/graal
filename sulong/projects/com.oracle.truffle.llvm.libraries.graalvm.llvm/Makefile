@@ -49,9 +49,7 @@ endif
 LDFLAGS+= ${EXTRA_LDFLAGS}
 CFLAGS=-g -fPIC -DPIC -O3 ${EXTRA_CFLAGS}
 
-bin/polyglot.o: CFLAGS+=-Wno-return-type
-
-bin/${SONAME}: bin/polyglot.o
+bin/${SONAME}: bin/common.o bin/handles.o bin/polyglot.o bin/toolchain-api.o bin/truffle-compat.o
 	$(QUIETLY) $(CLANG) ${LDFLAGS} -o $@ $+
 
 bin/%.o: src/%.c
