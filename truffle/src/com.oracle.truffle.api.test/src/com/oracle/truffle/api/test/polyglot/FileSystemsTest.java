@@ -106,6 +106,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.OSUtils;
 import java.nio.file.FileSystemException;
+import java.nio.file.NotLinkException;
 import java.nio.file.attribute.PosixFilePermission;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -1151,12 +1152,24 @@ public class FileSystemsTest {
         languageAction = (Env env) -> {
             TruffleFile root = cfg.resolve(env, path);
             try {
-                TruffleFile target = root.resolve(FOLDER_EXISTING).resolve(FILE_EXISTING);
                 TruffleFile link = root.resolve(FILE_NEW_SYMLINK);
+                TruffleFile target = root.resolve(FOLDER_EXISTING).resolve(FILE_EXISTING);
+                Assert.assertTrue(target.isAbsolute());
                 link.createSymbolicLink(target);
                 Assert.assertTrue(cfg.formatErrorMessage("Expected SecurityException"), canWrite);
                 Assert.assertTrue(link.isSymbolicLink());
                 Assert.assertEquals(target.getCanonicalFile(), link.getCanonicalFile());
+                Assert.assertTrue(link.readSymbolicLink().isAbsolute());
+                Assert.assertEquals(target, link.readSymbolicLink());
+                link.delete();
+                target = cfg.resolve(env, FOLDER_EXISTING).resolve(FILE_EXISTING);
+                Assert.assertFalse(target.isAbsolute());
+                link.createSymbolicLink(target);
+                Assert.assertTrue(cfg.formatErrorMessage("Expected SecurityException"), canWrite);
+                Assert.assertTrue(link.isSymbolicLink());
+                Assert.assertEquals(target.getCanonicalFile(), link.getCanonicalFile());
+                Assert.assertFalse(link.readSymbolicLink().isAbsolute());
+                Assert.assertEquals(target, link.readSymbolicLink());
             } catch (SecurityException se) {
                 Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canWrite);
             } catch (IOException ioe) {
@@ -1166,6 +1179,39 @@ public class FileSystemsTest {
             }
         };
         ctx.eval(LANGUAGE_ID, "");
+    }
+
+    @Test
+    public void testReadSymbolicLink() throws Throwable {
+        Assume.assumeFalse("Link creation requires a special privilege on Windows", OSUtils.isWindows());
+        Context ctx = cfg.getContext();
+        Path path = cfg.getPath();
+        boolean canRead = cfg.canRead();
+        languageAction = (Env env) -> {
+            TruffleFile root = cfg.resolve(env, path);
+            try {
+                TruffleFile link = root.resolve(SYMLINK_EXISTING);
+                Assume.assumeTrue("File System does not support optional symbolic links", link.exists(LinkOption.NOFOLLOW_LINKS));
+                link.readSymbolicLink();
+                Assert.assertTrue(cfg.formatErrorMessage("Expected SecurityException"), canRead);
+                AbstractPolyglotTest.assertFails(() -> {
+                    return root.resolve(FILE_EXISTING).readSymbolicLink();
+                }, NotLinkException.class);
+            } catch (SecurityException se) {
+                Assert.assertFalse(cfg.formatErrorMessage("Unexpected SecurityException"), canRead);
+            } catch (IOException ioe) {
+                throw new AssertionError(cfg.formatErrorMessage(ioe.getMessage()), ioe);
+            } catch (UnsupportedOperationException uoe) {
+                // Symbolik links may not be supported on file system
+            }
+        };
+        try {
+            ctx.eval(LANGUAGE_ID, "");
+        } catch (PolyglotException pe) {
+            if (pe.isHostException()) {
+                throw pe.asHostException();
+            }
+        }
     }
 
     @Test

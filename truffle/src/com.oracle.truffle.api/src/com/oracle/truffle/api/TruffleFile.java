@@ -1370,6 +1370,29 @@ public final class TruffleFile {
     }
 
     /**
+     * Reads the target of a symbolic link.
+     * 
+     * @return the {@link TruffleFile} representing the target of the symbolic link
+     * @throws NotLinkException if the {@link TruffleFile} is not a symbolic link
+     * @throws IOException in case of IO error
+     * @throws UnsupportedOperationException if the {@link FileSystem} implementation does not
+     *             support symbolic links
+     * @throws SecurityException if the {@link FileSystem} denied the operation
+     * @since 20.3
+     */
+    @TruffleBoundary
+    public TruffleFile readSymbolicLink() throws IOException {
+        try {
+            checkFileOperationPreconditions();
+            return new TruffleFile(fileSystemContext, fileSystemContext.fileSystem.readSymbolicLink(normalizedPath));
+        } catch (IOException | SecurityException | UnsupportedOperationException e) {
+            throw e;
+        } catch (Throwable t) {
+            throw wrapHostException(t);
+        }
+    }
+
+    /**
      * Returns the owner of the file.
      *
      * @param options the options determining how the symbolic links should be handled
