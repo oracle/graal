@@ -370,41 +370,41 @@ public final class LoadModulesNode extends RootNode {
         }
         LLVMContext context = ctxRef.get();
 
-        // synchronized (context) {
-        if (!hasInitialised) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            for (int i = 0; i < sources.size(); i++) {
-                // null are native libraries
-                if (sources.get(i) != null) {
-                    CallTarget callTarget = context.getEnv().parseInternal(sources.get(i));
-                    dependencies[i] = DirectCallNode.create(callTarget);
-                    callTargets[i] = callTarget;
+        synchronized (context) {
+            if (!hasInitialised) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                for (int i = 0; i < sources.size(); i++) {
+                    // null are native libraries
+                    if (sources.get(i) != null) {
+                        CallTarget callTarget = context.getEnv().parseInternal(sources.get(i));
+                        dependencies[i] = DirectCallNode.create(callTarget);
+                        callTargets[i] = callTarget;
+                    }
                 }
+
+                if (frame.getArguments().length == 0) {
+                    // This is only performed for the root node of the top level call target.
+                    LLVMFunctionDescriptor startFunctionDescriptor = findAndSetSulongSpecificFunctions(language, context);
+                    LLVMFunction mainFunction = findMainFunction(parserResult);
+                    if (mainFunction != null) {
+                        RootCallTarget startCallTarget = startFunctionDescriptor.getFunctionCode().getLLVMIRFunctionSlowPath();
+                        Path applicationPath = mainFunction.getLibrary().getPath();
+                        RootNode rootNode = new LLVMGlobalRootNode(language, StackManager.createRootFrame(), mainFunction, startCallTarget, Objects.toString(applicationPath, ""));
+                        mainFunctionCallTarget = Truffle.getRuntime().createCallTarget(rootNode);
+                    }
+                }
+
+                initContext = this.insert(context.createInitializeContextNode(getFrameDescriptor()));
+                hasInitialised = true;
             }
 
-            if (frame.getArguments().length == 0) {
-                // This is only performed for the root node of the top level call target.
-                LLVMFunctionDescriptor startFunctionDescriptor = findAndSetSulongSpecificFunctions(language, context);
-                LLVMFunction mainFunction = findMainFunction(parserResult);
-                if (mainFunction != null) {
-                    RootCallTarget startCallTarget = startFunctionDescriptor.getFunctionCode().getLLVMIRFunctionSlowPath();
-                    Path applicationPath = mainFunction.getLibrary().getPath();
-                    RootNode rootNode = new LLVMGlobalRootNode(language, StackManager.createRootFrame(), mainFunction, startCallTarget, Objects.toString(applicationPath, ""));
-                    mainFunctionCallTarget = Truffle.getRuntime().createCallTarget(rootNode);
-                }
+            LLVMScope scope = loadModule(frame, context);
+
+            if (frame.getArguments().length == 0 || !(frame.getArguments()[0] instanceof LLVMLoadingPhase)) {
+                assert scope != null;
+                return new SulongLibrary(sourceName, scope, mainFunctionCallTarget, context);
             }
-
-            initContext = this.insert(context.createInitializeContextNode(getFrameDescriptor()));
-            hasInitialised = true;
         }
-
-        LLVMScope scope = loadModule(frame, context);
-
-        if (frame.getArguments().length == 0 || !(frame.getArguments()[0] instanceof LLVMLoadingPhase)) {
-            assert scope != null;
-            return new SulongLibrary(sourceName, scope, mainFunctionCallTarget, context);
-        }
-        // }
         return null;
     }
 
