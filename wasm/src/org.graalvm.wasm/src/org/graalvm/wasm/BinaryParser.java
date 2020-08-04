@@ -92,20 +92,20 @@ public class BinaryParser extends BinaryStreamParser {
     // to track the current largest function index.
     private int moduleFunctionIndex;
 
-    BinaryParser(WasmLanguage language, WasmModule module, byte[] data) {
-        super(data);
+    public BinaryParser(WasmLanguage language, WasmModule module) {
+        super(module.data());
         this.language = language;
         this.module = module;
         this.limitsResult = new int[2];
         this.moduleFunctionIndex = 0;
     }
 
-    void readModule() {
+    public void readModule() {
         validateMagicNumberAndVersion();
         readSymbolSections();
     }
 
-    void readInstance(WasmContext context, WasmInstance instance) {
+    public void readInstance(WasmContext context, WasmInstance instance) {
         if (tryJumpToSection(Section.CODE)) {
             readCodeSection(context, instance);
         }
@@ -1382,7 +1382,7 @@ public class BinaryParser extends BinaryStreamParser {
         return value;
     }
 
-    protected long readSignedInt64(ExecutionState state) {
+    private long readSignedInt64(ExecutionState state) {
         long value = peekSignedInt64(data, offset);
         byte length = peekLeb128Length(data, offset);
         if (state != null && mustPoolLeb128()) {
@@ -1393,7 +1393,7 @@ public class BinaryParser extends BinaryStreamParser {
         return value;
     }
 
-    public boolean mustPoolLeb128() {
+    private boolean mustPoolLeb128() {
         return mustPoolLeb128(data, offset, module.storeConstantsPolicy());
     }
 

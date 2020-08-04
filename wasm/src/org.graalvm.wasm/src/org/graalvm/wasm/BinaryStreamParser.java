@@ -97,7 +97,7 @@ public abstract class BinaryStreamParser {
     }
 
     @ExplodeLoop(kind = FULL_EXPLODE_UNTIL_RETURN)
-    public int peekUnsignedInt32(int ahead) {
+    protected int peekUnsignedInt32(int ahead) {
         int result = 0;
         int shift = 0;
         int i = 0;

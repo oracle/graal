@@ -56,15 +56,15 @@ public class WasiModule extends BuiltinModule {
     protected WasmInstance createInstance(WasmLanguage language, WasmContext context, String name) {
         final WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy = WasmOptions.StoreConstantsPolicy.getValue(context.environment().getOptions());
         WasmInstance module = new WasmInstance(new WasmModule(name, null, storeConstantsPolicy), storeConstantsPolicy);
-        importMemory(context, module, "main", "memory", 0, 0);
-        defineFunction(context, module, "args_sizes_get", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiArgsSizesGetNode(language, module));
-        defineFunction(context, module, "args_get", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiArgsGetNode(language, module));
-        defineFunction(context, module, "clock_time_get", types(I32_TYPE, I64_TYPE, I32_TYPE), types(I32_TYPE), new WasiClockTimeGet(language, module));
-        defineFunction(context, module, "proc_exit", types(I32_TYPE), types(), new WasiProcExitNode(language, module));
-        defineFunction(context, module, "fd_write", types(I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiFdWrite(language, module));
-        defineFunction(context, module, "fd_read", types(I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new UnimplementedNode("fd_read", language, module));
-        defineFunction(context, module, "fd_close", types(I32_TYPE), types(I32_TYPE), new UnimplementedNode("fd_close", language, module));
-        defineFunction(context, module, "fd_seek", types(I32_TYPE, I64_TYPE, I32_TYPE), types(I32_TYPE), new UnimplementedNode("fd_seek", language, module));
+        importMemory(module, "main", "memory", 0, 0);
+        defineFunction(module, "args_sizes_get", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiArgsSizesGetNode(language, module));
+        defineFunction(module, "args_get", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiArgsGetNode(language, module));
+        defineFunction(module, "clock_time_get", types(I32_TYPE, I64_TYPE, I32_TYPE), types(I32_TYPE), new WasiClockTimeGet(language, module));
+        defineFunction(module, "proc_exit", types(I32_TYPE), types(), new WasiProcExitNode(language, module));
+        defineFunction(module, "fd_write", types(I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiFdWrite(language, module));
+        defineFunction(module, "fd_read", types(I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new UnimplementedNode("fd_read", language, module));
+        defineFunction(module, "fd_close", types(I32_TYPE), types(I32_TYPE), new UnimplementedNode("fd_close", language, module));
+        defineFunction(module, "fd_seek", types(I32_TYPE, I64_TYPE, I32_TYPE), types(I32_TYPE), new UnimplementedNode("fd_seek", language, module));
         return module;
     }
 }

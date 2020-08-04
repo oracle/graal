@@ -279,8 +279,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     @Children private Node[] children;
 
     public WasmBlockNode(WasmInstance wasmInstance, WasmCodeEntry codeEntry, int startOffset, byte returnTypeId, byte continuationTypeId, int initialStackPointer,
-                         int initialByteConstantOffset, int initialIntConstantOffset, int initialLongConstantOffset, int initialBranchTableOffset,
-                         int initialProfileOffset) {
+                    int initialByteConstantOffset, int initialIntConstantOffset, int initialLongConstantOffset, int initialBranchTableOffset,
+                    int initialProfileOffset) {
         super(wasmInstance, codeEntry, -1);
         this.startOffset = startOffset;
         this.returnTypeId = returnTypeId;

@@ -40,9 +40,12 @@
  */
 package org.graalvm.wasm.api;
 
+import org.graalvm.wasm.BinaryParser;
 import org.graalvm.wasm.ImportDescriptor;
+import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunction;
-import org.graalvm.wasm.WasmInstance;
+import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.WasmOptions;
 
 import java.util.ArrayList;
 
@@ -52,11 +55,14 @@ import static org.graalvm.wasm.api.ImportExportKind.memory;
 import static org.graalvm.wasm.api.ImportExportKind.table;
 
 public class Module extends Dictionary {
-    private final WasmInstance module;
+    private final WasmModule module;
 
-    public Module(byte[] source) {
-        // TODO: Parse the source into the module.
-        this.module = null;
+    public Module(String name, byte[] source) {
+        WasmContext context = WasmContext.getCurrent();
+        final WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy = WasmOptions.StoreConstantsPolicy.getValue(context.environment().getOptions());
+        this.module = new WasmModule(name, source, storeConstantsPolicy);
+        final BinaryParser parser = new BinaryParser(context.language(), this.module);
+        parser.readModule();
         addMembers(new Object[]{
                         "exports", new Executable(args -> exports()),
                         "imports", new Executable(args -> imports()),
@@ -66,18 +72,18 @@ public class Module extends Dictionary {
 
     public Sequence<ModuleExportDescriptor> exports() {
         final ArrayList<ModuleExportDescriptor> list = new ArrayList<>();
-        for (String name : module.symbolTable().exportedFunctions().keySet()) {
+        for (String name : module.exportedFunctions().keySet()) {
             list.add(new ModuleExportDescriptor(name, function.name()));
         }
-        final String exportedTable = module.symbolTable().exportedTable();
+        final String exportedTable = module.exportedTable();
         if (exportedTable != null) {
             list.add(new ModuleExportDescriptor(exportedTable, table.name()));
         }
-        final String exportedMemory = module.symbolTable().exportedMemory();
+        final String exportedMemory = module.exportedMemory();
         if (exportedMemory != null) {
             list.add(new ModuleExportDescriptor(exportedMemory, memory.name()));
         }
-        for (String name : module.symbolTable().exportedGlobals().keySet()) {
+        for (String name : module.exportedGlobals().keySet()) {
             list.add(new ModuleExportDescriptor(name, global.name()));
         }
         return new Sequence<>(list);
@@ -85,26 +91,26 @@ public class Module extends Dictionary {
 
     public Sequence<ModuleImportDescriptor> imports() {
         final ArrayList<ModuleImportDescriptor> list = new ArrayList<>();
-        for (WasmFunction f : module.symbolTable().importedFunctions()) {
+        for (WasmFunction f : module.importedFunctions()) {
             list.add(new ModuleImportDescriptor(f.importedModuleName(), f.importedFunctionName(), function.name()));
         }
-        final ImportDescriptor tableDescriptor = module.symbolTable().importedTable();
+        final ImportDescriptor tableDescriptor = module.importedTable();
         if (tableDescriptor != null) {
             list.add(new ModuleImportDescriptor(tableDescriptor.moduleName, tableDescriptor.memberName, table.name()));
         }
-        final ImportDescriptor memoryDescriptor = module.symbolTable().importedMemory();
+        final ImportDescriptor memoryDescriptor = module.importedMemory();
         if (memoryDescriptor != null) {
             list.add(new ModuleImportDescriptor(memoryDescriptor.moduleName, memoryDescriptor.memberName, memory.name()));
         }
-        for (ImportDescriptor descriptor : module.symbolTable().importedGlobals().values()) {
+        for (ImportDescriptor descriptor : module.importedGlobals().values()) {
             list.add(new ModuleImportDescriptor(descriptor.moduleName, descriptor.memberName, global.name()));
         }
         return new Sequence<>(list);
     }
 
+    @SuppressWarnings("unused")
     public Sequence<ByteArrayBuffer> customSections(Object sectionName) {
-        String name = (String) sectionName;
-        // TODO: Implement.
+        // TODO: Implement once we support custom sections.
         return null;
     }
 }

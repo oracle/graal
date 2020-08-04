@@ -101,11 +101,11 @@ public class Sequence<T> implements TruffleObject {
     }
 
     @CompilerDirectives.TruffleBoundary
-    private UnsupportedMessageException unsupported() {
+    private static UnsupportedMessageException unsupported() {
         return UnsupportedMessageException.create();
     }
 
-    @SuppressWarnings({"unused"})
+    @SuppressWarnings({"unused", "static-method"})
     @ExportMessage
     public final void writeArrayElement(long index, Object arg2) throws UnsupportedMessageException {
         throw unsupported();

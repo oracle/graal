@@ -717,8 +717,8 @@ public abstract class SymbolTable {
         memory = new MemoryInfo(initSize, maxSize);
         module().addLinkAction((context, instance) -> {
             final int memoryIndex = context.memories().allocateMemory(memory);
-            final WasmMemory memory = context.memories().memory(memoryIndex);
-            instance.setMemory(memory);
+            final WasmMemory allocatedMemory = context.memories().memory(memoryIndex);
+            instance.setMemory(allocatedMemory);
         });
     }
 

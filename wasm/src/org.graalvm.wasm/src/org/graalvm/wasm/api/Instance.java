@@ -52,10 +52,10 @@ public class Instance extends Dictionary {
         this.module = module;
         this.importObject = importObject;
         addMembers(new Object[]{
-                "module", this.module,
-                "importObject", this.importObject,
-                // TODO: Return a sequence of exported functions.
-                "exports", new Executable(args -> null),
+                        "module", this.module,
+                        "importObject", this.importObject,
+                        // TODO: Return a sequence of exported functions.
+                        "exports", new Executable(args -> null),
         });
     }
 

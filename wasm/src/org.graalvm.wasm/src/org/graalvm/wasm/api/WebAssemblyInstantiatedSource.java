@@ -48,8 +48,8 @@ public class WebAssemblyInstantiatedSource extends Dictionary {
         this.module = module;
         this.instance = instance;
         addMembers(new Object[]{
-                "module", this.module,
-                "instance", this.instance,
+                        "module", this.module,
+                        "instance", this.instance,
         });
     }
 }

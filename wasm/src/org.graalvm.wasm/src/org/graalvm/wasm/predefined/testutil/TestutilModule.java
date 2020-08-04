@@ -91,13 +91,13 @@ public class TestutilModule extends BuiltinModule {
 
         // Note: in the following methods, the types are not important here, since these methods
         // are not accessed by Wasm code.
-        defineFunction(context, module, Names.RESET_CONTEXT, types(), types(), new ResetContextNode(language, module));
-        defineFunction(context, module, Names.SAVE_CONTEXT, types(), types(), new SaveContextNode(language, module));
-        defineFunction(context, module, Names.COMPARE_CONTEXTS, types(), types(), new CompareContextsNode(language, module));
-        defineFunction(context, module, Names.RUN_CUSTOM_INITIALIZATION, types(), types(), new RunCustomInitialization(language));
+        defineFunction(module, Names.RESET_CONTEXT, types(), types(), new ResetContextNode(language, module));
+        defineFunction(module, Names.SAVE_CONTEXT, types(), types(), new SaveContextNode(language, module));
+        defineFunction(module, Names.COMPARE_CONTEXTS, types(), types(), new CompareContextsNode(language, module));
+        defineFunction(module, Names.RUN_CUSTOM_INITIALIZATION, types(), types(), new RunCustomInitialization(language));
 
         // The following methods are exposed to the Wasm test programs.
-        defineFunction(context, module, Names.SAVE_BINARY_FILE, types(I32_TYPE, I32_TYPE, I32_TYPE), types(), new SaveBinaryFile(language, temporaryDirectory));
+        defineFunction(module, Names.SAVE_BINARY_FILE, types(I32_TYPE, I32_TYPE, I32_TYPE), types(), new SaveBinaryFile(language, temporaryDirectory));
 
         return module;
     }

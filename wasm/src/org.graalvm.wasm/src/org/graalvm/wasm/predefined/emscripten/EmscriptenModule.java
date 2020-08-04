@@ -65,33 +65,33 @@ public class EmscriptenModule extends BuiltinModule {
             // Emscripten only allows extern symbols through the 'env' module, so we need to
             // re-export some symbols from the testutil module.
             if (testutil.symbolTable().function(TestutilModule.Names.SAVE_BINARY_FILE) != null) {
-                importFunction(context, module, "testutil", TestutilModule.Names.SAVE_BINARY_FILE, types(I32_TYPE, I32_TYPE, I32_TYPE), types(), "" + TestutilModule.Names.SAVE_BINARY_FILE);
+                importFunction(module, "testutil", TestutilModule.Names.SAVE_BINARY_FILE, types(I32_TYPE, I32_TYPE, I32_TYPE), types(), "" + TestutilModule.Names.SAVE_BINARY_FILE);
             }
         }
 
-        defineFunction(context, module, "abort", types(), types(), new AbortNode(language, module));
-        defineFunction(context, module, "abortOnCannotGrowMemory", types(I32_TYPE), types(I32_TYPE), new AbortOnCannotGrowMemory(language, module));
-        defineFunction(context, module, "segfault", types(), types(), new Segfault(language, module));
-        defineFunction(context, module, "alignfault", types(), types(), new Alignfault(language, module));
-        defineFunction(context, module, "emscripten_memcpy_big", types(I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new EmscriptenMemcpyBig(language, module));
-        defineFunction(context, module, "emscripten_get_heap_size", types(), types(I32_TYPE), new EmscriptenGetHeapSize(language, module));
-        defineFunction(context, module, "emscripten_resize_heap", types(I32_TYPE), types(I32_TYPE), new EmscriptenResizeHeap(language, module));
-        defineFunction(context, module, "gettimeofday", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new GetTimeOfDay(language, module));
-        defineFunction(context, module, "llvm_exp2_f64", types(F64_TYPE), types(F64_TYPE), new LLVMExp2F64(language, module));
-        defineFunction(context, module, "__wasi_fd_write", types(I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiFdWrite(language, module));
-        defineFunction(context, module, "__lock", types(I32_TYPE), types(), new Lock(language, module));
-        defineFunction(context, module, "__unlock", types(I32_TYPE), types(), new Unlock(language, module));
-        defineFunction(context, module, "__setErrNo", types(I32_TYPE), types(), new SetErrNo(language, module));
-        defineFunction(context, module, "__syscall140", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new UnimplementedNode("__syscall140", language, module));
-        defineFunction(context, module, "__syscall146", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new UnimplementedNode("__syscall146", language, module));
-        defineFunction(context, module, "__syscall54", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new UnimplementedNode("__syscall54", language, module));
-        defineFunction(context, module, "__syscall6", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new UnimplementedNode("__syscall6", language, module));
-        defineFunction(context, module, "setTempRet0", types(I32_TYPE), types(), new UnimplementedNode("setTempRet0", language, module));
-        defineGlobal(context, module, "_table_base", I32_TYPE, (byte) GlobalModifier.CONSTANT, 0);
-        defineGlobal(context, module, "_memory_base", I32_TYPE, (byte) GlobalModifier.CONSTANT, 0);
-        defineGlobal(context, module, "DYNAMICTOP_PTR", I32_TYPE, (byte) GlobalModifier.CONSTANT, 0);
-        defineGlobal(context, module, "DYNAMIC_BASE", I32_TYPE, (byte) GlobalModifier.CONSTANT, 0);
-        defineTable(context, module, "table", 0, -1, ReferenceTypes.FUNCREF);
+        defineFunction(module, "abort", types(), types(), new AbortNode(language, module));
+        defineFunction(module, "abortOnCannotGrowMemory", types(I32_TYPE), types(I32_TYPE), new AbortOnCannotGrowMemory(language, module));
+        defineFunction(module, "segfault", types(), types(), new Segfault(language, module));
+        defineFunction(module, "alignfault", types(), types(), new Alignfault(language, module));
+        defineFunction(module, "emscripten_memcpy_big", types(I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new EmscriptenMemcpyBig(language, module));
+        defineFunction(module, "emscripten_get_heap_size", types(), types(I32_TYPE), new EmscriptenGetHeapSize(language, module));
+        defineFunction(module, "emscripten_resize_heap", types(I32_TYPE), types(I32_TYPE), new EmscriptenResizeHeap(language, module));
+        defineFunction(module, "gettimeofday", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new GetTimeOfDay(language, module));
+        defineFunction(module, "llvm_exp2_f64", types(F64_TYPE), types(F64_TYPE), new LLVMExp2F64(language, module));
+        defineFunction(module, "__wasi_fd_write", types(I32_TYPE, I32_TYPE, I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiFdWrite(language, module));
+        defineFunction(module, "__lock", types(I32_TYPE), types(), new Lock(language, module));
+        defineFunction(module, "__unlock", types(I32_TYPE), types(), new Unlock(language, module));
+        defineFunction(module, "__setErrNo", types(I32_TYPE), types(), new SetErrNo(language, module));
+        defineFunction(module, "__syscall140", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new UnimplementedNode("__syscall140", language, module));
+        defineFunction(module, "__syscall146", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new UnimplementedNode("__syscall146", language, module));
+        defineFunction(module, "__syscall54", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new UnimplementedNode("__syscall54", language, module));
+        defineFunction(module, "__syscall6", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new UnimplementedNode("__syscall6", language, module));
+        defineFunction(module, "setTempRet0", types(I32_TYPE), types(), new UnimplementedNode("setTempRet0", language, module));
+        defineGlobal(module, "_table_base", I32_TYPE, (byte) GlobalModifier.CONSTANT, 0);
+        defineGlobal(module, "_memory_base", I32_TYPE, (byte) GlobalModifier.CONSTANT, 0);
+        defineGlobal(module, "DYNAMICTOP_PTR", I32_TYPE, (byte) GlobalModifier.CONSTANT, 0);
+        defineGlobal(module, "DYNAMIC_BASE", I32_TYPE, (byte) GlobalModifier.CONSTANT, 0);
+        defineTable(module, "table", 0, -1, ReferenceTypes.FUNCREF);
         return module;
     }
 }

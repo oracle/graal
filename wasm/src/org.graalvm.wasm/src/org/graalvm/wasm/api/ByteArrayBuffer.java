@@ -99,11 +99,11 @@ public class ByteArrayBuffer implements TruffleObject {
     }
 
     @TruffleBoundary
-    private UnsupportedMessageException unsupported() {
+    private static UnsupportedMessageException unsupported() {
         return UnsupportedMessageException.create();
     }
 
-    @SuppressWarnings({"unused"})
+    @SuppressWarnings({"unused", "static-method"})
     @ExportMessage
     final void writeArrayElement(long index, Object arg2) throws UnsupportedMessageException {
         throw unsupported();

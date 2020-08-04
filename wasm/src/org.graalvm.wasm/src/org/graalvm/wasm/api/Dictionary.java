@@ -66,7 +66,7 @@ public class Dictionary implements TruffleObject {
     }
 
     @TruffleBoundary
-    private UnknownIdentifierException unknown(String identifier) {
+    private static UnknownIdentifierException unknown(String identifier) {
         return UnknownIdentifierException.create(identifier);
     }
 
@@ -97,7 +97,7 @@ public class Dictionary implements TruffleObject {
         return new Sequence<>(keys);
     }
 
-    @SuppressWarnings({"unused"})
+    @SuppressWarnings({"unused", "static-method"})
     @ExportMessage
     final boolean isMemberReadable(String member) {
         return true;

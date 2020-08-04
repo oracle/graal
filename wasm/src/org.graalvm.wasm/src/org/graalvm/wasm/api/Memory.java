@@ -63,11 +63,11 @@ public class Memory extends Dictionary {
     }
 
     @TruffleBoundary
-    private WasmExecutionException rangeError() {
+    private static WasmExecutionException rangeError() {
         return new WasmExecutionException(null, "Range error.");
     }
 
-    private final long grow(long delta) {
+    private long grow(long delta) {
         final long pageSize = memory.pageSize();
         if (!memory.grow(delta)) {
             throw rangeError();
