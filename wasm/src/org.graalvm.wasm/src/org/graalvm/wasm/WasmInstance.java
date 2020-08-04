@@ -63,95 +63,16 @@ import java.util.List;
  */
 @ExportLibrary(InteropLibrary.class)
 @SuppressWarnings("static-method")
-public final class WasmInstance implements TruffleObject {
-    private static final int INITIAL_GLOBALS_SIZE = 64;
-
-    private final WasmModule module;
+public final class WasmInstance extends RuntimeState implements TruffleObject {
     private final WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy;
 
-    /**
-     * This array is monotonically populated from the left. An index i denotes the i-th global in
-     * this module. The value at the index i denotes the address of the global in the memory space
-     * for all the globals from all the modules (see {@link GlobalRegistry}).
-     *
-     * This separation of global indices is done because the index spaces of the globals are
-     * module-specific, and the globals can be imported across modules. Thus, the address-space of
-     * the globals is not the same as the module-specific index-space.
-     */
-    @CompilationFinal(dimensions = 1) int[] globalAddresses;
-
-    /**
-     * The table from the context-specific table space, which this module is using.
-     *
-     * In the current WebAssembly specification, a module can use at most one table. The value
-     * {@code null} denotes that this module uses no table.
-     */
-    @CompilationFinal private WasmTable table;
-
-    /**
-     * Memory that this module is using.
-     *
-     * In the current WebAssembly specification, a module can use at most one memory. The value
-     * {@code null} denotes that this module uses no memory.
-     */
-    @CompilationFinal private WasmMemory memory;
-
-    private void ensureGlobalsCapacity(int index) {
-        while (index >= globalAddresses.length) {
-            final int[] nGlobalIndices = new int[globalAddresses.length * 2];
-            System.arraycopy(globalAddresses, 0, nGlobalIndices, 0, globalAddresses.length);
-            globalAddresses = nGlobalIndices;
-        }
-    }
-
     public WasmInstance(WasmModule module, WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy) {
-        this.module = module;
+        super(module);
         this.storeConstantsPolicy = storeConstantsPolicy;
-        this.globalAddresses = new int[INITIAL_GLOBALS_SIZE];
-        ensureGlobalsCapacity(module.maxGlobalIndex());
-    }
-
-    public SymbolTable symbolTable() {
-        return module.symbolTable();
     }
 
     public String name() {
-        return module.name();
-    }
-
-    public byte[] data() {
-        return module.data();
-    }
-
-    public WasmModule module() {
-        return module;
-    }
-
-    public int globalAddress(int index) {
-        return globalAddresses[index];
-    }
-
-    void setGlobalAddress(int globalIndex, int address) {
-        // TODO: checkNotLinked();
-        globalAddresses[globalIndex] = address;
-    }
-
-    public WasmTable table() {
-        return table;
-    }
-
-    void setTable(WasmTable table) {
-        // TODO: checkNotLinked();
-        this.table = table;
-    }
-
-    public WasmMemory memory() {
-        return memory;
-    }
-
-    public void setMemory(WasmMemory memory) {
-        // TODO: checkNotLinked();
-        this.memory = memory;
+        return module().name();
     }
 
     @ExportMessage
@@ -191,7 +112,7 @@ public final class WasmInstance implements TruffleObject {
             throw UnsupportedMessageException.create();
         }
         final boolean mutable = symbolTable.globalMutability(index) == GlobalModifier.MUTABLE;
-        if (module.isParsed() && !mutable) {
+        if (module().isParsed() && !mutable) {
             // Constant variables cannot be modified after linking.
             throw UnsupportedMessageException.create();
         }
