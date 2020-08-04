@@ -133,26 +133,31 @@ final class ParserDriver {
 
     /**
      * Parses a bitcode module and all its dependencies and return a {@code CallTarget} that
-     * performs all necessary module initialization on execute.
+     * performs all necessary initialization when executed.
+     *
+     * @param source
+     * @param bytes
+     * @param library
+     * @return
      */
     private CallTarget parseWithDependencies(Source source, ByteSequence bytes, ExternalLibrary library) {
-        // process the bitcode file and its dependencies in the dynamic linking order
 
         ArrayList<Source> dependenciesSource = new ArrayList<>();
-
         insertDefaultLibrariesForRootNode(dependenciesSource);
+        // process the bitcode file and its dependencies in the dynamic linking order
         LLVMParserResult result = parseLibraryWithSource(source, library, bytes, dependenciesSource);
         boolean isInternalLibrary = context.isInternalLibrary(library);
 
         if (result == null) {
-            // if result is null, then it does not contain bitcode. (NFI can handle it later if it's
-            // a native file.)
+            // if result is null, then the file parsed does not contain bitcode.
+            // (NFI can handle it later if it's a native file.)
             NFIContextExtension nfiContextExtension = context.getContextExtensionOrNull(NFIContextExtension.class);
             if (nfiContextExtension != null) {
                 nfiContextExtension.addNativeLibrary(library);
             }
             return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(0));
         }
+
         assert !library.isNative();
 
         // Need to clear libsulong++ if we are already in libsulong.
@@ -176,8 +181,12 @@ final class ParserDriver {
         return createLibraryCallTarget(source.getName(), result, dependenciesSource, source);
     }
 
+    /**
+     *
+     * @param sourceDependencies
+     */
     private void insertDefaultLibrariesForRootNode(ArrayList<Source> sourceDependencies) {
-        // There could be conflicts between Sulong's default libraries and the ones that are
+        // There could be conflicts between the default libraries of Sulong and the ones that are
         // passed on the command-line. To resolve that, we add ours first but parse them later on.
         String[] sulongLibraryNames = language.getCapability(PlatformCapability.class).getSulongDefaultLibraries();
         for (String sulongLibraryName : sulongLibraryNames) {
