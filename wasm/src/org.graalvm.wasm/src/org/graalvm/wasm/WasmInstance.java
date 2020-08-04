@@ -43,7 +43,6 @@ package org.graalvm.wasm;
 import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import static com.oracle.truffle.api.CompilerDirectives.transferToInterpreter;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -53,7 +52,6 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import org.graalvm.wasm.constants.GlobalModifier;
 import org.graalvm.wasm.collection.IntArrayList;
-import org.graalvm.wasm.memory.WasmMemory;
 
 import java.util.ArrayList;
 import java.util.List;

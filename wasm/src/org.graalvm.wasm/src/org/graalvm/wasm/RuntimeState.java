@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm;
 
+import com.oracle.truffle.api.CallTarget;
 import org.graalvm.wasm.memory.WasmMemory;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -52,6 +53,12 @@ public class RuntimeState {
     private static final int INITIAL_GLOBALS_SIZE = 64;
 
     private final WasmModule module;
+
+    /**
+     * An array of call targets that correspond to the WebAssembly functions
+     * of the current module.
+     */
+    @CompilationFinal(dimensions = 1) private CallTarget[] targets;
 
     /**
      * This array is monotonically populated from the left. An index i denotes the i-th global in
@@ -88,10 +95,17 @@ public class RuntimeState {
         }
     }
 
+    private void ensureTargetsCapacity(int index) {
+        while (index >= targets.length) {
+            final CallTarget[] nTargets = new CallTarget[targets.length * 2];
+            System.arraycopy(targets, 0, nTargets, 0, targets.length);
+            targets = nTargets;
+        }
+    }
+
     public RuntimeState(WasmModule module) {
         this.module = module;
         this.globalAddresses = new int[INITIAL_GLOBALS_SIZE];
-        ensureGlobalsCapacity(module.maxGlobalIndex());
     }
 
     public SymbolTable symbolTable() {
@@ -106,11 +120,21 @@ public class RuntimeState {
         return module;
     }
 
+    public CallTarget target(int index) {
+        return targets[index];
+    }
+
+    public void setTarget(int index, CallTarget target) {
+        ensureTargetsCapacity(index);
+        targets[index] = target;
+    }
+
     public int globalAddress(int index) {
         return globalAddresses[index];
     }
 
     void setGlobalAddress(int globalIndex, int address) {
+        ensureGlobalsCapacity(globalIndex);
         // TODO: checkNotLinked();
         globalAddresses[globalIndex] = address;
     }

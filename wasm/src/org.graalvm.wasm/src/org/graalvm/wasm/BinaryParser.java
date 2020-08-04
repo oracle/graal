@@ -272,7 +272,7 @@ public class BinaryParser extends BinaryStreamParser {
         int numCodeEntries = readVectorLength();
         WasmRootNode[] rootNodes = new WasmRootNode[numCodeEntries];
         for (int entry = 0; entry != numCodeEntries; ++entry) {
-            rootNodes[entry] = createCodeEntry(moduleFunctionIndex + entry);
+            rootNodes[entry] = createCodeEntry(instance, moduleFunctionIndex + entry);
         }
         for (int entryIndex = 0; entryIndex != numCodeEntries; ++entryIndex) {
             int codeEntrySize = readUnsignedInt32();
@@ -285,7 +285,7 @@ public class BinaryParser extends BinaryStreamParser {
         moduleFunctionIndex += numCodeEntries;
     }
 
-    private WasmRootNode createCodeEntry(int funcIndex) {
+    private WasmRootNode createCodeEntry(WasmInstance instance, int funcIndex) {
         final WasmFunction function = module.symbolTable().function(funcIndex);
         WasmCodeEntry codeEntry = new WasmCodeEntry(function, data);
         function.setCodeEntry(codeEntry);
@@ -297,7 +297,7 @@ public class BinaryParser extends BinaryStreamParser {
          */
         WasmRootNode rootNode = new WasmRootNode(language, codeEntry);
         RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
-        function.setCallTarget(callTarget);
+        instance.setTarget(funcIndex, callTarget);
 
         return rootNode;
     }

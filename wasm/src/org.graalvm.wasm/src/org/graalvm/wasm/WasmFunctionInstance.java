@@ -38,38 +38,47 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.nodes;
+package org.graalvm.wasm;
 
 import com.oracle.truffle.api.CallTarget;
+import org.graalvm.wasm.nodes.WasmIndirectCallNode;
+
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.GenerateUncached;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.nodes.IndirectCallNode;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
-@GenerateUncached
-public abstract class WasmIndirectCallNode extends Node {
+@ExportLibrary(InteropLibrary.class)
+public class WasmFunctionInstance implements TruffleObject {
 
-    static final int INLINE_CACHE_LIMIT = 5;
+    private final WasmFunction function;
+    private final CallTarget target;
 
-    public abstract Object execute(CallTarget target, Object[] args);
-
-    @Specialization(guards = "target == callNode.getCallTarget()", limit = "INLINE_CACHE_LIMIT")
-    @SuppressWarnings("unused")
-    static Object doCached(CallTarget target, Object[] args,
-                    @Cached("create(target)") DirectCallNode callNode) {
-        return callNode.call(args);
+    /**
+     * Represents a WebAssembly function.
+     */
+    public WasmFunctionInstance(WasmFunction function, CallTarget target) {
+        this.function = function;
+        this.target = target;
     }
 
-    @Specialization(replaces = "doCached")
-    static Object doIndirect(CallTarget target, Object[] args,
-                    @Cached IndirectCallNode indirectCall) {
-        return indirectCall.call(target, args);
+    @Override
+    public String toString() {
+        return name();
     }
 
-    public static WasmIndirectCallNode create() {
-        return WasmIndirectCallNodeGen.create();
+    public String name() {
+        return function.name();
     }
 
+    @ExportMessage
+    boolean isExecutable() {
+        return true;
+    }
+
+    @ExportMessage
+    Object execute(Object[] arguments, @Cached WasmIndirectCallNode callNode) {
+        return callNode.execute(target, arguments);
+    }
 }

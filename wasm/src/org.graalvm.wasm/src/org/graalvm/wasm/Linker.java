@@ -58,6 +58,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 
+import com.oracle.truffle.api.CallTarget;
 import org.graalvm.wasm.Linker.ResolutionDag.DataSym;
 import org.graalvm.wasm.Linker.ResolutionDag.ExportMemorySym;
 import org.graalvm.wasm.Linker.ResolutionDag.ImportMemorySym;
@@ -128,7 +129,7 @@ public class Linker {
             for (WasmInstance instance : instances.values()) {
                 final WasmFunction start = instance.symbolTable().startFunction();
                 if (start != null) {
-                    start.resolveCallTarget().call(new Object[0]);
+                    instance.target(start.index()).call(new Object[0]);
                 }
             }
             resolutionDag.clear();
@@ -243,27 +244,28 @@ public class Linker {
         resolutionDag.resolveLater(new InitializeGlobalSym(instance.name(), globalIndex), dependencies, resolveAction);
     }
 
-    void resolveFunctionImport(WasmContext context, WasmModule module, WasmFunction function) {
+    void resolveFunctionImport(WasmContext context, WasmInstance instance, WasmFunction function) {
         final Runnable resolveAction = () -> {
-            final WasmInstance importedModule = context.moduleInstances().get(function.importedModuleName());
-            if (importedModule == null) {
-                throw new WasmLinkerException("The module '" + function.importedModuleName() + "', referenced by the import '" + function.importedFunctionName() + "' in the module '" + module.name() +
+            final WasmInstance importedInstance = context.moduleInstances().get(function.importedModuleName());
+            if (importedInstance == null) {
+                throw new WasmLinkerException("The module '" + function.importedModuleName() + "', referenced by the import '" + function.importedFunctionName() + "' in the module '" + instance.name() +
                                 "', does not exist.");
             }
             WasmFunction importedFunction;
             try {
-                importedFunction = (WasmFunction) importedModule.readMember(function.importedFunctionName());
+                importedFunction = (WasmFunction) importedInstance.readMember(function.importedFunctionName());
             } catch (UnknownIdentifierException e) {
                 importedFunction = null;
             }
             if (importedFunction == null) {
-                throw new WasmLinkerException("The imported function '" + function.importedFunctionName() + "', referenced in the module '" + module.name() +
+                throw new WasmLinkerException("The imported function '" + function.importedFunctionName() + "', referenced in the module '" + instance.name() +
                                 "', does not exist in the imported module '" + function.importedModuleName() + "'.");
             }
-            function.setCallTarget(importedFunction.resolveCallTarget());
+            final CallTarget target = importedInstance.target(importedFunction.index());
+            instance.setTarget(function.index(), target);
         };
         final Sym[] dependencies = new Sym[]{new ExportFunctionSym(function.importDescriptor().moduleName, function.importDescriptor().memberName)};
-        resolutionDag.resolveLater(new ImportFunctionSym(module.name(), function.importDescriptor()), dependencies, resolveAction);
+        resolutionDag.resolveLater(new ImportFunctionSym(instance.name(), function.importDescriptor()), dependencies, resolveAction);
     }
 
     void resolveFunctionExport(WasmModule module, int functionIndex, String exportedFunctionName) {

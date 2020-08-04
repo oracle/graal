@@ -534,7 +534,7 @@ public abstract class SymbolTable {
         final ImportDescriptor importDescriptor = new ImportDescriptor(moduleName, functionName);
         WasmFunction function = allocateFunction(typeIndex, importDescriptor);
         importedFunctions.add(function);
-        module().addLinkAction((context, instance) -> context.linker().resolveFunctionImport(context, module(), function));
+        module().addLinkAction((context, instance) -> context.linker().resolveFunctionImport(context, instance, function));
         return function;
     }
 
