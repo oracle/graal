@@ -2012,8 +2012,8 @@ public class ValueAPITest {
 
     @Test
     public void testBadNarrowingConversions() {
-        final long[] BAD_INDICES = {-1L << 32, -1L << 32 + 1, 1L << 32, 1L << 32 + 1, Long.MIN_VALUE, Long.MAX_VALUE};
-        for (long index : BAD_INDICES) {
+        final long[] badIndices = {-1L << 32, -1L << 32 + 1, 1L << 32, 1L << 32 + 1, Long.MIN_VALUE, Long.MAX_VALUE};
+        for (long index : badIndices) {
             Value list = context.asValue(new ArrayList<>(Arrays.asList(1, 2, 3)));
             AbstractPolyglotTest.assertFails(() -> list.getArrayElement(index), ArrayIndexOutOfBoundsException.class);
             AbstractPolyglotTest.assertFails(() -> list.setArrayElement(index, 42), ArrayIndexOutOfBoundsException.class);
