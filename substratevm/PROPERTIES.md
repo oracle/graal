@@ -1,6 +1,6 @@
-# Using System Properties in Substrate VM Images
+# Using System Properties in Native Images
 
-Lets assume you have the following Java Program
+Assume you have the following Java Program:
 ```java
 public class App {
     public static void main(String[] args) {

@@ -1,4 +1,4 @@
-# The LLVM backend for Native Image
+# LLVM Backend for Native Image
 
 Native Image includes an alternative backend which uses the [LLVM intermediate representation](https://llvm.org/docs/LangRef.html) and the [LLVM compiler](http://llvm.org/docs/CommandGuide/llc.html) to produce native executables. To use it, add the `-H:CompilerBackend=llvm` option to the Native Image invocation.
 

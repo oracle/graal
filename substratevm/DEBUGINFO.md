@@ -1,4 +1,4 @@
-# Using the Debug Info Feature
+# Debug Info Feature
 
 To add debug info to a generated native image add flag
 `-H:GenerateDebugInfo=<N>` to the native image command line (where `N` is

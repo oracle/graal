@@ -1,14 +1,14 @@
-# Implementing Native Methods in Java with Substrate VM
+# Implementing Native Methods in Java with Native Image
 
-Substrate VM can be used to implement low-level system operations in Java and
+Native Image can be used to implement low-level system operations in Java and
 make them available via JNI to Java code executing on a standard JVM. As
 a result one can use the same language to write the application logic
 as well as the system calls.
 
 Note that this document describes the opposite of what is commonly done via JNI:
 Usually low-level system operations are implemented in C and invoked from Java
-using JNI. If you are interested in how Substrate VM supports the common use case,
-continue reading to [Substrate VM JNI support](JNI.md) guide instead.
+using JNI. If you are interested in how Native Image supports the common use case,
+continue reading to [Native Image JNI support](JNI.md) guide instead.
 
 ## Create a Shared Library
 

@@ -1,6 +1,6 @@
 # Class Initialization in Native Image
 
-The semantics of Java requires that a class is initialized the first time it is accessed at run time.
+The semantics of Java requires that a class is initialized the first time it is accessed at runtime.
 Class initialization has negative consequences for ahead-of-time compilation of Java as:
 
 * It significantly degrades the performance of native images: Every class access (via field or method) requires a check if the class is already initialized. Without special optimizations, this can reduce performance by more than 2x.
@@ -28,9 +28,9 @@ To track which classes got initialized and why one can use the flag `-H:+PrintCl
 This flag greatly helps to configure the image build to work as intended; the goal is to have as many classes initialized at build time and yet keep the correct semantics of the program.
 
 
-## Build-Time Initialization of the Native Image Runtime
+## Build Time Initialization of Native Image Runtime
 
-In the Native Image runtime most of the classes are initialized at image-build time.
+In the Native Image runtime most of the classes are initialized at image build time.
 This includes the garbage collector, important JDK classes, the deoptimizer, etc.
 For all of the build-time initialized classes from the runtime, Native Image gives proper support so the semantics remains the same even if initialization happened at build time.
 If there is an issue with a JDK class behaving incorrectly because of class initialization at build time, please [report an issue](https://github.com/oracle/graal/issues/new).

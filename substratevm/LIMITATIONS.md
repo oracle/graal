@@ -1,4 +1,4 @@
-# GraalVM Native Image Compatibility and Optimization Guide
+# Native Image Compatibility and Optimization Guide
 
 GraalVM Native Image uses a different way of executing Java programs than users of the Java HotSpot VM are used to.
 It distinguishes between *image build time* and *image run time*.
@@ -20,7 +20,7 @@ If one of the following features is used without providing a configuration at im
 
 ### Dynamic Class Loading
 Any class to be accessed by name at image run time must be enumerated at image build time.
-For example, a call to `Class.forName("myClass”)` must have `myClass` in a [configuration file](CONFIGURE.md).
+For example, a call to `Class.forName("myClass”)` must have `myClass` in a [configuration file](Configuration.md).
 If the configuration file is used, but does not include a class that is requested for dynamic class loading, a `ClassNotFoundException` will be thrown, as if the class was not found on the class path or was inaccessible.
 
 ### Reflection
@@ -28,7 +28,7 @@ This category includes listing methods and fields of a class; invoking methods a
 
 Individual classes, methods, and fields that should be accessible via reflection need to be known ahead-of-time.
 Native Image tries to resolve these elements through a static analysis that detects calls to the reflection API.
-Where the analysis fails the program elements reflectively accessed at run time must be specified during native image generation in a [configuration file](Configure.md) or by using [`RuntimeReflection`](http://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/hosted/RuntimeReflection.html) from a [`Feature`](http://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/hosted/Feature.html).
+Where the analysis fails the program elements reflectively accessed at run time must be specified during native image generation in a [configuration file](Configuration.md) or by using [`RuntimeReflection`](http://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/hosted/RuntimeReflection.html) from a [`Feature`](http://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/hosted/Feature.html).
 For more details, read the [Reflection support](Reflection.md) guide.
 
 During native image generation, reflection can be used without restrictions during native image generation, for example in class initializers.
@@ -38,8 +38,8 @@ This category includes generating dynamic proxy classes and allocating instances
 Dynamic class proxies are supported with the closed-world optimization as long as the bytecode is generated ahead-of-time.
 This means that the list of interfaces that define dynamic proxies needs to be known at image build time.
 Native Image employs a simple static analysis that intercepts calls to `java.lang.reflect.Proxy.newProxyInstance(ClassLoader, Class<?>[], InvocationHandler)` and `java.lang.reflect.Proxy.getProxyClass(ClassLoader, Class<?>[])` and tries to determine the list of interfaces automatically.
-Where the analysis fails the lists of interfaces can be specified in a [configuration file](CONFIGURE.md).
-For more details, read the [Dynamic Proxies support](Dynamic_Proxy.md) guide.
+Where the analysis fails the lists of interfaces can be specified in a [configuration file](Configuration.md).
+For more details, read the [Dynamic Proxies support](DynamicProxy.md) guide.
 
 ### JCA (Java Cryptography Architecture)
 The JCA security services must be enabled using the option `--enable-all-security-services`.
@@ -47,7 +47,7 @@ They require a custom configuration on Native Image since the JCA framework reli
 
 ### JNI (Java Native Interface)
 Native code may access Java objects, classes, methods and fields by name, in a similar way to using the reflection API in Java code.
-For the same reasons, any Java artifacts accessed by name via JNI must be specified during native image generation in a [configuration file](Configure.md). For more details, read the [JNI Implementation](JNI.md) guide.
+For the same reasons, any Java artifacts accessed by name via JNI must be specified during native image generation in a [configuration file](Configuration.md). For more details, read the [JNI Implementation](JNI.md) guide.
 
 Alternative: In addition to JNI, GraalVM Native Image provides its own native interface that is much simpler than JNI and with lower overhead.
 It allows calls between Java and C, and access of C data structures from Java code.

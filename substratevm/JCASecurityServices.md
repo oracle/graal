@@ -1,4 +1,4 @@
-# JCA Security Services on Substrate VM
+# JCA Security Services on Native Image
 
 This section refers to the use of the services provided by the [Java Cryptography Architecture (JCA)](https://docs.oracle.com/javase/8/docs/technotes/guides/security/crypto/CryptoSpec.html) framework.
 The JCA framework relies on reflection to achieve algorithm independence and extensibility, therefore it requires a custom configuration on Substrate VM.

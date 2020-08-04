@@ -1,6 +1,6 @@
-# Logging on Substrate VM
+# Logging on Native Image
 
-Substrate VM supports logging out-of-the box using the `java.util.logging.*` API.
+Native Image supports logging out-of-the box using the `java.util.logging.*` API.
 
 ## Default Logging configuration
 

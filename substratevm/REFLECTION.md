@@ -1,15 +1,15 @@
-# Reflection on Substrate VM
+# Reflection on Native Image
 
 Java reflection support (the `java.lang.reflect.*` API) enables Java code to examine its own classes, methods and fields and their properties at runtime.
 
-Substrate VM has partial support for reflection and it needs to know ahead of time the reflectively accessed program elements.
+Native Image has partial support for reflection and it needs to know ahead of time the reflectively accessed program elements.
 Examining and accessing program elements through `java.lang.reflect.*` or loading classes with `Class.forName(String)` at run time requires preparing additional metadata for those program elements.
 (Note: We include here loading classes with `Class.forName(String)` since it is closely related to reflection.)
 
 SubstrateVM tries to resolve the target elements through a static analysis that detects calls to the reflection API.
 Where the analysis fails the program elements reflectively accessed at run time must be specified using a manual configuration.
 
-See also the [guide on assisted configuration of Java resources and other dynamic features](Configure.md).
+See also the [guide on assisted configuration of Java resources and other dynamic features](Configuration.md).
 
 ## Automatic Detection
 

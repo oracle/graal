@@ -1,9 +1,9 @@
-# Java Native Interface (JNI) on Substrate VM
+# Java Native Interface (JNI) on Native Image
 
 JNI is a native API that enables Java code to interact with native code and vice versa.
 This page gives an overview over the JNI implementation in Substrate VM.
 
-See also the [guide on assisted configuration of Java resources and other dynamic features](Configure.md).
+See also the [guide on assisted configuration of Java resources and other dynamic features](Configuration.md#assisted-configuration-of-native-image-builds).
 
 ### Integration
 JNI support is enabled by default and built into Substrate VM images. Individual classes, methods, and fields that should be accessible via JNI must be specified during native image generation in a configuration file (read below).
@@ -150,4 +150,4 @@ For that reason, it can be beneficial to wrap synchronization in Java code.
 ### java.lang.reflect Support
 The JNI functions `FromReflectedMethod` and `ToReflectedMethod` can be used to obtain the corresponding `jmethodID` to a `java.lang.reflect.Method`, or to a `java.lang.reflect.Constructor` object, and vice versa.
 The functions `FromReflectedField` and `ToReflectedField` convert between `jfieldID` and `java.lang.reflect.Field`.
-In order to use these functions, [reflection support](REFLECTION.md) must be enabled and the methods and fields in question must be included in the reflection configuration, which is specified with `-H:ReflectionConfigurationFiles=`.
+In order to use these functions, [reflection support](Reflection.md) must be enabled and the methods and fields in question must be included in the reflection configuration, which is specified with `-H:ReflectionConfigurationFiles=`.
