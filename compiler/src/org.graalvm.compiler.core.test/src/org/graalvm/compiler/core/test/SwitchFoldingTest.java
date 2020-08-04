@@ -25,7 +25,20 @@
 
 package org.graalvm.compiler.core.test;
 
+import static org.objectweb.asm.Opcodes.ACC_PUBLIC;
+import static org.objectweb.asm.Opcodes.ACC_STATIC;
+import static org.objectweb.asm.Opcodes.ACC_SUPER;
+import static org.objectweb.asm.Opcodes.GOTO;
+import static org.objectweb.asm.Opcodes.ICONST_0;
+import static org.objectweb.asm.Opcodes.ICONST_1;
+import static org.objectweb.asm.Opcodes.ICONST_5;
+import static org.objectweb.asm.Opcodes.IFLT;
+import static org.objectweb.asm.Opcodes.ILOAD;
+import static org.objectweb.asm.Opcodes.INVOKESTATIC;
+import static org.objectweb.asm.Opcodes.IRETURN;
+
 import org.graalvm.compiler.api.directives.GraalDirectives;
+import org.graalvm.compiler.api.test.ExportingClassLoader;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.BeginNode;
@@ -35,9 +48,14 @@ import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
+import org.junit.Assert;
 import org.junit.Test;
+import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.Label;
+import org.objectweb.asm.MethodVisitor;
 
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class SwitchFoldingTest extends GraalCompilerTest {
 
@@ -534,5 +552,111 @@ public class SwitchFoldingTest extends GraalCompilerTest {
         }
 
         return true;
+    }
+
+    private static final String NAME = "D";
+    private static final byte[] clazz = makeClass();
+
+    public static class MyClassLoader extends ExportingClassLoader {
+        @Override
+        protected Class<?> findClass(String className) throws ClassNotFoundException {
+            return defineClass(NAME.replace('/', '.'), clazz, 0, clazz.length);
+        }
+    }
+
+    private static byte[] makeClass() {
+        ClassWriter cw = new ClassWriter(0);
+        MethodVisitor mv;
+        String jvmName = NAME.replace('.', '/');
+        cw.visit(49, ACC_SUPER | ACC_PUBLIC, jvmName, null, "java/lang/Object", new String[]{});
+
+        // Checkstyle: stop AvoidNestedBlocks
+        {
+            /*-
+             * public static int m(boolean, int) {
+             *     ILOAD_0
+             *     IFLT L1
+             *     ILOAD_1
+             *     LOOKUPSWITCH
+             *       [1, 2, 4, 5, 7, 8] -> 
+             *         return some int
+             *       5 ->
+             *         GOTO L1
+             *       [0, 3, 6, 9] ->
+             *         GOTO L2
+             *     L1:
+             *       deopt
+             *       return 0
+             *     L2:
+             *       return 5
+             * }
+             */
+            Label outMerge = new Label();
+            Label inMerge = new Label();
+            int[] keys = new int[10];
+            Label[] labels = new Label[10];
+            for (int i = 0; i < 10; i++) {
+                keys[i] = i;
+                labels[i] = new Label();
+            }
+            labels[5] = outMerge;
+            Label def = new Label();
+
+            mv = cw.visitMethod(ACC_PUBLIC | ACC_STATIC, "m", "(ZI)I", null, null);
+            mv.visitCode();
+            mv.visitIntInsn(ILOAD, 0);
+            mv.visitJumpInsn(IFLT, outMerge);
+
+            mv.visitIntInsn(ILOAD, 1);
+            mv.visitLookupSwitchInsn(def, keys, labels);
+            for (int i = 0; i < 10; i++) {
+                mv.visitLabel(labels[i]);
+                if (i == 5) {
+                    mv.visitMethodInsn(INVOKESTATIC, GraalDirectives.class.getName().replace('.', '/'), "deoptimize", "()V", false);
+                }
+                if (i % 3 == 0) {
+                    mv.visitJumpInsn(GOTO, inMerge);
+                } else {
+                    mv.visitInsn(ICONST_0 + (i % 5));
+                    mv.visitInsn(IRETURN);
+                }
+            }
+            mv.visitLabel(def);
+            mv.visitInsn(ICONST_1);
+            mv.visitInsn(IRETURN);
+            mv.visitLabel(inMerge);
+            mv.visitInsn(ICONST_5);
+            mv.visitInsn(IRETURN);
+            mv.visitMaxs(3, 2);
+            mv.visitEnd();
+        }
+        // Checkstyle: resume AvoidNestedBlocks
+
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
+    /**
+     * Makes sure the merge common successor optimization for integer switches works correctly and
+     * does not forget a branch, even when a branch merges with something out of the switch.
+     */
+    @Test
+    public void compileTest() {
+        try {
+            MyClassLoader loader = new MyClassLoader();
+            Class<?> c = loader.findClass(NAME);
+            ResolvedJavaMethod method = getResolvedJavaMethod(c, "m");
+            StructuredGraph graph = parse(builder(method, StructuredGraph.AllowAssumptions.NO), getEagerGraphBuilderSuite());
+            graph.getDebug().dump(DebugContext.BASIC_LEVEL, graph, "Graph");
+            IntegerSwitchNode s1 = graph.getNodes().filter(IntegerSwitchNode.class).first();
+            createCanonicalizerPhase().apply(graph, getProviders());
+            graph.getDebug().dump(DebugContext.BASIC_LEVEL, graph, "Graph");
+            IntegerSwitchNode s2 = graph.getNodes().filter(IntegerSwitchNode.class).first();
+            // make sure canonicalization did not break the switch.
+            assertTrue(s1.keyCount() == s2.keyCount());
+            assertTrue(s1.successors().count() > s2.successors().count());
+        } catch (Exception e) {
+            Assert.fail();
+        }
     }
 }

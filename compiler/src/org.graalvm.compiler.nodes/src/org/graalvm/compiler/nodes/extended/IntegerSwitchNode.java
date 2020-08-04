@@ -304,21 +304,21 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
         MapCursor<AbstractMergeNode, List<Integer>> cursor = mergeKeys.getEntries();
         canRewire = false;
         while (cursor.advance()) {
-            if (cursor.getValue().size() > 1) {
-                if (cursor.getKey().forwardEndCount() != cursor.getValue().size()) {
-                    // Merge has an end that is not part of the switch.
-                    for (int i : cursor.getValue()) {
-                        newKeyData.add(new KeyData(keys[i], keyProbabilities[i], keySuccessors[i]));
-                    }
-                } else {
-                    canRewire = true;
-                    FixedNode next = cursor.getKey().next();
-                    cursor.getKey().setNext(null);
-                    AbstractBeginNode begin = BeginNode.begin(next);
-                    int successorIndex = addNewSuccessor(begin, newSuccessors);
-                    for (int index : cursor.getValue()) {
-                        newKeyData.add(new KeyData(keys[index], keyProbabilities[index], successorIndex));
-                    }
+
+            if (cursor.getValue().size() > 1 && cursor.getKey().forwardEndCount() == cursor.getValue().size()) {
+                canRewire = true;
+                FixedNode next = cursor.getKey().next();
+                cursor.getKey().setNext(null);
+                AbstractBeginNode begin = BeginNode.begin(next);
+                int successorIndex = addNewSuccessor(begin, newSuccessors);
+                for (int index : cursor.getValue()) {
+                    newKeyData.add(new KeyData(keys[index], keyProbabilities[index], successorIndex));
+                }
+            } else {
+                // Merge has an end that is not part of the switch, or it could not merge one of its
+                // branches.
+                for (int i : cursor.getValue()) {
+                    newKeyData.add(new KeyData(keys[i], keyProbabilities[i], addNewSuccessor(keySuccessor(i), newSuccessors)));
                 }
             }
         }
@@ -328,6 +328,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
         }
         int newDefaultSuccessor = addNewSuccessor(defaultSuccessor(), newSuccessors);
         double newDefaultProbability = keyProbabilities[keyProbabilities.length - 1];
+
         doReplace(value(), newKeyData, newSuccessors, newDefaultSuccessor, newDefaultProbability);
         return true;
     }
