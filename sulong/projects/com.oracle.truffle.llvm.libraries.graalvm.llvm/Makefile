@@ -30,11 +30,11 @@
 QUIETLY$(MX_VERBOSE) = @
 
 .PHONY: default
-default: bin/${LIBPOLYGLOT_MOCK}
+default: bin/${SONAME}
 
 CLANG?=clang
 
-CFLAGS+=-g -fdebug-prefix-map=${VPATH}=com.oracle.truffle.llvm.libraries.mock
+CFLAGS+=-g -fdebug-prefix-map=${VPATH}=com.oracle.truffle.llvm.libraries.graalvm.llvm
 
 ifeq ($(OS), darwin)
 CLANG_PREFIX=/usr/bin/xcrun
@@ -42,15 +42,15 @@ LDFLAGS=-dynamiclib -g
 LDFLAGS+=-Wl,-install_name,@rpath/$(notdir $@)
 else
 CLANG_PREFIX=
-LDFLAGS=-shared -g
+LDFLAGS=-shared -g -Wl,-soname,$(notdir $@)
 endif
 
 LDFLAGS+= ${EXTRA_LDFLAGS}
 CFLAGS=-g -fPIC -DPIC -O3 ${EXTRA_CFLAGS}
 
-bin/polyglot-mock.o: CFLAGS+=-Wno-return-type
+bin/polyglot.o: CFLAGS+=-Wno-return-type
 
-bin/${LIBPOLYGLOT_MOCK}: bin/polyglot-mock.o
+bin/${SONAME}: bin/polyglot.o
 	$(QUIETLY) $(CLANG) ${LDFLAGS} -o $@ $+
 
 bin/%.o: src/%.c

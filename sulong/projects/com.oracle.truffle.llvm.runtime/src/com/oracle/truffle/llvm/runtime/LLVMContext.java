@@ -309,9 +309,9 @@ public final class LLVMContext {
              *   the sulong initialise context, and the sulong dispose context symbol could be setup
              *   here instead of being at findAndSetSulongSpecificFunctions in LoadModulesNode.
              */
-            CallTarget libpolyglotMock = env.parseInternal(Source.newBuilder("llvm",
-                            env.getInternalTruffleFile(internalLibraryPath.resolve(language.getCapability(PlatformCapability.class).getPolyglotMockLibrary()).toUri())).internal(true).build());
-            libpolyglotMock.call();
+            CallTarget builtinsLibrary = env.parseInternal(Source.newBuilder("llvm",
+                            env.getInternalTruffleFile(internalLibraryPath.resolve(language.getCapability(PlatformCapability.class).getBuiltinsLibrary()).toUri())).internal(true).build());
+            builtinsLibrary.call();
         } catch (Exception e) {
             throw new IllegalStateException(e);
         }

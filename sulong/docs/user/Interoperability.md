@@ -49,10 +49,10 @@ void printPoint(struct Point *p) {
 ```
 
 Make sure `LLVM_TOOLCHAIN` resolves to the GraalVM LLVM toolchain (`lli --print-toolchain-path`),
-then compile _cpart.c_ with (the polyglot-mock library defines the polyglot
+then compile _cpart.c_ with (the graalvm-llvm library defines the polyglot
 API functions used in the example):
 ```shell
-$LLVM_TOOLCHAIN/clang -shared cpart.c -lpolyglot-mock -o cpart.so
+$LLVM_TOOLCHAIN/clang -shared cpart.c -lgraalvm-llvm -o cpart.so
 ```
 
 You can access your C/C++ code from other languages like JavaScript:
@@ -126,7 +126,7 @@ int main() {
 Compile it to LLVM bitcode:
 
 ```shell
-$LLVM_TOOLCHAIN/clang polyglot.c -lpolyglot-mock -o polyglot
+$LLVM_TOOLCHAIN/clang polyglot.c -lgraalvm-llvm -o polyglot
 ```
 
 And run it, using the `--jvm` argument to run GraalVM in the JVM mode, since we are

@@ -11,7 +11,7 @@ runtime can be found in [`graalvm/llvm/polyglot.h`](../../projects/com.oracle.tr
 (located in `$GRAALVM_HOME/jre/languages/llvm/include/graalvm/llvm/polyglot.h` in the GraalVM
 distribution).
 
-To use the functions from `graalvm/llvm/polyglot.h`, binaries have to link against `-lpolyglot-mock`.
+To use the functions from `graalvm/llvm/*` headers, binaries have to link against `-lgraalvm-llvm`.
 
 ## How the LLVM runtime responds to messages from other languages
 
