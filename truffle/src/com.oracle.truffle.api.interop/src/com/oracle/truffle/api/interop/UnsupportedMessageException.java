@@ -42,8 +42,6 @@ package com.oracle.truffle.api.interop;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleException;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * An exception thrown if a {@link TruffleObject} does not support a interop message. If this
