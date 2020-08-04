@@ -370,7 +370,7 @@ public final class LoadModulesNode extends RootNode {
         }
         LLVMContext context = ctxRef.get();
 
-        //synchronized (context) {
+        // synchronized (context) {
         if (!hasInitialised) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             for (int i = 0; i < sources.size(); i++) {
@@ -404,7 +404,7 @@ public final class LoadModulesNode extends RootNode {
             assert scope != null;
             return new SulongLibrary(sourceName, scope, mainFunctionCallTarget, context);
         }
-        //}
+        // }
         return null;
     }
 
