@@ -390,7 +390,7 @@ public class BinaryParser extends BinaryStreamParser {
         int startLongConstantOffset = state.longConstantOffset();
         int startBranchTableOffset = state.branchTableOffset();
         int startProfileCount = state.profileCount();
-        WasmBlockNode currentBlock = new WasmBlockNode(instance, codeEntry, startOffset, returnTypeId, continuationTypeId, startStackSize,
+        final WasmBlockNode currentBlock = new WasmBlockNode(instance, codeEntry, startOffset, returnTypeId, continuationTypeId, startStackSize,
                         startByteConstantOffset, startIntConstantOffset, startLongConstantOffset, startBranchTableOffset, startProfileCount);
 
         // Push the type length of the current block's continuation.
@@ -553,7 +553,8 @@ public class BinaryParser extends BinaryStreamParser {
                     // Therefore, the call node will be created lazily during linking,
                     // after the call target from the other module exists.
                     children.add(new WasmCallStubNode(function));
-                    module.addLinkAction((context, inst) -> context.linker().resolveCallsite(inst, currentBlock, children.size() - 1, function));
+                    final int stubIndex = children.size() - 1;
+                    module.addLinkAction((context, inst) -> context.linker().resolveCallsite(inst, currentBlock, stubIndex, function));
 
                     break;
                 }
