@@ -45,7 +45,7 @@ GraalVM allows running of following languages which are being developed and test
 * [GraalJS](https://github.com/graalvm/graaljs) - JavaScript (ECMAScript 2020 compatible) and Node.js 12.18.0
 * [FastR](https://github.com/oracle/fastr) - R Language 3.6.1
 * [GraalPython](https://github.com/graalvm/graalpython) - Python 3.7
-* [TruffleRuby](https://github.com/oracle/truffleruby/) - Ruby Programming Language 2.6.6
+* [TruffleRuby](https://github.com/oracle/truffleruby/) - Ruby Programming Language 2.6.x
 * [SimpleLanguage](https://github.com/graalvm/simplelanguage) - A simple demonstration language for the GraalVM.
 
 
