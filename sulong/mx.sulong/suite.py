@@ -552,17 +552,14 @@ suite = {
         "bin/<lib:sulong>",
         "bin/<lib:sulong++>",
       ],
-      "headers" : [
-        "include/graalvm/llvm/handles.h",
-        "include/graalvm/llvm/polyglot.h",
-        "include/graalvm/llvm/toolchain-api.h",
-      ],
       "buildDependencies" : [
+        "com.oracle.truffle.llvm.libraries.graalvm.llvm",
         "sdk:LLVM_TOOLCHAIN",
         "sdk:LLVM_ORG_SRC",
       ],
       "buildEnv" : {
         "CFLAGS" : "-Xclang -disable-O0-optnone",
+        "CPPFLAGS" : "-I<path:com.oracle.truffle.llvm.libraries.graalvm.llvm>/include",
         "CLANG" : "<path:LLVM_TOOLCHAIN>/bin/clang",
         "CLANGXX" : "<path:LLVM_TOOLCHAIN>/bin/clang++",
         "OPT" : "<path:LLVM_TOOLCHAIN>/bin/opt",
@@ -582,15 +579,18 @@ suite = {
       "results" : [
         "bin/<libv:graalvm-llvm.1>",
       ],
+      "headers" : [
+        "include/graalvm/llvm/handles.h",
+        "include/graalvm/llvm/polyglot.h",
+        "include/graalvm/llvm/toolchain-api.h",
+      ],
       "buildDependencies" : [
-        "com.oracle.truffle.llvm.libraries.bitcode",
         "SULONG_TOOLCHAIN_LAUNCHERS",
         "SULONG_BOOTSTRAP_TOOLCHAIN",
       ],
       "buildEnv" : {
         "SONAME" : "<libv:graalvm-llvm.1>",
         "CLANG" : "<toolchainGetToolPath:native,CC>",
-        "CPPFLAGS" : "-I<path:com.oracle.truffle.llvm.libraries.bitcode>/include",
         "OS" : "<os>",
       },
       "license" : "BSD-new",
@@ -1246,7 +1246,7 @@ suite = {
         ],
         "./native/lib/<lib:graalvm-llvm>": "link:<libv:graalvm-llvm.1>",
         "./include/" : [
-          "dependency:com.oracle.truffle.llvm.libraries.bitcode/include/*"
+          "dependency:com.oracle.truffle.llvm.libraries.graalvm.llvm/include/*"
         ],
         # for source compatibility
         "./include/polyglot.h" : "link:graalvm/llvm/polyglot.h",

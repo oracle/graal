@@ -7,7 +7,7 @@ This document explains what the various interop messages mean in the context of 
 GraalVM LLVM runtime.
 
 Detailed reference documentation of Polyglot interop support in the GraalVM LLVM
-runtime can be found in [`graalvm/llvm/polyglot.h`](../../projects/com.oracle.truffle.llvm.libraries.bitcode/include/graalvm/llvm/polyglot.h)
+runtime can be found in [`graalvm/llvm/polyglot.h`](../../projects/com.oracle.truffle.llvm.libraries.graalvm.llvm/include/graalvm/llvm/polyglot.h)
 (located in `$GRAALVM_HOME/jre/languages/llvm/include/graalvm/llvm/polyglot.h` in the GraalVM
 distribution).
 

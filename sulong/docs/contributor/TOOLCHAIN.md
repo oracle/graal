@@ -76,7 +76,7 @@ for a full example.
 
 ## C API
 There is also a C level API for accessing the Toolchain defined in
-[`graalvm/llvm/toolchain-api.h`](../../projects/com.oracle.truffle.llvm.libraries.bitcode/include/graalvm/llvm/toolchain-api.h).
+[`graalvm/llvm/toolchain-api.h`](../../projects/com.oracle.truffle.llvm.libraries.graalvm.llvm/include/graalvm/llvm/toolchain-api.h).
 It provides the following function which correspond to the Java API methods:
 
 ```C
