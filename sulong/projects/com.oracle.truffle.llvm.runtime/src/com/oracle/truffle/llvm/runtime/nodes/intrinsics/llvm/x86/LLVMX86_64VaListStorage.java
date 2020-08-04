@@ -60,9 +60,11 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMVarArgCompoundValue;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
+import com.oracle.truffle.llvm.runtime.debug.value.LLVMSourceTypeFactory;
 import com.oracle.truffle.llvm.runtime.floating.LLVM80BitFloat;
 import com.oracle.truffle.llvm.runtime.interop.LLVMDataEscapeNode.LLVMPointerDataEscapeNode;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Array;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
@@ -101,6 +103,7 @@ import com.oracle.truffle.llvm.spi.NativeTypeLibrary;
 @ExportLibrary(LLVMManagedWriteLibrary.class)
 @ExportLibrary(LLVMVaListLibrary.class)
 @ExportLibrary(InteropLibrary.class)
+@ExportLibrary(NativeTypeLibrary.class)
 public final class LLVMX86_64VaListStorage implements TruffleObject {
 
     public static final ArrayType VA_LIST_TYPE = new ArrayType(StructureType.createNamedFromList("struct.__va_list_tag", false,
@@ -126,6 +129,22 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
 
     public boolean isNativized() {
         return nativized != null;
+    }
+
+    // NativeTypeLibrary library
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean hasNativeType() {
+        return true;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    @TruffleBoundary
+    Object getNativeType(@CachedContext(LLVMLanguage.class) LLVMContext ctx) {
+        // This method should never be invoked
+        return ctx.getInteropType(LLVMSourceTypeFactory.resolveType(VA_LIST_TYPE, getDataLayout()));
     }
 
     // InteropLibrary implementation
@@ -1066,6 +1085,44 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
             int j = (int) (n >> 32);
             return i < 0 ? Double.doubleToLongBits(0d) : convNode.execute(args[i], j);
         }
+
+        private static final Array I8_ARG_TYPE = LLVMInteropType.ValueKind.I8.type.toArray(8);
+        private static final Array I16_ARG_TYPE = LLVMInteropType.ValueKind.I16.type.toArray(4);
+        private static final Array I32_ARG_TYPE = LLVMInteropType.ValueKind.I32.type.toArray(2);
+        private static final Array I64_ARG_TYPE = LLVMInteropType.ValueKind.I64.type.toArray(1);
+        private static final Array F80_ARG_TYPE = LLVMInteropType.ValueKind.I64.type.toArray(2);
+
+        protected static LLVMInteropType getVarArgType(Object arg) {
+            if (arg == null) {
+                return LLVMInteropType.ValueKind.I8.type.toArray(0);
+            } else if (arg instanceof Boolean) {
+                return I8_ARG_TYPE;
+            } else if (arg instanceof Byte) {
+                return I8_ARG_TYPE;
+            } else if (arg instanceof Short) {
+                return I16_ARG_TYPE;
+            } else if (arg instanceof Integer) {
+                return I32_ARG_TYPE;
+            } else if (arg instanceof Long) {
+                return I64_ARG_TYPE;
+            } else if (arg instanceof Float) {
+                return I32_ARG_TYPE;
+            } else if (arg instanceof Double) {
+                return I64_ARG_TYPE;
+            } else if (LLVMPointer.isInstance(arg)) {
+                return I64_ARG_TYPE;
+            } else if (arg instanceof LLVMFloatVector && ((LLVMFloatVector) arg).getLength() <= 2) {
+                return I32_ARG_TYPE;
+            } else if (arg instanceof LLVMVarArgCompoundValue) {
+                LLVMVarArgCompoundValue compVal = (LLVMVarArgCompoundValue) arg;
+                return LLVMInteropType.ValueKind.I64.type.toArray(compVal.getSize() / 8);
+            } else if (arg instanceof LLVM80BitFloat) {
+                return F80_ARG_TYPE;
+            } else {
+                CompilerDirectives.transferToInterpreter();
+                throw new AssertionError(arg);
+            }
+        }
     }
 
     @ExportLibrary(LLVMManagedReadLibrary.class)
@@ -1108,33 +1165,6 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
         }
 
         // NativeTypeLibrary
-
-        private static LLVMInteropType getVarArgType(Object arg) {
-            if (arg == null) {
-                return LLVMInteropType.ValueKind.I8.type.toArray(0);
-            } else if (arg instanceof Boolean) {
-                return LLVMInteropType.ValueKind.I8.type.toArray(8);
-            } else if (arg instanceof Byte) {
-                return LLVMInteropType.ValueKind.I8.type.toArray(8);
-            } else if (arg instanceof Short) {
-                return LLVMInteropType.ValueKind.I16.type.toArray(4);
-            } else if (arg instanceof Integer) {
-                return LLVMInteropType.ValueKind.I32.type.toArray(2);
-            } else if (arg instanceof Long) {
-                return LLVMInteropType.ValueKind.I64.type.toArray(1);
-            } else if (arg instanceof Float) {
-                return LLVMInteropType.ValueKind.I32.type.toArray(2);
-            } else if (arg instanceof Double) {
-                return LLVMInteropType.ValueKind.I64.type.toArray(1);
-            } else if (LLVMPointer.isInstance(arg)) {
-                return LLVMInteropType.ValueKind.I64.type.toArray(1);
-            } else if (arg instanceof LLVMFloatVector && ((LLVMFloatVector) arg).getLength() <= 2) {
-                return LLVMInteropType.ValueKind.I32.type.toArray(2);
-            } else {
-                CompilerDirectives.transferToInterpreter();
-                throw new AssertionError(arg);
-            }
-        }
 
         @SuppressWarnings("static-method")
         @ExportMessage
@@ -1244,38 +1274,6 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
 
         // NativeTypeLibrary
 
-        private static LLVMInteropType getVarArgType(Object arg) {
-            if (arg == null) {
-                return LLVMInteropType.ValueKind.I8.type.toArray(0);
-            } else if (arg instanceof Boolean) {
-                return LLVMInteropType.ValueKind.I8.type.toArray(8);
-            } else if (arg instanceof Byte) {
-                return LLVMInteropType.ValueKind.I8.type.toArray(8);
-            } else if (arg instanceof Short) {
-                return LLVMInteropType.ValueKind.I16.type.toArray(4);
-            } else if (arg instanceof Integer) {
-                return LLVMInteropType.ValueKind.I32.type.toArray(2);
-            } else if (arg instanceof Long) {
-                return LLVMInteropType.ValueKind.I64.type.toArray(1);
-            } else if (arg instanceof Float) {
-                return LLVMInteropType.ValueKind.I32.type.toArray(2);
-            } else if (arg instanceof Double) {
-                return LLVMInteropType.ValueKind.I64.type.toArray(1);
-            } else if (LLVMPointer.isInstance(arg)) {
-                return LLVMInteropType.ValueKind.I64.type.toArray(1);
-            } else if (arg instanceof LLVMFloatVector && ((LLVMFloatVector) arg).getLength() <= 2) {
-                return LLVMInteropType.ValueKind.I32.type.toArray(2);
-            } else if (arg instanceof LLVMVarArgCompoundValue) {
-                LLVMVarArgCompoundValue compVal = (LLVMVarArgCompoundValue) arg;
-                return LLVMInteropType.ValueKind.I64.type.toArray(compVal.getSize() / 8);
-            } else if (arg instanceof LLVM80BitFloat) {
-                return LLVMInteropType.ValueKind.I64.type.toArray(2);
-            } else {
-                CompilerDirectives.transferToInterpreter();
-                throw new AssertionError(arg);
-            }
-        }
-
         @SuppressWarnings("static-method")
         @ExportMessage
         public boolean hasNativeType() {
@@ -1285,7 +1283,6 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
         @ExportMessage
         public Object getNativeType() {
             return getVarArgType(getCurrentArg());
-            // return argsType;
         }
 
     }
@@ -1687,5 +1684,4 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
             return PointerConversionHelperNodeGen.create();
         }
     }
-
 }
