@@ -81,6 +81,9 @@ public final class OptimizedIndirectCallNode extends IndirectCallNode {
                 Node prev = encapsulating.set(null);
                 try {
                     return ((OptimizedCallTarget) target).callIndirect(prev, arguments);
+                } catch (Throwable t) {
+                    GraalRuntimeAccessor.LANGUAGE.onThrowable(prev, null, t, null);
+                    throw OptimizedCallTarget.rethrow(t);
                 } finally {
                     encapsulating.set(prev);
                 }
