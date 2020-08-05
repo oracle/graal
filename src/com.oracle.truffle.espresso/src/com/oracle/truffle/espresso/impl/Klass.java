@@ -144,7 +144,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     @ExportMessage
     final Object invokeMember(String member,
                     Object[] arguments,
-                    @Cached LookupDeclaredMethod lookupMethod,
+                    @Exclusive @Cached LookupDeclaredMethod lookupMethod,
                     @Exclusive @Cached InvokeEspressoNode invoke)
                     throws UnsupportedMessageException, ArityException, UnknownIdentifierException, UnsupportedTypeException {
         Method method = lookupMethod.execute(this, member, true, true, arguments.length);
@@ -286,6 +286,22 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
             }
 
             return context.getInterpreterToVM().newMultiArray(arrayKlass.getComponentType(), dimensions);
+        }
+
+        @Specialization(guards = "isObjectKlass(receiver)")
+        static Object doObject(Klass receiver, Object[] arguments,
+                        @Exclusive @Cached LookupDeclaredMethod lookupMethod,
+                        @Exclusive @Cached InvokeEspressoNode invoke) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
+            ObjectKlass objectKlass = (ObjectKlass) receiver;
+            Method init = lookupMethod.execute(objectKlass, Name._init_.toString(), true, false, arguments.length);
+            if (init != null) {
+                assert !init.isStatic() && init.isPublic() && init.getName().toString().equals(Name._init_.toString()) && init.getParameterCount() == arguments.length;
+                StaticObject newObject = StaticObject.createNew(objectKlass);
+                invoke.execute(init, newObject, arguments);
+                return newObject;
+            }
+            // TODO(goltsova): throw ArityException whenever possible
+            throw UnsupportedMessageException.create();
         }
     }
 
