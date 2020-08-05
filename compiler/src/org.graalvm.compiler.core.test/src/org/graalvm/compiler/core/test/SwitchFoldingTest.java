@@ -517,7 +517,7 @@ public class SwitchFoldingTest extends GraalCompilerTest {
         compareGraphs(referenceGraph, graph);
     }
 
-    private boolean compareGraphs(StructuredGraph g1, StructuredGraph g2) {
+    private static boolean compareGraphs(StructuredGraph g1, StructuredGraph g2) {
         NodeIterable<IntegerSwitchNode> switches1 = g1.getNodes().filter(IntegerSwitchNode.class);
         NodeIterable<IntegerSwitchNode> switches2 = g2.getNodes().filter(IntegerSwitchNode.class);
         assertTrue(switches1.count() == switches2.count() && switches1.count() == 1);
@@ -578,26 +578,35 @@ public class SwitchFoldingTest extends GraalCompilerTest {
              *     IFLT L1
              *     ILOAD_1
              *     LOOKUPSWITCH
-             *       [1, 2, 4, 5, 7, 8] -> 
+             *       [1, 2, 5, 7] -> 
              *         return some int
              *       5 ->
              *         GOTO L1
-             *       [0, 3, 6, 9] ->
-             *         GOTO L2
+             *       [3, 6, 9] ->
+             *         GOTO L2 (Different blocks)
+             *       [0, 4, 8] ->
+             *         GOTO L2 (Same block)
              *     L1:
              *       deopt
              *       return 0
              *     L2:
              *       return 5
              * }
+             * 
+             * Optimization should coalesce branches [0,3,4,6,8,9]
              */
             Label outMerge = new Label();
             Label inMerge = new Label();
+            Label commonTarget = new Label();
             int[] keys = new int[10];
             Label[] labels = new Label[10];
             for (int i = 0; i < 10; i++) {
                 keys[i] = i;
-                labels[i] = new Label();
+                if (i % 4 == 0) {
+                    labels[i] = commonTarget;
+                } else {
+                    labels[i] = new Label();
+                }
             }
             labels[5] = outMerge;
             Label def = new Label();
@@ -627,6 +636,8 @@ public class SwitchFoldingTest extends GraalCompilerTest {
             mv.visitLabel(inMerge);
             mv.visitInsn(ICONST_5);
             mv.visitInsn(IRETURN);
+            mv.visitLabel(commonTarget);
+            mv.visitJumpInsn(GOTO, inMerge);
             mv.visitMaxs(3, 2);
             mv.visitEnd();
         }
@@ -649,12 +660,14 @@ public class SwitchFoldingTest extends GraalCompilerTest {
             StructuredGraph graph = parse(builder(method, StructuredGraph.AllowAssumptions.NO), getEagerGraphBuilderSuite());
             graph.getDebug().dump(DebugContext.BASIC_LEVEL, graph, "Graph");
             IntegerSwitchNode s1 = graph.getNodes().filter(IntegerSwitchNode.class).first();
+            int s1SuccCount = s1.successors().count();
+            int s1KeyCount = s1.keyCount();
             createCanonicalizerPhase().apply(graph, getProviders());
             graph.getDebug().dump(DebugContext.BASIC_LEVEL, graph, "Graph");
             IntegerSwitchNode s2 = graph.getNodes().filter(IntegerSwitchNode.class).first();
             // make sure canonicalization did not break the switch.
-            assertTrue(s1.keyCount() == s2.keyCount());
-            assertTrue(s1.successors().count() > s2.successors().count());
+            assertTrue(s1KeyCount == s2.keyCount());
+            assertTrue(s1SuccCount > s2.successors().count());
         } catch (Exception e) {
             Assert.fail();
         }
