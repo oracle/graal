@@ -2694,7 +2694,11 @@ public final class VM extends NativeEnv implements ContextAccess {
 
     @VmImpl
     @JniImpl
+    @TruffleBoundary
     public static long JVM_MaxObjectInspectionAge() {
+        if (EspressoOptions.RUNNING_ON_SVM) {
+            return 0;
+        }
         return GC.maxObjectInspectionAge();
     }
 
