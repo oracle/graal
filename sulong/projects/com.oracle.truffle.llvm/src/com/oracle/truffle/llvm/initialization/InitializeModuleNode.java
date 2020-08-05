@@ -161,7 +161,7 @@ public final class InitializeModuleNode extends LLVMNode implements LLVMHasDatal
                 final LLVMExpressionNode functionLoadTarget = nodeFactory.createTypedElementPointer(indexedTypeLength, functionType, loadedStruct, oneLiteralNode);
                 final LLVMExpressionNode loadedFunction = CommonNodeFactory.createLoad(functionType, functionLoadTarget);
                 final LLVMExpressionNode[] argNodes = new LLVMExpressionNode[]{
-                        LLVMGetStackFromFrameNode.create(rootFrame.findFrameSlot(LLVMStack.FRAME_ID))};
+                                LLVMGetStackFromFrameNode.create(rootFrame.findFrameSlot(LLVMStack.FRAME_ID))};
                 final LLVMStatementNode functionCall = LLVMVoidStatementNodeGen.create(CommonNodeFactory.createFunctionCall(loadedFunction, argNodes, functionType));
 
                 final StructureConstant structorDefinition = (StructureConstant) arrayConstant.getElement(i);
