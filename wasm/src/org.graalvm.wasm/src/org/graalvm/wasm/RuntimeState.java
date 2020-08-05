@@ -51,12 +51,12 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 @SuppressWarnings("static-method")
 public class RuntimeState {
     private static final int INITIAL_GLOBALS_SIZE = 64;
+    private static final int INITIAL_TARGETS_SIZE = 32;
 
     private final WasmModule module;
 
     /**
-     * An array of call targets that correspond to the WebAssembly functions
-     * of the current module.
+     * An array of call targets that correspond to the WebAssembly functions of the current module.
      */
     @CompilationFinal(dimensions = 1) private CallTarget[] targets;
 
@@ -106,6 +106,7 @@ public class RuntimeState {
     public RuntimeState(WasmModule module) {
         this.module = module;
         this.globalAddresses = new int[INITIAL_GLOBALS_SIZE];
+        this.targets = new CallTarget[INITIAL_TARGETS_SIZE];
     }
 
     public SymbolTable symbolTable() {

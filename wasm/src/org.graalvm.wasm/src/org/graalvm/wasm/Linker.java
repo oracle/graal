@@ -209,7 +209,6 @@ public class Linker {
             }
 
             int address = importedInstance.globalAddress(exportedGlobalIndex);
-            System.out.println("Yo! " + globalIndex + " -> " + address);
             instance.setGlobalAddress(globalIndex, address);
         };
         final ImportGlobalSym importGlobalSym = new ImportGlobalSym(instance.name(), importDescriptor);
@@ -248,8 +247,9 @@ public class Linker {
         final Runnable resolveAction = () -> {
             final WasmInstance importedInstance = context.moduleInstances().get(function.importedModuleName());
             if (importedInstance == null) {
-                throw new WasmLinkerException("The module '" + function.importedModuleName() + "', referenced by the import '" + function.importedFunctionName() + "' in the module '" + instance.name() +
-                                "', does not exist.");
+                throw new WasmLinkerException(
+                                "The module '" + function.importedModuleName() + "', referenced by the import '" + function.importedFunctionName() + "' in the module '" + instance.name() +
+                                                "', does not exist.");
             }
             WasmFunction importedFunction;
             try {

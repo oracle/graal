@@ -84,7 +84,8 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
         final SymbolTable symbolTable = symbolTable();
         final WasmFunction function = symbolTable.exportedFunctions().get(member);
         if (function != null) {
-            return function;
+            final WasmFunctionInstance instance = new WasmFunctionInstance(function, target(function.index()));
+            return instance;
         }
         final Integer globalIndex = symbolTable.exportedGlobals().get(member);
         if (globalIndex != null) {
