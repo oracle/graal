@@ -498,7 +498,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
             } else {
                 this.hostStack = cause.getStackTrace();
             }
-            this.guestFrames = impl.guestFrames == null ? Collections.<TruffleStackTraceElement> emptyList().iterator() : impl.guestFrames.iterator();
+            this.guestFrames = impl.guestFrames == null ? Collections.emptyIterator() : impl.guestFrames.iterator();
             this.hostFrames = Arrays.asList(hostStack).listIterator();
             // we always start in some host stack frame
             this.inHostLanguage = impl.isHostException() || impl.isInternalError();

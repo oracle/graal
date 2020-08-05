@@ -48,6 +48,7 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.OptimizationFailedException;
 import com.oracle.truffle.api.ReplaceObserver;
@@ -363,13 +364,18 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     @Override
+    @TruffleBoundary
     public final Object call(Object... args) {
+        // Use the encapsulating node as call site and clear it inside as we cross the call boundary
         EncapsulatingNodeReference encapsulating = EncapsulatingNodeReference.getCurrent();
-        Node encapsulatingNode = encapsulating.set(null);
+        Node prev = encapsulating.set(null);
         try {
-            return callIndirect(encapsulatingNode, args);
+            return callIndirect(prev, args);
+        } catch (Throwable t) {
+            GraalRuntimeAccessor.LANGUAGE.onThrowable(prev, null, t, null);
+            throw rethrow(t);
         } finally {
-            encapsulating.set(encapsulatingNode);
+            encapsulating.set(prev);
         }
     }
 
@@ -492,7 +498,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return false;
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private static boolean lastTierCompile(OptimizedCallTarget callTarget) {
         return callTarget.compile(true);
     }

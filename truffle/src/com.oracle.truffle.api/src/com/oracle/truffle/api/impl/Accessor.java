@@ -93,7 +93,6 @@ import com.oracle.truffle.api.io.TruffleProcessBuilder;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
 import com.oracle.truffle.api.nodes.ExecutableNode;
-import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -718,8 +717,6 @@ public abstract class Accessor {
                 throw new AssertionError("Invalid permission to create runtime support.");
             }
         }
-
-        public abstract IndirectCallNode createUncachedIndirectCall();
 
         /**
          * Reports the execution count of a loop.
