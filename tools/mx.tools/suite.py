@@ -298,7 +298,7 @@ suite = {
                 "windows" : {
                     "amd64" : {
                         "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-20.2-2-windows-amd64.tar.gz"],
-                        "sha1" : "e33e37feef572f4abce1545636efd8c7f29103c3",
+                        "sha1" : "80c01239b563e54379c920f7050bb2784ab08a1c",
                     }
                 },
             }
