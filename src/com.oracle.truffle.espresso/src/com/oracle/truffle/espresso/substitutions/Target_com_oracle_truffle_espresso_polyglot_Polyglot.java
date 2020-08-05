@@ -67,15 +67,6 @@ public class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
             }
 
             if (targetKlass.isArray()) {
-                /*
-                 * Check that the component of the (possibly multi-dimensional) array is either of a
-                 * primitive type or of a concrete class
-                 */
-                Klass componentKlass = targetKlass.getElementalType();
-                if (!componentKlass.isPrimitive() && !componentKlass.isConcrete()) {
-                    throw Meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Casting to an array with elements of an abstract type is not allowed");
-                }
-
                 InteropLibrary interopLibrary = InteropLibrary.getUncached();
                 if (!interopLibrary.hasArrayElements(value.rawForeignObject())) {
                     throw Meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Cannot cast a non-array value to an array type");

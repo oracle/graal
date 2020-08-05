@@ -231,15 +231,6 @@ public abstract class ToEspressoNode extends Node {
     @Specialization(guards = {"!isStaticObject(value)", "!interop.isNull(value)", "!isStringArray(klass)"})
     Object doForeignArray(Object value, ArrayKlass klass,
                     @SuppressWarnings("unused") @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
-        /*
-         * Check that the component of the (possibly multi-dimensional) array is either of a
-         * primitive type or of a concrete class
-         */
-        Klass componentKlass = klass.getElementalType();
-        if (!componentKlass.isPrimitive() && !componentKlass.isConcrete()) {
-            throw UnsupportedTypeException.create(new Object[]{value}, "Casting to an array with elements of an abstract type is not allowed");
-        }
-
         if (!interop.hasArrayElements(value)) {
             throw UnsupportedTypeException.create(new Object[]{value}, "Cannot cast a non-array value to an array type");
         }

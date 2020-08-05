@@ -82,8 +82,6 @@ public final class Polyglot {
      *             {@code targetClass}
      *             <li>if {@code value} is a foreign object, {@code targetClass} is a primitive type
      *             but {@code value} does not represent an object of this primitive type
-     *             <li>if {@code value} is a foreign object and {@code targetClass} is an array type
-     *             with abstract components
      *             <li>if {@code value} is a foreign object, {@code targetClass} is an array type
      *             but {@code value} does not have array elements
      *             <li>if {@code value} is a foreign object and {@code targetClass} is an abstract
