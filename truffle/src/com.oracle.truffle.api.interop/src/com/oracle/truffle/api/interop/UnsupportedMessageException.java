@@ -82,11 +82,6 @@ public final class UnsupportedMessageException extends InteropException {
      * @since 19.0
      */
     public static UnsupportedMessageException create() {
-        try {
-            throw new IllegalStateException();
-        } catch (IllegalStateException e) {
-            e.printStackTrace();
-        }
         return new UnsupportedMessageException();
     }
 
