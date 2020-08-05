@@ -98,8 +98,9 @@ public abstract class InteropException extends Exception {
      */
     @SuppressWarnings("sync-override")
     @Override
+    @TruffleBoundary
     public final Throwable fillInStackTrace() {
-        return this;
+        return super.fillInStackTrace();
     }
 
     private static void validateTruffleException(Throwable t) {

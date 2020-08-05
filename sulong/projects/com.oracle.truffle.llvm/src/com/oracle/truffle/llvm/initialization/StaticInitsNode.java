@@ -55,11 +55,13 @@ public abstract class StaticInitsNode extends LLVMStatementNode {
     @Specialization
     public void doInit(VirtualFrame frame,
                     @CachedContext(LLVMLanguage.class) LLVMContext ctx) {
-        if (ctx.loaderTraceStream() != null) {
-            traceExecution(ctx);
-        }
-        for (LLVMStatementNode stmt : statements) {
-            stmt.execute(frame);
+        synchronized (ctx) {
+            if (ctx.loaderTraceStream() != null) {
+                traceExecution(ctx);
+            }
+            for (LLVMStatementNode stmt : statements) {
+                stmt.execute(frame);
+            }
         }
     }
 
