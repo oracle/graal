@@ -569,7 +569,7 @@ final class Target_java_lang_ClassValue {
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = JavaLangSubstitutions.ClassValueInitializer.class)//
     private final ConcurrentMap<Class<?>, Object> values;
 
-    private static final Object dummyNull = new Object();
+    private static final Object NULL_MARKER = new Object();
 
     @Substitute
     private Target_java_lang_ClassValue() {
@@ -589,14 +589,14 @@ final class Target_java_lang_ClassValue {
         if (result == null) {
             Object newValue = computeValue(type);
             if (newValue == null) {
-                /* values can't store null, replace with dummyNull */
-                newValue = dummyNull;
+                /* values can't store null, replace with NULL_MARKER */
+                newValue = NULL_MARKER;
             }
             Object oldValue = values.putIfAbsent(type, newValue);
             result = oldValue != null ? oldValue : newValue;
         }
-        if (result == dummyNull) {
-            /* replace dummyNull back to real null */
+        if (result == NULL_MARKER) {
+            /* replace NULL_MARKER back to real null */
             result = null;
         }
         return result;
