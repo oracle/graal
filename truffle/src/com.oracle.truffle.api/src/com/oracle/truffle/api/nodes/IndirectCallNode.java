@@ -55,8 +55,6 @@ import com.oracle.truffle.api.Truffle;
  */
 public abstract class IndirectCallNode extends Node {
 
-    static final ThreadLocal<Object> CURRENT_CALL_NODE = new ThreadLocal<>();
-
     /**
      * Constructor for implementation subclasses.
      *
