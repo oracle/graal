@@ -30,7 +30,6 @@ import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.JDK;
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.JDK_8245443;
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.JDK_8246347;
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.JDK_8209961;
-import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.JDK_UPDATE;
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.JVMCI;
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.JVMCI_20_1_b01;
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.JVMCI_20_2_b01;
