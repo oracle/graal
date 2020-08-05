@@ -34,7 +34,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.impl.Accessor.RuntimeSupport;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
-import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -44,11 +43,6 @@ final class GraalRuntimeSupport extends RuntimeSupport {
 
     GraalRuntimeSupport(Object permission) {
         super(permission);
-    }
-
-    @Override
-    public IndirectCallNode createUncachedIndirectCall() {
-        return OptimizedIndirectCallNode.createUncached();
     }
 
     @Override
