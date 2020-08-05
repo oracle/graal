@@ -28,9 +28,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.profiles.ValueProfile;
 
@@ -73,17 +71,7 @@ public final class OptimizedIndirectCallNode extends IndirectCallNode {
             @Override
             @TruffleBoundary
             public Object call(CallTarget target, Object... arguments) {
-                // Use the encapsulating node as call site and clear it inside as we cross the call boundary
-                EncapsulatingNodeReference encapsulating = EncapsulatingNodeReference.getCurrent();
-                Node prev = encapsulating.set(null);
-                try {
-                    return ((OptimizedCallTarget) target).callIndirect(prev, arguments);
-                } catch (Throwable t) {
-                    GraalRuntimeAccessor.LANGUAGE.onThrowable(prev, null, t, null);
-                    throw OptimizedCallTarget.rethrow(t);
-                } finally {
-                    encapsulating.set(prev);
-                }
+                return target.call(arguments);
             }
         };
     }
