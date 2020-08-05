@@ -47,6 +47,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -66,6 +67,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.ModifiersProvider;
 import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.LookupDeclaredMethod;
+import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
@@ -212,6 +214,78 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         @Specialization(guards = "receiver.isPrimitive()")
         static Object doPrimitive(Klass receiver, Object[] arguments) throws UnsupportedMessageException {
             throw UnsupportedMessageException.create();
+        }
+
+        private static int convertLength(Object argument, ToEspressoNode toEspressoNode, Meta meta) throws UnsupportedTypeException {
+            int length = 0;
+            try {
+                length = (int) toEspressoNode.execute(argument, meta._int);
+            } catch (UnsupportedMessageException | UnsupportedTypeException e) {
+                throw UnsupportedTypeException.create(new Object[]{argument}, "Expected a single int");
+            }
+            if (length < 0) {
+                throw UnsupportedTypeException.create(new Object[]{argument}, "Expected a non-negative length");
+            }
+            return length;
+        }
+
+        private static int getLength(Object[] arguments, ToEspressoNode toEspressoNode, Meta meta) throws UnsupportedTypeException, ArityException {
+            if (arguments.length != 1) {
+                throw ArityException.create(1, arguments.length);
+            }
+            return convertLength(arguments[0], toEspressoNode, meta);
+        }
+
+        protected static boolean isPrimitiveArray(Klass receiver) {
+            return receiver instanceof ArrayKlass && ((ArrayKlass) receiver).getComponentType().isPrimitive();
+        }
+
+        protected static boolean isReferenceArray(Klass receiver) {
+            return receiver instanceof ArrayKlass && ((ArrayKlass) receiver).getComponentType() instanceof ObjectKlass;
+        }
+
+        protected static boolean isMultidimensionalArray(Klass receiver) {
+            return receiver instanceof ArrayKlass && ((ArrayKlass) receiver).getComponentType().isArray();
+        }
+
+        @Specialization(guards = "isPrimitiveArray(receiver)")
+        static StaticObject doPrimitiveArray(Klass receiver, Object[] arguments,
+                        @Shared("lengthConversion") @Cached ToEspressoNode toEspressoNode,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
+            ArrayKlass arrayKlass = (ArrayKlass) receiver;
+            if (arrayKlass.getComponentType().getJavaKind() == JavaKind.Void) {
+                throw UnsupportedMessageException.create();
+            }
+            int length = getLength(arguments, toEspressoNode, context.getMeta());
+            return InterpreterToVM.allocatePrimitiveArray((byte) arrayKlass.getComponentType().getJavaKind().getBasicType(), length, context.getMeta());
+        }
+
+        @Specialization(guards = "isReferenceArray(receiver)")
+        static StaticObject doReferenceArray(Klass receiver, Object[] arguments,
+                        @Shared("lengthConversion") @Cached ToEspressoNode toEspressoNode,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context) throws UnsupportedTypeException, ArityException {
+            ArrayKlass arrayKlass = (ArrayKlass) receiver;
+            int length = getLength(arguments, toEspressoNode, context.getMeta());
+            return InterpreterToVM.newReferenceArray(arrayKlass.getComponentType(), length);
+        }
+
+        @Specialization(guards = "isMultidimensionalArray(receiver)")
+        static StaticObject doMultidimensionalArray(Klass receiver, Object[] arguments,
+                        @Shared("lengthConversion") @Cached ToEspressoNode toEspressoNode,
+                        @CachedContext(EspressoLanguage.class) EspressoContext context) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
+            ArrayKlass arrayKlass = (ArrayKlass) receiver;
+            if (arrayKlass.getElementalType().getJavaKind() == JavaKind.Void) {
+                throw UnsupportedMessageException.create();
+            }
+            if (arrayKlass.getDimension() != arguments.length) {
+                throw ArityException.create(arrayKlass.getDimension(), arguments.length);
+            }
+            int[] dimensions = new int[arguments.length];
+            for (int i = 0; i < dimensions.length; ++i) {
+                dimensions[i] = convertLength(arguments[i], toEspressoNode, context.getMeta());
+            }
+
+            return context.getInterpreterToVM().newMultiArray(arrayKlass.getComponentType(), dimensions);
         }
     }
 
@@ -1095,7 +1169,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     /**
      * Returns an identifier for the nest this klass is in. In practice, the nest is identified by
      * its nest host.
-     * 
+     *
      * @return The nest host of this klass.
      */
     public Klass nest() {
