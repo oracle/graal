@@ -54,7 +54,7 @@ import com.oracle.truffle.api.nodes.RootNode;
  */
 public final class DefaultCallTarget implements RootCallTarget {
 
-    public static final String CALL_BOUNDARY_METHOD_PREFIX = "call";
+    public static final String CALL_BOUNDARY_METHOD = "callDirectOrIndirect";
     private final RootNode rootNode;
     private volatile boolean initialized;
 
@@ -91,19 +91,7 @@ public final class DefaultCallTarget implements RootCallTarget {
 
     @Override
     public Object call(Object... args) {
-        if (!this.initialized) {
-            initialize();
-        }
-        final DefaultVirtualFrame frame = new DefaultVirtualFrame(rootNode.getFrameDescriptor(), args);
-        DefaultFrameInstance callerFrame = getRuntime().pushFrame(frame, this, null);
-        try {
-            return rootNode.execute(frame);
-        } catch (Throwable t) {
-            DefaultRuntimeAccessor.LANGUAGE.onThrowable(null, this, t, frame);
-            throw t;
-        } finally {
-            getRuntime().popFrame(callerFrame);
-        }
+        return callDirectOrIndirect(null, args);
     }
 
     private void initialize() {
