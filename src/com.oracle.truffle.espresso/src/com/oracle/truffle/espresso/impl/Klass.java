@@ -35,6 +35,9 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -177,6 +180,30 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
             members.add(SUPER);
         }
         return new KeysArray(members.toArray(new String[members.size()]));
+    }
+
+    protected static boolean isObjectKlass(Klass receiver) {
+        return receiver instanceof ObjectKlass;
+    }
+
+    @ExportMessage
+    abstract static class IsInstantiable {
+        @SuppressWarnings("unused")
+        @Specialization(guards = "receiver.isPrimitive()")
+        static boolean doPrimitive(Klass receiver) {
+            return false;
+        }
+
+        @Specialization(guards = "isObjectKlass(receiver)")
+        static boolean doObject(Klass receiver) {
+            // TODO(goltsova): lookup the constructor, check that it's public
+            return receiver.isConcrete();
+        }
+
+        @Specialization(guards = "receiver.isArray()")
+        static boolean doArray(Klass receiver) {
+            return (receiver.getElementalType().isPrimitive() && receiver.getElementalType().getJavaKind() != JavaKind.Void) || receiver.getElementalType().isConcrete();
+        }
     }
 
     // endregion Interop
