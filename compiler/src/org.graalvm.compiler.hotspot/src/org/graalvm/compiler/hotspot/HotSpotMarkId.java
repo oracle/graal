@@ -28,9 +28,8 @@ package org.graalvm.compiler.hotspot;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.JDK;
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.JDK_8245443;
-import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.JDK_8246347;
-import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.JDK_8209961;
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.JVMCI;
+import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.JVMCI_PRERELEASE;
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.JVMCI_20_1_b01;
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.JVMCI_20_2_b01;
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.JVMCI_20_2_b04;
@@ -51,7 +50,7 @@ public enum HotSpotMarkId implements CompilationResult.MarkId {
     OSR_ENTRY(false),
     EXCEPTION_HANDLER_ENTRY(false),
     DEOPT_HANDLER_ENTRY(false),
-    DEOPT_MH_HANDLER_ENTRY(false, JVMCI ? jvmciGE(JVMCI_20_2_b01) : JDK_8246347),
+    DEOPT_MH_HANDLER_ENTRY(false, JVMCI ? jvmciGE(JVMCI_20_2_b01) : JDK >= 16),
     FRAME_COMPLETE(true, JVMCI ? jvmciGE(JVMCI_20_1_b01) : JDK_8245443),
     INVOKEINTERFACE(false),
     INVOKEVIRTUAL(false),
@@ -67,15 +66,15 @@ public enum HotSpotMarkId implements CompilationResult.MarkId {
     NARROW_OOP_BASE_ADDRESS(true, JDK > 9),
     CRC_TABLE_ADDRESS(true, JDK > 9),
     LOG_OF_HEAP_REGION_GRAIN_BYTES(true, JDK > 9),
-    VERIFY_OOPS(true, JVMCI ? jvmciGE(JVMCI_20_2_b04) : JDK_8209961),
-    VERIFY_OOP_COUNT_ADDRESS(true, JVMCI ? jvmciGE(JVMCI_20_2_b04) : JDK_8209961);
+    VERIFY_OOPS(true, JVMCI ? jvmciGE(JVMCI_20_2_b04) : JDK >= 16),
+    VERIFY_OOP_COUNT_ADDRESS(true, JVMCI ? jvmciGE(JVMCI_20_2_b04) : JDK >= 16);
 
     private final boolean isMarkAfter;
     @NativeImageReinitialize private Integer value;
     private final boolean optional;
 
     HotSpotMarkId(boolean isMarkAfter) {
-        this(isMarkAfter, false);
+        this(isMarkAfter, true);
     }
 
     HotSpotMarkId(boolean isMarkAfter, boolean required) {
@@ -88,7 +87,7 @@ public enum HotSpotMarkId implements CompilationResult.MarkId {
         Long result = HotSpotJVMCIRuntime.runtime().getConfigStore().getConstants().get("CodeInstaller::" + name());
         if (result != null) {
             return result.intValue();
-        } else if (!optional) {
+        } else if (!optional && !JVMCI_PRERELEASE) {
             throw shouldNotReachHere("Unsupported Mark " + name());
         }
         return null;
@@ -106,7 +105,7 @@ public enum HotSpotMarkId implements CompilationResult.MarkId {
     @Override
     public Object getId() {
         assert isAvailable() : this;
-        return getValue();
+        return value();
     }
 
     @Override
@@ -115,7 +114,7 @@ public enum HotSpotMarkId implements CompilationResult.MarkId {
     }
 
     public boolean isAvailable() {
-        return getValue() != null;
+        return value() != null;
     }
 
     @Override
