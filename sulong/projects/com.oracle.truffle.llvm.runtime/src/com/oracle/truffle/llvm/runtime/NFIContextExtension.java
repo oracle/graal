@@ -142,8 +142,10 @@ public final class NFIContextExtension implements ContextExtension {
             addNativeLibrary(externalLibrary);
             internalLibrariesAdded = true;
         }
-        for (ExternalLibrary l : nativeLibraries) {
-            addLibrary(l, context);
+        synchronized (nativeLibraries) {
+            for (ExternalLibrary l : nativeLibraries) {
+                addLibrary(l, context);
+            }
         }
     }
 
