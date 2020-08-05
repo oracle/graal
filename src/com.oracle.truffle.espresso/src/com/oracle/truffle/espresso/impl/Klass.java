@@ -198,8 +198,18 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
         @Specialization(guards = "isObjectKlass(receiver)")
         static boolean doObject(Klass receiver) {
-            // TODO(goltsova): lookup the constructor, check that it's public
-            return receiver.isConcrete();
+            if (receiver.isAbstract()) {
+                return false;
+            }
+/*
+ * Check that the class has a public constructor
+ */
+            for (Method m : receiver.getDeclaredMethods()) {
+                if (m.isPublic() && !m.isStatic() && m.getName().equals(Name._init_)) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         @Specialization(guards = "receiver.isArray()")
