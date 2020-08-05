@@ -234,8 +234,10 @@ import org.graalvm.wasm.ValueTypes;
 import org.graalvm.wasm.WasmCodeEntry;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunction;
+import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmTable;
 import org.graalvm.wasm.exception.WasmExecutionException;
 import org.graalvm.wasm.exception.WasmTrap;
 import org.graalvm.wasm.memory.WasmMemory;
@@ -607,14 +609,16 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     // Extract the function object.
                     stackPointer--;
                     final SymbolTable symtab = instance().symbolTable();
-                    final Object[] elements = instance().table().elements();
+                    final WasmTable table = instance().table();
+                    final Object[] elements = table.elements();
                     final int elementIndex = popInt(frame, stackPointer);
                     if (elementIndex < 0 || elementIndex >= elements.length) {
                         throw new WasmTrap(this, "Element index '" + elementIndex + "' out of table bounds.");
                     }
                     // Currently, table elements may only be functions.
                     // We can add a check here when this changes in the future.
-                    final WasmFunction function = (WasmFunction) elements[elementIndex];
+                    final WasmFunctionInstance functionInstance = (WasmFunctionInstance) elements[elementIndex];
+                    final WasmFunction function = functionInstance.function();
                     if (function == null) {
                         throw new WasmTrap(this, "Table element at index " + elementIndex + " is uninitialized.");
                     }
@@ -650,8 +654,8 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     stackPointer -= args.length;
 
                     trace("indirect call to function %s (%d args)", function, args.length);
-                    CallTarget target = instance().target(function.index());
-                    Object result = callNode.execute(target, args);
+                    final CallTarget target = functionInstance.target();
+                    final Object result = callNode.execute(target, args);
                     trace("return from indirect_call to function %s : %s", function, result);
                     // At the moment, WebAssembly functions may return up to one value.
                     // As per the WebAssembly specification, this restriction may be lifted in the

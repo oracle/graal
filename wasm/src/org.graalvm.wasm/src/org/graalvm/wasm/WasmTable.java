@@ -91,7 +91,7 @@ public final class WasmTable {
         elements[index] = function;
     }
 
-    public void initialize(int i, WasmFunction function) {
+    public void initialize(int i, WasmFunctionInstance function) {
         if (elements[i] != null) {
             throw new WasmValidationException("Table " + tableIndex + " already has an element at index " + i + ".");
         }
