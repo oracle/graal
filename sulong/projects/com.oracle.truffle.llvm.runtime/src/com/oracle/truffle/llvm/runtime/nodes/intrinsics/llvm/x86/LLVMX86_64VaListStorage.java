@@ -311,10 +311,8 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
     }
 
     @ExportMessage
-    @SuppressWarnings({"unused", "static-method"})
-    Object readGenericI64(@SuppressWarnings("unused") long offset,
-                    @CachedLibrary("this") InteropLibrary interopLib,
-                    @CachedLibrary(limit = "1") LLVMManagedReadLibrary nativeReadLibrary) {
+    @SuppressWarnings("static-method")
+    Object readGenericI64(long offset) {
         switch ((int) offset) {
             case X86_64BitVarArgs.OVERFLOW_ARG_AREA:
                 return overflowArgArea.getCurrentArgPtr();
@@ -327,15 +325,15 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
     // LLVMManagedWriteLibrary implementation
 
     @ExportMessage
-    @SuppressWarnings({"unused", "static-method"})
-    void writeI8(long offset, byte value) {
+    @SuppressWarnings("static-method")
+    void writeI8(@SuppressWarnings("unused") long offset, @SuppressWarnings("unused") byte value) {
         CompilerDirectives.transferToInterpreter();
         throw new UnsupportedOperationException("Should not get here");
     }
 
     @ExportMessage
-    @SuppressWarnings({"unused", "static-method"})
-    void writeI16(long offset, short value) {
+    @SuppressWarnings("static-method")
+    void writeI16(@SuppressWarnings("unused") long offset, @SuppressWarnings("unused") short value) {
         CompilerDirectives.transferToInterpreter();
         throw new UnsupportedOperationException("Should not get here");
     }
@@ -367,8 +365,8 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
     }
 
     @ExportMessage
-    @SuppressWarnings({"unused", "static-method"})
-    void writeGenericI64(long offset, Object value) {
+    @SuppressWarnings("static-method")
+    void writeGenericI64(@SuppressWarnings("unused") long offset, @SuppressWarnings("unused") Object value) {
         CompilerDirectives.transferToInterpreter();
         throw new UnsupportedOperationException("Should not get here");
     }
@@ -1000,16 +998,16 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
             // nop
         }
 
-        @SuppressWarnings({"static-method", "unused"})
+        @SuppressWarnings("static-method")
         @ExportMessage
-        public void copy(Object destVaList, int numberOfExplicitArguments) {
+        public void copy(@SuppressWarnings("unused") Object destVaList, @SuppressWarnings("unused") int numberOfExplicitArguments) {
             CompilerDirectives.transferToInterpreter();
             throw new UnsupportedOperationException("TODO");
         }
 
-        @SuppressWarnings({"static-method", "unused"})
+        @SuppressWarnings("static-method")
         @ExportMessage
-        public Object shift(Type type) {
+        public Object shift(@SuppressWarnings("unused") Type type) {
             CompilerDirectives.transferToInterpreter();
             throw new UnsupportedOperationException("TODO");
         }
@@ -1019,7 +1017,7 @@ public final class LLVMX86_64VaListStorage implements TruffleObject {
      * An abstraction for the two special areas in the va_list structure.
      */
     @ExportLibrary(LLVMManagedReadLibrary.class)
-    static abstract class ArgsArea implements TruffleObject {
+    abstract static class ArgsArea implements TruffleObject {
         final Object[] args;
 
         ArgsArea(Object[] args) {

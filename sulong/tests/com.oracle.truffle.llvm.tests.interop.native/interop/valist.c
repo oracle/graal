@@ -31,19 +31,19 @@
 #include <stdarg.h>
 
 int get_next_vaarg(va_list *p_va) {
-	return va_arg(*p_va, int);
+    return va_arg(*p_va, int);
 }
 
-int test_va_list_callback(int (*callback)(va_list*), ...) {
+int test_va_list_callback(int (*callback)(va_list *), ...) {
     va_list argp;
 
     va_start(argp, callback);
     int res = callback(&argp);
-	va_end(argp);
+    va_end(argp);
 
-	return res;
+    return res;
 }
 
-int test_va_list_callback3(int (*callback)(va_list*), int a0, int a1, int a2) {
-	return test_va_list_callback(callback, a0, a1, a2);
+int test_va_list_callback3(int (*callback)(va_list *), int a0, int a1, int a2) {
+    return test_va_list_callback(callback, a0, a1, a2);
 }
