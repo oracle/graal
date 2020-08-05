@@ -73,10 +73,7 @@ public final class OptimizedIndirectCallNode extends IndirectCallNode {
             @Override
             @TruffleBoundary
             public Object call(CallTarget target, Object... arguments) {
-                /*
-                 * Clear encapsulating node for uncached indirect call boundary. The encapsulating
-                 * node is not longer needed if a call boundary is crossed.
-                 */
+                // Use the encapsulating node as call site and clear it inside as we cross the call boundary
                 EncapsulatingNodeReference encapsulating = EncapsulatingNodeReference.getCurrent();
                 Node prev = encapsulating.set(null);
                 try {
