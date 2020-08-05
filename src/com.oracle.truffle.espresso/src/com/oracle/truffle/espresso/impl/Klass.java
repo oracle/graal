@@ -206,6 +206,15 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         }
     }
 
+    @ExportMessage
+    abstract static class Instantiate {
+        @SuppressWarnings("unused")
+        @Specialization(guards = "receiver.isPrimitive()")
+        static Object doPrimitive(Klass receiver, Object[] arguments) throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
+    }
+
     // endregion Interop
 
     static final Comparator<Klass> KLASS_ID_COMPARATOR = new Comparator<Klass>() {
