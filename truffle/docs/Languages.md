@@ -2,7 +2,7 @@ This page is intended to keep track of the growing number of Truffle language im
 
 ## Language implementations
 
-* [Graal.js](https://github.com/graalvm/graaljs), an ECMAScript 2017 compliant JavaScript implementation. *
+* [Graal.js](https://github.com/graalvm/graaljs), an ECMAScript 2020 compliant JavaScript implementation. *
 * [FastR](https://github.com/graalvm/fastr), an implementation of GNU R. *
 * [TruffleRuby](https://github.com/graalvm/truffleruby), an implementation of Ruby. *
 * [Sulong](https://github.com/oracle/graal/tree/master/sulong), an LLVM bitcode interpreter. *
