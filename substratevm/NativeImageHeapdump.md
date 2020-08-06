@@ -79,7 +79,6 @@ heap dump.
 
 ```
 $JAVA_HOME/bin/native-image SVMHeapDump -H:+AllowVMInspection
-Build on Server(pid: 41691, port: 61250)
 [svmheapdump:41691]    classlist:     412.03 ms,  2.52 GB
 [svmheapdump:41691]        (cap):   1,655.34 ms,  2.52 GB
 [svmheapdump:41691]        setup:   2,741.18 ms,  2.52 GB
@@ -188,7 +187,6 @@ $JAVA_HOME/bin/javac SVMHeapDumpAPI.java
 Then build a native executable:
 ```
 $JAVA_HOME/bin/ native-image SVMHeapDumpAPI
-Build on Server(pid: 41691, port: 61250)
 [svmheapdumpapi:41691]    classlist:     447.96 ms,  2.53 GB
 [svmheapdumpapi:41691]        (cap):   2,105.64 ms,  2.53 GB
 [svmheapdumpapi:41691]        setup:   3,010.19 ms,  2.53 GB

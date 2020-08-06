@@ -12,27 +12,27 @@ compared to a Java VM.
 
 The **Native Image builder** or `native-image` is a utility that processes all
 the classes of your application and their dependencies, including those from the
-JDK. It statically analyses these classes to determine which classes and methods
-are reachable during application execution. which ahead-of-time compiles it to a
-native executable for a specific operating system and architecture.  This entire
-process is called an **image build time** to clearly distinguish it from the
-compilation of Java source code to bytecode.
+JDK. It analyses these classes to determine which classes, methods and fields
+are reachable during application execution. It then ahead-of-time compiles all
+reachable code and data into a native executable for a specific operating system
+and architecture.  This entire process is called **image build time** to
+clearly distinguish it from the compilation of Java source code to bytecode.
 
-GraalVM Native Image supports JVM-based languages, e.g., Java, Scala,
-Clojure, Kotlin. The resulting native image can, optionally, execute dynamic
-languages like JavaScript, Ruby, R, or Python, but it does not pre-compile their code
-itself. Polyglot embeddings can also be compiled ahead-of-time. To inform
-`native-image` of guest languages used by an application, specify
-`--language:<languageId>` for each guest language used (e.g., `--language:js`).
+GraalVM Native Image supports JVM-based languages, e.g., Java, Scala, Clojure,
+Kotlin. The resulting native image can, optionally, execute dynamic languages
+like JavaScript, Ruby, R, or Python. Polyglot embeddings can also be compiled
+ahead-of-time. To inform `native-image` of guest languages used by an
+application, specify `--language:<languageId>` for each guest language used
+(e.g., `--language:js`).
 
 ### License
 GraalVM Native Image is licensed under the GPL 2 with Classpath Exception.
 
 ## Install Native Image
 
-Native Image is distributed as a separate installable and can be added to the core installation with the [GraalVM Updater]({{ "/docs/reference-manual/graal-updater/" | relative_url}}) tool.
+Native Image is distributed as a separate installable and can be added to the core installation with the [GraalVM Updater](https://www.graalvm.org/docs/reference-manual/gu/) tool.
 
-Run this command to install Native Image from GitHub:
+If you use GraalVM, run this command to install Native Image from GitHub:
 ```
 $ gu install native-image
 ```
@@ -40,25 +40,17 @@ $ gu install native-image
 After this additional step, the `native-image` executable will become available in
 the `bin` directory.
 
-Take a look at the [native image generation]({{ "/docs/examples/native-list-dir/" | relative_url}}) or [compiling a Java and Kotlin app ahead-of-time]({{ "/docs/examples/java-kotlin-aot/" | relative_url}}) samples.
+Take a look at the [native image generation](https://www.graalvm.org/docs/examples/native-list-dir/) or [compiling a Java and Kotlin app ahead-of-time](https://www.graalvm.org/docs/examples/java-kotlin-aot/) samples.
 
 ## Prerequisites
 
 For compilation `native-image` depends on the local toolchain, so please make
 sure: `glibc-devel`, `zlib-devel` (header files for the C library and `zlib`)
-and `gcc` are available on your system. For Linux platform, install `libstdc++`
+and `gcc` are available on your system. For Linux platform, install install `libstdc++-static`
 dependency additionally. For instance, on Oracle Linux run:
 ```
-yum install libstdc++ -static
+$ sudo yum install libstdc++-static
 ```
-
-Another prerequisite to consider is the maximum heap size. Physical memory for
-running a JVM-based application may be insufficient to build a native image. For
-server-based image building we allow to use 80% of the reported physical RAM for
-all servers together, but never more than 14GB per server (for exact details
-please consult the native-image source code). If you run with `--no-server`
-option, you will get the whole 80% of what is reported as physical RAM as the
-baseline. This mode respects `-Xmx` arguments additionally.
 
 #### Prerequisites for Using Native Image on Windows
 To make use of Native Image on Windows, follow the further recommendations. The
@@ -71,7 +63,7 @@ SDK 7.1:
 
 For GraalVM distribution based on JDK 11, you will need MSVC 2017 15.5.5 or later version.
 
-The last prerequisite, common for both GraalVM distribution based on JDK 11 and JDK 8, is the proper [Developer Command Prompt](https://docs.microsoft.com/en-us/cpp/build/building-on-the-command-line?view=vs-2019#developer_command_prompt_shortcuts) for your version of [Visual Studio](https://visualstudio.microsoft.com/vs/). Namely, it is should be the x64 Native Tools Command Prompt. Use Visual Studio 2017 or later.
+The last prerequisite, common for both GraalVM distribution based on JDK 11 and JDK 8, is the proper [Developer Command Prompt](https://docs.microsoft.com/en-us/cpp/build/building-on-the-command-line?view=vs-2019#developer_command_prompt_shortcuts) for your version of [Visual Studio](https://visualstudio.microsoft.com/vs/). On Windows the `native-image` tool only works when it is executed from the **x64 Native Tools Command Prompt**.
 
 ### How to Determine What Version of GraalVM an Image Is Generated With?
 
@@ -79,7 +71,6 @@ Assuming you have a Java class file _EmptyHello.class_ containing an empty main 
 and have generated an empty shared object `emptyhello` with GraalVM Native Image Generator utility of it:
 ```
 $ native-image -cp hello EmptyHello
-Build on Server(pid: 11228, port: 41223)
 [emptyhello:11228]    classlist:     149.59 ms
 ...
 ```
@@ -106,6 +97,19 @@ variant of the base (Community or Enterprise) used to build an image.
 The following command will query that information from an image:
 ```
 strings <path to native-image exe or shared object> | grep com.oracle.svm.core.VM
+```
+Here is an example output:
+```
+com.oracle.svm.core.VM.Target.LibC=com.oracle.svm.core.posix.linux.libc.GLibC
+com.oracle.svm.core.VM.Target.Platform=org.graalvm.nativeimage.Platform$LINUX_AMD64
+com.oracle.svm.core.VM.Target.StaticLibraries=liblibchelper.a|libnet.a|libffi.a|libextnet.a|libnio.a|libjava.a|libfdlibm.a|libzip.a|libjvm.a
+com.oracle.svm.core.VM=GraalVM 20.2.0 Java 11
+com.oracle.svm.core.VM.Target.Libraries=pthread|dl|z|rt
+com.oracle.svm.core.VM.Target.CCompiler=gcc|redhat|x86_64|10.2.1
+```
+If the image was build with Oracle GraalVM Enterprise Edition the output would instead contain:
+```
+com.oracle.svm.core.VM=GraalVM 20.2.0 Java 11 EE
 ```
 
 ## Ahead-of-time Compilation Limitations

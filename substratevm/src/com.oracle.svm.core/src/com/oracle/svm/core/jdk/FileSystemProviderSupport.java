@@ -411,7 +411,7 @@ final class Target_java_io_UnixFileSystem {
 
     /*
      * The prefix cache on Linux/MacOS only caches elements in the Java home directory, which does
-     * not exist at image run time. So we disable that cache completely, which is done by
+     * not exist at image runtime. So we disable that cache completely, which is done by
      * substituting the value of FileSystem.useCanonPrefixCache to false in the substitution below.
      */
     @Delete //

@@ -53,11 +53,11 @@ final class Target_java_nio_Bits_JDK8 {
                         WordFactory.unsigned(bytes), WordFactory.unsigned(elemSize));
     }
 
-    /* Ensure lazy initialization of page size happens at image run time. */
+    /* Ensure lazy initialization of page size happens at image runtime. */
     @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
     private static int pageSize = -1;
 
-    /* Ensure lazy initialization of maximum direct memory size happens at image run time. */
+    /* Ensure lazy initialization of maximum direct memory size happens at image runtime. */
     @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
     private static boolean memoryLimitSet = false;
     @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //

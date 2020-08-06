@@ -3,7 +3,7 @@
 Native Image  provides an API for the C language for initializing isolates and attaching threads for use with the entry point feature that is demonstrated [here](SubstrateVM.md#images-and-entry-points).
 The C API is available when  Native Image is built as a shared library and its declarations are included in the header file that is generated during the build:
 
-```
+```c
 /*
  * Structure representing an isolate. A pointer to such a structure can be
  * passed to an entry point as the execution context.

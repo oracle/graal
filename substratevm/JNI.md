@@ -66,7 +66,7 @@ The analysis is not obstructed by object handles because it can observe the enti
 
 ### Java-to-native Method Calls
 Methods declared with the `native` keyword have a JNI-compliant implementation in native code, but can be called like any other Java method. For example:
-```
+```c
 // Java declaration
 native int[] sort0(int[] array);
 // native declaration with JNI name mangling
@@ -91,7 +91,7 @@ The automatic initialization of this struct is prepared during the image build.
 ### Native-to-Java Method Calls
 Native code can invoke Java methods by first obtaining a `jmethodID` for the target method, and then using one of the `Call<Type>Method`, `CallStatic<Type>Method` or `CallNonvirtual<Type>Method` functions for the invocation.
 Each of these `Call...` functions is also available in a `Call...MethodA` and a `Call...MethodV` variant, which take arguments as an array or as a `va_list` instead of variadic arguments. For example:
-```
+```c
 jmethodID intcomparator_compare_method = (*env)->GetMethodID(env, intcomparator_class, "compare", "(II)I");
 jint result = (*env)->CallIntMethod(env, this, intcomparator_compare_method, a, b);
 ```
@@ -107,7 +107,7 @@ As another optimization, the call wrappers are able to efficiently restore the c
 
 ### Object Creation
 JNI provides two ways of creating Java objects, either by calling `AllocObject` to allocate memory and then using `CallVoidMethod` to invoke the constructor, or by using `NewObject` to create and initialize the object in a single step (or variants `NewObjectA` or `NewObjectV`). For example:
-```
+```c
 jclass calendarClass = (*env)->FindClass(env, "java/util/GregorianCalendar");
 jmethodID ctor = (*env)->GetMethodID(env, calendarClass, "<init>", "(IIIIII)V");
 jobject firstObject = (*env)->AllocObject(env, calendarClass);
@@ -121,10 +121,11 @@ In that case, the call wrapper allocates a new instance before invoking the actu
 
 ### Field Accesses
 Native code can access a Java field by obtaining its `jfieldID` and then using one of the `Get<Type>Field`, `Set<Type>Field`, `GetStatic<Type>Field` or `SetStatic<Type>Field` functions. For example:
-```
+```c
 jfieldID intsorter_comparator_field = (*env)->GetFieldID(env, intsorter_class, "comparator", "Lorg/example/sorter/IntComparator;");
 jobject value = (*env)->GetObjectField(env, self, intsorter_comparator_field);
 ```
+
 For a field that is accessible via JNI, its offset within an object (or within the static field area) is stored in the reflection metadata and is used as its `jfieldID`.
 The image build generates accessor methods for for fields of all primitive types and for object fields.
 These accessor methods perform the transition to Java code and back, and use unsafe loads or stores to directly manipulate the field value.

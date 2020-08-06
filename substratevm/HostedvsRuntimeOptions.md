@@ -19,7 +19,7 @@ be used both as hosted options (if you want to dump graphs of the boot image
 generator) and runtime options (if you want to dump graphs during dynamic
 compilation at runtime).
 
-GraalVM options that work as expected include `Dump`, `DumpOnError`, `Log`,
+The Graal compiler options that work as expected include `Dump`, `DumpOnError`, `Log`,
 `MethodFilter` and the options to specify file names and ports for the dump
 handlers.
 

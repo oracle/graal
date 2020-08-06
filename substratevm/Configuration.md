@@ -221,7 +221,6 @@ HELLO
 Build a native image as regularly, without a reflection configuration file and run a resulting image:
 ```
 $JAVA_HOME/bin/native-image ReflectionExample
-Build on Server(pid: 59625, port: 58819)
 [reflectionexample:59625]    classlist:     467.66 ms
 ...
 Note: Image 'reflectionexample' is a fallback image that requires a JDK for execution (use --no-fallback to suppress fallback image generation).

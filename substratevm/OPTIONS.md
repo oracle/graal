@@ -86,17 +86,4 @@ The `--language:python`, `--language:ruby` and `--language:R` polyglot macro opt
 | --dry-run                                                               | Output the command line that would be used for building.                             |
 | -V<key>=<value>                                                         | Provide values for placeholders in _native-image.properties_ files.                  |
 
-### Server Options
-
-| Option                                 | Description                                                                           |
-|----------------------------------------|---------------------------------------------------------------------------------------|
-| --no-server                            | Do not use server-based image building.                                                        |
-| --server-list                          | List current image-build servers.                                                     |
-| --server-list-details                  | List current image-build servers with more details.                                   |
-| --server-cleanup                       | Remove stale image-build servers entries.                                             |
-| --server-shutdown                      | Shut down image-build servers under current session ID.                               |
-| --server-shutdown-all                  | Shut down all image-build servers.                                                    |
-| --server-session=<custom-session-name> | Use custom session name instead of system provided session ID of the calling process. |
-| --verbose-server                       | Enable verbose output for image-build server handling.                                |
-
 Options to Native Image are also distinguished as hosted and runtime options. Continue reading to the [ Native Image Hosted and Runtime Options](HostedvsRuntimeOptions.md) guide.

@@ -1,4 +1,4 @@
-# Reflection on Native Image
+# Reflection Use in Native Images
 
 Java reflection support (the `java.lang.reflect.*` API) enables Java code to examine its own classes, methods and fields and their properties at runtime.
 
@@ -135,11 +135,11 @@ class RuntimeReflectionRegistrationFeature implements Feature {
 }
 
 ```
-### Use Reflection during Native Image Generation
+### Use of Reflection during Native Image Generation
 Reflection can be used without restrictions during native image generation, for example in static initializers.
 At this point, code can collect information about methods and fields and store them in own data structures, which are then reflection-free at run time.
 
-### Unsafe accesses
+### Unsafe Accesses
 The `Unsafe` class, although its use is discouraged, provides direct access to memory of Java objects. The `Unsafe.objectFieldOffset()` method provides the offset of a field within a Java object. This information is not available by default, but can be enabled with the `allowUnsafeAccess` attribute in the reflection configuration, for example:
 ```json
 "fields" : [ { "name" : "hash", "allowUnsafeAccess" : true }, ... ]
