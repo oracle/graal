@@ -1,4 +1,4 @@
-# Language implementations
+# Language Implementations
 
 This page is intended to keep track of the growing number of Truffle language implementations and experiments.
 The following language implementations exist already:

@@ -1,4 +1,4 @@
-# Splitting
+# Splitting Algorithm
 
 This guide gives an overview of the algorithm used in the
 implementation of Truffle call target splitting.
