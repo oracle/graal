@@ -1,14 +1,14 @@
 # Monomorphization Use Cases
 
-This document illustrates through examples how monomorphization can improve
+This guide demonstrates through examples how monomorphization can improve
 performance of dynamic languages without going into any detail on how
-monomorphization is implemented (described in ["Splitting"](Splitting.md)) or
-how to leverage monomorphization in your language implementation (described in
-["Reporting Polymorphism"](ReportingPolymorphism.md))
+monomorphization is implemented (described in the [Splitting](Splitting.md) guide) or
+how to leverage monomorphization in your language implementation (described in the
+[Reporting Polymorphism](ReportingPolymorphism.md) guide).
 
-## Monomorphization in a Nutshell
+## Monomorphization
 
-To better illustrate the benefits of monomorphization, let us first consider a
+To better illustrate the benefits of monomorphization, consider a
 small example written in JavaScript:
 
 ```
@@ -28,11 +28,11 @@ while (i < 1000) {
 }
 ```
 
-As we can see in this example, the `add` function is called from `callsAdd` once
-with integer arguments and once with string arguments.  Once `add` is executed
+As you can see in this example, the `add` function is called from `callsAdd` once
+with integer arguments and once with string arguments. Once `add` is executed
 enough times to be compiled its execution profile will show that the `+`
 operator has been executed with both integers and strings and thus handlers
-(i.e. type checks and execution) for both types will be compiled which has a
+(i.e., type checks and execution) for both types will be compiled which has a
 performance impact. This can be avoided by rewriting the example as follows:
 
 ```
@@ -67,16 +67,16 @@ performed at run time is what we call monomorphization. It is, in other words,
 automated run-time monomorphization of polymorphic nodes through AST
 duplication.
 
-## Example 1 - Monomorphization of arguments
+## Example 1 - Monomorphization of Arguments
 
 This example is an extended version of the illustration example from the
 previous section. The `add` function is still the target for monomorphization
 and is called from the `action` function 3 times with 3 sets of different
-arguments (numbers, strings and arrays). We execute the `action` function for 15
+arguments (numbers, strings and arrays). Execute the `action` function for 15
 seconds in order to have enough time for warmup, and afterwards execute it for
 60 seconds keeping track of how long each execution took, reporting finally the
-average. We execute this code twice: once with and once without monomorphization
-enabled, and report the output of these two runs as well as the speedup.
+average. Execute this code twice: once with and once without monomorphization
+enabled and report the output of these two runs as well as the speedup.
 
 ```
 function add(arg1, arg2) {
@@ -119,17 +119,16 @@ Output **with** monomorphization: 4.2421633923
 
 Speedup: ~5%
 
-## Example 2 - Monomorphization of indirect calls
+## Example 2 - Monomorphization of Indirect Calls
 
 This example is slightly more complicated and illustrates how monomorphization
-benefits higher order functions. In the example, we define the `insertionSort`
-function, which - given an array of items and a function for comparing these
-items - sorts the array using insertion sort. We define an array of 1000 random
+benefits higher order functions. In the example, the `insertionSort` function is
+defined, which - given an array of items and a function for comparing these
+items - sorts the array using insertion sort. Define an array of 1000 random
 double values between 0 and 1 and sort it four times using 4 different sorting
-methods (in the `action` function). Finally, as with the previous example, we
-warm up the `action` function for 15 second, and report the average execution
-time of this function over the next 60 seconds with and without
-monomorphization.
+methods (in the `action` function). Finally, as with the previous example, warm
+up the `action` function for 15 second, and report the average execution time of
+this function over the next 60 seconds with and without monomorphization.
 
 ```
 function insertionSort (items, comparator) {
