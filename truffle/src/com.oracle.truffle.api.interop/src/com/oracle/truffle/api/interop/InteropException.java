@@ -58,7 +58,6 @@ public abstract class InteropException extends Exception {
         validateTruffleException(cause);
     }
 
-    @TruffleBoundary
     InteropException(String message) {
         super(message);
     }
