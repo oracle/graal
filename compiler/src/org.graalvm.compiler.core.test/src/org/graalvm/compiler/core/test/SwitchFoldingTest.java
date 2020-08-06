@@ -32,6 +32,7 @@ import static org.objectweb.asm.Opcodes.GOTO;
 import static org.objectweb.asm.Opcodes.ICONST_0;
 import static org.objectweb.asm.Opcodes.ICONST_1;
 import static org.objectweb.asm.Opcodes.ICONST_5;
+import static org.objectweb.asm.Opcodes.ICONST_M1;
 import static org.objectweb.asm.Opcodes.IFLT;
 import static org.objectweb.asm.Opcodes.ILOAD;
 import static org.objectweb.asm.Opcodes.INVOKESTATIC;
@@ -578,9 +579,9 @@ public class SwitchFoldingTest extends GraalCompilerTest {
              *     IFLT L1
              *     ILOAD_1
              *     LOOKUPSWITCH
-             *       [1, 2, 5, 7] -> 
+             *       [1, 2] -> 
              *         return some int
-             *       5 ->
+             *       [5, 7] ->
              *         GOTO L1
              *       [3, 6, 9] ->
              *         GOTO L2 (Different blocks)
@@ -593,23 +594,45 @@ public class SwitchFoldingTest extends GraalCompilerTest {
              *       return 5
              * }
              * 
-             * Optimization should coalesce branches [0,3,4,6,8,9]
+             * Optimization should coalesce branches [5, 7] and  [3, 6, 9]
              */
             Label outMerge = new Label();
             Label inMerge = new Label();
             Label commonTarget = new Label();
+            Label def = new Label();
+
             int[] keys = new int[10];
             Label[] labels = new Label[10];
-            for (int i = 0; i < 10; i++) {
-                keys[i] = i;
-                if (i % 4 == 0) {
-                    labels[i] = commonTarget;
-                } else {
-                    labels[i] = new Label();
-                }
+
+            Label[] inMerges = new Label[3];
+            Label[] outMerges = new Label[2];
+            Label[] simple = new Label[2];
+
+            for (int i = 0; i < inMerges.length; i++) {
+                inMerges[i] = new Label();
             }
-            labels[5] = outMerge;
-            Label def = new Label();
+            for (int i = 0; i < simple.length; i++) {
+                simple[i] = new Label();
+            }
+            for (int i = 0; i < outMerges.length; i++) {
+                outMerges[i] = new Label();
+            }
+            for (int i = 0; i < keys.length; i++) {
+                keys[i] = i;
+            }
+            int in = 0;
+            int out = 0;
+            int s = 0;
+            labels[0] = commonTarget;
+            labels[1] = simple[s++];
+            labels[2] = simple[s++];
+            labels[3] = inMerges[in++];
+            labels[4] = commonTarget;
+            labels[5] = outMerges[out++];
+            labels[6] = inMerges[in++];
+            labels[7] = outMerges[out++];
+            labels[8] = commonTarget;
+            labels[9] = inMerges[in++];
 
             mv = cw.visitMethod(ACC_PUBLIC | ACC_STATIC, "m", "(ZI)I", null, null);
             mv.visitCode();
@@ -618,26 +641,37 @@ public class SwitchFoldingTest extends GraalCompilerTest {
 
             mv.visitIntInsn(ILOAD, 1);
             mv.visitLookupSwitchInsn(def, keys, labels);
-            for (int i = 0; i < 10; i++) {
-                mv.visitLabel(labels[i]);
-                if (i == 5) {
-                    mv.visitMethodInsn(INVOKESTATIC, GraalDirectives.class.getName().replace('.', '/'), "deoptimize", "()V", false);
-                }
-                if (i % 3 == 0) {
-                    mv.visitJumpInsn(GOTO, inMerge);
-                } else {
-                    mv.visitInsn(ICONST_0 + (i % 5));
-                    mv.visitInsn(IRETURN);
-                }
+
+            for (int i = 0; i < inMerges.length; i++) {
+                mv.visitLabel(inMerges[i]);
+                mv.visitJumpInsn(GOTO, inMerge);
             }
+            for (int i = 0; i < outMerges.length; i++) {
+                mv.visitLabel(outMerges[i]);
+                mv.visitJumpInsn(GOTO, outMerge);
+            }
+            for (int i = 0; i < simple.length; i++) {
+                mv.visitLabel(simple[i]);
+                mv.visitInsn(ICONST_0 + i);
+                mv.visitInsn(IRETURN);
+            }
+
             mv.visitLabel(def);
             mv.visitInsn(ICONST_1);
             mv.visitInsn(IRETURN);
+
             mv.visitLabel(inMerge);
             mv.visitInsn(ICONST_5);
             mv.visitInsn(IRETURN);
+
             mv.visitLabel(commonTarget);
             mv.visitJumpInsn(GOTO, inMerge);
+
+            mv.visitLabel(outMerge);
+            mv.visitMethodInsn(INVOKESTATIC, GraalDirectives.class.getName().replace('.', '/'), "deoptimize", "()V", false);
+            mv.visitInsn(ICONST_M1);
+            mv.visitInsn(IRETURN);
+
             mv.visitMaxs(3, 2);
             mv.visitEnd();
         }
