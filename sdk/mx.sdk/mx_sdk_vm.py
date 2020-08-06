@@ -623,15 +623,17 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists,
                         continue
                     src_member = src_zip.read(i)
                     if i.filename == 'lib/security/default.policy':
-                        if 'grant codeBase "jrt:/com.oracle.graal.graal_enterprise"'.encode('utf-8') in src_member:
-                            policy_result = 'unmodified'
-                        else:
+                        policy_result = 'unmodified'
+                        if 'grant codeBase "jrt:/com.oracle.graal.graal_enterprise"'.encode('utf-8') not in src_member:
                             policy_result = 'modified'
                             src_member += """
 grant codeBase "jrt:/com.oracle.graal.graal_enterprise" {
     permission java.security.AllPermission;
 };
-
+""".encode('utf-8')
+                        if 'grant codeBase "jrt:/org.graalvm.truffle"'.encode('utf-8') not in src_member:
+                            policy_result = 'modified'
+                            src_member += """
 grant codeBase "jrt:/org.graalvm.truffle" {
     permission java.security.AllPermission;
 };
@@ -648,16 +650,6 @@ grant codeBase "jrt:/org.graalvm.locator" {
   permission java.lang.RuntimePermission "getenv.*";
 };
 
-grant codeBase "file:${java.home}/languages/js/graaljs.jar" {
-    permission java.io.FilePermission "<<ALL FILES>>", "read";
-    permission java.lang.RuntimePermission "accessClassInPackage.sun.misc";
-    permission java.lang.RuntimePermission "accessDeclaredMembers";
-    permission java.lang.RuntimePermission "getenv.*";
-    permission java.lang.RuntimePermission "getClassLoader";
-    permission java.lang.reflect.ReflectPermission "suppressAccessChecks";
-    permission java.util.PropertyPermission "*", "read";
-};
-
 grant codeBase "file:${java.home}/languages/regex/tregex.jar" {
     permission java.util.PropertyPermission "*", "read";
     permission java.lang.RuntimePermission "accessClassInPackage.sun.misc";
@@ -667,6 +659,19 @@ grant codeBase "file:${java.home}/languages/regex/tregex.jar" {
 
 grant codeBase "file:${java.home}/languages/nfi/truffle-nfi.jar" {
     permission java.security.AllPermission;
+};
+""".encode('utf-8')
+                        if 'grant codeBase "file:${java.home}/languages/js/graaljs.jar"'.encode('utf-8') not in src_member:
+                            policy_result = 'modified'
+                            src_member += """
+grant codeBase "file:${java.home}/languages/js/graaljs.jar" {
+    permission java.io.FilePermission "<<ALL FILES>>", "read";
+    permission java.lang.RuntimePermission "accessClassInPackage.sun.misc";
+    permission java.lang.RuntimePermission "accessDeclaredMembers";
+    permission java.lang.RuntimePermission "getenv.*";
+    permission java.lang.RuntimePermission "getClassLoader";
+    permission java.lang.reflect.ReflectPermission "suppressAccessChecks";
+    permission java.util.PropertyPermission "*", "read";
 };
 """.encode('utf-8')
                     dst_zip.writestr(i, src_member)
