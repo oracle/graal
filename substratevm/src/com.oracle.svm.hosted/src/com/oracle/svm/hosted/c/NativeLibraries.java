@@ -324,7 +324,8 @@ public final class NativeLibraries {
         if (staticLibsDir != null) {
             libraryPaths.add(staticLibsDir.toString());
         } else {
-            if (!NativeImageOptions.ExitAfterRelocatableImageWrite.getValue()) {
+            if (!NativeImageOptions.ExitAfterRelocatableImageWrite.getValue() && !CAnnotationProcessorCache.Options.ExitAfterQueryCodeGeneration.getValue() &&
+                            !CAnnotationProcessorCache.Options.ExitAfterCAPCache.getValue()) {
                 /* Fail if we will statically link JDK libraries but do not have them available */
                 String libCMessage = "";
                 if (Platform.includedIn(Platform.LINUX.class)) {
