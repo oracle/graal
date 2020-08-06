@@ -44,6 +44,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.Simplifiable;
 import org.graalvm.compiler.graph.spi.SimplifierTool;
+import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
@@ -260,7 +261,7 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
 
         private boolean canRewire;
 
-        public MergeCoallesceBuilder(IntegerSwitchNode switchNode) {
+        MergeCoallesceBuilder(IntegerSwitchNode switchNode) {
             this.switchNode = switchNode;
         }
 
@@ -297,43 +298,47 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
             }
         }
 
-        public final boolean canRewire() {
+        final boolean canRewire() {
             return canRewire;
         }
 
-        public void tryMergeBranch(AbstractBeginNode begin, int i) {
+        void tryMergeBranch(AbstractBeginNode begin, int i) {
             tryMergeCommon(begin, false, i);
         }
 
-        public void tryMergeDefault(AbstractBeginNode begin) {
+        void tryMergeDefault(AbstractBeginNode begin) {
             tryMergeCommon(begin, true, MergeMarker.DEFAULT_KEY);
         }
 
         private void tryMergeCommon(AbstractBeginNode begin, boolean isDefault, int i) {
-            FixedNode next = begin.next();
-            if (next instanceof EndNode) {
-                EndNode endNode = (EndNode) next;
-                AbstractMergeNode merge = endNode.merge();
-                if ((merge instanceof MergeNode) && merge.phis().isEmpty()) {
-                    // Multiple keys wire to the same trivial merge.
-                    if (mergeKeys.containsKey(merge)) {
-                        mergeKeys.get(merge).update(i, endNode);
-                        canRewire = true;
-                    } else {
-                        MergeMarker indexes = new MergeMarker();
-                        indexes.update(i, endNode);
-                        mergeKeys.put(merge, indexes);
+            if (begin instanceof BeginNode && begin.hasNoUsages()) {
+                FixedNode next = begin.next();
+                if (next instanceof EndNode) {
+                    EndNode endNode = (EndNode) next;
+                    AbstractMergeNode merge = endNode.merge();
+                    if ((merge instanceof MergeNode) &&
+                                    merge.phis().isEmpty() &&
+                                    !merge.isUsedAsGuardInput()) {
+                        // Multiple keys wire to the same trivial merge.
+                        if (mergeKeys.containsKey(merge)) {
+                            mergeKeys.get(merge).update(i, endNode);
+                            canRewire = true;
+                        } else {
+                            MergeMarker indexes = new MergeMarker();
+                            indexes.update(i, endNode);
+                            mergeKeys.put(merge, indexes);
+                        }
+                        return;
                     }
-                    return;
                 }
             }
             if (!isDefault) {
                 assert i >= 0 && i < switchNode.keyCount();
-                newKeyData.add(new KeyData(switchNode.intKeyAt(i), switchNode.keyProbability(i), addNewSuccessor(begin, newSuccessors)));
+                addKeyData(addNewSuccessor(begin, newSuccessors), i);
             }
         }
 
-        public void prepareMerge() {
+        void prepareMerge() {
             canRewire = false;
 
             MapCursor<AbstractMergeNode, MergeMarker> cursor = mergeKeys.getEntries();
@@ -344,19 +349,23 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
                 MergeMarker marker = cursor.getValue();
                 if (marker.size() > 1 &&
                                 merge.forwardEndCount() == marker.visitedEnds()) {
-                    // Ensure that all end of the merge come from the switch.
+                    /* Ensure that all ends of the merge come from the switch. */
                     canRewire = true;
+
+                    /* Rewire anchoring links, etc... to the new node */
                     FixedNode next = merge.next();
                     merge.setNext(null);
                     AbstractBeginNode begin = BeginNode.begin(next);
-                    int successorIndex = addNewSuccessor(begin, newSuccessors);
+                    merge.replaceAtUsages(begin, InputType.Anchor);
+                    assert merge.hasNoUsages();
 
-                    // Rewire anchoring links, etc... to the new node
-                    merge.replaceAtUsages(begin);
+                    int successorIndex = addNewSuccessor(begin, newSuccessors);
                     if (marker.hasDefault()) {
-                        assert newDefaultSuccessor == -1;
-                        // Rewire all keys pointing to same target as default to the default
-                        // successor.
+                        assert newDefaultSuccessor == -1 : "Multiple default keys ?";
+                        /*
+                         * Rewire all keys pointing to same target as default to the default
+                         * successor, and delete said kys from the switch.
+                         */
                         newDefaultSuccessor = successorIndex;
                         for (int index : marker) {
                             if (index != MergeMarker.DEFAULT_KEY) {
@@ -365,24 +374,32 @@ public final class IntegerSwitchNode extends SwitchNode implements LIRLowerable,
                         }
                     } else {
                         for (int index : marker) {
+                            /* Rewire to the same successor */
                             AbstractBeginNode successorBegin = switchNode.keySuccessor(index);
                             assert successorBegin.next() instanceof EndNode;
                             assert ((EndNode) successorBegin.next()).merge() == merge;
-                            newKeyData.add(new KeyData(switchNode.intKeyAt(index), switchNode.keyProbability(index), successorIndex));
+                            addKeyData(successorIndex, index);
                         }
                     }
                 } else {
-                    // Merge has an end that is not part of the switch, or it could not merge one of
-                    // its
-                    // branches.
+                    /*
+                     * Merge has an end that is not part of the switch, or it could not merge one of
+                     * its branches.
+                     */
                     for (int i : marker) {
                         if (i != MergeMarker.DEFAULT_KEY) {
-                            newKeyData.add(new KeyData(switchNode.intKeyAt(i), switchNode.keyProbability(i), addNewSuccessor(switchNode.keySuccessor(i), newSuccessors)));
+                            addKeyData(addNewSuccessor(switchNode.keySuccessor(i), newSuccessors), i);
                         }
                     }
                 }
             }
-            newDefaultSuccessor = newDefaultSuccessor == -1 ? addNewSuccessor(switchNode.defaultSuccessor(), newSuccessors) : newDefaultSuccessor;
+            if (newDefaultSuccessor == -1) {
+                newDefaultSuccessor = addNewSuccessor(switchNode.defaultSuccessor(), newSuccessors);
+            }
+        }
+
+        private boolean addKeyData(int successorIndex, int index) {
+            return newKeyData.add(new KeyData(switchNode.intKeyAt(index), switchNode.keyProbability(index), successorIndex));
         }
 
         public void commit() {
