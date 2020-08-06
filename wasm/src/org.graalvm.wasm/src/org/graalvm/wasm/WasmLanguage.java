@@ -68,24 +68,25 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
         final byte[] data = request.getSource().getBytes().toByteArray();
         final WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy = WasmOptions.StoreConstantsPolicy.getValue(context.environment().getOptions());
         final WasmModule module = new WasmModule(moduleName, data, storeConstantsPolicy);
-        readModule(context, module, data);
-        context.registerModule(module);
+        final WasmInstance instance = new WasmInstance(module, storeConstantsPolicy);
+        readModule(context, instance);
+        context.registerModule(instance);
         return Truffle.getRuntime().createCallTarget(new WasmEmptyRootNode(this));
     }
 
-    private void readModule(WasmContext context, WasmModule module, byte[] data) {
-        int binarySize = data.length;
+    private void readModule(WasmContext context, WasmInstance instance) {
+        int binarySize = instance.module().data().length;
         final int asyncParsingBinarySize = WasmOptions.AsyncParsingBinarySize.getValue(context.environment().getOptions());
         if (binarySize < asyncParsingBinarySize) {
-            readModuleSynchronously(context, module, data);
+            readModuleSynchronously(context, instance);
         } else {
             final Runnable parsing = new Runnable() {
                 @Override
                 public void run() {
-                    readModuleSynchronously(context, module, data);
+                    readModuleSynchronously(context, instance);
                 }
             };
-            final String name = "wasm-parsing-thread(" + module.name() + ")";
+            final String name = "wasm-parsing-thread(" + instance.name() + ")";
             final int requestedSize = WasmOptions.AsyncParsingStackSize.getValue(context.environment().getOptions()) * 1000;
             final int defaultSize = Math.max(MIN_DEFAULT_STACK_SIZE, Math.min(2 * binarySize, MAX_DEFAULT_ASYNC_STACK_SIZE));
             final int stackSize = requestedSize != 0 ? requestedSize : defaultSize;
@@ -104,9 +105,10 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
         }
     }
 
-    private void readModuleSynchronously(WasmContext context, WasmModule module, byte[] data) {
-        final BinaryParser reader = new BinaryParser(this, module, context, data);
+    private void readModuleSynchronously(WasmContext context, WasmInstance instance) {
+        final BinaryParser reader = new BinaryParser(this, instance.module());
         reader.readModule();
+        reader.readInstance(context, instance);
     }
 
     @Override

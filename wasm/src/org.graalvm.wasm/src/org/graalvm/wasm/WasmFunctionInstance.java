@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,72 +40,52 @@
  */
 package org.graalvm.wasm;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.function.BiConsumer;
+import com.oracle.truffle.api.CallTarget;
+import org.graalvm.wasm.nodes.WasmIndirectCallNode;
 
-import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
-/**
- * Represents a parsed and validated WebAssembly module, which has not yet been instantiated.
- */
-@SuppressWarnings("static-method")
-public final class WasmModule extends SymbolTable {
-    private final String name;
-    private final WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy;
-    private final ArrayList<BiConsumer<WasmContext, WasmInstance>> linkActions;
-    @CompilationFinal(dimensions = 1) private byte[] data;
-    @CompilationFinal private boolean isParsed;
+@ExportLibrary(InteropLibrary.class)
+public class WasmFunctionInstance implements TruffleObject {
+    private final WasmFunction function;
+    private final CallTarget target;
 
-    public WasmModule(String name, byte[] data, WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy) {
-        super();
-        this.name = name;
-        this.storeConstantsPolicy = storeConstantsPolicy;
-        this.linkActions = new ArrayList<>();
-        this.data = data;
-        this.isParsed = false;
-    }
-
-    @Override
-    protected WasmModule module() {
-        return this;
-    }
-
-    public void setParsed() {
-        isParsed = true;
-    }
-
-    public boolean isParsed() {
-        return isParsed;
-    }
-
-    public SymbolTable symbolTable() {
-        return this;
-    }
-
-    public String name() {
-        return name;
-    }
-
-    public byte[] data() {
-        return data;
-    }
-
-    public List<BiConsumer<WasmContext, WasmInstance>> linkActions() {
-        return Collections.unmodifiableList(linkActions);
-    }
-
-    public void addLinkAction(BiConsumer<WasmContext, WasmInstance> action) {
-        linkActions.add(action);
-    }
-
-    public WasmOptions.StoreConstantsPolicyEnum storeConstantsPolicy() {
-        return storeConstantsPolicy;
+    /**
+     * Represents a WebAssembly function.
+     */
+    public WasmFunctionInstance(WasmFunction function, CallTarget target) {
+        this.function = function;
+        this.target = target;
     }
 
     @Override
     public String toString() {
-        return "wasm-module(" + name + ")";
+        return name();
+    }
+
+    public String name() {
+        return function.name();
+    }
+
+    public WasmFunction function() {
+        return function;
+    }
+
+    public CallTarget target() {
+        return target;
+    }
+
+    @ExportMessage
+    boolean isExecutable() {
+        return true;
+    }
+
+    @ExportMessage
+    Object execute(Object[] arguments, @Cached WasmIndirectCallNode callNode) {
+        return callNode.execute(target, arguments);
     }
 }
