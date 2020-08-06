@@ -26,6 +26,7 @@ const NATIVE_IMAGE_COMPONENT: string = 'GraalVM Native Image Component';
 const PYTHON_COMPONENT: string = 'GraalVM Python Component';
 const R_COMPONENT: string = 'GraalVM R Component';
 const RUBY_COMPONENT: string = 'GraalVM Ruby Component';
+const DONT_ASK_AGAIN: string = "Don't Ask Again";
 
 export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(vscode.commands.registerCommand('extension.graalvm.selectGraalVMHome', () => {
@@ -147,10 +148,11 @@ function config() {
 			missingComponents.push('ruby');
 			componentName = RUBY_COMPONENT;
 		}
-		if (missingComponents.length > 0) {
+		const askForMissingComponents = vscode.workspace.getConfiguration('graalvm').get('checkForMissingComponents') as boolean;
+		if (missingComponents.length > 0 && askForMissingComponents) {
 			if (missingComponents.length > 1) {
 				const itemText = INSTALL + OPTIONAL_COMPONENTS;
-				vscode.window.showInformationMessage('Optional GraalVM components are not installed in your GraalVM.', itemText).then(value => {
+				vscode.window.showInformationMessage('Optional GraalVM components are not installed in your GraalVM.', itemText, DONT_ASK_AGAIN).then(value => {
 					switch (value) {
 						case itemText:
 							vscode.commands.executeCommand('extension.graalvm.installGraalVMComponent');
@@ -161,11 +163,14 @@ function config() {
 								watcher.close();
 							});
 							break;
+						case DONT_ASK_AGAIN:
+							vscode.workspace.getConfiguration('graalvm').update('checkForMissingComponents', false, true);
+							break;
 					}
 				});
 			} else {
 				const itemText = INSTALL + componentName;
-				vscode.window.showInformationMessage(componentName + ' is not installed in your GraalVM.', itemText).then(value => {
+				vscode.window.showInformationMessage(componentName + ' is not installed in your GraalVM.', itemText, DONT_ASK_AGAIN).then(value => {
 					switch (value) {
 						case itemText:
 							vscode.commands.executeCommand('extension.graalvm.installGraalVMComponent', missingComponents[0]);
@@ -175,6 +180,9 @@ function config() {
 								rubyConfig(graalVMHome);
 								watcher.close();
 							});
+							break;
+						case DONT_ASK_AGAIN:
+							vscode.workspace.getConfiguration('graalvm').update('checkForMissingComponents', false, true);
 							break;
 					}
 				});
