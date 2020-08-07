@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.nodes.helper;
 
 import static com.oracle.truffle.espresso.nodes.quick.QuickNode.nullCheck;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -33,6 +34,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -84,15 +86,17 @@ public abstract class AbstractSetFieldNode extends Node {
 
     protected void setForeignField(StaticObject receiver, Object fieldValue,
                     InteropLibrary interopLibrary,
-                    EspressoContext context) {
+                    EspressoContext context, BranchProfile error) {
         assert field.getDeclaringKlass().isAssignableFrom(receiver.getKlass());
         assert receiver.isForeignObject();
         assert !(fieldValue instanceof StaticObject) || !((StaticObject) fieldValue).isForeignObject();
         try {
             interopLibrary.writeMember(receiver.rawForeignObject(), fieldName, fieldValue);
         } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+            error.enter();
             throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_NoSuchFieldError, "Foreign object has no writable field " + fieldName);
         } catch (UnsupportedTypeException e) {
+            error.enter();
             throw Meta.throwExceptionWithMessage(context.getMeta().java_lang_ClassCastException,
                             "Could not cast the value to the actual type of the foreign field " + fieldName);
         }
@@ -122,8 +126,9 @@ abstract class IntSetFieldNode extends AbstractSetFieldNode {
     @Specialization(guards = {"receiver.isForeignObject()"}, limit = "CACHED_LIBRARY_LIMIT")
     void doForeign(StaticObject receiver, int fieldValue,
                     @CachedLibrary("receiver.rawForeignObject()") InteropLibrary interopLibrary,
-                    @CachedContext(EspressoLanguage.class) EspressoContext context) {
-        setForeignField(receiver, fieldValue, interopLibrary, context);
+                    @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @Cached BranchProfile error) {
+        setForeignField(receiver, fieldValue, interopLibrary, context, error);
     }
 }
 
@@ -150,8 +155,9 @@ abstract class BooleanSetFieldNode extends AbstractSetFieldNode {
     @Specialization(guards = {"receiver.isForeignObject()"}, limit = "CACHED_LIBRARY_LIMIT")
     void doForeign(StaticObject receiver, boolean fieldValue,
                     @CachedLibrary("receiver.rawForeignObject()") InteropLibrary interopLibrary,
-                    @CachedContext(EspressoLanguage.class) EspressoContext context) {
-        setForeignField(receiver, fieldValue, interopLibrary, context);
+                    @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @Cached BranchProfile error) {
+        setForeignField(receiver, fieldValue, interopLibrary, context, error);
     }
 }
 
@@ -178,8 +184,9 @@ abstract class CharSetFieldNode extends AbstractSetFieldNode {
     @Specialization(guards = {"receiver.isForeignObject()"}, limit = "CACHED_LIBRARY_LIMIT")
     void doForeign(StaticObject receiver, char fieldValue,
                     @CachedLibrary("receiver.rawForeignObject()") InteropLibrary interopLibrary,
-                    @CachedContext(EspressoLanguage.class) EspressoContext context) {
-        setForeignField(receiver, fieldValue, interopLibrary, context);
+                    @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @Cached BranchProfile error) {
+        setForeignField(receiver, fieldValue, interopLibrary, context, error);
     }
 }
 
@@ -206,8 +213,9 @@ abstract class ShortSetFieldNode extends AbstractSetFieldNode {
     @Specialization(guards = {"receiver.isForeignObject()"}, limit = "CACHED_LIBRARY_LIMIT")
     void doForeign(StaticObject receiver, short fieldValue,
                     @CachedLibrary("receiver.rawForeignObject()") InteropLibrary interopLibrary,
-                    @CachedContext(EspressoLanguage.class) EspressoContext context) {
-        setForeignField(receiver, fieldValue, interopLibrary, context);
+                    @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @Cached BranchProfile error) {
+        setForeignField(receiver, fieldValue, interopLibrary, context, error);
     }
 }
 
@@ -234,8 +242,9 @@ abstract class ByteSetFieldNode extends AbstractSetFieldNode {
     @Specialization(guards = {"receiver.isForeignObject()"}, limit = "CACHED_LIBRARY_LIMIT")
     void doForeign(StaticObject receiver, byte fieldValue,
                     @CachedLibrary("receiver.rawForeignObject()") InteropLibrary interopLibrary,
-                    @CachedContext(EspressoLanguage.class) EspressoContext context) {
-        setForeignField(receiver, fieldValue, interopLibrary, context);
+                    @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @Cached BranchProfile error) {
+        setForeignField(receiver, fieldValue, interopLibrary, context, error);
     }
 }
 
@@ -262,8 +271,9 @@ abstract class LongSetFieldNode extends AbstractSetFieldNode {
     @Specialization(guards = {"receiver.isForeignObject()"}, limit = "CACHED_LIBRARY_LIMIT")
     void doForeign(StaticObject receiver, long fieldValue,
                     @CachedLibrary("receiver.rawForeignObject()") InteropLibrary interopLibrary,
-                    @CachedContext(EspressoLanguage.class) EspressoContext context) {
-        setForeignField(receiver, fieldValue, interopLibrary, context);
+                    @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @Cached BranchProfile error) {
+        setForeignField(receiver, fieldValue, interopLibrary, context, error);
     }
 }
 
@@ -290,8 +300,9 @@ abstract class FloatSetFieldNode extends AbstractSetFieldNode {
     @Specialization(guards = {"receiver.isForeignObject()"}, limit = "CACHED_LIBRARY_LIMIT")
     void doForeign(StaticObject receiver, float fieldValue,
                     @CachedLibrary("receiver.rawForeignObject()") InteropLibrary interopLibrary,
-                    @CachedContext(EspressoLanguage.class) EspressoContext context) {
-        setForeignField(receiver, fieldValue, interopLibrary, context);
+                    @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @Cached BranchProfile error) {
+        setForeignField(receiver, fieldValue, interopLibrary, context, error);
     }
 }
 
@@ -318,8 +329,9 @@ abstract class DoubleSetFieldNode extends AbstractSetFieldNode {
     @Specialization(guards = {"receiver.isForeignObject()"}, limit = "CACHED_LIBRARY_LIMIT")
     void doForeign(StaticObject receiver, double fieldValue,
                     @CachedLibrary("receiver.rawForeignObject()") InteropLibrary interopLibrary,
-                    @CachedContext(EspressoLanguage.class) EspressoContext context) {
-        setForeignField(receiver, fieldValue, interopLibrary, context);
+                    @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @Cached BranchProfile error) {
+        setForeignField(receiver, fieldValue, interopLibrary, context, error);
     }
 }
 
@@ -346,7 +358,8 @@ abstract class ObjectSetFieldNode extends AbstractSetFieldNode {
     @Specialization(guards = {"receiver.isForeignObject()"}, limit = "CACHED_LIBRARY_LIMIT")
     void doForeign(StaticObject receiver, StaticObject fieldValue,
                     @CachedLibrary("receiver.rawForeignObject()") InteropLibrary interopLibrary,
-                    @CachedContext(EspressoLanguage.class) EspressoContext context) {
-        setForeignField(receiver, fieldValue.isForeignObject() ? fieldValue.rawForeignObject() : fieldValue, interopLibrary, context);
+                    @CachedContext(EspressoLanguage.class) EspressoContext context,
+                    @Cached BranchProfile error) {
+        setForeignField(receiver, fieldValue.isForeignObject() ? fieldValue.rawForeignObject() : fieldValue, interopLibrary, context, error);
     }
 }
