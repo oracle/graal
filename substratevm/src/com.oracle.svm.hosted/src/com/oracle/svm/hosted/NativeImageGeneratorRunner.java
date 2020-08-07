@@ -84,6 +84,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
     public static void main(String[] args) {
         ArrayList<String> arguments = new ArrayList<>(Arrays.asList(args));
         final String[] classPath = extractImagePathEntries(arguments, SubstrateOptions.IMAGE_CLASSPATH_PREFIX);
+        final String[] modulePath = extractImagePathEntries(arguments, SubstrateOptions.IMAGE_MODULEPATH_PREFIX);
         int watchPID = extractWatchPID(arguments);
         TimerTask timerTask = null;
         if (watchPID >= 0) {
@@ -110,7 +111,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
         }
         int exitStatus;
         try {
-            ImageClassLoader nativeImageClassLoaderSupport = installNativeImageClassLoader(classPath, new String[0]);
+            ImageClassLoader nativeImageClassLoaderSupport = installNativeImageClassLoader(classPath, modulePath);
             exitStatus = new NativeImageGeneratorRunner().build(arguments.toArray(new String[0]), nativeImageClassLoaderSupport);
         } finally {
             unhookCustomClassLoaders();
@@ -280,6 +281,7 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
             }
 
             String className = SubstrateOptions.Class.getValue(parsedHostedOptions);
+            String moduleName = SubstrateOptions.Module.getValue(parsedHostedOptions);
             if (imageKind.isExecutable && className.isEmpty()) {
                 throw UserError.abort("Must specify main entry point class when building " + imageKind + " native image. " +
                                 "Use '" + SubstrateOptionsParser.commandArgument(SubstrateOptions.Class, "<fully-qualified-class-name>") + "'.");
@@ -290,6 +292,13 @@ public class NativeImageGeneratorRunner implements ImageBuildTask {
                 Class<?> mainClass;
                 try {
                     Object jpmsModule = null;
+                    if (!moduleName.isEmpty()) {
+                        jpmsModule = classLoader.findModule(moduleName)
+                                        .orElseThrow(() -> {
+                                            String errorMsg = "Module " + moduleName + " for mainclass not found.";
+                                            return UserError.abort(errorMsg);
+                                        });
+                    }
                     mainClass = classLoader.loadClassFromModule(jpmsModule, className);
                 } catch (ClassNotFoundException ex) {
                     throw UserError.abort("Main entry point class '" + className + "' not found.");

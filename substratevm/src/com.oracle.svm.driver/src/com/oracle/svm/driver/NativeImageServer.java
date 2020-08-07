@@ -171,7 +171,7 @@ final class NativeImageServer extends NativeImage {
             return exitCode;
         }
 
-        int sendBuildRequest(LinkedHashSet<Path> imageCP, LinkedHashSet<String> imageArgs) {
+        int sendBuildRequest(LinkedHashSet<Path> imageCP, LinkedHashSet<Path> imagemp, LinkedHashSet<String> imageArgs) {
             int[] requestStatus = {1};
             withLockDirFileChannel(serverDir, lockFileChannel -> {
                 boolean abortedOnce = false;
@@ -204,7 +204,7 @@ final class NativeImageServer extends NativeImage {
 
                         LinkedHashSet<Path> imagecp = new LinkedHashSet<>(serverClasspath);
                         imagecp.addAll(imageCP);
-                        command.addAll(createImageBuilderArgs(imageArgs, imagecp));
+                        command.addAll(createImageBuilderArgs(imageArgs, imagecp, imagemp));
 
                         showVerboseMessage(isVerbose(), "SendBuildRequest [");
                         showVerboseMessage(isVerbose(), String.join("\n", command));
@@ -738,7 +738,7 @@ final class NativeImageServer extends NativeImage {
     }
 
     @Override
-    protected int buildImage(List<String> javaArgs, LinkedHashSet<Path> bcp, LinkedHashSet<Path> cp, LinkedHashSet<String> imageArgs, LinkedHashSet<Path> imagecp) {
+    protected int buildImage(List<String> javaArgs, LinkedHashSet<Path> bcp, LinkedHashSet<Path> cp, LinkedHashSet<String> imageArgs, LinkedHashSet<Path> imagecp, LinkedHashSet<Path> imagemp) {
         boolean printFlags = imageArgs.stream().anyMatch(arg -> arg.contains(enablePrintFlags) || arg.contains(enablePrintFlagsWithExtraHelp));
         if (useServer && !printFlags && !useDebugAttach()) {
             AbortBuildSignalHandler signalHandler = new AbortBuildSignalHandler();
@@ -751,7 +751,7 @@ final class NativeImageServer extends NativeImage {
                 /* Send image build job to server */
                 showMessage("Build on " + server);
                 building = server;
-                int status = server.sendBuildRequest(imagecp, imageArgs);
+                int status = server.sendBuildRequest(imagecp, imagemp, imageArgs);
                 if (!server.isAlive()) {
                     /* If server does not respond after image-build -> cleanup */
                     cleanupServers(false, false, true);
@@ -759,7 +759,7 @@ final class NativeImageServer extends NativeImage {
                 return status;
             }
         }
-        return super.buildImage(javaArgs, bcp, cp, imageArgs, imagecp);
+        return super.buildImage(javaArgs, bcp, cp, imageArgs, imagecp, imagemp);
     }
 
     private static String imageServerUID(Path javaExecutable, List<String> vmArgs, List<Collection<Path>> builderPaths) {

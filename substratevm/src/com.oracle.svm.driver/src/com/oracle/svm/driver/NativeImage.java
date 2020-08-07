@@ -69,7 +69,6 @@ import java.util.jar.JarFile;
 import java.util.jar.Manifest;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.hosted.NativeImageGeneratorRunner;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ProcessProperties;
@@ -88,6 +87,7 @@ import com.oracle.svm.driver.MacroOption.EnabledOption;
 import com.oracle.svm.driver.MacroOption.MacroOptionKind;
 import com.oracle.svm.driver.MacroOption.Registry;
 import com.oracle.svm.hosted.AbstractNativeImageClassLoaderSupport;
+import com.oracle.svm.hosted.NativeImageGeneratorRunner;
 import com.oracle.svm.hosted.NativeImageSystemClassLoader;
 
 public class NativeImage {
@@ -166,6 +166,7 @@ public class NativeImage {
         return oR + option.getName() + "=";
     }
 
+    final String oHModule = oH(SubstrateOptions.Module);
     final String oHClass = oH(SubstrateOptions.Class);
     final String oHName = oH(SubstrateOptions.Name);
     final String oHPath = oH(SubstrateOptions.Path);
@@ -198,6 +199,8 @@ public class NativeImage {
     private final ArrayList<String> imageBuilderJavaArgs = new ArrayList<>();
     private final LinkedHashSet<Path> imageClasspath = new LinkedHashSet<>();
     private final LinkedHashSet<Path> imageProvidedClasspath = new LinkedHashSet<>();
+    private final LinkedHashSet<Path> imageModulePath = new LinkedHashSet<>();
+    private final LinkedHashSet<Path> imageProvidedModulePath = new LinkedHashSet<>();
     private final ArrayList<String> customJavaArgs = new ArrayList<>();
     private final LinkedHashSet<String> customImageBuilderArgs = new LinkedHashSet<>();
     private final LinkedHashSet<Path> customImageClasspath = new LinkedHashSet<>();
@@ -523,7 +526,8 @@ public class NativeImage {
             List<Path> result = new ArrayList<>();
             result.addAll(getJars(rootDir.resolve(Paths.get("lib", "jvmci")), "graal-sdk", "graal", "enterprise-graal"));
             result.addAll(getJars(rootDir.resolve(Paths.get("lib", "truffle")), "truffle-api"));
-            //result.addAll(getJars(rootDir.resolve(Paths.get("lib", "svm", "builder")))); // TODO also support svm-llvm as module
+            // result.addAll(getJars(rootDir.resolve(Paths.get("lib", "svm", "builder")))); // TODO
+            // also support svm-llvm as module
             result.addAll(getJars(rootDir.resolve(Paths.get("lib", "svm", "builder")), "pointsto", "objectfile", "svm", "svm-enterprise"));
             return result;
         }
@@ -1088,10 +1092,11 @@ public class NativeImage {
             if (!jarOptionMode) {
                 /* Main-class from customImageBuilderArgs counts as explicitMainClass */
                 boolean explicitMainClass = customImageBuilderArgs.stream().anyMatch(arg -> arg.startsWith(oHClass));
+                Optional<String> mainClassModule = imageBuilderArgs.stream().filter(arg -> arg.startsWith(oHModule)).findFirst();
 
                 if (extraImageArgs.isEmpty()) {
-                    if (buildExecutable && (mainClass == null || mainClass.isEmpty())) {
-                        showError("Please specify class containing the main entry point method. (see --help)");
+                    if (buildExecutable && !mainClassModule.isPresent() && (mainClass == null || mainClass.isEmpty())) {
+                        showError("Please specify class (or <module>/<mainclass>) containing the main entry point method. (see --help)");
                     }
                 } else {
                     /* extraImageArgs main-class overrules previous main-class specification */
@@ -1108,8 +1113,14 @@ public class NativeImage {
                             /* Use main-class lower case as image name */
                             replaceArg(imageBuilderArgs, oHName, mainClass.toLowerCase());
                         } else if (imageBuilderArgs.stream().noneMatch(arg -> arg.startsWith(oHName))) {
-                            /* Although very unlikely, report missing image-name if needed. */
-                            throw showError("Missing image-name. Use " + oHName + "<imagename> to provide one.");
+                            if (mainClassModule.isPresent()) {
+                                String[] optionParts = mainClassModule.get().split("=", 2);
+                                String mainClassModuleValue = optionParts[1].replace('/', '_');
+                                replaceArg(imageBuilderArgs, oHName, mainClassModuleValue.toLowerCase());
+                            } else {
+                                /* Although very unlikely, report missing image-name if needed. */
+                                throw showError("Missing image-name. Use " + oHName + "<imagename> to provide one.");
+                            }
                         }
                     }
                 } else {
@@ -1144,7 +1155,7 @@ public class NativeImage {
             /* Bypass regular build and proceed with fallback image building */
             return 2;
         }
-        return buildImage(imageBuilderJavaArgs, imageBuilderBootClasspath, imageBuilderClasspath, imageBuilderArgs, finalImageClasspath);
+        return buildImage(imageBuilderJavaArgs, imageBuilderBootClasspath, imageBuilderClasspath, imageBuilderArgs, finalImageClasspath, imageModulePath);
     }
 
     private boolean shouldAddCWDToCP() {
@@ -1177,15 +1188,21 @@ public class NativeImage {
     private String imageName;
     private Path imagePath;
 
-    protected static List<String> createImageBuilderArgs(LinkedHashSet<String> imageArgs, LinkedHashSet<Path> imagecp) {
+    protected static List<String> createImageBuilderArgs(LinkedHashSet<String> imageArgs, LinkedHashSet<Path> imagecp, LinkedHashSet<Path> imagemp) {
         List<String> result = new ArrayList<>();
-        result.add(SubstrateOptions.IMAGE_CLASSPATH_PREFIX);
-        result.add(imagecp.stream().map(ClasspathUtils::classpathToString).collect(Collectors.joining(File.pathSeparator)));
+        if (!imagecp.isEmpty()) {
+            result.add(SubstrateOptions.IMAGE_CLASSPATH_PREFIX);
+            result.add(imagecp.stream().map(ClasspathUtils::classpathToString).collect(Collectors.joining(File.pathSeparator)));
+        }
+        if (!imagemp.isEmpty()) {
+            result.add(SubstrateOptions.IMAGE_MODULEPATH_PREFIX);
+            result.add(imagemp.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator)));
+        }
         result.addAll(imageArgs);
         return result;
     }
 
-    protected int buildImage(List<String> javaArgs, LinkedHashSet<Path> bcp, LinkedHashSet<Path> cp, LinkedHashSet<String> imageArgs, LinkedHashSet<Path> imagecp) {
+    protected int buildImage(List<String> javaArgs, LinkedHashSet<Path> bcp, LinkedHashSet<Path> cp, LinkedHashSet<String> imageArgs, LinkedHashSet<Path> imagecp, LinkedHashSet<Path> imagemp) {
         /* Construct ProcessBuilder command from final arguments */
         ProcessBuilder pb = new ProcessBuilder();
         List<String> command = pb.command();
@@ -1206,7 +1223,7 @@ public class NativeImage {
              */
             command.addAll(Arrays.asList(SubstrateOptions.WATCHPID_PREFIX, "" + ProcessProperties.getProcessID()));
         }
-        command.addAll(createImageBuilderArgs(imageArgs, imagecp));
+        command.addAll(createImageBuilderArgs(imageArgs, imagecp, imagemp));
 
         showVerboseMessage(isVerbose() || dryRun, "Executing [");
         showVerboseMessage(isVerbose() || dryRun, SubstrateUtil.getShellCommandString(command, true));
@@ -1422,6 +1439,16 @@ public class NativeImage {
      */
     void addImageClasspath(Path classpath) {
         addImageClasspathEntry(imageClasspath, classpath, true);
+    }
+
+    /**
+     * For adding classpath elements that are automatically put on the image-classpath.
+     */
+    void addImageModulePath(Path mpEntry) {
+        if (!imageModulePath.contains(mpEntry)) {
+            imageModulePath.add(mpEntry);
+            // processClasspathNativeImageMetaInf(mpEntry); TODO
+        }
     }
 
     /**
