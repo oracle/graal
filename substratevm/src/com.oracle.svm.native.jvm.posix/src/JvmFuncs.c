@@ -47,12 +47,11 @@
 /* Set by native-image during image build time. Indicates whether the built image is a static binary. */
 extern int __svm_vm_is_static_binary;
 /*
-    The way JDK checks IPv6 support on Linux involves checking if this function exists using JVM_FindLibraryEntry. That
-    function in turn calls dlsym, which is a bad idea in a static binary. Since this function is guaranteed to exist on
-    every POSIX platform we support, we ask the linker to provide us with the symbol value, which we will then return to
-    the test code.
+    The way JDK checks IPv6 support on Linux involves checking if inet_pton exists using JVM_FindLibraryEntry. That
+    function in turn calls dlsym, which is a bad idea in a static binary.
+    This header provides that symbol, allowing us to return its address through JVM_FindLibraryEntry.
 */
-int inet_pton(int af, const char *src, void *dst);
+#include <arpa/inet.h>
 
 #ifdef JNI_VERSION_9
     #define JVM_INTERFACE_VERSION 6
@@ -100,7 +99,7 @@ JNIEXPORT void* JNICALL JVM_FindLibraryEntry(void* handle, const char* name) {
         if (strcmp(name, "inet_pton") == 0) {
             return inet_pton;
         }
-        fprintf(stderr, "Internal error: JVM_FindLibraryEntry called from a static native image. Results may be unpredictable. Please report this issue to the SubstrateVM team.");
+        fprintf(stderr, "Internal error: JVM_FindLibraryEntry called from a static native image with symbol: %s. Results may be unpredictable. Please report this issue to the SubstrateVM team.", name);
         fflush(stderr);
         exit(1);
     } else {

@@ -93,7 +93,7 @@ public class VMFeature implements Feature {
             System.out.println("# Other libraries: " + String.join(",", nativeLibraries.getLibraries()));
         }
 
-        CGlobalData<PointerBase> isStaticBinaryMarker = CGlobalDataFactory.createWord(WordFactory.unsigned(SubstrateOptions.StaticExecutable.hasBeenSet() ? ~1 : 0), STATIC_BINARY_MARKER_SYMBOL_NAME);
+        CGlobalData<PointerBase> isStaticBinaryMarker = CGlobalDataFactory.createWord(WordFactory.unsigned(SubstrateOptions.StaticExecutable.getValue() ? 1 : 0), STATIC_BINARY_MARKER_SYMBOL_NAME);
         CGlobalDataFeature.singleton().registerAsAccessedOrGet(isStaticBinaryMarker);
     }
 
