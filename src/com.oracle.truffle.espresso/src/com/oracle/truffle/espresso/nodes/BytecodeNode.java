@@ -291,7 +291,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.quick.CheckCastNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.InstanceOfNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
-import com.oracle.truffle.espresso.nodes.quick.interop.GetFieldNodeGen;
+import com.oracle.truffle.espresso.nodes.quick.interop.QuickenedGetFieldNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.PutFieldNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InlinedGetterNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InlinedSetterNode;
@@ -1556,7 +1556,7 @@ public final class BytecodeNode extends EspressoMethodNode {
             if (bs.currentBC(curBCI) == QUICK) {
                 getField = nodes[bs.readCPI(curBCI)];
             } else {
-                getField = injectQuick(curBCI, GetFieldNodeGen.create(top, curBCI, field));
+                getField = injectQuick(curBCI, new QuickenedGetFieldNode(top, curBCI, field));
             }
         }
         return getField.execute(frame);
