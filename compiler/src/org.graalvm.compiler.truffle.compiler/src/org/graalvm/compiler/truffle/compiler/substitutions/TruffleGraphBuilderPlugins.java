@@ -25,7 +25,6 @@
 package org.graalvm.compiler.truffle.compiler.substitutions;
 
 import static java.lang.Character.toUpperCase;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.getRuntime;
 
 import java.util.ArrayList;
 import java.util.Collections;

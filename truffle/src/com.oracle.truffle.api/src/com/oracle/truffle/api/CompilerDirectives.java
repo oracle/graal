@@ -105,8 +105,6 @@ public final class CompilerDirectives {
      * Returns a boolean value indicating whether the method is executed in the first tier Truffle
      * compilation.
      *
-     * {@link PolyglotCompilerOptions#MultiTier}
-     *
      * @return {@code true} when executed in the first tier Truffle compilation, {@code false}
      *         otherwise.
      * @since 20.3
