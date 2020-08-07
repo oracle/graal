@@ -174,11 +174,12 @@ public class BackgroundCompileQueue {
     }
 
     public Collection<OptimizedCallTarget> getQueuedTargets(EngineData engine) {
-        if (getQueueSize() == 0) {
+        IdlingPriorityBlockingQueue<Runnable> queue = this.compilationQueue;
+        if (getQueueSize() == 0 || queue == null) {
             return Collections.emptyList();
         }
         List<OptimizedCallTarget> queuedTargets = new ArrayList<>();
-        RequestFutureTask<?>[] array = compilationQueue.toArray(new RequestFutureTask<?>[0]);
+        RequestFutureTask<?>[] array = queue.toArray(new RequestFutureTask<?>[0]);
         for (RequestFutureTask<?> task : array) {
             OptimizedCallTarget target = task.request.targetRef.get();
             if (target != null && target.engine == engine) {
