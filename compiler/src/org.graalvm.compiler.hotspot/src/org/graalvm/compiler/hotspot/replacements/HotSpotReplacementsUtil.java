@@ -202,6 +202,7 @@ public class HotSpotReplacementsUtil {
      */
     @Fold
     public static int doingUnsafeAccessOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        assert config.doingUnsafeAccessOffset != Integer.MAX_VALUE;
         return config.doingUnsafeAccessOffset;
     }
 
