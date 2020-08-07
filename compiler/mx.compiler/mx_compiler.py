@@ -1273,7 +1273,10 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
 
         vm_name = 'Server VM Graal'
         for d in _graal_config().jvmci_dists:
-            s = ':' + d.suite.name + '_' + d.suite.version()
+            version = d.suite.version()
+            s = ':' + d.suite.name
+            if version:
+                s += '_' + d.suite.version()
             if s not in vm_name:
                 vm_name = vm_name + s
 
@@ -1341,10 +1344,12 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
         with open(join(tmp_dst_jdk_dir, 'release.jvmci'), 'w') as fp:
             for d in _graal_config().jvmci_dists:
                 s = d.suite
-                print('{}={}'.format(d.name, s.vc.parent(s.dir)), file=fp)
+                if s.vc:
+                    print('{}={}'.format(d.name, s.vc.parent(s.dir)), file=fp)
             for d in _graal_config().boot_dists + _graal_config().truffle_dists:
                 s = d.suite
-                print('{}={}'.format(d.name, s.vc.parent(s.dir)), file=fp)
+                if s.vc:
+                    print('{}={}'.format(d.name, s.vc.parent(s.dir)), file=fp)
 
         assert exists(jvmlib), jvmlib + ' does not exist'
         out = mx.LinesOutputCapture()
