@@ -159,4 +159,12 @@ final class GraalRuntimeSupport extends RuntimeSupport {
         return OptimizedCallTarget.unsafeCast(value, type, condition, nonNull, exact);
     }
 
+    @Override
+    public void flushCompileQueue(Object runtimeData) {
+        EngineData engine = (EngineData) runtimeData;
+        for (OptimizedCallTarget target : GraalTruffleRuntime.getRuntime().getCompileQueue().getQueuedTargets(engine)) {
+            target.cancelCompilation("Polyglot engine was closed.");
+        }
+    }
+
 }
