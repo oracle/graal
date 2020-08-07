@@ -25,32 +25,31 @@ package com.oracle.truffle.espresso.nodes.quick.interop;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
-import com.oracle.truffle.espresso.nodes.helper.AbstractGetFieldNode;
+import com.oracle.truffle.espresso.nodes.helper.AbstractSetFieldNode;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
-import com.oracle.truffle.espresso.runtime.StaticObject;
 
-public final class QuickenedGetFieldNode extends QuickNode {
-    private final Field field;
+public final class QuickenedPutFieldNode extends QuickNode {
+    private final int slotCount;
 
-    @Child AbstractGetFieldNode getFieldNode;
+    @Child AbstractSetFieldNode setFieldNode;
 
-    public QuickenedGetFieldNode(int top, int callerBCI, Field field) {
+    public QuickenedPutFieldNode(int top, int callerBCI, Field field) {
         super(top, callerBCI);
         assert !field.isStatic();
-        this.getFieldNode = AbstractGetFieldNode.create(field);
-        this.field = field;
+        this.setFieldNode = AbstractSetFieldNode.create(field);
+        this.slotCount = field.getKind().getSlotCount();
     }
 
     @Override
-    public int execute(final VirtualFrame frame) {
+    public int execute(VirtualFrame frame) {
         // TODO: instrumentation
         BytecodeNode root = getBytecodesNode();
-        StaticObject receiver = nullCheck(root.peekAndReleaseObject(frame, top - 1));
-        return getFieldNode.getField(frame, root, receiver, top - 1) - 1; // -receiver
+        setFieldNode.setField(frame, root, top);
+        return -slotCount - 1; // -receiver
     }
 
     @Override
     public boolean producedForeignObject(VirtualFrame frame) {
-        return field.getKind().isObject() && getBytecodesNode().peekObject(frame, top - 1).isForeignObject();
+        return false;
     }
 }

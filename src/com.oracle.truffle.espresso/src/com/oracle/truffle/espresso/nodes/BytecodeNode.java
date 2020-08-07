@@ -291,8 +291,8 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.quick.CheckCastNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.InstanceOfNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
+import com.oracle.truffle.espresso.nodes.quick.interop.QuickenedPutFieldNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.QuickenedGetFieldNode;
-import com.oracle.truffle.espresso.nodes.quick.interop.PutFieldNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InlinedGetterNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InlinedSetterNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeDynamicCallSiteNode;
@@ -1559,7 +1559,7 @@ public final class BytecodeNode extends EspressoMethodNode {
                 getField = injectQuick(curBCI, new QuickenedGetFieldNode(top, curBCI, field));
             }
         }
-        return getField.execute(frame);
+        return getField.execute(frame) - Bytecodes.stackEffectOf(opcode);
     }
 
     public int quickenPutField(final VirtualFrame frame, int top, int curBCI, int opcode, Field field) {
@@ -1570,10 +1570,10 @@ public final class BytecodeNode extends EspressoMethodNode {
             if (bs.currentBC(curBCI) == QUICK) {
                 putField = nodes[bs.readCPI(curBCI)];
             } else {
-                putField = injectQuick(curBCI, PutFieldNodeGen.create(top, curBCI, field));
+                putField = injectQuick(curBCI, new QuickenedPutFieldNode(top, curBCI, field));
             }
         }
-        return putField.execute(frame);
+        return putField.execute(frame) - Bytecodes.stackEffectOf(opcode);
     }
 
     private QuickNode dispatchQuickened(int top, int curBCI, int opcode, Method resolutionSeed, boolean allowFieldAccessInlining) {
