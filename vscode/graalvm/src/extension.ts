@@ -106,6 +106,7 @@ function config() {
 		}
 		let env: any = termConfig.get(section);
 		env.GRAALVM_HOME = graalVMHome;
+		env.JAVA_HOME = graalVMHome;
 		let envPath = process.env.PATH;
 		if (envPath) {
 			if (!envPath.includes(`${graalVMHome}/bin`)) {
