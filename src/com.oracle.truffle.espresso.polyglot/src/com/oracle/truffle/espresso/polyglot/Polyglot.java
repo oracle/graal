@@ -61,12 +61,11 @@ public final class Polyglot {
      * <ul>
      * <li>if {@code targetClass} is a primitive class, converts the foreign value to this type and
      * returns the result as a boxed type.
-     * <li>if {@code targetClass} is an array class, checks that the component type is either
-     * primitive or a concrete class and that the foreign value has array elements. Returns the
-     * forein value as {@code targetClass}.
+     * <li>if {@code targetClass} is an array class and the foreign value has array elements,
+     * returns the foreign value as {@code targetClass}.
      * <li>if {@code targetClass} is a (non-abstract) class, checks that all the instance fields
      * defined in the class or its ancestors exist in the foreign object. Returns the foreign object
-     * as a {@code targetClass}.
+     * as {@code targetClass}.
      * <li>if {@code targetClass} is an interface, returns the foreign object as a
      * {@code targetClass}. The existence of methods, defined in {@code targetClass}, is not
      * verified and if a method does not exist, an exception will be thrown only when the method is
