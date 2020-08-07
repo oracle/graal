@@ -1996,7 +1996,7 @@ class LoopDetector implements Runnable {
         // we found a shared merge as outlined above
         if (mergesToRemove.size() > 0) {
             assert merges.size() < loop.exits.size();
-            for (MergeNode merge : mergesToRemove) {
+            outer: for (MergeNode merge : mergesToRemove) {
                 FixedNode current = merge;
                 while (current != null) {
                     if (current instanceof FixedWithNextNode) {
@@ -2010,7 +2010,12 @@ class LoopDetector implements Runnable {
                         loop.exits.add((EndNode) current);
                         break;
                     }
-                    GraalError.shouldNotReachHere("Merge explode with complex exit branch: natural vs regular loop exit.");
+                    /*
+                     * No next merge was found, this can only mean no immediate unroll happend next,
+                     * i.e., there is no subsequent iteration of any loop exploded directly after,
+                     * thus no loop exit possible.
+                     */
+                    continue outer;
                 }
             }
         }
