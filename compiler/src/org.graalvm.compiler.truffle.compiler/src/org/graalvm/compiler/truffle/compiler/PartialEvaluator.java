@@ -117,6 +117,12 @@ import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
  */
 public abstract class PartialEvaluator {
 
+    private static final TimerKey PartialEvaluationTimer = DebugContext.timer("PartialEvaluation-Decoding").doc("Time spent in partial evaluation.");
+    private static final TimerKey TruffleEscapeAnalysisTimer = DebugContext.timer("PartialEvaluation-EscapeAnalysis");
+    private static final TimerKey TruffleConditionalEliminationTimer = DebugContext.timer("PartialEvaluation-ConditionalElimination");
+    private static final TimerKey TruffleCanonicalizerTimer = DebugContext.timer("PartialEvaluation-Canonicalizer");
+    private static final TimerKey TruffleConvertDeoptimizeTimer = DebugContext.timer("PartialEvaluation-ConvertDeoptimizeToGuard");
+
     protected final Providers providers;
     protected final Architecture architecture;
     private final CanonicalizerPhase canonicalizer;
@@ -331,10 +337,10 @@ public abstract class PartialEvaluator {
             try (DebugContext.Scope s = request.debug.scope("CreateGraph", request.graph);
                             Indent indent = request.debug.logAndIndent("evaluate %s", request.graph);) {
                 inliningGraphPE(request);
-                new ConvertDeoptimizeToGuardPhase().apply(request.graph, request.highTierContext);
-                try (DebugCloseable a = TruffleInlineReplacementsTimer.start(request.debug)) {
-                    inlineReplacements(request);
+                try (DebugCloseable a = TruffleConvertDeoptimizeTimer.start(request.debug)) {
+                    new ConvertDeoptimizeToGuardPhase().apply(request.graph, request.highTierContext);
                 }
+                inlineReplacements(request);
                 try (DebugCloseable a = TruffleConditionalEliminationTimer.start(request.debug)) {
                     new ConditionalEliminationPhase(false).apply(request.graph, request.highTierContext);
                 }
@@ -580,16 +586,6 @@ public abstract class PartialEvaluator {
         decodingInvocationPlugins.closeRegistration();
         return decodingInvocationPlugins;
     }
-
-    private static final TimerKey PartialEvaluationTimer = DebugContext.timer("PartialEvaluation-Decoding").doc("Time spent in partial evaluation.");
-
-    private static final TimerKey TruffleEscapeAnalysisTimer = DebugContext.timer("PartialEvaluation-EscapeAnalysis");
-
-    private static final TimerKey TruffleConditionalEliminationTimer = DebugContext.timer("PartialEvaluation-ConditionalElimination");
-
-    private static final TimerKey TruffleCanonicalizerTimer = DebugContext.timer("PartialEvaluation-Canonicalizer");
-
-    private static final TimerKey TruffleInlineReplacementsTimer = DebugContext.timer("PartialEvaluation-LoopFrequencies");
 
     @SuppressWarnings({"unused", "try"})
     private void inliningGraphPE(Request request) {
