@@ -173,9 +173,14 @@ public class BackgroundCompileQueue {
         }
     }
 
+    /**
+     * Return call targets waiting in queue. This does not include call targets currently being
+     * compiled.
+     */
     public Collection<OptimizedCallTarget> getQueuedTargets(EngineData engine) {
         IdlingPriorityBlockingQueue<Runnable> queue = this.compilationQueue;
-        if (getQueueSize() == 0 || queue == null) {
+        if (queue == null) {
+            // queue not initialized
             return Collections.emptyList();
         }
         List<OptimizedCallTarget> queuedTargets = new ArrayList<>();

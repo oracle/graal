@@ -619,6 +619,13 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return compilationTask != null;
     }
 
+    public final void waitForCompilation() {
+        CancellableCompileTask task = compilationTask;
+        if (task != null) {
+            runtime().finishCompilation(this, task, false);
+        }
+    }
+
     /**
      * Gets the address of the machine code for this call target. A non-zero return value denotes
      * the contiguous memory block containing the machine code but does not necessarily represent an
