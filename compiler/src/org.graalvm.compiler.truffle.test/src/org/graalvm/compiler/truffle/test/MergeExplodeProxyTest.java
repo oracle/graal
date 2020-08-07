@@ -218,4 +218,226 @@ public class MergeExplodeProxyTest extends PartialEvaluationTest {
 
         partialEval((OptimizedCallTarget) callee);
     }
+
+    public static class WrongLoopExitMerge extends RootNode {
+        private final String name;
+        @CompilationFinal(dimensions = 1) private final byte[] bytecodes;
+        @CompilationFinal(dimensions = 1) private final FrameSlot[] locals;
+        @CompilationFinal(dimensions = 1) private final FrameSlot[] stack;
+
+        public WrongLoopExitMerge(String name, byte[] bytecodes, int maxLocals, int maxStack) {
+            super(null);
+            this.name = name;
+            this.bytecodes = bytecodes;
+            locals = new FrameSlot[maxLocals];
+            stack = new FrameSlot[maxStack];
+            for (int i = 0; i < maxLocals; ++i) {
+                locals[i] = this.getFrameDescriptor().addFrameSlot("local" + i);
+                this.getFrameDescriptor().setFrameSlotKind(locals[i], FrameSlotKind.Int);
+            }
+            for (int i = 0; i < maxStack; ++i) {
+                stack[i] = this.getFrameDescriptor().addFrameSlot("stack" + i);
+                this.getFrameDescriptor().setFrameSlotKind(stack[i], FrameSlotKind.Int);
+            }
+        }
+
+        protected void setInt(VirtualFrame frame, int stackIndex, int value) {
+            frame.setInt(stack[stackIndex], value);
+        }
+
+        protected void setBoolean(VirtualFrame frame, boolean value) {
+            frame.setBoolean(locals[0], value);
+        }
+
+        protected boolean getBoolean(VirtualFrame frame) {
+            try {
+                return frame.getBoolean(locals[0]);
+            } catch (FrameSlotTypeException e) {
+                return false;
+            }
+        }
+
+        protected int getInt(VirtualFrame frame, int stackIndex) {
+            try {
+                return frame.getInt(stack[stackIndex]);
+            } catch (FrameSlotTypeException e) {
+                throw new IllegalStateException("Error accessing stack slot " + stackIndex);
+            }
+        }
+
+        @Override
+        public String toString() {
+            return name;
+        }
+
+        public static int SideEffect;
+
+        @CompilationFinal int iterations = 2;
+
+        @Override
+        @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
+        public Object execute(VirtualFrame frame) {
+            boolean result = false;
+            int topOfStack = -1;
+            int bci = 0;
+            boolean running = true;
+            outer: while (running) {
+                CompilerAsserts.partialEvaluationConstant(bci);
+                switch (bytecodes[bci]) {
+                    case Bytecode.CONST: {
+                        byte value = bytecodes[bci + 1];
+                        topOfStack++;
+                        setInt(frame, topOfStack, value);
+                        bci = bci + 2;
+                        continue;
+                    }
+                    case Bytecode.RETURN: {
+                        running = false;
+                        continue outer;
+                    }
+                    case Bytecode.ADD: {
+                        int left = getInt(frame, topOfStack);
+                        int right = getInt(frame, topOfStack - 1);
+                        topOfStack--;
+                        setInt(frame, topOfStack, left + right);
+                        bci = bci + 1;
+                        continue;
+                    }
+                    case Bytecode.IFZERO: {
+                        int value = getInt(frame, topOfStack);
+                        byte trueBci = bytecodes[bci + 1];
+                        topOfStack--;
+                        if (value == 0) {
+                            bci = trueBci;
+                            result = value == 0;
+                            if (SideEffect == 42) {
+                                GraalDirectives.sideEffect(result ? 12 : 14);
+                            } else {
+                                GraalDirectives.sideEffect(2);
+                            }
+                            // uncomment this fixes the code since we are no longer considering the
+                            // merge after both branches be part of the loop explosion
+                            // GraalDirectives.sideEffect(3);
+                        } else {
+                            bci = bci + 2;
+                        }
+                        continue;
+                    }
+                    case Bytecode.POP: {
+                        getInt(frame, topOfStack);
+                        topOfStack--;
+                        bci++;
+                        continue;
+                    }
+                    case Bytecode.JMP: {
+                        byte newBci = bytecodes[bci + 1];
+                        bci = newBci;
+                        continue;
+                    }
+                    case Bytecode.DUP: {
+                        int dupValue = getInt(frame, topOfStack);
+                        topOfStack++;
+                        setInt(frame, topOfStack, dupValue);
+                        bci++;
+                        continue;
+                    }
+                }
+            }
+            return result;
+        }
+    }
+
+    public static class Caller extends RootNode {
+
+        @Child DirectCallNode callee;
+
+        protected Caller(CallTarget ct) {
+            super(null);
+            callee = DirectCallNode.create(ct);
+            callee.forceInlining();
+        }
+
+        @Override
+        @ExplodeLoop
+        public Object execute(VirtualFrame frame) {
+            Object o = callee.call(frame.getArguments());
+            if (!(o instanceof Boolean)) {
+                CompilerDirectives.transferToInterpreter();
+            }
+            boolean b = (boolean) o;
+            return b ? 0 : 10;
+        }
+
+    }
+
+    @Test
+    public void test01() {
+        byte[] bytecodes = new byte[]{
+                        /* 0: */Bytecode.CONST,
+                        /* 1: */42,
+                        /* 2: */Bytecode.CONST,
+                        /* 3: */-12,
+
+                        // loop
+                        /* 4: */Bytecode.CONST,
+                        /* 5: */1,
+                        /* 6: */Bytecode.ADD,
+                        /* 7: */Bytecode.DUP,
+                        /* 8: */Bytecode.IFZERO,
+                        /* 9: */12,
+                        // backedge
+                        /* 10: */Bytecode.JMP,
+                        /* 11: */4,
+
+                        // loop exit
+                        /* 12: */Bytecode.POP,
+                        /* 13: */Bytecode.RETURN};
+
+        CallTarget callee = Truffle.getRuntime().createCallTarget(new WrongLoopExitMerge("mergedLoopExitProgram", bytecodes, 1, 3));
+        callee.call();
+        callee.call();
+        callee.call();
+        callee.call();
+
+        CallTarget caller = Truffle.getRuntime().createCallTarget(new Caller(callee));
+        caller.call();
+        caller.call();
+        caller.call();
+        caller.call();
+
+        partialEval((OptimizedCallTarget) caller);
+    }
+
+    @Test
+    public void test01Caller() {
+        byte[] bytecodes = new byte[]{
+                        /* 0: */Bytecode.CONST,
+                        /* 1: */42,
+                        /* 2: */Bytecode.CONST,
+                        /* 3: */-12,
+
+                        // loop
+                        /* 4: */Bytecode.CONST,
+                        /* 5: */1,
+                        /* 6: */Bytecode.ADD,
+                        /* 7: */Bytecode.DUP,
+                        /* 8: */Bytecode.IFZERO,
+                        /* 9: */12,
+                        // backedge
+                        /* 10: */Bytecode.JMP,
+                        /* 11: */4,
+
+                        // loop exit
+                        /* 12: */Bytecode.POP,
+                        /* 13: */Bytecode.RETURN};
+
+        CallTarget callee = Truffle.getRuntime().createCallTarget(new WrongLoopExitMerge("mergedLoopExitProgram", bytecodes, 1, 3));
+        callee.call();
+        callee.call();
+        callee.call();
+        callee.call();
+
+        partialEval((OptimizedCallTarget) callee);
+    }
+
 }

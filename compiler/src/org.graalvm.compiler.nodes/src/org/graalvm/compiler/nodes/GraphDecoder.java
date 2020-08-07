@@ -1905,6 +1905,92 @@ class LoopDetector implements Runnable {
                 }
             }
         }
+        /*-
+         * Special case loop exits that merge on a common merge node. If the original, merge
+         * exploded loop, contains loop exit paths, where a loop exit path (a path already exiting
+         * the loop see loop exits vs natural loop exits) is already a natural one merge on a loop
+         * explosion merge, we run into troubles with phi nodes and proxy nodes.
+         *
+         * Consider the following piece of code outlining a loop exit path of a merge explode annotated loop
+         *
+         * <pre>
+         *      // merge exploded loop
+         *      mergeExplodedLoop: while(....)
+         *          ...
+         *          if(condition effectively exiting the loop) // natural loop exit
+         *
+         *              break mergeExplodedLoop;
+         *          ...
+         *
+         *      // outerLoopContinueCode that uses values proxied inside the loop
+         * </pre>
+         *
+         *
+         * However, once the exit path contains control flow like below
+         * <pre>
+         *      // merge exploded loop
+         *      mergeExplodedLoop: while(....)
+         *          ...
+         *          if(condition effectively exiting the loop) // natural loop exit
+         *              if(some unrelated condition) {
+         *                 ...
+         *              } else {
+         *                  ...
+         *              }
+         *              break mergeExplodedLoop;
+         *          ...
+         *
+         *      // outerLoopContinueCode that uses values proxied inside the loop
+         * </pre>
+         *
+         * We would produce two loop exits that merge booth on the outerLoopContinueCode.
+         * This would require the generation of complex phi and proxy constructs, thus we include the merge inside the
+         * loop if we find a subsequent loop explosion merge.
+         */
+        EconomicSet<MergeNode> merges = EconomicSet.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
+        EconomicSet<MergeNode> mergesToRemove = EconomicSet.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
+
+        for (AbstractEndNode end : loop.exits) {
+            AbstractMergeNode merge = end.merge();
+            assert merge instanceof MergeNode;
+            if (merges.contains((MergeNode) merge)) {
+                mergesToRemove.add((MergeNode) merge);
+            } else {
+                merges.add((MergeNode) merge);
+            }
+        }
+        merges.clear();
+        merges.addAll(mergesToRemove);
+        mergesToRemove.clear();
+        outer: for (MergeNode merge : merges) {
+            for (EndNode end : merge.ends) {
+                if (!loop.exits.contains(end)) {
+                    continue outer;
+                }
+            }
+            mergesToRemove.add(merge);
+        }
+        // we found a shared merge as outlined above
+        if (mergesToRemove.size() > 0) {
+            assert merges.size() < loop.exits.size();
+            for (MergeNode merge : mergesToRemove) {
+                FixedNode current = merge;
+                while (current != null) {
+                    if (current instanceof FixedWithNextNode) {
+                        current = ((FixedWithNextNode) current).next();
+                        continue;
+                    }
+                    if (current instanceof EndNode && methodScope.loopExplosionMerges.contains(((EndNode) current).merge())) {
+                        // we found the place for the loop exit introduction since the subsequent
+                        // merge has a frame state
+                        loop.exits.removeIf(x -> x.merge() == merge);
+                        loop.exits.add((EndNode) current);
+                        break;
+                    }
+                    GraalError.shouldNotReachHere("Merge explode with complex exit branch: natural vs regular loop exit.");
+                }
+            }
+        }
     }
 
     private void insertLoopNodes(Loop loop) {
