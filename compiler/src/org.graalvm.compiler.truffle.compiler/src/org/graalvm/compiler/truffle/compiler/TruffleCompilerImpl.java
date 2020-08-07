@@ -186,7 +186,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
      */
     protected abstract PartialEvaluator createPartialEvaluator();
 
-    public static final TimerKey PartialEvaluationTime = DebugContext.timer("PartialEvaluationTime");
+    public static final TimerKey PartialEvaluationTime = DebugContext.timer("PartialEvaluationTime").doc("Total time spent in the Truffle tier.");
     public static final TimerKey CompilationTime = DebugContext.timer("CompilationTime");
     public static final TimerKey CodeInstallationTime = DebugContext.timer("CodeInstallation");
     public static final TimerKey EncodedGraphCacheEvictionTime = DebugContext.timer("EncodedGraphCacheEvictionTime");
