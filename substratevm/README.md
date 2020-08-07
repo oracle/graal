@@ -85,7 +85,7 @@ $ strings emptyhello | grep com.oracle.svm.core.VM
 
 The expected output should match the following:
 ```
-com.oracle.svm.core.VM GraalVM {{ site.product_version }} CE
+com.oracle.svm.core.VM GraalVM 20.2.0 Java 11 EE
 ```
 
 **Note:**
