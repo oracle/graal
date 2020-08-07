@@ -890,7 +890,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final boolean deoptimizationSupportLargeAccessByteArrayVirtualization = //
                     getConstant("Deoptimization::_support_large_access_byte_array_virtualization", Boolean.class, false, JVMCI || JDK >= 15);
 
-    public static final boolean JDK_8245443 = ((JDK == 11 && JDK_UPDATE >= 8) || JDK >= 15);
+    private static final boolean JDK_8245443 = ((JDK == 11 && JDK_UPDATE >= 8) || JDK >= 15);
 
     // Checkstyle: stop
     public final int VMINTRINSIC_FIRST_MH_SIG_POLY = getConstant("vmIntrinsics::FIRST_MH_SIG_POLY", Integer.class, -1, (JVMCI ? jvmciGE(JVMCI_20_2_b01) : false));
@@ -902,6 +902,22 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
                     true, "amd64".equals(osArch) && (JVMCI ? jvmciGE(JVMCI_20_1_b01) : JDK >= 15));
 
     // Checkstyle: resume
+
+    static {
+        boolean verifyOopsMarkSupported = (JVMCI && JDK > 8) ? jvmciGE(JVMCI_20_2_b04) : JDK >= 16;
+
+        HotSpotMarkId.FRAME_COMPLETE.setMustBePresent(JVMCI ? jvmciGE(JVMCI_20_1_b01) : JDK_8245443);
+        HotSpotMarkId.DEOPT_MH_HANDLER_ENTRY.setMustBePresent(JVMCI ? jvmciGE(JVMCI_20_2_b01) : false);
+        HotSpotMarkId.FRAME_COMPLETE.setMustBePresent(JVMCI ? jvmciGE(JVMCI_20_1_b01) : JDK_8245443);
+        HotSpotMarkId.NARROW_KLASS_BASE_ADDRESS.setMustBePresent(JVMCI ? jvmciGE(JVMCI_20_2_b01) : JDK > 9);
+        HotSpotMarkId.NARROW_OOP_BASE_ADDRESS.setMustBePresent(JVMCI ? jvmciGE(JVMCI_20_2_b01) : JDK > 9);
+        HotSpotMarkId.CRC_TABLE_ADDRESS.setMustBePresent(JVMCI ? jvmciGE(JVMCI_20_2_b01) : JDK > 9);
+        HotSpotMarkId.LOG_OF_HEAP_REGION_GRAIN_BYTES.setMustBePresent(JVMCI ? jvmciGE(JVMCI_20_2_b01) : JDK > 9);
+        HotSpotMarkId.VERIFY_OOPS.setMustBePresent(verifyOopsMarkSupported);
+        HotSpotMarkId.VERIFY_OOP_COUNT_ADDRESS.setMustBePresent(verifyOopsMarkSupported);
+
+        HotSpotMarkId.setValues(JVMCI_PRERELEASE);
+    }
 
     protected boolean check() {
         for (Field f : getClass().getDeclaredFields()) {
