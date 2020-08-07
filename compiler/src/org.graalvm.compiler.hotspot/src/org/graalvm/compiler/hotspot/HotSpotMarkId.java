@@ -91,7 +91,7 @@ public enum HotSpotMarkId implements CompilationResult.MarkId {
 
     private static boolean valuesSet = false;
 
-    public static void setValues(boolean prerelease) {
+    static void setValues(boolean prerelease) {
         for (HotSpotMarkId m : values()) {
             m.value = m.getValue(prerelease);
         }
@@ -99,8 +99,14 @@ public enum HotSpotMarkId implements CompilationResult.MarkId {
     }
 
     static {
-        GraalHotSpotVMConfig.ensureHotSpotMarkIdValuesSet();
-        assert valuesSet;
+        // deal with different possible initialization orders
+        if (GraalHotSpotVMConfig.inInitializer()) {
+            // GraalHotSpotVMConfig was initialized first
+            // nothing to do
+        } else {
+            // this class was initialized first
+            assert valuesSet;
+        }
     }
 
     private Integer value() {
