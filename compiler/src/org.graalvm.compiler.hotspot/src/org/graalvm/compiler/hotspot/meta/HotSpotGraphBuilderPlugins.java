@@ -393,7 +393,7 @@ public class HotSpotGraphBuilderPlugins {
                             @Override
                             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode srcBase, ValueNode srcOffset, ValueNode destBase,
                                             ValueNode destOffset, ValueNode bytes) {
-                                b.add(new UnsafeCopyMemoryNode(config.doingUnsafeAccessOffset == Integer.MAX_VALUE, receiver.get(), srcBase, srcOffset, destBase, destOffset, bytes));
+                                b.add(new UnsafeCopyMemoryNode(config.doingUnsafeAccessOffset != Integer.MAX_VALUE, receiver.get(), srcBase, srcOffset, destBase, destOffset, bytes));
                                 return true;
                             }
                         });
