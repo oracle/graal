@@ -117,11 +117,11 @@ import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
  */
 public abstract class PartialEvaluator {
 
-    private static final TimerKey PartialEvaluationTimer = DebugContext.timer("PartialEvaluation-Decoding").doc("Time spent in partial evaluation.");
-    private static final TimerKey TruffleEscapeAnalysisTimer = DebugContext.timer("PartialEvaluation-EscapeAnalysis");
-    private static final TimerKey TruffleConditionalEliminationTimer = DebugContext.timer("PartialEvaluation-ConditionalElimination");
-    private static final TimerKey TruffleCanonicalizerTimer = DebugContext.timer("PartialEvaluation-Canonicalizer");
-    private static final TimerKey TruffleConvertDeoptimizeTimer = DebugContext.timer("PartialEvaluation-ConvertDeoptimizeToGuard");
+    private static final TimerKey PartialEvaluationTimer = DebugContext.timer("PartialEvaluation-Decoding").doc("Time spent in the graph-decoding of partial evaluation.");
+    private static final TimerKey TruffleEscapeAnalysisTimer = DebugContext.timer("PartialEvaluation-EscapeAnalysis").doc("Time spent in the escape-analysis in Truffle tier.");
+    private static final TimerKey TruffleConditionalEliminationTimer = DebugContext.timer("PartialEvaluation-ConditionalElimination").doc("Time spent in conditional elimination in Truffle tier.");
+    private static final TimerKey TruffleCanonicalizerTimer = DebugContext.timer("PartialEvaluation-Canonicalizer").doc("Time spent in the canonicalizer in the Truffle tier.");
+    private static final TimerKey TruffleConvertDeoptimizeTimer = DebugContext.timer("PartialEvaluation-ConvertDeoptimizeToGuard").doc("Time spent in converting deoptimize to guard in Truffle tier.");
 
     protected final Providers providers;
     protected final Architecture architecture;
