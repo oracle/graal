@@ -428,6 +428,11 @@ public class CheckGraalIntrinsics extends GraalTest {
                             "java/math/BigInteger.shiftRightImplWorker([I[IIII)V");
         }
 
+        if (isJDK16OrHigher()) {
+            add(toBeInvestigated,
+                            "sun/security/provider/MD5.implCompress0([BI)V");
+        }
+
         if (!config.inlineNotify()) {
             add(ignore, "java/lang/Object.notify()V");
         }
@@ -596,6 +601,10 @@ public class CheckGraalIntrinsics extends GraalTest {
 
     private static boolean isJDK14OrHigher() {
         return JavaVersionUtil.JAVA_SPEC >= 14;
+    }
+
+    private static boolean isJDK16OrHigher() {
+        return JavaVersionUtil.JAVA_SPEC >= 16;
     }
 
     public interface Refiner {
