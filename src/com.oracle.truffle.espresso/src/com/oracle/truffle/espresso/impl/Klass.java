@@ -201,9 +201,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
             if (receiver.isAbstract()) {
                 return false;
             }
-/*
- * Check that the class has a public constructor
- */
+            /* Check that the class has a public constructor */
             for (Method m : receiver.getDeclaredMethods()) {
                 if (m.isPublic() && !m.isStatic() && m.getName().equals(Name._init_)) {
                     return true;
@@ -250,6 +248,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
             return receiver instanceof ArrayKlass && ((ArrayKlass) receiver).getComponentType().isPrimitive();
         }
 
+        /* 1-dimensional reference (non-primitive) array */
         protected static boolean isReferenceArray(Klass receiver) {
             return receiver instanceof ArrayKlass && ((ArrayKlass) receiver).getComponentType() instanceof ObjectKlass;
         }
@@ -261,11 +260,9 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         @Specialization(guards = "isPrimitiveArray(receiver)")
         static StaticObject doPrimitiveArray(Klass receiver, Object[] arguments,
                         @Shared("lengthConversion") @Cached ToEspressoNode toEspressoNode,
-                        @CachedContext(EspressoLanguage.class) EspressoContext context) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
+                        @CachedContext(EspressoLanguage.class) EspressoContext context) throws ArityException, UnsupportedTypeException {
             ArrayKlass arrayKlass = (ArrayKlass) receiver;
-            if (arrayKlass.getComponentType().getJavaKind() == JavaKind.Void) {
-                throw UnsupportedMessageException.create();
-            }
+            assert arrayKlass.getComponentType().getJavaKind() != JavaKind.Void;
             int length = getLength(arguments, toEspressoNode, context.getMeta());
             return InterpreterToVM.allocatePrimitiveArray((byte) arrayKlass.getComponentType().getJavaKind().getBasicType(), length, context.getMeta());
         }
@@ -282,11 +279,9 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         @Specialization(guards = "isMultidimensionalArray(receiver)")
         static StaticObject doMultidimensionalArray(Klass receiver, Object[] arguments,
                         @Shared("lengthConversion") @Cached ToEspressoNode toEspressoNode,
-                        @CachedContext(EspressoLanguage.class) EspressoContext context) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
+                        @CachedContext(EspressoLanguage.class) EspressoContext context) throws ArityException, UnsupportedTypeException {
             ArrayKlass arrayKlass = (ArrayKlass) receiver;
-            if (arrayKlass.getElementalType().getJavaKind() == JavaKind.Void) {
-                throw UnsupportedMessageException.create();
-            }
+            assert arrayKlass.getElementalType().getJavaKind() != JavaKind.Void;
             if (arrayKlass.getDimension() != arguments.length) {
                 throw ArityException.create(arrayKlass.getDimension(), arguments.length);
             }
@@ -298,14 +293,16 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
             return context.getInterpreterToVM().newMultiArray(arrayKlass.getComponentType(), dimensions);
         }
 
+        static final String INIT_NAME = Name._init_.toString();
+
         @Specialization(guards = "isObjectKlass(receiver)")
         static Object doObject(Klass receiver, Object[] arguments,
                         @Exclusive @Cached LookupDeclaredMethod lookupMethod,
                         @Exclusive @Cached InvokeEspressoNode invoke) throws UnsupportedTypeException, ArityException, UnsupportedMessageException {
             ObjectKlass objectKlass = (ObjectKlass) receiver;
-            Method init = lookupMethod.execute(objectKlass, Name._init_.toString(), true, false, arguments.length);
+            Method init = lookupMethod.execute(objectKlass, INIT_NAME, true, false, arguments.length);
             if (init != null) {
-                assert !init.isStatic() && init.isPublic() && init.getName().toString().equals(Name._init_.toString()) && init.getParameterCount() == arguments.length;
+                assert !init.isStatic() && init.isPublic() && init.getName().toString().equals(INIT_NAME) && init.getParameterCount() == arguments.length;
                 StaticObject newObject = StaticObject.createNew(objectKlass);
                 invoke.execute(init, newObject, arguments);
                 return newObject;
