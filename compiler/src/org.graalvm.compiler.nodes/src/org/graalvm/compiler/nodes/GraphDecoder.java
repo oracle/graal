@@ -2002,7 +2002,12 @@ class LoopDetector implements Runnable {
             }
 
             if (realValue == null || realValue.isConstant() || loopBeginValues.contains(realValue) || !graph.isNew(methodScope.methodStartMark, realValue)) {
-                newValues.add(realValue);
+                /*
+                 * value v, input to the old state, can already be a proxy placeholder node to
+                 * another, dominating loop exit, we must not take the unwrapped value in this case
+                 * but the properly proxied one
+                 */
+                newValues.add(v);
             } else {
                 /*
                  * The node is not in the FrameState of the LoopBegin, i.e., it is a value computed
