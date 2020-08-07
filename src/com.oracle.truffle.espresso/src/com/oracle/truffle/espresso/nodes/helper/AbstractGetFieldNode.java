@@ -107,9 +107,9 @@ abstract class IntGetFieldNode extends AbstractGetFieldNode {
     }
 
     @Specialization(guards = "receiver.isForeignObject()", limit = "1")
-    int doForeign(StaticObject receiver, @CachedLibrary("receiver.rawForeignObject()")InteropLibrary interopLibrary,
-                  @Cached ToEspressoNode toEspressoNode,
-                  @CachedContext(EspressoLanguage.class) EspressoContext context) {
+    int doForeign(StaticObject receiver, @CachedLibrary("receiver.rawForeignObject()") InteropLibrary interopLibrary,
+                    @Cached ToEspressoNode toEspressoNode,
+                    @CachedContext(EspressoLanguage.class) EspressoContext context) {
         Object value = getForeignField(receiver, interopLibrary, context);
         try {
             return (int) toEspressoNode.execute(value, context.getMeta()._int);
@@ -139,9 +139,9 @@ abstract class BooleanGetFieldNode extends AbstractGetFieldNode {
     }
 
     @Specialization(guards = "receiver.isForeignObject()", limit = "1")
-    boolean doForeign(StaticObject receiver, @CachedLibrary("receiver.rawForeignObject()")InteropLibrary interopLibrary,
-                  @Cached ToEspressoNode toEspressoNode,
-                  @CachedContext(EspressoLanguage.class) EspressoContext context) {
+    boolean doForeign(StaticObject receiver, @CachedLibrary("receiver.rawForeignObject()") InteropLibrary interopLibrary,
+                    @Cached ToEspressoNode toEspressoNode,
+                    @CachedContext(EspressoLanguage.class) EspressoContext context) {
         Object value = getForeignField(receiver, interopLibrary, context);
         try {
             return (boolean) toEspressoNode.execute(value, context.getMeta()._boolean);
@@ -171,9 +171,9 @@ abstract class CharGetFieldNode extends AbstractGetFieldNode {
     }
 
     @Specialization(guards = "receiver.isForeignObject()", limit = "1")
-    char doForeign(StaticObject receiver, @CachedLibrary("receiver.rawForeignObject()")InteropLibrary interopLibrary,
-                  @Cached ToEspressoNode toEspressoNode,
-                  @CachedContext(EspressoLanguage.class) EspressoContext context) {
+    char doForeign(StaticObject receiver, @CachedLibrary("receiver.rawForeignObject()") InteropLibrary interopLibrary,
+                    @Cached ToEspressoNode toEspressoNode,
+                    @CachedContext(EspressoLanguage.class) EspressoContext context) {
         Object value = getForeignField(receiver, interopLibrary, context);
         try {
             return (char) toEspressoNode.execute(value, context.getMeta()._char);
@@ -203,9 +203,9 @@ abstract class ShortGetFieldNode extends AbstractGetFieldNode {
     }
 
     @Specialization(guards = "receiver.isForeignObject()", limit = "1")
-    short doForeign(StaticObject receiver, @CachedLibrary("receiver.rawForeignObject()")InteropLibrary interopLibrary,
-                  @Cached ToEspressoNode toEspressoNode,
-                  @CachedContext(EspressoLanguage.class) EspressoContext context) {
+    short doForeign(StaticObject receiver, @CachedLibrary("receiver.rawForeignObject()") InteropLibrary interopLibrary,
+                    @Cached ToEspressoNode toEspressoNode,
+                    @CachedContext(EspressoLanguage.class) EspressoContext context) {
         Object value = getForeignField(receiver, interopLibrary, context);
         try {
             return (short) toEspressoNode.execute(value, context.getMeta()._short);
@@ -235,9 +235,9 @@ abstract class ByteGetFieldNode extends AbstractGetFieldNode {
     }
 
     @Specialization(guards = "receiver.isForeignObject()", limit = "1")
-    byte doForeign(StaticObject receiver, @CachedLibrary("receiver.rawForeignObject()")InteropLibrary interopLibrary,
-                  @Cached ToEspressoNode toEspressoNode,
-                  @CachedContext(EspressoLanguage.class) EspressoContext context) {
+    byte doForeign(StaticObject receiver, @CachedLibrary("receiver.rawForeignObject()") InteropLibrary interopLibrary,
+                    @Cached ToEspressoNode toEspressoNode,
+                    @CachedContext(EspressoLanguage.class) EspressoContext context) {
         Object value = getForeignField(receiver, interopLibrary, context);
         try {
             return (byte) toEspressoNode.execute(value, context.getMeta()._byte);
@@ -267,9 +267,9 @@ abstract class LongGetFieldNode extends AbstractGetFieldNode {
     }
 
     @Specialization(guards = "receiver.isForeignObject()", limit = "1")
-    long doForeign(StaticObject receiver, @CachedLibrary("receiver.rawForeignObject()")InteropLibrary interopLibrary,
-                  @Cached ToEspressoNode toEspressoNode,
-                  @CachedContext(EspressoLanguage.class) EspressoContext context) {
+    long doForeign(StaticObject receiver, @CachedLibrary("receiver.rawForeignObject()") InteropLibrary interopLibrary,
+                    @Cached ToEspressoNode toEspressoNode,
+                    @CachedContext(EspressoLanguage.class) EspressoContext context) {
         Object value = getForeignField(receiver, interopLibrary, context);
         try {
             return (long) toEspressoNode.execute(value, context.getMeta()._long);
@@ -299,9 +299,9 @@ abstract class FloatGetFieldNode extends AbstractGetFieldNode {
     }
 
     @Specialization(guards = "receiver.isForeignObject()", limit = "1")
-    float doForeign(StaticObject receiver, @CachedLibrary("receiver.rawForeignObject()")InteropLibrary interopLibrary,
-                  @Cached ToEspressoNode toEspressoNode,
-                  @CachedContext(EspressoLanguage.class) EspressoContext context) {
+    float doForeign(StaticObject receiver, @CachedLibrary("receiver.rawForeignObject()") InteropLibrary interopLibrary,
+                    @Cached ToEspressoNode toEspressoNode,
+                    @CachedContext(EspressoLanguage.class) EspressoContext context) {
         Object value = getForeignField(receiver, interopLibrary, context);
         try {
             return (float) toEspressoNode.execute(value, context.getMeta()._float);
@@ -331,9 +331,9 @@ abstract class DoubleGetFieldNode extends AbstractGetFieldNode {
     }
 
     @Specialization(guards = "receiver.isForeignObject()", limit = "1")
-    double doForeign(StaticObject receiver, @CachedLibrary("receiver.rawForeignObject()")InteropLibrary interopLibrary,
-                  @Cached ToEspressoNode toEspressoNode,
-                  @CachedContext(EspressoLanguage.class) EspressoContext context) {
+    double doForeign(StaticObject receiver, @CachedLibrary("receiver.rawForeignObject()") InteropLibrary interopLibrary,
+                    @Cached ToEspressoNode toEspressoNode,
+                    @CachedContext(EspressoLanguage.class) EspressoContext context) {
         Object value = getForeignField(receiver, interopLibrary, context);
         try {
             return (double) toEspressoNode.execute(value, context.getMeta()._double);
@@ -366,9 +366,9 @@ abstract class ObjectGetFieldNode extends AbstractGetFieldNode {
     }
 
     @Specialization(guards = "receiver.isForeignObject()", limit = "1")
-    StaticObject doForeign(StaticObject receiver, @CachedLibrary("receiver.rawForeignObject()")InteropLibrary interopLibrary,
-                  @Cached ToEspressoNode toEspressoNode,
-                  @CachedContext(EspressoLanguage.class) EspressoContext context) {
+    StaticObject doForeign(StaticObject receiver, @CachedLibrary("receiver.rawForeignObject()") InteropLibrary interopLibrary,
+                    @Cached ToEspressoNode toEspressoNode,
+                    @CachedContext(EspressoLanguage.class) EspressoContext context) {
         Object value = getForeignField(receiver, interopLibrary, context);
         try {
             return (StaticObject) toEspressoNode.execute(value, typeKlass);

@@ -121,8 +121,8 @@ abstract class IntSetFieldNode extends AbstractSetFieldNode {
 
     @Specialization(guards = {"receiver.isForeignObject()"}, limit = "CACHED_LIBRARY_LIMIT")
     void doForeign(StaticObject receiver, int fieldValue,
-                   @CachedLibrary("receiver.rawForeignObject()") InteropLibrary interopLibrary,
-                   @CachedContext(EspressoLanguage.class) EspressoContext context) {
+                    @CachedLibrary("receiver.rawForeignObject()") InteropLibrary interopLibrary,
+                    @CachedContext(EspressoLanguage.class) EspressoContext context) {
         setForeignField(receiver, fieldValue, interopLibrary, context);
     }
 }
