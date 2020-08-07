@@ -893,6 +893,29 @@ public class GraphDecoder {
                 methodScope.loopExplosionHead = merge;
             }
 
+            /*
+             * Proxy generation and merge explosion: When doing merge-explode PE loops are detected
+             * after partial evaluation in a dedicated steps. Therefore, we create merge nodes
+             * instead of loop begins and loop exits and later replace them with the detected loop
+             * begin and loop exit nodes.
+             *
+             * However, in order to create the correct loop proxies, all values alive at a merge
+             * created for a loop begin/loop exit replacement merge, we create so called proxy
+             * placeholder nodes. These nodes are attached to a merge and proxy the corresponding
+             * node. Later, when we replace a merge with a loop exit, we visit all live nodes at
+             * that loop exit and replace the proxy placeholders with real value proxy nodes.
+             *
+             * Since we cannot (this would explode immediately) proxy all nodes for every merge
+             * during explosion, we only create nodes at the loop explosion begins for nodes that
+             * are alive at the framestate of the respective loop begin. This is fine as long as all
+             * values proxied out of a loop are alive at the loop header. However, this is not true
+             * for all values (imagine do-while loops). Thus, we may create, in very specific
+             * patterns, unschedulable graphs since we miss the creation of proxy nodes.
+             *
+             * There is currently no straight forward solution to this problem, thus we shift the
+             * work to the implementor side where such patterns can typically be easily fixed by
+             * creating loop phis and assigning them correctly.
+             */
             List<ValueNode> newFrameStateValues = new ArrayList<>();
             for (ValueNode frameStateValue : frameState.values) {
                 if (frameStateValue == null || frameStateValue.isConstant() || !graph.isNew(methodScope.methodStartMark, frameStateValue)) {
