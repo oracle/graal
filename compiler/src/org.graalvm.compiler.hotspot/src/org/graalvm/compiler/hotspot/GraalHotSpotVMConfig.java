@@ -904,15 +904,18 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     // Checkstyle: resume
 
     static {
-        boolean verifyOopsMarkSupported = (JVMCI && JDK > 8) ? jvmciGE(JVMCI_20_2_b04) : JDK >= 16;
-
         HotSpotMarkId.FRAME_COMPLETE.setMustBePresent(JVMCI ? jvmciGE(JVMCI_20_1_b01) : JDK_8245443);
         HotSpotMarkId.DEOPT_MH_HANDLER_ENTRY.setMustBePresent(JVMCI ? jvmciGE(JVMCI_20_2_b01) : false);
-        HotSpotMarkId.FRAME_COMPLETE.setMustBePresent(JVMCI ? jvmciGE(JVMCI_20_1_b01) : JDK_8245443);
-        HotSpotMarkId.NARROW_KLASS_BASE_ADDRESS.setMustBePresent(JVMCI ? jvmciGE(JVMCI_20_2_b01) : JDK > 9);
-        HotSpotMarkId.NARROW_OOP_BASE_ADDRESS.setMustBePresent(JVMCI ? jvmciGE(JVMCI_20_2_b01) : JDK > 9);
-        HotSpotMarkId.CRC_TABLE_ADDRESS.setMustBePresent(JVMCI ? jvmciGE(JVMCI_20_2_b01) : JDK > 9);
-        HotSpotMarkId.LOG_OF_HEAP_REGION_GRAIN_BYTES.setMustBePresent(JVMCI ? jvmciGE(JVMCI_20_2_b01) : JDK > 9);
+
+        boolean jdk13JvmciBackport = (JVMCI && JDK > 8) ? jvmciGE(JVMCI_19_3_b03) : JDK > 9;
+
+        HotSpotMarkId.NARROW_KLASS_BASE_ADDRESS.setMustBePresent(jdk13JvmciBackport);
+        HotSpotMarkId.CRC_TABLE_ADDRESS.setMustBePresent(jdk13JvmciBackport);
+        HotSpotMarkId.NARROW_OOP_BASE_ADDRESS.setMustBePresent(jdk13JvmciBackport);
+        HotSpotMarkId.LOG_OF_HEAP_REGION_GRAIN_BYTES.setMustBePresent(jdk13JvmciBackport);
+
+        boolean verifyOopsMarkSupported = (JVMCI && JDK > 8) ? jvmciGE(JVMCI_20_2_b04) : JDK >= 16;
+
         HotSpotMarkId.VERIFY_OOPS.setMustBePresent(verifyOopsMarkSupported);
         HotSpotMarkId.VERIFY_OOP_COUNT_ADDRESS.setMustBePresent(verifyOopsMarkSupported);
 
