@@ -325,6 +325,14 @@ public abstract class PartialEvaluator {
         }
     }
 
+    private static final TimerKey TruffleEscapeAnalysisTimer = DebugContext.timer("PartialEvaluation-EscapeAnalysis");
+
+    private static final TimerKey TruffleConditionalEliminationTimer = DebugContext.timer("PartialEvaluation-ConditionalElimination");
+
+    private static final TimerKey TruffleCanonicalizerTimer = DebugContext.timer("PartialEvaluation-Canonicalizer");
+
+    private static final TimerKey TruffleLoopFrequenciesTimer = DebugContext.timer("PartialEvaluation-LoopFrequencies");
+
     @SuppressWarnings("try")
     public StructuredGraph evaluate(Request request) {
         try (PerformanceInformationHandler handler = PerformanceInformationHandler.install(request.options)) {
@@ -333,11 +341,19 @@ public abstract class PartialEvaluator {
                 inliningGraphPE(request);
                 new ConvertDeoptimizeToGuardPhase().apply(request.graph, request.highTierContext);
                 inlineReplacements(request);
-                new ConditionalEliminationPhase(false).apply(request.graph, request.highTierContext);
-                canonicalizer.apply(request.graph, request.highTierContext);
-                partialEscape(request);
+                try (DebugCloseable a = TruffleConditionalEliminationTimer.start(request.debug)) {
+                    new ConditionalEliminationPhase(false).apply(request.graph, request.highTierContext);
+                }
+                try (DebugCloseable a = TruffleCanonicalizerTimer.start(request.debug)) {
+                    canonicalizer.apply(request.graph, request.highTierContext);
+                }
+                try (DebugCloseable a = TruffleEscapeAnalysisTimer.start(request.debug)) {
+                    partialEscape(request);
+                }
                 // recompute loop frequencies now that BranchProbabilities have been canonicalized
-                ComputeLoopFrequenciesClosure.compute(request.graph);
+                try (DebugCloseable a = TruffleLoopFrequenciesTimer.start(request.debug)) {
+                    ComputeLoopFrequenciesClosure.compute(request.graph);
+                }
                 applyInstrumentationPhases(request);
                 handler.reportPerformanceWarnings(request.compilable, request.graph);
                 if (request.cancellable != null && request.cancellable.isCancelled()) {
