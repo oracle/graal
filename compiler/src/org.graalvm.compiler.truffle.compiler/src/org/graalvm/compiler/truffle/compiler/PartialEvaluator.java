@@ -75,6 +75,7 @@ import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.ConditionalEliminationPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.phases.util.GraphOrder;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.CachingPEGraphDecoder;
 import org.graalvm.compiler.replacements.InlineDuringParsingPlugin;
@@ -340,6 +341,7 @@ public abstract class PartialEvaluator {
             try (DebugContext.Scope s = request.debug.scope("CreateGraph", request.graph);
                             Indent indent = request.debug.logAndIndent("evaluate %s", request.graph);) {
                 inliningGraphPE(request);
+		assert GraphOrder.assertSchedulableGraph(request.graph) : "PE result must be schedulable in order to apply subsequent phases";
                 try (DebugCloseable a = TruffleConvertDeoptimizeTimer.start(request.debug)) {
                     new ConvertDeoptimizeToGuardPhase().apply(request.graph, request.highTierContext);
                 }
