@@ -440,4 +440,238 @@ public class MergeExplodeProxyTest extends PartialEvaluationTest {
         partialEval((OptimizedCallTarget) callee);
     }
 
+    public static class ProxySameValueOnce extends RootNode {
+        private final String name;
+        @CompilationFinal(dimensions = 1) private final byte[] bytecodes;
+        @CompilationFinal(dimensions = 1) private final FrameSlot[] locals;
+        @CompilationFinal(dimensions = 1) private final FrameSlot[] stack;
+
+        public ProxySameValueOnce(String name, byte[] bytecodes, int maxLocals, int maxStack) {
+            super(null);
+            this.name = name;
+            this.bytecodes = bytecodes;
+            locals = new FrameSlot[maxLocals];
+            stack = new FrameSlot[maxStack];
+            for (int i = 0; i < maxLocals; ++i) {
+                locals[i] = this.getFrameDescriptor().addFrameSlot("local" + i);
+                this.getFrameDescriptor().setFrameSlotKind(locals[i], FrameSlotKind.Int);
+            }
+            for (int i = 0; i < maxStack; ++i) {
+                stack[i] = this.getFrameDescriptor().addFrameSlot("stack" + i);
+                this.getFrameDescriptor().setFrameSlotKind(stack[i], FrameSlotKind.Int);
+            }
+        }
+
+        protected void setInt(VirtualFrame frame, int stackIndex, int value) {
+            frame.setInt(stack[stackIndex], value);
+        }
+
+        protected void setBoolean(VirtualFrame frame, boolean value) {
+            frame.setBoolean(locals[0], value);
+        }
+
+        protected boolean getBoolean(VirtualFrame frame) {
+            try {
+                return frame.getBoolean(locals[0]);
+            } catch (FrameSlotTypeException e) {
+                return false;
+            }
+        }
+
+        protected int getInt(VirtualFrame frame, int stackIndex) {
+            try {
+                return frame.getInt(stack[stackIndex]);
+            } catch (FrameSlotTypeException e) {
+                throw new IllegalStateException("Error accessing stack slot " + stackIndex);
+            }
+        }
+
+        @Override
+        public String toString() {
+            return name;
+        }
+
+        public static int SideEffect;
+
+        @CompilationFinal int iterations = 3;
+
+        int[] field = new int[]{1, 2, 3, 4, 5};
+
+        public int explodeFully(int it, int goThroughHere) {
+            int res;
+            int j = 0;
+            do {
+                res = goThroughHere;
+            } while (++j < it);
+            return res;
+        }
+
+        @Override
+        @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
+        public Object execute(VirtualFrame frame) {
+            int topOfStack = -1;
+            int bci = 0;
+            boolean running = true;
+            while (running) {
+                int p = 0;
+                b: {
+                    CompilerAsserts.partialEvaluationConstant(bci);
+                    switch (bytecodes[bci]) {
+                        case Bytecode.CONST: {
+                            byte value = bytecodes[bci + 1];
+                            topOfStack++;
+                            setInt(frame, topOfStack, value);
+                            bci = bci + 2;
+                            if (bytecodes[bci] == Bytecode.RETURN) {
+                                running = false;
+                                break b;
+                            }
+                            break b;
+                        }
+                        case Bytecode.ADD: {
+                            int left = getInt(frame, topOfStack);
+                            int right = getInt(frame, topOfStack - 1);
+                            topOfStack--;
+                            setInt(frame, topOfStack, left + right);
+                            bci = bci + 1;
+                            if (bytecodes[bci] == Bytecode.RETURN) {
+                                running = false;
+                                break b;
+                            }
+                            break b;
+                        }
+                        case Bytecode.IFZERO: {
+                            int value = getInt(frame, topOfStack);
+                            byte trueBci = bytecodes[bci + 1];
+                            topOfStack--;
+                            int i = 0;
+                            int val = 0;
+                            do {
+                                val = field[i];
+                            } while (++i < iterations);
+                            p = val;
+                            if (value == 0) {
+                                if (bci == 14 && bytecodes[trueBci] == Bytecode.POP) {
+                                    /*
+                                     * We need to make the original graph think that NOT p is return
+                                     * but something different, so there must not be a proxy
+                                     * necessary for P now, since we return p here the original
+                                     * graph has a loop exit and a proxy, however, what if we can
+                                     * make the loop exit think it must proxy a different value but
+                                     * in the end it uses the source of a proxy for a particular
+                                     * reason?
+                                     */
+                                    topOfStack--;// pop
+                                    bci = trueBci + 1;
+                                    int value1 = getInt(frame, topOfStack);
+                                    topOfStack--;
+                                    if (value1 == 0) {
+                                        if (SideEffect == 0) {
+                                            return val;
+                                        }
+                                        return p;
+                                    } else {
+                                        bci = bci + 2;
+                                        if (SideEffect == 0) {
+                                            for (int j = 0; j < iterations; j++) {
+                                                if (iterations < 0)
+                                                    SideEffect = 1;
+                                            }
+                                        }
+
+                                        break b;
+                                    }
+                                }
+                                bci = trueBci;
+                                break b;
+                            } else {
+                                bci = bci + 2;
+                                if (bytecodes[bci] == Bytecode.RETURN) {
+                                    return p;
+                                }
+                                break b;
+                            }
+                        }
+                        case Bytecode.POP: {
+                            getInt(frame, topOfStack);
+                            topOfStack--;
+                            bci++;
+                            if (bytecodes[bci] == Bytecode.RETURN) {
+                                running = false;
+                                break b;
+                            }
+                            break b;
+                        }
+                        case Bytecode.JMP: {
+                            byte newBci = bytecodes[bci + 1];
+                            bci = newBci;
+                            if (bytecodes[bci] == Bytecode.RETURN) {
+                                running = false;
+                                continue;
+                            }
+                            break b;
+                        }
+                        case Bytecode.DUP: {
+                            int dupValue = getInt(frame, topOfStack);
+                            topOfStack++;
+                            setInt(frame, topOfStack, dupValue);
+                            bci++;
+                            if (bytecodes[bci] == Bytecode.RETURN) {
+                                running = false;
+                                break b;
+                            }
+                            break b;
+                        }
+                    }
+
+                }
+            }
+            return 0;
+        }
+
+    }
+
+    @Test
+    public void testNoneLiveLoopExitProxy() {
+        byte[] bytecodes = new byte[]{
+                        /* 0: */Bytecode.CONST,
+                        /* 1: */42,
+                        /* 2: */Bytecode.CONST,
+                        /* 3: */-2,
+                        /* 4: */Bytecode.CONST,
+                        /* 5: */1,
+                        /* 6: */Bytecode.ADD,
+                        /* 7: */Bytecode.DUP,
+                        /* 8: */Bytecode.CONST,
+                        /* 9: */-2,
+                        /* 10: */Bytecode.CONST,
+                        /* 11: */1,
+                        /* 12: */Bytecode.ADD,
+                        /* 13: */Bytecode.DUP,
+                        /* 14: */Bytecode.IFZERO,
+                        /* 15: */18,
+                        /* 16: */Bytecode.JMP,
+                        /* 17: */10,
+                        /* 18: */Bytecode.POP,
+                        /* 19: */Bytecode.IFZERO,
+                        /* 20: */23,
+                        /* 21: */Bytecode.JMP,
+                        /* 22: */4,
+                        /* 23: */Bytecode.POP,
+                        /* 24: */Bytecode.RETURN};
+
+        CallTarget callee = Truffle.getRuntime().createCallTarget(
+                        new ProxySameValueOnce("proxyAtStateProgram", bytecodes, 0, 6));
+        ProxySameValueOnce.SideEffect = -1;
+        callee.call();
+        ProxySameValueOnce.SideEffect = 0;
+        callee.call();
+        ProxySameValueOnce.SideEffect = 1;
+        callee.call();
+        callee.call();
+
+        partialEval((OptimizedCallTarget) callee);
+
+    }
+
 }
