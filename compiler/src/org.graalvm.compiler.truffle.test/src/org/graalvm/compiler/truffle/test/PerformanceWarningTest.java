@@ -26,6 +26,7 @@ package org.graalvm.compiler.truffle.test;
 
 import java.io.ByteArrayOutputStream;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
@@ -34,7 +35,6 @@ import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.runtime.DefaultInliningPolicy;
-import org.graalvm.compiler.truffle.runtime.GraalCompilerDirectives;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleInlining;
@@ -58,7 +58,7 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
     @SuppressWarnings("unused") private static final SubClass object3 = new SubClass();
     @SuppressWarnings("unused") private static final L9a object4 = new L9a();
     @SuppressWarnings("unused") private static final L9b object5 = new L9b();
-    @SuppressWarnings("unused") private static final Boolean inFirstTier = GraalCompilerDirectives.inFirstTier();
+    @SuppressWarnings("unused") private static final Boolean inFirstTier = CompilerDirectives.inFirstTier();
 
     private ByteArrayOutputStream outContent;
 

@@ -27,7 +27,6 @@ package org.graalvm.compiler.truffle.test;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.CompilationThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.FirstTierCompilationThreshold;
 
-import org.graalvm.compiler.truffle.runtime.GraalCompilerDirectives;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.junit.Assert;
@@ -54,7 +53,7 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
                 return "callee:interpreter";
             }
             boundary();
-            if (GraalCompilerDirectives.inFirstTier()) {
+            if (CompilerDirectives.inFirstTier()) {
                 return "callee:first-tier";
             }
             if (CompilerDirectives.inCompilationRoot()) {
