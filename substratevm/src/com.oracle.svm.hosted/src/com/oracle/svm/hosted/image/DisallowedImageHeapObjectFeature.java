@@ -148,7 +148,7 @@ public class DisallowedImageHeapObjectFeature implements Feature {
                             "Class of disallowed object: " + original.getClass().getTypeName(),
                             original, "Try to avoid initializing the class that stores a MBean server or a MBean in a static field");
 
-        } else if (original instanceof PlatformManagedObject && !ManagementSupport.getSingleton().isRegisteredPlatformManagedObject((PlatformManagedObject) original)) {
+        } else if (original instanceof PlatformManagedObject && !ManagementSupport.getSingleton().isAllowedPlatformManagedObject((PlatformManagedObject) original)) {
             throw error("Detected a PlatformManagedObject (a MXBean defined by the virtual machine) in the image heap. " +
                             "This bean is introspecting the VM that runs the image builder, i.e., a VM instance that is no longer available at image run time. " +
                             "Class of disallowed object: " + original.getClass().getTypeName(),

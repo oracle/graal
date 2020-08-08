@@ -94,15 +94,25 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         private Path fullFilePath;
         private final Path cachePath;
 
+        @SuppressWarnings("try")
         NativeImageDebugCodeInfo(HostedMethod method, CompilationResult compilation) {
             this.method = method;
             HostedType declaringClass = method.getDeclaringClass();
             Class<?> clazz = declaringClass.getJavaClass();
-            this.javaType = declaringClass.getWrapped();
+            /*
+             * HostedType wraps an AnalysisType and both HostedType and AnalysisType punt calls to
+             * getSourceFilename to the wrapped class so for consistency we need to do the path
+             * lookup relative to the doubly unwrapped HostedType.
+             */
+            this.javaType = declaringClass.getWrapped().getWrapped();
             this.compilation = compilation;
             SourceManager sourceManager = ImageSingletons.lookup(SourceManager.class);
-            fullFilePath = sourceManager.findAndCacheSource(javaType, clazz);
-            this.cachePath = sourceManager.getCachePathForSource(javaType);
+            try (DebugContext.Scope s = debugContext.scope("DebugCodeInfo", declaringClass)) {
+                fullFilePath = sourceManager.findAndCacheSource(javaType, clazz, debugContext);
+                this.cachePath = sourceManager.getCachePathForSource(javaType);
+            } catch (Throwable e) {
+                throw debugContext.handle(e);
+            }
         }
 
         @SuppressWarnings("try")
@@ -296,6 +306,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             return -1;
         }
 
+        @SuppressWarnings("try")
         private void computeFullFilePathAndCachePath() {
             ResolvedJavaType declaringClass = method.getDeclaringClass();
             Class<?> clazz = null;
@@ -303,8 +314,9 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                 clazz = ((OriginalClassProvider) declaringClass).getJavaClass();
             }
             /*
-             * HostedType and AnalysisType punt calls to getSourceFilename to the wrapped class so
-             * for consistency we need to do the path lookup relative to the wrapped class.
+             * HostedType wraps an AnalysisType and both HostedType and AnalysisType punt calls to
+             * getSourceFilename to the wrapped class so for consistency we need to do the path
+             * lookup relative to the doubly unwrapped HostedType or singly unwrapped AnalysisType.
              */
             if (declaringClass instanceof HostedType) {
                 declaringClass = ((HostedType) declaringClass).getWrapped();
@@ -312,8 +324,13 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             if (declaringClass instanceof AnalysisType) {
                 declaringClass = ((AnalysisType) declaringClass).getWrapped();
             }
-            fullFilePath = ImageSingletons.lookup(SourceManager.class).findAndCacheSource(declaringClass, clazz);
-            cachePath = ImageSingletons.lookup(SourceManager.class).getCachePathForSource(declaringClass);
+            SourceManager sourceManager = ImageSingletons.lookup(SourceManager.class);
+            try (DebugContext.Scope s = debugContext.scope("DebugCodeInfo", declaringClass)) {
+                fullFilePath = sourceManager.findAndCacheSource(declaringClass, clazz, debugContext);
+                cachePath = sourceManager.getCachePathForSource(declaringClass);
+            } catch (Throwable e) {
+                throw debugContext.handle(e);
+            }
         }
 
     }

@@ -7,9 +7,11 @@ This document explains what the various interop messages mean in the context of 
 GraalVM LLVM runtime.
 
 Detailed reference documentation of Polyglot interop support in the GraalVM LLVM
-runtime can be found in `polyglot.h` (in `mxbuild/<platform>-<arch>/SULONG_HOME/include/polyglot.h`
-when building from source, or in `$GRAALVM_HOME/jre/languages/llvm/include/polyglot.h`
-in the GraalVM distribution).
+runtime can be found in [`polyglot.h`](../../projects/com.oracle.truffle.llvm.libraries.bitcode/include/polyglot.h)
+(located in `$GRAALVM_HOME/jre/languages/llvm/include/polyglot.h` in the GraalVM
+distribution).
+
+To use the functions from `polyglot.h`, binaries have to link against `-lpolyglot-mock`.
 
 ## How the LLVM runtime responds to messages from other languages
 

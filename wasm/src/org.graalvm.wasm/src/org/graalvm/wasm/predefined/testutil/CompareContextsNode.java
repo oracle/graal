@@ -44,8 +44,8 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.GlobalRegistry;
 import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmVoidResult;
 import org.graalvm.wasm.exception.WasmExecutionException;
 import org.graalvm.wasm.memory.WasmMemory;
@@ -56,7 +56,7 @@ import org.graalvm.wasm.predefined.testutil.SaveContextNode.ContextState;
  * Records the context state (memory and global variables) into a custom object.
  */
 public class CompareContextsNode extends WasmBuiltinRootNode {
-    public CompareContextsNode(WasmLanguage language, WasmModule module) {
+    public CompareContextsNode(WasmLanguage language, WasmInstance module) {
         super(language, module);
     }
 

@@ -31,7 +31,6 @@ import org.graalvm.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.LinkerInvocation;
-import com.oracle.svm.core.image.ImageHeapLayouter;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
@@ -124,7 +123,7 @@ public abstract class AbstractBootImage {
      * Build the image. Calling this method is a precondition to calling {@link #write}. It
      * typically finalizes content of the object. It does not build debug information.
      */
-    public abstract void build(DebugContext debug, ImageHeapLayouter layouter);
+    public abstract void build(DebugContext debug);
 
     /**
      * Write the image to the named file. This also writes debug information -- either to the same

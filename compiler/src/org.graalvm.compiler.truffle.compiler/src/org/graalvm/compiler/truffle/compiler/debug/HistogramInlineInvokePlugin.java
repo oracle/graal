@@ -96,16 +96,11 @@ public class HistogramInlineInvokePlugin implements InlineInvokePlugin {
     public void print(CompilableTruffleAST target) {
         StringWriter messageBuilder = new StringWriter();
         try (PrintWriter out = new PrintWriter(messageBuilder)) {
-            out.printf("Truffle expansion histogram for %s%n", target);
-            out.println("  Invocations = Number of expanded invocations");
-            out.println("  Nodes = Number of non-trival Graal nodes created for this method during partial evaluation.");
-            out.println("  Calls = Number of not expanded calls created for this method during partial evaluation.");
-            out.printf(" %-11s |Nodes %5s %5s %5s %8s |Calls %5s %5s %5s %8s | Method Name%n", "Invocations", "Sum", "Min", "Max", "Avg", "Sum", "Min", "Max", "Avg");
 
             /* First filter the statistics and collect them in a list. */
             List<MethodStatistics> statisticsList = new ArrayList<>();
             for (MethodStatistics statistics : histogram.values()) {
-                if (statistics.shallowCount.getSum() > 0) {
+                if (statistics.expandedCount.getSum() > 0) {
                     statisticsList.add(statistics);
                 }
             }
@@ -113,9 +108,17 @@ public class HistogramInlineInvokePlugin implements InlineInvokePlugin {
             /* Then sort the list. */
             Collections.sort(statisticsList);
 
+            out.printf("Expansion Histograms:%n");
+            out.println("Graal Nodes Histogram: Number of non-trival Graal nodes created for a method during partial evaluation.");
+            out.printf(" %-11s |Nodes %5s %5s %5s %8s | Method Name%n", "Expansions", "Sum", "Min", "Max", "Avg");
             /* Finally print the filtered and sorted statistics. */
             for (MethodStatistics statistics : statisticsList) {
-                statistics.print(out);
+                statistics.print(out, true);
+            }
+            out.println("Graal Invoke Histogram: Number of invokes created for a method during partial evaluation.");
+            out.printf(" %-11s |Nodes %5s %5s %5s %8s | Method Name%n", "Expansions", "Sum", "Min", "Max", "Avg");
+            for (MethodStatistics statistics : statisticsList) {
+                statistics.print(out, false);
             }
         }
         TruffleCompilerRuntime tcr = TruffleCompilerRuntime.getRuntime();
@@ -127,23 +130,32 @@ public class HistogramInlineInvokePlugin implements InlineInvokePlugin {
         private final ResolvedJavaMethod method;
 
         private int count;
-        private final IntSummaryStatistics shallowCount = new IntSummaryStatistics();
-        private final IntSummaryStatistics callCount = new IntSummaryStatistics();
+        private final IntSummaryStatistics expandedCount = new IntSummaryStatistics();
+        private final IntSummaryStatistics invokeCount = new IntSummaryStatistics();
 
         MethodStatistics(ResolvedJavaMethod method) {
             this.method = method;
         }
 
-        public void print(PrintWriter out) {
-            out.printf(" %11d |      %5d %5d %5d %8.2f |      %5d %5d %5d %8.2f | %s", //
-                            count, shallowCount.getSum(), shallowCount.getMin(), shallowCount.getMax(), //
-                            shallowCount.getAverage(), callCount.getSum(), callCount.getMin(), callCount.getMax(), //
-                            callCount.getAverage(), method.format("%h.%n(%p)"));
+        public void print(PrintWriter out, boolean expanded) {
+            if (expanded) {
+                if (expandedCount.getCount() > 0) {
+                    out.printf(" %11d |      %5d %5d %5d %8.2f | %s%n", //
+                                    count, expandedCount.getSum(), expandedCount.getMin(), expandedCount.getMax(), expandedCount.getAverage(),
+                                    method.format("%h.%n(%p)"));
+                }
+            } else {
+                if (invokeCount.getSum() > 0) {
+                    out.printf(" %11d |      %5d %5d %5d %8.2f | %s%n", //
+                                    count, invokeCount.getSum(), invokeCount.getMin(), invokeCount.getMax(), invokeCount.getAverage(), //
+                                    method.format("%h.%n(%p)"));
+                }
+            }
         }
 
         @Override
         public int compareTo(MethodStatistics o) {
-            int result = Long.compare(o.shallowCount.getSum(), shallowCount.getSum());
+            int result = Long.compare(o.expandedCount.getSum(), expandedCount.getSum());
             if (result == 0) {
                 return Integer.compare(o.count, count);
             }
@@ -155,8 +167,8 @@ public class HistogramInlineInvokePlugin implements InlineInvokePlugin {
                 throw new IllegalArgumentException("invalid statistic");
             }
             count++;
-            callCount.accept(statistic.getShallowCallCount());
-            shallowCount.accept(statistic.getShallowNodeCount());
+            invokeCount.accept(statistic.getShallowCallCount());
+            expandedCount.accept(statistic.getShallowNodeCount());
         }
     }
 

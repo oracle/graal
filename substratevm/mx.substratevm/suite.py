@@ -1,7 +1,7 @@
 suite = {
     "mxversion": "5.265.3",
     "name": "substratevm",
-    "version" : "20.2.0",
+    "version" : "20.3.0",
     "release" : False,
     "url" : "https://github.com/oracle/graal/tree/master/substratevm",
 
@@ -37,9 +37,19 @@ suite = {
     },
 
     "libraries" : {
-        "RENAISSANCE_HARNESS_11" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance_harness_11.tar.gz"],
+        "RENAISSANCE_HARNESS_v0.9" : {
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-harness_v0.9.0.tar.gz"],
             "sha1" : "0bef46df4699d896034005d6f3f0422a7075482b",
+            "packedResource": True,
+        },
+        "RENAISSANCE_HARNESS_v0.10" : {
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-harness_v0.10.0.tar.gz"],
+            "sha1" : "842e60f56d9871a1fa5700dcc446acbd041e875b",
+            "packedResource": True,
+        },
+        "RENAISSANCE_HARNESS_v0.11" : {
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-harness_v0.11.0.tar.gz"],
+            "sha1" : "8d402c1e7c972badfcffdd6c64ed4e791b0dea02",
             "packedResource": True,
         },
         "DACAPO_SVM" : {
@@ -217,6 +227,8 @@ suite = {
             "requiresConcealed" : {
                 "java.base" : [
                     "jdk.internal.loader",
+                    "jdk.internal.misc",
+                    "sun.invoke.util",
                 ],
             },
             "javaCompliance": "15+",

@@ -79,7 +79,7 @@ public abstract class LLVMToolchainNode extends LLVMIntrinsic {
             if (paths == null) {
                 return LLVMNativePointer.createNull();
             }
-            return LLVMContext.toTruffleObjects(toArray(paths));
+            return LLVMContext.toManagedObjects(toArray(paths));
         }
 
         @TruffleBoundary

@@ -36,7 +36,7 @@ import com.oracle.truffle.llvm.runtime.LLVMSyscallEntry;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMInfo;
-import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMUnknownSyscallNode;
+import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMNativeSyscallNode;
 
 public abstract class BasicPlatformCapability<S extends Enum<S> & LLVMSyscallEntry> extends PlatformCapabilityBase<S> {
 
@@ -88,7 +88,7 @@ public abstract class BasicPlatformCapability<S extends Enum<S> & LLVMSyscallEnt
         try {
             return createSyscallNode(getSyscall(index));
         } catch (IllegalArgumentException e) {
-            return new LLVMUnknownSyscallNode(index);
+            return new LLVMNativeSyscallNode(index);
         }
     }
 

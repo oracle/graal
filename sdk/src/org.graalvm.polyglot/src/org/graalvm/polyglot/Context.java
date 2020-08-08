@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1138,6 +1138,9 @@ public final class Context implements AutoCloseable {
          * options in production environments. If set to {@code false} (the default), then passing
          * an experimental option results in an {@link IllegalArgumentException} when the context is
          * built.
+         * <p>
+         * Alternatively {@link Engine.Builder#allowExperimentalOptions(boolean)} may be used when
+         * constructing the context using an {@link #engine(Engine) explicit engine}.
          *
          * @since 19.0
          */

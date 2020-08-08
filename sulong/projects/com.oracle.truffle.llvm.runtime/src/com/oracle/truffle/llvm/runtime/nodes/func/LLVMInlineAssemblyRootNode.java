@@ -32,9 +32,11 @@ package com.oracle.truffle.llvm.runtime.nodes.func;
 import java.util.List;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.base.LLVMInlineAssemblyBlockNode;
@@ -42,6 +44,7 @@ import com.oracle.truffle.llvm.runtime.nodes.asm.base.LLVMInlineAssemblyBlockNod
 
 public class LLVMInlineAssemblyRootNode extends RootNode {
 
+    private final FrameSlot stackPointerSlot;
     @Child private LLVMInlineAssemblyBlockNode prologue;
     @Child private LLVMInlineAssemblyBlockNode block;
 
@@ -53,6 +56,7 @@ public class LLVMInlineAssemblyRootNode extends RootNode {
         this.prologue = LLVMInlineAssemblyBlockNodeGen.create(writeNodes);
         this.block = LLVMInlineAssemblyBlockNodeGen.create(statements);
         this.result = result;
+        this.stackPointerSlot = frameDescriptor.findFrameSlot(LLVMStack.FRAME_ID);
     }
 
     @Override
@@ -70,8 +74,12 @@ public class LLVMInlineAssemblyRootNode extends RootNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        prologue.execute(frame);
-        block.execute(frame);
-        return result == null ? 0 : result.executeGeneric(frame);
+        LLVMStack stack = (LLVMStack) frame.getArguments()[0];
+        try (LLVMStack.StackPointer stackPointer = stack.newFrame()) {
+            frame.setObject(stackPointerSlot, stackPointer);
+            prologue.execute(frame);
+            block.execute(frame);
+            return result == null ? 0 : result.executeGeneric(frame);
+        }
     }
 }

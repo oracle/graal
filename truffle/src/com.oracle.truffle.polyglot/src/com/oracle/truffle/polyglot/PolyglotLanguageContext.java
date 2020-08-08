@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -386,10 +386,11 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             for (PolyglotThreadInfo threadInfo : context.getSeenThreads().values()) {
                 assert threadInfo != PolyglotThreadInfo.NULL;
                 final Thread thread = threadInfo.getThread();
-                if (thread == null || threadInfo.isPolyglotThread(context)) {
-                    // polyglot threads need to be cleaned up by the language
+                if (thread == null) {
                     continue;
                 }
+                assert !threadInfo.isPolyglotThread(context) : "Polyglot threads must no longer be active in TruffleLanguage.finalizeContext, but polyglot thread " + thread.getName() +
+                                " is still active.";
                 LANGUAGE.disposeThread(localEnv, thread);
             }
             LANGUAGE.dispose(localEnv);
@@ -899,7 +900,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         } else if (PolyglotImpl.isGuestPrimitive(hostValue)) {
             return hostValue;
         } else if (hostValue instanceof Proxy) {
-            return PolyglotProxy.toProxyGuestObject(this, (Proxy) hostValue);
+            return PolyglotProxy.toProxyGuestObject((Proxy) hostValue);
         } else if (hostValue instanceof TruffleObject) {
             return hostValue;
         } else if (hostValue instanceof Class) {
@@ -923,7 +924,7 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
         } else if (HostObject.isInstance(value)) {
             return ((HostObject) value).withContext(this);
         } else if (PolyglotProxy.isProxyGuestObject(value)) {
-            return PolyglotProxy.withContext(this, value);
+            return value;
         } else if (valueContext == null) {
             /*
              * The only way this can happen is with Value.asValue(TruffleObject). If it happens

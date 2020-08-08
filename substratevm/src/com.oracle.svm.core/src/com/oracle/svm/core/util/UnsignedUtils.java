@@ -99,4 +99,14 @@ public final class UnsignedUtils {
     public static UnsignedWord max(UnsignedWord x, UnsignedWord y) {
         return (x.aboveOrEqual(y)) ? x : y;
     }
+
+    /**
+     * Converts an {@link UnsignedWord} to a positive signed {@code int}, asserting that it can be
+     * correctly represented.
+     */
+    public static int safeToInt(UnsignedWord w) {
+        long l = w.rawValue();
+        assert l >= 0 && l == (int) l;
+        return (int) l;
+    }
 }

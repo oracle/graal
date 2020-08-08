@@ -112,6 +112,10 @@ public final class LLVMStack {
         public String toString() {
             return String.format("StackPointer 0x%x (Bounds: 0x%x - 0x%x%s)", stackPointer, lowerBounds, upperBounds, isAllocated ? "" : " not allocated");
         }
+
+        public LLVMStack getLLVMStack() {
+            return LLVMStack.this;
+        }
     }
 
     /**

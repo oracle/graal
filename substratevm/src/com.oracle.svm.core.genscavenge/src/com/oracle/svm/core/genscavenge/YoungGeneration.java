@@ -128,14 +128,14 @@ final class YoungGeneration extends Generation {
     protected Object promoteObject(Object original, UnsignedWord header) {
         if (ObjectHeaderImpl.isAlignedHeader(original, header)) {
             AlignedHeapChunk.AlignedHeader originalChunk = AlignedHeapChunk.getEnclosingChunk(original);
-            Space originalSpace = originalChunk.getSpace();
+            Space originalSpace = HeapChunk.getSpace(originalChunk);
             if (originalSpace.isFromSpace()) {
                 return promoteAlignedObject(original, originalSpace);
             }
         } else {
             assert ObjectHeaderImpl.isUnalignedHeader(original, header);
             UnalignedHeapChunk.UnalignedHeader chunk = UnalignedHeapChunk.getEnclosingChunk(original);
-            Space originalSpace = chunk.getSpace();
+            Space originalSpace = HeapChunk.getSpace(chunk);
             if (originalSpace.isFromSpace()) {
                 promoteUnalignedObject(chunk, originalSpace);
             }
@@ -292,7 +292,7 @@ final class YoungGeneration extends Generation {
 
     @SuppressWarnings("static-method")
     boolean contains(Object object) {
-        return HeapChunk.getEnclosingHeapChunk(object).getSpace().isYoungSpace();
+        return HeapChunk.getSpace(HeapChunk.getEnclosingHeapChunk(object)).isYoungSpace();
     }
 
     @AlwaysInline("GC performance")

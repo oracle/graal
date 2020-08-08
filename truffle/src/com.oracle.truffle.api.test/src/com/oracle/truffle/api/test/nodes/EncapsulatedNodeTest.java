@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,6 +53,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
+import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -62,7 +64,6 @@ import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
-import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -71,34 +72,77 @@ public class EncapsulatedNodeTest {
     @Test
     @SuppressWarnings("unchecked")
     public void testCallNodePickedByCallTargetCall() {
-        CallTarget iterateFrames = create(new RootNode(null) {
-            @Override
-            public Object execute(VirtualFrame frame) {
-                return captureStack();
-            }
-        });
+        CallTarget getStackTrace = createGetStackTraceNode();
         Node callLocation = adopt(new Node() {
         });
-
         CallTarget root = create(new RootNode(null) {
-
             @Override
             public Object execute(VirtualFrame frame) {
-                return boundary(callLocation, () -> IndirectCallNode.getUncached().call(iterateFrames, new Object[0]));
+                try {
+                    return boundary(callLocation, () -> getStackTrace.call(frame.getArguments()));
+                } catch (GetStackTraceException e) {
+                    return TruffleStackTrace.getStackTrace(e);
+                }
             }
         });
-        List<TruffleStackTraceElement> frames = (List<TruffleStackTraceElement>) root.call();
+
+        Supplier<Object> eager = EncapsulatedNodeTest::captureStackEagerly;
+        List<TruffleStackTraceElement> framesEager = (List<TruffleStackTraceElement>) root.call(eager);
+        assertCorrectStackTrace(getStackTrace, callLocation, root, framesEager);
+
+        Supplier<Object> lazy = EncapsulatedNodeTest::captureStackLazily;
+        List<TruffleStackTraceElement> framesLazy = (List<TruffleStackTraceElement>) root.call(lazy);
+        assertCorrectStackTrace(getStackTrace, callLocation, root, framesLazy);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testCallNodePickedByUncachedIndirectCallNode() {
+        CallTarget getStackTrace = createGetStackTraceNode();
+        Node callLocation = adopt(new Node() {
+        });
+        CallTarget root = create(new RootNode(null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                try {
+                    return boundary(callLocation, () -> IndirectCallNode.getUncached().call(getStackTrace, frame.getArguments()));
+                } catch (GetStackTraceException e) {
+                    return TruffleStackTrace.getStackTrace(e);
+                }
+            }
+        });
+
+        Supplier<Object> eager = EncapsulatedNodeTest::captureStackEagerly;
+        List<TruffleStackTraceElement> framesEager = (List<TruffleStackTraceElement>) root.call(eager);
+        assertCorrectStackTrace(getStackTrace, callLocation, root, framesEager);
+
+        Supplier<Object> lazy = EncapsulatedNodeTest::captureStackLazily;
+        List<TruffleStackTraceElement> framesLazy = (List<TruffleStackTraceElement>) root.call(lazy);
+        assertCorrectStackTrace(getStackTrace, callLocation, root, framesLazy);
+    }
+
+    private static void assertCorrectStackTrace(CallTarget getStackTrace, Node callLocation, CallTarget root, List<TruffleStackTraceElement> frames) {
         assertEquals(2, frames.size());
         Iterator<TruffleStackTraceElement> iterator = frames.iterator();
         TruffleStackTraceElement frame;
 
         frame = iterator.next();
-        assertSame(iterateFrames, frame.getTarget());
+        assertSame(getStackTrace, frame.getTarget());
         assertNull(frame.getLocation());
 
         frame = iterator.next();
         assertSame(root, frame.getTarget());
         assertSame(callLocation, frame.getLocation());
+    }
+
+    private static CallTarget createGetStackTraceNode() {
+        return create(new RootNode(null) {
+            @SuppressWarnings("unchecked")
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return ((Supplier<Object>) frame.getArguments()[0]).get();
+            }
+        });
     }
 
     @Test
@@ -121,7 +165,7 @@ public class EncapsulatedNodeTest {
         CallTarget root = create(new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
-                return boundary(callLocation, () -> captureStack());
+                return boundary(callLocation, () -> captureStackEagerly());
             }
         });
 
@@ -234,10 +278,22 @@ public class EncapsulatedNodeTest {
     }
 
     @TruffleBoundary
-    private static Object captureStack() {
+    private static List<TruffleStackTraceElement> captureStackEagerly() {
         Exception e = new Exception();
-        TruffleStackTrace.fillIn(e);
         return TruffleStackTrace.getStackTrace(e);
+    }
+
+    @TruffleBoundary
+    private static List<TruffleStackTraceElement> captureStackLazily() {
+        throw new GetStackTraceException();
+    }
+
+    @SuppressWarnings("serial")
+    private static class GetStackTraceException extends RuntimeException implements TruffleException {
+        @Override
+        public Node getLocation() {
+            return null;
+        }
     }
 
     @TruffleBoundary

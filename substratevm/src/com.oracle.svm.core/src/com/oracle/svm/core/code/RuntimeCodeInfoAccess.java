@@ -43,6 +43,7 @@ import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.code.InstalledCodeObserver.InstalledCodeObserverHandle;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.heap.CodeReferenceMapDecoder;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectReferenceVisitor;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 
@@ -92,11 +93,18 @@ public final class RuntimeCodeInfoAccess {
 
     public static CodeInfoTether beforeInstallInCurrentIsolate(CodeInfo info, SubstrateInstalledCode installedCode) {
         CodeInfoTether tether = new CodeInfoTether(true);
+        setObjectData(info, tether, installedCode.getName(), installedCode);
+        return tether;
+    }
+
+    @Uninterruptible(reason = "Makes the object data visible to the GC.")
+    private static void setObjectData(CodeInfo info, CodeInfoTether tether, String name, SubstrateInstalledCode installedCode) {
         NonmovableObjectArray<Object> objectFields = cast(info).getObjectFields();
         NonmovableArrays.setObject(objectFields, CodeInfoImpl.TETHER_OBJFIELD, tether);
-        NonmovableArrays.setObject(objectFields, CodeInfoImpl.NAME_OBJFIELD, installedCode.getName());
+        NonmovableArrays.setObject(objectFields, CodeInfoImpl.NAME_OBJFIELD, name);
         NonmovableArrays.setObject(objectFields, CodeInfoImpl.INSTALLEDCODE_OBJFIELD, installedCode);
-        return tether;
+        // after setting all the object data , notify the GC
+        Heap.getHeap().registerRuntimeCodeInfo(info);
     }
 
     /**
@@ -153,6 +161,9 @@ public final class RuntimeCodeInfoAccess {
     private static void releaseMemory(CodeInfo info) {
         CodeInfoImpl impl = cast(info);
         assert impl.getState() == CodeInfo.STATE_CODE_CONSTANTS_LIVE || impl.getState() == CodeInfo.STATE_READY_FOR_INVALIDATION : "unexpected state (probably already released)";
+        // Notify the GC as long as the object data is still valid.
+        Heap.getHeap().unregisterCodeConstants(info);
+
         NonmovableArrays.releaseUnmanagedArray(impl.getCodeObserverHandles());
         impl.setCodeObserverHandles(NonmovableArrays.nullArray());
 
@@ -204,6 +215,9 @@ public final class RuntimeCodeInfoAccess {
 
     @Uninterruptible(reason = "Called from uninterruptible code", mayBeInlined = true)
     public static void releaseMethodInfoMemory(CodeInfo info) {
+        // Notify the GC as long as the object data is still valid.
+        Heap.getHeap().unregisterRuntimeCodeInfo(info);
+
         forEachArray(info, RELEASE_ACTION);
         ImageSingletons.lookup(UnmanagedMemorySupport.class).free(info);
     }

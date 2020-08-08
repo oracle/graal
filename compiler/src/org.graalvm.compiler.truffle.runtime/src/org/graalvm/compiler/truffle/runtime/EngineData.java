@@ -72,7 +72,6 @@ import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.EngineModeEnum;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExceptionAction;
 import org.graalvm.compiler.truffle.runtime.debug.StatisticsListener;
-import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -137,9 +136,9 @@ public final class EngineData {
     @CompilationFinal public boolean traceTransferToInterpreter;
 
     // computed fields.
-    @CompilationFinal public int firstTierCallThreshold;
-    @CompilationFinal public int firstTierCallAndLoopThreshold;
-    @CompilationFinal public int lastTierCallThreshold;
+    @CompilationFinal public int callThresholdInInterpreter;
+    @CompilationFinal public int callAndLoopThresholdInInterpreter;
+    @CompilationFinal public int callThresholdInFirstTier;
 
     // Cached logger
     private volatile TruffleLogger logger;
@@ -154,6 +153,10 @@ public final class EngineData {
 
         // the splittingStatistics requires options to be initialized
         this.splittingStatistics = new TruffleSplittingStrategy.SplitStatisticsData();
+    }
+
+    public OptionValues getEngineOptions() {
+        return engineOptions;
     }
 
     void loadOptions(OptionValues options) {
@@ -187,9 +190,9 @@ public final class EngineData {
         this.traceCompilation = getPolyglotOptionValue(options, TraceCompilation);
         this.traceCompilationDetails = getPolyglotOptionValue(options, TraceCompilationDetails);
         this.backgroundCompilation = getPolyglotOptionValue(options, BackgroundCompilation);
-        this.firstTierCallThreshold = computeFirstTierCallThreshold(options);
-        this.firstTierCallAndLoopThreshold = computeFirstTierCallAndLoopThreshold(options);
-        this.lastTierCallThreshold = firstTierCallAndLoopThreshold;
+        this.callThresholdInInterpreter = computeCallThresholdInInterpreter(options);
+        this.callAndLoopThresholdInInterpreter = computeCallAndLoopThresholdInInterpreter(options);
+        this.callThresholdInFirstTier = computeCallThresholdInFirstTier(options);
         this.callTargetStatisticDetails = getPolyglotOptionValue(options, CompilationStatisticDetails);
         this.callTargetStatistics = getPolyglotOptionValue(options, CompilationStatistics) || this.callTargetStatisticDetails;
         this.statisticsListener = this.callTargetStatistics ? StatisticsListener.createEngineListener(GraalTruffleRuntime.getRuntime()) : null;
@@ -285,19 +288,9 @@ public final class EngineData {
         if (compilationFailureAction == ExceptionAction.Throw && backgroundCompilation) {
             getLogger().log(Level.WARNING, "The 'Throw' value of the 'engine.CompilationFailureAction' option requires the 'engine.BackgroundCompilation' option to be set to 'false'.");
         }
-        for (OptionDescriptor descriptor : PolyglotCompilerOptions.getDescriptors()) {
-            if (descriptor.isDeprecated() && engineOptions.hasBeenSet(descriptor.getKey())) {
-                String optionName = descriptor.getName();
-                String deprecationMessage = descriptor.getDeprecationMessage();
-                if (deprecationMessage.isEmpty()) {
-                    deprecationMessage = "Will be removed with no replacement.";
-                }
-                getLogger().log(Level.WARNING, String.format("The option '%s' is deprecated.%n%s", optionName, deprecationMessage));
-            }
-        }
     }
 
-    private int computeFirstTierCallThreshold(OptionValues options) {
+    private int computeCallThresholdInInterpreter(OptionValues options) {
         if (compileImmediately) {
             return 0;
         }
@@ -308,7 +301,7 @@ public final class EngineData {
         }
     }
 
-    private int computeFirstTierCallAndLoopThreshold(OptionValues options) {
+    private int computeCallAndLoopThresholdInInterpreter(OptionValues options) {
         if (compileImmediately) {
             return 0;
         }
@@ -317,6 +310,13 @@ public final class EngineData {
         } else {
             return getPolyglotOptionValue(options, CompilationThreshold);
         }
+    }
+
+    private int computeCallThresholdInFirstTier(OptionValues options) {
+        if (compileImmediately) {
+            return 0;
+        }
+        return getPolyglotOptionValue(options, CompilationThreshold);
     }
 
     public TruffleLogger getLogger() {

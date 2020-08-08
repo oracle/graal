@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -437,6 +437,13 @@ public final class SpecializationData extends TemplateMethod {
 
     public int getIndex() {
         return index;
+    }
+
+    public int getIntrospectionIndex() {
+        if (getMethod() == null) {
+            return -1;
+        }
+        return index - 1;
     }
 
     public NodeData getNode() {

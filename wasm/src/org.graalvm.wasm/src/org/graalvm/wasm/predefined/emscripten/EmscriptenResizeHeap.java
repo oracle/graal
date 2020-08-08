@@ -42,13 +42,13 @@ package org.graalvm.wasm.predefined.emscripten;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmModule;
 
 import static org.graalvm.wasm.WasmTracing.trace;
 
 public class EmscriptenResizeHeap extends AbortNode {
-    public EmscriptenResizeHeap(WasmLanguage language, WasmModule module) {
+    public EmscriptenResizeHeap(WasmLanguage language, WasmInstance module) {
         super(language, module);
     }
 

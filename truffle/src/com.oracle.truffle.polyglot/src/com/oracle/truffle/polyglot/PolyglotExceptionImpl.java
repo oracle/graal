@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -498,7 +498,7 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
             } else {
                 this.hostStack = cause.getStackTrace();
             }
-            this.guestFrames = impl.guestFrames == null ? Collections.<TruffleStackTraceElement> emptyList().iterator() : impl.guestFrames.iterator();
+            this.guestFrames = impl.guestFrames == null ? Collections.emptyIterator() : impl.guestFrames.iterator();
             this.hostFrames = Arrays.asList(hostStack).listIterator();
             // we always start in some host stack frame
             this.inHostLanguage = impl.isHostException() || impl.isInternalError();
@@ -649,20 +649,8 @@ final class PolyglotExceptionImpl extends AbstractExceptionImpl {
                     return element.getMethodName().equals("invokeHandle");
                 case "com.oracle.truffle.polyglot.HostMethodDesc$SingleMethod$MethodReflectImpl":
                     return element.getMethodName().equals("reflectInvoke");
-                case "com.oracle.truffle.polyglot.PolyglotProxy$ExecuteNode":
-                case "com.oracle.truffle.polyglot.PolyglotProxy$InstantiateNode":
-                case "com.oracle.truffle.polyglot.PolyglotProxy$AsPointerNode":
-                case "com.oracle.truffle.polyglot.PolyglotProxy$ArrayGetNode":
-                case "com.oracle.truffle.polyglot.PolyglotProxy$ArraySetNode":
-                case "com.oracle.truffle.polyglot.PolyglotProxy$ArrayRemoveNode":
-                case "com.oracle.truffle.polyglot.PolyglotProxy$ArraySizeNode":
-                case "com.oracle.truffle.polyglot.PolyglotProxy$GetMemberKeysNode":
-                case "com.oracle.truffle.polyglot.PolyglotProxy$PutMemberNode":
-                case "com.oracle.truffle.polyglot.PolyglotProxy$RemoveMemberNode":
-                case "com.oracle.truffle.polyglot.PolyglotProxy$HasMemberNode":
-                    return element.getMethodName().equals("executeImpl");
                 default:
-                    return false;
+                    return element.getClassName().startsWith("com.oracle.truffle.polyglot.HostToGuestCodeCache$") && element.getMethodName().equals("executeImpl");
             }
         }
 

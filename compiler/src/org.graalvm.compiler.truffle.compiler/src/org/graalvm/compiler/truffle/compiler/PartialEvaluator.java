@@ -26,10 +26,12 @@ package org.graalvm.compiler.truffle.compiler;
 
 import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.getPolyglotOptionValue;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExcludeAssertions;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.FirstTierInlining;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.InlineAcrossTruffleBoundary;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.IterativePartialEscape;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.LanguageAgnosticInlining;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MaximumGraalNodeCount;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.MultiTier;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.NodeSourcePositions;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.PrintExpansionHistogram;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.TracePerformanceWarnings;
@@ -49,7 +51,6 @@ import org.graalvm.compiler.graph.SourceLanguagePosition;
 import org.graalvm.compiler.graph.SourceLanguagePositionProvider;
 import org.graalvm.compiler.java.ComputeLoopFrequenciesClosure;
 import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
-import org.graalvm.compiler.nodes.Cancellable;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -86,7 +87,9 @@ import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.InlineKind;
 import org.graalvm.compiler.truffle.common.TruffleInliningPlan;
 import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
+import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl.CancellableTruffleCompilationTask;
 import org.graalvm.compiler.truffle.compiler.debug.HistogramInlineInvokePlugin;
+import org.graalvm.compiler.truffle.compiler.nodes.TruffleAssumption;
 import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.AllowMaterializeNode;
 import org.graalvm.compiler.truffle.compiler.phases.DeoptimizeOnExceptionPhase;
@@ -113,6 +116,12 @@ import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
  * Class performing the partial evaluation starting from the root node of an AST.
  */
 public abstract class PartialEvaluator {
+
+    private static final TimerKey PartialEvaluationTimer = DebugContext.timer("PartialEvaluation-Decoding").doc("Time spent in the graph-decoding of partial evaluation.");
+    private static final TimerKey TruffleEscapeAnalysisTimer = DebugContext.timer("PartialEvaluation-EscapeAnalysis").doc("Time spent in the escape-analysis in Truffle tier.");
+    private static final TimerKey TruffleConditionalEliminationTimer = DebugContext.timer("PartialEvaluation-ConditionalElimination").doc("Time spent in conditional elimination in Truffle tier.");
+    private static final TimerKey TruffleCanonicalizerTimer = DebugContext.timer("PartialEvaluation-Canonicalizer").doc("Time spent in the canonicalizer in the Truffle tier.");
+    private static final TimerKey TruffleConvertDeoptimizeTimer = DebugContext.timer("PartialEvaluation-ConvertDeoptimizeToGuard").doc("Time spent in converting deoptimize to guard in Truffle tier.");
 
     protected final Providers providers;
     protected final Architecture architecture;
@@ -280,12 +289,12 @@ public abstract class PartialEvaluator {
         public final TruffleInliningPlan inliningPlan;
         public final CompilationIdentifier compilationId;
         public final SpeculationLog log;
-        public final Cancellable cancellable;
+        public final CancellableTruffleCompilationTask cancellable;
         public final StructuredGraph graph;
         final HighTierContext highTierContext;
 
         public Request(OptionValues options, DebugContext debug, CompilableTruffleAST compilable, ResolvedJavaMethod method, TruffleInliningPlan inliningPlan,
-                        CompilationIdentifier compilationId, SpeculationLog log, Cancellable cancellable) {
+                        CompilationIdentifier compilationId, SpeculationLog log, CancellableTruffleCompilationTask cancellable) {
             Objects.requireNonNull(options);
             Objects.requireNonNull(debug);
             Objects.requireNonNull(compilable);
@@ -309,7 +318,16 @@ public abstract class PartialEvaluator {
             // @formatter:on
             builder = customizeStructuredGraphBuilder(builder);
             this.graph = builder.build();
+            this.graph.getAssumptions().record(new TruffleAssumption(compilable.getNodeRewritingAssumptionConstant()));
             highTierContext = new HighTierContext(providers, new PhaseSuite<HighTierContext>(), OptimisticOptimizations.NONE);
+        }
+
+        public boolean useLanguageAgnosticInlining() {
+            if (getPolyglotOptionValue(options, MultiTier) && cancellable.isFirstTier()) {
+                return getPolyglotOptionValue(options, LanguageAgnosticInlining) && getPolyglotOptionValue(options, FirstTierInlining);
+            } else {
+                return getPolyglotOptionValue(options, LanguageAgnosticInlining);
+            }
         }
     }
 
@@ -319,11 +337,19 @@ public abstract class PartialEvaluator {
             try (DebugContext.Scope s = request.debug.scope("CreateGraph", request.graph);
                             Indent indent = request.debug.logAndIndent("evaluate %s", request.graph);) {
                 inliningGraphPE(request);
-                new ConvertDeoptimizeToGuardPhase().apply(request.graph, request.highTierContext);
+                try (DebugCloseable a = TruffleConvertDeoptimizeTimer.start(request.debug)) {
+                    new ConvertDeoptimizeToGuardPhase().apply(request.graph, request.highTierContext);
+                }
                 inlineReplacements(request);
-                new ConditionalEliminationPhase(false).apply(request.graph, request.highTierContext);
-                canonicalizer.apply(request.graph, request.highTierContext);
-                partialEscape(request);
+                try (DebugCloseable a = TruffleConditionalEliminationTimer.start(request.debug)) {
+                    new ConditionalEliminationPhase(false).apply(request.graph, request.highTierContext);
+                }
+                try (DebugCloseable a = TruffleCanonicalizerTimer.start(request.debug)) {
+                    canonicalizer.apply(request.graph, request.highTierContext);
+                }
+                try (DebugCloseable a = TruffleEscapeAnalysisTimer.start(request.debug)) {
+                    partialEscape(request);
+                }
                 // recompute loop frequencies now that BranchProbabilities have been canonicalized
                 ComputeLoopFrequenciesClosure.compute(request.graph);
                 applyInstrumentationPhases(request);
@@ -561,12 +587,10 @@ public abstract class PartialEvaluator {
         return decodingInvocationPlugins;
     }
 
-    private static final TimerKey PartialEvaluationTimer = DebugContext.timer("PartialEvaluation").doc("Time spent in partial evaluation.");
-
     @SuppressWarnings({"unused", "try"})
     private void inliningGraphPE(Request request) {
         try (DebugCloseable a = PartialEvaluationTimer.start(request.debug)) {
-            if (getPolyglotOptionValue(request.options, LanguageAgnosticInlining)) {
+            if (request.useLanguageAgnosticInlining()) {
                 AgnosticInliningPhase agnosticInlining = new AgnosticInliningPhase(this, request);
                 agnosticInlining.apply(request.graph, providers);
             } else {

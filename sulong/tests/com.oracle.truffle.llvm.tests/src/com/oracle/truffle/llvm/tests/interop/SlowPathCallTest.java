@@ -43,7 +43,6 @@ import org.junit.runner.RunWith;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.tests.interop.values.StructObject;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
@@ -52,7 +51,7 @@ import com.oracle.truffle.tck.TruffleRunner.Inject;
 public class SlowPathCallTest extends InteropTestBase {
 
     private static Object[] function;
-    private static TruffleObject testLibrary;
+    private static Object testLibrary;
 
     @BeforeClass
     public static void loadTestBitcode() {

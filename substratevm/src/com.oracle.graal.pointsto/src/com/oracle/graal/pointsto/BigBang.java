@@ -85,7 +85,6 @@ import com.oracle.svm.util.ImageGeneratorThreadMarker;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 
@@ -207,12 +206,6 @@ public abstract class BigBang {
         return new MethodTypeFlowBuilder(bb, methodFlow);
     }
 
-    /** Associates a JavaConstant with a root. */
-    public abstract boolean addRoot(JavaConstant constant, Object root);
-
-    /** Retrieves a root associated with a JavaConstant. */
-    public abstract Object getRoot(JavaConstant constant);
-
     public void registerUnsafeLoad(AbstractUnsafeLoadTypeFlow unsafeLoad) {
         unsafeLoads.putIfAbsent(unsafeLoad, true);
     }
@@ -242,18 +235,28 @@ public abstract class BigBang {
 
         // force update of the unsafe loads
         for (AbstractUnsafeLoadTypeFlow unsafeLoad : unsafeLoads.keySet()) {
-            TypeFlow<?> receiverFlow = unsafeLoad.receiver();
-            // post the receiver object flow for update; an update of the receiver object
-            // flow will trigger an updated of the observers, i.e., of the unsafe load
-            this.postFlow(receiverFlow);
+            /* Force update for unsafe accessed static fields. */
+            unsafeLoad.initClone(this);
+
+            /*
+             * Force update for unsafe accessed instance fields: post the receiver object flow for
+             * update; an update of the receiver object flow will trigger an updated of the
+             * observers, i.e., of the unsafe load.
+             */
+            this.postFlow(unsafeLoad.receiver());
         }
 
         // force update of the unsafe stores
         for (AbstractUnsafeStoreTypeFlow unsafeStore : unsafeStores.keySet()) {
-            TypeFlow<?> receiverFlow = unsafeStore.receiver();
-            // post the receiver object flow for update; an update of the receiver object
-            // flow will trigger an updated of the observers, i.e., of the unsafe store
-            this.postFlow(receiverFlow);
+            /* Force update for unsafe accessed static fields. */
+            unsafeStore.initClone(this);
+
+            /*
+             * Force update for unsafe accessed instance fields: post the receiver object flow for
+             * update; an update of the receiver object flow will trigger an updated of the
+             * observers, i.e., of the unsafe store.
+             */
+            this.postFlow(unsafeStore.receiver());
         }
     }
 

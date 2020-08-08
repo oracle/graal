@@ -44,7 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.exception.WasmExecutionException;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
@@ -64,13 +64,13 @@ public class WasiClockTimeGet extends WasmBuiltinRootNode {
 
     static ClockId[] clockIdValues = ClockId.values();
 
-    public WasiClockTimeGet(WasmLanguage language, WasmModule module) {
+    public WasiClockTimeGet(WasmLanguage language, WasmInstance module) {
         super(language, module);
     }
 
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        final WasmMemory memory = module.symbolTable().memory();
+        final WasmMemory memory = instance.memory();
         final int id = (int) frame.getArguments()[0];
         // Ignored for now
         // final long precision = (long) frame.getArguments()[1];

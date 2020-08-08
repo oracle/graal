@@ -797,7 +797,7 @@ final class FileSystems {
 
         @Override
         public void createSymbolicLink(Path link, Path target, FileAttribute<?>... attrs) throws IOException {
-            hostfs.createSymbolicLink(resolveRelative(link), resolveRelative(target), attrs);
+            hostfs.createSymbolicLink(resolveRelative(link), target, attrs);
         }
 
         @Override

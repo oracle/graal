@@ -156,13 +156,20 @@ class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchma
         return 'renaissance'
 
     def renaissance_harness_lib_name(self):
-        return "RENAISSANCE_HARNESS_11"
+        version_to_run = super(RenaissanceNativeImageBenchmarkSuite, self).renaissanceVersionToRun()
+        version_end_index = str(version_to_run).rindex('.')
+        return 'RENAISSANCE_HARNESS_v' + str(version_to_run)[0:version_end_index]
 
     def harness_path(self):
         lib = mx.library(self.renaissance_harness_lib_name())
         if lib:
             return lib.get_path(True)
         return None
+
+    # Before supporting new Renaissance versions, we must cross-compile Renaissance harness project
+    # with scala 11 for benchmarks compiled with this version of Scala.
+    def availableRenaissanceVersions(self):
+        return ["0.9.0", "0.10.0", "0.11.0"]
 
     def renaissance_unpacked(self):
         return extract_archive(self.renaissancePath(), 'renaissance.extracted')

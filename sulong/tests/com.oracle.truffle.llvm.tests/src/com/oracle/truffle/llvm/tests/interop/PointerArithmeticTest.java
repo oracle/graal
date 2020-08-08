@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.tests.interop;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.llvm.tests.interop.values.NativeValue;
 import com.oracle.truffle.llvm.tests.interop.values.NullValue;
@@ -53,7 +52,7 @@ import org.junit.runners.Parameterized.UseParametersRunnerFactory;
 @UseParametersRunnerFactory(TruffleRunner.ParametersFactory.class)
 public final class PointerArithmeticTest extends InteropTestBase {
 
-    static TruffleObject testLibrary;
+    static Object testLibrary;
 
     @BeforeClass
     public static void loadLibrary() {

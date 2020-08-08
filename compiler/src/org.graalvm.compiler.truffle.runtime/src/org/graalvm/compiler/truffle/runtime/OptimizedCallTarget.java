@@ -48,6 +48,7 @@ import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.OptimizationFailedException;
 import com.oracle.truffle.api.ReplaceObserver;
@@ -363,13 +364,18 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     @Override
+    @TruffleBoundary
     public final Object call(Object... args) {
+        // Use the encapsulating node as call site and clear it inside as we cross the call boundary
         EncapsulatingNodeReference encapsulating = EncapsulatingNodeReference.getCurrent();
-        Node encapsulatingNode = encapsulating.set(null);
+        Node prev = encapsulating.set(null);
         try {
-            return callIndirect(encapsulatingNode, args);
+            return callIndirect(prev, args);
+        } catch (Throwable t) {
+            GraalRuntimeAccessor.LANGUAGE.onThrowable(prev, null, t, null);
+            throw rethrow(t);
         } finally {
-            encapsulating.set(encapsulatingNode);
+            encapsulating.set(prev);
         }
     }
 
@@ -459,8 +465,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         this.callAndLoopCount = intAndLoopCallCount == Integer.MAX_VALUE ? intAndLoopCallCount : ++intAndLoopCallCount;
 
         // Check if call target is hot enough to compile
-        if (intCallCount >= engine.firstTierCallThreshold //
-                        && intAndLoopCallCount >= engine.firstTierCallAndLoopThreshold //
+        if (intCallCount >= engine.callThresholdInInterpreter //
+                        && intAndLoopCallCount >= engine.callAndLoopThresholdInInterpreter //
                         && !compilationFailed //
                         && !isSubmittedForCompilation()) {
             return compile(!engine.multiTier);
@@ -486,13 +492,13 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     public final boolean firstTierCall() {
         // this is partially evaluated so the second part should fold to a constant.
         int firstTierCallThreshold = ++callCount;
-        if (firstTierCallThreshold >= engine.lastTierCallThreshold && !isSubmittedForCompilation() && !compilationFailed) {
+        if (firstTierCallThreshold >= engine.callThresholdInFirstTier && !isSubmittedForCompilation() && !compilationFailed) {
             return lastTierCompile(this);
         }
         return false;
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     private static boolean lastTierCompile(OptimizedCallTarget callTarget) {
         return callTarget.compile(true);
     }
@@ -834,7 +840,11 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     public final boolean nodeReplaced(Node oldNode, Node newNode, CharSequence reason) {
         CompilerAsserts.neverPartOfCompilation();
         invalidate(newNode, reason);
-        /* Notify compiled method that have inlined this call target that the tree changed. */
+        /*
+         * Notify compiled method that have inlined this call target that the tree changed. It also
+         * ensures that compiled code that might be installed by currently running compilation task
+         * that can no longer be cancelled is invalidated.
+         */
         invalidateNodeRewritingAssumption();
         return false;
     }
@@ -889,13 +899,25 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         return visitor.nodeCount;
     }
 
-    public final Map<String, Object> getDebugProperties(TruffleInlining inlining) {
+    public final Map<String, Object> getDebugProperties() {
         Map<String, Object> properties = new LinkedHashMap<>();
-        GraalTruffleRuntimeListener.addASTSizeProperty(this, inlining, properties);
-        String callsThreshold = String.format("%7d/%5d", getCallCount(), engine.firstTierCallThreshold);
-        String loopsThreshold = String.format("%7d/%5d", getCallAndLoopCount(), engine.firstTierCallAndLoopThreshold);
-        properties.put("Calls/Thres", callsThreshold);
-        properties.put("CallsAndLoop/Thres", loopsThreshold);
+        GraalTruffleRuntimeListener.addASTSizeProperty(this, properties);
+        String callsThresholdInInterpreter = String.format("%7d/%5d", getCallCount(), engine.callThresholdInInterpreter);
+        String loopsThresholdInInterpreter = String.format("%7d/%5d", getCallAndLoopCount(), engine.callAndLoopThresholdInInterpreter);
+        if (engine.multiTier) {
+            if (isValidLastTier()) {
+                String callsThresholdInFirstTier = String.format("%7d/%5d", getCallCount(), engine.callThresholdInFirstTier);
+                properties.put("Tier", "Last");
+                properties.put("Calls/Thres", callsThresholdInFirstTier);
+            } else {
+                properties.put("Tier", "First");
+                properties.put("Calls/Thres", callsThresholdInInterpreter);
+                properties.put("CallsAndLoop/Thres", loopsThresholdInInterpreter);
+            }
+        } else {
+            properties.put("Calls/Thres", callsThresholdInInterpreter);
+            properties.put("CallsAndLoop/Thres", loopsThresholdInInterpreter);
+        }
         return properties;
     }
 

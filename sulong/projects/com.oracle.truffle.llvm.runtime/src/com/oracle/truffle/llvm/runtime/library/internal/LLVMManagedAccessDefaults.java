@@ -426,10 +426,16 @@ abstract class LLVMManagedAccessDefaults {
 
         abstract void executeWrite(Object obj, long offset, Object value, ForeignToLLVMType type);
 
+        /**
+         * @param obj
+         * @param offset
+         * @param value
+         * @param type
+         * @see #executeWrite(Object, long, Object, ForeignToLLVMType)
+         */
         @Specialization(limit = "3", guards = "type == cachedType")
-        @SuppressWarnings("unused")
         void doCachedType(Object obj, long offset, Object value, ForeignToLLVMType type,
-                        @Cached("type") ForeignToLLVMType cachedType,
+                        @Cached("type") @SuppressWarnings("unused") ForeignToLLVMType cachedType,
                         @Cached(parameters = "cachedType") LLVMDataEscapeNode dataEscape,
                         @CachedLibrary(limit = "5") InteropLibrary interop,
                         @Cached GetWriteIdentifierNode getWriteIdentifier) {

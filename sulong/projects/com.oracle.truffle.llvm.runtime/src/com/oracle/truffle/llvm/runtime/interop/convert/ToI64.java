@@ -107,9 +107,8 @@ public abstract class ToI64 extends ForeignToLLVM {
     }
 
     @Specialization(limit = "5", guards = {"foreigns.isForeign(obj)", "!interop.isNumber(obj)"})
-    @SuppressWarnings("unused")
     protected Object fromForeignPointer(Object obj,
-                    @CachedLibrary("obj") InteropLibrary interop,
+                    @CachedLibrary("obj") @SuppressWarnings("unused") InteropLibrary interop,
                     @Cached ToPointer toPointer,
                     @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns) {
         return toPointer.executeWithTarget(obj);

@@ -88,9 +88,9 @@ public final class RegexSource implements JsonConvertible {
         if (!hashComputed) {
             final int prime = 31;
             int hash = 1;
-            hash = prime * cachedHash + pattern.hashCode();
-            hash = prime * cachedHash + flags.hashCode();
-            hash = prime * cachedHash + encoding.hashCode();
+            hash = prime * hash + pattern.hashCode();
+            hash = prime * hash + flags.hashCode();
+            hash = prime * hash + encoding.hashCode();
             cachedHash = hash;
             hashComputed = true;
         }

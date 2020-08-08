@@ -37,7 +37,7 @@ CLANG?=clang
 CFLAGS+=-g -fdebug-prefix-map=${VPATH}=com.oracle.truffle.llvm.libraries.mock
 
 ifeq ($(OS), darwin)
-CLANG_PREFIX=/usr/bin/xcrun --sdk macosx
+CLANG_PREFIX=/usr/bin/xcrun
 LDFLAGS=-dynamiclib -g
 LDFLAGS+=-Wl,-install_name,@rpath/$(notdir $@)
 else

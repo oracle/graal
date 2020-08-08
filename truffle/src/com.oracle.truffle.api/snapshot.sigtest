@@ -265,6 +265,7 @@ meth public byte[] readAllBytes() throws java.io.IOException
 meth public com.oracle.truffle.api.TruffleFile getAbsoluteFile()
 meth public com.oracle.truffle.api.TruffleFile getParent()
 meth public com.oracle.truffle.api.TruffleFile normalize()
+meth public com.oracle.truffle.api.TruffleFile readSymbolicLink() throws java.io.IOException
 meth public com.oracle.truffle.api.TruffleFile relativize(com.oracle.truffle.api.TruffleFile)
 meth public com.oracle.truffle.api.TruffleFile resolve(java.lang.String)
 meth public com.oracle.truffle.api.TruffleFile resolveSibling(java.lang.String)
@@ -1114,7 +1115,9 @@ fld public final static java.lang.Object BREAK_LOOP_STATUS
 fld public final static java.lang.Object CONTINUE_LOOP_STATUS
 intf com.oracle.truffle.api.nodes.NodeInterface
 meth public abstract boolean executeRepeating(com.oracle.truffle.api.frame.VirtualFrame)
+meth public boolean shouldContinue(java.lang.Object)
 meth public java.lang.Object executeRepeatingWithValue(com.oracle.truffle.api.frame.VirtualFrame)
+meth public java.lang.Object initialLoopStatus()
 
 CLSS public abstract com.oracle.truffle.api.nodes.RootNode
 cons protected init(com.oracle.truffle.api.TruffleLanguage<?>)

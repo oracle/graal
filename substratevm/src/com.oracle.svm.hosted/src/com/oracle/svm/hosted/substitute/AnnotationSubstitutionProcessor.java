@@ -213,7 +213,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                     case FieldOffset:
                         AnalysisField targetField = bb.getMetaAccess().lookupJavaField(cvField.getTargetField());
                         targetField.registerAsAccessed();
-                        targetField.registerAsUnsafeAccessed();
+                        targetField.registerAsUnsafeAccessed(bb.getUniverse());
                         break;
                 }
             }

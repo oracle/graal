@@ -240,7 +240,7 @@ public class AArch64HotSpotMove {
             boolean pic = GeneratePIC.getValue(crb.getOptions());
             if (pic || encoding.hasBase() || encoding.getShift() != 0) {
                 if (pic) {
-                    masm.addressOf(scratch);
+                    masm.adrpAdd(scratch);
                     masm.ldr(64, scratch, AArch64Address.createBaseRegisterOnlyAddress(scratch));
                     masm.add(64, result, scratch, ptr, AArch64Assembler.ExtendType.UXTX, encoding.getShift());
                     crb.recordMark(HotSpotMarkId.NARROW_KLASS_BASE_ADDRESS);

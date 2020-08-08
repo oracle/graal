@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -476,6 +476,46 @@ public class TruffleFileTest extends AbstractPolyglotTest {
         assertFails(() -> finalPublicFile.isSameFile(null), NullPointerException.class);
         assertFails(() -> finalPublicFile.isSameFile(finalInternalFile, (LinkOption[]) null), NullPointerException.class);
         assertFails(() -> finalPublicFile.isSameFile(finalInternalFile, (LinkOption) null), NullPointerException.class);
+    }
+
+    @Test
+    public void testRelativeSymLinkWithCustomUserDir() throws IOException {
+        Assume.assumeFalse("Link creation requires a special privilege on Windows", OSUtils.isWindows());
+        Path workDir = Files.createTempDirectory(TruffleFileTest.class.getSimpleName());
+        Path targetPath = workDir.relativize(Files.createFile(Files.createDirectory(workDir.resolve("folder")).resolve("target")));
+        try {
+            setupEnv(Context.newBuilder().allowIO(true).build());
+            languageEnv.setCurrentWorkingDirectory(languageEnv.getPublicTruffleFile(workDir.toString()));
+            TruffleFile symLink = languageEnv.getPublicTruffleFile("link");
+            TruffleFile targetRelativePath = languageEnv.getPublicTruffleFile(targetPath.toString());
+            assertFalse(targetRelativePath.isAbsolute());
+            symLink.createSymbolicLink(targetRelativePath);
+            TruffleFile readLink = symLink.readSymbolicLink();
+            assertFalse(readLink.isAbsolute());
+            assertEquals(targetRelativePath, readLink);
+            assertEquals(targetRelativePath.getCanonicalFile(), symLink.getCanonicalFile());
+            symLink = languageEnv.getPublicTruffleFile("folder/link");
+            TruffleFile target = languageEnv.getPublicTruffleFile(targetPath.getFileName().toString());
+            assertFalse(target.isAbsolute());
+            symLink.createSymbolicLink(target);
+            readLink = symLink.readSymbolicLink();
+            assertFalse(readLink.isAbsolute());
+            assertEquals(target, readLink);
+            assertEquals(targetRelativePath.getCanonicalFile(), symLink.getCanonicalFile());
+        } finally {
+            delete(workDir);
+        }
+    }
+
+    private static void delete(Path path) throws IOException {
+        if (Files.isDirectory(path)) {
+            try (DirectoryStream<Path> dir = Files.newDirectoryStream(path)) {
+                for (Path child : dir) {
+                    delete(child);
+                }
+            }
+        }
+        Files.delete(path);
     }
 
     private static Type erase(Type type) {

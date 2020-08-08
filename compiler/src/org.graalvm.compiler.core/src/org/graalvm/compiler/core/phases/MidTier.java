@@ -30,9 +30,9 @@ import static org.graalvm.compiler.core.common.GraalOptions.OptFloatingReads;
 import static org.graalvm.compiler.core.common.GraalOptions.PartialUnroll;
 import static org.graalvm.compiler.core.common.GraalOptions.ReassociateInvariants;
 import static org.graalvm.compiler.core.common.GraalOptions.VerifyHeapAtReturn;
-import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.GuardTargets;
-import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.NonDeoptGuardTargets;
-import static org.graalvm.compiler.core.common.SpeculativeExecutionAttacksMitigations.Options.MitigateSpeculativeExecutionAttacks;
+import static org.graalvm.compiler.core.common.SpectrePHTMitigations.GuardTargets;
+import static org.graalvm.compiler.core.common.SpectrePHTMitigations.NonDeoptGuardTargets;
+import static org.graalvm.compiler.core.common.SpectrePHTMitigations.Options.SpectrePHTBarriers;
 
 import org.graalvm.compiler.loop.DefaultLoopPolicies;
 import org.graalvm.compiler.loop.LoopPolicies;
@@ -77,7 +77,7 @@ public class MidTier extends BaseTier<MidTierContext> {
 
         appendPhase(new GuardLoweringPhase());
 
-        if (MitigateSpeculativeExecutionAttacks.getValue(options) == GuardTargets || MitigateSpeculativeExecutionAttacks.getValue(options) == NonDeoptGuardTargets) {
+        if (SpectrePHTBarriers.getValue(options) == GuardTargets || SpectrePHTBarriers.getValue(options) == NonDeoptGuardTargets) {
             appendPhase(new InsertGuardFencesPhase());
         }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -64,8 +64,13 @@ public abstract class LLVMForeignGetIndexPointerNode extends LLVMNode {
         return doCached(array, pointer, idx, array.getElementSize(), array.getElementType(), exception);
     }
 
+    /**
+     * @param type
+     * @param object
+     * @param idx
+     * @see #execute(LLVMInteropType, LLVMPointer, long)
+     */
     @Fallback
-    @SuppressWarnings("unused")
     static LLVMPointer doError(LLVMInteropType type, LLVMPointer object, long idx) throws UnsupportedMessageException {
         CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();

@@ -29,7 +29,6 @@ import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -41,8 +40,6 @@ import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
@@ -51,7 +48,6 @@ import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.NativeImageOptions;
 
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaMethod;
@@ -348,15 +344,6 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         @Override
         public boolean needsExplicitException() {
             return explicitExceptionEdges && !parsingIntrinsic();
-        }
-
-        @Override
-        public void notifyReplacedCall(ResolvedJavaMethod targetMethod, ConstantNode node) {
-            JavaConstant constant = node.asJavaConstant();
-            if (getMetaAccess() instanceof AnalysisMetaAccess && constant.getJavaKind() == JavaKind.Object && constant.isNonNull()) {
-                SubstrateObjectConstant sValue = (SubstrateObjectConstant) node.asJavaConstant();
-                sValue.setRoot(targetMethod);
-            }
         }
 
         @Override

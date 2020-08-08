@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,13 +37,12 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 
 public final class LLVMNativeCallUtils {
 
-    static Object bindNativeSymbol(InteropLibrary interop, TruffleObject symbol, String signature) {
+    static Object bindNativeSymbol(InteropLibrary interop, Object symbol, String signature) {
         try {
             return interop.invokeMember(symbol, "bind", signature);
         } catch (InteropException ex) {

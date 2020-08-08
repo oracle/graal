@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -125,12 +125,12 @@ public abstract class StringSectionImpl extends BasicElementImpl implements Prog
     }
 
     @Override
-    public RelocationRecord markRelocationSite(int offset, int length, RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend) {
+    public RelocationRecord markRelocationSite(int offset, RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend) {
         throw new UnsupportedOperationException("can't mark relocaction sites in string section");
     }
 
     @Override
-    public RelocationRecord markRelocationSite(int offset, int length, ByteBuffer bb, RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend) {
+    public RelocationRecord markRelocationSite(int offset, ByteBuffer bb, RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend) {
         throw new UnsupportedOperationException("can't mark relocaction sites in string section");
     }
 

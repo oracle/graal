@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.tests.interop;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.llvm.tests.interop.values.ArrayObject;
 import com.oracle.truffle.llvm.tests.interop.values.NullValue;
 import com.oracle.truffle.llvm.tests.interop.values.StructObject;
@@ -54,7 +53,7 @@ import org.junit.runner.RunWith;
 @RunWith(TruffleRunner.class)
 public class TypedInteropTest extends InteropTestBase {
 
-    private static TruffleObject testLibrary;
+    private static Object testLibrary;
 
     @BeforeClass
     public static void loadTestBitcode() {

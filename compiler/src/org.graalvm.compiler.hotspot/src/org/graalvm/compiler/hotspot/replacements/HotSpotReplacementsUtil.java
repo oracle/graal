@@ -202,6 +202,7 @@ public class HotSpotReplacementsUtil {
      */
     @Fold
     public static int doingUnsafeAccessOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        assert config.doingUnsafeAccessOffset != Integer.MAX_VALUE;
         return config.doingUnsafeAccessOffset;
     }
 
@@ -847,7 +848,10 @@ public class HotSpotReplacementsUtil {
 
     public static final LocationIdentity CLASS_MIRROR_LOCATION = NamedLocationIdentity.immutable("Klass::_java_mirror");
 
-    public static final LocationIdentity CLASS_MIRROR_HANDLE_LOCATION = NamedLocationIdentity.immutable("Klass::_java_mirror handle");
+    /**
+     * This represents the contents of OopHandles used for some internal fields.
+     */
+    public static final LocationIdentity HOTSPOT_OOP_HANDLE_LOCATION = NamedLocationIdentity.immutable("OopHandle contents");
 
     @Fold
     public static int layoutHelperHeaderSizeShift(@InjectedParameter GraalHotSpotVMConfig config) {
