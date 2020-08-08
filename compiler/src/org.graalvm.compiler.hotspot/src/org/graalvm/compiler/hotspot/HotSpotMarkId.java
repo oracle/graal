@@ -25,12 +25,9 @@
 
 package org.graalvm.compiler.hotspot;
 
-import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
-
 import org.graalvm.compiler.code.CompilationResult;
 
 import jdk.vm.ci.common.NativeImageReinitialize;
-import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 
 /**
  * Constants used to mark special positions in code being installed into the code cache by Graal C++
@@ -63,49 +60,15 @@ public enum HotSpotMarkId implements CompilationResult.MarkId {
 
     private final boolean isMarkAfter;
     @NativeImageReinitialize private Integer value;
-    private boolean valueRequired;
-
-    public void setMustBePresent(boolean expected) {
-        this.valueRequired = expected;
-    }
 
     HotSpotMarkId(boolean isMarkAfter) {
-        this(isMarkAfter, true);
-    }
-
-    HotSpotMarkId(boolean isMarkAfter, boolean valueRequired) {
         this.isMarkAfter = isMarkAfter;
-        this.valueRequired = valueRequired;
         this.value = null;
     }
 
-    private Integer getValue(boolean prerelease) {
-        Long result = HotSpotJVMCIRuntime.runtime().getConfigStore().getConstants().get("CodeInstaller::" + name());
-        if (result != null) {
-            return result.intValue();
-        } else if (valueRequired && !prerelease) {
-            throw shouldNotReachHere("Unsupported Mark " + name());
-        }
-        return null;
-    }
-
-    private static boolean valuesSet = false;
-
-    static void setValues(boolean prerelease) {
-        for (HotSpotMarkId m : values()) {
-            m.value = m.getValue(prerelease);
-        }
-        valuesSet = true;
-    }
-
-    static {
-        // deal with different possible initialization orders
-        if (GraalHotSpotVMConfig.inInitializer()) {
-            // GraalHotSpotVMConfig was initialized first
-            // nothing to do
-        } else {
-            // this class was initialized first
-            assert valuesSet;
+    static void setValues(Integer[] values) {
+        for (HotSpotMarkId markId : values()) {
+            markId.value = values[markId.ordinal()];
         }
     }
 
@@ -137,7 +100,6 @@ public enum HotSpotMarkId implements CompilationResult.MarkId {
     public String toString() {
         return "HotSpotCodeMark{" + name() +
                         ", value=" + value() +
-                        ", required=" + valueRequired +
                         '}';
     }
 

@@ -27,6 +27,9 @@ package org.graalvm.compiler.hotspot;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.List;
+import java.util.Map;
+
+import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
@@ -64,6 +67,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
         assert check();
         reportErrors();
+        populateMarkConstants();
     }
 
     private final CompressEncoding oopEncoding;
@@ -903,33 +907,50 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     // Checkstyle: resume
 
-    private static int inInitializer = 0;
-
-    static {
-        inInitializer = 1;
-
-        HotSpotMarkId.FRAME_COMPLETE.setMustBePresent(JVMCI ? jvmciGE(JVMCI_20_1_b01) : JDK_8245443);
-        HotSpotMarkId.DEOPT_MH_HANDLER_ENTRY.setMustBePresent(JVMCI ? jvmciGE(JVMCI_20_2_b01) : false);
-
-        boolean jdk13JvmciBackport = (JVMCI && JDK > 8) ? jvmciGE(JVMCI_19_3_b03) : JDK > 9;
-
-        HotSpotMarkId.NARROW_KLASS_BASE_ADDRESS.setMustBePresent(jdk13JvmciBackport);
-        HotSpotMarkId.CRC_TABLE_ADDRESS.setMustBePresent(jdk13JvmciBackport);
-        HotSpotMarkId.NARROW_OOP_BASE_ADDRESS.setMustBePresent(jdk13JvmciBackport);
-        HotSpotMarkId.LOG_OF_HEAP_REGION_GRAIN_BYTES.setMustBePresent(jdk13JvmciBackport);
-
-        boolean verifyOopsMarkSupported = (JVMCI && JDK > 8) ? jvmciGE(JVMCI_20_2_b04) : JDK >= 16;
-
-        HotSpotMarkId.VERIFY_OOPS.setMustBePresent(verifyOopsMarkSupported);
-        HotSpotMarkId.VERIFY_OOP_COUNT_ADDRESS.setMustBePresent(verifyOopsMarkSupported);
-
-        HotSpotMarkId.setValues(JVMCI_PRERELEASE);
-
-        inInitializer = 2;
+    private static void checkForMissingRequiredValue(Integer[] markConstants, HotSpotMarkId markId, boolean required) {
+        if (markConstants[markId.ordinal()] == null && required) {
+            throw shouldNotReachHere("Unsupported Mark " + markId);
+        }
     }
 
-    static boolean inInitializer() {
-        return inInitializer == 1;
+    private void populateMarkConstants() {
+        Integer[] markConstants = new Integer[HotSpotMarkId.values().length];
+        boolean jdk13JvmciBackport = (JVMCI && JDK > 8) ? jvmciGE(JVMCI_19_3_b03) : JDK > 9;
+        boolean verifyOopsMarkSupported = (JVMCI && JDK > 8) ? jvmciGE(JVMCI_20_2_b04) : JDK >= 16;
+        Map<String, Long> constants = getStore().getConstants();
+        for (HotSpotMarkId markId : HotSpotMarkId.values()) {
+            Integer value = null;
+            String key = "CodeInstaller::" + markId.name();
+            Long result = constants.get(key);
+            if (result != null) {
+                value = result.intValue();
+            }
+            markConstants[markId.ordinal()] = value;
+            if (!JVMCI_PRERELEASE) {
+                switch (markId) {
+                    case FRAME_COMPLETE:
+                        checkForMissingRequiredValue(markConstants, markId, JVMCI ? jvmciGE(JVMCI_20_1_b01) : JDK_8245443);
+                        break;
+                    case DEOPT_MH_HANDLER_ENTRY:
+                        checkForMissingRequiredValue(markConstants, markId, JVMCI ? jvmciGE(JVMCI_20_2_b01) : false);
+                        break;
+                    case NARROW_KLASS_BASE_ADDRESS:
+                    case CRC_TABLE_ADDRESS:
+                    case NARROW_OOP_BASE_ADDRESS:
+                    case LOG_OF_HEAP_REGION_GRAIN_BYTES:
+                        checkForMissingRequiredValue(markConstants, markId, jdk13JvmciBackport);
+                        break;
+                    case VERIFY_OOPS:
+                    case VERIFY_OOP_COUNT_ADDRESS:
+                        checkForMissingRequiredValue(markConstants, markId, verifyOopsMarkSupported);
+                        break;
+                    default:
+                        checkForMissingRequiredValue(markConstants, markId, true);
+                }
+            }
+        }
+
+        HotSpotMarkId.setValues(markConstants);
     }
 
     protected boolean check() {
