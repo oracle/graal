@@ -47,7 +47,7 @@ Somewhat related topics worth exploring are [Truffle Libraries](./TruffleLibrari
 Truffle languages can also be embedded in Java host applications using the [Polyglot API](https://www.graalvm.org/docs/reference-manual/embed-languages/).
 
 To better understand how to improve the performance of your language please consult the documentation on [profiling](./Profiling.md) and [optimizing](./Optimizing.md) your language.
-Also, to better understand how to use Truffle's automated monomorphization feature (i.e., splitting), look at the [related documentation](./splitting/README.md).
+Also, to better understand how to use Truffle's automated monomorphization feature (i.e., splitting), look at the [related documentation](./splitting/Monomorphization.md).
 
 ## Implement Your Tool
 
