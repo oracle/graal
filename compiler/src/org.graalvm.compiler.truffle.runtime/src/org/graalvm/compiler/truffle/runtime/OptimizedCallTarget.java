@@ -499,14 +499,14 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                         && firstTierLoopCallCount >= engine.callAndLoopThresholdInFirstTier //
                         && !compilationFailed //
                         && !isSubmittedForCompilation()) {
-            return lastTierCompile(this);
+            return lastTierCompile();
         }
         return false;
     }
 
     @TruffleBoundary
-    private static boolean lastTierCompile(OptimizedCallTarget callTarget) {
-        return callTarget.compile(true);
+    private boolean lastTierCompile() {
+        return compile(true);
     }
 
     private Object executeRootNode(VirtualFrame frame) {
