@@ -193,24 +193,167 @@ Note that most options also require the additional `--experimental-options` flag
       ...
 ```
 
-`--engine.PrintExpansionHistogram` prints at the end of each compilation a histogram of AST interpreter method calls.
+`--engine.TraceMethodExpansion=truffleTier` prints a tree of all expanded Java methods with statistics after each compilation.
 
 ```
-[engine] Expansion Histograms:
-Graal Nodes Histogram: Number of non-trival Graal nodes created for a method during partial evaluation.
- Expansions  |Nodes   Sum   Min   Max      Avg | Method Name
-           6 |         24     4     4     4.00 | DynamicObject.getShape()
-           1 |         20    20    20    20.00 | JSPrepareThisNodeGen.execute_generic3(VirtualFrame, int)
-           2 |         18     9     9     9.00 | PropertyCacheNode$ShapeCheckNode.accept(Object)
-           2 |         18     9     9     9.00 | PropertyCacheNode$PrototypeChainShapeCheckNode.accept(Object)
-           3 |         12     4     4     4.00 | PropertyGetNode.getValueOrDefault(Object, Object, Object)
-           5 |         10     2     2     2.00 | JSObject.isDynamicObject(Object)
-           2 |         10     5     5     5.00 | OptimizedDirectCallNode.call(Object[])
-           4 |          8     2     2     2.00 | ShapeImpl.check(DynamicObject)
-           ...
-Graal Invoke Histogram: Number of invokes created for a method during partial evaluation.
- Expansions  |Nodes   Sum   Min   Max      Avg | Method Name
-           2 |          2     1     1     1.00 | OptimizedDirectCallNode.call(Object[])
+[engine] Expansion tree for test after truffleTier:
+Name                                                                                Frequency | Count    Size  Cycles   Ifs Loops Invokes Allocs | Self Count  Size Cycles   Ifs Loops Invokes Allocs | IRNode ASTNode Lang:File:Line:Chars
+<root>                                                                                   1.00 |    64      72      42     1     1       0      1 |         34    20      0     0     0       0      0 |  -
+ OptimizedCallTarget.profiledPERoot(Object)                                              1.00 |    30      52      42     1     1       0      1 |          1     2      2     0     0       0      0 |    121
+  OptimizedCallTarget.injectArgumentsProfile(Object)                                     1.00 |     9      19      16     0     0       0      0 |          4     3      0     0     0       0      0 |      5
+   OptimizedCallTarget.unsafeCast(Object, Class, Z, Z, Z)                                1.00 |     1       0       0     0     0       0      0 |          1     0      0     0     0       0      0 |     10
+   OptimizedCallTarget.castArgumentsImpl(Object, Class)                                  1.00 |     4      16      16     0     0       0      0 |          4    16     16     0     0       0      0 |     12
+  OptimizedCallTarget.executeRootNode(VirtualFrame)                                      1.00 |    20      31      24     1     1       0      1 |          0     0      0     0     0       0      0 |
+   JavaScriptRealmBoundaryRootNode.execute(VirtualFrame)                                 1.00 |    20      31      24     1     1       0      1 |          1     1      0     0     0       0      0 |     34       0 js:test.js:1:0-100
+    JavaScriptRealmBoundaryRootNode.getRealm()                                           1.00 |     1       1       0     0     0       0      0 |          0     0      0     0     0       0      0 |              0 js:test.js:1:0-100
+     JSContext.getRealm()                                                                1.00 |     1       1       0     0     0       0      0 |          0     0      0     0     0       0      0 |
+      PolyglotReferences$AssumeSingleContext.get()                                       1.00 |     1       1       0     0     0       0      0 |          0     0      0     0     0       0      0 |
+       PolyglotReferences$WeakSingleContext.get()                                        1.00 |     1       1       0     0     0       0      0 |          1     1      0     0     0       0      0 |     37
+    FunctionRootNode.executeInRealm(VirtualFrame)                                        1.00 |    18      29      24     1     1       0      1 |          1     1      0     0     0       0      0 |     41       0 js:test.js:1:0-100
+     FunctionBodyNode.execute(VirtualFrame)                                              1.00 |    17      28      24     1     1       0      1 |          0     0      0     0     0       0      0 |              1 js:test.js:1:0-100
+      AbstractBlockNode.execute(VirtualFrame)                                            1.00 |    17      28      24     1     1       0      1 |          0     0      0     0     0       0      0 |
+       AbstractBlockNode.executeVoid(VirtualFrame, JavaScriptNode, I, I)                 1.00 |    16      20      16     1     1       0      0 |          1     1      0     0     0       0      0 |     50       2 js:test.js:1:16-100
+        WhileNode.executeVoid(VirtualFrame)                                              1.00 |    15      19      16     1     1       0      0 |          0     0      0     0     0       0      0 |              7 js:test.js:3:35-84
+         OptimizedOSRLoopNode.execute(VirtualFrame)                                    101.00 |    15      19      16     1     1       0      0 |          4     3      2     0     1       0      0 |     46       8 js:test.js:3:35-84
+          RepeatingNode.executeRepeatingWithValue(VirtualFrame)                          1.00 |    11      16      14     1     0       0      0 |          1     1      0     0     0       0      0 |    100       9 js:test.js:3:35-84
+           WhileNode$WhileDoRepeatingNode.executeRepeating(VirtualFrame)               101.00 |    10      15      14     1     0       0      0 |          3     2      1     1     0       0      0 |     63       9 js:test.js:3:35-84
+            AbstractRepeatingNode.executeCondition(VirtualFrame)                       101.00 |     1       1       1     0     0       0      0 |          0     0      0     0     0       0      0 |              9 js:test.js:3:35-84
+             StatementNode.executeConditionAsBoolean(VirtualFrame, JavaScriptNode)     101.00 |     1       1       1     0     0       0      0 |          0     0      0     0     0       0      0 |
+              JSLessThanNodeGen.executeBoolean(VirtualFrame)                           101.00 |     1       1       1     0     0       0      0 |          0     0      0     0     0       0      0 |             10 js:test.js:3:51-58
+               JSLessThanNodeGen.executeBoolean_int_int0(VirtualFrame, J)              101.00 |     1       1       1     0     0       0      0 |          0     0      0     0     0       0      0 |
+                JSLessThanNode.doInt(I, I)                                             101.00 |     1       1       1     0     0       0      0 |          1     1      1     0     0       0      0 |     59      10 js:test.js:3:51-58
+            AbstractRepeatingNode.executeBody(VirtualFrame)                            101.00 |     6      12      12     0     0       0      0 |          0     0      0     0     0       0      0 |              9 js:test.js:3:35-84
+             AbstractBlockNode.executeVoid(VirtualFrame)                               101.00 |     6      12      12     0     0       0      0 |          0     0      0     0     0       0      0 |
+              AbstractBlockNode.executeVoid(VirtualFrame, JavaScriptNode, I, I)        101.00 |     6      12      12     0     0       0      0 |          0     0      0     0     0       0      0 |             13 js:test.js:3:35-84
+               JSWriteCurrentFrameSlotNodeGen.executeVoid(VirtualFrame)                101.00 |     6      12      12     0     0       0      0 |          0     0      0     0     0       0      0 |             14 js:test.js:4:71-79
+                JSWriteCurrentFrameSlotNodeGen.executeInt(VirtualFrame)                101.00 |     3       6       6     0     0       0      0 |          0     0      0     0     0       0      0 |             14 js:test.js:4:71-79
+                 JSAddNodeGen.executeInt(VirtualFrame)                                 101.00 |     3       6       6     0     0       0      0 |          0     0      0     0     0       0      0 |
+                  JSAddNode.doInt(I, I)                                                101.00 |     3       6       6     0     0       0      0 |          0     0      0     0     0       0      0 |
+                   Math.addExact(I, I)                                                 100.00 |     3       6       6     0     0       0      0 |          3     6      6     0     0       0      0 |     75      15 js:test.js:4:71-74
+                LocalVarPostfixIncNodeGen.executeInt(VirtualFrame)                     101.00 |     3       6       6     0     0       0      0 |          0     0      0     0     0       0      0 |             18 js:test.js:3:60-63
+                 LocalVarPostfixIncNode.doInt(Frame)                                   101.00 |     3       6       6     0     0       0      0 |          0     0      0     0     0       0      0 |             18 js:test.js:3:60-63
+                  LocalVarIncNode$IncOp.doInt(I)                                       101.00 |     3       6       6     0     0       0      0 |          0     0      0     0     0       0      0 |
+                   Math.addExact(I, I)                                                 100.00 |     3       6       6     0     0       0      0 |          3     6      6     0     0       0      0 |     85
+       AbstractBlockNode.executeGeneric(VirtualFrame, JavaScriptNode, I, I)              1.00 |     1       8       8     0     0       0      1 |          0     0      0     0     0       0      0 |              2 js:test.js:1:16-100
+        ReturnNode$TerminalPositionReturnNode.execute(VirtualFrame)                      1.00 |     1       8       8     0     0       0      1 |          0     0      0     0     0       0      0 |             20 js:test.js:6:87-98
+         JSReadCurrentFrameSlotNodeGen.execute(VirtualFrame)                             1.00 |     1       8       8     0     0       0      1 |          0     0      0     0     0       0      0 |
+          Integer.valueOf(I)                                                             1.00 |     1       8       8     0     0       0      1 |          1     8      8     0     0       0      1 |    139      21 js:test.js:6:94-97
+```
+
+
+`--engine.TraceNodeExpansion=truffleTier` print a tree of all expanded Truffle nodes with statistics after each compilation. This view groups the method expansion tree by node id.
+
+```
+[engine] Expansion tree for test after truffleTier:
+Name                                                       Frequency | Count    Size  Cycles   Ifs Loops Invokes Allocs | Self Count  Size Cycles   Ifs Loops Invokes Allocs | IRNode ASTNode Lang:File:Line:Chars
+<call-root>                                                     1.00 |    64      72      42     1     1       0      1 |         44    41     18     0     0       0      0 |      0
+ FunctionRootNode                                               1.00 |    20      31      24     1     1       0      1 |          3     3      0     0     0       0      0 |     34       0 js:test.js:1:0-100
+  FunctionBodyNode                                              1.00 |    17      28      24     1     1       0      1 |          0     0      0     0     0       0      0 |              1 js:test.js:1:0-100
+   ExprBlockNode                                                1.00 |    17      28      24     1     1       0      1 |          1     1      0     0     0       0      0 |     50       2 js:test.js:1:16-100
+    WhileNode                                                   1.00 |    15      19      16     1     1       0      0 |          0     0      0     0     0       0      0 |              7 js:test.js:3:35-84
+     OptimizedOSRLoopNode$OptimizedDefaultOSRLoopNode         101.00 |    15      19      16     1     1       0      0 |          4     3      2     0     1       0      0 |     46       8 js:test.js:3:35-84
+      WhileNode$WhileDoRepeatingNode                          101.00 |    11      16      14     1     0       0      0 |          4     3      1     1     0       0      0 |    100       9 js:test.js:3:35-84
+       JSLessThanNodeGen                                      101.00 |     1       1       1     0     0       0      0 |          1     1      1     0     0       0      0 |     59      10 js:test.js:3:51-58
+       VoidBlockNode                                          101.00 |     6      12      12     0     0       0      0 |          0     0      0     0     0       0      0 |             13 js:test.js:3:35-84
+        JSWriteCurrentFrameSlotNodeGen                        101.00 |     6      12      12     0     0       0      0 |          0     0      0     0     0       0      0 |             14 js:test.js:4:71-79
+         JSAddNodeGen                                         100.00 |     3       6       6     0     0       0      0 |          3     6      6     0     0       0      0 |     75      15 js:test.js:4:71-74
+         LocalVarPostfixIncNodeGen                            100.00 |     3       6       6     0     0       0      0 |          3     6      6     0     0       0      0 |     85      18 js:test.js:3:60-63
+    ReturnNode$TerminalPositionReturnNode                       1.00 |     1       8       8     0     0       0      1 |          0     0      0     0     0       0      0 |             20 js:test.js:6:87-98
+     JSReadCurrentFrameSlotNodeGen                              1.00 |     1       8       8     0     0       0      1 |          1     8      8     0     0       0      1 |    139      21 js:test.js:6:94-97
+```
+
+
+`--engine.MethodExpansionStatistics=truffleTier` prints statistics on expanded Java methods during partial evaluation at the end of a run. This can be useful to detect code that produces too much or certain Graal nodes unexpectedly.
+
+```
+[engine] Method expansion statistics after truffleTier:
+Name                                                                       Count IR Nodes (min avg max)        Size (min avg max)      Cycles (min avg max)       Ifs  Loops Invokes Allocs | Max IRNode ASTNode Unit:Lang:File:Line:Chars
+  <no-source-position>                                                         1      212 (212 212.0 212)       117 (117 117.0 117)         0 (0 0.0 0)             0      0       0      0 |          0         mandelbrot
+  OptimizedOSRLoopNode.execute(VirtualFrame)                                   4       13 (0 3.3 5)               9 (0 2.3 3)               6 (0 1.5 2)             0      3       0      0 |        172      60 mandelbrot:js:mandelbrot.js:68:2589-2888
+  Math.addExact(I, I)                                                          4       12 (3 3.0 3)              24 (6 6.0 6)              24 (6 6.0 6)             0      0       0      0 |        485     103 mandelbrot:js:mandelbrot.js:80:2874-2875
+  WhileNode$WhileDoRepeatingNode.executeRepeating(VirtualFrame)                4        9 (0 2.3 3)               6 (0 1.5 2)               3 (0 0.8 1)             3      0       0      0 |         88      17 mandelbrot:js:mandelbrot.js:57:2374-3431
+  JSTypes.intToDouble(I)                                                       7        7 (1 1.0 1)               7 (1 1.0 1)              24 (0 3.4 8)             0      0       0      0 |        144      41 mandelbrot:js:mandelbrot.js:62:2478-2486
+  OptimizedCallTarget.castArgumentsImpl(Object, Class)                         1        7 (7 7.0 7)              25 (25 25.0 25)           24 (24 24.0 24)          0      0       0      0 |         12         mandelbrot
+  JSWriteCurrentFrameSlotNodeGen.executeVoid(VirtualFrame)                     6        6 (0 1.0 3)               4 (0 0.7 2)               2 (0 0.3 1)             2      0       0      0 |        563      46 mandelbrot:js:mandelbrot.js:64:2519-2544
+  AbstractBlockNode.executeVoid(VirtualFrame, JavaScriptNode, I, I)            8        6 (0 0.8 4)               6 (0 0.8 4)               0 (0 0.0 0)             0      0       0      0 |        177      39 mandelbrot:js:mandelbrot.js:61:2459-3416
+  Math.multiplyExact(I, I)                                                     4        6 (1 1.5 2)              12 (2 3.0 4)              20 (4 5.0 6)             0      0       0      0 |        155      49 mandelbrot:js:mandelbrot.js:64:2529-2534
+  OptimizedCallTarget.injectArgumentsProfile(Object)                           1        4 (4 4.0 4)               3 (3 3.0 3)               0 (0 0.0 0)             0      0       0      0 |          5         mandelbrot
+  JSMultiplyNode.doDouble(D, D)                                                4        4 (1 1.0 1)               4 (1 1.0 1)               8 (2 2.0 2)             0      0       0      0 |        280      75 mandelbrot:js:mandelbrot.js:70:2657-2663
+  IfNode.executeVoid(VirtualFrame)                                             3        3 (0 1.0 3)               2 (0 0.7 2)               1 (0 0.3 1)             1      0       0      0 |        606     126 mandelbrot:js:mandelbrot.js:93:3240-3397
+  Math.subtractExact(I, I)                                                     1        3 (3 3.0 3)               6 (6 6.0 6)               6 (6 6.0 6)             0      0       0      0 |        589     129 mandelbrot:js:mandelbrot.js:93:3249-3257
+  JSSubtractNode.doDouble(D, D)                                                3        3 (1 1.0 1)               3 (1 1.0 1)               3 (1 1.0 1)             0      0       0      0 |        167      47 mandelbrot:js:mandelbrot.js:64:2528-2544
+  JSLessThanNode.doInt(I, I)                                                   3        3 (1 1.0 1)               3 (1 1.0 1)               3 (1 1.0 1)             0      0       0      0 |        187      62 mandelbrot:js:mandelbrot.js:68:2596-2602
+  JSAddNode.doDouble(D, D)                                                     3        3 (1 1.0 1)               3 (1 1.0 1)               3 (1 1.0 1)             0      0       0      0 |        263      67 mandelbrot:js:mandelbrot.js:69:2623-2639
+  JSDivideNode.doDouble(D, D)                                                  2        2 (1 1.0 1)               2 (1 1.0 1)              64 (32 32.0 32)          0      0       0      0 |        165      48 mandelbrot:js:mandelbrot.js:64:2528-2540
+  JSBitwiseXorNode.doInteger(I, I)                                             2        2 (1 1.0 1)               2 (1 1.0 1)               2 (1 1.0 1)             0      0       0      0 |        575     119 mandelbrot:js:mandelbrot.js:90:3170-3173
+  JSEqualNode.doInt(I, I)                                                      2        2 (1 1.0 1)               2 (1 1.0 1)               2 (1 1.0 1)             0      0       0      0 |        592     127 mandelbrot:js:mandelbrot.js:93:3244-3257
+  RepeatingNode.executeRepeatingWithValue(VirtualFrame)                        4        1 (0 0.3 1)               1 (0 0.3 1)               0 (0 0.0 0)             0      0       0      0 |        499      61 mandelbrot:js:mandelbrot.js:68:2589-2888
+  FunctionRootNode.executeInRealm(VirtualFrame)                                1        1 (1 1.0 1)               1 (1 1.0 1)               0 (0 0.0 0)             0      0       0      0 |         53       0 mandelbrot:js:mandelbrot.js:50:2279-3447
+  OptimizedCallTarget.profiledPERoot(Object)                                   1        1 (1 1.0 1)               2 (2 2.0 2)               2 (2 2.0 2)             0      0       0      0 |        737         mandelbrot
+  PolyglotReferences$WeakSingleContext.get()                                   1        1 (1 1.0 1)               1 (1 1.0 1)               0 (0 0.0 0)             0      0       0      0 |         41         mandelbrot
+  JSLeftShiftNode.doInteger(I, I)                                              1        1 (1 1.0 1)               1 (1 1.0 1)               1 (1 1.0 1)             0      0       0      0 |        619     134 mandelbrot:js:mandelbrot.js:94:3269-3277
+  Integer.intValue()                                                           1        1 (1 1.0 1)               2 (2 2.0 2)               2 (2 2.0 2)             0      0       0      0 |         50       4 mandelbrot:js:1:0-0
+  JSSubtractNode.doInt(I, I)                                                   2        1 (0 0.5 1)               1 (0 0.5 1)               1 (0 0.5 1)             0      0       0      0 |        940     136 mandelbrot:js:mandelbrot.js:94:3282-3295
+  JSLeftShiftConstantNode.doInteger(I)                                         1        1 (1 1.0 1)               1 (1 1.0 1)               1 (1 1.0 1)             0      0       0      0 |        527     107 mandelbrot:js:mandelbrot.js:83:2907-2922
+  JSSubtractNodeGen.executeDouble(VirtualFrame)                                3        1 (0 0.3 1)               1 (0 0.3 1)               0 (0 0.0 0)             0      0       0      0 |         33      47 mandelbrot:js:mandelbrot.js:64:2528-2544
+  JSReadCurrentFrameSlotNodeGen.executeInt(VirtualFrame)                       1        1 (1 1.0 1)               1 (1 1.0 1)               0 (0 0.0 0)             0      0       0      0 |         74      19 mandelbrot:js:mandelbrot.js:57:2381-2382
+  Integer.valueOf(I)                                                           1        1 (1 1.0 1)               8 (8 8.0 8)               8 (8 8.0 8)             0      0       0      1 |        939     154 mandelbrot:js:mandelbrot.js:105:3442-3445
+  JSBitwiseOrNode.doInteger(I, I)                                              1        1 (1 1.0 1)               1 (1 1.0 1)               1 (1 1.0 1)             0      0       0      0 |        532     106 mandelbrot:js:mandelbrot.js:83:2907-2931
+  JSGreaterThanNode.doDouble(D, D)                                             1        1 (1 1.0 1)               1 (1 1.0 1)               2 (2 2.0 2)             0      0       0      0 |        461      93 mandelbrot:js:mandelbrot.js:76:2800-2815
+  OptimizedCallTarget.unsafeCast(Object, Class, Z, Z, Z)                       1        1 (1 1.0 1)               0 (0 0.0 0)               0 (0 0.0 0)             0      0       0      0 |         10         mandelbrot
+  JavaScriptRealmBoundaryRootNode.execute(VirtualFrame)                        1        1 (1 1.0 1)               1 (1 1.0 1)               0 (0 0.0 0)             0      0       0      0 |         38         mandelbrot
+  JSLeftShiftConstantNodeGen.executeInt(VirtualFrame)                          1        1 (1 1.0 1)               1 (1 1.0 1)               0 (0 0.0 0)             0      0       0      0 |         36     107 mandelbrot:js:mandelbrot.js:83:2907-2922
+  DualNode.execute(VirtualFrame)                                               1        0 (0 0.0 0)               0 (0 0.0 0)               0 (0 0.0 0)             0      0       0      0 |                  2 mandelbrot:js:mandelbrot.js:50:2279-3447
+  ...
+```
+
+`--engine.NodeExpansionStatistics=truffleTier` prints statistics on expanded Truffle nodes during partial evaluation at the end of a run. This can be useful to detect code that produces too much or certain Graal nodes unexpectedly. It also shows individual specialization combinations as they were observed during compilation. 
+
+```
+[engine] Node expansion statistics after truffleTier:
+Name                                                    Count IR Nodes (min avg max)        Size (min avg max)      Cycles (min avg max)       Ifs  Loops Invokes Allocs | Max IRNode ASTNode Unit:Lang:File:Line:Chars
+  <call-root>                                               1      226 (226 226.0 226)       148 (148 148.0 148)        26 (26 26.0 26)          0      0       0      0 |          0         mandelbrot
+  OptimizedOSRLoopNode$OptimizedDefaultOSRLoopNode          4       13 (0 3.3 5)               9 (0 2.3 3)               6 (0 1.5 2)             0      3       0      0 |        172      60 mandelbrot:js:mandelbrot.js:68:2589-2888
+  JSAddConstantRightNumberNodeGen                           4       12 (3 3.0 3)              24 (6 6.0 6)              24 (6 6.0 6)             0      0       0      0 |        485     103 mandelbrot:js:mandelbrot.js:80:2874-2875
+    [doInt(I)]                                              4       12 (3 3.0 3)              24 (6 6.0 6)              24 (6 6.0 6)             0      0       0      0 |        485     103 mandelbrot:js:mandelbrot.js:80:2874-2875
+  JSMultiplyNodeGen                                         6       11 (1 1.8 3)              17 (1 2.8 6)              28 (2 4.7 10)            0      0       0      0 |        155      49 mandelbrot:js:mandelbrot.js:64:2529-2534
+    [doIntALargerZero(I, I), doIntBLargerZero(I, I)]        2        6 (3 3.0 3)              12 (6 6.0 6)              20 (10 10.0 10)          0      0       0      0 |        155      49 mandelbrot:js:mandelbrot.js:64:2529-2534
+    [doDouble(D, D)]                                        4        5 (1 1.3 2)               5 (1 1.3 2)               8 (2 2.0 2)             0      0       0      0 |        275      75 mandelbrot:js:mandelbrot.js:70:2657-2663
+  WhileNode$WhileDoRepeatingNode                            4       10 (0 2.5 4)               7 (0 1.8 3)               3 (0 0.8 1)             3      0       0      0 |        499      61 mandelbrot:js:mandelbrot.js:68:2589-2888
+  JSSubtractNodeGen                                         5        9 (1 1.8 3)              12 (1 2.4 6)              10 (1 2.0 6)             0      0       0      0 |        589     129 mandelbrot:js:mandelbrot.js:93:3249-3257
+    [doDouble(D, D)]                                        3        5 (1 1.7 2)               5 (1 1.7 2)               3 (1 1.0 1)             0      0       0      0 |         33      47 mandelbrot:js:mandelbrot.js:64:2528-2544
+    [doInt(I, I)]                                           2        4 (1 2.0 3)               7 (1 3.5 6)               7 (1 3.5 6)             0      0       0      0 |        589     129 mandelbrot:js:mandelbrot.js:93:3249-3257
+  JSWriteCurrentFrameSlotNodeGen                           18        7 (0 0.4 3)               5 (0 0.3 2)               2 (0 0.1 1)             2      0       0      0 |        563      46 mandelbrot:js:mandelbrot.js:64:2519-2544
+  JSDivideNodeGen                                           2        5 (2 2.5 3)               5 (2 2.5 3)              88 (40 44.0 48)          0      0       0      0 |        158      48 mandelbrot:js:mandelbrot.js:64:2528-2540
+    [doDouble(D, D)]                                        2        5 (2 2.5 3)               5 (2 2.5 3)              88 (40 44.0 48)          0      0       0      0 |        158      48 mandelbrot:js:mandelbrot.js:64:2528-2540
+  VoidBlockNode                                             7        5 (0 0.7 4)               5 (0 0.7 4)               0 (0 0.0 0)             0      0       0      0 |        177      39 mandelbrot:js:mandelbrot.js:61:2459-3416
+  JSAddNodeGen                                              3        3 (1 1.0 1)               3 (1 1.0 1)               3 (1 1.0 1)             0      0       0      0 |        263      67 mandelbrot:js:mandelbrot.js:69:2623-2639
+    [doDouble(D, D)]                                        3        3 (1 1.0 1)               3 (1 1.0 1)               3 (1 1.0 1)             0      0       0      0 |        263      67 mandelbrot:js:mandelbrot.js:69:2623-2639
+  JSLessThanNodeGen                                         3        3 (1 1.0 1)               3 (1 1.0 1)               3 (1 1.0 1)             0      0       0      0 |        187      62 mandelbrot:js:mandelbrot.js:68:2596-2602
+    [doInt(I, I)]                                           3        3 (1 1.0 1)               3 (1 1.0 1)               3 (1 1.0 1)             0      0       0      0 |        187      62 mandelbrot:js:mandelbrot.js:68:2596-2602
+  IfNode                                                    4        3 (0 0.8 3)               2 (0 0.5 2)               1 (0 0.3 1)             1      0       0      0 |        606     126 mandelbrot:js:mandelbrot.js:93:3240-3397
+  JSGreaterThanNodeGen                                      1        2 (2 2.0 2)               2 (2 2.0 2)               2 (2 2.0 2)             0      0       0      0 |        460      93 mandelbrot:js:mandelbrot.js:76:2800-2815
+    [doDouble(D, D)]                                        1        2 (2 2.0 2)               2 (2 2.0 2)               2 (2 2.0 2)             0      0       0      0 |        460      93 mandelbrot:js:mandelbrot.js:76:2800-2815
+  JSBitwiseXorNodeGen                                       2        2 (1 1.0 1)               2 (1 1.0 1)               2 (1 1.0 1)             0      0       0      0 |        575     119 mandelbrot:js:mandelbrot.js:90:3170-3173
+    [doInteger(I, I)]                                       2        2 (1 1.0 1)               2 (1 1.0 1)               2 (1 1.0 1)             0      0       0      0 |        575     119 mandelbrot:js:mandelbrot.js:90:3170-3173
+  JSLeftShiftConstantNodeGen                                1        2 (2 2.0 2)               2 (2 2.0 2)               1 (1 1.0 1)             0      0       0      0 |         36     107 mandelbrot:js:mandelbrot.js:83:2907-2922
+    [doInteger(I)]                                          1        2 (2 2.0 2)               2 (2 2.0 2)               1 (1 1.0 1)             0      0       0      0 |         36     107 mandelbrot:js:mandelbrot.js:83:2907-2922
+  JSReadCurrentFrameSlotNodeGen                             2        2 (1 1.0 1)               9 (1 4.5 8)               8 (0 4.0 8)             0      0       0      1 |         74      19 mandelbrot:js:mandelbrot.js:57:2381-2382
+  JSEqualNodeGen                                            2        2 (1 1.0 1)               2 (1 1.0 1)               2 (1 1.0 1)             0      0       0      0 |        592     127 mandelbrot:js:mandelbrot.js:93:3244-3257
+    [doInt(I, I)]                                           2        2 (1 1.0 1)               2 (1 1.0 1)               2 (1 1.0 1)             0      0       0      0 |        592     127 mandelbrot:js:mandelbrot.js:93:3244-3257
+  FunctionRootNode                                          1        2 (2 2.0 2)               2 (2 2.0 2)               0 (0 0.0 0)             0      0       0      0 |         53       0 mandelbrot:js:mandelbrot.js:50:2279-3447
+  ExprBlockNode                                             1        1 (1 1.0 1)               1 (1 1.0 1)               0 (0 0.0 0)             0      0       0      0 |         69       5 mandelbrot:js:mandelbrot.js:50:2305-3447
+  JSBitwiseOrNodeGen                                        1        1 (1 1.0 1)               1 (1 1.0 1)               1 (1 1.0 1)             0      0       0      0 |        532     106 mandelbrot:js:mandelbrot.js:83:2907-2931
+    [doInteger(I, I)]                                       1        1 (1 1.0 1)               1 (1 1.0 1)               1 (1 1.0 1)             0      0       0      0 |        532     106 mandelbrot:js:mandelbrot.js:83:2907-2931
+  AccessIndexedArgumentNode                                 1        1 (1 1.0 1)               2 (2 2.0 2)               2 (2 2.0 2)             0      0       0      0 |         50       4 mandelbrot:js:1:0-0
+  JSLeftShiftNodeGen                                        2        1 (0 0.5 1)               1 (0 0.5 1)               1 (0 0.5 1)             0      0       0      0 |        619     134 mandelbrot:js:mandelbrot.js:94:3269-3277
+    [doInteger(I, I)]                                       1        1 (1 1.0 1)               1 (1 1.0 1)               1 (1 1.0 1)             0      0       0      0 |        619     134 mandelbrot:js:mandelbrot.js:94:3269-3277
+    <unknown>                                               1        0 (0 0.0 0)               0 (0 0.0 0)               0 (0 0.0 0)             0      0       0      0 |                134 mandelbrot:js:mandelbrot.js:94:3269-3277
+  FunctionBodyNode                                          1        0 (0 0.0 0)               0 (0 0.0 0)               0 (0 0.0 0)             0      0       0      0 |                  1 mandelbrot:js:mandelbrot.js:50:2279-3447
+  ReturnNode$TerminalPositionReturnNode                     1        0 (0 0.0 0)               0 (0 0.0 0)               0 (0 0.0 0)             0      0       0      0 |                153 mandelbrot:js:mandelbrot.js:105:3435-3445
+  DualNode                                                  1        0 (0 0.0 0)               0 (0 0.0 0)               0 (0 0.0 0)             0      0       0      0 |                  2 mandelbrot:js:mandelbrot.js:50:2279-3447
+  WhileNode                                                 4        0 (0 0.0 0)               0 (0 0.0 0)               0 (0 0.0 0)             0      0       0      0 |                 15 mandelbrot:js:mandelbrot.js:57:2374-3431
+  DirectBreakTargetNode                                     2        0 (0 0.0 0)               0 (0 0.0 0)               0 (0 0.0 0)             0      0       0      0 |                 14 mandelbrot:js:mandelbrot.js:50:2305-3447
 ```
 
 `--engine.InstrumentBoundaries` prints at the end of the process information about runtime calls (`@TruffleBoundary`) made from compiled code. These cause objects to escape, are black-boxes to further optimization, and should generally be minimised.

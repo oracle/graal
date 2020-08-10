@@ -535,6 +535,21 @@ public class BinaryGraphPrinter implements
             public String getLanguage() {
                 return "Java";
             }
+
+            @Override
+            public int getNodeId() {
+                return -1;
+            }
+
+            @Override
+            public String getNodeClassQualifiedName() {
+                return null;
+            }
+
+            @Override
+            public String getNodeClassSimpleName() {
+                return null;
+            }
         }
 
         List<SourceLanguagePosition> arr = new ArrayList<>();

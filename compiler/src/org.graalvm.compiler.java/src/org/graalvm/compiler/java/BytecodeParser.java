@@ -2277,7 +2277,7 @@ public class BytecodeParser implements GraphBuilderContext {
                     ResolvedJavaField resolvedField = (ResolvedJavaField) field;
                     try (DebugCloseable context = openNodeContext(targetMethod, 1)) {
                         genGetField(resolvedField, receiver);
-                        notifyBeforeInline(targetMethod);
+                        notifyBeforeInline(targetMethod, args);
                         String reason = "inline accessor method (bytecode parsing)";
                         printInlining(targetMethod, targetMethod, true, reason);
                         if (TraceInlining.getValue(options) || debug.hasCompilationListener()) {
@@ -2469,7 +2469,7 @@ public class BytecodeParser implements GraphBuilderContext {
                         // Otherwise inline the original method. Any frame state created
                         // during the inlining will exclude frame(s) in the
                         // intrinsic method (see FrameStateBuilder.create(int bci)).
-                        notifyBeforeInline(inlinedMethod);
+                        notifyBeforeInline(inlinedMethod, args);
                         printInlining(targetMethod, inlinedMethod, true, "partial intrinsic exit (bytecode parsing)");
                         if (logInliningDecision) {
                             graph.getInliningLog().addDecision(logInliningInvokable, true, "GraphBuilderPhase", null, null, "partial intrinsic exit");
@@ -2492,7 +2492,7 @@ public class BytecodeParser implements GraphBuilderContext {
                     intrinsic = new IntrinsicContext(targetMethod, inlinedMethod, intrinsicBytecodeProvider, INLINE_DURING_PARSING);
                 }
                 if (inlinedMethod.hasBytecodes()) {
-                    notifyBeforeInline(inlinedMethod);
+                    notifyBeforeInline(inlinedMethod, args);
                     printInlining(targetMethod, inlinedMethod, true, "inline method (bytecode parsing)");
                     if (logInliningDecision) {
                         graph.getInliningLog().addDecision(logInliningInvokable, true, "GraphBuilderPhase", null, null, "inline method");
@@ -2511,13 +2511,13 @@ public class BytecodeParser implements GraphBuilderContext {
         }
     }
 
-    protected void notifyBeforeInline(ResolvedJavaMethod inlinedMethod) {
+    protected final void notifyBeforeInline(ResolvedJavaMethod inlinedMethod, ValueNode[] arguments) {
         for (InlineInvokePlugin plugin : graphBuilderConfig.getPlugins().getInlineInvokePlugins()) {
             plugin.notifyBeforeInline(inlinedMethod);
         }
     }
 
-    protected void notifyAfterInline(ResolvedJavaMethod inlinedMethod) {
+    protected final void notifyAfterInline(ResolvedJavaMethod inlinedMethod) {
         for (InlineInvokePlugin plugin : graphBuilderConfig.getPlugins().getInlineInvokePlugins()) {
             plugin.notifyAfterInline(inlinedMethod);
         }

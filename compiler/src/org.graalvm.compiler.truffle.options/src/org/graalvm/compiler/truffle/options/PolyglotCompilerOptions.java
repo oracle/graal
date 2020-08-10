@@ -24,6 +24,11 @@
  */
 package org.graalvm.compiler.truffle.options;
 
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.Set;
+import java.util.function.Function;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
@@ -32,13 +37,8 @@ import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionType;
 import org.graalvm.polyglot.Engine;
 
-import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.CallTarget;
-
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.Set;
-import java.util.function.Function;
+import com.oracle.truffle.api.Option;
 
 /**
  * Truffle compilation options that can be configured per {@link Engine engine} instance. These
@@ -56,17 +56,16 @@ public final class PolyglotCompilerOptions {
         LATENCY
     }
 
-    static final OptionType<EngineModeEnum> ENGINE_MODE_TYPE = new OptionType<>("EngineMode",
-                    new Function<String, EngineModeEnum>() {
-                        @Override
-                        public EngineModeEnum apply(String s) {
-                            try {
-                                return EngineModeEnum.valueOf(s.toUpperCase());
-                            } catch (IllegalArgumentException e) {
-                                throw new IllegalArgumentException("Mode can be: 'default', 'latency' or 'throughput'.");
-                            }
-                        }
-                    });
+    static final OptionType<EngineModeEnum> ENGINE_MODE_TYPE = new OptionType<>("EngineMode", new Function<String, EngineModeEnum>() {
+        @Override
+        public EngineModeEnum apply(String s) {
+            try {
+                return EngineModeEnum.valueOf(s.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Mode can be: 'default', 'latency' or 'throughput'.");
+            }
+        }
+    });
 
     public enum PerformanceWarningKind {
         VIRTUAL_RUNTIME_CALL("call", "Enables virtual call warnings"),
@@ -97,6 +96,37 @@ public final class PolyglotCompilerOptions {
             return kind;
         }
     }
+
+    public enum CompilationTier {
+        peTier,
+        truffleTier,
+        lowTier;
+
+        static CompilationTier parse(String name) {
+            try {
+                return CompilationTier.valueOf(name);
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException(String.format("Unknown tier option value '%s'. %s", name, EXPANSION_VALUES));
+            }
+        }
+    }
+
+    static final OptionType<Set<CompilationTier>> COMPILATION_TIERS_TYPE = new OptionType<>("Tier", new Function<String, Set<CompilationTier>>() {
+        @Override
+        public Set<CompilationTier> apply(String s) {
+            if (s.equals("true")) {
+                return Collections.singleton(CompilationTier.truffleTier);
+            } else if (s.equals("false")) {
+                return Collections.emptySet();
+            }
+            String[] strings = s.split(",");
+            EnumSet<CompilationTier> tiers = EnumSet.noneOf(CompilationTier.class);
+            for (int i = 0; i < strings.length; i++) {
+                tiers.add(CompilationTier.valueOf(strings[i]));
+            }
+            return Collections.unmodifiableSet(tiers);
+        }
+    });
 
     /**
      * Actions to take upon an exception being raised during Truffle compilation. The actions are
@@ -140,59 +170,56 @@ public final class PolyglotCompilerOptions {
                         "    ExitVM - Exit the VM process.";
     }
 
-    static final OptionType<ExceptionAction> EXCEPTION_ACTION_TYPE = new OptionType<>("ExceptionAction",
-                    new Function<String, ExceptionAction>() {
-                        @Override
-                        public ExceptionAction apply(String s) {
-                            try {
-                                return ExceptionAction.valueOf(s);
-                            } catch (IllegalArgumentException e) {
-                                throw new IllegalArgumentException(ExceptionAction.HELP);
-                            }
-                        }
-                    });
+    static final OptionType<ExceptionAction> EXCEPTION_ACTION_TYPE = new OptionType<>("ExceptionAction", new Function<String, ExceptionAction>() {
+        @Override
+        public ExceptionAction apply(String s) {
+            try {
+                return ExceptionAction.valueOf(s);
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException(ExceptionAction.HELP);
+            }
+        }
+    });
 
-    static final OptionType<Set<PerformanceWarningKind>> PERFORMANCE_WARNING_TYPE = new OptionType<>("PerformanceWarningKind",
-                    new Function<String, Set<PerformanceWarningKind>>() {
-                        @Override
-                        public Set<PerformanceWarningKind> apply(String value) {
-                            if ("none".equals(value)) {
-                                return EnumSet.noneOf(PerformanceWarningKind.class);
-                            } else if ("all".equals(value)) {
-                                return EnumSet.allOf(PerformanceWarningKind.class);
-                            } else {
-                                Set<PerformanceWarningKind> result = EnumSet.noneOf(PerformanceWarningKind.class);
-                                for (String name : value.split(",")) {
-                                    if ("bailout".equals(name)) {
-                                        /*
-                                         * The PerformanceWarningKind.BAILOUT was removed but
-                                         * 'bailout' can still appear in option value due to
-                                         * backward compatibility. We need to ignore the 'bailout'
-                                         * option value.
-                                         */
-                                        continue;
-                                    }
-                                    try {
-                                        result.add(PerformanceWarningKind.forName(name));
-                                    } catch (IllegalArgumentException e) {
-                                        String message = String.format("The \"%s\" is not a valid performance warning kind. Valid values are%n", name);
-                                        for (PerformanceWarningKind kind : PerformanceWarningKind.values()) {
-                                            message = message + String.format("%s%s%s%n", kind.name, indent(kind.name.length()), kind.help);
-                                        }
-                                        message = message + String.format("all%sEnables all performance warnings%n", indent(3));
-                                        message = message + String.format("none%sDisables performance warnings%n", indent(4));
-                                        throw new IllegalArgumentException(message);
-                                    }
-                                }
-                                return result;
-                            }
+    static final OptionType<Set<PerformanceWarningKind>> PERFORMANCE_WARNING_TYPE = new OptionType<>("PerformanceWarningKind", new Function<String, Set<PerformanceWarningKind>>() {
+        @Override
+        public Set<PerformanceWarningKind> apply(String value) {
+            if ("none".equals(value)) {
+                return EnumSet.noneOf(PerformanceWarningKind.class);
+            } else if ("all".equals(value)) {
+                return EnumSet.allOf(PerformanceWarningKind.class);
+            } else {
+                Set<PerformanceWarningKind> result = EnumSet.noneOf(PerformanceWarningKind.class);
+                for (String name : value.split(",")) {
+                    if ("bailout".equals(name)) {
+                        /*
+                         * The PerformanceWarningKind.BAILOUT was removed but 'bailout' can still
+                         * appear in option value due to backward compatibility. We need to ignore
+                         * the 'bailout' option value.
+                         */
+                        continue;
+                    }
+                    try {
+                        result.add(PerformanceWarningKind.forName(name));
+                    } catch (IllegalArgumentException e) {
+                        String message = String.format("The \"%s\" is not a valid performance warning kind. Valid values are%n", name);
+                        for (PerformanceWarningKind kind : PerformanceWarningKind.values()) {
+                            message = message + String.format("%s%s%s%n", kind.name, indent(kind.name.length()), kind.help);
                         }
+                        message = message + String.format("all%sEnables all performance warnings%n", indent(3));
+                        message = message + String.format("none%sDisables performance warnings%n", indent(4));
+                        throw new IllegalArgumentException(message);
+                    }
+                }
+                return result;
+            }
+        }
 
-                        private String indent(int nameLength) {
-                            int len = Math.max(1, 16 - nameLength);
-                            return new String(new char[len]).replace('\0', ' ');
-                        }
-                    });
+        private String indent(int nameLength) {
+            int len = Math.max(1, 16 - nameLength);
+            return new String(new char[len]).replace('\0', ' ');
+        }
+    });
 
     // @formatter:off
 
@@ -325,6 +352,30 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Print stack trace on transfer to interpreter.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> TraceTransferToInterpreter = new OptionKey<>(false);
 
+    private static final String EXPANSION_VALUES = "Accepted values are:%n" +
+                    "    true - Collect data for the default tier 'truffleTier'.%n" +
+                    "    false - No data will be collected.%n" +
+                    "Or one or multiple tiers separated by comma (e.g. truffleTier,lowTier) :%n" +
+                    "    peTier - After partial evaluation without additional phases applied.%n" +
+                    "    truffleTier - After partial evaluation with additional phases applied.%n" +
+                    "    lowTier - After low tier phases were applied.%n";
+
+    @Option(help = "Print a tree of all expanded Java methods with statistics after each compilation. " + EXPANSION_VALUES, category = OptionCategory.INTERNAL)
+    public static final OptionKey<Set<CompilationTier>> TraceMethodExpansion = new OptionKey<>(Collections.emptySet(), COMPILATION_TIERS_TYPE);
+
+    @Option(help = "Print a tree of all expanded Truffle nodes with statistics after each compilation. " + EXPANSION_VALUES, category = OptionCategory.INTERNAL)
+    public static final OptionKey<Set<CompilationTier>> TraceNodeExpansion = new OptionKey<>(Collections.emptySet(), COMPILATION_TIERS_TYPE);
+
+    @Option(help = "Print statistics on expanded Java methods during partial evaluation at the end of a run." + EXPANSION_VALUES, category = OptionCategory.INTERNAL)
+    public static final OptionKey<Set<CompilationTier>> MethodExpansionStatistics = new OptionKey<>(Collections.emptySet(), COMPILATION_TIERS_TYPE);
+
+    @Option(help = "Print statistics on expanded Truffle nodes during partial evaluation at the end of a run." + EXPANSION_VALUES, category = OptionCategory.INTERNAL)
+    public static final OptionKey<Set<CompilationTier>> NodeExpansionStatistics = new OptionKey<>(Collections.emptySet(), COMPILATION_TIERS_TYPE);
+
+    @Option(help = "Prints a histogram of all expanded Java methods.", category = OptionCategory.INTERNAL, deprecated = true, deprecationMessage =
+                    "The expansion histogram was superseeded by engine.TraceMethodExpansion, engine.TraceNodeExpansion, engine.MethodExpansionHistogram and engine.NodeExpansionHistogram.")
+    public static final OptionKey<Boolean> PrintExpansionHistogram = new OptionKey<>(false);
+
     // Inlining
 
     @Option(help = "Enable automatic inlining of guest language call targets.", category = OptionCategory.EXPERT)
@@ -397,9 +448,6 @@ public final class PolyglotCompilerOptions {
 
     @Option(help = "Print potential performance problems", category = OptionCategory.INTERNAL)
     public static final OptionKey<Set<PerformanceWarningKind>> TracePerformanceWarnings = new OptionKey<>(Collections.emptySet(), PERFORMANCE_WARNING_TYPE);
-
-    @Option(help = "Prints a histogram of all expanded Java methods.", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Boolean> PrintExpansionHistogram = new OptionKey<>(false);
 
     @Option(help = "Run the partial escape analysis iteratively in Truffle compilation.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> IterativePartialEscape = new OptionKey<>(false);

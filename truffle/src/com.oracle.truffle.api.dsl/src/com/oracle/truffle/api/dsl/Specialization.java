@@ -133,7 +133,7 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
  * @see UnsupportedSpecializationException
  * @since 0.8 or earlier
  */
-@Retention(RetentionPolicy.CLASS)
+@Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD})
 public @interface Specialization {
     /**
