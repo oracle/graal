@@ -75,11 +75,13 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
     private int baseLoopCount;
 
     private final int osrThreshold;
+    private final boolean firstTierBackedgeCounts;
 
-    private OptimizedOSRLoopNode(RepeatingNode repeatableNode, int osrThreshold) {
+    private OptimizedOSRLoopNode(RepeatingNode repeatableNode, int osrThreshold, boolean firstTierBackedgeCounts) {
         Objects.requireNonNull(repeatableNode);
         this.repeatableNode = repeatableNode;
         this.osrThreshold = osrThreshold;
+        this.firstTierBackedgeCounts = firstTierBackedgeCounts;
     }
 
     /**
@@ -137,7 +139,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
                     return execute(frame);
                 }
             }
-            if (iterationsCompleted > 1) {
+            if (firstTierBackedgeCounts && iterationsCompleted > 1) {
                 reportParentLoopCount(iterationsCompleted);
             }
             return status;
@@ -320,7 +322,8 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
 
     private static LoopNode createDefault(RepeatingNode repeatableNode, OptionValues options) {
         return new OptimizedDefaultOSRLoopNode(repeatableNode,
-                        TruffleRuntimeOptions.getPolyglotOptionValue(options, PolyglotCompilerOptions.OSRCompilationThreshold));
+                        TruffleRuntimeOptions.getPolyglotOptionValue(options, PolyglotCompilerOptions.OSRCompilationThreshold),
+                        TruffleRuntimeOptions.getPolyglotOptionValue(options, PolyglotCompilerOptions.FirstTierBackedgeCounts));
     }
 
     /**
@@ -356,7 +359,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
         if ((readFrameSlots == null) != (writtenFrameSlots == null)) {
             throw new IllegalArgumentException("If either readFrameSlots or writtenFrameSlots is set both must be provided.");
         }
-        return new OptimizedVirtualizingOSRLoopNode(repeating, osrThreshold, readFrameSlots, writtenFrameSlots);
+        return new OptimizedVirtualizingOSRLoopNode(repeating, osrThreshold, false, readFrameSlots, writtenFrameSlots);
     }
 
     /**
@@ -375,8 +378,8 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
      */
     private static final class OptimizedDefaultOSRLoopNode extends OptimizedOSRLoopNode {
 
-        OptimizedDefaultOSRLoopNode(RepeatingNode repeatableNode, int osrThreshold) {
-            super(repeatableNode, osrThreshold);
+        OptimizedDefaultOSRLoopNode(RepeatingNode repeatableNode, int osrThreshold, boolean firstTierBackedgeCounts) {
+            super(repeatableNode, osrThreshold, firstTierBackedgeCounts);
         }
 
     }
@@ -392,8 +395,8 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
 
         private VirtualizingOSRRootNode previousRoot;
 
-        private OptimizedVirtualizingOSRLoopNode(RepeatingNode repeatableNode, int osrThreshold, FrameSlot[] readFrameSlots, FrameSlot[] writtenFrameSlots) {
-            super(repeatableNode, osrThreshold);
+        private OptimizedVirtualizingOSRLoopNode(RepeatingNode repeatableNode, int osrThreshold, boolean firstTierBackedgeCounts, FrameSlot[] readFrameSlots, FrameSlot[] writtenFrameSlots) {
+            super(repeatableNode, osrThreshold, firstTierBackedgeCounts);
             this.readFrameSlots = readFrameSlots;
             this.writtenFrameSlots = writtenFrameSlots;
         }
