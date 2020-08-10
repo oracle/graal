@@ -107,7 +107,7 @@ public @interface TruffleFromLibGraal {
         IsTruffleBoundary(boolean.class, Object.class, long.class),
         IsSpecializationMethod(boolean.class, Object.class, long.class),
         IsValueType(boolean.class, Object.class, long.class),
-        Log(void.class, Object.class, Object.class, String.class),
+        Log(void.class, Object.class, String.class, Object.class, String.class),
         OnCodeInstallation(void.class, Object.class, Object.class, long.class),
         OnCompilationFailed(void.class, Object.class, Supplier.class, boolean.class, boolean.class),
         OnFailure(void.class, Object.class, Object.class, String.class, boolean.class, boolean.class),

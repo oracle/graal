@@ -347,10 +347,11 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
 
     @TruffleFromLibGraal(Log)
     @Override
-    public void log(CompilableTruffleAST compilable, String message) {
+    public void log(String loggerId, CompilableTruffleAST compilable, String message) {
         JNIEnv env = env();
+        JString jniLoggerId = JNIUtil.createHSString(env, loggerId);
         JString jniMessage = JNIUtil.createHSString(env, message);
-        callLog(env, getHandle(), ((HSCompilableTruffleAST) compilable).getHandle(), jniMessage);
+        callLog(env, getHandle(), jniLoggerId, ((HSCompilableTruffleAST) compilable).getHandle(), jniMessage);
     }
 
     @Override

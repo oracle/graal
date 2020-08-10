@@ -254,7 +254,7 @@ public final class TruffleFeature implements com.oracle.svm.core.graal.GraalFeat
         }
 
         @SuppressWarnings("unused")
-        public boolean tryLog(SubstrateTruffleRuntime runtime, CompilableTruffleAST compilable, String message) {
+        public boolean tryLog(SubstrateTruffleRuntime runtime, String loggerId, CompilableTruffleAST compilable, String message) {
             return false;
         }
     }

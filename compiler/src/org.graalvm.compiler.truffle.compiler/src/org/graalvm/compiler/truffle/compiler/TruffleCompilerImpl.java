@@ -102,7 +102,6 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
-import jdk.vm.ci.services.Services;
 
 /**
  * Coordinates partial evaluation of a Truffle AST and subsequent compilation via Graal.
@@ -290,21 +289,24 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     }
 
     @Override
+    @SuppressWarnings("try")
     public void initialize(Map<String, Object> optionsMap, CompilableTruffleAST compilable, boolean firstInitialization) {
         if (!initialized) {
             synchronized (this) {
                 if (!initialized) {
-                    final org.graalvm.options.OptionValues options = TruffleCompilerOptions.getOptionsForCompiler(optionsMap);
-                    partialEvaluator.initialize(options);
-                    if (firstInitialization) {
-                        TruffleCompilerOptions.checkDeprecation(compilable);
-                    }
-                    initialized = true;
+                    try (TTY.Filter ttyFilter = new TTY.Filter(new LogStream(new TTYToPolyglotLoggerBridge(compilable)))) {
+                        final org.graalvm.options.OptionValues options = TruffleCompilerOptions.getOptionsForCompiler(optionsMap);
+                        partialEvaluator.initialize(options);
+                        if (firstInitialization) {
+                            TruffleCompilerOptions.checkDeprecation(compilable);
+                        }
+                        initialized = true;
 
-                    if (!FirstTierUseEconomy.getValue(options)) {
-                        firstTierSuites = lastTierSuites;
-                        firstTierLirSuites = lastTierLirSuites;
-                        firstTierProviders = lastTierProviders;
+                        if (!FirstTierUseEconomy.getValue(options)) {
+                            firstTierSuites = lastTierSuites;
+                            firstTierLirSuites = lastTierLirSuites;
+                            firstTierProviders = lastTierProviders;
+                        }
                     }
                 }
             }
@@ -881,8 +883,6 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
 
     private static final class TTYToPolyglotLoggerBridge implements Consumer<String> {
 
-        private static final String lineSeparator = Services.getSavedProperties().get("line.separator");
-
         private final CompilableTruffleAST compilable;
 
         TTYToPolyglotLoggerBridge(CompilableTruffleAST compilable) {
@@ -891,13 +891,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
 
         @Override
         public void accept(String message) {
-            String useMessage;
-            if (message.endsWith(lineSeparator)) {
-                useMessage = message.substring(0, message.length() - lineSeparator.length());
-            } else {
-                useMessage = message;
-            }
-            TruffleCompilerRuntime.getRuntime().log(compilable, useMessage);
+            TruffleCompilerRuntime.getRuntime().log("graal", compilable, message);
         }
     }
 

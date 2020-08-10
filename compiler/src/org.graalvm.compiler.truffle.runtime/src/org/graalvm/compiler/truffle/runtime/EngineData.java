@@ -64,7 +64,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiFunction;
-import java.util.function.Supplier;
+import java.util.function.Function;
 import java.util.logging.Level;
 
 import org.graalvm.collections.Pair;
@@ -84,9 +84,9 @@ import com.oracle.truffle.api.nodes.RootNode;
  */
 public final class EngineData {
 
-    static final BiFunction<OptionValues, Supplier<TruffleLogger>, EngineData> ENGINE_DATA_SUPPLIER = new BiFunction<OptionValues, Supplier<TruffleLogger>, EngineData>() {
+    static final BiFunction<OptionValues, Function<String, TruffleLogger>, EngineData> ENGINE_DATA_SUPPLIER = new BiFunction<OptionValues, Function<String, TruffleLogger>, EngineData>() {
         @Override
-        public EngineData apply(OptionValues engineOptions, Supplier<TruffleLogger> loggerFactory) {
+        public EngineData apply(OptionValues engineOptions, Function<String, TruffleLogger> loggerFactory) {
             return new EngineData(engineOptions, loggerFactory);
         }
     };
@@ -96,7 +96,7 @@ public final class EngineData {
     int splitLimit;
     int splitCount;
     public final long id;
-    private final Supplier<TruffleLogger> loggerFactory;
+    private final Function<String, TruffleLogger> loggerFactory;
     @CompilationFinal OptionValues engineOptions;
     final TruffleSplittingStrategy.SplitStatisticsData splittingStatistics;
     @CompilationFinal public StatisticsListener statisticsListener;
@@ -141,13 +141,10 @@ public final class EngineData {
     @CompilationFinal public int callThresholdInFirstTier;
     @CompilationFinal public int callAndLoopThresholdInFirstTier;
 
-    // Cached logger
-    private volatile TruffleLogger logger;
-
     // Cached parsed CompileOnly includes and excludes
     private volatile Pair<List<String>, List<String>> parsedCompileOnly;
 
-    EngineData(OptionValues options, Supplier<TruffleLogger> loggerFactory) {
+    EngineData(OptionValues options, Function<String, TruffleLogger> loggerFactory) {
         this.id = engineCounter.incrementAndGet();
         this.loggerFactory = loggerFactory;
         loadOptions(options);
@@ -288,7 +285,7 @@ public final class EngineData {
 
     private void validateOptions() {
         if (compilationFailureAction == ExceptionAction.Throw && backgroundCompilation) {
-            getLogger().log(Level.WARNING, "The 'Throw' value of the 'engine.CompilationFailureAction' option requires the 'engine.BackgroundCompilation' option to be set to 'false'.");
+            getEngineLogger().log(Level.WARNING, "The 'Throw' value of the 'engine.CompilationFailureAction' option requires the 'engine.BackgroundCompilation' option to be set to 'false'.");
         }
     }
 
@@ -328,13 +325,12 @@ public final class EngineData {
         return getPolyglotOptionValue(options, CompilationThreshold);
     }
 
-    public TruffleLogger getLogger() {
-        TruffleLogger result = logger;
-        if (result == null) {
-            result = loggerFactory.get();
-            logger = result;
-        }
-        return result;
+    public TruffleLogger getEngineLogger() {
+        return getLogger("engine");
+    }
+
+    public TruffleLogger getLogger(String loggerId) {
+        return loggerFactory.apply(loggerId);
     }
 
 }

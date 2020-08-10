@@ -285,7 +285,7 @@ final class TruffleSplittingStrategy {
                         out.printf(D_LONG_FORMAT, entry.getKey(), entry.getValue());
                     }
                 }
-                final TruffleLogger log = engineData.getLogger();
+                final TruffleLogger log = engineData.getEngineLogger();
                 log.log(Level.INFO, messageBuilder.toString());
             }
         }

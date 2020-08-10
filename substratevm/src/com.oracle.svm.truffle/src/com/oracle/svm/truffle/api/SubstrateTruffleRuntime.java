@@ -397,9 +397,9 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
     }
 
     @Override
-    public void log(CompilableTruffleAST compilable, String message) {
-        if (!TruffleFeature.getSupport().tryLog(this, compilable, message)) {
-            super.log(compilable, message);
+    public void log(String loggerId, CompilableTruffleAST compilable, String message) {
+        if (!TruffleFeature.getSupport().tryLog(this, loggerId, compilable, message)) {
+            super.log(loggerId, compilable, message);
         }
     }
 }
