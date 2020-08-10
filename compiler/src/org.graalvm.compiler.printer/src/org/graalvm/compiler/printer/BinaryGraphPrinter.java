@@ -542,14 +542,10 @@ public class BinaryGraphPrinter implements
             }
 
             @Override
-            public String getNodeClassQualifiedName() {
+            public String getNodeClassName() {
                 return null;
             }
 
-            @Override
-            public String getNodeClassSimpleName() {
-                return null;
-            }
         }
 
         List<SourceLanguagePosition> arr = new ArrayList<>();

@@ -303,12 +303,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         @Override
-        public String getNodeClassQualifiedName() {
-            throw new IllegalStateException(getClass().getSimpleName() + " should not be reachable.");
-        }
-
-        @Override
-        public String getNodeClassSimpleName() {
+        public String getNodeClassName() {
             throw new IllegalStateException(getClass().getSimpleName() + " should not be reachable.");
         }
     }
