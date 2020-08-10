@@ -267,10 +267,15 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     }
 
     Map<String, LanguageInfo> getAccessibleLanguages(boolean allowInternalAndDependent) {
-        if (allowInternalAndDependent) {
-            return lazy.accessibleInternalLanguages;
+        Lazy l = lazy;
+        if (l != null) {
+            if (allowInternalAndDependent) {
+                return lazy.accessibleInternalLanguages;
+            } else {
+                return lazy.accessiblePublicLanguages;
+            }
         } else {
-            return lazy.accessiblePublicLanguages;
+            return null;
         }
     }
 
