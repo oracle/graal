@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,41 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.core.jdk;
 
-package com.oracle.objectfile.debugentry;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.TargetClass;
 
-/**
- * Tracks debug info associated with a Java source file.
- */
-public class FileEntry {
-    private String fileName;
-    private DirEntry dirEntry;
+import java.time.zone.ZoneOffsetTransition;
+import java.time.zone.ZoneRules;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
-    public FileEntry(String fileName, DirEntry dirEntry) {
-        this.fileName = fileName;
-        this.dirEntry = dirEntry;
-    }
+@TargetClass(ZoneRules.class)
+final class Target_java_time_zone_ZoneRules {
 
-    /**
-     * The name of the associated file excluding path elements.
-     */
-    public String getFileName() {
-        return fileName;
-    }
-
-    public String getPathName() {
-        return getDirEntry().getPathString();
-    }
-
-    public String getFullName() {
-        return getDirEntry().getPath().resolve(getFileName()).toString();
-    }
-
-    /**
-     * The directory entry associated with this file entry.
-     */
-    public DirEntry getDirEntry() {
-        return dirEntry;
-    }
+    @SuppressWarnings("unused") //
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = ConcurrentHashMap.class) //
+    private transient ConcurrentMap<Integer, ZoneOffsetTransition[]> lastRulesCache;
 
 }

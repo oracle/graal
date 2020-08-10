@@ -38,68 +38,68 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.predefined.wasi;
+package org.graalvm.wasm;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmInstance;
+import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.wasm.exception.WasmExecutionException;
-import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
+import org.graalvm.wasm.exception.WasmValidationException;
 
-import java.nio.charset.StandardCharsets;
-import java.time.temporal.ChronoUnit;
-import java.time.Instant;
+public final class WasmTable {
+    private final int tableIndex;
+    private final int maxSize;
+    @CompilerDirectives.CompilationFinal(dimensions = 1) private Object[] elements;
 
-public class WasiClockTimeGet extends WasmBuiltinRootNode {
-    // https://github.com/WebAssembly/WASI/blob/master/phases/snapshot/docs.md#-clockid-enumu32
-    public enum ClockId {
-        Realtime,
-        Monotonic,
-        ProcessCpuTime,
-        ThreadCpuTime
+    public WasmTable(int tableIndex, int initSize, int maxSize) {
+        this.tableIndex = tableIndex;
+        this.elements = new Object[initSize];
+        this.maxSize = maxSize;
     }
 
-    static ClockId[] clockIdValues = ClockId.values();
-
-    public WasiClockTimeGet(WasmLanguage language, WasmInstance module) {
-        super(language, module);
-    }
-
-    @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        final WasmMemory memory = instance.memory();
-        final int id = (int) frame.getArguments()[0];
-        // Ignored for now
-        // final long precision = (long) frame.getArguments()[1];
-        final int resultAddress = (int) frame.getArguments()[2];
-
-        final ClockId clockId = clockIdValues[id];
-        switch (clockId) {
-            case Realtime:
-                long result = ChronoUnit.NANOS.between(Instant.EPOCH, Instant.now());
-                memory.store_i64(this, resultAddress, result);
-                break;
-            case Monotonic:
-            case ProcessCpuTime:
-            case ThreadCpuTime:
-                throw new WasmExecutionException(this, "Unimplemented ClockID: " + clockId.name());
+    public void ensureSizeAtLeast(int targetSize) {
+        if (maxSize >= 0 && targetSize > maxSize) {
+            throw new WasmValidationException("Table " + tableIndex + " cannot be resized to " + targetSize + ", " +
+                            "declared maximum size is " + maxSize);
         }
-
-        return 0;
-    }
-
-    @TruffleBoundary
-    private void checkEncodable(String argument) {
-        if (!StandardCharsets.US_ASCII.newEncoder().canEncode(argument)) {
-            throw new WasmExecutionException(this, "Argument '" + argument + "' contains non-ASCII characters.");
+        if (elements.length < targetSize) {
+            Object[] newElements = new Object[targetSize];
+            System.arraycopy(elements, 0, newElements, 0, elements.length);
+            elements = newElements;
         }
     }
 
-    @Override
-    public String builtinNodeName() {
-        return "__wasi_args_get";
+    public int tableIndex() {
+        return tableIndex;
+    }
+
+    public int size() {
+        return elements.length;
+    }
+
+    public int maxSize() {
+        return maxSize;
+    }
+
+    public Object[] elements() {
+        return elements;
+    }
+
+    public Object get(int index) {
+        return elements[index];
+    }
+
+    public void set(int index, Object function) {
+        elements[index] = function;
+    }
+
+    public void initialize(int i, WasmFunctionInstance function) {
+        if (elements[i] != null) {
+            throw new WasmValidationException("Table " + tableIndex + " already has an element at index " + i + ".");
+        }
+        elements[i] = function;
+    }
+
+    @SuppressWarnings({"unused", "static-method"})
+    public boolean grow(long delta) {
+        throw new WasmExecutionException(null, "Tables cannot be grown.");
     }
 }

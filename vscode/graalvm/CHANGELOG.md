@@ -1,5 +1,8 @@
 # Change Log
 
+## Version 0.0.10
+* Usability improvements
+
 ## Version 0.0.9
 * Bug fixes
 

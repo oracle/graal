@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,41 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package org.graalvm.compiler.core.test;
 
-package com.oracle.objectfile.debugentry;
+import org.junit.Test;
 
-/**
- * Tracks debug info associated with a Java source file.
- */
-public class FileEntry {
-    private String fileName;
-    private DirEntry dirEntry;
+import sun.misc.Unsafe;
 
-    public FileEntry(String fileName, DirEntry dirEntry) {
-        this.fileName = fileName;
-        this.dirEntry = dirEntry;
+public class UnsafeCopyMemoryTest extends GraalCompilerTest {
+
+    static void copyMemory(byte[] a, byte[] b) {
+        UNSAFE.copyMemory(a, Unsafe.ARRAY_BYTE_BASE_OFFSET, b, Unsafe.ARRAY_BYTE_BASE_OFFSET, a.length);
     }
 
-    /**
-     * The name of the associated file excluding path elements.
-     */
-    public String getFileName() {
-        return fileName;
+    @Test
+    public void copyMemTest() {
+        test("copyMemory", new byte[100], new byte[100]);
     }
-
-    public String getPathName() {
-        return getDirEntry().getPathString();
-    }
-
-    public String getFullName() {
-        return getDirEntry().getPath().resolve(getFileName()).toString();
-    }
-
-    /**
-     * The directory entry associated with this file entry.
-     */
-    public DirEntry getDirEntry() {
-        return dirEntry;
-    }
-
 }

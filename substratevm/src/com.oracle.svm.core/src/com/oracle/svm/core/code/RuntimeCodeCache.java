@@ -67,7 +67,7 @@ public class RuntimeCodeCache {
         public static final RuntimeOptionKey<Boolean> WriteableCodeCache = new RuntimeOptionKey<>(false);
     }
 
-    private final RingBuffer<CodeCacheLogEntry> recentCodeCacheOperations = new RingBuffer<>(30, () -> new CodeCacheLogEntry());
+    private final RingBuffer<CodeCacheLogEntry> recentCodeCacheOperations = new RingBuffer<>(30, CodeCacheLogEntry::new);
     private long codeCacheOperationSequenceNumber;
 
     private final Counter.Group counters = new Counter.Group(CodeInfoTable.Options.CodeCacheCounters, "RuntimeCodeInfo");

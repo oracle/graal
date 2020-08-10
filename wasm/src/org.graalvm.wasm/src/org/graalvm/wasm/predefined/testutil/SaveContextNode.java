@@ -46,8 +46,8 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import org.graalvm.wasm.Assert;
 import org.graalvm.wasm.GlobalRegistry;
 import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
@@ -55,7 +55,7 @@ import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
  * Records the context state (memory and global variables) into a custom object.
  */
 public class SaveContextNode extends WasmBuiltinRootNode {
-    public SaveContextNode(WasmLanguage language, WasmModule module) {
+    public SaveContextNode(WasmLanguage language, WasmInstance module) {
         super(language, module);
     }
 

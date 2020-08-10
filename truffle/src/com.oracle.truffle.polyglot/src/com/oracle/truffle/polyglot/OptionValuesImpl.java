@@ -246,7 +246,7 @@ final class OptionValuesImpl implements OptionValues {
     }
 
     private static RuntimeException failExperimental(String key) {
-        final String message = String.format("Option '%s' is experimental and must be enabled with allowExperimentalOptions(). ", key) +
+        final String message = String.format("Option '%s' is experimental and must be enabled with allowExperimentalOptions(boolean) in Context.Builder or Engine.Builder. ", key) +
                         "Do not use experimental options in production environments.";
         return PolyglotEngineException.illegalArgument(message);
     }
