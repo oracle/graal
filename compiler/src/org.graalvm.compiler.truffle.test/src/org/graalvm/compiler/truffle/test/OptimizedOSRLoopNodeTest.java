@@ -72,11 +72,11 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
 
     private static final GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
 
-    @DataPoint public static final OSRLoopFactory CONFIGURED = (treshold, repeating, readFrameSlots, writtenFrameSlots) -> {
-        return OptimizedOSRLoopNode.createOSRLoop(repeating, treshold, readFrameSlots, writtenFrameSlots);
+    @DataPoint public static final OSRLoopFactory CONFIGURED = (threshold, repeating, readFrameSlots, writtenFrameSlots) -> {
+        return OptimizedOSRLoopNode.createOSRLoop(repeating, threshold, readFrameSlots, writtenFrameSlots);
     };
 
-    @DataPoint public static final OSRLoopFactory DEFAULT = (treshold, repeating, readFrameSlots,
+    @DataPoint public static final OSRLoopFactory DEFAULT = (threshold, repeating, readFrameSlots,
                     writtenFrameSlots) -> (OptimizedOSRLoopNode) OptimizedOSRLoopNode.create(repeating);
 
     private int osrTreshold;
@@ -84,11 +84,11 @@ public class OptimizedOSRLoopNodeTest extends TestWithSynchronousCompiling {
     @BeforeClass
     public static void doBefore() {
         // ensure that all classes are properly loaded
-        int defaultTreshold = OSRCompilationThreshold.getDefaultValue();
-        TestRootNode rootNode = new TestRootNode(defaultTreshold, DEFAULT, new TestRepeatingNode());
+        int defaultThreshold = OSRCompilationThreshold.getDefaultValue();
+        TestRootNode rootNode = new TestRootNode(defaultThreshold, DEFAULT, new TestRepeatingNode());
         CallTarget target = runtime.createCallTarget(rootNode);
         target.call(1);
-        rootNode = new TestRootNode(defaultTreshold, CONFIGURED, new TestRepeatingNode());
+        rootNode = new TestRootNode(defaultThreshold, CONFIGURED, new TestRepeatingNode());
         target = runtime.createCallTarget(rootNode);
         target.call(1);
     }
