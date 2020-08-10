@@ -47,6 +47,18 @@ public class ObjectsRequireNonNullPartialEvaluationTest extends PartialEvaluatio
     }
 
     @Test
+    public void testRequireNonNullWithMessage() {
+        AbstractTestNode testNode = new RequireNonNullWithMessageNode();
+        testCommon(testNode, "testRequireNonNullWithMessage", new TestClass(42));
+    }
+
+    @Test
+    public void testRequireNonNullWithMessageSupplier() {
+        AbstractTestNode testNode = new RequireNonNullWithMessageSupplierNode();
+        testCommon(testNode, "testRequireNonNullWithMessageSupplier", new TestClass(42));
+    }
+
+    @Test
     public void testInnerClassCtor() {
         AbstractTestNode testNode = new InnerClassNode();
         testCommon(testNode, "testInnerClassCtor", new TestClass(21));
@@ -77,6 +89,24 @@ public class ObjectsRequireNonNullPartialEvaluationTest extends PartialEvaluatio
         @Override
         public int execute(VirtualFrame frame) {
             Objects.requireNonNull(frame.getArguments()[0]);
+            return 42;
+        }
+    }
+
+    static class RequireNonNullWithMessageNode extends AbstractTestNode {
+
+        @Override
+        public int execute(VirtualFrame frame) {
+            Objects.requireNonNull(frame.getArguments()[0], "arg");
+            return 42;
+        }
+    }
+
+    static class RequireNonNullWithMessageSupplierNode extends AbstractTestNode {
+
+        @Override
+        public int execute(VirtualFrame frame) {
+            Objects.requireNonNull(frame.getArguments()[0], () -> "arg");
             return 42;
         }
     }
