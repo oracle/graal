@@ -1087,6 +1087,9 @@ final class PolyglotEngineImpl extends AbstractPolyglotImpl.AbstractEngineImpl i
                 for (PolyglotLanguage language : idToLanguage.values()) {
                     language.close();
                 }
+                if (runtimeData != null) {
+                    EngineAccessor.RUNTIME.flushCompileQueue(runtimeData);
+                }
             } else if (logHandler != null) {
                 // called from shutdown hook, at least flush the logging handler
                 logHandler.flush();

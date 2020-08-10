@@ -761,6 +761,8 @@ public abstract class Accessor {
         @SuppressWarnings({"unchecked"})
         public abstract <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull, boolean exact);
 
+        public abstract void flushCompileQueue(Object runtimeData);
+
     }
 
     public static final class JDKSupport {
