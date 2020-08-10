@@ -210,6 +210,11 @@ public class TruffleGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 // This method must not be intrinsified until after graph decoding.
+                // We only know whether something is a first-tier compilation or not once we are
+                // inside a partial evaluation request.
+                // The graph builder output can be cached across compilations, so intrinsifying this
+                // in the first tier would make it invalid for second-tier
+                // compilations.
                 return false;
             }
         });
