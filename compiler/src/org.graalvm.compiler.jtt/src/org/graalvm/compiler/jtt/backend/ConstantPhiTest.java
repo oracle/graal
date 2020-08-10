@@ -27,12 +27,12 @@ package org.graalvm.compiler.jtt.backend;
 import static org.graalvm.compiler.api.directives.GraalDirectives.LIKELY_PROBABILITY;
 import static org.graalvm.compiler.api.directives.GraalDirectives.injectBranchProbability;
 import static org.graalvm.compiler.core.common.GraalOptions.MaximumInliningSize;
-import java.lang.reflect.Method;
 
-import org.junit.Test;
+import java.lang.reflect.Method;
 
 import org.graalvm.compiler.jtt.JTTTest;
 import org.graalvm.compiler.options.OptionValues;
+import org.junit.Test;
 
 public class ConstantPhiTest extends JTTTest {
 
