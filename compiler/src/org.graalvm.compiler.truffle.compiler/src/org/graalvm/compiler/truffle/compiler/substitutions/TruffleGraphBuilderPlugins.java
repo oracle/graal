@@ -25,7 +25,6 @@
 package org.graalvm.compiler.truffle.compiler.substitutions;
 
 import static java.lang.Character.toUpperCase;
-import static org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.getRuntime;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -115,7 +114,6 @@ public class TruffleGraphBuilderPlugins {
         registerObjectsPlugins(plugins, metaAccess);
         registerOptimizedAssumptionPlugins(plugins, metaAccess, types);
         registerExactMathPlugins(plugins, metaAccess);
-        registerGraalCompilerDirectivesPlugins(plugins, metaAccess);
         registerCompilerDirectivesPlugins(plugins, metaAccess, canDelayIntrinsification);
         registerCompilerAssertsPlugins(plugins, metaAccess, canDelayIntrinsification);
         registerOptimizedCallTargetPlugins(plugins, metaAccess, canDelayIntrinsification, types);
@@ -192,9 +190,16 @@ public class TruffleGraphBuilderPlugins {
         }
     }
 
-    public static void registerGraalCompilerDirectivesPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess) {
-        final ResolvedJavaType graalCompilerDirectivesType = getRuntime().resolveType(metaAccess, "org.graalvm.compiler.truffle.runtime.GraalCompilerDirectives");
-        Registration r = new Registration(plugins, new ResolvedJavaSymbol(graalCompilerDirectivesType));
+    public static void registerCompilerDirectivesPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, boolean canDelayIntrinsification) {
+        final ResolvedJavaType compilerDirectivesType = TruffleCompilerRuntime.getRuntime().resolveType(metaAccess, "com.oracle.truffle.api.CompilerDirectives");
+        Registration r = new Registration(plugins, new ResolvedJavaSymbol(compilerDirectivesType));
+        r.register0("inInterpreter", new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(false));
+                return true;
+            }
+        });
         r.register0("inFirstTier", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
@@ -204,18 +209,6 @@ public class TruffleGraphBuilderPlugins {
                     return true;
                 }
                 return false;
-            }
-        });
-    }
-
-    public static void registerCompilerDirectivesPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess, boolean canDelayIntrinsification) {
-        final ResolvedJavaType compilerDirectivesType = TruffleCompilerRuntime.getRuntime().resolveType(metaAccess, "com.oracle.truffle.api.CompilerDirectives");
-        Registration r = new Registration(plugins, new ResolvedJavaSymbol(compilerDirectivesType));
-        r.register0("inInterpreter", new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(false));
-                return true;
             }
         });
         r.register0("inCompiledCode", new InvocationPlugin() {

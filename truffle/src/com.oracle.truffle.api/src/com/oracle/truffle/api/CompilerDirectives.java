@@ -102,6 +102,18 @@ public final class CompilerDirectives {
     }
 
     /**
+     * Returns a boolean value indicating whether the method is executed in the first tier Truffle
+     * compilation.
+     *
+     * @return {@code true} when executed in the first tier Truffle compilation, {@code false}
+     *         otherwise.
+     * @since 20.3
+     */
+    public static boolean inFirstTier() {
+        return false;
+    }
+
+    /**
      * Returns a boolean value indicating whether the method is executed in the compiled code.
      *
      * @return {@code false} when executed in the interpreter, {@code true} in compiled code.

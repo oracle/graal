@@ -202,7 +202,7 @@ public abstract class LoopNode extends Node {
      * @since 0.12
      */
     public static void reportLoopCount(Node source, int iterations) {
-        if (CompilerDirectives.inInterpreter()) {
+        if (CompilerDirectives.inInterpreter() || CompilerDirectives.inFirstTier()) {
             NodeAccessor.RUNTIME.onLoopCount(source, iterations);
         }
     }

@@ -822,5 +822,10 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         public boolean isLastTier() {
             return delegate.isLastTier();
         }
+
+        @Override
+        public String toString() {
+            return delegate.toString();
+        }
     }
 }

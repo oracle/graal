@@ -461,12 +461,12 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
         int intCallCount = this.callCount;
         this.callCount = intCallCount == Integer.MAX_VALUE ? intCallCount : ++intCallCount;
-        int intAndLoopCallCount = callAndLoopCount;
-        this.callAndLoopCount = intAndLoopCallCount == Integer.MAX_VALUE ? intAndLoopCallCount : ++intAndLoopCallCount;
+        int intLoopCallCount = this.callAndLoopCount;
+        this.callAndLoopCount = intLoopCallCount == Integer.MAX_VALUE ? intLoopCallCount : ++intLoopCallCount;
 
         // Check if call target is hot enough to compile
         if (intCallCount >= engine.callThresholdInInterpreter //
-                        && intAndLoopCallCount >= engine.callAndLoopThresholdInInterpreter //
+                        && intLoopCallCount >= engine.callAndLoopThresholdInInterpreter //
                         && !compilationFailed //
                         && !isSubmittedForCompilation()) {
             return compile(!engine.multiTier);
@@ -477,7 +477,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
     protected final Object profiledPERoot(Object[] originalArguments) {
         Object[] args = originalArguments;
-        if (GraalCompilerDirectives.inFirstTier()) {
+        if (CompilerDirectives.inFirstTier()) {
             firstTierCall();
         }
         if (CompilerDirectives.inCompiledCode()) {
@@ -491,16 +491,22 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     // This should be private but can't be. GR-19397
     public final boolean firstTierCall() {
         // this is partially evaluated so the second part should fold to a constant.
-        int firstTierCallThreshold = ++callCount;
-        if (firstTierCallThreshold >= engine.callThresholdInFirstTier && !isSubmittedForCompilation() && !compilationFailed) {
-            return lastTierCompile(this);
+        int firstTierCallCount = this.callCount;
+        this.callCount = firstTierCallCount == Integer.MAX_VALUE ? firstTierCallCount : ++firstTierCallCount;
+        int firstTierLoopCallCount = this.callAndLoopCount;
+        this.callAndLoopCount = firstTierLoopCallCount == Integer.MAX_VALUE ? firstTierLoopCallCount : ++firstTierLoopCallCount;
+        if (firstTierCallCount >= engine.callThresholdInFirstTier //
+                        && firstTierLoopCallCount >= engine.callAndLoopThresholdInFirstTier //
+                        && !compilationFailed //
+                        && !isSubmittedForCompilation()) {
+            return lastTierCompile();
         }
         return false;
     }
 
     @TruffleBoundary
-    private static boolean lastTierCompile(OptimizedCallTarget callTarget) {
-        return callTarget.compile(true);
+    private boolean lastTierCompile() {
+        return compile(true);
     }
 
     private Object executeRootNode(VirtualFrame frame) {
@@ -914,8 +920,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         if (engine.multiTier) {
             if (isValidLastTier()) {
                 String callsThresholdInFirstTier = String.format("%7d/%5d", getCallCount(), engine.callThresholdInFirstTier);
+                String loopsThresholdInFirstTier = String.format("%7d/%5d", getCallCount(), engine.callAndLoopThresholdInFirstTier);
                 properties.put("Tier", "Last");
                 properties.put("Calls/Thres", callsThresholdInFirstTier);
+                properties.put("CallsAndLoop/Thres", loopsThresholdInFirstTier);
             } else {
                 properties.put("Tier", "First");
                 properties.put("Calls/Thres", callsThresholdInInterpreter);
