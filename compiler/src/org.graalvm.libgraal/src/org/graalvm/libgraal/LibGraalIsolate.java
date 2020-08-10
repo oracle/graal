@@ -134,6 +134,8 @@ public final class LibGraalIsolate {
      */
     static synchronized void unregister(long isolateId) {
         LibGraalIsolate isolate = isolates.remove(isolateId);
+        // The isolates.remove(isolateId) may return null when no LibGraalScope was created for the
+        // given isolateId.
         if (isolate != null) {
             isolate.destroyed = true;
         }

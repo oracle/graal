@@ -845,11 +845,9 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
 
         private static final String lineSeparator = Services.getSavedProperties().get("line.separator");
 
-        private final TruffleCompilerRuntime runtime;
         private final CompilableTruffleAST compilable;
 
         TTYToPolyglotLoggerBridge(CompilableTruffleAST compilable) {
-            this.runtime = TruffleCompilerRuntime.getRuntime();
             this.compilable = compilable;
         }
 
@@ -861,7 +859,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
             } else {
                 useMessage = message;
             }
-            runtime.log(compilable, useMessage);
+            TruffleCompilerRuntime.getRuntime().log(compilable, useMessage);
         }
     }
 }
