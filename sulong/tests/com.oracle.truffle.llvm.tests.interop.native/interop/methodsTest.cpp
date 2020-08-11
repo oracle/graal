@@ -89,7 +89,7 @@ double Point::squaredEuclideanDistance(Point* other) {
 	return dX*dX+dY*dY;
 }
 
-XtendPoint::XtendPoint() {
+XtendPoint::XtendPoint():Point() {
 	z=0;
 }
 
