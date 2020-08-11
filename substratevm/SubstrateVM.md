@@ -1,4 +1,4 @@
-# Substrate VM Project
+# The Substrate VM Project
 
 Substrate VM is an internal project
 name for the technology behind [GraalVM Native Image](index.md).

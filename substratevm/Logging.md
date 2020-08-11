@@ -2,7 +2,7 @@
 
 Native Image supports logging out-of-the box using the `java.util.logging.*` API.
 
-## Default Logging configuration
+## Default Logging Configuration
 
 The logging configuration built in the image by default is based on the `logging.properties` file found in the JDK.
 This configures a `java.util.logging.ConsoleHandler` which will only shows messages at the `INFO` and above levels.
