@@ -861,7 +861,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
     @SuppressWarnings({"unused", "try"})
     protected MethodCallTargetNode trySimplifyCallTarget(PEMethodScope methodScope, InvokeData invokeData, MethodCallTargetNode callTarget) {
-        try (DebugCloseable a = TrySimplifyCallTarget.start(callTarget.getDebug())) {
+        try (DebugCloseable a = TrySimplifyCallTarget.start(debug)) {
             // attempt to devirtualize the call
             ResolvedJavaMethod specialCallTarget = getSpecialCallTarget(invokeData, callTarget);
             if (specialCallTarget != null) {
@@ -926,7 +926,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
     @SuppressWarnings({"unused", "try"})
     protected boolean tryInvocationPlugin(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData, MethodCallTargetNode callTarget) {
-        try (DebugCloseable a = InvocationPluginTimer.start(callTarget.getDebug())) {
+        try (DebugCloseable a = InvocationPluginTimer.start(debug)) {
             if (invocationPlugins == null || invocationPlugins.isEmpty()) {
                 return false;
             }
@@ -1004,7 +1004,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
     @SuppressWarnings({"unused", "try"})
     protected LoopScope tryInline(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData, MethodCallTargetNode callTarget) {
-        try (DebugCloseable a = TryInlineTimer.start(callTarget.getDebug())) {
+        try (DebugCloseable a = TryInlineTimer.start(debug)) {
             if (!callTarget.invokeKind().isDirect()) {
                 return null;
             }
