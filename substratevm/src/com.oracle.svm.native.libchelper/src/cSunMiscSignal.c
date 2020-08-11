@@ -93,6 +93,9 @@ static volatile long cSunMiscSignal_table[NSIG];
 
 /* A semaphore to notify of increments to the map. */
 static sem_t* cSunMiscSignal_semaphore = NULL;
+#ifdef __linux__
+static sem_t cSunMiscSignal_semaphore_value;
+#endif
 
 /*
  * Public functions.
@@ -113,12 +116,8 @@ int cSunMiscSignal_open() {
 		/*
 		 * Linux supports unnamed semaphore.
 		 */
-		cSunMiscSignal_semaphore = malloc(sizeof(sem_t));
-		if (! cSunMiscSignal_semaphore) {
-			return -1;
-		}
-		if (! sem_init(cSunMiscSemaphore, 0)) {
-			free(cSunMiscSignal_semaphore);
+		cSunMiscSignal_semaphore = &cSunMiscSignal_semaphore_value;
+		if (sem_init(cSunMiscSignal_semaphore, 0, 0) != 0) {
 			cSunMiscSignal_semaphore = NULL;
 			return -1;
 		}
@@ -164,9 +163,6 @@ int cSunMiscSignal_close() {
 		if (semCloseResult != 0) {
 			return semCloseResult;
 		}
-#ifdef __linux__
-		free(cSunMiscSignal_semaphore);
-#endif /* __linux__ */
 		cSunMiscSignal_semaphore = NULL;
 	}
 
