@@ -915,7 +915,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     private void populateMarkConstants() {
         boolean jdk13JvmciBackport = (JVMCI && JDK > 8) ? jvmciGE(JVMCI_19_3_b03) : JDK > 9;
-        boolean verifyOopsMarkSupported = (JVMCI && JDK > 8) ? jvmciGE(JVMCI_20_2_b04) : JDK >= 16;
+        boolean verifyOopsMarkSupported = JDK >= 16;
         Map<String, Long> constants = getStore().getConstants();
         for (HotSpotMarkId markId : HotSpotMarkId.values()) {
             Integer value = null;
