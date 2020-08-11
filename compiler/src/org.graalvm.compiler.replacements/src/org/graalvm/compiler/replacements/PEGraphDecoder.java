@@ -951,7 +951,8 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             FixedWithNextNode invokePredecessor = (FixedWithNextNode) invoke.asNode().predecessor();
 
             /*
-             * Remove invoke from graph so that invocation plugin can append nodes to the predecessor.
+             * Remove invoke from graph so that invocation plugin can append nodes to the
+             * predecessor.
              */
             invoke.asNode().replaceAtPredecessor(null);
 
@@ -967,7 +968,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                     /* Nothing to do. */
                 } else if (graphBuilderContext.lastInstr != null) {
                     if (graphBuilderContext.lastInstr instanceof DeoptBciSupplier && !BytecodeFrame.isPlaceholderBci(invokeData.invoke.bci()) &&
-                            BytecodeFrame.isPlaceholderBci(((DeoptBciSupplier) graphBuilderContext.lastInstr).bci())) {
+                                    BytecodeFrame.isPlaceholderBci(((DeoptBciSupplier) graphBuilderContext.lastInstr).bci())) {
                         ((DeoptBciSupplier) graphBuilderContext.lastInstr).setBci(invokeData.invoke.bci());
                     }
                     registerNode(loopScope, invokeData.invokeOrderId, graphBuilderContext.pushedNode, true, true);
