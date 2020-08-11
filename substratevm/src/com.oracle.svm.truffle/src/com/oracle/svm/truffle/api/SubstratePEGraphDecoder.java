@@ -52,9 +52,10 @@ public class SubstratePEGraphDecoder extends PEGraphDecoder {
 
     public SubstratePEGraphDecoder(Architecture architecture, StructuredGraph graph, CoreProviders providers, LoopExplosionPlugin loopExplosionPlugin, InvocationPlugins invocationPlugins,
                     InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin, NodePlugin[] nodePlugins, ResolvedJavaMethod peRootForInlining,
-                    SourceLanguagePositionProvider sourceLanguagePosition, EconomicMap<ResolvedJavaMethod, Object> invocationPluginsCache) {
+                    SourceLanguagePositionProvider sourceLanguagePosition, EconomicMap<SpecialCallTargetCacheKey, Object> specialCallTargetCache,
+                    EconomicMap<ResolvedJavaMethod, Object> invocationPluginsCache) {
         super(architecture, graph, providers, loopExplosionPlugin, invocationPlugins, inlineInvokePlugins, parameterPlugin, nodePlugins,
-                        peRootForInlining, sourceLanguagePosition, invocationPluginsCache);
+                        peRootForInlining, sourceLanguagePosition, specialCallTargetCache, invocationPluginsCache);
     }
 
     @Override

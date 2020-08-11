@@ -79,7 +79,7 @@ public class CachingPEGraphDecoder extends PEGraphDecoder {
                     BasePhase<? super CoreProviders> postParsingPhase, EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache) {
         super(architecture, graph, providers, loopExplosionPlugin,
                         invocationPlugins, inlineInvokePlugins, parameterPlugin, nodePlugins, peRootForInlining, sourceLanguagePositionProvider,
-                        EconomicMap.create(Equivalence.DEFAULT));
+                        EconomicMap.create(Equivalence.DEFAULT), EconomicMap.create(Equivalence.DEFAULT));
 
         this.providers = providers;
         this.graphBuilderConfig = graphBuilderConfig;
