@@ -25,6 +25,7 @@
 package com.oracle.svm.truffle.api;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.graph.SourceLanguagePositionProvider;
 import org.graalvm.compiler.nodes.EncodedGraph;
@@ -50,9 +51,12 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class SubstratePartialEvaluator extends PartialEvaluator {
 
+    private final EconomicMap<ResolvedJavaMethod, Object> invocationPluginsCache;
+
     @Platforms(Platform.HOSTED_ONLY.class)
     public SubstratePartialEvaluator(Providers providers, GraphBuilderConfiguration configForRoot, SnippetReflectionProvider snippetReflection, Architecture architecture) {
         super(providers, configForRoot, snippetReflection, architecture, new SubstrateKnownTruffleTypes(providers.getMetaAccess()));
+        this.invocationPluginsCache = EconomicMap.create(Equivalence.DEFAULT);
     }
 
     @Override
@@ -62,7 +66,8 @@ public class SubstratePartialEvaluator extends PartialEvaluator {
                     EconomicMap<ResolvedJavaMethod, EncodedGraph> graphCache) {
         TruffleConstantFieldProvider compilationLocalConstantProvider = new TruffleConstantFieldProvider(providers.getConstantFieldProvider(), providers.getMetaAccess());
         return new SubstratePEGraphDecoder(architecture, request.graph, providers.copyWith(compilationLocalConstantProvider), loopExplosionPlugin, invocationPlugins, inlineInvokePlugins,
-                        parameterPlugin, nodePlugins, callInlined, sourceLanguagePositionProvider);
+                        parameterPlugin, nodePlugins, callInlined, sourceLanguagePositionProvider,
+                        invocationPluginsCache);
     }
 
     @Override

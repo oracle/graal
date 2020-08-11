@@ -689,9 +689,9 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     protected final SourceLanguagePositionProvider sourceLanguagePositionProvider;
 
     public PEGraphDecoder(Architecture architecture, StructuredGraph graph, CoreProviders providers, LoopExplosionPlugin loopExplosionPlugin, InvocationPlugins invocationPlugins,
-                    InlineInvokePlugin[] inlineInvokePlugins,
-                    ParameterPlugin parameterPlugin,
-                    NodePlugin[] nodePlugins, ResolvedJavaMethod peRootForInlining, SourceLanguagePositionProvider sourceLanguagePositionProvider) {
+                    InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin,
+                    NodePlugin[] nodePlugins, ResolvedJavaMethod peRootForInlining, SourceLanguagePositionProvider sourceLanguagePositionProvider,
+                    EconomicMap<ResolvedJavaMethod, Object> invocationPluginCache) {
         super(architecture, graph, providers, true);
         this.loopExplosionPlugin = loopExplosionPlugin;
         this.invocationPlugins = invocationPlugins;
@@ -699,7 +699,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         this.parameterPlugin = parameterPlugin;
         this.nodePlugins = nodePlugins;
         this.specialCallTargetCache = EconomicMap.create(Equivalence.DEFAULT);
-        this.invocationPluginCache = EconomicMap.create(Equivalence.DEFAULT);
+        this.invocationPluginCache = invocationPluginCache;
         this.peRootForInlining = peRootForInlining;
         this.sourceLanguagePositionProvider = sourceLanguagePositionProvider;
     }
