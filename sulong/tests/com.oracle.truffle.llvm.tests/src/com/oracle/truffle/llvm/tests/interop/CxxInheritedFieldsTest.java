@@ -56,10 +56,10 @@ public class CxxInheritedFieldsTest extends InteropTestBase {
         Value aObj = createA.execute();
         Value bObj = createB.execute();
 
-        Assert.assertTrue(aObj.hasMember("a"));
+        Assert.assertTrue("aObj.hasMember(\"a\")", aObj.hasMember("a"));
         Assert.assertEquals(3, aObj.getMember("a").asInt());
 
-        Assert.assertTrue(bObj.hasMember("b"));
+        Assert.assertTrue("bObj.hasMember(\"b\")", bObj.hasMember("b"));
         Assert.assertEquals(4, bObj.getMember("b").asInt());
     }
 
@@ -67,7 +67,7 @@ public class CxxInheritedFieldsTest extends InteropTestBase {
     public void testInheritedFields() {
         Value bObj = createB.execute();
 
-        Assert.assertTrue(bObj.hasMember("a"));
+        Assert.assertTrue("bObj.hasMember(\"a\")", bObj.hasMember("a"));
         Assert.assertEquals(3, bObj.getMember("a").asInt());
     }
 
@@ -75,6 +75,6 @@ public class CxxInheritedFieldsTest extends InteropTestBase {
     public void testUnexistingField() {
         Assert.assertFalse(testCppLibrary.hasMember("abc"));
         Value aObj = createA.execute();
-        Assert.assertFalse(aObj.hasMember("c"));
+        Assert.assertFalse("aObj.hasMember(\"c\")", aObj.hasMember("c"));
     }
 }

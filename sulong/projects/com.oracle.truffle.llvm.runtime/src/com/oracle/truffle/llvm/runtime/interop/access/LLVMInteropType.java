@@ -568,11 +568,11 @@ public abstract class LLVMInteropType implements TruffleObject {
                 LLVMSourceType memberType = member.getElementType();
                 if (memberType instanceof LLVMSourceClassLikeType) {
                     LLVMSourceClassLikeType sourceSuperClazz = (LLVMSourceClassLikeType) memberType;
-                    if (typeCache.containsKey(sourceSuperClazz)) {
-                        Clazz superClazz = (Clazz) typeCache.get(sourceSuperClazz);
-                        ret.setSuperClass(superClazz);
+                    if (!typeCache.containsKey(sourceSuperClazz)) {
+                        convertClass(sourceSuperClazz);
                     }
-
+                    Clazz superClazz = (Clazz) typeCache.get(sourceSuperClazz);
+                    ret.setSuperClass(superClazz);
                 }
                 long startOffset = member.getOffset() / 8;
                 long endOffset = startOffset + (memberType.getSize() + 7) / 8;
