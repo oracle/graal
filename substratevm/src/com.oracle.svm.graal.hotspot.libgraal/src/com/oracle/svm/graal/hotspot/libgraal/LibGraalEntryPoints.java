@@ -78,6 +78,12 @@ public final class LibGraalEntryPoints {
      */
     static final CGlobalData<Pointer> LOG_FILE_BARRIER = CGlobalDataFactory.createWord((Pointer) WordFactory.zero());
 
+    /**
+     * The spin lock field for the
+     * {@code org.graalvm.compiler.hotspot.management.libgraal.MBeanProxy#defineClassesInHotSpot}.
+     */
+    static final CGlobalData<Pointer> MANAGEMENT_BARRIER = CGlobalDataFactory.createWord((Pointer) WordFactory.zero());
+
     @CEntryPoint(builtin = Builtin.GET_CURRENT_THREAD, name = "Java_org_graalvm_libgraal_LibGraalScope_getIsolateThreadIn")
     private static native IsolateThread getIsolateThreadIn(PointerBase env, PointerBase hsClazz, @IsolateContext Isolate isolate);
 
