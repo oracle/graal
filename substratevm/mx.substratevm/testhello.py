@@ -29,8 +29,8 @@
 #
 # Assumes you have already executed
 #
-# $ javac hello/Hello.java
-# $ mx native-image -H:GenerateDebugInfo=1 hello.hello
+# javac hello/Hello.java
+# mx native-image -H:GenerateDebugInfo=1 hello.hello
 #
 # Run test
 #

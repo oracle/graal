@@ -34,7 +34,7 @@ Native Image is distributed as a separate installable and can be added to the co
 
 If you use GraalVM, run this command to install Native Image from GitHub:
 ```
-$ gu install native-image
+gu install native-image
 ```
 
 After this additional step, the `native-image` executable will become available in
@@ -49,7 +49,7 @@ sure: `glibc-devel`, `zlib-devel` (header files for the C library and `zlib`)
 and `gcc` are available on your system. For Linux platform, install install `libstdc++-static`
 dependency additionally. For instance, on Oracle Linux run:
 ```
-$ sudo yum install libstdc++-static
+sudo yum install libstdc++-static
 ```
 
 #### Prerequisites for Using Native Image on Windows
@@ -70,7 +70,7 @@ The last prerequisite, common for both GraalVM distribution based on JDK 11 and 
 Assuming you have a Java class file _EmptyHello.class_ containing an empty main method
 and have generated an empty shared object `emptyhello` with GraalVM Native Image Generator utility of it:
 ```
-$ native-image -cp hello EmptyHello
+native-image -cp hello EmptyHello
 [emptyhello:11228]    classlist:     149.59 ms
 ...
 ```
@@ -80,7 +80,7 @@ variable, how to determine if a native image was compiled with Community or
 Enterprise Edition? Run this command:
 
 ```
-$ strings emptyhello | grep com.oracle.svm.core.VM
+strings emptyhello | grep com.oracle.svm.core.VM
 ```
 
 The expected output should match the following:

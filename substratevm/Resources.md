@@ -15,7 +15,7 @@ To make calls such as `Class.getResource()`, `Class.getResourceAsStream()` (or t
 
 The configuration file's path must be provided to `native-image` with `-H:ResourceConfigurationFiles=/path/to/resource-config.json`. Alternatively, individual resource paths can also be specified directly to `native-image`:
 ```
-$ native-image -H:IncludeResources=<Java regexp that matches resources to be included in the image> ...
+native-image -H:IncludeResources=<Java regexp that matches resources to be included in the image> ...
 ```
 The `-H:IncludeResources` option can be passed several times to define more than one regexp to match resources.
 
@@ -63,5 +63,5 @@ Substrate VM needs an ahead of time knowledge of resources bundles your applicat
 
 Alternatively, bundles can be specified directly as options to `native-image` as follows:
 ```
-$ native-image -H:IncludeResourceBundles=your.pgk.Bundle,another.pkg.Resource,etc.Bundle ...
+native-image -H:IncludeResourceBundles=your.pgk.Bundle,another.pkg.Resource,etc.Bundle ...
 ```

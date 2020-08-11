@@ -5,8 +5,8 @@ To add debug info to a generated native image add flag
 a positive integer value -- the default value `0` means generate no
 debug info). For example,
 ```
-$ javac Hello.java
-$ mx native-image -H:GenerateDebugInfo=1 Hello
+javac Hello.java
+mx native-image -H:GenerateDebugInfo=1 Hello
 ```
 The resulting image should contain code (method) debug records in a
 format the GNU Debugger understands (Windows support is still under development).
@@ -36,12 +36,12 @@ possible to find all sources. Hence, users can specify the location of
 source files explicitly on the command line using option
 `DebugInfoSourceSearchPath`:
 ```
-$ javac --source-path apps/greeter/src \
+javac --source-path apps/greeter/src \
     -d apps/greeter/classes org/my/greeter/*Greeter.java
-$ javac -cp apps/greeter/classes \
+javac -cp apps/greeter/classes \
     --source-path apps/hello/src \
     -d apps/hello/classes org/my/hello/Hello.java
-$ mx native-image -H:GenerateDebugInfo=1 \
+mx native-image -H:GenerateDebugInfo=1 \
     -H:DebugInfoSourceSearchPath=apps/hello/src \
     -H:DebugInfoSourceSearchPath=apps/greeter/src \
     -cp apps/hello/classes:apps/greeter/classes org.my.hello.Hello
@@ -53,7 +53,7 @@ identify either a directory, a source jar or a source zip file. It is
 also possible to specify several source roots at once using a comma
 separator:
 ```
-$ mx native-image -H:GenerateDebugInfo=1 \
+mx native-image -H:GenerateDebugInfo=1 \
     -H:DebugInfoSourceSearchPath=apps/hello/target/hello-sources.jar,apps/greeter/target/greeter-sources.jar \
     -cp apps/target/hello.jar:apps/target/greeter.jar \
     org.my.Hello
@@ -64,8 +64,8 @@ can be used to specify an alternative location for the top level
 directory. As an example, the following variant of the previous
 command specifies the same target but employs an absolute path:
 ```
-$ SOURCE_CACHE_ROOT=$PWD/sources
-$ mx native-image -H:GenerateDebugInfo=1 \
+SOURCE_CACHE_ROOT=$PWD/sources
+mx native-image -H:GenerateDebugInfo=1 \
     -H:DebugInfoSourceCacheRoot=$SOURCE_CACHE_ROOT \
     -H:DebugInfoSourceSearchPath=apps/hello/target/hello-sources.jar,apps/greeter/target/greeter-sources.jar \
     -cp apps/target/hello.jar:apps/target/greeter.jar \
@@ -223,13 +223,13 @@ The `objdump` command can be used to display the debug info embedded
 into a native image. The following commands (which all assume the
 target binary is called `hello`) can be used to display all generated content:
 ```
-$ objdump --dwarf=info hello > info
-$ objdump --dwarf=abbrev hello > abbrev
-$ objdump --dwarf=ranges hello > ranges
-$ objdump --dwarf=decodedline hello > decodedline
-$ objdump --dwarf=rawline hello > rawline
-$ objdump --dwarf=str hello > str
-$ objdump --dwarf=frames hello > frames
+objdump --dwarf=info hello > info
+objdump --dwarf=abbrev hello > abbrev
+objdump --dwarf=ranges hello > ranges
+objdump --dwarf=decodedline hello > decodedline
+objdump --dwarf=rawline hello > rawline
+objdump --dwarf=str hello > str
+objdump --dwarf=frames hello > frames
 ```
 
 The *info* section includes details of all compiled Java methods.
