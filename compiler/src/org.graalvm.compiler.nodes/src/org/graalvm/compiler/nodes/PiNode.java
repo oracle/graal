@@ -185,9 +185,9 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
         }
     }
 
-    public static ValueNode canonical(ValueNode object, Stamp stamp, GuardingNode guard, PiNode self) {
+    public static ValueNode canonical(ValueNode object, Stamp piStamp, GuardingNode guard, PiNode self) {
         // Use most up to date stamp.
-        Stamp computedStamp = stamp.improveWith(object.stamp(NodeView.DEFAULT));
+        Stamp computedStamp = piStamp.improveWith(object.stamp(NodeView.DEFAULT));
 
         // The pi node does not give any additional information => skip it.
         if (computedStamp.equals(object.stamp(NodeView.DEFAULT))) {
@@ -198,7 +198,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
             // Try to merge the pi node with a load node.
             if (object instanceof ReadNode && !object.hasMoreThanOneUsage()) {
                 ReadNode readNode = (ReadNode) object;
-                readNode.setStamp(readNode.stamp(NodeView.DEFAULT).improveWith(stamp));
+                readNode.setStamp(readNode.stamp(NodeView.DEFAULT).improveWith(piStamp));
                 return readNode;
             }
         } else {
@@ -206,14 +206,17 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
                 if (n instanceof PiNode && n != self) {
                     PiNode otherPi = (PiNode) n;
                     assert otherPi.guard == guard;
-                    if (object == otherPi.object() && computedStamp.equals(otherPi.stamp(NodeView.DEFAULT))) {
-                        /*
-                         * Two PiNodes with the same guard and same result, so return the one with
-                         * the more precise piStamp.
-                         */
-                        Stamp newStamp = stamp.join(otherPi.piStamp);
-                        if (newStamp.equals(otherPi.piStamp)) {
+                    if (otherPi.object() == self || otherPi.object() == object) {
+                        // Check if other pi's stamp is more precise
+                        Stamp joinedStamp = piStamp.improveWith(otherPi.piStamp());
+                        if (joinedStamp.equals(piStamp)) {
+                            // Stamp did not get better, nothing to do.
+                        } else if (otherPi.object() == object && joinedStamp.equals(otherPi.piStamp())) {
+                            // We can be replaced with the other pi.
                             return otherPi;
+                        } else {
+                            // Create a new pi node with the more precise joined stamp.
+                            return new PiNode(object, joinedStamp, guard.asNode());
                         }
                     }
                 }
