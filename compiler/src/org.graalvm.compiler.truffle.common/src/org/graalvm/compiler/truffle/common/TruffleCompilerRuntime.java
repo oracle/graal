@@ -459,4 +459,9 @@ public interface TruffleCompilerRuntime {
      * Determines if {@code method} is annotated by {@code TruffleBoundary}.
      */
     boolean isTruffleBoundary(ResolvedJavaMethod method);
+
+    /**
+     * Determines if {@code method} is annotated by {@code TruffleBoundary}.
+     */
+    boolean isSpecializationMethod(ResolvedJavaMethod method);
 }
