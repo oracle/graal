@@ -78,7 +78,6 @@ import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.virtual.EnsureVirtualizedNode;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.nodes.arithmetic.UnsignedMulHighNode;
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.common.TruffleDebugJavaMethod;
 import org.graalvm.compiler.truffle.compiler.PerformanceInformationHandler;
@@ -208,22 +207,23 @@ public class TruffleGraphBuilderPlugins {
                 return true;
             }
         });
-        r.register0("inFirstTier", new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                if (b.getGraph().getCancellable() instanceof TruffleCompilationTask) {
-                    boolean isFirstTier = !((TruffleCompilationTask) b.getGraph().getCancellable()).isLastTier();
-                    b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(isFirstTier));
-                    return true;
-                }
-                return false;
-            }
-        });
         r.register0("inCompiledCode", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(true));
                 return true;
+            }
+        });
+        r.register0("inFirstTier", new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                // This method must not be intrinsified until after graph decoding.
+                // We only know whether something is a first-tier compilation or not once we are
+                // inside a partial evaluation request.
+                // The graph builder output can be cached across compilations, so intrinsifying this
+                // in the first tier would make it invalid for second-tier
+                // compilations.
+                return false;
             }
         });
         r.register0("inCompilationRoot", new InvocationPlugin() {
