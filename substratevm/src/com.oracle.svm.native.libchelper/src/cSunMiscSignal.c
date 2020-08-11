@@ -109,8 +109,10 @@ int cSunMiscSignal_open() {
 		  cSunMiscSignal_table[i] = 0;
 		  i += 1;
 	    }
-#if POSIX_C_SOURCE >= 200112L
-		/* Create an anonymous semaphore. */
+#ifdef __linux__
+		/*
+		 * Linux supports unnamed semaphore.
+		 */
 		cSunMiscSignal_semaphore = malloc(sizeof(sem_t));
 		if (! cSunMiscSignal_semaphore) {
 			return -1;
@@ -120,7 +122,10 @@ int cSunMiscSignal_open() {
 			cSunMiscSignal_semaphore = NULL;
 			return -1;
 		}
-#else /* POSIX_C_SOURCE >= 200112L */
+#else /* __linux__ */
+		/*
+		 * Use named semaphore elsewhere (e.g. OSX).
+		 */
 		/* Get a process-specific name for the semaphore. */
 		char cSunMiscSignal_semaphoreName[NAME_MAX];
 		const char* const nameFormat = "/cSunMiscSignal-%d";
@@ -141,7 +146,7 @@ int cSunMiscSignal_open() {
 		if (unlinkResult != 0) {
 			return unlinkResult;
 		}
-#endif /* POSIX_C_SOURCE >= 200112L */
+#endif /* __linux__ */
 		return 0;
 	}
 	errno = EBUSY;
@@ -151,17 +156,17 @@ int cSunMiscSignal_open() {
 /* Close the C signal handler mechanism. */
 int cSunMiscSignal_close() {
 	if (haveSemaphore()) {
-#if POSIX_C_SOURCE >= 200112L
+#ifdef __linux__
 		int const semCloseResult = sem_destroy(cSunMiscSignal_semaphore);
-#else /* POSIX_C_SOURCE >= 200112L */
+#else /* __linux__ */
 		int const semCloseResult = sem_close(cSunMiscSignal_semaphore);
-#endif /* POSIX_C_SOURCE >= 200112L */
+#endif /* __linux__ */
 		if (semCloseResult != 0) {
 			return semCloseResult;
 		}
-#if POSIX_C_SOURCE >= 200112L
+#ifdef __linux__
 		free(cSunMiscSignal_semaphore);
-#endif /* POSIX_C_SOURCE >= 200112L */
+#endif /* __linux__ */
 		cSunMiscSignal_semaphore = NULL;
 	}
 
