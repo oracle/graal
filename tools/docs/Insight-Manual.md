@@ -45,18 +45,18 @@ As such, whenever the *node.js* framework loaded a script,
 the listener got notified of it and could take an action - in this case
 printing the length and name of processed script.
 
-### Histogram - Use Full Power of Your Language!
+### Hotness Top 10 - Use Full Power of Your Language!
 
 Collecting the insights information isn't limited to simple print statement.
 One can perform any Turing complete computation in your language. Imagine
-following `function-histogram-tracing.js` that counts all method invocations
+following `function-hotness-tracing.js` that counts all method invocations
 and dumps the most frequent ones when the execution of your program is over:
 
 ```js
 var map = new Map();
 
-function dumpHistogram() {
-    print("==== Histogram ====");
+function dumpHotness() {
+    print("==== Hotness Top 10 ====");
     var digits = 3;
     Array.from(map.entries()).sort((one, two) => two[1] - one[1]).forEach(function (entry) {
         var number = entry[1].toString();
@@ -67,7 +67,7 @@ function dumpHistogram() {
         }
         if (number > 10) print(`${number} calls to ${entry[0]}`);
     });
-    print("===================");
+    print("========================");
 }
 
 insight.on('enter', function(ev) {
@@ -82,18 +82,18 @@ insight.on('enter', function(ev) {
     roots: true
 });
 
-insight.on('close', dumpHistogram);
+insight.on('close', dumpHotness);
 ```
 
 The `map` is a global variable visible for the whole **Insight** script that 
-allows the code to share data between the `insight.on('enter')` function and the `dumpHistogram`
+allows the code to share data between the `insight.on('enter')` function and the `dumpHotness`
 function. The latter is executed when the `node` process execution is over (registered via
-`insight.on('close', dumpHistogram)`. Invoke as:
+`insight.on('close', dumpHotness)`. Invoke as:
 
 ```bash
-$ graalvm/bin/node --experimental-options --js.print --insight=function-histogram-tracing.js -e "print('The result: ' + 6 * 7)"
+$ graalvm/bin/node --experimental-options --js.print --insight=function-hotness-tracing.js -e "print('The result: ' + 6 * 7)"
 The result: 42
-=== Histogram ===
+==== Hotness Top 10 ====
 543 calls to isPosixPathSeparator
 211 calls to E
 211 calls to makeNodeErrorWithCode
@@ -111,7 +111,7 @@ The result: 42
  13 calls to copyPrototype
  13 calls to hideStackFrames
  13 calls to addReadOnlyProcessAlias
-=================
+========================
 ```
 
 Table with names and counts of function invocations is printed out when the
