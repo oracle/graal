@@ -68,6 +68,8 @@ final class MarkProcessor {
             case NARROW_OOP_BASE_ADDRESS:
             case CRC_TABLE_ADDRESS:
             case LOG_OF_HEAP_REGION_GRAIN_BYTES:
+            case VERIFY_OOPS:
+            case VERIFY_OOP_COUNT_ADDRESS:
                 String vmSymbolName;
                 switch (markId) {
                     case POLL_FAR:
@@ -88,6 +90,12 @@ final class MarkProcessor {
                         break;
                     case LOG_OF_HEAP_REGION_GRAIN_BYTES:
                         vmSymbolName = BinaryContainer.getLogOfHeapRegionGrainBytesSymbolName();
+                        break;
+                    case VERIFY_OOPS:
+                        vmSymbolName = BinaryContainer.getVerifyOopsSymbolName();
+                        break;
+                    case VERIFY_OOP_COUNT_ADDRESS:
+                        vmSymbolName = BinaryContainer.getVerifyOopCountAddressSymbolName();
                         break;
                     default:
                         throw new InternalError("Unhandled mark: " + mark);
