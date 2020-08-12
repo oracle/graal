@@ -211,29 +211,37 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
     @Override
     @SuppressWarnings("try")
     public final TruffleCompilation openCompilation(CompilableTruffleAST compilable) {
-        try (TTY.Filter ttyFilter = new TTY.Filter(new LogStream(new TTYToPolyglotLoggerBridge(compilable)))) {
-            return createCompilationIdentifier(compilable);
+        TTY.Filter ttyFilter = new TTY.Filter(new LogStream(new TTYToPolyglotLoggerBridge(compilable)));
+        try {
+            TruffleCompilationIdentifier id = createCompilationIdentifier(compilable);
+            return new TruffleCompilationImpl(id, ttyFilter);
+        } catch (Throwable t) {
+            if (ttyFilter != null) {
+                ttyFilter.close();
+            }
+            throw t;
         }
     }
 
     @Override
-    @SuppressWarnings("try")
     public final TruffleDebugContext openDebugContext(Map<String, Object> options, TruffleCompilation compilation) {
-        try (TTY.Filter ttyFilter = compilation == null ? null : new TTY.Filter(new LogStream(new TTYToPolyglotLoggerBridge(compilation.getCompilable())))) {
-            final DebugContext debugContext;
-            if (compilation == null) {
-                debugContext = new Builder(TruffleCompilerOptions.getOptions()).build();
-            } else {
-                TruffleCompilationIdentifier ident = asTruffleCompilationIdentifier(compilation);
-                CompilableTruffleAST compilable = ident.getCompilable();
-                debugContext = createDebugContext(TruffleCompilerOptions.getOptions(), ident, compilable, DebugContext.getDefaultLogStream());
-            }
-            return new TruffleDebugContextImpl(debugContext);
+        final DebugContext debugContext;
+        if (compilation == null) {
+            debugContext = new Builder(TruffleCompilerOptions.getOptions()).build();
+        } else {
+            TruffleCompilationIdentifier ident = asTruffleCompilationIdentifier(compilation);
+            CompilableTruffleAST compilable = ident.getCompilable();
+            debugContext = createDebugContext(TruffleCompilerOptions.getOptions(), ident, compilable, DebugContext.getDefaultLogStream());
         }
+        return new TruffleDebugContextImpl(debugContext);
     }
 
     private static TruffleCompilationIdentifier asTruffleCompilationIdentifier(TruffleCompilation compilation) {
-        if (compilation == null || compilation instanceof TruffleCompilationIdentifier) {
+        if (compilation == null) {
+            return null;
+        } else if (compilation instanceof TruffleCompilationImpl) {
+            return ((TruffleCompilationImpl) compilation).delegate;
+        } else if (compilation instanceof TruffleCompilationIdentifier) {
             return (TruffleCompilationIdentifier) compilation;
         } else {
             throw new IllegalArgumentException("The compilation must be instanceof " + TruffleCompilationIdentifier.class.getSimpleName() + ", got: " + compilation.getClass());
@@ -253,47 +261,42 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
         org.graalvm.options.OptionValues options = TruffleCompilerOptions.getOptionsForCompiler(optionsMap);
         TruffleCompilationIdentifier compilationId = asTruffleCompilationIdentifier(compilation);
         CompilableTruffleAST compilable = compilationId.getCompilable();
-        try (TTY.Filter ttyFilter = new TTY.Filter(new LogStream(new TTYToPolyglotLoggerBridge(compilable)))) {
-            boolean usingCallersDebug = truffleDebug instanceof TruffleDebugContextImpl;
-            if (usingCallersDebug) {
-                final DebugContext callerDebug = ((TruffleDebugContextImpl) truffleDebug).debugContext;
+        boolean usingCallersDebug = truffleDebug instanceof TruffleDebugContextImpl;
+        if (usingCallersDebug) {
+            final DebugContext callerDebug = ((TruffleDebugContextImpl) truffleDebug).debugContext;
 
-                try (DebugContext.Scope s = maybeOpenTruffleScope(compilable, callerDebug)) {
-                    actuallyCompile(options, inliningPlan, task, inListener, compilationId, compilable, callerDebug);
-                } catch (Throwable e) {
-                    notifyCompilableOfFailure(compilable, e);
-                }
-            } else {
-                final OptionValues debugContextOptionValues = TruffleCompilerOptions.getOptions();
-                try (DebugContext graalDebug = createDebugContext(debugContextOptionValues, compilationId, compilable, DebugContext.getDefaultLogStream());
-                                DebugContext.Scope s = maybeOpenTruffleScope(compilable, graalDebug)) {
-                    actuallyCompile(options, inliningPlan, task, inListener, compilationId, compilable, graalDebug);
-                } catch (Throwable e) {
-                    notifyCompilableOfFailure(compilable, e);
-                }
+            try (DebugContext.Scope s = maybeOpenTruffleScope(compilable, callerDebug)) {
+                actuallyCompile(options, inliningPlan, task, inListener, compilationId, compilable, callerDebug);
+            } catch (Throwable e) {
+                notifyCompilableOfFailure(compilable, e);
+            }
+        } else {
+            final OptionValues debugContextOptionValues = TruffleCompilerOptions.getOptions();
+            try (DebugContext graalDebug = createDebugContext(debugContextOptionValues, compilationId, compilable, DebugContext.getDefaultLogStream());
+                            DebugContext.Scope s = maybeOpenTruffleScope(compilable, graalDebug)) {
+                actuallyCompile(options, inliningPlan, task, inListener, compilationId, compilable, graalDebug);
+            } catch (Throwable e) {
+                notifyCompilableOfFailure(compilable, e);
             }
         }
     }
 
     @Override
-    @SuppressWarnings("try")
     public void initialize(Map<String, Object> optionsMap, CompilableTruffleAST compilable, boolean firstInitialization) {
         if (!initialized) {
             synchronized (this) {
                 if (!initialized) {
-                    try (TTY.Filter ttyFilter = new TTY.Filter(new LogStream(new TTYToPolyglotLoggerBridge(compilable)))) {
-                        final org.graalvm.options.OptionValues options = TruffleCompilerOptions.getOptionsForCompiler(optionsMap);
-                        partialEvaluator.initialize(options);
-                        if (firstInitialization) {
-                            TruffleCompilerOptions.checkDeprecation(compilable);
-                        }
-                        initialized = true;
+                    final org.graalvm.options.OptionValues options = TruffleCompilerOptions.getOptionsForCompiler(optionsMap);
+                    partialEvaluator.initialize(options);
+                    if (firstInitialization) {
+                        TruffleCompilerOptions.checkDeprecation(compilable);
+                    }
+                    initialized = true;
 
-                        if (!FirstTierUseEconomy.getValue(options)) {
-                            firstTierSuites = lastTierSuites;
-                            firstTierLirSuites = lastTierLirSuites;
-                            firstTierProviders = lastTierProviders;
-                        }
+                    if (!FirstTierUseEconomy.getValue(options)) {
+                        firstTierSuites = lastTierSuites;
+                        firstTierLirSuites = lastTierLirSuites;
+                        firstTierProviders = lastTierProviders;
                     }
                 }
             }
@@ -860,6 +863,36 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
                 useMessage = message;
             }
             TruffleCompilerRuntime.getRuntime().log(compilable, useMessage);
+        }
+    }
+
+    private static final class TruffleCompilationImpl implements TruffleCompilationIdentifier {
+
+        final TruffleCompilationIdentifier delegate;
+        private final TTY.Filter ttyFilter;
+
+        TruffleCompilationImpl(TruffleCompilationIdentifier delegate, TTY.Filter ttyFilter) {
+            this.delegate = delegate;
+            this.ttyFilter = ttyFilter;
+        }
+
+        @Override
+        public CompilableTruffleAST getCompilable() {
+            return delegate.getCompilable();
+        }
+
+        @Override
+        public String toString(Verbosity verbosity) {
+            return delegate.toString(verbosity);
+        }
+
+        @Override
+        public void close() {
+            try {
+                delegate.close();
+            } finally {
+                ttyFilter.close();
+            }
         }
     }
 }

@@ -130,7 +130,7 @@ public final class LibGraalIsolate {
     /**
      * Notifies that the {@code JavaVM} associated with {@code isolate} has been destroyed. All
      * subsequent accesses to objects in the isolate will throw an {@link IllegalArgumentException}.
-     * Called by {@code HotSpotGraalRuntime#shutdownLibGraal} using a JNI.
+     * Called by {@code HotSpotGraalRuntime#shutdownLibGraal} using JNI.
      */
     static synchronized void unregister(long isolateId) {
         LibGraalIsolate isolate = isolates.remove(isolateId);
