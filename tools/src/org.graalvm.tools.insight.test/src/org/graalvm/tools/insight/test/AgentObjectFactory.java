@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.tools.agentscript.test;
+package org.graalvm.tools.insight.test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -39,7 +39,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
-import com.oracle.truffle.tools.agentscript.test.InsightAPI.SourceInfo;
+import org.graalvm.tools.insight.test.InsightAPI.SourceInfo;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import static org.junit.Assert.assertNotNull;

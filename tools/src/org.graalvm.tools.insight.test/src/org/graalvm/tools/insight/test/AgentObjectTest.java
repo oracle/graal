@@ -22,12 +22,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.tools.agentscript.test;
+package org.graalvm.tools.insight.test;
 
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
-import static com.oracle.truffle.tools.agentscript.test.AgentObjectFactory.createConfig;
+import static org.graalvm.tools.insight.test.AgentObjectFactory.createConfig;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.LinkedList;

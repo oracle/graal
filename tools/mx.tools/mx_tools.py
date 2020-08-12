@@ -214,14 +214,14 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTool(
     suite=_suite,
-    name='AgentScript',
-    short_name='ats',
-    dir_name='agentscript',
+    name='Insight',
+    short_name='insight',
+    dir_name='insight',
     license_files=[],
     third_party_license_files=[],
     dependencies=['Truffle'],
-    truffle_jars=['tools:AGENTSCRIPT'],
-    support_distributions=['tools:AGENTSCRIPT_GRAALVM_SUPPORT'],
+    truffle_jars=['tools:INSIGHT'],
+    support_distributions=['tools:INSIGHT_GRAALVM_SUPPORT'],
     priority=10,
     include_by_default=True,
 ))

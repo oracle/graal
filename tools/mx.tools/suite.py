@@ -96,7 +96,7 @@ suite = {
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "workingSets" : "Tools",
         },
-        "com.oracle.truffle.tools.agentscript.test" : {
+        "org.graalvm.tools.insight.test" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
             "dependencies" : [
@@ -342,10 +342,10 @@ suite = {
                 "native-image.properties" : "file:mx.tools/tools-chromeinspector.properties",
             },
         },
-        "AGENTSCRIPT": {
+        "INSIGHT": {
             "subDir": "src",
             # This distribution defines a module.
-            "moduleName" : "com.oracle.truffle.tools.agentscript",
+            "moduleName" : "org.graalvm.tools.insight",
             "dependencies": [
                 "org.graalvm.tools.insight",
                 "com.oracle.truffle.tools.agentscript"
@@ -354,27 +354,27 @@ suite = {
                 "truffle:TRUFFLE_API",
             ],
             "maven" : {
-              "artifactId" : "agentscript",
+              "artifactId" : "insight",
             },
-            "description" : "Script driven tracing and instrumentation Agent",
+            "description" : "The Ultimate Insights Gathering Platform",
         },
-        "AGENTSCRIPT_TEST": {
+        "INSIGHT_TEST": {
             "subDir": "src",
             "dependencies": [
-                "com.oracle.truffle.tools.agentscript.test",
+                "org.graalvm.tools.insight.test",
             ],
             "distDependencies" : [
                 "truffle:TRUFFLE_TEST",
-                "AGENTSCRIPT",
+                "INSIGHT",
             ],
-            "description" : "Tests for the script driven tracing and instrumentation Agent.",
+            "description" : "Tests for the Ultimate Insights Gathering Platform",
             "maven" : False,
         },
-        "AGENTSCRIPT_GRAALVM_SUPPORT" : {
+        "INSIGHT_GRAALVM_SUPPORT" : {
             "native" : True,
-            "description" : "Script driven tracing and instrumentation Agent for the GraalVM",
+            "description" : "The Ultimate Insights Gathering Platform for the GraalVM",
             "layout" : {
-                "native-image.properties" : "file:mx.tools/tools-agentscript.properties",
+                "native-image.properties" : "file:mx.tools/tools-insight.properties",
             },
         },
         "TRUFFLE_PROFILER": {
