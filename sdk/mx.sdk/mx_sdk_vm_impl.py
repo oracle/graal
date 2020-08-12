@@ -817,7 +817,10 @@ x-GraalVM-Component-Distribution=bundled
             catalog = _release_catalog()
         else:
             snapshot_catalog = _snapshot_catalog()
-            catalog = "{}/{}".format(snapshot_catalog, _suite.vc.parent(_suite.vc_dir)) if snapshot_catalog else None
+            if snapshot_catalog and _suite.vc:
+                catalog = "{}/{}".format(snapshot_catalog, _suite.vc.parent(_suite.vc_dir))
+            else:
+                catalog = None
         if catalog:
             _metadata_dict['component_catalog'] = quote(catalog)
 

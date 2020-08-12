@@ -80,6 +80,8 @@ matrix:
   - os: linux
     arch: arm64
     env: JDK="jdk11" GATE="build,bootstraplite" PRIMARY="compiler"
+  - os: linux
+    env: JDK="jdk11" WITHOUT_VCS=true
 # GR-16977
 #  - env: JDK="jdk11" GATE="build,test,helloworld" PRIMARY="substratevm"
 
@@ -135,7 +137,14 @@ install:
 script:
   - echo ${JAVA_HOME}
   - ${JAVA_HOME}/bin/java -version
-  - mx --primary-suite-path ${TRAVIS_BUILD_DIR}/${PRIMARY} --J @"-Xmx2g" --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE}
+  - |
+      if [[ ${WITHOUT_VCS} ]]
+      then
+        rm -rf .git
+        mx --primary-suite-path ${TRAVIS_BUILD_DIR}/substratevm native-image --help
+      else
+        mx --primary-suite-path ${TRAVIS_BUILD_DIR}/${PRIMARY} --J @"-Xmx2g" --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE}
+      fi
 after_failure:
   - cat hs_err*
 notifications:

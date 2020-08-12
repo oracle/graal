@@ -72,8 +72,12 @@ def build_oracle_compliant_javadoc_args(suite, product_name, feature_name):
     :type feature_name: str
     """
     version = suite.release_version()
-    revision = suite.vc.parent(suite.vc_dir)
-    copyright_year = str(datetime.datetime.fromtimestamp(suite.vc.parent_info(suite.vc_dir)['committer-ts']).year)
+    if suite.vc:
+        revision = suite.vc.parent(suite.vc_dir)
+        copyright_year = str(datetime.datetime.fromtimestamp(suite.vc.parent_info(suite.vc_dir)['committer-ts']).year)
+    else:
+        revision = None
+        copyright_year = datetime.datetime.now().year
     return ['--arg', '@-header', '--arg', '<b>%s %s Java API Reference<br>%s</b><br>%s' % (product_name, feature_name, version, revision),
             '--arg', '@-bottom', '--arg', '<center>Copyright &copy; 2012, %s, Oracle and/or its affiliates. All rights reserved.</center>' % (copyright_year),
             '--arg', '@-windowtitle', '--arg', '%s %s Java API Reference' % (product_name, feature_name)]
