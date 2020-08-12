@@ -66,10 +66,10 @@ import static org.graalvm.libgraal.jni.JNIUtil.getInternalName;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
@@ -120,10 +120,16 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
     private final OptionValues initialOptions;
     private volatile Map<String, Object> cachedOptionsMap;
 
+    private final ConcurrentHashMap<ResolvedJavaMethod, MethodCache> methodCache = new ConcurrentHashMap<>();
+
     HSTruffleCompilerRuntime(JNIEnv env, JObject handle, ResolvedJavaType classLoaderDelegate, OptionValues options) {
         super(env, handle);
         this.classLoaderDelegate = classLoaderDelegate;
         this.initialOptions = options;
+    }
+
+    private MethodCache getMethodCache(ResolvedJavaMethod method) {
+        return methodCache.computeIfAbsent(method, (m) -> new MethodCache(getLoopExplosionKindImpl(method), getInlineKindImpl(method, true), getInlineKindImpl(method, false)));
     }
 
     @TruffleFromLibGraal(CreateInliningPlan)
@@ -195,7 +201,16 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
 
     @TruffleFromLibGraal(GetInlineKind)
     @Override
-    public InlineKind getInlineKind(ResolvedJavaMethod original, boolean duringPartialEvaluation) {
+    public InlineKind getInlineKind(ResolvedJavaMethod method, boolean duringPartialEvaluation) {
+        MethodCache cache = getMethodCache(method);
+        if (duringPartialEvaluation) {
+            return cache.inlineKindPE;
+        } else {
+            return cache.inlineKindNonPE;
+        }
+    }
+
+    private InlineKind getInlineKindImpl(ResolvedJavaMethod original, boolean duringPartialEvaluation) {
         long methodHandle = LibGraal.translate(original);
         int inlineKindOrdinal = callGetInlineKind(env(), getHandle(), methodHandle, duringPartialEvaluation);
         return InlineKind.values()[inlineKindOrdinal];
@@ -204,6 +219,10 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
     @TruffleFromLibGraal(GetLoopExplosionKind)
     @Override
     public LoopExplosionKind getLoopExplosionKind(ResolvedJavaMethod method) {
+        return getMethodCache(method).explosionKind;
+    }
+
+    private LoopExplosionKind getLoopExplosionKindImpl(ResolvedJavaMethod method) {
         long methodHandle = LibGraal.translate(method);
         int loopExplosionKindOrdinal = callGetLoopExplosionKind(env(), getHandle(), methodHandle);
         return LoopExplosionKind.values()[loopExplosionKindOrdinal];
@@ -368,6 +387,19 @@ final class HSTruffleCompilerRuntime extends HSObject implements HotSpotTruffleC
     @Override
     public TruffleCompiler getTruffleCompiler(CompilableTruffleAST compilable) {
         throw new UnsupportedOperationException("Should never be called in the compiler.");
+    }
+
+    static final class MethodCache {
+
+        final LoopExplosionKind explosionKind;
+        final InlineKind inlineKindPE;
+        final InlineKind inlineKindNonPE;
+
+        MethodCache(LoopExplosionKind explosionKind, InlineKind inlineKindPE, InlineKind inlineKindNonPE) {
+            this.explosionKind = explosionKind;
+            this.inlineKindPE = inlineKindPE;
+            this.inlineKindNonPE = inlineKindNonPE;
+        }
     }
 
     private static class HSConsumer extends HSObject implements Consumer<OptimizedAssumptionDependency> {
