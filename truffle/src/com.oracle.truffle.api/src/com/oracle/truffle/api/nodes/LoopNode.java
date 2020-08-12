@@ -199,10 +199,11 @@ public abstract class LoopNode extends Node {
      * </p>
      *
      * @param source the Node which invoked the loop.
-     * @param iterations the number iterations to report to the runtime system
+     * @param iterations the number iterations to report to the runtime system, must be >= 0
      * @since 0.12
      */
     public static void reportLoopCount(Node source, int iterations) {
+        assert iterations >= 0;
         if (CompilerDirectives.inInterpreter() || NodeAccessor.RUNTIME.inFirstTier()) {
             if (CompilerDirectives.isPartialEvaluationConstant(source)) {
                 NodeAccessor.RUNTIME.onLoopCount(source, iterations);

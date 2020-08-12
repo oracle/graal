@@ -846,7 +846,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     final void onLoopCount(int count) {
-        callAndLoopCount += count;
+        assert count >= 0;
+        int oldLoopCallCount = this.callAndLoopCount;
+        int newLoopCallCount = oldLoopCallCount + count;
+        this.callAndLoopCount = newLoopCallCount >= oldLoopCallCount ? newLoopCallCount : Integer.MAX_VALUE;
     }
 
     @Override
