@@ -355,7 +355,7 @@ R: observed loading of test.R
 
 The only change is the R language. All the other [Insight](Insight.md)
 features and 
-[APIs](https://www.graalvm.org/tools/javadoc/com/oracle/truffle/tools/agentscript/AgentScript.html#VERSION)
+[APIs](https://www.graalvm.org/tools/javadoc/org/graalvm/tools/insight/Insight.html#VERSION)
 remain the same.
 
 ### Inspecting Values
@@ -448,9 +448,9 @@ instrument. Never the less, the compatibility of the **Insight** API
 exposed via the `insight` object
 is treated seriously.
 
-The [documentation](https://www.graalvm.org/tools/javadoc/com/oracle/truffle/tools/agentscript/AgentScript.html)
+The [documentation](https://www.graalvm.org/tools/javadoc/org/graalvm/tools/insight/Insight.html)
 of the `insight` object properties and functions is available as part of its
-[javadoc](https://www.graalvm.org/tools/javadoc/com/oracle/truffle/tools/agentscript/AgentScript.html#VERSION).
+[javadoc](https://www.graalvm.org/tools/javadoc/org/graalvm/tools/insight/Insight.html#VERSION).
 
 Future versions will add new features, but whatever has
 once been exposed, remains functional. If your script depends on some fancy new
@@ -461,7 +461,7 @@ print(`GraalVM Insight version is ${insight.version}`);
 ```
 
 and act accordingly to the obtained version. New elements in the
-[documentation](https://www.graalvm.org/tools/javadoc/com/oracle/truffle/tools/agentscript/AgentScript.html)
+[documentation](https://www.graalvm.org/tools/javadoc/org/graalvm/tools/insight/Insight.html)
 carry associated `@since` tag to describe the minimimal version the associated
 functionality/element is available since.
 
