@@ -100,7 +100,7 @@ final class Target_java_lang_StackWalker {
          * with.
          */
 
-        Class<?> result = StackTraceUtils.getCallerClass(KnownIntrinsics.readCallerStackPointer());
+        Class<?> result = StackTraceUtils.getCallerClass(KnownIntrinsics.readCallerStackPointer(), false);
         if (result == null) {
             throw new IllegalCallerException("No calling frame");
         }
