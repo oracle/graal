@@ -607,6 +607,15 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotTTYStreamProvider {
     }
 }
 
+@TargetClass(className = "org.graalvm.compiler.hotspot.management.libgraal.MBeanProxy", onlyWith = LibGraalFeature.IsEnabled.class)
+final class Target_org_graalvm_compiler_hotspot_management_libgraal_MBeanProxy {
+
+    @Substitute
+    private static Pointer getDefineClassesStatePointer() {
+        return LibGraalEntryPoints.MANAGEMENT_BARRIER.get();
+    }
+}
+
 @TargetClass(className = "org.graalvm.compiler.hotspot.HotSpotGraalOptionValues", onlyWith = LibGraalFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_hotspot_HotSpotGraalOptionValues {
 
