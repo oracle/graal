@@ -22,8 +22,6 @@
  */
 package com.oracle.truffle.espresso.classfile.constantpool;
 
-import static com.oracle.truffle.espresso.nodes.BytecodeNode.signatureToMethodType;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
@@ -115,7 +113,7 @@ public interface InvokeDynamicConstant extends PoolConstant {
             StaticObject name = meta.toGuestString(specifier.getName(pool));
             Symbol<Signature> invokeSignature = Signatures.check(specifier.getDescriptor(pool));
             Symbol<Type>[] parsedInvokeSignature = meta.getSignatures().parsed(invokeSignature);
-            StaticObject methodType = signatureToMethodType(parsedInvokeSignature, accessingKlass, meta);
+            StaticObject methodType = MethodTypeConstant.signatureToMethodType(parsedInvokeSignature, accessingKlass, meta);
             StaticObject appendix = StaticObject.createArray(meta.java_lang_Object_array, new StaticObject[1]);
             StaticObject memberName;
             if (meta.getJavaVersion().varHandlesEnabled()) {

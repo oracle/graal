@@ -27,11 +27,11 @@ import static com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
+import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.nodes.BytecodeNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public interface MethodTypeConstant extends PoolConstant {
@@ -42,6 +42,21 @@ public interface MethodTypeConstant extends PoolConstant {
 
     default Tag tag() {
         return Tag.METHODTYPE;
+    }
+
+    static StaticObject signatureToMethodType(Symbol<Symbol.Type>[] signature, Klass accessingKlass, Meta meta) {
+        Symbol<Symbol.Type> rt = Signatures.returnType(signature);
+        int pcount = Signatures.parameterCount(signature, false);
+
+        StaticObject[] ptypes = new StaticObject[pcount];
+        for (int i = 0; i < pcount; i++) {
+            Symbol<Symbol.Type> paramType = Signatures.parameterType(signature, i);
+            ptypes[i] = meta.resolveSymbolOrFail(paramType, accessingKlass.getDefiningClassLoader()).mirror();
+        }
+        StaticObject rtype = meta.resolveSymbolOrFail(rt, accessingKlass.getDefiningClassLoader()).mirror();
+        return (StaticObject) meta.java_lang_invoke_MethodHandleNatives_findMethodHandleType.invokeDirect(
+                        null,
+                        rtype, StaticObject.createArray(meta.java_lang_Class_array, ptypes));
     }
 
     /**
@@ -58,6 +73,7 @@ public interface MethodTypeConstant extends PoolConstant {
     }
 
     final class Index implements MethodTypeConstant, Resolvable {
+
         private final char descriptorIndex;
 
         Index(int descriptorIndex) {
@@ -73,7 +89,7 @@ public interface MethodTypeConstant extends PoolConstant {
         public Resolved resolve(RuntimeConstantPool pool, int index, Klass accessingKlass) {
             Symbol<Signature> sig = getSignature(pool);
             Meta meta = accessingKlass.getContext().getMeta();
-            return new Resolved(BytecodeNode.signatureToMethodType(meta.getSignatures().parsed(sig), accessingKlass, meta));
+            return new Resolved(signatureToMethodType(meta.getSignatures().parsed(sig), accessingKlass, meta));
         }
 
         @Override

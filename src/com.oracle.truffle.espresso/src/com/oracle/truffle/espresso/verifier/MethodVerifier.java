@@ -1838,7 +1838,7 @@ public final class MethodVerifier implements ContextAccess {
         BytecodeLookupSwitch switchHelper = code.getBytecodeLookupSwitch();
         // Padding checks
         for (int j = bci + 1; j < switchHelper.getAlignedBci(bci); j++) {
-            if (code.readUByte(j) != 0) {
+            if (getJavaVersion().java9OrLater() && code.readUByte(j) != 0) {
                 throw new VerifyError("non-zero padding for LOOKUPSWITCH");
             }
         }
@@ -1868,7 +1868,7 @@ public final class MethodVerifier implements ContextAccess {
         BytecodeTableSwitch switchHelper = code.getBytecodeTableSwitch();
         // Padding checks
         for (int j = bci + 1; j < switchHelper.getAlignedBci(bci); j++) {
-            if (code.readUByte(j) != 0) {
+            if (getJavaVersion().java9OrLater() && code.readUByte(j) != 0) {
                 throw new VerifyError("non-zero padding for TABLESWITCH");
             }
         }
