@@ -83,14 +83,15 @@ suite = {
     },
 
     "JLINE3" : {
-      "sha1" : "a1c05da3a6409c63f368254fd85e1ca54069eed6",
-      "maven" : {
-        "groupId" : "org.jline",
-        "artifactId" : "jline",
-        "version" : "3.13.2",
-      }
+      "sha1" : "23ea146403afcc9f0928fa08b317b32542ac2e03",
+      "path" : "/home/bspasoje/.m2/repository/org/graalvm/shadowed/org/jline/jline3-shadowed/3.13.2/jline3-shadowed-3.13.2.jar",
+      # "maven" : {
+      #   "groupId" : "org.graalvm.shadowed.org.jline",
+      #   "artifactId" : "jline",
+      #   "version" : "3.13.2",
+      # },
+      "license" : "BSD-new"
     },
-
     "LIBFFI_SOURCES" : {
       "resource" : True,
       "version" : "3.2.1",
