@@ -112,12 +112,10 @@ class NativeImageVM(GraalVm):
             self.log_dir = None
             self.pgo_iteration_num = None
             self.params = ['extra-image-build-argument', 'extra-run-arg', 'extra-agent-run-arg', 'extra-profile-run-arg',
-                           'extra-agent-profile-run-arg', 'benchmark-output-dir', 'stages', 'skip-agent-assertions',
-                           'extra-instrumented-image-build-argument']
+                           'extra-agent-profile-run-arg', 'benchmark-output-dir', 'stages', 'skip-agent-assertions']
             self.stages = {'agent', 'instrument-image', 'instrument-run', 'image', 'run'}
             self.last_stage = 'run'
             self.skip_agent_assertions = False
-            self.extra_instrumented_image_build_arguments = []
 
         def parse(self, args):
             def add_to_list(arg, name, arg_list):
@@ -139,7 +137,6 @@ class NativeImageVM(GraalVm):
                     found |= add_to_list(trimmed_arg, self.params[2], self.extra_agent_run_args)
                     found |= add_to_list(trimmed_arg, self.params[3], self.extra_profile_run_args)
                     found |= add_to_list(trimmed_arg, self.params[4], self.extra_agent_profile_run_args)
-                    found |= add_to_list(trimmed_arg, self.params[8], self.extra_instrumented_image_build_arguments)
                     if trimmed_arg.startswith(self.params[5] + '='):
                         self.benchmark_output_dir = trimmed_arg[len(self.params[5] + '='):]
                         found = True
@@ -452,7 +449,6 @@ class NativeImageVM(GraalVm):
                         instrument_args = ['--pgo-instrument'] + ([] if i == 0 else pgo_args)
                         instrument_args += ['-H:+InlineAllExplored'] if self.pgo_inline_explored else []
                         instrument_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'EnablePGOContextSensitivity']
-                        instrument_args += config.extra_instrumented_image_build_arguments
 
                         with stages.set_command(base_image_build_args + executable_name_args + instrument_args) as s:
                             s.execute_command()
@@ -470,7 +466,7 @@ class NativeImageVM(GraalVm):
                         else:
                             image_run_cmd += image_run_args + config.extra_run_args
                         with stages.set_command(image_run_cmd) as s:
-                            s.execute_command(True)
+                            s.execute_command()
                             if s.exit_code == 0:
                                 mx.copyfile(profile_path, latest_profile_path)
 
@@ -494,7 +490,7 @@ class NativeImageVM(GraalVm):
                 image_path = os.path.join(config.output_dir, final_image_name)
                 image_run_cmd = [image_path] + image_run_args + config.extra_run_args
                 with stages.set_command(image_run_cmd) as s:
-                    s.execute_command()
+                    s.execute_command(True)
 
     def create_log_files(self, config, executable_name, stage):
         stdout_path = os.path.abspath(
