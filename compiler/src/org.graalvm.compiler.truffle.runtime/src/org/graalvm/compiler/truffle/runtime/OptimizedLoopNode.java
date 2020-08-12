@@ -54,7 +54,7 @@ public final class OptimizedLoopNode extends LoopNode {
         int loopCount = 0;
         try {
             while (repeatingNode.shouldContinue(status = repeatingNode.executeRepeatingWithValue(frame))) {
-                if (CompilerDirectives.inInterpreter()) {
+                if (CompilerDirectives.inInterpreter() || GraalCompilerDirectives.inFirstTier()) {
                     loopCount++;
                 }
             }

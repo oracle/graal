@@ -129,7 +129,7 @@ public abstract class OptimizedOSRLoopNode extends LoopNode implements ReplaceOb
             } finally {
                 baseLoopCount = 0;
             }
-        } else if (CompilerDirectives.inFirstTier()) {
+        } else if (GraalCompilerDirectives.inFirstTier()) {
             int iterationsCompleted = 0;
             Object status;
             while (repeatableNode.shouldContinue((status = repeatableNode.executeRepeatingWithValue(frame)))) {

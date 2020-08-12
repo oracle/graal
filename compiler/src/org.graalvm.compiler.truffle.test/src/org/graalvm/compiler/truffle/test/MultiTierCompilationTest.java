@@ -30,6 +30,7 @@ import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.First
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
+import org.graalvm.compiler.truffle.runtime.GraalCompilerDirectives;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.TruffleRuntimeOptions;
 import org.junit.Assert;
@@ -56,7 +57,7 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
                 return "callee:interpreter";
             }
             boundary();
-            if (CompilerDirectives.inFirstTier()) {
+            if (GraalCompilerDirectives.inFirstTier()) {
                 return "callee:first-tier";
             }
             if (CompilerDirectives.inCompilationRoot()) {
@@ -156,7 +157,7 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
                 if (CompilerDirectives.inInterpreter()) {
                     return "break:interpreter";
                 }
-                if (CompilerDirectives.inFirstTier()) {
+                if (GraalCompilerDirectives.inFirstTier()) {
                     return "break:first-tier";
                 }
                 return "break:second-tier";
@@ -164,7 +165,7 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
             if (CompilerDirectives.inInterpreter()) {
                 return "continue:interpreter";
             }
-            if (CompilerDirectives.inFirstTier()) {
+            if (GraalCompilerDirectives.inFirstTier()) {
                 return "continue:first-tier";
             }
             return "continue:last-tier";

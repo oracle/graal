@@ -160,6 +160,11 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     }
 
     @Override
+    public boolean inFirstTier() {
+        return GraalCompilerDirectives.inFirstTier();
+    }
+
+    @Override
     public void flushCompileQueue(Object runtimeData) {
         EngineData engine = (EngineData) runtimeData;
         BackgroundCompileQueue queue = GraalTruffleRuntime.getRuntime().getCompileQueue();
