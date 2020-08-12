@@ -46,12 +46,17 @@ import mx_gate
 import mx_sdk_vm
 import mx_sdk_vm_impl
 import datetime
+from mx_bisect import define_bisect_default_build_steps
+from mx_bisect_strategy import BuildStepsGraalVMStrategy
 
 from mx_gate import Task
 from mx_unittest import unittest
 
 
 _suite = mx.suite('sdk')
+
+
+define_bisect_default_build_steps(BuildStepsGraalVMStrategy())
 
 
 def _sdk_gate_runner(args, tasks):
