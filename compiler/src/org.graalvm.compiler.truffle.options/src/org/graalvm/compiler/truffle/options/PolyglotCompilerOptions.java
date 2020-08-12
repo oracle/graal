@@ -122,7 +122,7 @@ public final class PolyglotCompilerOptions {
             String[] strings = s.split(",");
             EnumSet<CompilationTier> tiers = EnumSet.noneOf(CompilationTier.class);
             for (int i = 0; i < strings.length; i++) {
-                tiers.add(CompilationTier.valueOf(strings[i]));
+                tiers.add(CompilationTier.parse(strings[i]));
             }
             return Collections.unmodifiableSet(tiers);
         }
