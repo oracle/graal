@@ -39,6 +39,8 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
+import static org.graalvm.compiler.truffle.common.TruffleCompilerRuntime.getRuntime;
+
 /**
  * Provides {@link InvocationPlugin}s for decoding of Truffle methods during partial evaluation.
  *
@@ -52,8 +54,8 @@ public class TruffleDecodingPlugins {
     }
 
     private static void registerCompilerDirectivesPlugins(InvocationPlugins plugins, MetaAccessProvider metaAccess) {
-        final ResolvedJavaType compilerDirectivesType = TruffleCompilerRuntime.getRuntime().resolveType(metaAccess, "com.oracle.truffle.api.CompilerDirectives");
-        Registration r = new Registration(plugins, new ResolvedJavaSymbol(compilerDirectivesType));
+        final ResolvedJavaType graalCompilerDirectivesType = getRuntime().resolveType(metaAccess, "org.graalvm.compiler.truffle.runtime.GraalCompilerDirectives");
+        Registration r = new Registration(plugins, new ResolvedJavaSymbol(graalCompilerDirectivesType));
         r.setAllowOverwrite(true);
         r.register0("inFirstTier", new InvocationPlugin() {
             @Override
