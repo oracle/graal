@@ -33,13 +33,16 @@ import java.util.Arrays;
 import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.debug.GlobalMetrics;
 import org.graalvm.compiler.hotspot.CompilationTask;
 import org.graalvm.compiler.hotspot.HotSpotGraalCompiler;
+import org.graalvm.compiler.hotspot.HotSpotGraalRuntime;
 import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionsParser;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
+import org.graalvm.compiler.serviceprovider.IsolateUtil;
 import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.LibGraalScope;
 import org.graalvm.nativeimage.Isolate;
@@ -63,7 +66,6 @@ import jdk.vm.ci.hotspot.HotSpotInstalledCode;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.runtime.JVMCICompiler;
-import org.graalvm.compiler.serviceprovider.IsolateUtil;
 import sun.misc.Unsafe;
 
 /**
@@ -154,6 +156,7 @@ public final class LibGraalEntryPoints {
      * @param useProfilingInfo specifies if profiling info should be used during the compilation
      * @param installAsDefault specifies if the compiled code should be installed for the
      *            {@code Method*} associated with {@code methodHandle}
+     * @param printMetrics specifies if global metrics should be printed and reset
      * @param optionsAddress native byte buffer storing a serialized {@link OptionValues} object
      * @param optionsSize the number of bytes in the buffer
      * @param optionsHash hash code of bytes in the buffer (computed with
@@ -183,6 +186,7 @@ public final class LibGraalEntryPoints {
                     long methodHandle,
                     boolean useProfilingInfo,
                     boolean installAsDefault,
+                    boolean printMetrics,
                     long optionsAddress,
                     int optionsSize,
                     int optionsHash,
@@ -199,6 +203,13 @@ public final class LibGraalEntryPoints {
             CompilationTask task = new CompilationTask(runtime, compiler, request, useProfilingInfo, installAsDefault);
             task.runCompilation(options);
             HotSpotInstalledCode installedCode = task.getInstalledCode();
+
+            if (printMetrics) {
+                GlobalMetrics metricValues = ((HotSpotGraalRuntime) compiler.getGraalRuntime()).getMetricValues();
+                metricValues.print(options);
+                metricValues.clear();
+            }
+
             return LibGraal.translate(installedCode);
         } catch (Throwable t) {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
