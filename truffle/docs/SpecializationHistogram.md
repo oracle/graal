@@ -1,6 +1,6 @@
-# Specialization Histogram Tutorial
+# Specialization Histogram
 
-This document explains how to use the `--engine.SpecializationHistogram` option.
+This guide explains how to use the `--engine.SpecializationHistogram` option.
 
 The specialization histogram requires Truffle DSL nodes to be generated in a special way.
 So if you use the plain specialization histogram option it will just print the following:
@@ -19,7 +19,7 @@ For `mx` users this is as simple as:
 $ mx build -c -A-Atruffle.dsl.GenerateSpecializationStatistics=true
 ```
 
-After the rebuild the specialization statistics are ready to be use. 
+After the rebuild the specialization statistics are ready to be use.
 Make sure that your IDE does not recompile in the sources automatically in the meantime.
 In this tutorial we use a simple `test.js` script:
 
@@ -86,7 +86,7 @@ These are some of the histograms printed when executing `test.js`. (Note the out
  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ```
 
-The histogram prints two inner tables for every node class. 
+The histogram prints two inner tables for every node class.
 The first table groups specialization and dynamic type combination.
 For example in this histogram the node class `JSWriteCurrentFrameSlotNodeGen` was instantiated `8` and executed `18` times.
 This is `20%` of the total instances and `11%` of all node executions of the run.
@@ -103,10 +103,8 @@ Here are some ideas of what questions you would want to ask these specialization
 
 1. Is a certain specialization used only rarely and can it be removed/consolidated into a single specialization?
 2. Is there a specialization with a very common type combination that could benefit from further specialization?
-3. Which specialization combination is common and could deserve its own specialization? This could indicate common polymorphism in the code that could be investigated. 
+3. Which specialization combination is common and could deserve its own specialization? This could indicate common polymorphism in the code that could be investigated.
 4. What are common specializations, and does the order match the number of executions? Specializations that are most commonly used should be ordered first in the node class. This may lead to improvements in interpreter performance.
 5. Are there unexpected specializations instantiated? If yes, investigate further using the printed source section.
 6. Which specializations are instantiated often, and should therefore be optimized for memory footprint?
 7. Were there nodes with the name `Uncached` in the profile? The use of uncached nodes should be rare. It can be worth to dig deeper why they were used often.
-
-
