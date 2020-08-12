@@ -43,11 +43,11 @@ public final class TruffleOutputGroup implements Closeable {
 
     private final GraphOutput<Void, ?> output;
 
-    private TruffleOutputGroup(TruffleDebugContext debug, CompilableTruffleAST compilable, Map<Object, Object> properties) {
+    private TruffleOutputGroup(TruffleDebugContext debug, CompilableTruffleAST compilable, Map<Object, Object> properties) throws IOException {
         String name = "Truffle::" + compilable.getName();
         GraphOutput<Void, ?> out = null;
         try {
-            out = debug.buildOutput(GraphOutput.newBuilder(VoidGraphStructure.INSTANCE).protocolVersion(7, 0));
+            out = debug.buildOutput(GraphOutput.newBuilder(VoidGraphStructure.INSTANCE));
             Map<Object, Object> effectiveProperties;
             if (properties != null) {
                 effectiveProperties = new HashMap<>(properties);
@@ -58,9 +58,13 @@ public final class TruffleOutputGroup implements Closeable {
             out.beginGroup(null, name, name, null, 0, effectiveProperties);
         } catch (Throwable e) {
             if (out != null) {
-                out.close();
-                out = null;
+                try {
+                    out.close();
+                } catch (Throwable closeException) {
+                    e.addSuppressed(closeException);
+                }
             }
+            throw e;
         }
         this.output = out;
     }
@@ -81,8 +85,9 @@ public final class TruffleOutputGroup implements Closeable {
      * @param compilable the compiled AST
      * @param properties additional group properties or {@code null}
      * @return the opened {@link TruffleOutputGroup}
+     * @throws IOException in case of IO error
      */
-    public static TruffleOutputGroup open(TruffleDebugContext debug, CompilableTruffleAST compilable, Map<Object, Object> properties) {
+    public static TruffleOutputGroup open(TruffleDebugContext debug, CompilableTruffleAST compilable, Map<Object, Object> properties) throws IOException {
         if (debug != null && debug.isDumpEnabled()) {
             return new TruffleOutputGroup(debug, compilable, properties);
         }

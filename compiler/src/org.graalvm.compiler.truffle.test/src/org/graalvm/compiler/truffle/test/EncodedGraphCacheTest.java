@@ -252,14 +252,25 @@ public final class EncodedGraphCacheTest extends PartialEvaluationTest {
          * least EncodedGraphCachePurgeDelay milliseconds to finish.
          */
         int purgeDelay = PolyglotCompilerOptions.EncodedGraphCachePurgeDelay.getDefaultValue();
-        testHelper(1024, purgeDelay, compiler -> {
-            assertTrue("Delay has not passed yet",
-                            encodedGraphCacheContains(compiler, testMethod));
 
-            assertEventuallyTrue("Encoded graph cache must be dropped after delay elapsed",
-                            1000,
-                            purgeDelay + 2000,
-                            () -> !encodedGraphCacheContains(compiler, testMethod));
-        });
+        boolean[] graphWasCached = {false};
+        for (int attempts = 0; attempts < 10 && !graphWasCached[0]; attempts++) {
+            testHelper(1024, purgeDelay, compiler -> {
+                graphWasCached[0] = encodedGraphCacheContains(compiler, testMethod);
+                /*
+                 * The compile queue can purge the encoded cache at any time, there's no guarantee
+                 * that the graph will be cached at this point. If the graph is not cached we just
+                 * retry compilation.
+                 */
+                if (graphWasCached[0]) {
+                    assertEventuallyTrue("Encoded graph cache must be dropped after delay elapsed",
+                                    1000,
+                                    purgeDelay + 2000,
+                                    () -> !encodedGraphCacheContains(compiler, testMethod));
+                }
+            });
+        }
+
+        assertTrue("Encoded graph was cached", graphWasCached[0]);
     }
 }

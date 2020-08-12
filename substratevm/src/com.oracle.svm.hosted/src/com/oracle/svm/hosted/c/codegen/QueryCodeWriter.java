@@ -123,11 +123,19 @@ public class QueryCodeWriter extends InfoTreeVisitor {
         writer.appendln("#define IS_CONST_UNSIGNED(a) (a>=0 ? 1 : 0)");
 
         /* Write the main function with all the outputs for the children. */
+        String functionName = nativeCodeInfo.getName().replaceAll("\\W", "_");
         writer.appendln();
-        writer.appendln("int main(void) {");
+        writer.appendln("int " + functionName + "() {");
         writer.indent();
         processChildren(nativeCodeInfo);
         writer.indents().appendln("return 0;");
+        writer.outdent();
+        writer.appendln("}");
+
+        writer.appendln();
+        writer.appendln("int main(void) {");
+        writer.indent();
+        writer.indents().appendln("return " + functionName + "();");
         writer.outdent();
         writer.appendln("}");
     }

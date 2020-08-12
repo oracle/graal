@@ -43,12 +43,12 @@ package org.graalvm.wasm.predefined.emscripten;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.WasmInstance;
 
 import static org.graalvm.wasm.WasmTracing.trace;
 
 public class Segfault extends AbortNode {
-    public Segfault(WasmLanguage language, WasmModule module) {
+    public Segfault(WasmLanguage language, WasmInstance module) {
         super(language, module);
     }
 

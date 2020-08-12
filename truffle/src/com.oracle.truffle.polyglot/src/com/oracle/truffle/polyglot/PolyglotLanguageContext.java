@@ -267,10 +267,15 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     }
 
     Map<String, LanguageInfo> getAccessibleLanguages(boolean allowInternalAndDependent) {
-        if (allowInternalAndDependent) {
-            return lazy.accessibleInternalLanguages;
+        Lazy l = lazy;
+        if (l != null) {
+            if (allowInternalAndDependent) {
+                return lazy.accessibleInternalLanguages;
+            } else {
+                return lazy.accessiblePublicLanguages;
+            }
         } else {
-            return lazy.accessiblePublicLanguages;
+            return null;
         }
     }
 
@@ -386,10 +391,11 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             for (PolyglotThreadInfo threadInfo : context.getSeenThreads().values()) {
                 assert threadInfo != PolyglotThreadInfo.NULL;
                 final Thread thread = threadInfo.getThread();
-                if (thread == null || threadInfo.isPolyglotThread(context)) {
-                    // polyglot threads need to be cleaned up by the language
+                if (thread == null) {
                     continue;
                 }
+                assert !threadInfo.isPolyglotThread(context) : "Polyglot threads must no longer be active in TruffleLanguage.finalizeContext, but polyglot thread " + thread.getName() +
+                                " is still active.";
                 LANGUAGE.disposeThread(localEnv, thread);
             }
             LANGUAGE.dispose(localEnv);

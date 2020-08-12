@@ -45,7 +45,7 @@ import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException.UnsupportedReaso
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
+import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMToNativeNode;
@@ -77,16 +77,16 @@ public abstract class LLVMStart extends LLVMIntrinsic {
     public abstract static class LLVMLangStart extends LLVMStart {
 
         /**
-         * @param stackPointer @NodeChild
+         * @param stack @NodeChild
          * @param main @NodeChild
          * @param argc @NodeChild
          * @param argv @NodeChild
          * @see LLVMLangStart
          */
         @Specialization
-        protected long doOp(StackPointer stackPointer, LLVMPointer main, long argc, LLVMPointer argv,
+        protected long doOp(LLVMStack stack, LLVMPointer main, long argc, LLVMPointer argv,
                         @Cached("createClosureDispatchNode()") LLVMClosureDispatchNode dispatchNode) {
-            dispatchNode.executeDispatch(main, new Object[]{stackPointer});
+            dispatchNode.executeDispatch(main, new Object[]{stack});
             return 0;
         }
     }
@@ -107,7 +107,7 @@ public abstract class LLVMStart extends LLVMIntrinsic {
         }
 
         /**
-         * @param stackPointer @NodeChild
+         * @param stack @NodeChild
          * @param mainPointer @NodeChild
          * @param vtable @NodeChild
          * @param argc @NodeChild
@@ -115,7 +115,7 @@ public abstract class LLVMStart extends LLVMIntrinsic {
          * @see LLVMLangStartInternal
          */
         @Specialization
-        protected long doOp(StackPointer stackPointer, LLVMNativePointer mainPointer, LLVMNativePointer vtable, long argc, LLVMPointer argv,
+        protected long doOp(LLVMStack stack, LLVMNativePointer mainPointer, LLVMNativePointer vtable, long argc, LLVMPointer argv,
                         @CachedContext(LLVMLanguage.class) LLVMContext ctx,
                         @CachedLanguage LLVMLanguage language,
                         @Cached("createToNativeWithTarget()") @SuppressWarnings("unused") LLVMToNativeNode toNative,
@@ -129,8 +129,8 @@ public abstract class LLVMStart extends LLVMIntrinsic {
                 LLVMNativePointer fn = readFn(memory, vtable, langStartVtable);
                 LLVMNativePointer dropInPlace = readDropInPlace(memory, vtable, langStartVtable);
                 LLVMNativePointer main = coerceMainForFn(memory, langStartVtable, mainPointer);
-                Integer exitCode = (Integer) fnDispatchNode.executeDispatch(fn, new Object[]{stackPointer, main});
-                dropInPlaceDispatchNode.executeDispatch(dropInPlace, new Object[]{stackPointer, mainPointer});
+                Integer exitCode = (Integer) fnDispatchNode.executeDispatch(fn, new Object[]{stack, main});
+                dropInPlaceDispatchNode.executeDispatch(dropInPlace, new Object[]{stack, mainPointer});
                 return exitCode.longValue();
             } catch (TypeOverflowException e) {
                 CompilerDirectives.transferToInterpreter();

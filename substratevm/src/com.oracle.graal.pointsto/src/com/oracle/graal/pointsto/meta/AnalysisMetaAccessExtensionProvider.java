@@ -26,9 +26,11 @@
 package com.oracle.graal.pointsto.meta;
 
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
+import org.graalvm.compiler.debug.GraalError;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class AnalysisMetaAccessExtensionProvider implements MetaAccessExtensionProvider {
@@ -42,5 +44,10 @@ public class AnalysisMetaAccessExtensionProvider implements MetaAccessExtensionP
     public boolean canConstantFoldDynamicAllocation(ResolvedJavaType type) {
         assert type instanceof AnalysisType : "AnalysisType is required; AnalysisType lazily creates array types of any depth, so type cannot be null";
         return true;
+    }
+
+    @Override
+    public boolean isGuaranteedSafepoint(ResolvedJavaMethod method, boolean isDirect) {
+        throw GraalError.shouldNotReachHere();
     }
 }

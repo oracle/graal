@@ -152,8 +152,8 @@ public final class AArch64ArrayCompareToOp extends AArch64LIRInstruction {
         }
 
         // Load array base addresses.
-        masm.lea(array1, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED, asRegister(array1Value), array1BaseOffset));
-        masm.lea(array2, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED, asRegister(array2Value), array2BaseOffset));
+        masm.loadAddress(array1, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED, asRegister(array1Value), array1BaseOffset));
+        masm.loadAddress(array2, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED, asRegister(array2Value), array2BaseOffset));
 
         // Calculate minimal length in chars for different kind cases.
         // Conditions could be squashed but let's keep it readable.
@@ -220,15 +220,15 @@ public final class AArch64ArrayCompareToOp extends AArch64LIRInstruction {
         // Strings are equal and no TAIL go to END.
         masm.cbz(64, tailCount, LENGTH_DIFFER_LABEL);
 
-        // Compaire tail of long string ...
-        masm.lea(array1, AArch64Address.createRegisterOffsetAddress(array1, length, false));
+        // Compare tail of long string ...
+        masm.loadAddress(array1, AArch64Address.createRegisterOffsetAddress(array1, length, false));
 
         // Go back to bytes because the following array2's offset is caculated in byte.
         if (isLU || isUL) {
             masm.shl(64, length, length, 1);
         }
 
-        masm.lea(array2, AArch64Address.createRegisterOffsetAddress(array2, length, false));
+        masm.loadAddress(array2, AArch64Address.createRegisterOffsetAddress(array2, length, false));
 
         // ... or string less than vector length.
         masm.bind(COMPARE_SHORT_LABEL);

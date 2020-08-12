@@ -49,11 +49,13 @@ import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.GuardPhiNode;
+import org.graalvm.compiler.nodes.GuardProxyNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopEndNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
+import org.graalvm.compiler.nodes.MemoryProxyNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PhiNode;
@@ -63,13 +65,16 @@ import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
+import org.graalvm.compiler.nodes.ValueProxyNode;
 import org.graalvm.compiler.nodes.VirtualState.NodePositionClosure;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
+import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.OpaqueNode;
+import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.memory.MemoryPhiNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.util.IntegerHelper;
@@ -168,6 +173,7 @@ public class LoopFragmentInside extends LoopFragment {
          */
         LoopBeginNode mainLoopBegin = loop.loopBegin();
         ArrayList<ValueNode> backedgeValues = new ArrayList<>();
+        EconomicMap<Node, Node> new2OldPhis = EconomicMap.create();
         for (PhiNode mainPhiNode : mainLoopBegin.phis()) {
             ValueNode originalNode = mainPhiNode.valueAt(1);
             ValueNode duplicatedNode = getDuplicatedNode(originalNode);
@@ -177,6 +183,9 @@ public class LoopFragmentInside extends LoopFragment {
                 } else {
                     assert originalNode.isConstant() || loop.isOutsideLoop(originalNode) : "Not duplicated node " + originalNode;
                 }
+            }
+            if (duplicatedNode != null) {
+                new2OldPhis.put(duplicatedNode, originalNode);
             }
             backedgeValues.add(duplicatedNode);
         }
@@ -188,7 +197,7 @@ public class LoopFragmentInside extends LoopFragment {
             }
         }
 
-        placeNewSegmentAndCleanup(loop);
+        placeNewSegmentAndCleanup(loop, new2OldPhis);
 
         // Remove any safepoints from the original copy leaving only the duplicated one
         assert loop.whole().nodes().filter(SafepointNode.class).count() == nodes().filter(SafepointNode.class).count();
@@ -240,7 +249,7 @@ public class LoopFragmentInside extends LoopFragment {
         mainLoopBegin.getDebug().dump(DebugContext.VERBOSE_LEVEL, mainLoopBegin.graph(), "After insertWithinAfter %s", mainLoopBegin);
     }
 
-    private void placeNewSegmentAndCleanup(LoopEx loop) {
+    private void placeNewSegmentAndCleanup(LoopEx loop, EconomicMap<Node, Node> new2OldPhis) {
         CountedLoopInfo mainCounted = loop.counted();
         LoopBeginNode mainLoopBegin = loop.loopBegin();
         // Discard the segment entry and its flow, after if merging it into the loop
@@ -257,6 +266,10 @@ public class LoopFragmentInside extends LoopFragment {
         for (Node usage : trueSuccessor.anchored().snapshot()) {
             usage.replaceFirstInput(trueSuccessor, loopTest.trueSuccessor());
         }
+
+        assert graph.hasValueProxies() || mainLoopBegin.loopExits().count() == 1 : "Can only merge early loop exits if graph has value proxies " + mainLoopBegin;
+
+        mergeEarlyLoopExits(graph, mainLoopBegin, mainCounted, new2OldPhis, loop);
 
         // remove if test
         graph.removeSplitPropagate(newSegmentLoopTest, loopTest.trueSuccessor() == mainCounted.getBody() ? trueSuccessor : falseSuccessor);
@@ -280,6 +293,157 @@ public class LoopFragmentInside extends LoopFragment {
             newSegmentEnd.safeDelete();
         }
         graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After placing segment");
+    }
+
+    /**
+     *
+     * For counted loops we have a special nomenclature regarding loop exits, the counted loop exit
+     * is the regular loop exit after all iterations finished, all other loop exits exit the loop
+     * earlier, thus we call them early exits.
+     *
+     * Merge early, non-counted, loop exits of the loop for unrolling, this currently requires value
+     * proxies to properly proxy all values along the way.
+     *
+     * Unrolling loops with multiple exits is special in the way the exits are handled.
+     * Pre-Main-Post creation will merge them.
+     */
+    private void mergeEarlyLoopExits(StructuredGraph graph, LoopBeginNode mainLoopBegin, CountedLoopInfo mainCounted, EconomicMap<Node, Node> new2OldPhis, LoopEx loop) {
+        if (mainLoopBegin.loopExits().count() <= 1) {
+            return;
+        }
+        assert graph.hasValueProxies() : "Unrolling with multiple exits requires proxies";
+        // rewire non-counted exits with the follow nodes: merges or sinks
+        for (LoopExitNode exit : mainLoopBegin.loopExits().snapshot()) {
+            // regular path along we unroll
+            if (exit == mainCounted.getCountedExit()) {
+                continue;
+            }
+            FixedNode next = exit.next();
+            AbstractBeginNode begin = getDuplicatedNode(exit);
+            if (next instanceof EndNode) {
+                mergeRegularEarlyExit(next, begin, exit, mainLoopBegin, graph, new2OldPhis, loop);
+            } else {
+                GraalError.shouldNotReachHere("Can only unroll loops where the early exits which merge " + next);
+            }
+        }
+    }
+
+    private void mergeRegularEarlyExit(FixedNode next, AbstractBeginNode exitBranchBegin, LoopExitNode oldExit, LoopBeginNode mainLoopBegin, StructuredGraph graph,
+                    EconomicMap<Node, Node> new2OldPhis, LoopEx loop) {
+        AbstractMergeNode merge = ((EndNode) next).merge();
+        assert merge instanceof MergeNode : "Can only merge loop exits on regular merges";
+        assert exitBranchBegin.next() == null;
+        LoopExitNode lex = graph.add(new LoopExitNode(mainLoopBegin));
+        createExitStateForNewSegmentEarlyExit(graph, oldExit, lex, new2OldPhis);
+        EndNode end = graph.add(new EndNode());
+        exitBranchBegin.setNext(lex);
+        lex.setNext(end);
+        merge.addForwardEnd(end);
+        for (PhiNode phi : merge.phis()) {
+            ValueNode input = phi.valueAt((EndNode) next);
+            ValueNode replacement;
+            if (!loop.whole().contains(input)) {
+                // node is produced above the loop
+                replacement = input;
+            } else {
+                // if the node is inside this loop the input must be a proxy
+                replacement = patchProxyAtPhi(phi, lex, getNodeInExitPathFromUnrolledSegment((ProxyNode) input, new2OldPhis));
+            }
+            phi.addInput(replacement);
+        }
+    }
+
+    public static ValueNode patchProxyAtPhi(PhiNode phi, LoopExitNode lex, ValueNode proxyInput) {
+        if (phi instanceof ValuePhiNode) {
+            return phi.graph().addOrUnique(new ValueProxyNode(proxyInput, lex));
+        } else if (phi instanceof MemoryPhiNode) {
+            return phi.graph().addOrUnique(new MemoryProxyNode((MemoryKill) proxyInput, lex, ((MemoryPhiNode) phi).getLocationIdentity()));
+        } else if (phi instanceof GuardPhiNode) {
+            return phi.graph().addOrUnique(new GuardProxyNode((GuardingNode) proxyInput, lex));
+
+        } else {
+            throw GraalError.shouldNotReachHere("Unknown phi type " + phi);
+        }
+    }
+
+    private void createExitStateForNewSegmentEarlyExit(StructuredGraph graph, LoopExitNode exit, LoopExitNode lex, EconomicMap<Node, Node> new2OldPhis) {
+        assert exit.stateAfter() != null;
+        FrameState exitState = exit.stateAfter();
+        FrameState duplicate = exitState.duplicateWithVirtualState();
+        graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After duplicating state %s for new exit %s", exitState, lex);
+        duplicate.applyToNonVirtual(new NodePositionClosure<Node>() {
+            @Override
+            public void apply(Node from, Position p) {
+                ValueNode to = (ValueNode) p.get(from);
+                // all inputs that are proxied need replacing the other ones are implicitly not
+                // produced inside this loop
+                if (to instanceof ProxyNode) {
+                    ProxyNode originalProxy = (ProxyNode) to;
+                    if (originalProxy.proxyPoint() == exit) {
+                        // create a new proxy for this value
+                        ValueNode replacement = getNodeInExitPathFromUnrolledSegment(originalProxy, new2OldPhis);
+                        assert replacement != null : originalProxy;
+                        p.set(from, originalProxy.duplicateOn(lex, replacement));
+                    }
+                } else {
+                    if (original().contains(to)) {
+                        ValueNode replacement = getDuplicatedNode(to);
+                        assert replacement != null;
+                        p.set(from, replacement);
+                    }
+                }
+            }
+        });
+        graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After duplicating state replacing values with inputs proxied %s", duplicate);
+        lex.setStateAfter(duplicate);
+
+    }
+
+    /**
+     * Get the value of the original iteration in the unrolled segment.
+     */
+    private ValueNode getNodeInExitPathFromUnrolledSegment(ProxyNode proxy, EconomicMap<Node, Node> new2OldPhis) {
+        ValueNode originalNode = proxy.getOriginalNode();
+        ValueNode replacement = null;
+        /*
+         * Either the node is part of the regular duplicated nodes and is thus in the original node
+         * set or its a phi for which we do not have the values of the duplicated iteration at the
+         * loop ends
+         */
+        if (original().contains(originalNode) || proxy.proxyPoint().loopBegin().isPhiAtMerge(originalNode)) {
+            ValueNode nextIterationVal = getDuplicatedNode(originalNode);
+            if (nextIterationVal == null) {
+                assert proxy.proxyPoint().loopBegin().isPhiAtMerge(originalNode);
+                LoopBeginNode mainLoopBegin = proxy.proxyPoint().loopBegin();
+                LoopEndNode endBeforeSegment = mainLoopBegin.getSingleLoopEnd();
+                PhiNode loopPhi = (PhiNode) originalNode;
+                ValueNode phiInputAtOriginalSegment = loopPhi.valueAt(endBeforeSegment);
+
+                // this is already the duplicated node since the segment is already added to the
+                // graph
+                replacement = (ValueNode) new2OldPhis.get(phiInputAtOriginalSegment);
+                if (replacement == null) {
+                    /*
+                     * Special case the input of the phi is not part of the loop
+                     */
+                    replacement = phiInputAtOriginalSegment;
+                }
+                assert replacement != null;
+            } else {
+                replacement = nextIterationVal;
+            }
+        } else {
+            /*
+             * Imprecise: We should never enter this branch, as this means there is a proxy for a
+             * node that is not actually part of a loop, however, this may happen sometimes for
+             * floating nodes and their, wrong, inclusion inside a loop, this question can only be
+             * really solved with a schedule which we do not have.
+             *
+             * Thus, this node must be dominating our loop entirely.
+             */
+            replacement = originalNode;
+        }
+        return replacement;
     }
 
     private static EndNode getBlockEnd(FixedNode node) {
@@ -381,23 +545,8 @@ public class LoopFragmentInside extends LoopFragment {
         // Nothing to do
     }
 
-    private static PhiNode patchPhi(StructuredGraph graph, PhiNode phi, AbstractMergeNode merge) {
-        PhiNode ret;
-        if (phi instanceof ValuePhiNode) {
-            ret = new ValuePhiNode(phi.stamp(NodeView.DEFAULT), merge);
-        } else if (phi instanceof GuardPhiNode) {
-            ret = new GuardPhiNode(merge);
-        } else if (phi instanceof MemoryPhiNode) {
-            ret = new MemoryPhiNode(merge, ((MemoryPhiNode) phi).getLocationIdentity());
-        } else {
-            throw GraalError.shouldNotReachHere();
-        }
-        return graph.addWithoutUnique(ret);
-    }
-
     private void patchPeeling(LoopFragmentInside peel) {
         LoopBeginNode loopBegin = loop().loopBegin();
-        StructuredGraph graph = loopBegin.graph();
         List<PhiNode> newPhis = new LinkedList<>();
 
         NodeBitMap usagesToPatch = nodes.copy();
@@ -423,7 +572,7 @@ public class LoopFragmentInside extends LoopFragment {
             }
             // create a new phi (we don't patch the old one since some usages of the old one may
             // still be valid)
-            PhiNode newPhi = patchPhi(graph, phi, loopBegin);
+            PhiNode newPhi = phi.duplicateOn(loopBegin);
             newPhi.addInput(first);
             for (LoopEndNode end : loopBegin.orderedLoopEnds()) {
                 newPhi.addInput(phi.valueAt(end));
@@ -574,7 +723,7 @@ public class LoopFragmentInside extends LoopFragment {
                 if (phi.hasNoUsages()) {
                     continue;
                 }
-                final PhiNode firstPhi = patchPhi(graph, phi, newExitMerge);
+                final PhiNode firstPhi = phi.duplicateOn(newExitMerge);
                 for (AbstractEndNode end : newExitMerge.forwardEnds()) {
                     LoopEndNode loopEnd = reverseEnds.get(end);
                     ValueNode prim = prim(phi.valueAt(loopEnd));

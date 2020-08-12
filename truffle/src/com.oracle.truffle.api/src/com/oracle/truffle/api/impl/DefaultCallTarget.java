@@ -45,6 +45,7 @@ import static com.oracle.truffle.api.impl.DefaultTruffleRuntime.getRuntime;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime.DefaultFrameInstance;
+import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -54,7 +55,7 @@ import com.oracle.truffle.api.nodes.RootNode;
  */
 public final class DefaultCallTarget implements RootCallTarget {
 
-    public static final String CALL_BOUNDARY_METHOD_PREFIX = "call";
+    public static final String CALL_BOUNDARY_METHOD = "callDirectOrIndirect";
     private final RootNode rootNode;
     private volatile boolean initialized;
 
@@ -91,18 +92,13 @@ public final class DefaultCallTarget implements RootCallTarget {
 
     @Override
     public Object call(Object... args) {
-        if (!this.initialized) {
-            initialize();
-        }
-        final DefaultVirtualFrame frame = new DefaultVirtualFrame(rootNode.getFrameDescriptor(), args);
-        DefaultFrameInstance callerFrame = getRuntime().pushFrame(frame, this, null);
+        // Use the encapsulating node as call site and clear it inside as we cross the call boundary
+        EncapsulatingNodeReference encapsulating = EncapsulatingNodeReference.getCurrent();
+        Node parent = encapsulating.set(null);
         try {
-            return rootNode.execute(frame);
-        } catch (Throwable t) {
-            DefaultRuntimeAccessor.LANGUAGE.onThrowable(null, this, t, frame);
-            throw t;
+            return callDirectOrIndirect(parent, args);
         } finally {
-            getRuntime().popFrame(callerFrame);
+            encapsulating.set(parent);
         }
     }
 

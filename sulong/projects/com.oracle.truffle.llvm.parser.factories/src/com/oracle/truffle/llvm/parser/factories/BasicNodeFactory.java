@@ -43,6 +43,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.asm.amd64.AsmParseException;
 import com.oracle.truffle.llvm.asm.amd64.InlineAssemblyParser;
+import com.oracle.truffle.llvm.parser.StackManager;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute;
 import com.oracle.truffle.llvm.parser.model.attributes.Attribute.KnownAttribute;
 import com.oracle.truffle.llvm.parser.model.attributes.AttributesGroup;
@@ -1167,7 +1168,7 @@ public class BasicNodeFactory implements NodeFactory {
     private LLVMInlineAssemblyRootNode getLazyUnsupportedInlineRootNode(String asmExpression, AsmParseException e) {
         LLVMInlineAssemblyRootNode assemblyRoot;
         String message = asmExpression + ": " + e.getMessage();
-        assemblyRoot = new LLVMInlineAssemblyRootNode(context.getLanguage(), new FrameDescriptor(),
+        assemblyRoot = new LLVMInlineAssemblyRootNode(context.getLanguage(), StackManager.createRootFrame(),
                         Collections.singletonList(LLVMUnsupportedInstructionNode.create(UnsupportedReason.INLINE_ASSEMBLER, message)), Collections.emptyList(), null);
         return assemblyRoot;
     }

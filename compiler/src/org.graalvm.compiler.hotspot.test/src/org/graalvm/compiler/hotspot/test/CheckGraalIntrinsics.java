@@ -291,8 +291,6 @@ public class CheckGraalIntrinsics extends GraalTest {
                             // Emits a slow and a fast path and some dispatching logic
                             "jdk/internal/misc/Unsafe.allocateUninitializedArray0(Ljava/lang/Class;I)Ljava/lang/Object;",
 
-                            // Control flow, deopts, and a cast
-                            "jdk/internal/util/Preconditions.checkIndex(IILjava/util/function/BiFunction;)I",
                             // HotSpot MacroAssembler-based intrinsic
                             "sun/nio/cs/ISO_8859_1$Encoder.implEncodeISOArray([CI[BII)I");
 
@@ -426,6 +424,11 @@ public class CheckGraalIntrinsics extends GraalTest {
                             "com/sun/crypto/provider/ElectronicCodeBook.implECBEncrypt([BII[BI)I",
                             "java/math/BigInteger.shiftLeftImplWorker([I[IIII)V",
                             "java/math/BigInteger.shiftRightImplWorker([I[IIII)V");
+        }
+
+        if (isJDK16OrHigher()) {
+            add(toBeInvestigated,
+                            "sun/security/provider/MD5.implCompress0([BI)V");
         }
 
         if (!config.inlineNotify()) {
@@ -596,6 +599,10 @@ public class CheckGraalIntrinsics extends GraalTest {
 
     private static boolean isJDK14OrHigher() {
         return JavaVersionUtil.JAVA_SPEC >= 14;
+    }
+
+    private static boolean isJDK16OrHigher() {
+        return JavaVersionUtil.JAVA_SPEC >= 16;
     }
 
     public interface Refiner {

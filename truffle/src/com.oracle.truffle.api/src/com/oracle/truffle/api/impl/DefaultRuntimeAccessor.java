@@ -48,7 +48,6 @@ import org.graalvm.options.OptionValues;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
-import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 
 final class DefaultRuntimeAccessor extends Accessor {
@@ -73,11 +72,6 @@ final class DefaultRuntimeAccessor extends Accessor {
         }
 
         @Override
-        public IndirectCallNode createUncachedIndirectCall() {
-            return DefaultIndirectCallNode.createUncached();
-        }
-
-        @Override
         public void onLoopCount(Node source, int iterations) {
             // do nothing
         }
@@ -90,7 +84,7 @@ final class DefaultRuntimeAccessor extends Accessor {
         @Override
         public boolean isGuestCallStackFrame(StackTraceElement e) {
             String methodName = e.getMethodName();
-            return (methodName.startsWith(DefaultCallTarget.CALL_BOUNDARY_METHOD_PREFIX)) && e.getClassName().equals(DefaultCallTarget.class.getName());
+            return (methodName.equals(DefaultCallTarget.CALL_BOUNDARY_METHOD)) && e.getClassName().equals(DefaultCallTarget.class.getName());
         }
 
         @Override
@@ -134,6 +128,11 @@ final class DefaultRuntimeAccessor extends Accessor {
         @Override
         public Object[] castArrayFixedLength(Object[] args, int length) {
             return args;
+        }
+
+        @Override
+        public void flushCompileQueue(Object runtimeData) {
+            // default runtime has no compile queue.
         }
 
         @SuppressWarnings("unchecked")

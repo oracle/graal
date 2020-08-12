@@ -41,10 +41,7 @@
 package com.oracle.truffle.api.impl;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
-import com.oracle.truffle.api.nodes.Node;
 
 /**
  * This is runtime specific API. Do not use in a guest language.
@@ -54,31 +51,6 @@ final class DefaultIndirectCallNode extends IndirectCallNode {
     @Override
     public Object call(CallTarget target, Object... arguments) {
         return ((DefaultCallTarget) target).callDirectOrIndirect(this, arguments);
-    }
-
-    static IndirectCallNode createUncached() {
-        return new IndirectCallNode() {
-            @Override
-            public boolean isAdoptable() {
-                return false;
-            }
-
-            @Override
-            @TruffleBoundary
-            public Object call(CallTarget target, Object... arguments) {
-                /*
-                 * Clear encapsulating node for uncached indirect call boundary. The encapsulating
-                 * node is not longer needed if a call boundary is crossed.
-                 */
-                EncapsulatingNodeReference encapsulating = EncapsulatingNodeReference.getCurrent();
-                Node parent = encapsulating.set(null);
-                try {
-                    return ((DefaultCallTarget) target).callDirectOrIndirect(parent, arguments);
-                } finally {
-                    encapsulating.set(parent);
-                }
-            }
-        };
     }
 
 }

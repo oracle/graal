@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -52,20 +52,12 @@ public final class RelocatableBuffer {
         this.relocations = new TreeMap<>();
     }
 
-    public void addDirectRelocationWithoutAddend(int key, int relocationSize, Object targetObject) {
-        addDirectRelocationWithAddend(key, relocationSize, null, targetObject);
+    public void addRelocationWithoutAddend(int key, ObjectFile.RelocationKind relocationKind, Object targetObject) {
+        relocations.put(key, new Info(relocationKind, null, targetObject));
     }
 
-    public void addDirectRelocationWithAddend(int key, int relocationSize, Long explicitAddend, Object targetObject) {
-        addRelocation(key, ObjectFile.RelocationKind.DIRECT, relocationSize, explicitAddend, targetObject);
-    }
-
-    public void addPCRelativeRelocationWithAddend(int key, int relocationSize, Long explicitAddend, Object targetObject) {
-        addRelocation(key, ObjectFile.RelocationKind.PC_RELATIVE, relocationSize, explicitAddend, targetObject);
-    }
-
-    public void addRelocation(int key, ObjectFile.RelocationKind relocationKind, int relocationSize, Long explicitAddend, Object targetObject) {
-        relocations.put(key, new Info(relocationKind, relocationSize, explicitAddend, targetObject));
+    public void addRelocationWithAddend(int key, ObjectFile.RelocationKind relocationKind, Long explicitAddend, Object targetObject) {
+        relocations.put(key, new Info(relocationKind, explicitAddend, targetObject));
     }
 
     public boolean hasRelocations() {
@@ -85,7 +77,6 @@ public final class RelocatableBuffer {
     }
 
     static final class Info {
-        private final int relocationSize;
         private final ObjectFile.RelocationKind relocationKind;
         private final Long explicitAddend;
         /**
@@ -95,15 +86,14 @@ public final class RelocatableBuffer {
          */
         private final Object targetObject;
 
-        Info(ObjectFile.RelocationKind kind, int relocationSize, Long explicitAddend, Object targetObject) {
+        Info(ObjectFile.RelocationKind kind, Long explicitAddend, Object targetObject) {
             this.relocationKind = kind;
-            this.relocationSize = relocationSize;
             this.explicitAddend = explicitAddend;
             this.targetObject = targetObject;
         }
 
         public int getRelocationSize() {
-            return relocationSize;
+            return ObjectFile.RelocationKind.getRelocationSize(relocationKind);
         }
 
         public ObjectFile.RelocationKind getRelocationKind() {
@@ -124,7 +114,7 @@ public final class RelocatableBuffer {
 
         @Override
         public String toString() {
-            return "RelocatableBuffer.Info(targetObject=" + targetObject + " relocationSize=" + relocationSize + " relocationKind=" + relocationKind + " explicitAddend=" + explicitAddend + ")";
+            return "RelocatableBuffer.Info(targetObject=" + targetObject + " relocationKind=" + relocationKind + " explicitAddend=" + explicitAddend + ")";
         }
     }
 }

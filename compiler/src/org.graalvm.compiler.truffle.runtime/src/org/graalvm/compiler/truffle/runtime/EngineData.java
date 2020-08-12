@@ -72,7 +72,6 @@ import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.EngineModeEnum;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.ExceptionAction;
 import org.graalvm.compiler.truffle.runtime.debug.StatisticsListener;
-import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -140,6 +139,7 @@ public final class EngineData {
     @CompilationFinal public int callThresholdInInterpreter;
     @CompilationFinal public int callAndLoopThresholdInInterpreter;
     @CompilationFinal public int callThresholdInFirstTier;
+    @CompilationFinal public int callAndLoopThresholdInFirstTier;
 
     // Cached logger
     private volatile TruffleLogger logger;
@@ -194,6 +194,7 @@ public final class EngineData {
         this.callThresholdInInterpreter = computeCallThresholdInInterpreter(options);
         this.callAndLoopThresholdInInterpreter = computeCallAndLoopThresholdInInterpreter(options);
         this.callThresholdInFirstTier = computeCallThresholdInFirstTier(options);
+        this.callAndLoopThresholdInFirstTier = computeCallAndLoopThresholdInFirstTier(options);
         this.callTargetStatisticDetails = getPolyglotOptionValue(options, CompilationStatisticDetails);
         this.callTargetStatistics = getPolyglotOptionValue(options, CompilationStatistics) || this.callTargetStatisticDetails;
         this.statisticsListener = this.callTargetStatistics ? StatisticsListener.createEngineListener(GraalTruffleRuntime.getRuntime()) : null;
@@ -289,16 +290,6 @@ public final class EngineData {
         if (compilationFailureAction == ExceptionAction.Throw && backgroundCompilation) {
             getLogger().log(Level.WARNING, "The 'Throw' value of the 'engine.CompilationFailureAction' option requires the 'engine.BackgroundCompilation' option to be set to 'false'.");
         }
-        for (OptionDescriptor descriptor : PolyglotCompilerOptions.getDescriptors()) {
-            if (descriptor.isDeprecated() && engineOptions.hasBeenSet(descriptor.getKey())) {
-                String optionName = descriptor.getName();
-                String deprecationMessage = descriptor.getDeprecationMessage();
-                if (deprecationMessage.isEmpty()) {
-                    deprecationMessage = "Will be removed with no replacement.";
-                }
-                getLogger().log(Level.WARNING, String.format("The option '%s' is deprecated.%n%s", optionName, deprecationMessage));
-            }
-        }
     }
 
     private int computeCallThresholdInInterpreter(OptionValues options) {
@@ -324,6 +315,13 @@ public final class EngineData {
     }
 
     private int computeCallThresholdInFirstTier(OptionValues options) {
+        if (compileImmediately) {
+            return 0;
+        }
+        return Math.min(getPolyglotOptionValue(options, MinInvokeThreshold), getPolyglotOptionValue(options, CompilationThreshold));
+    }
+
+    private int computeCallAndLoopThresholdInFirstTier(OptionValues options) {
         if (compileImmediately) {
             return 0;
         }

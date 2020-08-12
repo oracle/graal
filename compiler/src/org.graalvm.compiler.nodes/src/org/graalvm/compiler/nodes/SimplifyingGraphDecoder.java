@@ -33,6 +33,8 @@ import java.util.List;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.graph.Edges;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
@@ -62,6 +64,8 @@ import jdk.vm.ci.meta.Assumptions;
  * with constant conditions are simplified.
  */
 public class SimplifyingGraphDecoder extends GraphDecoder {
+
+    private static final TimerKey CanonicalizeFixedNode = DebugContext.timer("PartialEvaluation-CanonicalizeFixedNode").doc("Time spent in simplifying fixed nodes.");
 
     protected final CoreProviders providers;
     protected final boolean canonicalizeReads;
@@ -171,11 +175,14 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
         }
     }
 
+    @SuppressWarnings({"unused", "try"})
     @Override
     protected void handleFixedNode(MethodScope methodScope, LoopScope loopScope, int nodeOrderId, FixedNode node) {
-        Node canonical = canonicalizeFixedNode(methodScope, node);
-        if (canonical != node) {
-            handleCanonicalization(loopScope, nodeOrderId, node, canonical);
+        try (DebugCloseable a = CanonicalizeFixedNode.start(debug)) {
+            Node canonical = canonicalizeFixedNode(methodScope, node);
+            if (canonical != node) {
+                handleCanonicalization(loopScope, nodeOrderId, node, canonical);
+            }
         }
     }
 

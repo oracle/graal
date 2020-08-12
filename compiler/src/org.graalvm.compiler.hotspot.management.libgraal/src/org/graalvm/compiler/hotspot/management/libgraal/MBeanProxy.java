@@ -31,6 +31,7 @@ import static org.graalvm.compiler.hotspot.management.libgraal.MBeanProxyGen.cal
 import static org.graalvm.compiler.hotspot.management.libgraal.MBeanProxyGen.callSignalRegistrationRequest;
 import static org.graalvm.compiler.hotspot.management.libgraal.MBeanProxyGen.callUnregister;
 import static org.graalvm.libgraal.jni.JNIUtil.getBinaryName;
+import static org.graalvm.word.LocationIdentity.ANY_LOCATION;
 
 import java.io.DataInputStream;
 import java.io.IOException;
@@ -43,6 +44,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Queue;
+import java.util.function.Consumer;
+import java.util.function.ToLongFunction;
 
 import javax.management.DynamicMBean;
 import javax.management.MalformedObjectNameException;
@@ -67,6 +70,7 @@ import org.graalvm.word.WordFactory;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import org.graalvm.compiler.hotspot.management.AggregatedMemoryPoolBean;
 import org.graalvm.libgraal.jni.annotation.FromLibGraalEntryPointsResolver;
+import org.graalvm.word.Pointer;
 
 class MBeanProxy<T extends DynamicMBean> {
 
@@ -322,26 +326,65 @@ class MBeanProxy<T extends DynamicMBean> {
      * Uses JNI to define the classes in HotSpot heap.
      */
     private static void defineClassesInHotSpot(JNI.JNIEnv env) {
+        Pointer barrier = getDefineClassesStatePointer();
         JNI.JObject classLoader = JNIUtil.getJVMCIClassLoader(env);
-        findOrDefineClassInHotSpot(env, classLoader, HS_CALLS_CLASS);
-        JNI.JClass entryPoints = findOrDefineClassInHotSpot(env, classLoader, HS_ENTRYPOINTS_CLASS);
-        findOrDefineClassInHotSpot(env, classLoader, HS_BEAN_CLASS);
-        findOrDefineClassInHotSpot(env, classLoader, HS_BEAN_FACTORY_CLASS);
-        findOrDefineClassInHotSpot(env, classLoader, HS_PUSHBACK_ITER_CLASS);
-        findOrDefineClassInHotSpot(env, classLoader, HS_AGGREGATED_MEMORY_POOL_BEAN_CLASS);
-        fromLibGraalEntryPoints = JNIUtil.NewGlobalRef(env, entryPoints, "Class<" + HS_ENTRYPOINTS_CLASS.binaryName + ">");
+        ToLongFunction<ClassData> defineClass = (cd) -> {
+            return defineClassInHotSpot(env, classLoader, cd).rawValue();
+        };
+        ToLongFunction<ClassData> loadClass = (cd) -> {
+            return findClassInHotSpot(env, classLoader, cd.binaryName, true).rawValue();
+        };
+        Consumer<ToLongFunction<ClassData>> action = (f) -> {
+            f.applyAsLong(HS_CALLS_CLASS);
+            long entryPoints = f.applyAsLong(HS_ENTRYPOINTS_CLASS);
+            f.applyAsLong(HS_BEAN_CLASS);
+            f.applyAsLong(HS_BEAN_FACTORY_CLASS);
+            f.applyAsLong(HS_PUSHBACK_ITER_CLASS);
+            f.applyAsLong(HS_AGGREGATED_MEMORY_POOL_BEAN_CLASS);
+            fromLibGraalEntryPoints = JNIUtil.NewGlobalRef(env, WordFactory.pointer(entryPoints), "Class<" + HS_ENTRYPOINTS_CLASS.binaryName + ">");
+        };
+        runGuarded(barrier, action, defineClass, loadClass);
     }
 
-    private static JNI.JClass findOrDefineClassInHotSpot(JNI.JNIEnv env, JNI.JObject classLoader, ClassData classData) {
-        JNI.JClass res = findClassInHotSpot(env, classLoader, classData.binaryName, false);
-        if (res.isNonNull()) {
-            return res;
+    /**
+     * Guards defining and loading classes. The {@code barrier} is used to ensure the {@code action}
+     * with {@code defineClass} parameter is executed exactly once in the process (i.e. synchronized
+     * across all threads and isolates). The other threads will block until the define class action
+     * finish in order to run load class action. Note that each {@code barrier} is specific to a
+     * specific {@code action} and cannot be used for any other action.
+     */
+    private static void runGuarded(Pointer barrier, Consumer<ToLongFunction<ClassData>> action,
+                    ToLongFunction<ClassData> defineClass, ToLongFunction<ClassData> loadClass) {
+        if (barrier.isNull()) {
+            throw new IllegalStateException("Missing substitution for MBeanProxy.defineClassesInHotSpot");
         }
-        res = defineClassInHotSpot(env, classLoader, classData);
-        if (res.isNonNull()) {
-            return res;
+        final long undefined = 0L;
+        final long defining = 1L;
+        final long defined = 2L;
+        long defineClassState = barrier.readLong(0);
+        if (defineClassState == defined) {
+            action.accept(loadClass);
+        } else {
+            while (true) {
+                defineClassState = barrier.readLong(0);
+                if (defineClassState == undefined) {
+                    if (barrier.compareAndSwapLong(0, undefined, defining, ANY_LOCATION) == undefined) {
+                        action.accept(defineClass);
+                        barrier.writeLong(0, defined);
+                        break;
+                    }
+                } else {
+                    if (defineClassState == defined) {
+                        action.accept(loadClass);
+                        break;
+                    }
+                    try {
+                        Thread.sleep(10);
+                    } catch (InterruptedException e) {
+                    }
+                }
+            }
         }
-        return findClassInHotSpot(env, classLoader, classData.binaryName, true);
     }
 
     /**
@@ -432,6 +475,14 @@ class MBeanProxy<T extends DynamicMBean> {
             JNIUtil.SetObjectArrayElement(env, objectNamesHandle, i, objectName);
         }
         callUnregister(env, factory, CurrentIsolate.getIsolate().rawValue(), objectNamesHandle);
+    }
+
+    /**
+     * Gets a pointer to a global word used as spin lock for safely defining classes in HotSpot.
+     */
+    private static Pointer getDefineClassesStatePointer() {
+        // Substituted by Target_org_graalvm_compiler_hotspot_management_libgraal_MBeanProxy
+        return WordFactory.nullPointer();
     }
 
     /**

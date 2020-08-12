@@ -41,6 +41,7 @@
 package com.oracle.truffle.dsl.processor;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -163,6 +164,11 @@ public class TruffleProcessor extends AbstractProcessor implements ProcessCallba
     static void handleThrowable(AnnotationProcessor<?> generator, Throwable t, Element e) {
         String message = "Uncaught error in " + (generator != null ? generator.getClass().getSimpleName() : null) + " while processing " + e + " ";
         ProcessorContext.getInstance().getEnvironment().getMessager().printMessage(Kind.ERROR, message + ": " + ElementUtils.printException(t), e);
+    }
+
+    @Override
+    public Set<String> getSupportedOptions() {
+        return new HashSet<>(Arrays.asList("truffle.dsl.GenerateSpecializationStatistics"));
     }
 
     @Override

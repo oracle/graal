@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,8 +30,8 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.phases.Phase;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
+import org.graalvm.util.DirectAnnotationAccess;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.meta.SharedMethod;
 
 /**
@@ -49,25 +49,13 @@ public class MethodSafepointInsertionPhase extends Phase {
     @Override
     protected void run(StructuredGraph graph) {
 
-        if (graph.method().getAnnotation(Uninterruptible.class) != null) {
-            /*
-             * If a method is annotated with {@link Uninterruptible}, then I do not want a test for
-             * a safepoint at the return.
-             */
+        SharedMethod method = (SharedMethod) graph.method();
+        if (!SharedMethod.isGuaranteedSafepoint(method)) {
+            // don't need to insert a safepoint into this method, since it is not guaranteed.
             return;
         }
-        if (graph.method().getAnnotation(CFunction.class) != null || graph.method().getAnnotation(InvokeCFunctionPointer.class) != null) {
-            /*
-             * If a method transfers from Java to C, then the return transition (if any) contains
-             * the safepoint test and one is not needed at the return of the transferring method.
-             */
-            return;
-        }
-        if (((SharedMethod) graph.method()).isEntryPoint()) {
-            /*
-             * If a method is transferring from C to Java, then no safepoint test is needed at the
-             * return of the transferring method.
-             */
+        if (DirectAnnotationAccess.isAnnotationPresent(method, CFunction.class) || DirectAnnotationAccess.isAnnotationPresent(method, InvokeCFunctionPointer.class)) {
+            // methods transferring from Java to C do not need to insert safepoints.
             return;
         }
 

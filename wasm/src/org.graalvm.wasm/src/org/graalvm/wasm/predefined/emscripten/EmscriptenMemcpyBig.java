@@ -42,15 +42,15 @@ package org.graalvm.wasm.predefined.emscripten;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
 import static org.graalvm.wasm.WasmTracing.trace;
 
 public class EmscriptenMemcpyBig extends WasmBuiltinRootNode {
-    public EmscriptenMemcpyBig(WasmLanguage language, WasmModule module) {
+    public EmscriptenMemcpyBig(WasmLanguage language, WasmInstance module) {
         super(language, module);
     }
 
@@ -68,7 +68,7 @@ public class EmscriptenMemcpyBig extends WasmBuiltinRootNode {
 
         trace("EmscriptenMemcpyBig EXECUTE");
 
-        WasmMemory memory = module.symbolTable().memory();
+        WasmMemory memory = instance.memory();
         memory.copy(this, src, dest, num);
 
         return 0;

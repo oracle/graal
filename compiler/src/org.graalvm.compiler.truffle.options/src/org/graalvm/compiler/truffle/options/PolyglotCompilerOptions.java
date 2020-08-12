@@ -264,6 +264,9 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Whether to use the economy configuration in the first-tier compilations.", category = OptionCategory.EXPERT)
     public static final OptionKey<Boolean> FirstTierUseEconomy = new OptionKey<>(true);
 
+    @Option(help = "Whether to emit look-back-edge counters in the first-tier compilations.", category = OptionCategory.EXPERT)
+    public static final OptionKey<Boolean> FirstTierBackedgeCounts = new OptionKey<>(true);
+
     // Failed compilation behavior
 
     @Option(help = "Prints the exception stack trace for compilation exceptions", category = OptionCategory.INTERNAL, deprecated = true, deprecationMessage = "Use 'engine.CompilationFailureAction=Print'")
