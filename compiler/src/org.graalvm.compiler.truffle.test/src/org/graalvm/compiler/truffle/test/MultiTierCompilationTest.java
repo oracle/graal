@@ -111,16 +111,21 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
     private static class MultiTierWithLoopRootNode extends RootNode {
         @Child private LoopNode loop;
         private final MultiTierCompilationTest.MultiTierLoopBodyNode body;
+        public int firstTierCallCount;
 
         MultiTierWithLoopRootNode(MultiTierLoopBodyNode body) {
             super(null);
             this.loop = Truffle.getRuntime().createLoopNode(body);
             this.body = body;
+            this.firstTierCallCount = 0;
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
             body.iteration = 0;
+            if (GraalCompilerDirectives.inFirstTier()) {
+                this.firstTierCallCount += 1;
+            }
             final Object result = loop.execute(frame);
             return result;
         }
@@ -269,8 +274,9 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
                         "true").option("engine.FirstTierInlining", "false").option("engine.Splitting", "false").option("engine.FirstTierCompilationThreshold", String.valueOf(firstThreshold)).option(
                                         "engine.CompilationThreshold", String.valueOf(secondThreshold)).build());
 
-        MultiTierLoopBodyNode body = new MultiTierLoopBodyNode(100);
-        OptimizedCallTarget rootTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(new MultiTierWithLoopRootNode(body));
+        MultiTierLoopBodyNode body = new MultiTierLoopBodyNode(firstThreshold);
+        final MultiTierWithLoopRootNode rootNode = new MultiTierWithLoopRootNode(body);
+        OptimizedCallTarget rootTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(rootNode);
 
         Assert.assertEquals("break:interpreter", rootTarget.call());
         Assert.assertEquals("break:first-tier", rootTarget.call());
@@ -279,6 +285,7 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
         }
         rootTarget.call();
         Assert.assertEquals("break:second-tier", rootTarget.call());
+        Assert.assertEquals(9, rootNode.firstTierCallCount);
     }
 
 }
