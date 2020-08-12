@@ -41,7 +41,6 @@
 package com.oracle.truffle.object;
 
 import static com.oracle.truffle.object.LayoutImpl.ACCESS;
-import static com.oracle.truffle.object.LocationImpl.expectBoolean;
 import static com.oracle.truffle.object.LocationImpl.expectDouble;
 import static com.oracle.truffle.object.LocationImpl.expectInteger;
 import static com.oracle.truffle.object.LocationImpl.expectLong;
@@ -541,8 +540,6 @@ abstract class DynamicObjectLibraryImpl {
 
         public abstract double getDoubleOrDefault(DynamicObject object, Shape cachedShape, Object key, Object defaultValue) throws UnexpectedResultException;
 
-        public abstract boolean getBooleanOrDefault(DynamicObject object, Shape cachedShape, Object key, Object defaultValue) throws UnexpectedResultException;
-
         public abstract boolean put(DynamicObject object, Shape cachedShape, Object key, Object value, long putFlags);
 
         public abstract boolean containsKey(DynamicObject object, Shape cachedShape, Object key);
@@ -560,10 +557,6 @@ abstract class DynamicObjectLibraryImpl {
         }
 
         public boolean putDouble(DynamicObject object, Shape cachedShape, Object key, double value, long putFlags) {
-            return put(object, cachedShape, key, value, putFlags);
-        }
-
-        public boolean putBoolean(DynamicObject object, Shape cachedShape, Object key, boolean value, long putFlags) {
             return put(object, cachedShape, key, value, putFlags);
         }
 
@@ -652,17 +645,6 @@ abstract class DynamicObjectLibraryImpl {
                 return getLocation(existing).getDouble(object, false);
             } else {
                 return expectDouble(defaultValue);
-            }
-        }
-
-        @TruffleBoundary
-        @Override
-        public boolean getBooleanOrDefault(DynamicObject object, Shape cachedShape, Object key, Object defaultValue) throws UnexpectedResultException {
-            Property existing = ACCESS.getShape(object).getProperty(key);
-            if (existing != null) {
-                return getLocation(existing).getBoolean(object, false);
-            } else {
-                return expectBoolean(defaultValue);
             }
         }
 
@@ -798,25 +780,6 @@ abstract class DynamicObjectLibraryImpl {
                 }
             }
             return Generic.instance().getDoubleOrDefault(object, cachedShape, key, defaultValue);
-        }
-
-        @ExplodeLoop
-        @Override
-        public boolean getBooleanOrDefault(DynamicObject object, Shape cachedShape, Object key, Object defaultValue) throws UnexpectedResultException {
-            KeyCacheEntry start = keyCache;
-            if (start != KeyCacheNode.getUncached()) {
-                for (KeyCacheEntry c = start; c != null; c = c.next) {
-                    if (c.acceptsKey(key)) {
-                        return c.getBooleanOrDefault(object, cachedShape, key, defaultValue);
-                    }
-                }
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                KeyCacheNode impl = insertIntoKeyCache(key, cachedShape);
-                if (impl != null) {
-                    return impl.getBooleanOrDefault(object, cachedShape, key, defaultValue);
-                }
-            }
-            return Generic.instance().getBooleanOrDefault(object, cachedShape, key, defaultValue);
         }
 
         @ExplodeLoop
@@ -1045,13 +1008,6 @@ abstract class DynamicObjectLibraryImpl {
             }
 
             @Override
-            public boolean getBooleanOrDefault(DynamicObject object, Shape cachedShape, Object key, Object defaultValue) throws UnexpectedResultException {
-                CompilerAsserts.partialEvaluationConstant(cachedShape);
-                assert assertCachedKeyAndShapeForRead(object, cachedShape, key);
-                return getLocation(cachedProperty).getBoolean(object, guard(object, cachedShape));
-            }
-
-            @Override
             public boolean put(DynamicObject object, Shape cachedShape, Object key, Object value, long putFlags) {
                 CompilerAsserts.partialEvaluationConstant(cachedShape);
                 assert assertCachedKeyAndShapeForWrite(object, cachedShape, key);
@@ -1077,13 +1033,6 @@ abstract class DynamicObjectLibraryImpl {
                 CompilerAsserts.partialEvaluationConstant(cachedShape);
                 assert assertCachedKeyAndShapeForWrite(object, cachedShape, key);
                 return putDoubleImpl(object, cachedShape, key, value, putFlags, cachedProperty);
-            }
-
-            @Override
-            public boolean putBoolean(DynamicObject object, Shape cachedShape, Object key, boolean value, long putFlags) {
-                CompilerAsserts.partialEvaluationConstant(cachedShape);
-                assert assertCachedKeyAndShapeForWrite(object, cachedShape, key);
-                return putBooleanImpl(object, cachedShape, key, value, putFlags, cachedProperty);
             }
 
             @Override
@@ -1149,13 +1098,6 @@ abstract class DynamicObjectLibraryImpl {
             }
 
             @Override
-            public boolean putBoolean(DynamicObject object, Shape cachedShape, Object key, boolean value, long putFlags) {
-                CompilerAsserts.partialEvaluationConstant(cachedShape);
-                assert assertCachedKeyAndShapeForWrite(object, cachedShape, key);
-                return putBooleanImpl(object, cachedShape, key, value, putFlags, null);
-            }
-
-            @Override
             public boolean containsKey(DynamicObject object, Shape cachedShape, Object key) {
                 CompilerAsserts.partialEvaluationConstant(cachedShape);
                 assert assertCachedKeyAndShapeForRead(object, cachedShape, key);
@@ -1182,11 +1124,6 @@ abstract class DynamicObjectLibraryImpl {
             @Override
             public double getDoubleOrDefault(DynamicObject object, Shape cachedShape, Object key, Object defaultValue) throws UnexpectedResultException {
                 return expectDouble(defaultValue);
-            }
-
-            @Override
-            public boolean getBooleanOrDefault(DynamicObject object, Shape cachedShape, Object key, Object defaultValue) throws UnexpectedResultException {
-                return expectBoolean(defaultValue);
             }
 
             @Override
@@ -1454,45 +1391,6 @@ abstract class DynamicObjectLibraryImpl {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             KeyCacheNode impl = insertIntoPutCache(object, cachedShape, value, putFlags, oldProperty);
             return impl.putDouble(object, cachedShape, key, value, putFlags);
-        }
-
-        @ExplodeLoop
-        protected boolean putBooleanImpl(DynamicObject object, Shape cachedShape, Object key, boolean value, long putFlags, Property oldProperty) {
-            Shape oldShape = cachedShape;
-            MutateCacheData start = cache;
-            if (start == MutateCacheData.GENERIC) {
-                return putUncached(object, key, value, putFlags);
-            }
-            for (MutateCacheData c = start; c != null; c = c.next) {
-                if (c instanceof PutCacheData && ((PutCacheData) c).putFlags == putFlags) {
-                    Property newProperty = ((PutCacheData) c).property;
-                    if (newProperty == null) {
-                        assert Flags.isSetExisting(putFlags);
-                        return false;
-                    } else {
-                        LocationImpl location = getLocation(newProperty);
-                        boolean guardCondition = object.getShape() == oldShape;
-                        if (location.canStore(value)) {
-                            Shape newShape = c.newShape;
-                            if (newShape != oldShape) {
-                                ACCESS.growAndSetShape(object, oldShape, newShape);
-                            } else if (location.isFinal()) {
-                                continue;
-                            }
-                            try {
-                                location.set(object, value, guardCondition);
-                            } catch (IncompatibleLocationException | FinalLocationException e) {
-                                throw shouldNotHappen(e);
-                            }
-                            c.maybeUpdateShape(object);
-                            return true;
-                        }
-                    }
-                }
-            }
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            KeyCacheNode impl = insertIntoPutCache(object, cachedShape, value, putFlags, oldProperty);
-            return impl.putBoolean(object, cachedShape, key, value, putFlags);
         }
 
         protected KeyCacheNode insertIntoPutCache(DynamicObject object, Shape cachedShape, Object value, long putFlags, Property property) {
