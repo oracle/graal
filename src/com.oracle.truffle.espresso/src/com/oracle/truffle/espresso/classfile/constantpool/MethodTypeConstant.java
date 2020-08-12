@@ -32,6 +32,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public interface MethodTypeConstant extends PoolConstant {
@@ -49,11 +50,19 @@ public interface MethodTypeConstant extends PoolConstant {
         int pcount = Signatures.parameterCount(signature, false);
 
         StaticObject[] ptypes = new StaticObject[pcount];
-        for (int i = 0; i < pcount; i++) {
-            Symbol<Symbol.Type> paramType = Signatures.parameterType(signature, i);
-            ptypes[i] = meta.resolveSymbolOrFail(paramType, accessingKlass.getDefiningClassLoader()).mirror();
+        StaticObject rtype;
+        try {
+            for (int i = 0; i < pcount; i++) {
+                Symbol<Symbol.Type> paramType = Signatures.parameterType(signature, i);
+                ptypes[i] = meta.resolveSymbolOrFail(paramType, accessingKlass.getDefiningClassLoader()).mirror();
+            }
+            rtype = meta.resolveSymbolOrFail(rt, accessingKlass.getDefiningClassLoader()).mirror();
+        } catch (EspressoException e) {
+            if (meta.java_lang_ClassNotFoundException.isAssignableFrom(e.getExceptionObject().getKlass())) {
+                throw Meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, e.getGuestMessage());
+            }
+            throw e;
         }
-        StaticObject rtype = meta.resolveSymbolOrFail(rt, accessingKlass.getDefiningClassLoader()).mirror();
         return (StaticObject) meta.java_lang_invoke_MethodHandleNatives_findMethodHandleType.invokeDirect(
                         null,
                         rtype, StaticObject.createArray(meta.java_lang_Class_array, ptypes));
