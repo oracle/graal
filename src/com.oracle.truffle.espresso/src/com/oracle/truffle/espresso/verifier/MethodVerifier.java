@@ -391,7 +391,7 @@ public final class MethodVerifier implements ContextAccess {
     static final Operand Null = new Operand(JavaKind.Object) {
         @Override
         boolean compliesWith(Operand other) {
-            return other == Invalid || other.isReference();
+            return other.isTopOperand() || other.isReference();
         }
 
         @Override
@@ -713,7 +713,7 @@ public final class MethodVerifier implements ContextAccess {
             int actualLocalOffset = 0;
             for (int i = 0; i < smf.getChopped(); i++) {
                 Operand op = newLocals[previous.lastLocal - actualLocalOffset];
-                if (op == Invalid && (previous.lastLocal - actualLocalOffset - 1 > 0)) {
+                if (op.isTopOperand() && (previous.lastLocal - actualLocalOffset - 1 > 0)) {
                     if (isType2(newLocals[previous.lastLocal - actualLocalOffset - 1])) {
                         actualLocalOffset++;
                     }
@@ -723,7 +723,7 @@ public final class MethodVerifier implements ContextAccess {
             }
             StackFrame res = new StackFrame(Operand.EMPTY_ARRAY, 0, 0, newLocals);
             res.lastLocal = previous.lastLocal - actualLocalOffset;
-            if (res.lastLocal > 0 && newLocals[res.lastLocal] == Invalid && res.lastLocal - 1 > 0 && isType2(newLocals[res.lastLocal - 1])) {
+            if (res.lastLocal > 0 && newLocals[res.lastLocal].isTopOperand() && res.lastLocal - 1 > 0 && isType2(newLocals[res.lastLocal - 1])) {
                 res.lastLocal = res.lastLocal - 1;
             }
             return res;
@@ -787,7 +787,7 @@ public final class MethodVerifier implements ContextAccess {
                 res.lastLocal = -1;
                 return res;
             }
-            if (locals[pos - 1] == Invalid && pos - 2 > 0 && isType2(locals[pos - 2])) {
+            if (locals[pos - 1].isTopOperand() && pos - 2 > 0 && isType2(locals[pos - 2])) {
                 res.lastLocal = pos - 2;
                 return res;
             }
