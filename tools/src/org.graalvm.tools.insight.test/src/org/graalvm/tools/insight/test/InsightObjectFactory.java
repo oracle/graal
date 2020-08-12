@@ -48,7 +48,7 @@ import java.util.function.Predicate;
 import org.graalvm.polyglot.HostAccess;
 import org.junit.Assert;
 
-final class AgentObjectFactory extends ProxyLanguage {
+final class InsightObjectFactory extends ProxyLanguage {
     static TruffleObject insightObject;
 
     static InsightAPI.OnConfig createConfig(
@@ -82,11 +82,11 @@ final class AgentObjectFactory extends ProxyLanguage {
     @SuppressWarnings("try")
     public static Value createAgentObject(Context context) throws Exception {
         cleanAgentObject();
-        ProxyLanguage.setDelegate(new AgentObjectFactory());
+        ProxyLanguage.setDelegate(new InsightObjectFactory());
 
         Value value;
 
-        try (AutoCloseable handle = Embedding.enableInsight(AgentObjectFactory.createAgentSource(), context)) {
+        try (AutoCloseable handle = Embedding.enableInsight(InsightObjectFactory.createAgentSource(), context)) {
             value = context.eval(ProxyLanguage.ID, "");
             assertNotNull("Agent object has been initialized", insightObject);
         }
