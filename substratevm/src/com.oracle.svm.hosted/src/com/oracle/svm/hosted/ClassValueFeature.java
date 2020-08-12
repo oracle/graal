@@ -71,7 +71,11 @@ public final class ClassValueFeature implements Feature {
                 ClassValue<?> v = e.getKey();
                 Map<Class<?>, Object> m = e.getValue();
                 if (!m.containsKey(clazz) && hasValue(v, clazz)) {
-                    m.put(clazz, v.get(clazz));
+                    Object value = v.get(clazz);
+                    if (value == null) {
+                        value = ClassValueSupport.NULL_MARKER;
+                    }
+                    m.put(clazz, value);
                     access.requireAnalysisIteration();
                 }
             }
