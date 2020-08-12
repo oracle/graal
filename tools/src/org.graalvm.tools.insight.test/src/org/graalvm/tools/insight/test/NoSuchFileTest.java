@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.tools.agentscript.test;
+package org.graalvm.tools.insight.test;
 
 import java.io.File;
 import org.graalvm.polyglot.Context;
@@ -43,7 +43,7 @@ public class NoSuchFileTest {
         Assume.assumeFalse("File is missing", nonExisting.exists());
 
         try (Context c = Context.newBuilder().allowIO(true).allowExperimentalOptions(true).option("agentscript", nonExisting.getAbsolutePath()).build()) {
-            Object initializeTheAgent = AgentObjectFactory.createAgentObject(c);
+            Object initializeTheAgent = InsightObjectFactory.createAgentObject(c);
             assertNotNull(initializeTheAgent);
             fail("Error: Expecting exception");
         } catch (PolyglotException t) {

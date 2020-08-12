@@ -22,12 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.tools.agentscript.test;
+package org.graalvm.tools.insight.test;
 
+import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
-import com.oracle.truffle.api.source.Source;
 import java.lang.reflect.Constructor;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -35,38 +36,58 @@ import static org.junit.Assert.fail;
 import org.junit.Before;
 import org.junit.Test;
 
-public class SourceEventObjectTest {
-    private Object sourceEventObject;
+public class EventContextObjectTest {
+    private Object eventContextObject;
     private InteropLibrary iop;
 
     @Before
     public void createInstancesForTheTest() throws Exception {
-        Class<?> seoClass = Class.forName("com.oracle.truffle.tools.agentscript.impl.SourceEventObject");
-        Constructor<?> newSeoClass = seoClass.getDeclaredConstructor(Source.class);
-        newSeoClass.setAccessible(true);
-        sourceEventObject = newSeoClass.newInstance(Source.newBuilder("x", "char", "name").build());
+        Class<?> ecoClass = Class.forName("com.oracle.truffle.tools.agentscript.impl.EventContextObject");
+        Constructor<?> newEco = ecoClass.getDeclaredConstructor(EventContext.class);
+        newEco.setAccessible(true);
+        eventContextObject = newEco.newInstance(new Object[]{null});
 
         iop = InteropLibrary.getFactory().getUncached();
     }
 
     @Test
-    public void checkUriAttr() throws Exception {
-        Object uri = iop.readMember(sourceEventObject, "uri");
-        assertNotNull(uri);
-        assertTrue(iop.isMemberReadable(sourceEventObject, "uri"));
-        assertTrue(iop.isMemberExisting(sourceEventObject, "uri"));
+    public void checkNameAttr() throws Exception {
+        assertTrue(iop.isMemberReadable(eventContextObject, "name"));
+        assertTrue(iop.isMemberExisting(eventContextObject, "name"));
+        try {
+            Object name = iop.readMember(eventContextObject, "name");
+            assertNotNull(name);
+        } catch (NullPointerException ex) {
+            // acceptable error, as we don't have mock version of EventContext
+        }
     }
 
     @Test
     public void checkUnknownAttr() throws Exception {
         try {
-            Object nothing = iop.readMember(sourceEventObject, "unknownMember");
+            Object nothing = iop.readMember(eventContextObject, "unknownMember");
             fail("unknownMember shouldn't be available: " + nothing);
         } catch (UnknownIdentifierException ex) {
             // OK
         }
-        assertFalse(iop.isMemberReadable(sourceEventObject, "unknownMember"));
-        assertFalse(iop.isMemberExisting(sourceEventObject, "unknownMember"));
+        assertFalse(iop.isMemberReadable(eventContextObject, "unknownMember"));
+        assertFalse(iop.isMemberExisting(eventContextObject, "unknownMember"));
     }
 
+    @Test
+    public void enumerateAttributes() throws Exception {
+        assertTrue("It has members", iop.hasMembers(eventContextObject));
+        Object members = iop.getMembers(eventContextObject);
+
+        String[] expectedNames = {
+                        "name", "source", "characters",
+                        "line", "startLine", "endLine",
+                        "column", "startColumn", "endColumn"
+        };
+
+        assertEquals(expectedNames.length, iop.getArraySize(members));
+        for (int i = 0; i < expectedNames.length; i++) {
+            assertEquals(expectedNames[i], iop.readArrayElement(members, i));
+        }
+    }
 }
