@@ -6,7 +6,7 @@ Native Image supports logging out-of-the box using the `java.util.logging.*` API
 
 The logging configuration built in the image by default is based on the `logging.properties` file found in the JDK.
 This configures a `java.util.logging.ConsoleHandler` which will only shows messages at the `INFO` and above levels.
-Custom logging configuration can be loaded either at image build time or at run time as described below.
+Custom logging configuration can be loaded either at image build-time or at run time as described below.
 An important detail is that if additional logging handlers are used the corresponding classes need to be registered for reflection.
 For example if `java.util.logging.FileHandler` is used then the following reflection config is necessary:
 ```json
@@ -20,9 +20,9 @@ For example if `java.util.logging.FileHandler` is used then the following reflec
 See the [Reflection Support](Reflection.md) guide for more details.
 
 
-## Build Time Logger Initialization
+## Build-Time Logger Initialization
 
-The logger can be initialized at image build time with a custom `logging.properties` config, as in the code below:
+The logger can be initialized at image build-time with a custom `logging.properties` config, as in the code below:
 ```java
 public class BuildTimeLoggerInit {
   private static final Logger LOGGER;
@@ -37,8 +37,8 @@ public class BuildTimeLoggerInit {
 }
 ```
 
-The `logging.properties` file is processed at image build time and it doesn't need to be included in the native image, therefore reducing the image size.
-The `LoggerHolder.LOGGER` is also initialized at image build time and is readily available at run time, therefore improving the startup.
+The `logging.properties` file is processed at image build-time and it doesn't need to be included in the native image, therefore reducing the image size.
+The `LoggerHolder.LOGGER` is also initialized at image build-time and is readily available at run time, therefore improving the startup.
 Unless the application needs to process a custom `logging.properties` configuration at run time this approach is recommended.
 
 

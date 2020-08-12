@@ -1,7 +1,7 @@
 # Native Image Configuration
 
 * [Properties File Format](#properties-file-format)
-* [Runtime vs Build Time Initialization](#runtime-vs-build-time-initialization)
+* [Runtime vs Build-Time Initialization](#runtime-vs-build-time-initialization)
 * [Assisted Configuration of Native Image Builds](#assisted-configuration-of-native-image-builds)
 * [Building Native Image with Java Reflection Example](building-native-image-with-java-reflection-example)
 * [Agent Advanced Usage](#agent-advanced-usage)
@@ -115,16 +115,16 @@ NativeImageArgs = --configurations-path /home/user/custom-image-configs \
                   -O1
 ```
 
-## Runtime vs Build Time Initialization
+## Runtime vs Build-Time Initialization
 
 Building your application into a native image allows you to decide which parts
-of your application should be run at image build time and which parts have to
+of your application should be run at image build-time and which parts have to
 run at image runtime.
 
 Since GraalVM 19.0 all class-initialization code (static initializers and static
 field initialization) of the application you build an image for will be executed
 at image runtime by default. Sometimes it is beneficial to allow class
-initialization code to get executed at image build time for faster startup (e.g.
+initialization code to get executed at image build-time for faster startup (e.g.
 if some static fields get initialized to runtime independent data). This can be
 controlled with the following native-image options:
 

@@ -15,7 +15,7 @@ the classes of your application and their dependencies, including those from the
 JDK. It analyses these classes to determine which classes, methods and fields
 are reachable during application execution. It then ahead-of-time compiles all
 reachable code and data into a native executable for a specific operating system
-and architecture.  This entire process is called **image build time** to
+and architecture.  This entire process is called **image build-time** to
 clearly distinguish it from the compilation of Java source code to bytecode.
 
 GraalVM Native Image supports JVM-based languages, e.g., Java, Scala, Clojure,
@@ -118,6 +118,6 @@ There is a small portion of Java features are not susceptible to ahead-of-time
 compilation, and will therefore miss out on the performance advantages. To be
 able to build a highly optimized native executable, we run an aggressive static
 analysis that requires a closed-world assumption, which means that all classes
-and all bytecodes that are reachable at runtime must be known at build time.
+and all bytecodes that are reachable at runtime must be known at build-time.
 Therefore, it is not possible to load new data that have not been available
 during ahead-of-time compilation. Continue reading to the [GraalVM Native Image Compatibility and Optimization Guide](Limitations.md).
