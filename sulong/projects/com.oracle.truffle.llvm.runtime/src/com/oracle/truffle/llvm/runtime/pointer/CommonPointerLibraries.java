@@ -52,6 +52,7 @@ import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionDescriptor;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
+import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType.Method;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignGetIndexPointerNode;
@@ -175,6 +176,12 @@ abstract class CommonPointerLibraries {
             throw UnknownIdentifierException.create(member);
         }
         LLVMFunction llvmFunction = LLVMLanguage.getContext().getGlobalScope().getFunction(method.getLinkageName());
+        if (llvmFunction == null) {
+            CompilerDirectives.transferToInterpreter();
+            final String clazzName = clazz.toString().startsWith("class ") ? clazz.toString().substring(6) : clazz.toString();
+            final String msg = String.format("No implementation of declared method %s::%s (%s) found", clazzName, method.getName(), method.getLinkageName());
+            throw new LLVMLinkerException(msg);
+        }
 
         LLVMFunctionDescriptor fn = LLVMLanguage.getContext().createFunctionDescriptor(llvmFunction);
 
