@@ -44,12 +44,25 @@ Take a look at the [native image generation](https://www.graalvm.org/docs/exampl
 
 ## Prerequisites
 
-For compilation `native-image` depends on the local toolchain, so please make
-sure: `glibc-devel`, `zlib-devel` (header files for the C library and `zlib`)
-and `gcc` are available on your system. For Linux platform, install install `libstdc++-static`
-dependency additionally. For instance, on Oracle Linux run:
+For compilation `native-image` depends on the local toolchain. Install
+ `glibc-devel`, `zlib-devel` (header files for the C library and `zlib`)
+and `gcc`, using a package manager available on your OS. Some Linux distributions may additionally require `libstdc++-static`.
+
+On Oracle Linux use `yum` package manager:
 ```
-sudo yum install libstdc++-static
+sudo yum install gcc glibc-devel zlib-devel
+```
+On  Ubuntu Linux use `apt-get` package manager:
+```
+sudo apt-get install build-essential libz-dev zlib1g-dev
+```
+On other Linux distributions use `dnf` package manager:
+```
+sudo dnf install gcc glibc-devel zlib-devel libstdc++-static
+```
+On macOS use `xcode`:
+```
+xcode-select --install
 ```
 
 #### Prerequisites for Using Native Image on Windows
