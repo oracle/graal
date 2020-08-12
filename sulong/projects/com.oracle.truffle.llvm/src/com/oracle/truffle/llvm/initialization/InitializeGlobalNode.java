@@ -53,11 +53,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Initializes the memory, allocated by {@link InitializeSymbolsNode}, for a module and protects the
- * read only section.
+ * {@link InitializeGlobalNode} initializes the value of all defined global symbols.
  *
- * @see InitializeSymbolsNode see Runner.InitializeModuleNode
- * @see InitializeExternalNode see Runner.InitializeOverwriteNode
+ * @see InitializeScopeNode
+ * @see InitializeSymbolsNode
+ * @see InitializeModuleNode
+ * @see InitializeExternalNode
+ * @see InitializeOverwriteNode
  */
 public final class InitializeGlobalNode extends LLVMNode implements LLVMHasDatalayoutNode {
 

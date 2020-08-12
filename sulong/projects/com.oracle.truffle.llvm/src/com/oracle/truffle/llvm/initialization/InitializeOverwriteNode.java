@@ -46,13 +46,23 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import java.util.ArrayList;
 
 /**
+ *
+ * The aim of {@link InitializeOverwriteNode} is to identify which defined symbols will be resolved
+ * to their corresponding symbol in the local scope when they are called. If they resolve to the
+ * symbol in the local scope then this symbol from the local scope is place into this defined
+ * symbol's location in the symbol table. This means the local and global scope is no longer
+ * required for symbol resolution, and everything is done simply by looking up the symbol in the
+ * file scope.
+ *
  * Overwriting for defined symbols that will be resolved to the local scope instead of the file
  * scope. If a defined symbol is required to be access via the local scope instead of it's file
  * scope, then that symbol's entry in the symbol table will be that of the defined symbol from the
  * local scope.
  *
+ * @see InitializeScopeNode
  * @see InitializeSymbolsNode
- * @see InitializeGlobalNode see Runner.InitializeModuleNode
+ * @see InitializeGlobalNode
+ * @see InitializeModuleNode
  * @see InitializeExternalNode
  */
 public final class InitializeOverwriteNode extends LLVMNode {

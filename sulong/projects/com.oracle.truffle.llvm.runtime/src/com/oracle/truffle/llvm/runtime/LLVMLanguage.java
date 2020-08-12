@@ -103,7 +103,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     @CompilationFinal private LLVMMemory cachedLLVMMemory;
 
     private final EconomicMap<String, LLVMScope> internalFileScopes = EconomicMap.create();
-
+    private final EconomicMap<String, CallTarget> libraryCache = EconomicMap.create();
     private final EconomicMap<Source, ExternalLibrary> internalExternalLibraries = EconomicMap.create();
 
     private final LLDBSupport lldbSupport = new LLDBSupport(this);
@@ -270,9 +270,24 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         return nextID;
     }
 
+    /*
+     * Call target
+     */
     @Override
     protected CallTarget parse(ParsingRequest request) {
         Source source = request.getSource();
+        CallTarget callTarget;
+        if (source.getPath() != null) {
+            callTarget = libraryCache.get(source.getPath());
+            if (callTarget == null) {
+                callTarget = getCapability(Loader.class).load(getContext(), source, nextID);
+                CallTarget prev = libraryCache.putIfAbsent(source.getPath(), callTarget);
+                if (prev != null) {
+                    callTarget = prev;
+                }
+            }
+            return callTarget;
+        }
         return getCapability(Loader.class).load(getContext(), source, nextID);
     }
 

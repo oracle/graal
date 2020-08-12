@@ -70,24 +70,16 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * {@link InitializeSymbolsNode} creates the symbol of all defined functions and globals, and put
- * them into the symbol table. {@link InitializeGlobalNode} initializes the value of all defined
- * global symbols.
- * <p>
- * {@link InitializeExternalNode} initializes the symbol table for all the external symbols of this
- * module. For external functions, if they are already defined in the local scope or the global
- * scope, then the already defined symbol is placed into this function's spot in the symbol table.
- * Otherwise, an instrinc or native function is created if they exists. Similarly, for external
- * globals the local and global scope is checked first for this external global, and if it exists,
- * then the defined global symbol from the local/global scope is placed into this external global's
- * location in the symbol table.
- * <p>
- * The aim of {@link InitializeOverwriteNode} is to identify which defined symbols will be resolved
- * to their corresponding symbol in the local scope when they are called. If they resolve to the
- * symbol in the local scope then this symbol from the local scope is place into this defined
- * symbol's location in the symbol table. This means the local and global scope is no longer
- * required for symbol resolution, and everything is done simply by looking up the symbol in the
- * file scope.
+ * The {@link LoadModulesNode} initialise libraries. This involves building the scopes (local scope
+ * and global scope), allocating the symbol table, resolving external symbols, resolving symbol
+ * resolution, allocating global symbols, initialise the context, and initialise the constructor.
+ *
+ * parses the dependencies of a library.
+ *
+ * There are nine phases.
+ *
+ * one scope phase six initialise phase one done/mark phase
+ *
  */
 public final class LoadModulesNode extends RootNode {
 
@@ -113,7 +105,7 @@ public final class LoadModulesNode extends RootNode {
 
     @Children DirectCallNode[] dependencies;
     final CallTarget[] callTargets;
-    final List<Source> sources;
+    final List<Source> dependenciesSource;
     final LLVMParserResult parserResult;
     final LLVMLanguage language;
     private boolean hasInitialised;
@@ -135,7 +127,7 @@ public final class LoadModulesNode extends RootNode {
     }
 
     private LoadModulesNode(String name, LLVMParserResult parserResult, LLVMContext context,
-                    FrameDescriptor rootFrame, boolean lazyParsing, List<Source> sources, Source source, LLVMLanguage language) throws Type.TypeOverflowException {
+                    FrameDescriptor rootFrame, boolean lazyParsing, List<Source> dependenciesSource, Source source, LLVMLanguage language) throws Type.TypeOverflowException {
 
         super(language, rootFrame);
         this.mainFunctionCallTarget = null;
@@ -144,10 +136,10 @@ public final class LoadModulesNode extends RootNode {
         this.bitcodeID = parserResult.getRuntime().getBitcodeID();
         this.stackPointerSlot = rootFrame.findFrameSlot(LLVMStack.FRAME_ID);
         this.parserResult = parserResult;
-        this.sources = sources;
+        this.dependenciesSource = dependenciesSource;
         this.language = language;
-        this.callTargets = new CallTarget[sources.size()];
-        this.dependencies = new DirectCallNode[sources.size()];
+        this.callTargets = new CallTarget[dependenciesSource.size()];
+        this.dependencies = new DirectCallNode[dependenciesSource.size()];
         this.hasInitialised = false;
 
         this.initContext = null;
@@ -173,10 +165,10 @@ public final class LoadModulesNode extends RootNode {
     }
 
     public static LoadModulesNode create(String name, LLVMParserResult parserResult, FrameDescriptor rootFrame,
-                    boolean lazyParsing, LLVMContext context, List<Source> sources, Source source, LLVMLanguage language) {
+                    boolean lazyParsing, LLVMContext context, List<Source> dependencySources, Source source, LLVMLanguage language) {
         LoadModulesNode node = null;
         try {
-            node = new LoadModulesNode(name, parserResult, context, rootFrame, lazyParsing, sources, source, language);
+            node = new LoadModulesNode(name, parserResult, context, rootFrame, lazyParsing, dependencySources, source, language);
             return node;
         } catch (Type.TypeOverflowException e) {
             throw new LLVMUnsupportedException(node, LLVMUnsupportedException.UnsupportedReason.UNSUPPORTED_VALUE_RANGE, e);
@@ -196,6 +188,7 @@ public final class LoadModulesNode extends RootNode {
             BitSet visited;
             ArrayDeque<CallTarget> que = null;
             LLVMScope resultScope = null;
+
             if (frame.getArguments().length > 0 && (frame.getArguments()[0] instanceof LLVMLoadingPhase)) {
                 phase = (LLVMLoadingPhase) frame.getArguments()[0];
                 visited = (BitSet) frame.getArguments()[1];
@@ -215,7 +208,9 @@ public final class LoadModulesNode extends RootNode {
                 throw new LLVMParserException("LoadModulesNode is called with unexpected arguments");
             }
 
-            // The scope is built breadth-first with a que
+            /*
+             * The scope is built in parsing order, which requires breadth-first with a que.
+             */
             if (LLVMLoadingPhase.BUILD_SCOPES.isActive(phase)) {
                 if (!visited.get(bitcodeID)) {
                     visited.set(bitcodeID);
@@ -241,123 +236,149 @@ public final class LoadModulesNode extends RootNode {
             }
 
             /*
-             * The ordering of executing these four initialization nodes is very important. The
-             * defined symbols and the external symbols must be initialized before (the value in)
-             * the global symbols can be initialized. The overwriting of symbols can only be done
-             * once all the globals are initialised and allocated in the symbol table.
+             * The order of the initialization nodes is very important. The defined symbols and the
+             * external symbols must be initialized before the global symbols can be initialized.
+             * The overwriting of symbols can only be done once all the globals are initialised and
+             * the symbol table has been allocated.
              */
             if (LLVMLoadingPhase.INIT_SYMBOLS.isActive(phase)) {
                 if (LLVMLoadingPhase.ALL == phase) {
                     visited.clear();
                 }
-                if (!visited.get(bitcodeID)) {
-                    visited.set(bitcodeID);
-                    for (DirectCallNode d : dependencies) {
-                        if (d != null) {
-                            d.call(LLVMLoadingPhase.INIT_SYMBOLS, visited);
-                        }
-                    }
-                    initSymbols.initializeSymbolTable(context);
-                    initSymbols.execute(context);
-                }
-
+                executeInitialiseSymbol(context, visited);
             }
 
             if (LLVMLoadingPhase.INIT_EXTERNALS.isActive(phase)) {
                 if (LLVMLoadingPhase.ALL == phase) {
                     visited.clear();
                 }
-                if (!visited.get(bitcodeID)) {
-                    visited.set(bitcodeID);
-                    for (DirectCallNode d : dependencies) {
-                        if (d != null) {
-                            d.call(LLVMLoadingPhase.INIT_EXTERNALS, visited);
-                        }
-                    }
-                    initExternals.execute(context, bitcodeID);
-                }
+                executeInitialiseExternal(context, visited);
             }
 
             if (LLVMLoadingPhase.INIT_GLOBALS.isActive(phase)) {
                 if (LLVMLoadingPhase.ALL == phase) {
                     visited.clear();
                 }
-                if (!visited.get(bitcodeID)) {
-                    visited.set(bitcodeID);
-                    for (DirectCallNode d : dependencies) {
-                        if (d != null) {
-                            d.call(LLVMLoadingPhase.INIT_GLOBALS, visited);
-                        }
-                    }
-                    initGlobals.execute(frame, context.getReadOnlyGlobals(bitcodeID));
-                }
+                executeInitialiseGlobals(context, visited, frame);
             }
 
             if (LLVMLoadingPhase.INIT_OVERWRITE.isActive(phase)) {
                 if (LLVMLoadingPhase.ALL == phase) {
                     visited.clear();
                 }
-                if (!visited.get(bitcodeID)) {
-                    visited.set(bitcodeID);
-                    for (DirectCallNode d : dependencies) {
-                        if (d != null) {
-                            d.call(LLVMLoadingPhase.INIT_OVERWRITE, visited);
-                        }
-                    }
-                }
-                initOverwrite.execute(context, bitcodeID);
+                executeInitialiseOverwrite(context, visited);
             }
 
             if (LLVMLoadingPhase.INIT_CONTEXT.isActive(phase)) {
                 if (LLVMLoadingPhase.ALL == phase) {
                     visited.clear();
                 }
-                if (!visited.get(bitcodeID)) {
-                    visited.set(bitcodeID);
-                    for (DirectCallNode d : dependencies) {
-                        if (d != null) {
-                            d.call(LLVMLoadingPhase.INIT_CONTEXT, visited);
-                        }
-                    }
-                    initContext.execute(frame);
-                }
+                executeInitialiseContext(visited, frame);
             }
 
             if (LLVMLoadingPhase.INIT_MODULE.isActive(phase)) {
                 if (LLVMLoadingPhase.ALL == phase) {
                     visited.clear();
                 }
-                if (!visited.get(bitcodeID)) {
-                    visited.set(bitcodeID);
-                    for (DirectCallNode d : dependencies) {
-                        if (d != null) {
-                            d.call(LLVMLoadingPhase.INIT_MODULE, visited);
-                        }
-                    }
-                    initModules.execute(frame, context);
-                }
+                executeInitialiseModule(context, visited, frame);
             }
 
             if (LLVMLoadingPhase.INIT_DONE.isActive(phase)) {
                 if (LLVMLoadingPhase.ALL == phase) {
                     visited.clear();
                 }
-                if (!visited.get(bitcodeID)) {
-                    visited.set(bitcodeID);
-                    for (DirectCallNode d : dependencies) {
-                        if (d != null) {
-                            d.call(LLVMLoadingPhase.INIT_DONE, visited);
-                        }
-                    }
-                    context.markLibraryLoaded(bitcodeID);
-                }
+                executeDone(context, visited);
             }
 
             if (LLVMLoadingPhase.ALL == phase) {
                 return resultScope;
             }
-
             return null;
+        }
+    }
+
+    private void executeInitialiseSymbol(LLVMContext context, BitSet visited) {
+        if (!visited.get(bitcodeID)) {
+            visited.set(bitcodeID);
+            for (DirectCallNode d : dependencies) {
+                if (d != null) {
+                    d.call(LLVMLoadingPhase.INIT_SYMBOLS, visited);
+                }
+            }
+            initSymbols.initializeSymbolTable(context);
+            initSymbols.execute(context);
+        }
+    }
+
+    private void executeInitialiseExternal(LLVMContext context, BitSet visited) {
+        if (!visited.get(bitcodeID)) {
+            visited.set(bitcodeID);
+            for (DirectCallNode d : dependencies) {
+                if (d != null) {
+                    d.call(LLVMLoadingPhase.INIT_EXTERNALS, visited);
+                }
+            }
+            initExternals.execute(context, bitcodeID);
+        }
+    }
+
+    private void executeInitialiseGlobals(LLVMContext context, BitSet visited, VirtualFrame frame) {
+        if (!visited.get(bitcodeID)) {
+            visited.set(bitcodeID);
+            for (DirectCallNode d : dependencies) {
+                if (d != null) {
+                    d.call(LLVMLoadingPhase.INIT_GLOBALS, visited);
+                }
+            }
+            initGlobals.execute(frame, context.getReadOnlyGlobals(bitcodeID));
+        }
+    }
+
+    private void executeInitialiseOverwrite(LLVMContext context, BitSet visited) {
+        if (!visited.get(bitcodeID)) {
+            visited.set(bitcodeID);
+            for (DirectCallNode d : dependencies) {
+                if (d != null) {
+                    d.call(LLVMLoadingPhase.INIT_OVERWRITE, visited);
+                }
+            }
+        }
+        initOverwrite.execute(context, bitcodeID);
+    }
+
+    private void executeInitialiseContext(BitSet visited, VirtualFrame frame) {
+        if (!visited.get(bitcodeID)) {
+            visited.set(bitcodeID);
+            for (DirectCallNode d : dependencies) {
+                if (d != null) {
+                    d.call(LLVMLoadingPhase.INIT_CONTEXT, visited);
+                }
+            }
+            initContext.execute(frame);
+        }
+    }
+
+    private void executeInitialiseModule(LLVMContext context, BitSet visited, VirtualFrame frame) {
+        if (!visited.get(bitcodeID)) {
+            visited.set(bitcodeID);
+            for (DirectCallNode d : dependencies) {
+                if (d != null) {
+                    d.call(LLVMLoadingPhase.INIT_MODULE, visited);
+                }
+            }
+            initModules.execute(frame, context);
+        }
+    }
+
+    private void executeDone(LLVMContext context, BitSet visited) {
+        if (!visited.get(bitcodeID)) {
+            visited.set(bitcodeID);
+            for (DirectCallNode d : dependencies) {
+                if (d != null) {
+                    d.call(LLVMLoadingPhase.INIT_DONE, visited);
+                }
+            }
+            context.markLibraryLoaded(bitcodeID);
         }
     }
 
@@ -373,33 +394,38 @@ public final class LoadModulesNode extends RootNode {
         synchronized (context) {
             if (!hasInitialised) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                for (int i = 0; i < sources.size(); i++) {
-                    // null are native libraries
-                    if (sources.get(i) != null) {
-                        CallTarget callTarget = context.getEnv().parseInternal(sources.get(i));
+                // Parse the dependencies of this library.
+                for (int i = 0; i < dependenciesSource.size(); i++) {
+                    // native dependencies are null
+                    if (dependenciesSource.get(i) != null) {
+                        CallTarget callTarget = context.getEnv().parseInternal(dependenciesSource.get(i));
                         dependencies[i] = DirectCallNode.create(callTarget);
+                        // The call targets are needed for initialising the scope.
                         callTargets[i] = callTarget;
                     }
                 }
-
-                if (frame.getArguments().length == 0) {
-                    // This is only performed for the root node of the top level call target.
-                    LLVMFunctionDescriptor startFunctionDescriptor = findAndSetSulongSpecificFunctions(language, context);
-                    LLVMFunction mainFunction = findMainFunction(parserResult);
-                    if (mainFunction != null) {
-                        RootCallTarget startCallTarget = startFunctionDescriptor.getFunctionCode().getLLVMIRFunctionSlowPath();
-                        Path applicationPath = mainFunction.getLibrary().getPath();
-                        RootNode rootNode = new LLVMGlobalRootNode(language, StackManager.createRootFrame(), mainFunction, startCallTarget, Objects.toString(applicationPath, ""));
-                        mainFunctionCallTarget = Truffle.getRuntime().createCallTarget(rootNode);
-                    }
+                // TODO (PLi): The main function can be created lazliy. The start function, the
+                // context initialise and
+                // dispose symbols should only be set once, when libsulong is first parsed.
+                LLVMFunctionDescriptor startFunctionDescriptor = findAndSetSulongSpecificFunctions(language, context);
+                LLVMFunction mainFunction = findMainFunction(parserResult);
+                if (mainFunction != null) {
+                    RootCallTarget startCallTarget = startFunctionDescriptor.getFunctionCode().getLLVMIRFunctionSlowPath();
+                    Path applicationPath = mainFunction.getLibrary().getPath();
+                    RootNode rootNode = new LLVMGlobalRootNode(language, StackManager.createRootFrame(), mainFunction, startCallTarget, Objects.toString(applicationPath, ""));
+                    mainFunctionCallTarget = Truffle.getRuntime().createCallTarget(rootNode);
                 }
-
+                /*
+                 * check if the context already contain the initialization context -- only for
+                 * libsulong. only set once per context, only insert if it's not there.
+                 */
                 initContext = this.insert(context.createInitializeContextNode(getFrameDescriptor()));
                 hasInitialised = true;
             }
 
             LLVMScope scope = loadModule(frame, context);
 
+            // or just check that scope is not null,
             if (frame.getArguments().length == 0 || !(frame.getArguments()[0] instanceof LLVMLoadingPhase)) {
                 assert scope != null;
                 return new SulongLibrary(sourceName, scope, mainFunctionCallTarget, context);
@@ -415,7 +441,6 @@ public final class LoadModulesNode extends RootNode {
 
     @CompilerDirectives.TruffleBoundary
     private BitSet createBitset() {
-        // TODO based on the bitcode ID;
         return new BitSet(dependencies.length);
     }
 
@@ -466,7 +491,7 @@ public final class LoadModulesNode extends RootNode {
 
     /**
      * Find, create, and return the function descriptor for the start method. As well as set the
-     * sulong specific functions __sulong_init_context and __sulong_dispose_context to the context.
+     * sulong specific symbols __sulong_init_context and __sulong_dispose_context to the context.
      *
      * @return The function descriptor for the start function.
      */

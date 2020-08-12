@@ -42,8 +42,11 @@ import java.util.ArrayList;
  * Initialization node for the global scope and the local scope of the module. The scopes are
  * allocated from the symbols in the file scope of the module.
  *
- * @see InitializeSymbolsNode see Runner.InitializeGlobalNode see Runner.InitializeModuleNode see
- *      Runner.InitializeOverwriteNode see Runner.InitializeExternalNode
+ * @see InitializeSymbolsNode
+ * @see InitializeGlobalNode
+ * @see InitializeModuleNode
+ * @see InitializeOverwriteNode
+ * @see InitializeExternalNode
  */
 public final class InitializeScopeNode extends LLVMNode {
     @Children final AllocScopeNode[] allocScopes;

@@ -291,6 +291,10 @@ public final class LLVMContext {
             ext.initialize();
         }
         String languageHome = language.getLLVMLanguageHome();
+
+        /*
+         *
+         */
         if (languageHome != null) {
             PlatformCapability<?> sysContextExt = language.getCapability(PlatformCapability.class);
             internalLibraryPath = Paths.get(languageHome).resolve(sysContextExt.getSulongLibrariesPath());
@@ -311,7 +315,10 @@ public final class LLVMContext {
                 TruffleFile file = library.hasFile() ? library.getFile() : env.getInternalTruffleFile(library.getPath().toUri());
                 env.parseInternal(Source.newBuilder("llvm", file).internal(library.isInternal()).build());
             }
-
+            // TODO (PLi): after the default libraries have been loaded. The start function symbol,
+            // the sulong initialise context, and the sulong dispose context symbol could be setup
+            // here
+            // instead of being at findAndSetSulongSpecificFunctions in LoadModulesNode.
             CallTarget libpolyglotMock = env.parseInternal(Source.newBuilder("llvm",
                             env.getInternalTruffleFile(internalLibraryPath.resolve(language.getCapability(PlatformCapability.class).getPolyglotMockLibrary()).toUri())).internal(true).build());
             libpolyglotMock.call();

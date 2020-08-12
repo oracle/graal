@@ -39,6 +39,7 @@ public final class LLVMPolyglotException extends LLVMException {
 
     private static final long serialVersionUID = 1L;
 
+    @TruffleBoundary
     public LLVMPolyglotException(Node location, String message) {
         super(location, message);
     }

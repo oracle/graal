@@ -51,6 +51,15 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import java.util.ArrayList;
 
 /**
+ *
+ * {@link InitializeExternalNode} initializes the symbol table for all the external symbols of this
+ * module. For external functions, if they are already defined in the local scope or the global
+ * scope, then the already defined symbol is placed into this function's spot in the symbol table.
+ * Otherwise, an instrinc or native function is created if they exists. Similarly, for external
+ * globals the local and global scope is checked first for this external global, and if it exists,
+ * then the defined global symbol from the local/global scope is placed into this external global's
+ * location in the symbol table.
+ *
  * Initialize external and exported symbols, by populating the symbol table of every external
  * symbols of a given bitcode file.
  * <p>
@@ -61,8 +70,11 @@ import java.util.ArrayList;
  * that of the corresponding defined global symbol in the local scope. If no global of such name
  * exists, a native global is created if it exists in the NFI context.
  *
- * @see InitializeSymbolsNode see Runner.InitializeGlobalNode see Runner.InitializeModuleNode see
- *      Runner.InitializeOverwriteNode
+ * @see InitializeScopeNode
+ * @see InitializeSymbolsNode
+ * @see InitializeGlobalNode
+ * @see InitializeModuleNode
+ * @see InitializeOverwriteNode
  */
 public final class InitializeExternalNode extends LLVMNode {
     @Child LLVMWriteSymbolNode writeSymbols;
