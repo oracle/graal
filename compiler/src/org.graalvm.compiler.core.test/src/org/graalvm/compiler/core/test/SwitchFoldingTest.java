@@ -25,9 +25,38 @@
 
 package org.graalvm.compiler.core.test;
 
+import static org.objectweb.asm.Opcodes.ACC_PUBLIC;
+import static org.objectweb.asm.Opcodes.ACC_STATIC;
+import static org.objectweb.asm.Opcodes.ACC_SUPER;
+import static org.objectweb.asm.Opcodes.GOTO;
+import static org.objectweb.asm.Opcodes.ICONST_0;
+import static org.objectweb.asm.Opcodes.ICONST_1;
+import static org.objectweb.asm.Opcodes.ICONST_5;
+import static org.objectweb.asm.Opcodes.ICONST_M1;
+import static org.objectweb.asm.Opcodes.IFLT;
+import static org.objectweb.asm.Opcodes.ILOAD;
+import static org.objectweb.asm.Opcodes.INVOKESTATIC;
+import static org.objectweb.asm.Opcodes.IRETURN;
+
+import org.graalvm.compiler.api.directives.GraalDirectives;
+import org.graalvm.compiler.api.test.ExportingClassLoader;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.graph.iterators.NodeIterable;
+import org.graalvm.compiler.nodes.BeginNode;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.IfNode;
+import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
+import org.junit.Assert;
 import org.junit.Test;
+import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.Label;
+import org.objectweb.asm.MethodVisitor;
+
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class SwitchFoldingTest extends GraalCompilerTest {
 
@@ -427,8 +456,8 @@ public class SwitchFoldingTest extends GraalCompilerTest {
             case 0:
                 return 4;
             case 1:
-                return 1;
             case 2:
+                GraalDirectives.deoptimize();
                 return 1;
             case 3:
                 return 6;
@@ -442,6 +471,7 @@ public class SwitchFoldingTest extends GraalCompilerTest {
             return 4;
         } else {
             if (a == 1 || a == 2) {
+                GraalDirectives.deoptimize();
                 return 1;
             } else {
                 switch (a) {
@@ -485,6 +515,195 @@ public class SwitchFoldingTest extends GraalCompilerTest {
         debug.dump(DebugContext.BASIC_LEVEL, graph, "Graph");
         createCanonicalizerPhase().apply(graph, getProviders());
         StructuredGraph referenceGraph = parseEager(ref, StructuredGraph.AllowAssumptions.YES);
-        assertEquals(referenceGraph, graph);
+        compareGraphs(referenceGraph, graph);
+    }
+
+    private static boolean compareGraphs(StructuredGraph g1, StructuredGraph g2) {
+        NodeIterable<IntegerSwitchNode> switches1 = g1.getNodes().filter(IntegerSwitchNode.class);
+        NodeIterable<IntegerSwitchNode> switches2 = g2.getNodes().filter(IntegerSwitchNode.class);
+        assertTrue(switches1.count() == switches2.count() && switches1.count() == 1);
+        assertTrue(g1.getNodes().filter(BeginNode.class).count() == g2.getNodes().filter(BeginNode.class).count());
+        assertTrue(g1.getNodes().filter(IfNode.class).count() == g2.getNodes().filter(IfNode.class).count());
+        IntegerSwitchNode s1 = switches1.first();
+        IntegerSwitchNode s2 = switches2.first();
+        assertTrue(s1.keyCount() == s2.keyCount());
+
+        for (int i = 0; i < s1.keyCount(); i++) {
+            JavaConstant key = s1.keyAt(i);
+            int j = 0;
+            for (; j < s2.keyCount(); j++) {
+                if (s2.keyAt(j).equals(key)) {
+                    break;
+                }
+            }
+            assertTrue(j < s2.keyCount());
+            FixedNode b1 = s1.keySuccessor(i).next();
+            FixedNode b2 = s2.keySuccessor(i).next();
+            assertTrue(b1.getClass() == b2.getClass());
+            if (b1 instanceof ReturnNode) {
+                ReturnNode r1 = (ReturnNode) b1;
+                ReturnNode r2 = (ReturnNode) b2;
+                assertTrue(r1.result().getClass() == r2.result().getClass());
+                if (r1.result() instanceof ConstantNode) {
+                    if (r1.result().isJavaConstant() && r2.result().isJavaConstant()) {
+                        assertTrue(r1.result().asJavaConstant().equals(r2.result().asJavaConstant()));
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
+
+    private static final String NAME = "D";
+    private static final byte[] clazz = makeClass();
+
+    public static class MyClassLoader extends ExportingClassLoader {
+        @Override
+        protected Class<?> findClass(String className) throws ClassNotFoundException {
+            return defineClass(NAME.replace('/', '.'), clazz, 0, clazz.length);
+        }
+    }
+
+    private static byte[] makeClass() {
+        ClassWriter cw = new ClassWriter(0);
+        MethodVisitor mv;
+        String jvmName = NAME.replace('.', '/');
+        cw.visit(49, ACC_SUPER | ACC_PUBLIC, jvmName, null, "java/lang/Object", new String[]{});
+
+        // Checkstyle: stop AvoidNestedBlocks
+        {
+            /*-
+             * public static int m(boolean, int) {
+             *     ILOAD_0
+             *     IFLT L1
+             *     ILOAD_1
+             *     LOOKUPSWITCH
+             *       [1, 2] -> 
+             *         return some int
+             *       [5, 7] ->
+             *         GOTO L1
+             *       [3, 6, 9] ->
+             *         GOTO L2 (Different blocks)
+             *       [0, 4, 8] ->
+             *         GOTO L2 (Same block)
+             *     L1:
+             *       deopt
+             *       return 0
+             *     L2:
+             *       return 5
+             * }
+             * 
+             * Optimization should coalesce branches [5, 7] and  [3, 6, 9]
+             */
+            Label outMerge = new Label();
+            Label inMerge = new Label();
+            Label commonTarget = new Label();
+            Label def = new Label();
+
+            int[] keys = new int[10];
+            Label[] labels = new Label[10];
+
+            Label[] inMerges = new Label[3];
+            Label[] outMerges = new Label[2];
+            Label[] simple = new Label[2];
+
+            for (int i = 0; i < inMerges.length; i++) {
+                inMerges[i] = new Label();
+            }
+            for (int i = 0; i < simple.length; i++) {
+                simple[i] = new Label();
+            }
+            for (int i = 0; i < outMerges.length; i++) {
+                outMerges[i] = new Label();
+            }
+            for (int i = 0; i < keys.length; i++) {
+                keys[i] = i;
+            }
+            int in = 0;
+            int out = 0;
+            int s = 0;
+            labels[0] = commonTarget;
+            labels[1] = simple[s++];
+            labels[2] = simple[s++];
+            labels[3] = inMerges[in++];
+            labels[4] = commonTarget;
+            labels[5] = outMerges[out++];
+            labels[6] = inMerges[in++];
+            labels[7] = outMerges[out++];
+            labels[8] = commonTarget;
+            labels[9] = inMerges[in++];
+
+            mv = cw.visitMethod(ACC_PUBLIC | ACC_STATIC, "m", "(ZI)I", null, null);
+            mv.visitCode();
+            mv.visitIntInsn(ILOAD, 0);
+            mv.visitJumpInsn(IFLT, outMerge);
+
+            mv.visitIntInsn(ILOAD, 1);
+            mv.visitLookupSwitchInsn(def, keys, labels);
+
+            for (int i = 0; i < inMerges.length; i++) {
+                mv.visitLabel(inMerges[i]);
+                mv.visitJumpInsn(GOTO, inMerge);
+            }
+            for (int i = 0; i < outMerges.length; i++) {
+                mv.visitLabel(outMerges[i]);
+                mv.visitJumpInsn(GOTO, outMerge);
+            }
+            for (int i = 0; i < simple.length; i++) {
+                mv.visitLabel(simple[i]);
+                mv.visitInsn(ICONST_0 + i);
+                mv.visitInsn(IRETURN);
+            }
+
+            mv.visitLabel(def);
+            mv.visitInsn(ICONST_1);
+            mv.visitInsn(IRETURN);
+
+            mv.visitLabel(inMerge);
+            mv.visitInsn(ICONST_5);
+            mv.visitInsn(IRETURN);
+
+            mv.visitLabel(commonTarget);
+            mv.visitJumpInsn(GOTO, inMerge);
+
+            mv.visitLabel(outMerge);
+            mv.visitMethodInsn(INVOKESTATIC, GraalDirectives.class.getName().replace('.', '/'), "deoptimize", "()V", false);
+            mv.visitInsn(ICONST_M1);
+            mv.visitInsn(IRETURN);
+
+            mv.visitMaxs(3, 2);
+            mv.visitEnd();
+        }
+        // Checkstyle: resume AvoidNestedBlocks
+
+        cw.visitEnd();
+        return cw.toByteArray();
+    }
+
+    /**
+     * Makes sure the merge common successor optimization for integer switches works correctly and
+     * does not forget a branch, even when a branch merges with something out of the switch.
+     */
+    @Test
+    public void compileTest() {
+        try {
+            MyClassLoader loader = new MyClassLoader();
+            Class<?> c = loader.findClass(NAME);
+            ResolvedJavaMethod method = getResolvedJavaMethod(c, "m");
+            StructuredGraph graph = parse(builder(method, StructuredGraph.AllowAssumptions.NO), getEagerGraphBuilderSuite());
+            graph.getDebug().dump(DebugContext.BASIC_LEVEL, graph, "Graph");
+            IntegerSwitchNode s1 = graph.getNodes().filter(IntegerSwitchNode.class).first();
+            int s1SuccCount = s1.successors().count();
+            int s1KeyCount = s1.keyCount();
+            createCanonicalizerPhase().apply(graph, getProviders());
+            graph.getDebug().dump(DebugContext.BASIC_LEVEL, graph, "Graph");
+            IntegerSwitchNode s2 = graph.getNodes().filter(IntegerSwitchNode.class).first();
+            // make sure canonicalization did not break the switch.
+            assertTrue(s1KeyCount == s2.keyCount());
+            assertTrue(s1SuccCount > s2.successors().count());
+        } catch (Exception e) {
+            Assert.fail();
+        }
     }
 }

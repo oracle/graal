@@ -24,11 +24,17 @@
  */
 package com.oracle.svm.hosted.c.info;
 
+import com.oracle.svm.core.util.UserError;
+
 public abstract class InfoTreeVisitor {
 
     protected final void processChildren(ElementInfo info) {
         for (ElementInfo child : info.getChildren()) {
-            child.accept(this);
+            try {
+                child.accept(this);
+            } catch (NumberFormatException e) {
+                throw UserError.abort("Missing CAP cache value for: " + child.getUniqueID());
+            }
         }
     }
 

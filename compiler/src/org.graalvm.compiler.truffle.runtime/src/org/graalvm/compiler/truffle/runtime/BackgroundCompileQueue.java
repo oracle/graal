@@ -25,6 +25,10 @@
 package org.graalvm.compiler.truffle.runtime;
 
 import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.FutureTask;
@@ -52,6 +56,7 @@ public class BackgroundCompileQueue {
 
     private final AtomicLong idCounter;
     private volatile ThreadPoolExecutor compilationExecutorService;
+    private volatile IdlingPriorityBlockingQueue<Runnable> compilationQueue;
     private boolean shutdown = false;
     protected final GraalTruffleRuntime runtime;
     private long delayMillis;
@@ -121,9 +126,10 @@ public class BackgroundCompileQueue {
             long compilerIdleDelay = runtime.getCompilerIdleDelay(callTarget);
             long keepAliveTime = compilerIdleDelay >= 0 ? compilerIdleDelay : 0;
 
+            this.compilationQueue = new IdlingPriorityBlockingQueue<>();
             ThreadPoolExecutor threadPoolExecutor = new ThreadPoolExecutor(threads, threads,
                             keepAliveTime, TimeUnit.MILLISECONDS,
-                            new IdlingPriorityBlockingQueue<>(), factory) {
+                            compilationQueue, factory) {
                 @Override
                 protected <T> RunnableFuture<T> newTaskFor(Callable<T> callable) {
                     return new RequestFutureTask<>((RequestImpl<T>) callable);
@@ -165,6 +171,27 @@ public class BackgroundCompileQueue {
         } else {
             return 0;
         }
+    }
+
+    /**
+     * Return call targets waiting in queue. This does not include call targets currently being
+     * compiled.
+     */
+    public Collection<OptimizedCallTarget> getQueuedTargets(EngineData engine) {
+        IdlingPriorityBlockingQueue<Runnable> queue = this.compilationQueue;
+        if (queue == null) {
+            // queue not initialized
+            return Collections.emptyList();
+        }
+        List<OptimizedCallTarget> queuedTargets = new ArrayList<>();
+        RequestFutureTask<?>[] array = queue.toArray(new RequestFutureTask<?>[0]);
+        for (RequestFutureTask<?> task : array) {
+            OptimizedCallTarget target = task.request.targetRef.get();
+            if (target != null && target.engine == engine) {
+                queuedTargets.add(target);
+            }
+        }
+        return Collections.unmodifiableCollection(queuedTargets);
     }
 
     public void shutdownAndAwaitTermination(long timeout) {
@@ -331,4 +358,5 @@ public class BackgroundCompileQueue {
     protected void compilerThreadIdled() {
         // nop
     }
+
 }

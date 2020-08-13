@@ -2,7 +2,7 @@
 	"name": "graalvm",
 	"displayName": "GraalVM",
 	"description": "Support for GraalVM",
-	"version": "0.0.9",
+	"version": "0.0.10",
 	"license": "SEE LICENSE IN LICENSE.txt",
 	"publisher": "oracle-labs-graalvm",
 	"author": {
@@ -39,6 +39,11 @@
 					"type": "string",
 					"default": "",
 					"description": "Path to GraalVM installation"
+				},
+				"graalvm.checkForMissingComponents": {
+					"type": "boolean",
+					"default": true,
+					"description": "Ask for missing GraaVM Components installation on IDE startup"
 				},
 				"graalvm.languageServer.currentWorkDir": {
 					"type": "string",

@@ -727,7 +727,7 @@ def _debuginfotest(native_image, path, build_only, args):
                          '-H:+VerifyNamingConventions',
                          '-cp', classpath('com.oracle.svm.test'),
                          '-Dgraal.LogFile=graal.log',
-                         '-H:GenerateDebugInfo=1',
+                         '-g',
                          '-H:DebugInfoSourceSearchPath=' + sourcepath,
                          '-H:DebugInfoSourceCacheRoot=' + join(path, 'sources'),
                          'hello.Hello'] + args
@@ -1452,16 +1452,20 @@ def _ensure_vm_built(config):
             vm_linkname = os.path.relpath(_vm_home(config), dirname(vm_link))
             os.symlink(vm_linkname, vm_link)
     rev_file_name = join(svmbuild_dir(), 'vm-rev')
-    rev_value = svm_suite().vc.parent(svm_suite().vc_dir)
+    if svm_suite().vc:
+        rev_value = svm_suite().vc.parent(svm_suite().vc_dir)
+    else:
+        rev_value = None
     if not os.path.exists(rev_file_name):
         rebuild_vm = True
     else:
         with open(rev_file_name, 'r') as f:
-            if f.read() != rev_value:
+            if not rev_value or f.read() != rev_value:
                 rebuild_vm = True
     if rebuild_vm:
-        with open(rev_file_name, 'w') as f:
-            f.write(rev_value)
+        if rev_value:
+            with open(rev_file_name, 'w') as f:
+                f.write(rev_value)
         build_native_image_image(config)
 
 @mx.command(suite.name, 'native-image')

@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.267.0",
+  "mxversion" : "5.270.0",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
@@ -593,8 +593,9 @@ suite = {
       ],
       "requiresConcealed" : {
         "jdk.internal.vm.ci" : [
-          "jdk.vm.ci.meta",
           "jdk.vm.ci.hotspot",
+          "jdk.vm.ci.meta",
+          "jdk.vm.ci.services",
         ],
       },
       "annotationProcessors" : [
@@ -1919,6 +1920,25 @@ suite = {
       "javaCompliance" : "8+",
       "workingSets" : "Graal,Truffle,Test",
       "jacoco" : "exclude",
+      "testProject" : True,
+    },
+
+    "org.graalvm.compiler.truffle.test.jdk11" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.compiler.truffle.test",
+      ],
+      "annotationProcessors" : [
+        "GRAAL_PROCESSOR",
+        "truffle:TRUFFLE_DSL_PROCESSOR"
+      ],
+      "checkPackagePrefix" : "false",
+      "javaCompliance" : "11+",
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "workingSets" : "Graal,Truffle,Test",
+      "jacoco" : "exclude",
+      "testProject" : True,
     },
 
     "org.graalvm.compiler.truffle.common.hotspot" : {
@@ -2183,6 +2203,7 @@ suite = {
         "org.graalvm.compiler.nodes.test",
         "org.graalvm.compiler.phases.common.test",
         "org.graalvm.compiler.truffle.test",
+        "org.graalvm.compiler.truffle.test.jdk11",
         "org.graalvm.util.test",
         "org.graalvm.compiler.loop.test",
         "org.graalvm.compiler.replacements.jdk9.test",

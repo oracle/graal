@@ -37,6 +37,7 @@ import static org.graalvm.compiler.nodes.NamedLocationIdentity.OFF_HEAP_LOCATION
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.util.Arrays;
+import java.util.function.BiFunction;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -64,6 +65,7 @@ import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -72,7 +74,9 @@ import org.graalvm.compiler.nodes.calc.AbsNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.FloatEqualsNode;
+import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
+import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
@@ -184,6 +188,7 @@ public class StandardGraphBuilderPlugins {
         registerJMHBlackholePlugins(plugins, replacements);
         registerJFRThrowablePlugins(plugins, replacements);
         registerMethodHandleImplPlugins(plugins, replacements);
+        registerPreconditionsPlugins(plugins, replacements);
         registerJcovCollectPlugins(plugins, replacements);
     }
 
@@ -1550,6 +1555,41 @@ public class StandardGraphBuilderPlugins {
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode obj) {
                     b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(obj.isConstant()));
                     return true;
+                }
+            });
+        }
+    }
+
+    private static void registerPreconditionsPlugins(InvocationPlugins plugins, Replacements replacements) {
+        if (JavaVersionUtil.JAVA_SPEC >= 9) {
+            final Registration preconditions = new Registration(plugins, "jdk.internal.util.Preconditions", replacements);
+            preconditions.register3("checkIndex", int.class, int.class, BiFunction.class, new InvocationPlugin() {
+                @Override
+                public boolean inlineOnly() {
+                    return true;
+                }
+
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode index, ValueNode length, ValueNode oobef) {
+                    if (b.needsExplicitException()) {
+                        return false;
+                    } else {
+                        ValueNode checkedIndex = index;
+                        ValueNode checkedLength = length;
+                        LogicNode lengthNegative = IntegerLessThanNode.create(length, ConstantNode.forInt(0), NodeView.DEFAULT);
+                        if (!lengthNegative.isContradiction()) {
+                            FixedGuardNode guard = b.append(new FixedGuardNode(lengthNegative, DeoptimizationReason.BoundsCheckException, DeoptimizationAction.InvalidateRecompile, true));
+                            checkedLength = PiNode.create(length, length.stamp(NodeView.DEFAULT).improveWith(StampFactory.positiveInt()), guard);
+                        }
+                        LogicNode rangeCheck = IntegerBelowNode.create(index, checkedLength, NodeView.DEFAULT);
+                        if (!rangeCheck.isTautology()) {
+                            FixedGuardNode guard = b.append(new FixedGuardNode(rangeCheck, DeoptimizationReason.BoundsCheckException, DeoptimizationAction.InvalidateRecompile));
+                            long upperBound = Math.max(0, ((IntegerStamp) checkedLength.stamp(NodeView.DEFAULT)).upperBound() - 1);
+                            checkedIndex = PiNode.create(index, index.stamp(NodeView.DEFAULT).improveWith(StampFactory.forInteger(JavaKind.Int, 0, upperBound)), guard);
+                        }
+                        b.addPush(JavaKind.Int, checkedIndex);
+                        return true;
+                    }
                 }
             });
         }

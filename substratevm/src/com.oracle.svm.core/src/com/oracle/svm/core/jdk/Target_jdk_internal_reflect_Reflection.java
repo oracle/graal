@@ -37,14 +37,21 @@ public final class Target_jdk_internal_reflect_Reflection {
     @Substitute
     @NeverInline("Starting a stack walk in the caller frame")
     private static Class<?> getCallerClass() {
-        return StackTraceUtils.getCallerClass(KnownIntrinsics.readCallerStackPointer());
+        return StackTraceUtils.getCallerClass(KnownIntrinsics.readCallerStackPointer(), true);
     }
 
     @Substitute
     @TargetElement(onlyWith = JDK8OrEarlier.class) //
     @NeverInline("Starting a stack walk in the caller frame")
     private static Class<?> getCallerClass(int depth) {
-        return StackTraceUtils.getCallerClass(KnownIntrinsics.readCallerStackPointer(), depth);
+        if (depth == -1) { // means: behave same as getCallerClass()
+            StackTraceUtils.getCallerClass(KnownIntrinsics.readCallerStackPointer(), true);
+        } else if (depth < 0) {
+            return null;
+        } else if (depth == 0) {
+            return Target_jdk_internal_reflect_Reflection.class;
+        }
+        return StackTraceUtils.getCallerClass(KnownIntrinsics.readCallerStackPointer(), true, depth - 1, false);
     }
 
     @Substitute

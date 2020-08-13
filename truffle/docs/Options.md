@@ -12,14 +12,14 @@ or for options only relevant for Truffle language implementers:
 $ my-language --help:internal
 ```
 
-In addition Graal compiler options can be listed with:
+In addition the GraalVM compiler options can be listed with:
 
 ```
 $ my-language --jvm --vm.XX:+JVMCIPrintProperties
 ```
 See https://chriswhocodes.com/graalvm_ce_jdk8_options.html for a list of Graal compiler options.
 
-## Default language launcher options
+## Default Language Launcher Options
 
 ```
   --polyglot                                   Run with all other guest languages accessible.
@@ -38,10 +38,10 @@ See https://chriswhocodes.com/graalvm_ce_jdk8_options.html for a list of Graal c
   --help:internal                              Print internal options for debugging language implementations and tools.
 ```
 
-## Expert engine options
+## Expert Engine Options
 
 Advanced engine options for controlling the engine. Useful for users and language and tool implementers.
-  
+
 ```
 Expert engine options:
   --engine.BackgroundCompilation=<Boolean>     Enable asynchronous truffle compilation in background threads
@@ -80,7 +80,7 @@ Expert engine options:
   --engine.TraceCompilation                    Print information for compilation results.
 ```
 
-## Internal engine options:
+## Internal Engine Options
 
 Internal options for debugging language implementations and tools.
 

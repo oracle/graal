@@ -648,7 +648,7 @@ final class TruffleToLibGraalEntryPoints {
     public static long getDumpChannel(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId, long debugContextHandle) {
         try (JNILibGraalScope<TruffleToLibGraal.Id> s = new JNILibGraalScope<>(GetDumpChannel, env)) {
             TruffleDebugContextImpl debugContext = LibGraalObjectHandles.resolve(debugContextHandle, TruffleDebugContextImpl.class);
-            GraphOutput<Void, ?> graphOutput = debugContext.buildOutput(GraphOutput.newBuilder(VoidGraphStructure.INSTANCE).protocolVersion(6, 1));
+            GraphOutput<Void, ?> graphOutput = debugContext.buildOutput(GraphOutput.newBuilder(VoidGraphStructure.INSTANCE));
             return LibGraalObjectHandles.create(graphOutput);
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);

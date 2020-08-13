@@ -55,4 +55,10 @@ public final class GuardProxyNode extends ProxyNode implements GuardingNode {
     public PhiNode createPhi(AbstractMergeNode merge) {
         return graph().addWithoutUnique(new GuardPhiNode(merge));
     }
+
+    @Override
+    public ProxyNode duplicateOn(LoopExitNode newProxyPoint, ValueNode newOriginalNode) {
+        assert newOriginalNode instanceof GuardNode;
+        return graph().addWithoutUnique(new GuardProxyNode((GuardingNode) newOriginalNode, newProxyPoint));
+    }
 }

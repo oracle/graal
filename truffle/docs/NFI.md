@@ -1,39 +1,39 @@
-# The Truffle Native Function Interface
+# Truffle Native Function Interface
 
 Truffle includes a way to call native functions, called the Native Function
-Interface, or NFI. It's implemented as an internal Truffle language that
+Interface (NFI). It is implemented as an internal Truffle language that
 language implementors can access via the standard polyglot eval interface and
-Truffle interop. NFI is intended to be used for example to implement a
+Truffle interoperability. NFI is intended to be used, for example, to implement a
 language's FFI, or to call native runtime routines that aren't available in
 Java.
 
 NFI uses `libffi`. On a standard JVM it calls it using JNI, and on the GraalVM
 Native Image it uses System Java. In the future it may be optimised by the
 GraalVM Compiler in native images so that native calls are made directly from
-compiled code.
+the compiled code.
 
-## Stability
+### Stability
 
 The NFI is an internal language designed for language implementors. It is not
-considered stable and the interface and beavhiour may change without warning.
+considered stable and the interface and behaviour may change without warning.
 It is not intended to be used directly by end-users.
 
-## Basic concepts
+### Basic Concepts
 
 The NFI is accessed via the polyglot interface of whatever language you are
 using. This could be Java, or could be a Truffle language. This lets you use
 the NFI from both your Java language implementation code, or from your guest
-language to reduce the ammount of Java that you need to write.
+language to reduce the amount of Java that you need to write.
 
 The entry point is the polyglot `eval` interface. This runs a special DSL, and
-returns Truffle interop objects which can then expose more methods.
+returns Truffle interoperability objects which can then expose more methods.
 
 We'll write examples using Ruby's polyglot interface, but any other JVM or
 Truffle language could be used instead.
 
-## Basic example
+### Basic Example
 
-Here's a full basic working example, before we go into the details:
+Here is a basic working example, before going into the details:
 
 ```ruby
 library = Polyglot.eval('nfi', 'load "libSDL2.dylib"')  # load a library
@@ -42,9 +42,9 @@ function = symbol.bind('():UINT32')                     # bind the symbol to typ
 puts function.call # => 12373                           # call the function
 ```
 
-## Loading libaries
+### Loading libaries
 
-To load a library, we eval a script written in the '`nfi`' language DSL. It
+To load a library, a script written in the '`nfi`' language DSL is evaluated. It
 returns an object that represents the loaded library.
 
 ```ruby
@@ -70,7 +70,7 @@ when running on a Posix platform, the flags available are `RTLD_GLOBAL`,
 semantics. The default is `RTLD_NOW` if neither `RTLD_LAZY` nor `RTLD_NOW`
 were specified.
 
-## Loading symbols from libraries
+### Loading Symbols from Libraries
 
 To load a symbol from a library, we read the symbol as a property from the
 library object we previously loaded.
@@ -79,7 +79,7 @@ library object we previously loaded.
 symbol = library['symbol_name']
 ```
 
-## Producing native function objects from symbols
+### Producing Native Function Objects from Symbols
 
 To get an executable object that we can call in order to call the native
 function, we *bind* the symbol object that we previously loaded, by calling
@@ -135,7 +135,7 @@ Types can be written in any case.
 You are responsible for any mapping of types from a foreign language such as C
 into NFI types.
 
-## Calling native function objects
+### Calling Native Function Objects
 
 To call a native function, we execute it.
 
@@ -143,7 +143,7 @@ To call a native function, we execute it.
 return_value = function.call(...arguments...)
 ```
 
-## Calling back from native code to managed functions
+### Calling back from Native Code to Managed Functions
 
 Using nested signatures, a function call can get function pointers as arguments.
 The managed caller needs to pass a Polyglot executable object, that will be
@@ -174,7 +174,7 @@ calling a regular NFI function.
 
 Function pointer types are also supported as return types.
 
-## Combined loading and binding
+### Combined Loading and Binding
 
 You can optionally combine loading a library with loading symbols and binding
 them. This is achieved with an extended `load` command, which then returns an
@@ -184,7 +184,7 @@ These two examples are equivalent:
 
 ```ruby
 library = Polyglot.eval('nfi', 'load libSDL2.dylib')
-symbol = library['SDL_GetRevisionNumber'] 
+symbol = library['SDL_GetRevisionNumber']
 function = symbol.bind('():UINT32')
 puts function.call # => 12373
 ```
@@ -197,10 +197,10 @@ puts library.SDL_GetRevisionNumber # => 12373
 The definitions in the curly braces `{}` can contain multiple function
 bindings, so that many functions can be loaded from a library at once.
 
-## Backends
+### Backends
 
 The load command can be prefixed by `with` in order to select a specific NFI
-backend. Muliple NFI backends are available. The default is called `native`,
+backend. Multiple NFI backends are available. The default is called `native`,
 and will be used if there is no `with` prefix, or the selected backend is not
 available.
 
@@ -210,7 +210,7 @@ backends may include:
 * `native`
 * `llvm`, which uses the GraalVM LLVM runtime to run the 'native' code
 
-## Native API
+### Native API
 
 The NFI can be used with unmodified, already compiled native code, but it can
 also be used with a Truffle specific API being used by the native code.
@@ -223,7 +223,7 @@ signature. An additional simple type `OBJECT` translates to an opaque
 then be used by the native code called through the NFI. See `trufflenfi.h`
 itself for more documentation on this API.
 
-## Type marshalling
+### Type Marshalling
 
 This section describes in detail how argument values and return values are
 converted for all types in the function signature.
@@ -265,7 +265,7 @@ that have a `VOID` return type.
 The return value of managed callback functions with return type `VOID` will
 be ignored.
 
-### Primitive numbers
+### Primitive Numbers
 
 The primitive number types are converted as you might expect. The argument needs
 to be a Polyglot number, and its value needs to fit in the value range of the
@@ -403,6 +403,6 @@ that function pointer must be called with a valid NFI environment as argument.
 If the caller already has an environment, threading it through to callback
 function pointers is more efficient than calling them without an `ENV` argument.
 
-## Other points
+### Other Points
 
 Native functions must use the system's standard ABI.

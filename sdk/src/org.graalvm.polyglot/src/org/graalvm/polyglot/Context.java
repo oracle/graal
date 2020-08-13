@@ -1138,6 +1138,9 @@ public final class Context implements AutoCloseable {
          * options in production environments. If set to {@code false} (the default), then passing
          * an experimental option results in an {@link IllegalArgumentException} when the context is
          * built.
+         * <p>
+         * Alternatively {@link Engine.Builder#allowExperimentalOptions(boolean)} may be used when
+         * constructing the context using an {@link #engine(Engine) explicit engine}.
          *
          * @since 19.0
          */

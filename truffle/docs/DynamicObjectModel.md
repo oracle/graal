@@ -1,17 +1,17 @@
-# Dynamic Object Model Tutorial
+# Dynamic Object Model
 
-This tutorial demonstrates how to get started with using the [DynamicObject](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/DynamicObject.html) and [DynamicObjectLibrary](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/DynamicObjectLibrary.html) API introduced with GraalVM 20.2.0.
+This guide demonstrates how to get started with using [DynamicObject](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/DynamicObject.html) and [DynamicObjectLibrary](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/DynamicObjectLibrary.html) APIs introduced with GraalVM 20.2.0.
 The full documentation can be found in the [Javadoc](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/object/DynamicObjectLibrary.html).
 
 ## Motivation
 
 When implementing a dynamic language, the object layout of user-defined objects/classes can often not be statically inferred and needs to accommodate dynamically added members and changing types.
 This is where the Dynamic Object API comes in: it takes care of the object layout and classifies objects by their shape, i.e., their properties and the types of their values.
-Access nodes can then cache the encountered shapes, forego costly checks, and access object properties more efficiently.
+Access nodes can then cache the encountered shapes, forego costly checks and access object properties more efficiently.
 
 ## Getting Started
 
-Guest language should have a common base class for all language objects that extends `DynamicObject` and implements `TruffleObject`, like so:
+Guest language should have a common base class for all language objects that extends `DynamicObject` and implements `TruffleObject`, for example:
 
 ```java
 @ExportLibrary(InteropLibrary.class)
@@ -30,7 +30,7 @@ public class BasicObject extends DynamicObject implements TruffleObject {
 ```
 It makes sense to also export common `InteropLibrary` messages in this class.
 
-Built-in object classes can then extend this base class and export additional messages, and as usual, extra Java fields and methods:
+Builtin object classes can then extend this base class and export additional messages, and, as usual, extra Java fields and methods:
 ```java
 @ExportLibrary(InteropLibrary.class)
 public class Array extends BasicObject {
@@ -56,7 +56,7 @@ public class Array extends BasicObject {
 ```
 
 Members can be accessed using the DynamicObjectLibrary, which can be obtained using the `@CachedLibrary` annotation of the Truffle DSL and `DynamicObjectLibrary.getFactory()` + `getUncached()`, `create(DynamicObject)`, and `createDispatched(int)`.
-Here's an example of how it could be used to implement InteropLibrary messages:
+Here's an example of how it could be used to implement `InteropLibrary` messages:
 ```java
 @ExportLibrary(InteropLibrary.class)
 public class SimpleObject extends BasicObject {
@@ -106,7 +106,7 @@ Note that you should reuse the same initial shapes because shapes are internally
 It is recommended that you store the initial shapes in the `TruffleLanguage` instance, so they can be shared across contexts of the same engine.
 Static shapes should be avoided except for singletons (like a `null` value).
 
-Example:
+For example:
 
 ```java
 @TruffleLanguage.Registration(...)
@@ -131,7 +131,7 @@ public final class MyLanguage extends TruffleLanguage<MyContext> {
 
 You can extend the default object layout with extra _dynamic fields_ that you hand over to the dynamic object model by adding `@DynamicField`-annotated field declarations of type `Object` or `long` in your subclasses, and specifying the _layout class_ with `Shape.newBuilder().layout(ExtendedObject.class).build();`.
 Dynamic fields declared in this class and its superclasses will then automatically be used to store dynamic object properties and allow faster access to properties that fit into this reserved space.
-Note: you must not access dynamic fields directly, always use `DynamicObjectLibrary` for this purpose.
+Note that you must not access dynamic fields directly, always use `DynamicObjectLibrary` for this purpose.
 
 ```java
 @ExportLibrary(InteropLibrary.class)
@@ -177,4 +177,4 @@ public abstract class MakePairNode extends BinaryExpressionNode {
 
 A high-level description of the object model has been published in [**An Object Storage Model for the Truffle Language Implementation Framework**](http://dl.acm.org/citation.cfm?id=2647517).
 
-See [Truffle docs](https://github.com/oracle/graal/tree/master/truffle/docs) and [Publications.md](https://github.com/oracle/graal/blob/master/docs/Publications.md) for more tutorials, presentations, and publications about Truffle and GraalVM.
+See [Truffle documentation](https://github.com/oracle/graal/tree/master/truffle/docs) and [publications](https://github.com/oracle/graal/blob/master/docs/Publications.md) for more tutorials, presentations, and publications about Truffle and GraalVM.

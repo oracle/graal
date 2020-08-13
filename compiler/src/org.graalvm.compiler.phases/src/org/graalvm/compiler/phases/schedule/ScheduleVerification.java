@@ -157,6 +157,8 @@ public final class ScheduleVerification extends BlockIteratorClosure<EconomicSet
                     }
                     Block usageBlock = nodeMap.get(usageNode);
 
+                    assert usageBlock != null || usage instanceof ProxyNode : "Usage " + usageNode + " of node " + n + " has no block";
+
                     Loop<Block> usageLoop = null;
                     if (usageNode instanceof ProxyNode) {
                         ProxyNode proxyNode = (ProxyNode) usageNode;

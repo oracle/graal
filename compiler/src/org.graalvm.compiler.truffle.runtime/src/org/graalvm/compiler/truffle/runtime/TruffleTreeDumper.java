@@ -77,7 +77,7 @@ public final class TruffleTreeDumper {
     private static void dumpASTAndCallTrees(TruffleDebugContext debug, OptimizedCallTarget callTarget, TruffleInlining inlining) throws IOException {
         if (callTarget.getRootNode() != null) {
             AST ast = new AST(callTarget);
-            final GraphOutput<AST, ?> astOutput = debug.buildOutput(GraphOutput.newBuilder(AST_DUMP_STRUCTURE).blocks(AST_DUMP_STRUCTURE).protocolVersion(7, 0));
+            final GraphOutput<AST, ?> astOutput = debug.buildOutput(GraphOutput.newBuilder(AST_DUMP_STRUCTURE).blocks(AST_DUMP_STRUCTURE));
 
             astOutput.beginGroup(ast, "AST", "AST", null, 0, debug.getVersionProperties());
 
@@ -94,7 +94,7 @@ public final class TruffleTreeDumper {
                 return;
             }
             CallTree callTree = new CallTree(callTarget, null);
-            final GraphOutput<CallTree, ?> callTreeOutput = debug.buildOutput(GraphOutput.newBuilder(CALL_GRAPH_DUMP_STRUCTURE).blocks(CALL_GRAPH_DUMP_STRUCTURE).protocolVersion(7, 0));
+            final GraphOutput<CallTree, ?> callTreeOutput = debug.buildOutput(GraphOutput.newBuilder(CALL_GRAPH_DUMP_STRUCTURE).blocks(CALL_GRAPH_DUMP_STRUCTURE));
             callTreeOutput.beginGroup(null, "Call Tree", "Call Tree", null, 0, debug.getVersionProperties());
             callTreeOutput.print(callTree, null, 0, AFTER_PROFILING);
             if (inlining.countInlinedCalls() > 0) {
@@ -537,7 +537,7 @@ public final class TruffleTreeDumper {
             root = makeCallTreeNode(target);
             inlined.nodes.add(root);
             root.properties.put("label", target.toString());
-            root.properties.putAll(((OptimizedCallTarget) target).getDebugProperties(null));
+            root.properties.putAll(((OptimizedCallTarget) target).getDebugProperties());
             build(target, root, inlining, this);
         }
 
@@ -572,7 +572,7 @@ public final class TruffleTreeDumper {
                         } else {
                             callTreeNode.properties.put("inlined", "false");
                             if (decision != null) {
-                                callTreeNode.properties.putAll(decision.getTarget().getDebugProperties(decision));
+                                callTreeNode.properties.putAll(decision.getTarget().getDebugProperties());
                             }
                             graph.notInlined.nodes.add(callTreeNode);
                         }

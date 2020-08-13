@@ -29,10 +29,11 @@ import com.oracle.svm.hosted.dashboard.ToJson.JsonArray;
 import com.oracle.svm.hosted.dashboard.ToJson.JsonString;
 import com.oracle.svm.hosted.dashboard.ToJson.JsonNumber;
 import com.oracle.svm.hosted.dashboard.ToJson.JsonValue;
-import com.oracle.graal.pointsto.flow.ActualParameterTypeFlow;
-import org.graalvm.nativeimage.hosted.Feature.OnAnalysisExitAccess;
+import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.core.util.VMError;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.flow.ActualParameterTypeFlow;
 import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
 import com.oracle.graal.pointsto.flow.AllInstantiatedTypeFlow;
 import com.oracle.graal.pointsto.flow.AllSynchronizedTypeFlow;
@@ -69,20 +70,22 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.FeatureImpl;
+
+import org.graalvm.nativeimage.hosted.Feature.OnAnalysisExitAccess;
+import org.graalvm.graphio.GraphStructure;
+import org.graalvm.graphio.GraphOutput;
 
 import jdk.vm.ci.code.BytecodePosition;
-
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.BitSet;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -181,10 +184,8 @@ class PointsToJsonObject extends JsonObject {
         }
     }
 
-    private final BitSet known = new BitSet() {
-        private static final long serialVersionUID = 1L;
-    };
-    private final List<AnalysisWrapper> flows = new InflatableArrayList<>();
+    private final BitSet known = new BitSet();
+    private List<AnalysisWrapper> flows = new InflatableArrayList<>();
 
     PointsToJsonObject(OnAnalysisExitAccess access) {
         this.access = access;
@@ -221,7 +222,7 @@ class PointsToJsonObject extends JsonObject {
 
         @Override
         JsonValue getValue(String name) {
-            return name == NAMES.get(0) ? JsonNumber.get(flow.id) : (name == NAMES.get(1) ? JsonString.get(flow.flowType) : new InfoJsonObject(flow));
+            return NAMES.get(0).equals(name) ? JsonNumber.get(flow.id) : (NAMES.get(1).equals(name) ? JsonString.get(flow.flowType) : new InfoJsonObject(flow));
         }
     }
 
@@ -256,9 +257,9 @@ class PointsToJsonObject extends JsonObject {
                 case QUALIFIED_NAME_SIMPLE_PARAMS:
                     return JsonString.get(flow.qualifiedNameSimpleParams);
                 case INPUTS:
-                    return JsonArray.get(flow.inputs.stream().map(JsonNumber::get));
+                    return JsonArray.get(flow.inputs.values().stream().map(JsonNumber::get));
                 case USES:
-                    return JsonArray.get(flow.uses.stream().map(JsonNumber::get));
+                    return JsonArray.get(flow.uses.values().stream().map(JsonNumber::get));
                 case CODE_LOCATION:
                     return JsonString.get(flow.codeLocation);
                 case CALLEE_NAMES:
@@ -273,6 +274,125 @@ class PointsToJsonObject extends JsonObject {
         }
     }
 
+    Map<? extends Object, ? extends Object> getProperties() {
+        return Collections.emptyMap();
+    }
+
+    void dump(GraphOutput<?, ?> output) throws IOException {
+        build();
+        GraphOutput.newBuilder(new PointToStructure()).build(output).print(this, getProperties(), 0, "%s", "PointsTo Graph");
+    }
+
+    static class Port {
+        final int size;
+        final boolean input;
+
+        Port(int size) {
+            this(size, true);
+        }
+
+        Port(int size, boolean input) {
+            this.size = size;
+            this.input = input;
+        }
+    }
+
+    private static class PointToStructure implements GraphStructure<PointsToJsonObject, AnalysisWrapper, WrapperClazz, Port> {
+        enum EMPT {
+            EDGE
+        }
+
+        @Override
+        public PointsToJsonObject graph(PointsToJsonObject currentGraph, Object obj) {
+            return null; // no subgraphs
+        }
+
+        @Override
+        public Iterable<? extends AnalysisWrapper> nodes(PointsToJsonObject graph) {
+            return graph.flows.stream().filter(f -> f != null && graph.known.get(f.id)).collect(Collectors.toList());
+        }
+
+        @Override
+        public int nodesCount(PointsToJsonObject graph) {
+            return (int) graph.flows.stream().filter(f -> f != null && graph.known.get(f.id)).count();
+        }
+
+        @Override
+        public int nodeId(AnalysisWrapper node) {
+            return node.id;
+        }
+
+        @Override
+        public boolean nodeHasPredecessor(AnalysisWrapper node) {
+            return node.inputs.size() > 0;
+        }
+
+        @Override
+        public void nodeProperties(PointsToJsonObject graph, AnalysisWrapper node, Map<String, ? super Object> properties) {
+            node.getProperties(properties);
+        }
+
+        @Override
+        public AnalysisWrapper node(Object obj) {
+            return (obj instanceof AnalysisWrapper) ? (AnalysisWrapper) obj : null;
+        }
+
+        @Override
+        public WrapperClazz nodeClass(Object obj) {
+            return (obj instanceof AnalysisWrapper) ? ((AnalysisWrapper) obj).getClazz() : ((obj instanceof WrapperClazz) ? (WrapperClazz) obj : null);
+        }
+
+        @Override
+        public WrapperClazz classForNode(AnalysisWrapper node) {
+            return node.getClazz();
+        }
+
+        @Override
+        public String nameTemplate(WrapperClazz nodeClass) {
+            return nodeClass.name;
+        }
+
+        @Override
+        public Object nodeClassType(WrapperClazz nodeClass) {
+            return nodeClass.wrappedClass;
+        }
+
+        @Override
+        public Port portInputs(WrapperClazz nodeClass) {
+            return nodeClass.inputs;
+        }
+
+        @Override
+        public Port portOutputs(WrapperClazz nodeClass) {
+            return nodeClass.uses;
+        }
+
+        @Override
+        public int portSize(Port port) {
+            return port.size;
+        }
+
+        @Override
+        public boolean edgeDirect(Port port, int index) {
+            return true;
+        }
+
+        @Override
+        public String edgeName(Port port, int index) {
+            return "";
+        }
+
+        @Override
+        public Object edgeType(Port port, int index) {
+            return EMPT.EDGE;
+        }
+
+        @Override
+        public Collection<? extends AnalysisWrapper> edgeNodes(PointsToJsonObject graph, AnalysisWrapper node, Port port, int index) {
+            return Collections.singleton(graph.flows.get(port.input ? node.inputs.get(index) : node.uses.get(index)));
+        }
+    }
+
     /**
      * Provides constants mapping the name of each subclass of
      * {@link com.oracle.graal.pointsto.flow.TypeFlow} to the corresponding type flow name expected
@@ -283,9 +403,7 @@ class PointsToJsonObject extends JsonObject {
         private static final HashMap<Class<?>, String> names;
 
         static {
-            names = new HashMap<Class<?>, String>() {
-                private static final long serialVersionUID = 1L;
-            };
+            names = new HashMap<>();
             names.put(FormalReturnTypeFlow.class, "formalReturn");
             names.put(ActualReturnTypeFlow.class, "actualReturn");
             names.put(FormalParamTypeFlow.class, "formalParam");
@@ -383,16 +501,17 @@ class PointsToJsonObject extends JsonObject {
      * Convenience data structure to extract relevant data from an analysis method. Provides access
      * to method ID, qualified name and method flows graph.
      */
-    private static class AnalysisWrapper {
+    private static final class AnalysisWrapper {
 
+        public final Class<?> wrappedClass;
         public final int id;
         public String qualifiedName = null;
         public String qualifiedNameSimpleParams = null;
         public MethodFlowsGraph flowsGraph = null;
 
         public String flowType = null;
-        public Set<Integer> inputs = new HashSet<>();
-        public Set<Integer> uses = new HashSet<>();
+        public HashMap<Integer, Integer> inputs = new HashMap<>();
+        public HashMap<Integer, Integer> uses = new HashMap<>();
         public String codeLocation = null;
         public ArrayList<String> calleeNames = null;
         public ArrayList<String> types = null;
@@ -400,10 +519,10 @@ class PointsToJsonObject extends JsonObject {
 
         private static final String METHOD_FLOW = "method";
 
-        AnalysisWrapper(AnalysisMethod method) {
-            this(method.getTypeFlow().id());
+        AnalysisWrapper(Class<?> clazz, AnalysisMethod method) {
+            this(clazz, method.getTypeFlow().id());
             this.flowType = METHOD_FLOW;
-            this.qualifiedName = method.getQualifiedName();
+            this.qualifiedName = method.format("%H.%n(%P)");
             this.qualifiedNameSimpleParams = method.format("%H.%n(%p)");
             this.flowsGraph = null;
 
@@ -417,9 +536,59 @@ class PointsToJsonObject extends JsonObject {
             }
         }
 
-        AnalysisWrapper(int id) {
+        AnalysisWrapper(Class<?> clazz, int id) {
             this.id = id;
+            wrappedClass = clazz;
         }
+
+        void getProperties(Map<String, ? super Object> properties) {
+            if (flowType != null) {
+                properties.put("flowType", flowType);
+            }
+            if (qualifiedNameSimpleParams != null) {
+                properties.put("qualifiedNameSimpleParams", qualifiedNameSimpleParams);
+            }
+            if (codeLocation != null) {
+                properties.put("codeLocation", codeLocation);
+            }
+            if (calleeNames != null) {
+                properties.put("calleeNames", calleeNames.toArray(new String[calleeNames.size()]));
+            }
+            if (types != null) {
+                properties.put("types", types.toArray(new String[types.size()]));
+            }
+            if (enclosingMethod != null) {
+                properties.put("enclosingMethod", enclosingMethod);
+            }
+        }
+
+        WrapperClazz getClazz() {
+            return WrapperClazz.get(wrappedClass, inputs.size(), uses.size(), qualifiedName != null ? qualifiedName : flowType);
+        }
+    }
+
+    private static final class WrapperClazz {
+
+        private static final Map<Class<?>, Map<Integer, Map<Integer, Map<String, WrapperClazz>>>> clazzes = new HashMap<>();
+
+        static WrapperClazz get(Class<?> clazz, int inputs, int uses, String name) {
+            return clazzes.computeIfAbsent(clazz, c -> new HashMap<>())
+                            .computeIfAbsent(inputs, s -> new HashMap<>())
+                            .computeIfAbsent(uses, s -> new HashMap<>())
+                            .computeIfAbsent(name, n -> new WrapperClazz(clazz, inputs, uses, name));
+        }
+
+        private WrapperClazz(Class<?> wrappedClass, int inputs, int uses, String name) {
+            this.inputs = new Port(inputs);
+            this.uses = new Port(uses, false);
+            this.name = name;
+            this.wrappedClass = wrappedClass;
+        }
+
+        final Port inputs;
+        final Port uses;
+        final String name;
+        final Class<?> wrappedClass;
     }
 
     /**
@@ -427,7 +596,7 @@ class PointsToJsonObject extends JsonObject {
      */
     private void serializeMethods(BigBang bb) {
         for (AnalysisMethod method : bb.getUniverse().getMethods()) {
-            serializeMethod(new AnalysisWrapper(method));
+            serializeMethod(new AnalysisWrapper(method.getClass(), method));
         }
     }
 
@@ -476,12 +645,11 @@ class PointsToJsonObject extends JsonObject {
             // Done. No need to process this flow further, since we have already collected it.
             return;
         }
-        AnalysisWrapper flowWrapper = new AnalysisWrapper(flowId);
+        AnalysisWrapper flowWrapper = new AnalysisWrapper(flow.getClass(), flowId);
         flowWrapper.flowType = serializeTypeFlowName(flow);
         flowWrapper.codeLocation = getCodeLocation(flow);
-
-        known.set(flowWrapper.id);
-        flows.set(flowWrapper.id, flowWrapper);
+        known.set(flowId);
+        flows.set(flowId, flowWrapper);
         // Perform flow-type specific tasks for certain flow-types.
         if (flow instanceof InvokeTypeFlow) {
             // A callsite gets its callees as uses.
@@ -534,7 +702,7 @@ class PointsToJsonObject extends JsonObject {
      */
     private void connectFlowsToEnclosingMethods(BigBang bb) {
         for (AnalysisMethod method : bb.getUniverse().getMethods()) {
-            AnalysisWrapper methodWrapper = new AnalysisWrapper(method);
+            AnalysisWrapper methodWrapper = new AnalysisWrapper(method.getClass(), method);
             if (methodWrapper.flowsGraph == null) {
                 // Some methods (such as interface methods) don't have any flows. This
                 // field is null in that case. Can skip them.
@@ -607,7 +775,7 @@ class PointsToJsonObject extends JsonObject {
      * @param flow TypeFlow who's inputs and observees to collect
      * @param targetList target array for input use and observee IDs to
      */
-    private void collectInputs(TypeFlow<?> flow, Set<Integer> targetList) {
+    private void collectInputs(TypeFlow<?> flow, Map<Integer, Integer> targetList) {
         for (Object input : flow.getInputs()) {
             TypeFlow<?> inputFlow = (TypeFlow<?>) input;
             addUnique(targetList, inputFlow.id());
@@ -632,7 +800,7 @@ class PointsToJsonObject extends JsonObject {
      * @param flow TypeFlow who's uses and observers to collect
      * @param targetList target list for adding use and observer IDs to
      */
-    private void collectUses(TypeFlow<?> flow, Set<Integer> targetList) {
+    private void collectUses(TypeFlow<?> flow, Map<Integer, Integer> targetList) {
         for (Object use : flow.getUses()) {
             TypeFlow<?> useFlow = (TypeFlow<?>) use;
             addUnique(targetList, useFlow.id());
@@ -655,8 +823,8 @@ class PointsToJsonObject extends JsonObject {
      * @param list target list
      * @param element integer to add
      */
-    private static <T> void addUnique(Set<T> list, T element) { // TODO: Improve me..!
-        list.add(element);
+    private static <T> void addUnique(Map<Integer, T> list, T element) {
+        list.put(list.size(), element);
     }
 
     /**
@@ -708,13 +876,13 @@ class PointsToJsonObject extends JsonObject {
      * @param inputs true for "inputs" - the array to match
      */
     private void matchFromTo(AnalysisWrapper fromNode, boolean inputs) {
-        Set<Integer> fromIds = inputs ? fromNode.inputs : fromNode.uses;
-        for (Integer fromId : fromIds) {
+        Map<Integer, Integer> fromIds = inputs ? fromNode.inputs : fromNode.uses;
+        for (Integer fromId : fromIds.values()) {
             AnalysisWrapper referencedNode = flows.get(fromId);
             if (referencedNode == null) {
                 continue;
             }
-            Set<Integer> usesList = inputs ? referencedNode.uses : referencedNode.inputs;
+            Map<Integer, Integer> usesList = inputs ? referencedNode.uses : referencedNode.inputs;
             addUnique(usesList, fromNode.id);
         }
     }

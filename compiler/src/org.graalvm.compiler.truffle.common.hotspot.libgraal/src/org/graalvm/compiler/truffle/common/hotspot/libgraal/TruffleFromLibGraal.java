@@ -63,6 +63,8 @@ public @interface TruffleFromLibGraal {
         CancelCompilation(boolean.class, Object.class, String.class),
         CompilableToString(String.class, Object.class),
         ConsumeOptimizedAssumptionDependency(void.class, Consumer.class, Object.class),
+        CountCalls(int.class, Object.class),
+        CountInlinedCalls(int.class, Object.class),
         CreateInliningPlan(Object.class, Object.class, Object.class, Object.class),
         CreateStringSupplier(Supplier.class, long.class),
         DequeueTargets(void.class, Object.class),
@@ -110,6 +112,8 @@ public @interface TruffleFromLibGraal {
         OnSuccess(void.class, Object.class, Object.class, Object.class, long.class, long.class),
         OnTruffleTierFinished(void.class, Object.class, Object.class, Object.class, long.class),
         RegisterOptimizedAssumptionDependency(Consumer.class, Object.class, long.class),
+        SetCallCount(void.class, Object.class, int.class),
+        SetInlinedCallCount(void.class, Object.class, int.class),
         ShouldInline(boolean.class, Object.class);
         // @formatter:on
 

@@ -377,11 +377,15 @@ public class CompileQueue {
 
     private void createSuites() {
         regularSuites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, snippetReflection, true);
+        modifyRegularSuites(regularSuites);
         deoptTargetSuites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, snippetReflection, true);
         removeDeoptTargetOptimizations(deoptTargetSuites);
         regularLIRSuites = NativeImageGenerator.createLIRSuites(featureHandler, runtimeConfig.getProviders(), true);
         deoptTargetLIRSuites = NativeImageGenerator.createLIRSuites(featureHandler, runtimeConfig.getProviders(), true);
         removeDeoptTargetOptimizations(deoptTargetLIRSuites);
+    }
+
+    protected void modifyRegularSuites(@SuppressWarnings("unused") Suites suites) {
     }
 
     public static PhaseSuite<HighTierContext> afterParseCanonicalization() {

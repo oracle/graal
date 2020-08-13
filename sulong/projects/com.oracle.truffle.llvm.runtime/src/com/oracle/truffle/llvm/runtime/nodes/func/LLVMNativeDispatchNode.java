@@ -48,7 +48,6 @@ import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.runtime.NFIContextExtension.UnsupportedNativeTypeException;
 import com.oracle.truffle.llvm.runtime.interop.nfi.LLVMNativeConvertNode;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.types.FunctionType;
@@ -134,9 +133,7 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
                     @Cached("nativeCallStatisticsEnabled(context)") boolean statistics) {
         Object[] nativeArgs = prepareNativeArguments(arguments, toNative);
         Object returnValue;
-        try (StackPointer save = ((StackPointer) arguments[0]).newFrame()) {
-            returnValue = LLVMNativeCallUtils.callNativeFunction(statistics, context, nativeCall, nativeFunctionHandle, nativeArgs, null);
-        }
+        returnValue = LLVMNativeCallUtils.callNativeFunction(statistics, context, nativeCall, nativeFunctionHandle, nativeArgs, null);
         return fromNative.executeConvert(returnValue);
     }
 
@@ -150,9 +147,7 @@ public abstract class LLVMNativeDispatchNode extends LLVMNode {
                     @Cached("nativeCallStatisticsEnabled(context)") boolean statistics) {
         Object[] nativeArgs = prepareNativeArguments(arguments, toNative);
         Object returnValue;
-        try (StackPointer save = ((StackPointer) arguments[0]).newFrame()) {
-            returnValue = LLVMNativeCallUtils.callNativeFunction(statistics, context, nativeCall, dispatchIdentity(function.asNative()), nativeArgs, null);
-        }
+        returnValue = LLVMNativeCallUtils.callNativeFunction(statistics, context, nativeCall, dispatchIdentity(function.asNative()), nativeArgs, null);
         return fromNative.executeConvert(returnValue);
     }
 }

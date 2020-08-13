@@ -66,4 +66,5 @@ public enum FrameSlotKind {
     FrameSlotKind() {
         this.tag = (byte) ordinal();
     }
+
 }

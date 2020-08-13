@@ -155,11 +155,19 @@ final class FileSystems {
             if (result != null) {
                 return result;
             }
-            for (LanguageInfo language : context.getAccessibleLanguages(true).values()) {
-                PolyglotLanguage lang = (PolyglotLanguage) EngineAccessor.NODES.getPolyglotLanguage(language);
-                result = relativizeToLanguageHome(fs, path, lang);
-                if (result != null) {
-                    return result;
+            Map<String, LanguageInfo> accessibleLanguages = context.getAccessibleLanguages(true);
+            /*
+             * The accessibleLanguages is null for a closed context. The
+             * getRelativePathInLanguageHome may be called even for closed context by the compiler
+             * thread.
+             */
+            if (accessibleLanguages != null) {
+                for (LanguageInfo language : accessibleLanguages.values()) {
+                    PolyglotLanguage lang = (PolyglotLanguage) EngineAccessor.NODES.getPolyglotLanguage(language);
+                    result = relativizeToLanguageHome(fs, path, lang);
+                    if (result != null) {
+                        return result;
+                    }
                 }
             }
             return null;
@@ -797,7 +805,7 @@ final class FileSystems {
 
         @Override
         public void createSymbolicLink(Path link, Path target, FileAttribute<?>... attrs) throws IOException {
-            hostfs.createSymbolicLink(resolveRelative(link), resolveRelative(target), attrs);
+            hostfs.createSymbolicLink(resolveRelative(link), target, attrs);
         }
 
         @Override

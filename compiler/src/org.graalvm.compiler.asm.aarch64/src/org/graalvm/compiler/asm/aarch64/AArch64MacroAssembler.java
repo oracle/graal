@@ -32,8 +32,8 @@ import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.vm.ci.aarch64.AArch64.zr;
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.BASE_REGISTER_ONLY;
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.EXTENDED_REGISTER_OFFSET;
-import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED;
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_SIGNED_UNSCALED;
+import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED;
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.REGISTER_OFFSET;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.LDP;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.Instruction.STP;
@@ -353,16 +353,25 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             case EXTENDED_REGISTER_OFFSET:
                 add(64, dst, address.getBase(), address.getOffset(), address.getExtendType(), address.isRegisterOffsetScaled() ? shiftAmt : 0);
                 break;
-            case PC_LITERAL: {
-                addressOf(dst);
-                break;
-            }
             case BASE_REGISTER_ONLY:
                 movx(dst, address.getBase());
                 break;
             default:
                 throw GraalError.shouldNotReachHere();
         }
+    }
+
+    /**
+     * Helper method for loadAddress which can be called when the transfer size does not matter.
+     */
+    public void loadAddress(Register dst, AArch64Address address) {
+        AArch64Address.AddressingMode mode = address.getAddressingMode();
+        boolean scaled = address.isRegisterOffsetScaled();
+        assert (mode == IMMEDIATE_SIGNED_UNSCALED) ||
+                        (mode == REGISTER_OFFSET && !scaled) ||
+                        (mode == EXTENDED_REGISTER_OFFSET && !scaled);
+
+        loadAddress(dst, address, 8);
     }
 
     private boolean tryMerge(int sizeInBytes, Register rt, AArch64Address address, boolean isStore) {
@@ -858,8 +867,16 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     @Override
     public void ldr(int srcSize, Register rt, AArch64Address address) {
-        // Try to merge two adjacent loads into one ldp.
-        if (!tryMergeLoadStore(srcSize, rt, address, false)) {
+        ldr(srcSize, rt, address, true);
+    }
+
+    /**
+     * Loads a srcSize value from address into rt zero-extending it if necessary.
+     *
+     * In addition, if requested, tries to merge two adjacent loads into one ldp.
+     */
+    private void ldr(int srcSize, Register rt, AArch64Address address, boolean tryMerge) {
+        if (!(tryMerge && tryMergeLoadStore(srcSize, rt, address, false))) {
             super.ldr(srcSize, rt, address);
         }
     }
@@ -2248,22 +2265,15 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         return AArch64Address.PLACEHOLDER;
     }
 
-    public void addressOf(Register dst) {
+    /**
+     * Emits patchable adrp add sequence.
+     */
+    public void adrpAdd(Register dst) {
         if (codePatchingAnnotationConsumer != null) {
             codePatchingAnnotationConsumer.accept(new AdrpAddMacroInstruction(position()));
         }
         super.adrp(dst);
         super.add(64, dst, dst, 0);
-    }
-
-    /**
-     * Loads an address into Register d.
-     *
-     * @param d general purpose register. May not be null.
-     * @param a AArch64Address the address of an operand.
-     */
-    public void lea(Register d, AArch64Address a) {
-        a.lea(this, d);
     }
 
     /**
@@ -2284,14 +2294,15 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * Emits elf patchable adrp ldr sequence.
+     * Emits patchable adrp ldr sequence.
      */
-    public void adrpLdr(int srcSize, Register result, AArch64Address a) {
+    public void adrpLdr(int srcSize, Register result, Register addressReg) {
         if (codePatchingAnnotationConsumer != null) {
             codePatchingAnnotationConsumer.accept(new AdrpLdrMacroInstruction(position(), srcSize));
         }
-        super.adrp(a.getBase());
-        this.ldr(srcSize, result, a);
+        super.adrp(addressReg);
+        AArch64Address address = AArch64Address.createImmediateAddress(srcSize, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, addressReg, 0x0);
+        this.ldr(srcSize, result, address, false);
     }
 
     public static class AdrpLdrMacroInstruction extends AArch64Assembler.PatchableCodeAnnotation {

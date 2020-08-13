@@ -56,7 +56,6 @@ import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.memory.LLVMNativeMemory;
-import com.oracle.truffle.llvm.runtime.memory.LLVMStack.StackPointer;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMDispatchNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMDispatchNodeGen;
@@ -110,14 +109,9 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
         @Override
         public Object execute(VirtualFrame frame) {
             Object[] arguments = frame.getArguments();
-            Object result;
-            try (StackPointer sp = ((StackPointer) arguments[0]).newFrame()) {
-                result = funcCallNode.call(arguments);
-            }
+            Object result = funcCallNode.call(arguments);
             Object[] wrapperArgs = new Object[]{arguments[0], result};
-            try (StackPointer sp = ((StackPointer) arguments[0]).newFrame()) {
-                return wrapperCallNode.call(wrapperArgs);
-            }
+            return wrapperCallNode.call(wrapperArgs);
         }
 
     }
@@ -142,9 +136,7 @@ public abstract class LLVMTruffleDecorateFunction extends LLVMIntrinsic {
             Object[] arguments = frame.getArguments();
             Object result = funcCallNode.executeDispatch(func, arguments);
             Object[] wrapperArgs = new Object[]{arguments[0], result};
-            try (StackPointer sp = ((StackPointer) arguments[0]).newFrame()) {
-                return wrapperCallNode.call(wrapperArgs);
-            }
+            return wrapperCallNode.call(wrapperArgs);
         }
 
     }

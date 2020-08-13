@@ -3,9 +3,9 @@
 This document is about tools for optimizing or debugging Truffle interpreters
 for peak temporal performance.
 
-## Strategy
+### Strategy
 
-1. Run with a profiler to sample the application and identify responsible compilation units. Use a sampling delay (`--cpusampler.Delay=MILLISECONDS`) to only profile after warmup. See [`profiling.md`](Profiling.md).
+1. Run with a profiler to sample the application and identify responsible compilation units. Use a sampling delay (`--cpusampler.Delay=MILLISECONDS`) to only profile after warmup. See the [Profiling](Profiling.md) guide.
 
 2. Understand what is being compiled and look for deoptimizations. Methods that are listed to run mostly in the interpreter likely have a problem with deoptimization.
 
@@ -13,27 +13,26 @@ for peak temporal performance.
 
 4. Enable performance warnings and list boundary calls.
 
-4. Dump the Graal graph of the responsible compilation unit and look at the phase `After TruffleTier`.
-4. Look at the Graal graphs at the phases `After TruffleTier` and `After PartialEscape` and check it is what you'd expect.
+5. Dump the Graal graph of the responsible compilation unit and look at the phase `After TruffleTier`.
+6. Look at the Graal graphs at the phases `After TruffleTier` and `After PartialEscape` and check it is what you'd expect.
    If there are nodes there you don't want to be there, think about how to guard against including them.
    If there are more complex nodes there than you want, think about how to add specialisations that generate simpler code.
-   If there are nodes you think should be there in a benchmark that aren't, think about how to make values dynamic so they aren't optimized away.
+   If there are nodes you think should be there in a benchmark that are not, think about how to make values dynamic so they are not optimized away.
 
-5. Search for `Invoke` nodes in the Graal IR. `Invoke` nodes that are not representing guest language calls should be specialized away. This may not be always possible, e.g., if the method does I/O.
+7. Search for `Invoke` nodes in the Graal IR. `Invoke` nodes that are not representing guest language calls should be specialized away. This may not be always possible, e.g., if the method does I/O.
 
-6. Search for control flow splits (red lines) and investigate whether they result from control flow caused by the guest application or are just artefacts from the language implementation. The latter should be avoided if possible.
+8. Search for control flow splits (red lines) and investigate whether they result from control flow caused by the guest application or are just artefacts from the language implementation. The latter should be avoided if possible.
 
-7. Search for indirections in linear code (`Load` and `LoadIndexed`) and try to minimise the code. The less code that is on the hot-path the better.
+9. Search for indirections in linear code (`Load` and `LoadIndexed`) and try to minimise the code. The less code that is on the hot-path the better.
 
-## Truffle compiler options
+## Truffle Compiler Options
 
-A full list of the latest expert and internal options can be found in [`options.md`](Options.md)
+A full list of the latest expert and internal options can be found in the [Options](Options.md) guide.
 
-#### Observing compilations
+#### Observing Compilations
 
 This section provides an overview over most available command line options to observe compilations.
 Note that most options also require the additional `--experimental-options` flag set.
-
 
 `--engine.TraceCompilation` prints a line each time a method is compiled.
 
@@ -55,7 +54,7 @@ Note that most options also require the additional `--experimental-options` flag
 [engine] opt done         BinaryConstraint.input                                      |ASTSize      19/   19 |Time   740( 408+332 )ms |DirectCallNodes I    0/D    0 |GraalNodes   109/  166 |CodeSize          530 |CodeAddress 0x1102e8690 |Source octane-deltablue.js:409
 ```
 
-`--engine.TraceCompilationAST` prints the Truffle AST for each compilation. 
+`--engine.TraceCompilationAST` prints the Truffle AST for each compilation.
 
 ```
 [engine] opt AST          OrderedCollection.size <split-57429b3a>                     |ASTSize      10/   10 |Calls/Thres   10559/    3 |CallsAndLoop/Thres   10559/ 1000
@@ -194,7 +193,7 @@ Note that most options also require the additional `--experimental-options` flag
       ...
 ```
 
-`--engine.PrintExpansionHistogram` prints at the end of each compilation a histogram of AST interpreter method calls. 
+`--engine.PrintExpansionHistogram` prints at the end of each compilation a histogram of AST interpreter method calls.
 
 ```
 [engine] Expansion Histograms:
@@ -214,8 +213,8 @@ Graal Invoke Histogram: Number of invokes created for a method during partial ev
            2 |          2     1     1     1.00 | OptimizedDirectCallNode.call(Object[])
 ```
 
-`--engine.InstrumentBoundaries` prints at the end of the process information about runtime calls (`@TruffleBoundary`) made from compiled code. These cause objects to escape, are black-boxes to further optimization, and should generally be minimised. 
-Also see [`BranchInstrumentation.md`](BranchInstrumentation.md) for more details about instrumenting branches and boundaries.
+`--engine.InstrumentBoundaries` prints at the end of the process information about runtime calls (`@TruffleBoundary`) made from compiled code. These cause objects to escape, are black-boxes to further optimization, and should generally be minimised.
+Also see the [BranchInstrumentation](BranchInstrumentation.md) guide for more details about instrumenting branches and boundaries.
 
 ```
 Execution profile (sorted by hotness)
@@ -230,7 +229,7 @@ com.oracle.truffle.js.builtins.ConstructorBuiltins$ConstructDateNode.constructDa
 [1] count = 69510
 ```
 
-`--engine.InstrumentBranches` prints at the end of the process information of branch usage in compiled code. 
+`--engine.InstrumentBranches` prints at the end of the process information of branch usage in compiled code.
 
 ```
 Execution profile (sorted by hotness)
@@ -263,6 +262,51 @@ com.oracle.truffle.js.nodes.control.WhileNode$WhileDoRepeatingNode.executeRepeat
 ...
 ```
 
+`--engine.SpecializationStatistics` prints detailed histograms about Node classes and their usage of Truffle DSL specializations.
+Note that specialization statistics require a recompilation of the interpeter.
+See [`SpecializationStatistics.md`](SpecializationHistogram.md) on a tutorial on how to use it.
+
+```
+ -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+| Name                                                                         Instances          Executions     Executions per instance
+ -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+| JSWriteCurrentFrameSlotNodeGen                                               8 (17%)            18 (12%)        Min=         1 Avg=        2.25 Max=          5  MaxNode= test.js~5-7:76-128
+|   doBoolean <boolean>                                                          1 (13%)             1 (6%)         Min=         1 Avg=        1.00 Max=          1  MaxNode= test.js~4:52-71
+|   doInt <int>                                                                  1 (13%)             1 (6%)         Min=         1 Avg=        1.00 Max=          1  MaxNode= test.js~5-7:76-128
+|   doSafeIntegerInt                                                             0 (0%)              0 (0%)         Min=         0 Avg=        0.00 Max=          0  MaxNode=  -
+|   doSafeInteger                                                                0 (0%)              0 (0%)         Min=         0 Avg=        0.00 Max=          0  MaxNode=  -
+|   doLong                                                                       0 (0%)              0 (0%)         Min=         0 Avg=        0.00 Max=          0  MaxNode=  -
+|   doDouble                                                                     0 (0%)              0 (0%)         Min=         0 Avg=        0.00 Max=          0  MaxNode=  -
+|   doObject                                                                     7 (88%)            16 (89%)        Min=         1 Avg=        2.29 Max=          5  MaxNode= test.js~5-7:76-128
+|     <DynamicObjectBasic>                                                         6 (86%)            12 (75%)        Min=         1 Avg=        2.00 Max=          5  MaxNode= test.js~5-7:76-128
+|     <IteratorRecord>                                                             1 (14%)             1 (6%)         Min=         1 Avg=        1.00 Max=          1  MaxNode= test.js~1-8:16-130
+|     <String>                                                                     2 (29%)             2 (13%)        Min=         1 Avg=        1.00 Max=          1  MaxNode= test.js~5-7:76-128
+|     <Integer>                                                                    1 (14%)             1 (6%)         Min=         1 Avg=        1.00 Max=          1  MaxNode= test.js~6:105-123
+|   --------------------------------------------------------------------------------------------------------------------------------------------------------------------
+|   [doBoolean]                                                                  1 (13%)             1 (6%)         Min=         1 Avg=        1.00 Max=          1  MaxNode= test.js~4:52-71
+|   [doInt, doObject]                                                            1 (13%)             4 (22%)        Min=         4 Avg=        4.00 Max=          4  MaxNode= test.js~5-7:76-128
+|     doInt                                                                        1 (100%)            1 (25%)        Min=         1 Avg=        1.00 Max=          1  MaxNode= test.js~5-7:76-128
+|     doObject                                                                     1 (100%)            3 (75%)        Min=         3 Avg=        3.00 Max=          3  MaxNode= test.js~5-7:76-128
+|   [doObject]                                                                   6 (75%)            13 (72%)        Min=         1 Avg=        2.17 Max=          5  MaxNode= test.js~5-7:76-128
+ -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+| Name                                                                         Instances          Executions     Executions per instance
+ -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+| JSReadCurrentFrameSlotNodeGen                                                8 (17%)            25 (17%)        Min=         1 Avg=        3.13 Max=          5  MaxNode= test.js~5-7:76-128
+|   doBoolean                                                                    0 (0%)              0 (0%)         Min=         0 Avg=        0.00 Max=          0  MaxNode=  -
+|   doInt <no-args>                                                              1 (13%)             1 (4%)         Min=         1 Avg=        1.00 Max=          1  MaxNode= test.js~5:81-87
+|   doDouble                                                                     0 (0%)              0 (0%)         Min=         0 Avg=        0.00 Max=          0  MaxNode=  -
+|   doObject <no-args>                                                           8 (100%)           24 (96%)        Min=         1 Avg=        3.00 Max=          5  MaxNode= test.js~5-7:76-128
+|   doSafeInteger                                                                0 (0%)              0 (0%)         Min=         0 Avg=        0.00 Max=          0  MaxNode=  -
+|   --------------------------------------------------------------------------------------------------------------------------------------------------------------------
+|   [doInt, doObject]                                                            1 (13%)             4 (16%)        Min=         4 Avg=        4.00 Max=          4  MaxNode= test.js~5:81-87
+|     doInt                                                                        1 (100%)            1 (25%)        Min=         1 Avg=        1.00 Max=          1  MaxNode= test.js~5:81-87
+|     doObject                                                                     1 (100%)            3 (75%)        Min=         3 Avg=        3.00 Max=          3  MaxNode= test.js~5:81-87
+|   [doObject]                                                                   7 (88%)            21 (84%)        Min=         1 Avg=        3.00 Max=          5  MaxNode= test.js~5-7:76-128
+ -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+```
+
+
+
 `--vm.XX:+TraceDeoptimization` prints deoptimization events, whether code compiled by Truffle or conventional compilers. The output of HotSpot and native images may vary for this flag.
 
 ```
@@ -291,7 +335,7 @@ Uncommon trap occurred in org.graalvm.compiler.truffle.runtime.OptimizedCallTarg
 ]
 ```
 
-#### Controlling what is compiled
+#### Controlling What Is Compiled
 
 To make best use of the former options, limit what is compiled to the methods that you are interested in.
 
@@ -307,12 +351,9 @@ To make best use of the former options, limit what is compiled to the methods th
 
 `--engine.Compilation=false` turns off Truffle compilation all together.
 
+### Ideal Graph Visualizer
 
-## Ideal Graph Visualizer
-
-IGV, the *Ideal Graph Visualizer*, is a tool to understand Truffle ASTs and
-Graal graphs. It's available from
-https://www.oracle.com/technetwork/graalvm/downloads/index.html.
+[Ideal Graph Visualizer (IGV)](https://docs.oracle.com/en/graalvm/enterprise/20/guide/tools/ideal-graph-visualizer/) is a tool to understand Truffle ASTs and the GraalVM compiler graphs.
 
 Typical usage is to run with `--vm.Dgraal.Dump=Truffle:1 --vm.Dgraal.PrintGraph=Network`,
 which will show you Truffle ASTs, guest-language call graphs, and the Graal
@@ -321,21 +362,19 @@ If the `-Dgraal.PrintGraph=Network` flag is omitted then the dump file are place
 
 Use `--vm.Dgraal.Dump=Truffle:2` to dump Graal graphs between each compiler phase.
 
-## C1 Visualizer
+### C1 Visualizer
 
 The C1 Visualizer, is a tool to understand the LIR, register allocation, and
-code generation stages of Graal. It's available from
-http://lafo.ssw.uni-linz.ac.at/c1visualizer/.
+code generation stages of Graal. It is available from [here](http://lafo.ssw.uni-linz.ac.at/c1visualizer/).
 
 Typical usage is `--vm.Dgraal.Dump=:3`. Files are put into a `graal_dumps`
 directory which you should then open in the C1 Visualizer.
 
-## Disassembler
+### Disassembler
 
 `--vm.XX:+UnlockDiagnosticVMOptions --vm.XX:+PrintAssembly` prints assembly
 code. You will need to install `hsdis` using `mx hsdis` in `graal/compiler`,
-or manually into the current directory from
-https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/hsdis/intel/.
+or manually into the current directory from [here](https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/hsdis/intel/).
 
 Combine with `--vm.XX:TieredStopAtLevel=0` to disable compilation of runtime
 routines so that it's easier to find your guest-language method.

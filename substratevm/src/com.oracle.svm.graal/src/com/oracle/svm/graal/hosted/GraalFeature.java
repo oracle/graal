@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -921,5 +921,10 @@ class GraphPrepareMetaAccessExtensionProvider implements MetaAccessExtensionProv
     public boolean canConstantFoldDynamicAllocation(ResolvedJavaType type) {
         assert type instanceof AnalysisType : "AnalysisType is required; AnalysisType lazily creates array types of any depth, so type cannot be null";
         return ((AnalysisType) type).isInstantiated();
+    }
+
+    @Override
+    public boolean isGuaranteedSafepoint(ResolvedJavaMethod method, boolean isDirect) {
+        throw VMError.shouldNotReachHere();
     }
 }

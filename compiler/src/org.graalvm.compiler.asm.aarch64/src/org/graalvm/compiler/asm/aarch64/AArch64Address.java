@@ -451,30 +451,4 @@ public final class AArch64Address extends AbstractAddress {
                 throw GraalError.shouldNotReachHere();
         }
     }
-
-    /**
-     * Loads an address into Register r.
-     *
-     * @param masm the macro assembler.
-     * @param r general purpose register. May not be null.
-     */
-    public void lea(AArch64MacroAssembler masm, Register r) {
-        switch (addressingMode) {
-            case IMMEDIATE_SIGNED_UNSCALED:
-                if (immediate == 0 && base.equals(r)) { // it's a nop
-                    break;
-                }
-                masm.add(64, r, base, immediate);
-                break;
-            case REGISTER_OFFSET:
-                masm.add(64, r, base, offset);
-                break;
-            case PC_LITERAL: {
-                masm.mov(r, getImmediate());
-                break;
-            }
-            default:
-                throw GraalError.shouldNotReachHere();
-        }
-    }
 }

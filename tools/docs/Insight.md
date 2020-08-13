@@ -8,6 +8,7 @@ hooks on already deployed applications running at full speed.
 code once, apply your insights anytime, anywhere!
 
 Find out what **Insight** offers from a [tools change log](../CHANGELOG.md),
+from a [formal API specification](https://www.graalvm.org/tools/javadoc/org/graalvm/tools/insight/Insight.html),
 by checking the [Insight Hacker's manual](Insight-Manual.md)
 or by reading on...
 

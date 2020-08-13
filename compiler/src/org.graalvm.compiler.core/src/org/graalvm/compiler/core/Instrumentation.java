@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,24 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.truffle.runtime;
-
-import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
+package org.graalvm.compiler.core;
 
 /**
- * Directives that influence the optimizations of the Truffle compiler.
+ * Interface in charge of holding the instrumentation data structures.
  */
-public class GraalCompilerDirectives {
-    /**
-     * Returns a boolean value indicating whether the method is executed in the first tier Truffle
-     * compilation.
-     *
-     * {@link PolyglotCompilerOptions#MultiTier}
-     *
-     * @return {@code true} when executed in the first tier Truffle compilation, {@code false}
-     *         otherwise.
-     */
-    public static boolean inFirstTier() {
-        return false;
-    }
+public interface Instrumentation {
 }

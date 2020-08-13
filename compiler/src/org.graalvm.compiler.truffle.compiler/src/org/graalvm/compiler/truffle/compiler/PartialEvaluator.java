@@ -99,6 +99,7 @@ import org.graalvm.compiler.truffle.compiler.phases.InstrumentTruffleBoundariesP
 import org.graalvm.compiler.truffle.compiler.phases.VerifyFrameDoesNotEscapePhase;
 import org.graalvm.compiler.truffle.compiler.phases.inlining.AgnosticInliningPhase;
 import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
+import org.graalvm.compiler.truffle.compiler.substitutions.TruffleDecodingPlugins;
 import org.graalvm.compiler.truffle.compiler.substitutions.TruffleGraphBuilderPlugins;
 import org.graalvm.compiler.truffle.compiler.substitutions.TruffleInvocationPluginProvider;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
@@ -116,6 +117,12 @@ import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
  * Class performing the partial evaluation starting from the root node of an AST.
  */
 public abstract class PartialEvaluator {
+
+    private static final TimerKey PartialEvaluationTimer = DebugContext.timer("PartialEvaluation-Decoding").doc("Time spent in the graph-decoding of partial evaluation.");
+    private static final TimerKey TruffleEscapeAnalysisTimer = DebugContext.timer("PartialEvaluation-EscapeAnalysis").doc("Time spent in the escape-analysis in Truffle tier.");
+    private static final TimerKey TruffleConditionalEliminationTimer = DebugContext.timer("PartialEvaluation-ConditionalElimination").doc("Time spent in conditional elimination in Truffle tier.");
+    private static final TimerKey TruffleCanonicalizerTimer = DebugContext.timer("PartialEvaluation-Canonicalizer").doc("Time spent in the canonicalizer in the Truffle tier.");
+    private static final TimerKey TruffleConvertDeoptimizeTimer = DebugContext.timer("PartialEvaluation-ConvertDeoptimizeToGuard").doc("Time spent in converting deoptimize to guard in Truffle tier.");
 
     protected final Providers providers;
     protected final Architecture architecture;
@@ -146,6 +153,8 @@ public abstract class PartialEvaluator {
      */
     protected volatile InstrumentPhase.Instrumentation instrumentation;
 
+    protected final TruffleConstantFieldProvider compilationLocalConstantProvider;
+
     public PartialEvaluator(Providers providers, GraphBuilderConfiguration configForRoot, SnippetReflectionProvider snippetReflection, Architecture architecture,
                     KnownTruffleTypes knownFields) {
         this.providers = providers;
@@ -167,6 +176,7 @@ public abstract class PartialEvaluator {
         this.configPrototype = createGraphBuilderConfig(configForRoot, true);
         this.decodingInvocationPlugins = createDecodingInvocationPlugins(configForRoot.getPlugins());
         this.nodePlugins = createNodePlugins(configForRoot.getPlugins());
+        this.compilationLocalConstantProvider = new TruffleConstantFieldProvider(providers.getConstantFieldProvider(), providers.getMetaAccess());
     }
 
     protected void initialize(OptionValues options) {
@@ -331,11 +341,19 @@ public abstract class PartialEvaluator {
             try (DebugContext.Scope s = request.debug.scope("CreateGraph", request.graph);
                             Indent indent = request.debug.logAndIndent("evaluate %s", request.graph);) {
                 inliningGraphPE(request);
-                new ConvertDeoptimizeToGuardPhase().apply(request.graph, request.highTierContext);
+                try (DebugCloseable a = TruffleConvertDeoptimizeTimer.start(request.debug)) {
+                    new ConvertDeoptimizeToGuardPhase().apply(request.graph, request.highTierContext);
+                }
                 inlineReplacements(request);
-                new ConditionalEliminationPhase(false).apply(request.graph, request.highTierContext);
-                canonicalizer.apply(request.graph, request.highTierContext);
-                partialEscape(request);
+                try (DebugCloseable a = TruffleConditionalEliminationTimer.start(request.debug)) {
+                    new ConditionalEliminationPhase(false).apply(request.graph, request.highTierContext);
+                }
+                try (DebugCloseable a = TruffleCanonicalizerTimer.start(request.debug)) {
+                    canonicalizer.apply(request.graph, request.highTierContext);
+                }
+                try (DebugCloseable a = TruffleEscapeAnalysisTimer.start(request.debug)) {
+                    partialEscape(request);
+                }
                 // recompute loop frequencies now that BranchProbabilities have been canonicalized
                 ComputeLoopFrequenciesClosure.compute(request.graph);
                 applyInstrumentationPhases(request);
@@ -513,7 +531,7 @@ public abstract class PartialEvaluator {
         DeoptimizeOnExceptionPhase postParsingPhase = new DeoptimizeOnExceptionPhase(
                         method -> TruffleCompilerRuntime.getRuntime().getInlineKind(method, true) == InlineKind.DO_NOT_INLINE_WITH_SPECULATIVE_EXCEPTION);
 
-        Providers compilationUnitProviders = providers.copyWith(new TruffleConstantFieldProvider(providers.getConstantFieldProvider(), providers.getMetaAccess()));
+        Providers compilationUnitProviders = providers.copyWith(compilationLocalConstantProvider);
         return new CachingPEGraphDecoder(architecture, request.graph, compilationUnitProviders, newConfig, TruffleCompilerImpl.Optimizations,
                         AllowAssumptions.ifNonNull(request.graph.getAssumptions()),
                         loopExplosionPlugin, decodingInvocationPlugins, inlineInvokePlugins, parameterPlugin, nodePluginList, callInlined,
@@ -569,11 +587,10 @@ public abstract class PartialEvaluator {
         @SuppressWarnings("hiding")
         InvocationPlugins decodingInvocationPlugins = new InvocationPlugins(parent.getInvocationPlugins());
         registerTruffleInvocationPlugins(decodingInvocationPlugins, false);
+        TruffleDecodingPlugins.registerInvocationPlugins(decodingInvocationPlugins, providers);
         decodingInvocationPlugins.closeRegistration();
         return decodingInvocationPlugins;
     }
-
-    private static final TimerKey PartialEvaluationTimer = DebugContext.timer("PartialEvaluation").doc("Time spent in partial evaluation.");
 
     @SuppressWarnings({"unused", "try"})
     private void inliningGraphPE(Request request) {
