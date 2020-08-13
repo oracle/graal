@@ -35,5 +35,6 @@ The following language implementations exist already:
 * [bf](https://github.com/chumer/bf/), an experimental Brainfuck programming language implementation.
 * [brainfuck-jvm](https://github.com/mthmulders/brainfuck-jvm), another Brainfuck language implementation.
 * [Heap Language](https://github.com/jaroslavtulach/heapdump) tutorial showing embedding of Truffle languages via interoperability.
+* [ProloGraal](https://gitlab.forge.hefr.ch/tony.licata/prolog-truffle) a Prolog language implementation supporting interoperability.
 
 Submit a [pull request](https://help.github.com/articles/using-pull-requests/) to add/remove from this list.
