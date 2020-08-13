@@ -759,6 +759,19 @@ public abstract class TruffleCompilerImpl implements TruffleCompilerBase {
             boolean exitVM = optionValues.get(CompilationFailureAction) == PolyglotCompilerOptions.ExceptionAction.ExitVM;
             return compilationExceptionsAreFatal || performanceWarningsAreFatal || exitVM;
         }
+
+        @Override
+        protected Void onCompilationFailure(CompilationWrapper<Void>.Failure failure) {
+            handleCompilationFailure(failure);
+            return null;
+        }
+    }
+
+    /**
+     * Handles a Truffle compilation failure by calling {@code failure.handle()}.
+     */
+    protected void handleCompilationFailure(CompilationWrapper<Void>.Failure failure) {
+        failure.handle(false);
     }
 
     /**
