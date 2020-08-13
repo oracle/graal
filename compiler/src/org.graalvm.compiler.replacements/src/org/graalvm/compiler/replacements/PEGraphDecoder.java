@@ -39,8 +39,8 @@ import java.util.Formatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
-import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
@@ -689,16 +689,16 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     private final InlineInvokePlugin[] inlineInvokePlugins;
     private final ParameterPlugin parameterPlugin;
     private final NodePlugin[] nodePlugins;
-    private final EconomicMap<SpecialCallTargetCacheKey, Object> specialCallTargetCache;
-    private final EconomicMap<ResolvedJavaMethod, Object> invocationPluginCache;
+    private final ConcurrentHashMap<SpecialCallTargetCacheKey, Object> specialCallTargetCache;
+    private final ConcurrentHashMap<ResolvedJavaMethod, Object> invocationPluginCache;
     private final ResolvedJavaMethod peRootForInlining;
     protected final SourceLanguagePositionProvider sourceLanguagePositionProvider;
 
     public PEGraphDecoder(Architecture architecture, StructuredGraph graph, CoreProviders providers, LoopExplosionPlugin loopExplosionPlugin, InvocationPlugins invocationPlugins,
                     InlineInvokePlugin[] inlineInvokePlugins, ParameterPlugin parameterPlugin,
                     NodePlugin[] nodePlugins, ResolvedJavaMethod peRootForInlining, SourceLanguagePositionProvider sourceLanguagePositionProvider,
-                    EconomicMap<SpecialCallTargetCacheKey, Object> specialCallTargetCache,
-                    EconomicMap<ResolvedJavaMethod, Object> invocationPluginCache) {
+                    ConcurrentHashMap<SpecialCallTargetCacheKey, Object> specialCallTargetCache,
+                    ConcurrentHashMap<ResolvedJavaMethod, Object> invocationPluginCache) {
         super(architecture, graph, providers, true);
         this.loopExplosionPlugin = loopExplosionPlugin;
         this.invocationPlugins = invocationPlugins;
