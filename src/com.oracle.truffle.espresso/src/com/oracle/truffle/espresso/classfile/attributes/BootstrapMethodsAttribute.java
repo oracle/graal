@@ -79,6 +79,9 @@ public final class BootstrapMethodsAttribute extends Attribute {
                     case METHODTYPE:
                         args[i] = pool.resolvedMethodTypeAt(accessingKlass, argAt(i));
                         break;
+                    case DYNAMIC:
+                        args[i] = pool.resolvedDynamicConstantAt(accessingKlass, argAt(i)).guestBoxedValue(meta);
+                        break;
                     case CLASS:
                         args[i] = pool.resolvedKlassAt(accessingKlass, argAt(i)).mirror();
                         break;
