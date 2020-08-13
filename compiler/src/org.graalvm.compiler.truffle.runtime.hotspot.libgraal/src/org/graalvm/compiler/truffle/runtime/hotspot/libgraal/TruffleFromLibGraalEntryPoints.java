@@ -126,6 +126,10 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 final class TruffleFromLibGraalEntryPoints {
 
+    static {
+        assert checkHotSpotCalls();
+    }
+
     @TruffleFromLibGraal(ConsumeOptimizedAssumptionDependency)
     static void consumeOptimizedAssumptionDependency(Consumer<OptimizedAssumptionDependency> consumer, Object dep) {
         consumer.accept((OptimizedAssumptionDependency) dep);
