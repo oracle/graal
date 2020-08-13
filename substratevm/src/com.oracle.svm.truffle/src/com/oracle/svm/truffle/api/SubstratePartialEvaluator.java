@@ -25,7 +25,6 @@
 package com.oracle.svm.truffle.api;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.graph.SourceLanguagePositionProvider;
 import org.graalvm.compiler.nodes.EncodedGraph;
@@ -49,16 +48,18 @@ import com.oracle.svm.core.graal.phases.DeadStoreRemovalPhase;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+import java.util.concurrent.ConcurrentHashMap;
+
 public class SubstratePartialEvaluator extends PartialEvaluator {
 
-    private final EconomicMap<ResolvedJavaMethod, Object> invocationPluginsCache;
-    private final EconomicMap<SpecialCallTargetCacheKey, Object> specialCallTargetCache;
+    private final ConcurrentHashMap<ResolvedJavaMethod, Object> invocationPluginsCache;
+    private final ConcurrentHashMap<SpecialCallTargetCacheKey, Object> specialCallTargetCache;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public SubstratePartialEvaluator(Providers providers, GraphBuilderConfiguration configForRoot, SnippetReflectionProvider snippetReflection, Architecture architecture) {
         super(providers, configForRoot, snippetReflection, architecture, new SubstrateKnownTruffleTypes(providers.getMetaAccess()));
-        this.invocationPluginsCache = EconomicMap.create(Equivalence.DEFAULT);
-        this.specialCallTargetCache = EconomicMap.create(Equivalence.DEFAULT);
+        this.invocationPluginsCache = new ConcurrentHashMap<>();
+        this.specialCallTargetCache = new ConcurrentHashMap<>();
     }
 
     @Override
