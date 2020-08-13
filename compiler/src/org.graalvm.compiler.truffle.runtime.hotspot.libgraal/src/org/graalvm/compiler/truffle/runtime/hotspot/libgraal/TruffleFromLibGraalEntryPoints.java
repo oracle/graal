@@ -90,11 +90,8 @@ import java.lang.reflect.Modifier;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Formatter;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -129,14 +126,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 final class TruffleFromLibGraalEntryPoints {
 
-    private static final Map<Integer, JavaKind> JAVA_KINDS;
     static {
-        Map<Integer, JavaKind> m = new HashMap<>();
-        for (JavaKind jk : JavaKind.values()) {
-            m.put(jk.getBasicType(), jk);
-        }
-        JAVA_KINDS = Collections.unmodifiableMap(m);
-
         assert checkHotSpotCalls();
     }
 
@@ -198,13 +188,17 @@ final class TruffleFromLibGraalEntryPoints {
 
     @TruffleFromLibGraal(Id.GetJavaKindForFrameSlotKind)
     static int getJavaKindForFrameSlotKind(Object truffleRuntime, int frameSlotKindTag) {
-        JavaKind kind = ((HotSpotTruffleCompilerRuntime) truffleRuntime).getJavaKindForFrameSlotKind(frameSlotKindTag);
-        return kind.getBasicType();
+        return ((HotSpotTruffleCompilerRuntime) truffleRuntime).getJavaKindForFrameSlotKind(frameSlotKindTag).ordinal();
     }
 
     @TruffleFromLibGraal(Id.GetFrameSlotKindTagsCount)
     static int getFrameSlotKindTagsCount(Object truffleRuntime) {
         return ((HotSpotTruffleCompilerRuntime) truffleRuntime).getFrameSlotKindTagsCount();
+    }
+
+    @TruffleFromLibGraal(GetFrameSlotKindTagForJavaKind)
+    static int getFrameSlotKindTagForJavaKind(Object truffleRuntime, int ordinal) {
+        return ((HotSpotTruffleCompilerRuntime) truffleRuntime).getFrameSlotKindTagForJavaKind(JavaKind.values()[ordinal]);
     }
 
     @TruffleFromLibGraal(GetTruffleCallBoundaryMethods)
@@ -225,12 +219,6 @@ final class TruffleFromLibGraalEntryPoints {
             res[i++] = LibGraal.translate(m);
         }
         return res;
-    }
-
-    @TruffleFromLibGraal(GetFrameSlotKindTagForJavaKind)
-    static int getFrameSlotKindTagForJavaKind(Object truffleRuntime, int basicType) {
-        JavaKind kind = getJavaKind(basicType);
-        return ((HotSpotTruffleCompilerRuntime) truffleRuntime).getFrameSlotKindTagForJavaKind(kind);
     }
 
     @TruffleFromLibGraal(Log)
@@ -302,14 +290,6 @@ final class TruffleFromLibGraalEntryPoints {
         OptimizedCallTarget callTarget = (OptimizedCallTarget) compilable;
         HotSpotSpeculationLog log = (HotSpotSpeculationLog) callTarget.getSpeculationLog();
         return LibGraal.getFailedSpeculationsAddress(log);
-    }
-
-    private static JavaKind getJavaKind(int basicType) {
-        JavaKind javaKind = JAVA_KINDS.get(basicType);
-        if (javaKind == null) {
-            throw new IllegalArgumentException("Unknown JavaKind basic type: " + basicType);
-        }
-        return javaKind;
     }
 
     @TruffleFromLibGraal(CreateStringSupplier)
