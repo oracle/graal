@@ -84,8 +84,9 @@ public final class NativeImageHeapWriter {
     public long writeHeap(DebugContext debug, RelocatableBuffer buffer) {
         try (Indent perHeapIndent = debug.logAndIndent("BootImageHeap.writeHeap:")) {
             for (ObjectInfo info : heap.getObjects()) {
-                assert !heap.isBlacklisted(info.getObject());
-                writeObject(info, buffer);
+                if (!heap.isBlacklisted(info.getObject())) {
+                    writeObject(info, buffer);
+                }
             }
 
             // Only static fields that are writable get written to the native image heap,
