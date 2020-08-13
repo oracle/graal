@@ -911,15 +911,14 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         SpecialCallTargetCacheKey key = new SpecialCallTargetCacheKey(callTarget.invokeKind(), callTarget.targetMethod(), invokeData.contextType, callTarget.receiver().stamp(NodeView.DEFAULT));
-        Object specialCallTarget = specialCallTargetCache.get(key);
-        if (specialCallTarget == null) {
-            specialCallTarget = MethodCallTargetNode.devirtualizeCall(key.invokeKind, key.targetMethod, key.contextType, graph.getAssumptions(),
-                            key.receiverStamp);
-            if (specialCallTarget == null) {
-                specialCallTarget = CACHED_NULL_VALUE;
+        Object specialCallTarget = specialCallTargetCache.computeIfAbsent(key, k -> {
+            Object target = MethodCallTargetNode.devirtualizeCall(k.invokeKind, k.targetMethod, k.contextType, graph.getAssumptions(),
+                            k.receiverStamp);
+            if (target == null) {
+                target = CACHED_NULL_VALUE;
             }
-            specialCallTargetCache.put(key, specialCallTarget);
-        }
+            return target;
+        });
 
         return specialCallTarget == CACHED_NULL_VALUE ? null : (ResolvedJavaMethod) specialCallTarget;
     }
@@ -991,14 +990,13 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
     }
 
     private InvocationPlugin getInvocationPlugin(ResolvedJavaMethod targetMethod) {
-        Object invocationPlugin = invocationPluginCache.get(targetMethod);
-        if (invocationPlugin == null) {
-            invocationPlugin = invocationPlugins.lookupInvocation(targetMethod);
-            if (invocationPlugin == null) {
-                invocationPlugin = CACHED_NULL_VALUE;
+        Object invocationPlugin = invocationPluginCache.computeIfAbsent(targetMethod, method -> {
+            Object plugin = invocationPlugins.lookupInvocation(targetMethod);
+            if (plugin == null) {
+                plugin = CACHED_NULL_VALUE;
             }
-            invocationPluginCache.put(targetMethod, invocationPlugin);
-        }
+            return plugin;
+        });
 
         return invocationPlugin == CACHED_NULL_VALUE ? null : (InvocationPlugin) invocationPlugin;
     }
