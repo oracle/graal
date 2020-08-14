@@ -260,11 +260,9 @@ public final class ObjectKlass extends Klass {
 
     @ExplodeLoop
     private void actualInit() {
+        checkErroneousInitialization();
         synchronized (this) {
             if (!(isInitializedOrPrepared())) { // Check under lock
-                if (initState == ERRONEOUS) {
-                    throw Meta.throwExceptionWithMessage(getMeta().java_lang_NoClassDefFoundError, "Erroneous class: " + getName());
-                }
                 try {
                     /*
                      * Spec fragment: Then, initialize each final static field of C with the
@@ -303,7 +301,7 @@ public final class ObjectKlass extends Klass {
                         clinit.getCallTarget().call();
                     }
                 } catch (EspressoException e) {
-                    setErroneous();
+                    setErroneousInitialization();
                     StaticObject cause = e.getExceptionObject();
                     Meta meta = getMeta();
                     if (!InterpreterToVM.instanceOf(cause, meta.java_lang_Error)) {
@@ -313,12 +311,10 @@ public final class ObjectKlass extends Klass {
                     }
                 } catch (Throwable e) {
                     getContext().getLogger().log(Level.WARNING, "Host exception during class initialization: {0}", this);
-                    setErroneous();
+                    setErroneousInitialization();
                     throw e;
                 }
-                if (initState == ERRONEOUS) {
-                    throw Meta.throwExceptionWithMessage(getMeta().java_lang_NoClassDefFoundError, "Erroneous class: " + getName());
-                }
+                checkErroneousInitialization();
                 initState = INITIALIZED;
                 assert isInitialized();
             }
@@ -743,6 +739,7 @@ public final class ObjectKlass extends Klass {
     @Override
     public void verify() {
         if (!isVerified()) {
+            checkErroneousVerification();
             synchronized (this) {
                 if (!isVerifyingOrVerified()) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -750,19 +747,13 @@ public final class ObjectKlass extends Klass {
                     try {
                         verifyImpl();
                     } catch (EspressoException e) {
-                        setErroneous();
-                        verificationError = e;
-                        throw e;
-                    } catch (Throwable e) {
-                        setErroneous();
+                        setErroneousVerification(e);
                         throw e;
                     }
                     setVerificationStatus(VERIFIED);
                 }
             }
-            if (verificationStatus == ERRONEOUS) {
-                throw verificationError;
-            }
+            checkErroneousVerification();
         }
     }
 
@@ -855,8 +846,25 @@ public final class ObjectKlass extends Klass {
         return verificationStatus == VERIFIED;
     }
 
-    private void setErroneous() {
+    private void checkErroneousVerification() {
+        if (verificationStatus == ERRONEOUS) {
+            throw verificationError;
+        }
+    }
+
+    private void setErroneousVerification(EspressoException e) {
+        verificationStatus = ERRONEOUS;
+        verificationError = e;
+    }
+
+    private void setErroneousInitialization() {
         initState = ERRONEOUS;
+    }
+
+    private void checkErroneousInitialization() {
+        if (initState == ERRONEOUS) {
+            throw Meta.throwExceptionWithMessage(getMeta().java_lang_NoClassDefFoundError, "Erroneous class: " + getName());
+        }
     }
 
     private void checkLoadingConstraints() {
