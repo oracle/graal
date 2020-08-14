@@ -260,6 +260,7 @@ import com.oracle.truffle.espresso.classfile.VerificationTypeInfo;
 import com.oracle.truffle.espresso.classfile.attributes.CodeAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.StackMapTableAttribute;
 import com.oracle.truffle.espresso.classfile.constantpool.ClassConstant;
+import com.oracle.truffle.espresso.classfile.constantpool.DynamicConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.FieldRefConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.InvokeDynamicConstant;
 import com.oracle.truffle.espresso.classfile.constantpool.MethodRefConstant;
@@ -1237,6 +1238,12 @@ public final class MethodVerifier implements ContextAccess {
                     throw new ClassFormatError("LDC for MethodType in classfile version < 51");
                 }
                 return jliMethodType;
+            case DYNAMIC:
+                if (majorVersion < ClassfileParser.JAVA_11_VERSION) {
+                    throw new ClassFormatError("LDC for Dynamic in classfile version < 55");
+                }
+                DynamicConstant constant = (DynamicConstant) pc;
+                return kindToOperand(constant.getTypeSymbol(pool));
             default:
                 throw new VerifyError("invalid CP load: " + pc.tag());
         }
