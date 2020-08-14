@@ -67,10 +67,14 @@ final class LibGraalHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
         });
     }
 
-    static long handle() {
+    private static long handle() {
         return handleImpl(() -> {
             throw new IllegalStateException("Handle not yet created. Missing call of the TruffleCompiler::initialize method or calling compiler method outside of the compiler thread scope.");
         });
+    }
+
+    long handle(Map<String, Object> options, LibGraalTruffleCompilation compilation) {
+        return handle(() -> options, compilation != null ? compilation.getCompilable() : null, false);
     }
 
     private static long handleImpl(Supplier<Handle> handleSupplier) {
@@ -94,7 +98,7 @@ final class LibGraalHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
 
     @Override
     public TruffleCompilation openCompilation(CompilableTruffleAST compilable) {
-        LibGraalScope scope = new LibGraalScope();
+        LibGraalScope scope = new LibGraalScope(LibGraalScope.DetachAction.DETACH_RUNTIME_AND_RELEASE);
         long compilationHandle = TruffleToLibGraalCalls.openCompilation(getIsolateThread(), handle(optionsEncoder(compilable), compilable, false), compilable);
         LibGraalTruffleCompilation compilation = new LibGraalTruffleCompilation(this, compilationHandle, scope);
         activeCompilation.set(compilation);
@@ -138,7 +142,7 @@ final class LibGraalHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
     @SuppressWarnings("try")
     @Override
     public void installTruffleCallBoundaryMethods(CompilableTruffleAST compilable) {
-        try (LibGraalScope scope = new LibGraalScope()) {
+        try (LibGraalScope scope = new LibGraalScope(LibGraalScope.DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
             TruffleToLibGraalCalls.installTruffleCallBoundaryMethods(getIsolateThread(), handle(optionsEncoder(compilable), compilable, false), compilable);
         }
     }
@@ -149,7 +153,7 @@ final class LibGraalHotSpotTruffleCompiler implements HotSpotTruffleCompiler {
     @Override
     public int pendingTransferToInterpreterOffset(CompilableTruffleAST compilable) {
         if (pendingTransferToInterpreterOffset == null) {
-            try (LibGraalScope scope = new LibGraalScope()) {
+            try (LibGraalScope scope = new LibGraalScope(LibGraalScope.DetachAction.DETACH_RUNTIME_AND_RELEASE)) {
                 pendingTransferToInterpreterOffset = TruffleToLibGraalCalls.pendingTransferToInterpreterOffset(getIsolateThread(), handle(optionsEncoder(compilable), compilable, false), compilable);
             }
         }

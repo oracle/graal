@@ -746,8 +746,6 @@ public abstract class Accessor {
 
         public abstract void onEngineClosed(Object runtimeData);
 
-        public abstract OutputStream getConfiguredLogStream();
-
         public abstract String getSavedProperty(String key);
 
         public abstract void reportPolymorphicSpecialize(Node source);

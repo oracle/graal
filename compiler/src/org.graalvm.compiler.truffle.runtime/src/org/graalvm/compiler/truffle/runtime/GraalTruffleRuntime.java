@@ -29,7 +29,6 @@ import static org.graalvm.compiler.truffle.runtime.TruffleDebugOptions.PrintGrap
 import static org.graalvm.compiler.truffle.runtime.TruffleDebugOptions.PrintGraphTarget.Disable;
 
 import java.io.CharArrayWriter;
-import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.lang.annotation.Annotation;
 import java.lang.invoke.MethodHandle;
@@ -1003,8 +1002,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     public void log(CompilableTruffleAST compilable, String message) {
         ((OptimizedCallTarget) compilable).engine.getLogger().log(Level.INFO, message);
     }
-
-    protected abstract OutputStream getDefaultLogStream();
 
     // https://bugs.openjdk.java.net/browse/JDK-8209535
 

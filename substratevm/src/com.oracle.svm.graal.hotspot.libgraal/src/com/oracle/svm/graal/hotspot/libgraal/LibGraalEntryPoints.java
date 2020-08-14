@@ -63,6 +63,7 @@ import jdk.vm.ci.hotspot.HotSpotInstalledCode;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.runtime.JVMCICompiler;
+import org.graalvm.compiler.serviceprovider.IsolateUtil;
 import sun.misc.Unsafe;
 
 /**
@@ -129,6 +130,18 @@ public final class LibGraalEntryPoints {
             return true;
         } catch (Throwable t) {
             return false;
+        }
+    }
+
+    @SuppressWarnings({"unused"})
+    @CEntryPoint(name = "Java_org_graalvm_libgraal_LibGraalScope_getIsolateId")
+    public static long getIsolateId(PointerBase jniEnv,
+                    PointerBase jclass,
+                    @CEntryPoint.IsolateThreadContext long isolateThreadId) {
+        try {
+            return IsolateUtil.getIsolateID();
+        } catch (Throwable t) {
+            return 0L;
         }
     }
 

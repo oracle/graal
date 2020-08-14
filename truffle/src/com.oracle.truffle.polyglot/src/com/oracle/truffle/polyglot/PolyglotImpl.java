@@ -198,7 +198,6 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             DispatchOutputStream dispatchOut = INSTRUMENT.createDispatchOutput(resolvedOut);
             DispatchOutputStream dispatchErr = INSTRUMENT.createDispatchOutput(resolvedErr);
             Handler logHandler = PolyglotLoggers.asHandler(logHandlerOrStream);
-            logHandler = logHandler != null ? logHandler : PolyglotLoggers.createDefaultHandler(resolvedErr);
             ClassLoader contextClassLoader = TruffleOptions.AOT ? null : Thread.currentThread().getContextClassLoader();
 
             impl = boundEngine ? preInitializedEngineRef.getAndSet(null) : null;

@@ -60,8 +60,6 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibG
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.OpenDebugContextScope;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.PendingTransferToInterpreterOffset;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.Shutdown;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.TtyWriteByte;
-import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.TtyWriteBytes;
 import static org.graalvm.libgraal.jni.JNIUtil.GetArrayLength;
 import static org.graalvm.libgraal.jni.JNIUtil.GetByteArrayElements;
 import static org.graalvm.libgraal.jni.JNIUtil.NewByteArray;
@@ -83,7 +81,6 @@ import java.util.function.Supplier;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugOptions;
-import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.hotspot.CompilationContext;
 import org.graalvm.compiler.hotspot.CompilerConfigurationFactory;
 import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
@@ -720,36 +717,6 @@ final class TruffleToLibGraalEntryPoints {
     public static void dumpChannelClose(JNIEnv env, JClass hsClass, @CEntryPoint.IsolateThreadContext long isolateThreadId, long channelHandle) {
         try (JNILibGraalScope<TruffleToLibGraal.Id> s = new JNILibGraalScope<>(IsDumpChannelOpen, env)) {
             LibGraalObjectHandles.resolve(channelHandle, WritableByteChannel.class).close();
-        } catch (Throwable t) {
-            JNIExceptionWrapper.throwInHotSpot(env, t);
-        }
-    }
-
-    @TruffleToLibGraal(TtyWriteByte)
-    @CEntryPoint(name = "Java_org_graalvm_compiler_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls_ttyWriteByte")
-    @SuppressWarnings({"unused", "try"})
-    public static void ttyWriteByte(JNIEnv env, JClass hsClass, @CEntryPoint.IsolateThreadContext long isolateThreadId, int b) {
-        try (JNILibGraalScope<TruffleToLibGraal.Id> s = new JNILibGraalScope<>(TtyWriteByte, env)) {
-            TTY.out.write(b);
-        } catch (Throwable t) {
-            JNIExceptionWrapper.throwInHotSpot(env, t);
-        }
-    }
-
-    @TruffleToLibGraal(TtyWriteBytes)
-    @CEntryPoint(name = "Java_org_graalvm_compiler_truffle_runtime_hotspot_libgraal_TruffleToLibGraalCalls_ttyWriteBytes")
-    @SuppressWarnings({"unused", "try"})
-    public static void ttyWriteBytes(JNIEnv env, JClass hsClass, @CEntryPoint.IsolateThreadContext long isolateThreadId, JByteArray array, int off, int len) {
-        try (JNILibGraalScope<TruffleToLibGraal.Id> s = new JNILibGraalScope<>(TtyWriteBytes, env)) {
-            int arrayLen = GetArrayLength(env, array);
-            CCharPointer arrayPointer = GetByteArrayElements(env, array, WordFactory.nullPointer());
-            try {
-                byte[] buf = new byte[arrayLen];
-                CTypeConversion.asByteBuffer(arrayPointer, arrayLen).get(buf);
-                TTY.out.write(buf, off, len);
-            } finally {
-                ReleaseByteArrayElements(env, array, arrayPointer, JArray.MODE_RELEASE);
-            }
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
         }

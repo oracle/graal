@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
-import java.io.OutputStream;
-
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
@@ -100,11 +98,6 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     @Override
     public void onEngineClosed(Object runtimeData) {
         GraalTruffleRuntime.getRuntime().onEngineClosed((EngineData) runtimeData);
-    }
-
-    @Override
-    public OutputStream getConfiguredLogStream() {
-        return TruffleDebugOptions.getConfiguredLogStream();
     }
 
     @Override
