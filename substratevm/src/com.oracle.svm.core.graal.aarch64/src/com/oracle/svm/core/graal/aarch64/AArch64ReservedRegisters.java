@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,28 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.nodes;
+package com.oracle.svm.core.graal.aarch64;
 
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeCycles;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodeinfo.NodeSize;
-import org.graalvm.compiler.nodes.spi.LIRLowerable;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
+import com.oracle.svm.core.ReservedRegisters;
 
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Register;
 
-@NodeInfo(cycles = NodeCycles.CYCLES_1, size = NodeSize.SIZE_1)
-public final class ReadIsolateThreadFloatingNode extends ReadRegisterFloatingNode implements LIRLowerable {
-    public static final NodeClass<ReadIsolateThreadFloatingNode> TYPE = NodeClass.create(ReadIsolateThreadFloatingNode.class);
+public final class AArch64ReservedRegisters extends ReservedRegisters {
 
-    public ReadIsolateThreadFloatingNode() {
-        super(TYPE);
-    }
+    public static final Register THREAD_REGISTER_CANDIDATE = AArch64.r28;
+    public static final Register HEAP_BASE_REGISTER_CANDIDATE = AArch64.r27;
 
-    @Override
-    protected Register getReadRegister(SubstrateRegisterConfig registerConfig) {
-        return registerConfig.getThreadRegister();
+    @Platforms(Platform.HOSTED_ONLY.class)
+    AArch64ReservedRegisters() {
+        super(AArch64.sp, THREAD_REGISTER_CANDIDATE, HEAP_BASE_REGISTER_CANDIDATE);
     }
 }

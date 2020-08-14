@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal.meta;
 
-import org.graalvm.nativeimage.IsolateThread;
+import com.oracle.svm.core.ReservedRegisters;
 
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
@@ -36,13 +36,9 @@ public interface SubstrateRegisterConfig extends RegisterConfig {
         NATIVE_TO_JAVA,
     }
 
-    /**
-     * Gets the register that contains the current {@link IsolateThread}.
-     */
-    Register getThreadRegister();
+    @Override
+    default Register getFrameRegister() {
+        return ReservedRegisters.singleton().getFrameRegister();
+    }
 
-    /**
-     * Gets the register holding the heap base address for compressed pointers.
-     */
-    Register getHeapBaseRegister();
 }

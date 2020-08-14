@@ -52,6 +52,7 @@ import org.graalvm.compiler.virtual.nodes.MaterializedObjectState;
 import org.graalvm.compiler.virtual.nodes.VirtualObjectState;
 
 import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.VirtualObject;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -372,7 +373,7 @@ public class DebugInfoBuilder {
                     if (operand instanceof ConstantValue && ((ConstantValue) operand).isJavaConstant()) {
                         return ((ConstantValue) operand).getJavaConstant();
                     } else {
-                        assert operand instanceof Variable : operand + " for " + value;
+                        assert operand instanceof Variable || operand instanceof RegisterValue : operand + " for " + value;
                         return (JavaValue) operand;
                     }
 

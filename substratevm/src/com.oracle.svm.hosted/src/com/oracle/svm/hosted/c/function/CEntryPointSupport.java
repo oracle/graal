@@ -53,8 +53,7 @@ import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode.LeaveAction;
 import com.oracle.svm.core.graal.nodes.CEntryPointPrologueBailoutNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode.UtilityAction;
-import com.oracle.svm.core.graal.nodes.ReadHeapBaseFixedNode;
-import com.oracle.svm.core.graal.nodes.ReadIsolateThreadFixedNode;
+import com.oracle.svm.core.graal.nodes.ReadReservedRegister;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -177,9 +176,9 @@ public class CEntryPointSupport implements GraalFeature {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 if (SubstrateOptions.MultiThreaded.getValue()) {
-                    b.addPush(JavaKind.Object, new ReadIsolateThreadFixedNode());
+                    b.addPush(JavaKind.Object, ReadReservedRegister.createReadIsolateThreadNode(b.getGraph()));
                 } else if (SubstrateOptions.SpawnIsolates.getValue()) {
-                    ValueNode heapBase = b.add(new ReadHeapBaseFixedNode());
+                    ValueNode heapBase = b.add(ReadReservedRegister.createReadHeapBaseNode(b.getGraph()));
                     ConstantNode addend = b.add(ConstantNode.forIntegerKind(FrameAccess.getWordKind(), CEntryPointSetup.SINGLE_ISOLATE_TO_SINGLE_THREAD_ADDEND));
                     b.addPush(JavaKind.Object, new AddNode(heapBase, addend));
                 } else {
@@ -192,7 +191,7 @@ public class CEntryPointSupport implements GraalFeature {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 if (SubstrateOptions.SpawnIsolates.getValue()) {
-                    b.addPush(JavaKind.Object, new ReadHeapBaseFixedNode());
+                    b.addPush(JavaKind.Object, ReadReservedRegister.createReadHeapBaseNode(b.getGraph()));
                 } else {
                     b.addPush(JavaKind.Object, ConstantNode.forIntegerKind(FrameAccess.getWordKind(), CEntryPointSetup.SINGLE_ISOLATE_SENTINEL.rawValue()));
                 }

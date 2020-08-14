@@ -109,6 +109,7 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -253,7 +254,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
                 Register statusValueRegister = scratch1.getRegister();
                 Register statusAddressRegister = scratch2.getRegister();
                 masm.mov(statusValueRegister, newThreadStatus);
-                AArch64Address statusAddress = AArch64Address.createImmediateAddress(32, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, runtimeConfiguration.getThreadRegister(),
+                AArch64Address statusAddress = AArch64Address.createImmediateAddress(32, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, ReservedRegisters.singleton().getThreadRegister(),
                                 runtimeConfiguration.getVMThreadStatusOffset());
                 masm.loadAddress(statusAddressRegister, statusAddress, 4);
                 masm.stlr(32, statusValueRegister, statusAddressRegister);
@@ -361,7 +362,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         public Value emitCompress(Value pointer, CompressEncoding encoding, boolean isNonNull) {
             Variable result = newVariable(getLIRKindTool().getNarrowOopKind());
             boolean nonNull = useLinearPointerCompression() || isNonNull;
-            append(new AArch64Move.CompressPointerOp(result, asAllocatable(pointer), getRegisterConfig().getHeapBaseRegister().asValue(), encoding, nonNull, getLIRKindTool()));
+            append(new AArch64Move.CompressPointerOp(result, asAllocatable(pointer), ReservedRegisters.singleton().getHeapBaseRegister().asValue(), encoding, nonNull, getLIRKindTool()));
             return result;
         }
 
@@ -370,7 +371,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             assert pointer.getValueKind(LIRKind.class).getPlatformKind() == getLIRKindTool().getNarrowOopKind().getPlatformKind();
             Variable result = newVariable(getLIRKindTool().getObjectKind());
             boolean nonNull = useLinearPointerCompression() || isNonNull;
-            append(new AArch64Move.UncompressPointerOp(result, asAllocatable(pointer), getRegisterConfig().getHeapBaseRegister().asValue(), encoding, nonNull, getLIRKindTool()));
+            append(new AArch64Move.UncompressPointerOp(result, asAllocatable(pointer), ReservedRegisters.singleton().getHeapBaseRegister().asValue(), encoding, nonNull, getLIRKindTool()));
             return result;
         }
 
@@ -649,14 +650,12 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
     protected static class SubstrateAArch64MoveFactory extends AArch64MoveFactory {
 
         private final SharedMethod method;
-        @SuppressWarnings("unused") private final LIRKindTool lirKindTool;
-        @SuppressWarnings("unused") private final SubstrateAArch64RegisterConfig registerConfig;
+        private final LIRKindTool lirKindTool;
 
-        protected SubstrateAArch64MoveFactory(SharedMethod method, LIRKindTool lirKindTool, SubstrateAArch64RegisterConfig registerConfig) {
+        protected SubstrateAArch64MoveFactory(SharedMethod method, LIRKindTool lirKindTool) {
             super();
             this.method = method;
             this.lirKindTool = lirKindTool;
-            this.registerConfig = registerConfig;
         }
 
         @Override
@@ -689,7 +688,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
 
         protected AArch64LIRInstruction loadObjectConstant(AllocatableValue dst, SubstrateObjectConstant constant) {
             if (ReferenceAccess.singleton().haveCompressedReferences()) {
-                RegisterValue heapBase = registerConfig.getHeapBaseRegister().asValue();
+                RegisterValue heapBase = ReservedRegisters.singleton().getHeapBaseRegister().asValue();
                 return new LoadCompressedObjectConstantOp(dst, constant, heapBase, getCompressEncoding(), lirKindTool);
             }
             return new AArch64Move.LoadInlineConstant(constant, dst);
@@ -783,7 +782,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         LIR lir = lirGenResult.getLIR();
         OptionValues options = lir.getOptions();
         DebugContext debug = lir.getDebug();
-        Register uncompressedNullRegister = useLinearPointerCompression() ? getHeapBaseRegister(lirGenResult) : Register.None;
+        Register uncompressedNullRegister = useLinearPointerCompression() ? ReservedRegisters.singleton().getHeapBaseRegister() : Register.None;
         CompilationResultBuilder tasm = factory.createBuilder(getCodeCache(), getForeignCalls(), lirGenResult.getFrameMap(), masm, dataBuilder, frameContext, options, debug, compilationResult,
                         uncompressedNullRegister);
         tasm.setTotalFrameSize(lirGenResult.getFrameMap().totalFrameSize());
@@ -794,17 +793,9 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         return new AArch64ArithmeticLIRGenerator(nullRegisterValue);
     }
 
-    protected static SubstrateAArch64RegisterConfig getRegisterConfig(LIRGenerationResult lirGenRes) {
-        return (SubstrateAArch64RegisterConfig) lirGenRes.getRegisterConfig();
-    }
-
-    private static Register getHeapBaseRegister(LIRGenerationResult lirGenRes) {
-        return getRegisterConfig(lirGenRes).getHeapBaseRegister();
-    }
-
     protected AArch64MoveFactory createMoveFactory(LIRGenerationResult lirGenRes) {
         SharedMethod method = ((SubstrateLIRGenerationResult) lirGenRes).getMethod();
-        return new SubstrateAArch64MoveFactory(method, createLirKindTool(), getRegisterConfig(lirGenRes));
+        return new SubstrateAArch64MoveFactory(method, createLirKindTool());
     }
 
     protected static class SubstrateAArch64LIRKindTool extends AArch64LIRKindTool {
@@ -825,7 +816,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
 
     @Override
     public LIRGeneratorTool newLIRGenerator(LIRGenerationResult lirGenRes) {
-        RegisterValue nullRegisterValue = useLinearPointerCompression() ? getHeapBaseRegister(lirGenRes).asValue(LIRKind.unknownReference(AArch64Kind.QWORD)) : null;
+        RegisterValue nullRegisterValue = useLinearPointerCompression() ? ReservedRegisters.singleton().getHeapBaseRegister().asValue(LIRKind.unknownReference(AArch64Kind.QWORD)) : null;
         AArch64ArithmeticLIRGenerator arithmeticLIRGen = createArithmeticLIRGen(nullRegisterValue);
         AArch64MoveFactory moveFactory = createMoveFactory(lirGenRes);
         return new SubstrateAArch64LIRGenerator(createLirKindTool(), arithmeticLIRGen, moveFactory, getProviders(), lirGenRes);

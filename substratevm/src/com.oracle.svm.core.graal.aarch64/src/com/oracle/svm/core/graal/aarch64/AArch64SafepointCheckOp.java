@@ -32,8 +32,8 @@ import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.aarch64.AArch64LIRInstruction;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
+import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
 import com.oracle.svm.core.thread.Safepoint;
 import com.oracle.svm.core.thread.ThreadingSupportImpl;
@@ -54,9 +54,9 @@ public class AArch64SafepointCheckOp extends AArch64LIRInstruction {
     @Override
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
         assert SubstrateOptions.MultiThreaded.getValue();
-        SubstrateRegisterConfig threadRegister = (SubstrateRegisterConfig) crb.codeCache.getRegisterConfig();
         int safepointSize = 32; // safepoint is an integer
-        AArch64Address safepointAddress = AArch64Address.createImmediateAddress(safepointSize, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, threadRegister.getThreadRegister(),
+        AArch64Address safepointAddress = AArch64Address.createImmediateAddress(safepointSize, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED,
+                        ReservedRegisters.singleton().getThreadRegister(),
                         Math.toIntExact(Safepoint.getThreadLocalSafepointRequestedOffset()));
         try (ScratchRegister scratchRegister = masm.getScratchRegister()) {
             Register scratch = scratchRegister.getRegister();
