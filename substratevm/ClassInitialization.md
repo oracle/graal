@@ -28,7 +28,7 @@ To track which classes got initialized and why one can use the flag `-H:+PrintCl
 This flag greatly helps to configure the image build to work as intended; the goal is to have as many classes initialized at build-time and yet keep the correct semantics of the program.
 
 
-## build-time Initialization of Native Image Runtime
+## Build-time Initialization of Native Image Runtime
 
 In the Native Image runtime most of the classes are initialized at image build-time.
 This includes the garbage collector, important JDK classes, the deoptimizer, etc.
