@@ -56,7 +56,7 @@ final class PolyglotThread extends Thread {
         super(group, runnable, createDefaultName(languageContext), stackSize);
         this.languageContext = languageContext;
         setUncaughtExceptionHandler(languageContext.getPolyglotExceptionHandler());
-        this.callTarget = ThreadSpawnRootNode.lookup(languageContext, runnable, this);
+        this.callTarget = ThreadSpawnRootNode.lookup(languageContext);
     }
 
     PolyglotThread(PolyglotLanguageContext languageContext, Runnable runnable, ThreadGroup group) {
@@ -79,28 +79,28 @@ final class PolyglotThread extends Thread {
     public void run() {
         // always call through a HostToGuestRootNode so that stack/frame
         // walking can determine in which context the frame was executed
-        callTarget.call(languageContext, null);
+        callTarget.call(languageContext, this, new Runnable() {
+            @Override
+            public void run() {
+                PolyglotThread.super.run();
+            }
+        });
     }
 
     private static final AtomicInteger THREAD_INIT_NUMBER = new AtomicInteger(0);
 
     private static final class ThreadSpawnRootNode extends HostToGuestRootNode {
 
-        private final PolyglotThread thread;
-        private final Runnable runnable;
-
-        ThreadSpawnRootNode(PolyglotThread thread, Runnable runnable) {
-            this.thread = thread;
-            this.runnable = runnable;
-        }
-
         @Override
         protected Class<?> getReceiverType() {
-            return Object.class; // not used, so can be any class
+            return PolyglotThread.class;
         }
 
         @Override
         protected Object executeImpl(PolyglotLanguageContext languageContext, Object receiver, Object[] args) {
+            PolyglotThread thread = (PolyglotThread) receiver;
+            Runnable run = (Runnable) args[HostToGuestRootNode.ARGUMENT_OFFSET];
+
             Object prev;
             try {
                 prev = languageContext.enterThread(thread);
@@ -113,18 +113,17 @@ final class PolyglotThread extends Thread {
             }
             assert prev == null; // is this assertion correct?
             try {
-                runnable.run();
+                run.run();
             } finally {
                 languageContext.leaveThread(prev, thread);
             }
             return null;
         }
 
-        public static CallTarget lookup(PolyglotLanguageContext languageContext, Runnable runnable, PolyglotThread thread) {
-            ThreadSpawnRootNode threadSpawnRootNode = new ThreadSpawnRootNode(thread, runnable);
-            CallTarget target = lookupHostCodeCache(languageContext, threadSpawnRootNode, CallTarget.class);
+        public static CallTarget lookup(PolyglotLanguageContext languageContext) {
+            CallTarget target = lookupHostCodeCache(languageContext, ThreadSpawnRootNode.class, CallTarget.class);
             if (target == null) {
-                target = installHostCodeCache(languageContext, threadSpawnRootNode, createTarget(threadSpawnRootNode), CallTarget.class);
+                target = installHostCodeCache(languageContext, ThreadSpawnRootNode.class, createTarget(new ThreadSpawnRootNode()), CallTarget.class);
             }
             return target;
         }
