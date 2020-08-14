@@ -372,9 +372,11 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> NestHost = StaticSymbols.putName("NestHost");
         public static final Symbol<Name> NestMembers = StaticSymbols.putName("NestMembers");
         public static final Symbol<Name> RuntimeVisibleAnnotations = StaticSymbols.putName("RuntimeVisibleAnnotations");
+        public static final Symbol<Name> RuntimeInvisibleAnnotations = StaticSymbols.putName("RuntimeInvisibleAnnotations");
         public static final Symbol<Name> RuntimeVisibleTypeAnnotations = StaticSymbols.putName("RuntimeVisibleTypeAnnotations");
         public static final Symbol<Name> RuntimeInvisibleTypeAnnotations = StaticSymbols.putName("RuntimeInvisibleTypeAnnotations");
         public static final Symbol<Name> RuntimeVisibleParameterAnnotations = StaticSymbols.putName("RuntimeVisibleParameterAnnotations");
+        public static final Symbol<Name> RuntimeInvisibleParameterAnnotations = StaticSymbols.putName("RuntimeInvisibleParameterAnnotations");
         public static final Symbol<Name> Signature = StaticSymbols.putName("Signature");
         public static final Symbol<Name> SourceFile = StaticSymbols.putName("SourceFile");
         public static final Symbol<Name> SourceDebugExtension = StaticSymbols.putName("SourceDebugExtension");
