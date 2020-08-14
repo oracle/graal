@@ -145,7 +145,11 @@ class ReflectionProcessor extends AbstractProcessor {
                 memberKind = ConfigurationMemberKind.DECLARED;
                 // fall through
             case "getField": {
-                configuration.getOrCreateType(clazzOrDeclaringClass).addField(singleElement(args), memberKind, false, unsafeAccess);
+                String theClass = clazzOrDeclaringClass;
+                if (memberKind != ConfigurationMemberKind.DECLARED && !clazzOrDeclaringClass.equals(clazz)) {
+                    theClass = clazz;
+                }
+                configuration.getOrCreateType(theClass).addField(singleElement(args), memberKind, false, unsafeAccess);
                 break;
             }
 
@@ -159,7 +163,11 @@ class ReflectionProcessor extends AbstractProcessor {
                 if (parameterTypes == null) { // tolerated and equivalent to no parameter types
                     parameterTypes = Collections.emptyList();
                 }
-                configuration.getOrCreateType(clazzOrDeclaringClass).addMethod(name, SignatureUtil.toInternalSignature(parameterTypes), memberKind);
+                String theClass = clazzOrDeclaringClass;
+                if (memberKind != ConfigurationMemberKind.DECLARED && !clazzOrDeclaringClass.equals(clazz)) {
+                    theClass = clazz;
+                }
+                configuration.getOrCreateType(theClass).addMethod(name, SignatureUtil.toInternalSignature(parameterTypes), memberKind);
                 break;
             }
 
