@@ -46,11 +46,11 @@ final class AgentExecutionNode extends ExecutionEventNode {
         this.env = env;
         this.enter = enter;
         if (enter != null) {
-            this.enterDispatch = InteropLibrary.getFactory().createDispatched(3);
+            this.enterDispatch = InteropLibrary.getFactory().create(enter);
         }
         this.exit = exit;
         if (exit != null) {
-            this.exitDispatch = InteropLibrary.getFactory().createDispatched(3);
+            this.exitDispatch = InteropLibrary.getFactory().create(exit);
         }
         this.ctx = ctx;
     }
