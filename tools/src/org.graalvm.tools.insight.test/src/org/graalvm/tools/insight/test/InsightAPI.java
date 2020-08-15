@@ -179,8 +179,9 @@ public interface InsightAPI {
             Object returnValue(Map<String, Object> frame);
 
             /** Immediatelly exits the current handler and returns to the
-             * caller, passing it the provided value as a return value
-             * from the currently instrumented code.
+             * caller. Calling this method aborts execution of the current
+             * handler. It bypasses language sematics and immediatelly
+             * returns the provided value to the caller.
              *
              * @param value the value to return to the caller
              * @since 0.7
